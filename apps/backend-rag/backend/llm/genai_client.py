@@ -942,11 +942,21 @@ class GenAIClient:
         t0 = time.perf_counter()
         chunk_count = 0
         try:
-            async for chunk in self._client.aio.models.generate_content_stream(
+            # google-genai's AsyncModels.generate_content_stream is a COROUTINE
+            # FUNCTION -- it must be awaited to obtain the AsyncIterator, even
+            # though its return annotation reads AsyncIterator[...]. Iterating the
+            # call directly raises `TypeError: 'async for' requires an object with
+            # __aiter__ method, got coroutine` on EVERY call, which the caller
+            # catches and logs as "LLM stream failed", so the path degrades in
+            # silence instead of failing loudly. Measured on google-genai 1.75.0:
+            # inspect.iscoroutinefunction(...) is True. Tripwire:
+            # test_genai_stream_awaits_the_sdk_coroutine.py.
+            stream = await self._client.aio.models.generate_content_stream(
                 model=model,
                 contents=contents,
                 config=config,
-            ):
+            )
+            async for chunk in stream:
                 if chunk.text:
                     chunk_count += 1
                     yield chunk.text

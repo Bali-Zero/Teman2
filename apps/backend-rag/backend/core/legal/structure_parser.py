@@ -55,6 +55,12 @@ class LegalStructureParser:
             "batang_tubuh": [],
             "penjelasan": None,
             "pasal_list": [],
+            # The elucidation's OWN article-by-article entries, kept apart from
+            # the operative articles. Before 2026-08-25 the boundary was not
+            # found, so these were parsed as if they were the law itself and
+            # their chunk ids destroyed the real articles.
+            "penjelasan_pasal_list": [],
+            "penjelasan_umum": None,
         }
 
         # Step 1: Extract Konsiderans
@@ -76,13 +82,28 @@ class LegalStructureParser:
         # Step 4: Extract all Pasal
         structure["pasal_list"] = self._extract_pasal_list(batang_tubuh_text)
 
-        # Step 5: Extract Penjelasan
+        # Step 5: Extract Penjelasan, and parse its contents rather than
+        # storing an opaque blob. An elucidation is the official interpretation
+        # of the law; dropping it would lose real legal content, and merging it
+        # into the body is what destroyed articles until 2026-08-25.
         if penjelasan_text:
             structure["penjelasan"] = penjelasan_text.strip()
+            structure["penjelasan_pasal_list"] = self._extract_pasal_list(penjelasan_text)
+            # The narrative part ("PENJELASAN UMUM") is whatever precedes the
+            # first per-article entry. Sliced from the PATTERN, not from the
+            # parsed list -- _extract_pasal_list does not carry offsets, and
+            # falling back to the whole text would store the entire commentary
+            # twice.
+            first_entry = PASAL_PATTERN.search(penjelasan_text)
+            general = (
+                penjelasan_text[: first_entry.start()] if first_entry else penjelasan_text
+            ).strip()
+            structure["penjelasan_umum"] = general or None
 
         logger.info(
             f"Parsed structure: {len(structure['batang_tubuh'])} BAB, "
-            f"{len(structure['pasal_list'])} Pasal",
+            f"{len(structure['pasal_list'])} Pasal, "
+            f"{len(structure['penjelasan_pasal_list'])} Penjelasan Pasal",
         )
 
         return structure

@@ -1,0 +1,63 @@
+task_id: pricing-key-collision-0825
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  `PricingService.get_service_by_key()` promises, in its own docstring: "A caller that renders a
+  price on a client-facing surface must get either the exact row it asked for or nothing — a
+  near-miss silently rendered as the real price is the failure mode this method exists to make
+  impossible." It loops the catalogue and returns on the FIRST name match. The guarantee exists
+  in prose and not in code.
+
+  The catalogue has four duplicated service names — Tier 0-50, Tier 50-100, Tier 100-200,
+  Tier 200+ — all in tax_accounting, split between monthly_tax_basic (LKPM and Annual Tax
+  EXCLUDED) and monthly_tax_bundled (INCLUDED), each pair a different price. monthly_tax_basic
+  sorts first, so the lookup returned the basic row every time and never the bundled one. The
+  difference is not rounding: it is whether LKPM and the annual return are in scope, 500k to
+  1.5M IDR apart.
+
+  This is reachable from outside the system: GET /api/pricing/service is registered PUBLIC
+  (auth/public_endpoints.py:304) and takes `key` raw from the query string with no enum
+  constraint. Anyone asking for one of those four keys received the cheaper, wrong-scope price.
+
+  Gear 3 by PATH: the deterministic floor computes 3 because pricing_service.py is a hot-zone
+  path. Functional diff: 2 files, +436/-29.
+constraints:
+  - "The catalogue JSON is NOT touched. Renaming a client-facing service is a commercial
+    decision, raised separately with the owner as switchboard item 10. A lane does not get to
+    change what customers see a product called."
+  - "Returns None on a colliding key rather than raising, chosen after reading all three call
+    sites: only the public router is not wrapped in try/except, so raising there would convert
+    a wrong price into an unhandled 500 — worse, not better. Every consumer already degrades
+    safely on None, so the fix needs no call-site changes."
+  - 'The qualified form uses `::` and not `/`, because real catalogue names already contain a
+    bare slash ("Working KITAS (Altus/Onshore)") and `/` would not visibly separate a
+    qualified id from an ordinary name. Same convention as the sibling fix on the client-bot
+    snapshot builder — one convention for one problem, not two.'
+acceptance:
+  - "Each of the four colliding keys is refused rather than silently resolved, asserted against
+    the REAL on-disk catalogue so the test fails the day a fifth collision is added."
+  - "All 105 unambiguous keys still resolve exactly as before."
+  - "Each of the three consumers' behaviour on a normal key is unchanged."
+consumer_map:
+  - "GET /api/pricing/service (app/routers/dynamic_pricing.py:83) — PUBLIC, unauthenticated,
+    client-supplied key. The only externally reachable consumer, and the live defect."
+  - "services/garuda_flow/pricing.py:47 — key is one of two hardcoded VOA literals, neither
+    colliding. Unreachable BY CONSTRUCTION, not merely by today's data."
+  - "services/visa_engine/pricing_adapter.py:138 — key arrives inside a signed RulePack; no
+    signed pack uses tax_accounting today, so unreachable in current data. The schema does not
+    forbid a future one, and the adapter's own category guard CANNOT disambiguate this
+    collision because both sub-blocks report the same category."
+risks:
+  - "A caller that today receives the (wrong) basic price for a colliding key will now receive
+    None and render 'price unavailable'. That is the intended trade: refusing a price is
+    recoverable, quoting the wrong one to a client is not."
+  - "Residual: the underlying data ambiguity remains for humans reading the price list. Owner
+    decision, tracked as switchboard item 10."
+grader: >-
+  Opus 5 orchestrator (this session), independent of the Sonnet 5 lane that wrote the fix:
+  re-ran the collision census on the live catalogue, re-read both colliding blocks directly,
+  and independently confirmed /api/pricing/service is in the PUBLIC registry at line 304.
+budget: >-
+  No paid API. Local pytest and grep only.
+pii: none

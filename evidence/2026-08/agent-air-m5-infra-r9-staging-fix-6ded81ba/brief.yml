@@ -1,0 +1,76 @@
+task_id: infra-r9-staging-fix
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Defuse the R9 evidence-pack staging gap before 2026-09-02, when it starts failing every Gear-3 PR
+  by construction.
+
+  `.github/workflows/harness-floor.yml`'s pack-lint step stages exactly two files into its synthetic
+  `/tmp/evidence-check` tree — the pack (`git show "$HEAD_SHA:$PACK_PATH"`) and the brief — under the
+  canonical `evidence/{pack,brief}.yml` names. That is enough for every rule that resolves a path
+  against `--repo-root`. R9 (`evidence_pack_lint.py::check_council_run_gear3`) does not: it resolves
+  the pack's `council_run:` against the PACK'S OWN directory, one level deeper, so the referenced
+  journal never resolves in CI. R9 is phased — NOTICE before 2026-09-02, hard violation on/after —
+  so from that date the gap fails every Gear-3 PR regardless of the diff, including a PR that did
+  convene a full council and committed the journal to prove it.
+
+  Direction chosen from the pack contract, not from convenience: R9's own docstring declares
+  `council_run` a path relative to the pack dir and confines it there, and the only real council pack
+  in the tree commits the journal into that directory — the journal travels with the pack, so the
+  staging was incomplete, not the rule. (The alternative was never viable either: this job checks out
+  BASE, so the real per-PR pack directory does not exist on disk at all.)
+constraints:
+  - "R9 itself must not be loosened. Making the rule resolve against the repo/run context would
+    weaken a gate to make a PR pass — the failure mode CLAUDE.md Agent PR Contract rule 3 names."
+  - "The staging helper must render no verdict on the pack: every shape it declines to stage leaves
+    R9 to judge the pack unaided, which is strictly stricter and never a fail-open."
+  - "The helper must be a standalone script, not inline `run:` bash — per the round-2 correction
+    recorded in scripts/tests/test_harness_floor_brief_diff_membership.sh's own header, a test that
+    reimplements a workflow's inline idiom is not a pin."
+  - "Its path confinement must mirror _read_council_journal_seats' in BOTH directions: a value it
+    refuses but R9 accepts fails a legitimate pack (this defect in miniature); a value it accepts
+    but R9 refuses stages a file the rule will not look at."
+acceptance:
+  - "The red is reproduced before the fix: the one real council pack in the tree, staged exactly the
+    way the workflow stages it, is judged 'declares no council_run journal with >=2 distinct review
+    seats' — and is a hard violation when the rule is evaluated at R9_R11_ENFORCEMENT_DATE."
+  - "A guilt/innocence fixture pair over the SAME pack and the SAME staging routine, differing only
+    in whether the staging script runs: pre-fix staging -> R9 violation post-flip; staged journal ->
+    ([], None). Both mutation-proven to go red without the fix."
+  - "The workflow wiring is pinned statically against the YAML, so a workflow that stops calling the
+    script cannot leave the corpus green."
+  - "actionlint accepts the modified workflow; the existing evidence_pack_lint corpus still passes."
+consumer_map:
+  - ".github/workflows/harness-floor.yml — Step 7b (pack lint) is the only consumer of the staged
+    evidence tree; nothing else reads /tmp/evidence-check."
+  - "scripts/evidence_pack_lint.py::check_council_run_gear3 — the rule whose input this repairs. Not
+    modified by this diff."
+  - "Every future Gear-3 PR — from 2026-09-02 this staging is what stands between a compliant pack
+    and a red required check ('Harness floor recompute' is a required context on main)."
+risks:
+  - "The workflow guards the call with `if [[ -f scripts/ci/stage_council_journal.py ]]` because this
+    job's checkout is BASE, so the script this PR adds is absent on this PR's own run. That branch is
+    a deliberate degrade-to-today's-behavior, and it is the one path this PR cannot exercise against
+    its own CI — it becomes live only on the first Gear-3 run after merge."
+  - "The wiring pin is static: it proves harness-floor.yml still names the helper on a non-comment
+    line before the lint, not that the line is reachable. A live invocation parked under `if false`
+    would satisfy it. Declared in the test's own docstring rather than papered over."
+  - "R9 resolves with `Path.resolve()`, which follows symlinks, while the helper resolves `..`
+    lexically. The two are reconciled by verifying every cancelled prefix is a directory at HEAD;
+    what remains is the ordinary case where neither a symlink nor a `..` is involved, where they are
+    identical by construction."
+grader: |
+  Generator != grader. The build lane (this session) authored the diff; the review lanes are two
+  cross-family seats dispatched on the finished diff with an adversarial prompt and their own file
+  access — codex-gpt-5.6-sol (effort high, read-only sandbox) and kimi-code/k3. Their findings are
+  recorded in council-journal.jsonl and itemised in pack.yml's `dissent:`. Nine defects were accepted
+  and fixed before this pack was written — one CRITICAL quorum fail-open (a directory staged as a
+  journal), one gate that was not a gate at all (the corpus ran in no PR workflow), a missing
+  CODEOWNERS trust boundary, an unbounded bootstrap fail-open, and five path-resolution divergences
+  in both directions. Every fix is pinned by a test that goes red against the pre-review
+  implementation, and the CRITICAL was re-verified against git directly before being believed.
+budget:
+  1 build lane + 2 cross-family review seats — 5 code/config files (1 workflow step, 1 new CI
+  helper, 1 test corpus, 1 guard-conformance step, 1 CODEOWNERS pair) plus this evidence pack.
+pii: none

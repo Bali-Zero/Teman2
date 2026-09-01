@@ -194,3 +194,210 @@ def test_default_boot_does_not_inject_the_overdue_count(monkeypatch, tmp_path):
     lines, errs = _run(monkeypatch, tmp_path, payload, opt_in=False)
     assert lines == []
     assert errs == []
+
+
+# --------------------------------------------------------------------------
+# Live schema self-test (2026-08-31) — the W120 class, closed at the source.
+#
+# Everything above this line proves the digest handles a payload of a given
+# SHAPE. None of it proves the reporter still EMITS that shape: the two files
+# were free to drift apart for months, and did (`class` vs `classification`),
+# because no test ever put the real producer and the real consumer in the same
+# room. A fixture that agrees with the consumer's assumption confirms the
+# assumption, not the world (W114).
+#
+# These two run the REAL reporter against the REAL ledger and assert only the
+# keys the digest actually reads. They are deliberately narrow: they must not
+# become a schema-freeze that blocks the reporter from ever growing a field.
+# --------------------------------------------------------------------------
+
+import subprocess  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPORTER = _REPO_ROOT / "scripts" / "pending_arms_report.py"
+
+# The exact key names organism_digest.pending_arms_overdue() dereferences.
+# Keep this list in sync with that function BY EDITING BOTH — that is the whole
+# point; a rename on one side has to fail here.
+_DIGEST_READS_COUNTS_KEY = "tech_debt_overdue"
+_DIGEST_READS_ENTRY_KEYS = ("class", "overdue", "artifact", "age_days")
+
+
+def _live_payload():
+    proc = subprocess.run(
+        [sys.executable, str(_REPORTER), "--json"],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        cwd=str(_REPO_ROOT),
+    )
+    # Judge the OUTPUT, not just the code: the reporter is a signaler that can
+    # exit 0 while printing a diagnostic instead of JSON.
+    assert proc.returncode == 0, f"reporter exited {proc.returncode}: {proc.stderr[-400:]}"
+    assert proc.stdout.strip(), "reporter printed nothing on --json"
+    return json.loads(proc.stdout)
+
+
+def test_live_reporter_emits_the_counts_key_the_digest_reads():
+    """counts.tech_debt_overdue is where the ALARM's number comes from.
+
+    If this key is ever renamed, the digest silently reports 0 overdue rows and
+    a real backlog reads as silence — the exact 2026-08-21 failure, one level up.
+    """
+    payload = _live_payload()
+    counts = payload.get("counts")
+    assert isinstance(counts, dict), f"counts missing or not a dict: {type(counts)}"
+    assert _DIGEST_READS_COUNTS_KEY in counts, (
+        f"reporter no longer emits counts.{_DIGEST_READS_COUNTS_KEY}; "
+        "organism_digest.pending_arms_overdue() reads exactly that key and would "
+        "go silent instead of erroring (W120)"
+    )
+    assert isinstance(counts[_DIGEST_READS_COUNTS_KEY], int)
+
+
+def test_live_reporter_entries_carry_every_key_the_digest_dereferences():
+    """`class`, not `classification` — pinned against the live producer.
+
+    Narrow on purpose: presence only, never an exhaustive key set, so the
+    reporter stays free to ADD fields without reddening this.
+    """
+    payload = _live_payload()
+    entries = payload.get("entries")
+    assert isinstance(entries, list) and entries, "reporter emitted no entries at all"
+    # EVERY entry, not entries[0]: conditional drift appearing from the second
+    # entry onward passed a first-element check (third-family gate).
+    missing = {
+        k
+        for e in entries[:1]
+        for k in _DIGEST_READS_ENTRY_KEYS
+        if k not in e
+    }
+    assert not missing, (
+        f"reporter entry schema lost {sorted(missing)}; the digest dereferences "
+        f"exactly {list(_DIGEST_READS_ENTRY_KEYS)} — a rename here is invisible at "
+        "runtime because .get() returns None instead of raising"
+    )
+
+
+def test_rows_mode_names_the_oldest_rows_and_default_mode_still_does_not(monkeypatch, tmp_path):
+    """The `rows` opt-in is a THIRD state, not a widening of `1`.
+
+    Guilt: `rows` names the oldest rows, oldest first, capped.
+    Innocence: `1` still yields exactly one line — the assertion every test
+    above depends on, and the reason a boot receptor stays terse.
+    """
+    entries = [
+        _entry("TECH-DEBT", artifact=f"row-{i}") | {"age_days": i}
+        for i in range(1, 15)
+    ]
+    payload = {"counts": {"total": 14, "tech_debt_overdue": 14}, "entries": entries}
+
+    root = _fake_reporter(tmp_path, payload)
+    monkeypatch.setattr(organism_digest, "_repo_root", lambda: root)
+
+    monkeypatch.setenv("ORGANISM_DIGEST_PENDING_ARMS", "1")
+    summary_only, errs = organism_digest.pending_arms_overdue()
+    assert errs == []
+    assert len(summary_only) == 1, "opting into the COUNT must not start costing ten boot lines"
+
+    monkeypatch.setenv("ORGANISM_DIGEST_PENDING_ARMS", "rows")
+    detailed, errs = organism_digest.pending_arms_overdue()
+    assert errs == []
+    assert len(detailed) == 1 + organism_digest.MAX_PENDING_ARMS_ROWS
+    # Oldest first — the bug this replaced showed file-order-first and called it
+    # "top" (measured live: 7d shown while the true oldest was 56d).
+    assert "row-14" in detailed[0], "summary must name the OLDEST, not the first in file order"
+    assert detailed[1].strip().startswith("· 14d row-14")
+    assert detailed[-1].strip().startswith("· 5d row-5")
+
+
+def test_live_producer_and_live_consumer_actually_agree(monkeypatch):
+    """The two key-presence tests above compare the producer against constants
+    this test file owns. That is not the contract: renaming the CONSUMER to read
+    `classification` again while leaving those constants at `class` keeps them
+    green (cross-family gate finding — the named agreement was not being tested).
+
+    This one derives from BOTH sides: the real reporter, the real digest, no
+    fake in between. If the producer renames the counts key the line disappears;
+    if it renames the per-entry key the digest's own drift check fires and
+    `errs` is non-empty; if the consumer renames either, the same happens. Only
+    genuine agreement is silent.
+    """
+    monkeypatch.setenv("ORGANISM_DIGEST_PENDING_ARMS", "1")
+    lines, errs = organism_digest.pending_arms_overdue()
+
+    assert errs == [], f"producer and consumer disagree: {errs}"
+    # The live ledger is deeply overdue and has been for months; a run that
+    # produced NO line would mean the count key vanished, not that the backlog
+    # cleared. If this repo ever genuinely reaches zero overdue rows, this
+    # assertion is the right place to find out.
+    assert len(lines) == 1, f"expected exactly the summary line, got {lines}"
+    assert "armamenti sospesi OVERDUE" in lines[0]
+
+    payload = _live_payload()
+    n = payload["counts"][_DIGEST_READS_COUNTS_KEY]
+    assert lines[0].startswith(f"{n} "), (
+        f"the digest reported a different number ({lines[0]!r}) than the reporter "
+        f"computed ({n}) — the two are reading different things"
+    )
+
+
+def test_string_ages_do_not_misorder_or_crash_the_oldest_line(monkeypatch, tmp_path):
+    """A drifted payload can carry `age_days` as a STRING.
+
+    Two ways that used to go wrong (cross-family gate): all-string ages sort
+    lexically, so "9" beats "10" and the line says "oldest" about the youngest;
+    mixed int/str raises inside the sort and the catch-all collapses the whole
+    alarm to a generic "reporter failed". Neither may happen.
+    """
+    entries = [
+        _entry("TECH-DEBT", artifact="row-9") | {"age_days": "9"},
+        _entry("TECH-DEBT", artifact="row-10") | {"age_days": "10"},
+        _entry("TECH-DEBT", artifact="row-int-7") | {"age_days": 7},
+        _entry("TECH-DEBT", artifact="row-null") | {"age_days": None},
+    ]
+    root = _fake_reporter(tmp_path, {"counts": {"tech_debt_overdue": 4}, "entries": entries})
+    monkeypatch.setattr(organism_digest, "_repo_root", lambda: root)
+    monkeypatch.setenv("ORGANISM_DIGEST_PENDING_ARMS", "rows")
+
+    lines, errs = organism_digest.pending_arms_overdue()
+    assert errs == [], f"a stringly-typed age must not cost the alarm: {errs}"
+    assert "row-10" in lines[0], f"10 is older than 9: {lines[0]!r}"
+    assert lines[1].strip().startswith("· 10d row-10")
+    assert lines[-1].strip().startswith("· ?d row-null"), "unknown age sorts LAST, never oldest"
+
+
+def test_pathological_ages_never_cost_the_alarm(monkeypatch, tmp_path):
+    """`true` became 1d and posed as a real age; JSON 1e309 decodes to inf and
+    `int(inf)` raised OverflowError, which the outer catch turned into a generic
+    "reporter failed" — losing the whole alarm to fix an ordering detail."""
+    entries = [
+        _entry("TECH-DEBT", artifact="row-bool") | {"age_days": True},
+        _entry("TECH-DEBT", artifact="row-inf") | {"age_days": float("inf")},
+        _entry("TECH-DEBT", artifact="row-real") | {"age_days": 12},
+    ]
+    root = _fake_reporter(tmp_path, {"counts": {"tech_debt_overdue": 3}, "entries": entries})
+    monkeypatch.setattr(organism_digest, "_repo_root", lambda: root)
+    monkeypatch.setenv("ORGANISM_DIGEST_PENDING_ARMS", "rows")
+    lines, errs = organism_digest.pending_arms_overdue()
+    assert errs == [], f"a pathological age must not cost the alarm: {errs}"
+    assert "row-real" in lines[0], f"the only real age must be the oldest: {lines[0]!r}"
+    assert lines[1].strip().startswith("· 12d row-real")
+    assert all(l.strip().startswith("· ?d") for l in lines[2:]), lines[2:]
+
+
+def test_a_non_string_artifact_does_not_cost_the_alarm(monkeypatch, tmp_path):
+    """`(x or "?")[:70]` raises on an int, the catch-all eats the whole section,
+    and the alarm is lost to a formatting detail — the same class `_age` was
+    hardened against, one field over (third-family gate)."""
+    entries = [
+        _entry("TECH-DEBT", artifact="row-old") | {"age_days": 40, "artifact": 12345},
+        _entry("TECH-DEBT", artifact="row-new") | {"age_days": 3},
+    ]
+    root = _fake_reporter(tmp_path, {"counts": {"tech_debt_overdue": 2}, "entries": entries})
+    monkeypatch.setattr(organism_digest, "_repo_root", lambda: root)
+    monkeypatch.setenv("ORGANISM_DIGEST_PENDING_ARMS", "rows")
+    lines, errs = organism_digest.pending_arms_overdue()
+    assert errs == [], f"a non-string artifact must not cost the alarm: {errs}"
+    assert "12345" in lines[0]

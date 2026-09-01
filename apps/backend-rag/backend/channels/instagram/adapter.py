@@ -9,6 +9,7 @@ import httpx
 from backend.channels.base import BaseChannel, ChannelMessage, ChannelResponse
 from backend.channels.instagram.config import InstagramChannelConfig
 from backend.channels.instagram.formatter import InstagramMessageFormatter
+from backend.security.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -67,12 +68,18 @@ class InstagramChannelAdapter(BaseChannel):
 
             # Primary echo check: Meta's native is_echo flag
             if message_data.get("is_echo", False):
-                logger.debug("Skipping echo message from %s (is_echo=True)", sender_id)
+                logger.debug(
+                    "Skipping echo message from %s (is_echo=True)",
+                    redact_identifier_for_log(sender_id),
+                )
                 return None
 
             # Secondary fallback: sender matches our own account ID
             if sender_id == self.instagram_config.instagram_account_id:
-                logger.debug("Skipping echo message from %s (sender == account_id)", sender_id)
+                logger.debug(
+                    "Skipping echo message from %s (sender == account_id)",
+                    redact_identifier_for_log(sender_id),
+                )
                 return None
 
             message_text = message_data.get("text", "")
@@ -110,7 +117,7 @@ class InstagramChannelAdapter(BaseChannel):
         try:
             response = await self.client.post(url, json=payload, headers=headers)
             response.raise_for_status()
-            logger.info("✅ Sent Instagram message to %s", channel_id)
+            logger.info("✅ Sent Instagram message to %s", redact_identifier_for_log(channel_id))
 
             # Mark message as seen to prevent read-receipt webhook loops
             seen_url = f"https://graph.facebook.com/{GRAPH_API_VERSION}/me/messages"

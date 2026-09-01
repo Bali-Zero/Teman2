@@ -6,6 +6,62 @@
 
 ---
 
+<!-- CANON:builder-contract -->
+
+## THE BUILDER CONTRACT — identical in every door, compared by machine
+
+This block is the same in `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` and `QWEN.md`, and
+`scripts/proprioception.py`'s `door_canon_parity` probe goes RED if any copy drifts from
+`CLAUDE.md`'s. "The same" is what the machine actually enforces, not more: the comparison
+hashes the block with TRAILING whitespace and line endings normalised away, so an editor that
+strips or adds them is not drift — and anything else, including one reworded sentence or one
+extra space mid-line, is. It exists because the CI layer already binds every model equally — a gate does
+not care which family opened the PR — while the harness layer did not: a seat that BUILDS used
+to start with whatever its own door happened to say. **Do not reword this block in one door.**
+Fix it in `CLAUDE.md` and copy it outward, or the probe will name your door.
+
+**1 — PR contract.** One PR, one concern, ≤ ~400 net lines where the work allows. Arming means
+freezing: after auto-merge is armed, the branch is read-only and every follow-up starts from a
+fresh `origin/main`. Never rerun a red check before you know WHY it is red — the right gesture
+depends on the cause, and a blind rerun replays a stale merge ref. Serialize PRs that share a
+lockfile. Work in a dedicated worktree on an `agent/<host>/<lane>/...` branch. Three reds for
+the SAME cause and the PR suspends instead of taking a fourth round; a fix-of-a-fix stops at
+depth 1 — if the correction is itself wrong, the surface is under-specified, so write the spec.
+
+**2 — Every PR body carries a `Bites:` line** naming the CONSUMER and the observation that
+proves the change is in force. "A future job will run it" is not a consumer: the job ships in
+the same PR. Make the observation before reporting the work done — a merged diff is not a live
+one, and this repo's scar record is mostly the distance between those two.
+
+**3 — Bans, stated as an ENTITY and not as a spelling.** What is forbidden is reaching a Claude
+model through a **paid per-token Anthropic endpoint** — because the subscription is already paid
+and a per-token key duplicates it. The sole sanctioned path is the `claude` CLI with
+`CLAUDE_CODE_OAUTH_TOKEN`. `from anthropic import Anthropic` and `ANTHROPIC_API_KEY` are the two
+shapes that usually carry it, and grepping for them is a useful first pass — but an alias, a
+renamed env var, a wrapper library or a Bedrock/Vertex route reaches the same endpoint without
+either literal, and is equally banned. Refuse any new tool, MCP server or cron that requires it. Other paid per-token APIs are not banned but are not
+yours to install: they need the owner's explicit authorization first. Never `--dangerously-bypass`
+a sandbox; never echo, print or commit a credential — `${VAR:+SET}` reports presence,
+`${VAR:-default}` prints the value.
+
+**4 — PII boundary, and it is an OUTPUT boundary.** Processing client data under an authorized
+lane is allowed; transcribing it is not. No output, memory, log, alert, report, skill, prompt
+saved for reuse, or shared artifact may carry client PII or OSINT in cleartext — use a
+`client_id`, a hash, a placeholder or a redaction. This binds every vendor identically: there is
+no cloud whose terms make cleartext PII acceptable here, and no seat exempt from it.
+
+**5 — Ship sequence.** The session that owns a mandate runs it end to end: review → merge → arm
+→ deploy → prove-live. The codeowner does not merge, does not review and does not deploy — by
+design. Arm auto-merge at PR-open. Push, create and merge are three SEPARATE commands, never a
+compound one. What stays with the human: business decisions, credentials and consents, and
+physical/GUI actions. **The one exception both ways:** an external builder seat (`AGENTS.md`,
+`GEMINI.md`, `QWEN.md`) prepares and never ships — it does not merge, arm or deploy its own
+work, and a Claude session verifies it. Generator is never grader, in either direction.
+
+<!-- /CANON:builder-contract -->
+
+---
+
 # Part A — Agent Directives
 
 ## 1. Machine & Reachability
@@ -70,6 +126,8 @@ still does not arm, merge, or deploy). The operational commands are documented i
 **⚡ SHIP-LIFECYCLE OWNERSHIP (HARD RULE — Zero, 2026-07-16: *"tu mergi fai review armi deploy testi. il codeowner non lo fa, non lo sa fare"*).** **THE SESSION DOES IT ALL: REVIEW → MERGE → ARM → DEPLOY → PROVE-LIVE. THE CODEOWNER DOES NOT MERGE, DOES NOT REVIEW, DOES NOT DEPLOY — BY DESIGN.** Never park a PR on "waiting for the codeowner's review/merge"; never end a mandate at "attende merge". Concretely: (1) arm `gh pr merge --auto --squash` at PR-open on every L2 feature PR — "client-facing/sensitive data" is NOT an exception: sensitivity raises the rigor of the ADVERSARIAL gate (generator≠grader — the diff's author never gates its own diff), it never moves the merge to a human; (2) post-merge, the session runs the deploy and apply steps itself (dry-run → apply → verify), per §11; (3) "done" is declared only after PROVE-LIVE on EVERY consuming surface (consumer-map first — memory `feedback_merged_is_not_live_consumer_map_first_2026_07_16`); (4) the codeowner keeps ONLY: business decisions (Legge 5), consents/credentials only the human holds, physical/GUI/TCC actions; (5) the auto-merge-OFF exceptions (guardrail hooks, DB migrations, force-push class — per `feedback_arm_automerge_default_not_leave_to_operator`) still get merged by the SESSION after their specific gates, never by the codeowner. Reference: memory `feedback_session_owns_full_ship_lifecycle_2026_07_16`.
 
 **Master loop (2026-07-02)**: skill **`modus`** (`.claude/skills/modus/`) governs every non-trivial mandate end-to-end — TRIAGE gears (1 liscio / 2 standard / 3 profondo) → GROUND → DESIGN → BUILD → VERIFY → SHIP+ARM → PROVE-LIVE → ALIGN-FLEET → CLEAN → CAPTURE. It absorbs `stadio-zero` (entry gate) and `sota-architecture-loop` (design) as stages; **`opus-mythos` is superseded** (its deep/wide TAC patterns = modus Gear 3). W81 ledger: `.claude/skills/modus/PENDING-ARMS.md` · loop scar-file: `AMENDMENTS.md` · self-refinement: `infra/workflows/modus-bench.js` (operator-gated, on demand).
+
+**Product assembly line (RULED Zero 2026-08-24)**: for PRODUCT builds (a user-facing thing with a business outcome), `docs/factory/ASSEMBLY-LINE.md` is the governing procedure — 5-artifact set, contract-first, journey-tests-red-first, one cross-family refuter per PR (risk-tiered), business-invariant paging + synthetic purchase probes, ship dark → 5% with real users → 100%, kill criterion in the mandate. It composes with `modus`; on product work, where they overlap, ASSEMBLY-LINE wins. Panel evidence: `research/operations/2026-08-24-product-factory-procedure-5-seat-panel.md`. First product: GARUDA VOA (`docs/plans/2026-08-24-garuda-voa-live/MANDATE.md`).
 
 Read `AUTONOMOUS_OPS.md` (L2 active 2026-04-21) before: `git push`, PR ops, deploy, `fly ssh`, shared-state changes. Check "active since" date — if stale >30 days, conservative fallback. **User's veto is NOT the safety layer** — guardrails in that file are.
 
@@ -139,7 +197,7 @@ User writes **colloquial Italian** — translate to precise technical action int
 
 **Kimi seat (added 2026-07-19, Zero GO)**: Moonshot **Kimi K3** + **kimi-for-coding 2.7** via `kimi` CLI (`~/.kimi-code/bin/kimi`, Allegro flat subscription, OAuth device-code login — no API key). Invocation: `kimi -p "..." -m kimi-code/k3` (reasoning/refuter) · `-m kimi-code/kimi-for-coding` (coding) · `-m kimi-code/kimi-for-coding-highspeed` (grunt). Cross-family council/second-opinion seat and flat-quota implementation relief; probed by `scripts/arsenal_probe.py` (seat `kimi`). Armed on all three machines 2026-07-19. Never the final gate.
 
-**Fleet order (accounts, role chains, gate taxonomy) — SSOT, 2026-08-10:** `FLEET_TOPOLOGY.json` (repo root) + `research/operations/2026-08-10-fleet-order-spec.md`. No restatement here — one SSOT. Kimi/qwen doors `kimi.md` / `qwen.md` are **door files (human/prompt-referenced only)** — NOT auto-loaded by their CLIs (Kimi CLI reads `AGENTS.md`; Qwen reads case-sensitive `QWEN.md`).
+**Fleet order (accounts, role chains, gate taxonomy) — SSOT, 2026-08-10:** `FLEET_TOPOLOGY.json` (repo root) + `research/operations/2026-08-10-fleet-order-spec.md`. No restatement here — one SSOT. Kimi's door `kimi.md` is a **door file (human/prompt-referenced only)** — the Kimi CLI reads `AGENTS.md`, not it. **Qwen's door is now `QWEN.md`** (renamed from `qwen.md` on 2026-08-31): that IS the name the Qwen CLI opens, so the seat now has a door that actually loads. The two names were the same file on every Mac in this fleet — APFS is case-insensitive by default, so `ls`, `wc` and `[ -f QWEN.md ]` all answered for the lowercase one while git's index, and any case-sensitive volume, had only `qwen.md`.
 
 > **Fable-paid contingency — MOOT as of 2026-08-20.** The 2026-07-12 "non voglio pagare" contingency
 > (Zero decision, research: `research/operations/2026-07-11-fable-paywall-routing.md`) governed
@@ -152,7 +210,7 @@ User writes **colloquial Italian** — translate to precise technical action int
 
 **Anthropic SDK BANNED.** Never `from anthropic import Anthropic` or `ANTHROPIC_API_KEY`. Sole path: shell out to `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN` (MAX-plan quota). Refuse any new tool/MCP/cron requiring `ANTHROPIC_API_KEY`. Reference: `apps/backend-rag/backend/llm/claude_oauth_client.py`.
 
-**Other paid per-token APIs (OpenRouter, OpenAI direct, Together, Fireworks, etc.) — require Zero's explicit authorization** (rule changed 2026-06-04, see `~/.claude/CLAUDE.md §Cost constraint`). Free-first by default (local Ollama → OAuth → free tier). Never install a paid key autonomously "to test" — surface to Antonello with cost + rationale, wait for explicit yes. **PII boundary absolute even when authorized**: LLM processing may use authorized operational context, but outputs, memories, logs, reports, skills, prompts saved for reuse, and shared artifacts must never transcribe client PII/OSINT in cleartext; use `client_id`, hashes, placeholders, or redaction (SYMBIOSIS Law 2 / UU PDP overrides cost). Pre-authorized non-PII: ChatGPT Pro Codex (unlimited). (DeepSeek V4 Pro RETIRED 2026-07-19 — pre-auth REVOKED, never top up; refuter seat → Kimi K3.)
+**Other paid per-token APIs (OpenRouter, OpenAI direct, Together, Fireworks, etc.) — require Zero's explicit authorization** (rule changed 2026-06-04, see `~/.claude/CLAUDE.md §Cost constraint`). Free-first by default (local Ollama → OAuth → free tier). Never install a paid key autonomously "to test" — surface to Antonello with cost + rationale, wait for explicit yes. **PII boundary absolute even when authorized**: LLM processing may use authorized operational context, but outputs, memories, logs, reports, skills, prompts saved for reuse, and shared artifacts must never transcribe client PII/OSINT in cleartext; use `client_id`, hashes, placeholders, or redaction (SYMBIOSIS Law 2 / UU PDP overrides cost). Pre-authorized non-PII: ChatGPT Pro Codex (unlimited). **DeepSeek has two distinct doors, not one — corrected 2026-08-29, do not conflate them.** The direct per-token door (`api.deepseek.com` + `DEEPSEEK_API_KEY`) was RETIRED 2026-07-19 (pre-auth REVOKED, never top up) and stays retired everywhere in this repo. Separately, `FLEET_TOPOLOGY.json` documents a 2026-08-10 "DeepSeek re-admission" via the Alibaba TP1/DashScope gateway (`BAILIAN_TOKEN_PLAN_API_KEY`, OpenAI-compatible base `token-plan.ap-southeast-1.maas.aliyuncs.com`): `deepseek-v4-flash-0731` is ARMED there (806 calls / 131.2M tokens measured 2026-08-08→14), while `deepseek-v4-pro` stays PROBATION with zero measured calls in that same window — `-pro` is NOT armed by `-flash`'s mileage, and the two must not be conflated. The council/oracle multi-LLM voting seat's replacement (Kimi K3) is unaffected by this — that seat was always the direct door, never TP1.
 
 **Antigravity IDE — autonomous arm, Claude Code verifies** (modello fissato 2026-06-23). Antigravity = braccio agentico autonomo per lavoro "largo ma verificabile" (gira su AI Ultra quota, no MAX). Claude Code = cervello che decide + ancora ai fatti + VERIFICA. Workflow 6-step: (1) Claude Code scopa il bug + ancora ai file:line reali + scrive il prompt → (2) Zero crea worktree FRESCO da origin/main + lancia Antigravity → (3) Antigravity fix+test+run (Sonnet 4.6 coding / Opus 4.6 DB) → (4) **Claude Code VERIFICA INDIPENDENTE — rilegge diff, RI-ESEGUE i test, controlla scope+reward-hacking (NON-NEGOZIABILE)** → (5) Claude Code commit+push+PR → (6) Zero merge a CI verde. Antigravity SEMPRE in `.worktrees/ops-*`, MAI sul main (sibling-race #5). MAI auto-merge dall'IDE. NON gli diamo: architettura, processing PII su dati reali, deploy autonomo, scelta di QUALI bug contano. Dettaglio: memory `decision_how_we_use_antigravity_ide_2026_06_23`.
 
@@ -230,7 +288,7 @@ Hooks (`~/.claude/hooks/`) sono il backstop quando il system prompt non basta. A
 git diff --name-only HEAD -- apps/backend-rag/backend/
 cd apps/backend-rag && source .venv/bin/activate
 python -c "from backend.app.dependencies import get_current_user; print('OK')"
-PYTHONPATH=. pytest backend/tests/services/rag/test_kg_langgraph.py backend/tests/services/rag/test_kg_subgraphs.py backend/tests/services/rag/test_confidence.py -q
+PYTHONPATH=. pytest backend/tests/services/rag/test_kg_langgraph.py backend/tests/services/rag/test_kg_subgraphs.py backend/tests/services/rag/test_confidence.py
 ```
 
 **Deploy** — run from the monorepo ROOT, not from `apps/backend-rag` (corrected 2026-07-24, PR #3062 ship:
@@ -239,7 +297,12 @@ the Dockerfile's `COPY` paths are repo-root-relative — `apps/backend-rag/backe
 The local `fly` shell-function wrapper on Pro/Mini also hardcodes that wrong cwd regardless of caller
 location — bypass it with a direct `ssh pro`/`ssh mini` call when deploying):
 ```bash
-cd ~/Desktop/nuzantara  # repo root, NOT apps/backend-rag
+cd ~/nuzantara  # repo root, NOT apps/backend-rag — corrected 2026-08-29: the repo moved out of
+                # ~/Desktop (TCC-protected) to ~/nuzantara on all three fleet machines on 2026-07-16;
+                # this line still said the superseded path. `scripts/lint_tcc_desktop_paths.py` does
+                # NOT flag doc files (scope is deliberately *.sh/*.py/*.plist only — its own docstring
+                # says docs can legitimately reference a historical Desktop path), so this was a stale
+                # path, not a lint gap: nothing else to reconcile here.
 fly deploy --config apps/backend-rag/fly.toml --dockerfile apps/backend-rag/Dockerfile --strategy rolling -a nuzantara-rag
 ```
 

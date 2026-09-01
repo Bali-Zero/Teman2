@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_optional_database_pool
 from backend.services.integrations.whatsapp_service import whatsapp_service
+from backend.security.pii_log_identifier import redact_identifier_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -294,7 +295,10 @@ async def send_whatsapp_message(
     try:
         result = await whatsapp_service.send_message(phone=phone, text=body.message)
         _outbound_rate[phone].append(time.time())
-        logger.info(f"Outbound WA sent to {phone} by {current_user.get('email', 'unknown')}")
+        logger.info(
+            f"Outbound WA sent to {redact_identifier_for_log(phone)} "
+            f"by {current_user.get('email', 'unknown')}"
+        )
         return {"success": True, "data": result}
     except ValueError as e:
         logger.error("WhatsApp send failed: %s", e)

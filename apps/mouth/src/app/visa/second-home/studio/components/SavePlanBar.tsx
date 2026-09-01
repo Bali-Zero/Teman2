@@ -26,29 +26,49 @@ const PRINT_STYLES = `
   }
 
   @media print {
+    /* MERAH PUTIH DAY (2026-08-31): this block used to re-declare a whole
+       token set, because the screen was navy and print had to force a
+       light result out of a dark live theme. StudioApp.tsx now applies
+       MERAH_PUTIH_DAY_VARS as an INLINE style on the [data-funnel="visa"]
+       wrapper this printed content lives inside, and an inline style
+       outranks any plain (non-!important) rule, print media included — so
+       every re-declaration of a token that set already carries was dead
+       weight on the day palette and is gone.
+       Three lines survive, for two different reasons:
+       --surface-base is pinned by a regression test, though per that same
+       precedence fact it is NOT what keeps printed paper white — the
+       !important background rule below is.
+       --color-text-muted / --color-border-subtle are aliases declared once
+       at :root (packages/core/tokens/semantic.css) as var(--text-secondary)
+       / var(--border-subtle). A var() inside a custom-property declaration
+       is substituted using the cascade AT THE DECLARING ELEMENT, so an alias
+       declared at :root can never see a wrapper's inline override — it must
+       be re-asserted directly. MERAH_PUTIH_DAY_VARS now restates both, so
+       these two print lines are belt-and-braces rather than the only cure
+       (an earlier revision of this comment claimed the day set did NOT carry
+       them — it does; corrected 2026-08-31). They are kept because this
+       print block is also read on any surface that renders it without the
+       wrapper, and the values are identical either way. */
     :root,
     [data-theme],
     [data-funnel="visa"] {
-      --background: #ffffff;
-      --foreground: #172033;
       --surface-base: #ffffff;
-      --surface-raised: #ffffff;
-      --surface-sunken: #f4f6f8;
-      --text-primary: #172033;
-      --text-secondary: #334155;
-      --text-tertiary: #475569;
-      --color-text-muted: #475569;
-      --color-border-subtle: #cbd5e1;
-      --accent-funnel: #8f1d2c;
-      --accent-funnel-text: #8f1d2c;
-      --bz-elevated: #ffffff;
-      --tx-secondary: #334155;
+      --color-text-muted: #475372;
+      --color-border-subtle: #e3e1da;
     }
 
     html,
-    body {
+    body,
+    [data-funnel="visa"] {
+      /* [data-funnel="visa"] added (2026-08-30): that's the day wrapper
+         itself, and StudioApp.tsx gives it its OWN inline
+         background: var(--surface-base) — the warm carta #f7f6f2 — which
+         paints over whatever html/body alone resolve to. Forcing it here
+         too, with !important (the one thing that DOES beat an inline
+         style), is what actually keeps the printed page paper-white
+         instead of carta-tinted. */
       background: #ffffff !important;
-      color: #172033 !important;
+      color: #16213a !important;
     }
 
     nav,
@@ -56,7 +76,8 @@ const PRINT_STYLES = `
     .bz-shs-save-plan-bar,
     .bz-shs-option,
     .bz-shs-scenario-toggle-trigger,
-    .bz-shs-scenario-toggle-back {
+    .bz-shs-scenario-toggle-back,
+    .bz-shs-back-to-answers {
       display: none !important;
     }
 
@@ -105,7 +126,7 @@ const PRINT_STYLES = `
       padding: 0 !important;
       border: 0 !important;
       background: transparent !important;
-      color: #172033 !important;
+      color: #16213a !important;
       font-weight: 600;
       text-decoration: none !important;
     }
@@ -162,64 +183,92 @@ const CLEAR_BUTTON_STYLES = `
   }
 
   .bz-shs-clear-plan:is(:hover, :focus-visible) {
-    /* The editorial gradient is darkest at the bottom and lightest at the
-       top. This mix keeps danger text at >= 4.81:1 even on the lightest
-       raised surface plus the active tint, while remaining visibly separate
-       from the price red. */
-    --bz-shs-clear-active: color-mix(
-      in srgb,
-      var(--color-error, #c0392b) 40%,
-      white
-    );
-    border-color: var(--bz-shs-clear-active);
+    /* MERAH PUTIH DAY (2026-08-30): this used to lighten danger red toward
+       white — correct against the retired editorial gradient (darkest at
+       the bottom, lightest at the top: a dark ground), where mixing toward
+       white was what kept the text from going muddy-dark on a dark bg.
+       Screen ground is now a flat, LIGHT carta/white, so lightening further
+       is exactly backwards — mixed 40% toward white it measured ~1.5:1
+       against its own tint, nowhere near AA. The fix is to stop mixing and
+       read --color-error directly: on the day palette that's #a83a44,
+       which measures (computed against the literal values above) 4.88:1
+       for text against this rule's own 16% background tint (still clears
+       4.5:1 at the type's own weight/size) and 6.26:1 for the border/outline
+       against the white card exterior (well past the 3:1 boundary floor) —
+       and it stays a different hue from the funnel/price red (day
+       --color-error #a83a44 vs day --accent-funnel #C8102E /
+       --accent-funnel-text #D01033), so the "never collide with the price
+       panel" property this rule exists for is untouched. */
+    border-color: var(--color-error, #a83a44);
     background: color-mix(
       in srgb,
-      var(--color-error, #c0392b) 16%,
+      var(--color-error, #a83a44) 16%,
       transparent
     );
     box-shadow: inset 0 0 0 1px currentColor;
-    color: var(--bz-shs-clear-active);
+    color: var(--color-error, #a83a44);
     text-decoration-line: underline;
     text-decoration-thickness: 2px;
     text-underline-offset: 0.2em;
   }
 
   .bz-shs-clear-plan:focus-visible {
-    outline: 3px solid var(--bz-shs-clear-active);
+    outline: 3px solid var(--color-error, #a83a44);
     outline-offset: 3px;
   }
 
   /* Armed state (two-step confirm, P0 2026-08-24): must be visible with NO
      hover/focus needed — a touch tap has no hover, and arming is the moment
      the destructive action becomes real, so the cue can't depend on a
-     pointer state the next tap (the confirm) won't have either. This is
-     also the one place the flat funnel accent belongs: it is unambiguous
-     here and nowhere near the price box's own red. Same contrast math as
-     ScenarioToggle's exploratory-control hover: this label is 16px/600 —
-     WCAG "normal text" (large-text exemption needs >=24px, or >=18.66px
-     bold) — so the floor is 4.5:1. The flat accent measures 4.13:1 on this
-     backdrop and fails; 70% accent mixed with white measures 5.6:1 and
-     still reads as the funnel accent rather than washing out to pink. Do
-     not tidy this back to var(--accent-funnel). Placed after the resting
-     :hover/:focus-visible rule above so equal-specificity source order
-     lets it win whether or not the armed button is also hovered. */
+     pointer state the next tap (the confirm) won't have either.
+     P0 2026-08-24b/c — two rounds on this one, both grounded on the
+     rendered page, not declared CSS:
+     Two constraints, learned the hard way then and still binding now:
+     HUE — every hue on this page already carries a verdict-band or price
+     meaning. Bare var(--accent-funnel) was byte-identical to the price
+     panel's border, and --state-warning just relocated the collision onto
+     VerdictPanel's edge_case band (property route, or ages 55-59 — NOT a
+     rare case, the majority of a senior audience hits it). The danger
+     family is the one hue this page leaves free: VerdictPanel keeps
+     not_eligible deliberately neutral rather than --state-danger.
+     CHANNEL — a solid, opaque FILL. No verdict band and no price panel
+     ever paints one; they are all a thin border over --surface-raised or a
+     light tint. The solid-fill precedent right above this button is
+     WhatsAppHandoff's CTA, so a block already reads here as "the other
+     kind of control", whatever hue it carries.
+
+     MERAH PUTIH DAY (2026-08-31): the fill was
+     color-mix(var(--accent-funnel) 85%, black) ≈ #aa0e27 — a FOURTH red
+     belonging to no token. That darkening existed only because flat
+     #ff3344 under white measured 3.62:1 on the retired navy scheme; the
+     day palette has no such problem, and mixing a brand red toward black
+     to make it safe is how a palette grows reds nobody declared. It now
+     reads --color-error (#a83a44) neat: white on it measures 6.26:1 (past
+     the 4.5:1 floor this 16px/600 label needs — no large-text exemption)
+     and it stands 6.26:1 against the white card, clearing the 3:1
+     non-text boundary floor (WCAG 1.4.11) unaided. That also makes armed
+     the top of ONE scale: this same button already reads --color-error at
+     rest and on hover, so the two states no longer speak different reds.
+     border/box-shadow/outline stay --text-on-accent (white) — now inert
+     reinforcement rather than the thing carrying the 3:1 requirement, and
+     pinned by SavePlanBar.test.tsx. Do not restore --state-warning or a
+     bare/light --accent-funnel outline: both are collisions this fixes.
+     Placed after the resting :hover/:focus-visible rule above so
+     equal-specificity source order lets it win whether or not the armed
+     button is also hovered. */
   .bz-shs-clear-plan.bz-shs-clear-armed {
-    --bz-shs-clear-armed-active: color-mix(
-      in srgb,
-      var(--accent-funnel) 70%,
-      white
-    );
-    border-color: var(--accent-funnel);
-    background: color-mix(in srgb, var(--accent-funnel) 16%, transparent);
-    box-shadow: inset 0 0 0 1px currentColor;
-    color: var(--bz-shs-clear-armed-active);
+    --bz-shs-clear-armed-fill: var(--color-error, #a83a44);
+    border-color: var(--text-on-accent, #fff);
+    background: var(--bz-shs-clear-armed-fill);
+    box-shadow: inset 0 0 0 1px var(--text-on-accent, #fff);
+    color: var(--text-on-accent, #fff);
     text-decoration-line: underline;
     text-decoration-thickness: 2px;
     text-underline-offset: 0.2em;
   }
 
   .bz-shs-clear-plan.bz-shs-clear-armed:focus-visible {
-    outline: 3px solid var(--bz-shs-clear-armed-active);
+    outline: 3px solid var(--text-on-accent, #fff);
     outline-offset: 3px;
   }
 
@@ -240,7 +289,11 @@ export interface SavePlanBarProps {
 
 const buttonStyle: React.CSSProperties = {
   padding: "var(--space-2, 0.5rem) var(--space-4, 1.1rem)",
-  borderRadius: 8,
+  // R4 §3 radius law: 12 for buttons/CTAs (was 8). No nesting exception
+  // applies — these buttons sit inside the bar's own 24px section padding
+  // (var(--space-4, 1.5rem)), well clear of that section's own 12px
+  // corner curve, so there's no tight-nesting mismatch to avoid.
+  borderRadius: 12,
   border: "1px solid var(--color-border-subtle)",
   background: "transparent",
   color: "var(--text-primary)",
@@ -370,7 +423,10 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
         style={{
           margin: 0,
           fontFamily: "var(--font-serif, Georgia, serif)",
-          fontSize: "clamp(1.1rem, 2.6vw, 1.35rem)",
+          // R4 §3 24px floor for Cormorant/serif (low-DPI Android
+          // antialiasing shreds it below 1.5rem) — raised from
+          // clamp(1.1rem, 2.6vw, 1.35rem) on the day migration.
+          fontSize: "clamp(1.5rem, 2.6vw, 1.75rem)",
           color: "var(--text-primary)",
         }}
       >

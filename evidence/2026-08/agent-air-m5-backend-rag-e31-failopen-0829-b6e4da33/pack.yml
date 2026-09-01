@@ -1,0 +1,137 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #5184 (agent/air-m5/backend-rag/e31-failopen-0829 -> main) — seq-15
+  E31B/E31D fail-open repair on Zero's GO; disposition anchor
+  research/visa/2026-08-15-gold-divergence-disposition.md (BLOCK-DEFECT
+  rows), acceptance criteria research/visa/2026-08-15-gold-family-refuter.md.
+
+lanes:
+  - lane: e31-failopen-build
+    role: build
+    seat: claude (this session — M5 interactive, sole build lane)
+  - lane: e31-failopen-refuter-r1
+    role: review
+    seat: codex gpt-5.6-sol xhigh (non-Anthropic) — round-1 grader, REJECT
+      with executed counterexamples; never the build seat
+  - lane: e31-failopen-refuter-r2
+    role: review
+    seat: kimi-k3 (non-Anthropic) — round-2 grader, SHIP-WITH-FIXES with
+      independent witness run and pack diff; never the build seat
+
+diff:
+  files: 4
+  net_lines: 9963
+  measured_at: f47ff2b5a7
+  note: >-
+    git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD
+    -> 4 files, +9963/-0. Files: .claude/skills/modus/PENDING-ARMS.md (+2),
+    backend/scripts/visa_engine/fold_pack_seq15.py (+440),
+    contracts/packs/rulepack-prod-015.source.json (+9152),
+    tests/services/visa_engine/test_seq15_e31_failopen_repair.py (+369).
+    The 9152-line pack is a generated artifact of the deterministic fold —
+    the hand-authored surface is 811 lines.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      The 15-test witness suite is green against the on-disk seq-15 pack
+      (fold determinism, clean compile, exact rule delta, pack-wide
+      op:known extinction, closed-set shape on all 9 sponsor rules, chain
+      anchor, 5 guilt + 3 innocence behavioral witnesses).
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/services/visa_engine/test_seq15_e31_failopen_repair.py
+      -p no:testmon
+    result: "15 passed in 0.36s"
+    exit: 0
+    ts: 2026-08-28T21:40Z
+    seat: session (build lane)
+
+  - claim: >-
+      The round-1 grader's executed counterexamples no longer support:
+      sponsor C1 and sponsor NONE both yield candidates without E31B, and
+      FAMILY intent alone yields candidates without E31D; the 18-persona
+      gold-coverage corpus (PR #5182) replays 18/18 SUPPORTED against
+      seq-15 via the exact offline replay path (verify -> compile ->
+      evaluate -> public policy adapters).
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python - <<'PY' ...
+      (compile rulepack-prod-015.source.json unsigned, evaluate the three
+      probe personas + the 18 corpus persona files from the gold-coverage
+      worktree; script inline in the session transcript)
+      PY
+    result: "NONE/C1/FAMILY-alone -> ['C1'] only; corpus: 18 /18"
+    exit: 0
+    ts: 2026-08-28T21:38Z
+    seat: session (build lane)
+
+  - claim: >-
+      No sequence-pinned suite breaks: test_seq14_pack.py +
+      test_seq13_source_pack.py green after seq-15 lands on disk.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/services/visa_engine/test_seq14_pack.py
+      backend/tests/services/visa_engine/test_seq13_source_pack.py -q
+      -p no:testmon
+    result: "56 passed"
+    exit: 0
+    ts: 2026-08-28T21:20Z
+    seat: backend-verifier subagent (independent of the build edit loop)
+
+  - claim: >-
+      The visa_engine suite is green apart from pre-existing local-DB
+      environmental reds: 1970 passed; the 1 failed + 39 errors reproduce
+      IDENTICALLY on a sibling worktree without this diff (A/B at constant
+      checkout — the judge is CI).
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/services/visa_engine/ -p no:testmon
+    result: "1 failed, 1970 passed, 1 skipped, 39 errors (env reds pre-exist on sibling)"
+    exit: 1
+    ts: 2026-08-28T21:15Z
+    seat: session (build lane)
+
+  - claim: >-
+      Delta integrity re-verified INDEPENDENTLY by both graders: exactly 4
+      removals + 3-then-10 declared edits vs seq-13, zero additions, zero
+      undeclared drift; chain anchor equals the signed seq-13
+      payload_sha256 (b9edb809...14f8).
+    cmd: >-
+      (round-1) codex exec -m gpt-5.6-sol --sandbox read-only: own python
+      diff of 015 vs 013 + own evaluator runs; (round-2) kimi -m
+      kimi-code/k3: same, plus witness pytest run
+    result: "r1: 'Delta integrity passes / Chain passes' (verdict REJECT on
+      predicate holes, both since fixed); r2: 'matches spec exactly' +
+      SHIP-WITH-FIXES"
+    exit: 0
+    ts: 2026-08-28T21:55Z
+    seat: codex gpt-5.6-sol + kimi-k3 (review lanes)
+
+dissent:
+  - seat: codex gpt-5.6-sol (round 1)
+    objection: >-
+      REJECT — `neq "NONE"` still fail-open: executed counterexamples
+      showed a sponsor holding a C1 or B1 visit visa still yielded E31B;
+      and el.e31d-stepchild-support required no sponsor fact at all
+      (sponsor_confirmed=false still supported).
+    status: CONFIRMED
+    resolution: >-
+      Fixed in round 2: E31B terminal became `in <the catalog's own 29
+      E-prefix stay-permit codes>` (derived at fold time, never
+      hand-authored) and E31D's conjunction gained sponsor_confirmed ==
+      true; both counterexamples pinned as permanent guilt witnesses.
+  - seat: kimi-k3 (round 2)
+    objection: >-
+      SHIP-WITH-FIXES — the op:known class survived on
+      el.e31e-child-itas-support, el.e31h-*, el.e31j-* (7 further rules);
+      and the catalog-derived in-set includes E31A-J dependent codes as
+      sponsor statuses (dependent-sponsoring-dependent, legally dubious).
+    status: CONFIRMED
+    resolution: >-
+      First finding fixed in round 3: the fold's terminal swap sweeps the
+      whole pack and asserts the swapped set is exactly the nine sponsor
+      rules; the witness went pack-wide (no op:known on
+      family.sponsor_status_code anywhere). Second finding deferred BY
+      DESIGN to owner Q1 (a legal narrowing call), recorded in the
+      PENDING-ARMS row and the PR body — not silently dropped.

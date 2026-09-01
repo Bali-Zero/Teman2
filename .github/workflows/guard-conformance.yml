@@ -47,8 +47,18 @@ on:
       - ".github/workflows/guard-conformance.yml"
 
 concurrency:
-  group: guard-conformance-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+  # Dependabot branch: ALL Dependabot PRs share one group per workflow (not
+  # per-ref), bounding concurrent Dependabot runs of THIS workflow to <=2
+  # (Agent PR Contract rule 5) instead of unbounded parallel.
+  # cancel-in-progress:false protects whichever run is RUNNING; GitHub keeps
+  # only one PENDING per group, so a 3rd+ near-simultaneous arrival cancels
+  # the pending run rather than queuing behind it — visible in the PR's
+  # checks tab (never silent), recoverable with `gh run rerun` (confirmed:
+  # docs.github.com/en/actions/using-jobs/using-concurrency + kimi-code/k3
+  # refuter round on PR #5043). Non-Dependabot branch is byte-for-byte the
+  # pre-existing expression — untouched.
+  group: ${{ github.actor == 'dependabot[bot]' && format('dependabot-lockfile-{0}', github.workflow) || format('guard-conformance-{0}', github.ref) }}
+  cancel-in-progress: ${{ github.actor != 'dependabot[bot]' && github.event_name != 'merge_group' }}
 
 jobs:
   conformance:
@@ -82,7 +92,7 @@ jobs:
           fi
           base="${{ github.event.pull_request.base.sha }}"
           if git diff --name-only "$base"...HEAD | grep -qE \
-            '^(infra/guard-conformance/|infra/claude-hooks/|scripts/hooks/|scripts/openclaw_whatsapp_bridge\.py|apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script\.py|scripts/guardrails_static_core\.py|scripts/test_guardrails_(core_)?overmatch\.py|infra/scar-gates/|scripts/wr2_html_renderer/designer_loop\.py|scripts/wr2_editorial_pregate\.py|scripts/tests/test_wr2_editorial_pregate\.py|scripts/ci/vercel_(should_build|ignore_build_step)\.sh|scripts/tests/test_vercel_should_build\.sh|apps/wa-mirror/scripts/(api_server|test_api_server_path_confinement)\.py|scripts/evidence_pack_lint\.py|scripts/tests/test_evidence_pack_lint\.py|scripts/harness_fable_gate\.py|scripts/tests/test_harness_fable_gate\.py|apps/backend-rag/backend/services/rag/agentic/prompt_builder\.py|apps/backend-rag/backend/tests/unit/services/rag/agentic/test_casual_gate_overmatch\.py|\.claude/hooks/codex-spalla-trigger\.sh|scripts/tests/test_codex_spalla_trigger_redaction\.sh|\.github/workflows/guard-conformance\.yml)'; then
+            '^(infra/guard-conformance/|infra/claude-hooks/|scripts/hooks/|scripts/openclaw_whatsapp_bridge\.py|apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script\.py|scripts/guardrails_static_core\.py|scripts/test_guardrails_(core_)?overmatch\.py|infra/scar-gates/|scripts/wr2_html_renderer/designer_loop\.py|scripts/wr2_editorial_pregate\.py|scripts/tests/test_wr2_editorial_pregate\.py|scripts/ci/vercel_(should_build|ignore_build_step)\.sh|scripts/tests/test_vercel_should_build\.sh|apps/wa-mirror/scripts/(api_server|test_api_server_path_confinement)\.py|scripts/evidence_pack_lint\.py|scripts/tests/test_evidence_pack_lint\.py|scripts/ci/stage_council_journal\.py|scripts/tests/test_stage_council_journal\.py|\.github/workflows/harness-floor\.yml|scripts/harness_fable_gate\.py|scripts/tests/test_harness_fable_gate\.py|apps/backend-rag/backend/services/rag/agentic/prompt_builder\.py|apps/backend-rag/backend/tests/unit/services/rag/agentic/test_casual_gate_overmatch\.py|\.claude/hooks/codex-spalla-trigger\.sh|scripts/tests/test_codex_spalla_trigger_redaction\.sh|\.github/workflows/guard-conformance\.yml)'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -173,6 +183,42 @@ jobs:
         run: |
           set -euo pipefail
           python3 infra/claude-hooks/test_w117_remote_discard.py
+
+      # L04-PR1 (2026-08-31): `lane_check.py` is the contract a lane declares
+      # about ITSELF — a `.lane-check.json` in the worktree root, evaluated at
+      # the stop boundary so a lane that broke its own build check cannot end a
+      # turn quietly claiming success. TWO executors, deliberately, because they
+      # answer different questions and one of them proves nothing alone:
+      #
+      #   test_lane_check.py         — does the LIBRARY decide correctly? Guilt
+      #                                on fail/tautology/malformed/timeout,
+      #                                innocence on absent/escape/pass/scope,
+      #                                and both under-match gemelli (an unknown
+      #                                AND an empty change set must keep the
+      #                                check running, never silently skip it).
+      #   test_lane_check_wiring.py  — is that decision HONOURED at a real stop
+      #                                boundary? It drives subagent_stop_verify.py
+      #                                as a subprocess with a real SubagentStop
+      #                                payload and reads the exit code the
+      #                                harness reads.
+      #
+      # The second exists because "imports lane_check" is not "honours
+      # lane_check" (superscar #2), and the split was earned rather than
+      # designed: the first wiring called evaluate() with no change set, so
+      # `scope_globs` narrowed nothing at the only wired surface — a declared,
+      # tested, documented feature that did nothing wherever it was used. Only
+      # the wiring probe could see that; every library test stayed green.
+      - name: L04 lane check — the library decides correctly
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python3 infra/claude-hooks/test_lane_check.py
+
+      - name: L04 lane check — the decision reaches a real stop boundary
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python3 infra/claude-hooks/test_lane_check_wiring.py
 
       # orchestrate_gate.py's own registry entry names two test files; neither
       # had an explicit executor here — the registry's C4 "armed" check only
@@ -268,6 +314,20 @@ jobs:
           python3 -m pip install --quiet pyyaml pytest
           python3 -m pytest scripts/tests/test_evidence_pack_lint.py -q
           python3 scripts/evidence_pack_lint.py --selftest
+
+      # Same reasoning one step further out (cross-family review, codex-gpt-5.6-sol, HIGH, on the
+      # PR that added it): scripts/tests/test_stage_council_journal.py is the guilt+innocence corpus
+      # for the CI staging that FEEDS R9 — without it the rule reads an empty pack dir and fails
+      # every Gear-3 PR. Nothing else runs that corpus on a PR: scripts-tests-sweep.yml is
+      # scheduled/manual and `continue-on-error: true`, so a regression there would never turn a
+      # required check red. This step is its ACTUAL executor, exactly as the step above is for the
+      # linter's own corpus.
+      - name: Council-journal staging guilt+innocence (stage_council_journal.py)
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pyyaml pytest
+          python3 -m pytest scripts/tests/test_stage_council_journal.py -q
 
       # harness_fable_gate.py (PR-3, fleet-order). NOT a guard-conformance
       # registry entry — its own docstring/test-file header say why: it is a

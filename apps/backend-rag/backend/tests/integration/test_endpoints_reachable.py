@@ -32,7 +32,8 @@ WHAT THIS TEST DOES (the antibody the scar called for):
    - Issues a GET via FastAPI TestClient.
    - Asserts the response is NOT 404 → proves the route is mounted.
    - Asserts auth behaviour matches the registry:
-       · path in PUBLIC_ENDPOINTS → NOT 401 (auth bypass works)
+       · path in PUBLIC_ENDPOINTS → NOT 401 unless the entry explicitly
+         declares a dedicated route-level auth gate
        · path not in PUBLIC_ENDPOINTS → IS 401 (auth required)
 
 4. Emits a warning (not a hard failure) for any concrete route matching
@@ -155,8 +156,9 @@ class TestAuthContractMatchesRegistry:
 
     Sprint 1.B PR #423 added 4 entries to PUBLIC_ENDPOINTS because the
     new `/api/channels/{name}/health` routes returned 401 in prod. This
-    test catches that class at PR-time: any route the registry says is
-    public must NOT 401, and any route it says is private MUST 401.
+    test catches that class at PR-time: anonymous registry routes must not
+    401, dedicated route-auth entries may 401 after the middleware bypass,
+    and routes outside the registry must remain protected.
     """
 
     def test_public_paths_bypass_auth(
@@ -164,14 +166,15 @@ class TestAuthContractMatchesRegistry:
     ) -> None:
         leaked_auth: list[tuple[str, int]] = []
         for path in _concrete_get_paths(app_with_middleware):
-            if not is_public_path(path):
+            entry = find_entry(path)
+            if entry is None:
                 continue
             resp = client.get(path)
-            if resp.status_code == 401:
+            if resp.status_code == 401 and not entry.requires_route_auth:
                 leaked_auth.append((path, resp.status_code))
 
         assert not leaked_auth, (
-            "Public-registry paths returned 401 — middleware did not let "
+            "Anonymous public-registry paths returned 401 — middleware did not let "
             "them through. Possible causes: prefix typo in registry, "
             "match=exact when prefix should be used, or registry edit not "
             "picked up by middleware.\n  "

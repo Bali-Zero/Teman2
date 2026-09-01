@@ -1,0 +1,40 @@
+{
+  "expected_candidates": ["C6"],
+  "expected_state": "SUPPORTED_CANDIDATES",
+  "label": "C6 social-activity: 41yo Dutch woman staying 55 days with an Indonesian host family for a cultural/religious family ceremony in Yogyakarta; individual sponsor confirmed, applying offshore, no paid work",
+  "overrides": {
+    "family.relation_to_sponsor": {
+      "status": "KNOWN",
+      "value": "OTHER"
+    },
+    "family.sponsor_confirmed": {
+      "status": "KNOWN",
+      "value": true
+    },
+    "intent.desired_entry_date": {
+      "status": "KNOWN",
+      "value": "2026-09-15"
+    },
+    "intent.purposes": {
+      "status": "KNOWN",
+      "value": ["OTHER"]
+    },
+    "intent.stay_days": {
+      "status": "KNOWN",
+      "value": 55
+    },
+    "person.birth_date": {
+      "status": "KNOWN",
+      "value": "1985-03-12"
+    },
+    "person.nationalities": {
+      "status": "KNOWN",
+      "value": ["NL"]
+    },
+    "sponsor.type": {
+      "status": "KNOWN",
+      "value": "INDIVIDUAL"
+    }
+  },
+  "product_code": "C6"
+}

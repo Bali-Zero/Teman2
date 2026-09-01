@@ -74,7 +74,7 @@ def test_generate_markdown_smoke(fixture_data, tmp_path):
     assert "# Bali Zero — Price List 2026" in md
     assert "C1 Tourism" in md
     assert "1.800.000 IDR – 2.000.000 IDR" in md
-    assert "wa.me/628213454721" in md
+    assert "wa.me/628213465159" in md
 
 
 def test_generate_rejects_invalid_json(stub_assets, tmp_path):

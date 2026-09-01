@@ -1,0 +1,101 @@
+{
+  "run_at": "2026-08-21T07:16:09.103554+08:00",
+  "today": "2026-08-21",
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "WAF/Cloudflare block (403 Forbidden) on both attempts"
+    },
+    {
+      "url": "https://jdih.kemenkumham.go.id/",
+      "reason": "timeout",
+      "note": "Connection failed on both attempts"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "200 OK but static HTML returns 'Artikel tidak ditemukan' SPA shell"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "Parsed recent articles; headlines cover Coretax access, EV subsidies, and tax administration, no new regulation citations in 48h window"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "checked_no_new",
+      "note": "Articles from 20 Aug 2026 parsed; covers tax education on PMK 44/2026 (already in seen_citations) and regional compliance, no new regulations"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "checked_no_new",
+      "note": "Articles parsed; newest article covers illegal duty stamp syndicates citing existing UU 10/2020, no new regulations in 48h window"
+    },
+    {
+      "url": "https://ortax.org/",
+      "reason": "checked_no_new",
+      "note": "Homepage articles checked; recent articles cover Coretax features, illegal stamps, CARF, no new regulations within 48h"
+    },
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "Newest entries (Permen ATR 8/9/2026, Permensos 8/2026, Permen LH 11/2026) promulgated on or before 13 August 2026, outside 48h window"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "checked_no_new",
+      "note": "Catalog parsed; no new PMK regulations published within the 48h window"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Newest regulations listed (e.g. Permenaker 11/2026) are from July 2026, outside 48h window"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Newest regulation PER-8/PJ/2026 dated 28 July 2026 (already seen), exchange rate KMK 38/MK/EF.2/2026 is operational rate decree"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "outside_window",
+      "note": "Newest national laws (UU 4/2026, UU 5/2026) are from June 2026, outside 48h window"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "outside_window",
+      "note": "Newest press releases from mid-August 2026, no new immigration regulations published in 48h window"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026",
+    "PMK Nomor 57 Tahun 2026"
+  ]
+}

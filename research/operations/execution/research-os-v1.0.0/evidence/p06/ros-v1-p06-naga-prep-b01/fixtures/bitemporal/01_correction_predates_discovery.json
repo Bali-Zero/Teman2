@@ -1,0 +1,47 @@
+{
+  "synthetic": true,
+  "fixture_category": "bitemporal",
+  "adversarial_case_ref": "packet 06-naga-claim-ledger.md, 'Include adversarial cases where' list, item: 'a later correction predates Nuzantara's discovery'",
+  "expected_behavior": "A time-travel query for 'what did Nuzantara believe on 2026-03-01' must return claim_v1 (recorded_at 2026-02-10), even though claim_v2 (recorded_at 2026-04-05) is the current supported claim and its valid_from (2026-01-15) is EARLIER than claim_v1's recorded_at. A naive 'most recent valid_from wins' query is FALSE behavior here — the system-time cutoff (recorded_at <= query instant) must gate the answer, not the valid-time ordering. If an implementation returns claim_v2 for the 2026-03-01 query, this fixture is failed.",
+  "claim_v1": {
+    "claim_id": "b2f1a000-0000-4000-8000-000000000001",
+    "claim_family_id": "b2f1a000-0000-4000-8000-0000000000f1",
+    "contract_version": "research-os/v1.0.0",
+    "tenant": "bali-zero",
+    "statement": {
+      "subject_ref": { "object_kind": "regulation", "object_id": "permenkumham-synth-12-2026", "object_hash": "0000000000000000000000000000000000000000000000000000000000000001" },
+      "predicate": "naga.fee_change.amount",
+      "object_ref_or_value": 1500000,
+      "unit": "per_application",
+      "currency": "IDR"
+    },
+    "scope": { "domain": "visa.synthetic", "jurisdiction": "national (synthetic)" },
+    "time": { "valid_from": "2026-01-15T00:00:00Z", "valid_to": null, "recorded_at": "2026-02-10T09:00:00Z" },
+    "status": "supported",
+    "confidence": { "score": 0.7, "method": "naga.claim_scorer.v1" },
+    "note": "SYNTHETIC — this fixture asserts the fee is IDR 1,500,000, sourced from a syndicated news writeup that later turns out to have misread the base regulation."
+  },
+  "claim_v2": {
+    "claim_id": "b2f1a000-0000-4000-8000-000000000002",
+    "claim_family_id": "b2f1a000-0000-4000-8000-0000000000f1",
+    "contract_version": "research-os/v1.0.0",
+    "tenant": "bali-zero",
+    "statement": {
+      "subject_ref": { "object_kind": "regulation", "object_id": "permenkumham-synth-12-2026", "object_hash": "0000000000000000000000000000000000000000000000000000000000000001" },
+      "predicate": "naga.fee_change.amount",
+      "object_ref_or_value": 1200000,
+      "unit": "per_application",
+      "currency": "IDR"
+    },
+    "scope": { "domain": "visa.synthetic", "jurisdiction": "national (synthetic)" },
+    "time": { "valid_from": "2026-01-15T00:00:00Z", "valid_to": null, "recorded_at": "2026-04-05T14:30:00Z" },
+    "status": "supported",
+    "supersedes_claim_ref": { "claim_id": "b2f1a000-0000-4000-8000-000000000001", "object_hash": "1111111111111111111111111111111111111111111111111111111111111111" },
+    "confidence": { "score": 0.92, "method": "naga.claim_scorer.v1" },
+    "note": "SYNTHETIC — the primary government gazette text (found later) shows the true fee was always IDR 1,200,000. valid_from is the regulation's own effective date, unchanged from v1; only recorded_at (when Nuzantara learned the true figure) and the value itself changed."
+  },
+  "time_travel_queries": [
+    { "query_instant": "2026-03-01T00:00:00Z", "expected_answer_claim_id": "b2f1a000-0000-4000-8000-000000000001", "reason": "recorded_at of v2 (2026-04-05) is after the query instant; only v1 was known then." },
+    { "query_instant": "2026-05-01T00:00:00Z", "expected_answer_claim_id": "b2f1a000-0000-4000-8000-000000000002", "reason": "v2 recorded_at has passed; v2 supersedes v1 and both share the same valid_from." }
+  ]
+}

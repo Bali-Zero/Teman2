@@ -5,8 +5,19 @@ This directory holds **normalized, pre-vetted Q&A JSONL files** consumed by
 (`.jsonl`), one row per question.
 
 Files are produced by the converters in `scripts/curated_qa_convert_e33.py`
-(or hand-authored following the same schema) and are meant to be
-**repo-reviewable** — this is the audit trail behind the safety invariant:
+(or hand-authored following the same schema).
+
+> **Where the audit trail actually lives.** This directory is matched by
+> `.gitignore` (`apps/backend-rag/data/curated_qa/*`), and no `.jsonl` has ever
+> been committed into it — measured 2026-08-31, zero adds across all branches.
+> It is a local staging area for the harvester, not a repo-reviewable record,
+> and reading this file as if it were one has already misled a session. The
+> reviewable trail is `research/curated-qa-corrections-<date>/`, which IS
+> committed and carries the per-row review rationale. What is actually being
+> served is the production Qdrant `curated_qa` collection — the only way to
+> know a row is live is to probe it.
+
+These files back the safety invariant:
 
 > NO verbatim serving from any similarity-based layer; verbatim only from
 > exact-match FAQ cache with pre-vetted provenance.

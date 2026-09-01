@@ -83,17 +83,17 @@ class PortalProfileService:
                 )
 
                 logger.info(
-                    "Portal profile ensured for client %s (email=%s, member_id=%s)",
+                    "Portal profile ensured for client %s (member_id=%s)",
                     client_id,
-                    email,
                     member_id,
                 )
                 return member_id
 
         except Exception as e:
             logger.error(
-                "Failed to create portal profile for client %s: %s",
+                "Failed to create portal profile for client %s: %s (sqlstate=%s)",
                 client_id,
-                e,
+                type(e).__name__,
+                getattr(e, "sqlstate", None),
             )
             return None

@@ -413,6 +413,18 @@ export const COPY = {
       preparedLabel: "prepared",
       caption: "This tracks preparation, not approval odds.",
     },
+    groups: {
+      // P2-checklist-route-aware: the list stays a full union across routes
+      // (never hidden, never deleted — a "final application checklist"
+      // this deliberately is not), but it is split into what THIS plan's
+      // answers apply to and what remains open. "May also apply" reads as
+      // "not ruled out", never as "not needed" — we have not confirmed the
+      // route, not decided the document is irrelevant.
+      applicableHeading: "Applies to your answers",
+      mayApplyHeading: "May also apply",
+      mayApplyNote:
+        "We haven't ruled these out — either your route isn't fully confirmed yet, or these depend on details we haven't asked.",
+    },
   },
 
   price: {

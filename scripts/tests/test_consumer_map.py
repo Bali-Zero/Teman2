@@ -473,3 +473,103 @@ def test_help_exits_0_and_mentions_the_overmatch_proxy_warning() -> None:
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))
+
+
+# --- RENAME SAFETY by segments (2026-08-31) ---------------------------------
+# Measured on PR #5331, the scar-corpus move: the guard reported 72 live
+# consumers of the moved files and ALL SIX of the code files among them were
+# already correctly repointed — every one of them building the destination from
+# path SEGMENTS, so the literal new path appeared nowhere on the line. A guard
+# that fires on every correctly-repointed consumer of a MOVE, which is the change
+# class it exists to protect, teaches its readers to reach for the kill switch.
+
+
+def test_innocence_rename_consumer_repointed_with_PATH_SEGMENTS(tmp_path: Path) -> None:
+    """`REPO_ROOT / "docs" / "scars" / "name.md"` is a repoint. It never contains
+    the literal new path, and almost nothing in this repo writes one."""
+    repo = _init_repo(tmp_path)
+    _write(repo / ".claude" / "rules" / "cicatrix-scars.md", "# scars\n")
+    _write(
+        repo / "scripts" / "archive_scars.py",
+        'from pathlib import Path\n'
+        'REPO_ROOT = Path(__file__).resolve().parent.parent\n'
+        'ACTIVE = REPO_ROOT / "docs" / "scars" / "cicatrix-scars.md"\n',
+    )
+    base = _commit_all(repo, "base")
+
+    (repo / "docs" / "scars").mkdir(parents=True, exist_ok=True)
+    _git(repo, "mv", ".claude/rules/cicatrix-scars.md", "docs/scars/cicatrix-scars.md")
+    _git(repo, "commit", "-q", "-m", "move the scar corpus")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "CONSUMER_MAP_LIVE_COUNT=0" in result.stdout
+
+
+def test_innocence_rename_consumer_repointed_with_os_path_join(tmp_path: Path) -> None:
+    """The same repoint spelled the other idiomatic way."""
+    repo = _init_repo(tmp_path)
+    _write(repo / ".claude" / "rules" / "cicatrix-scars.md", "# scars\n")
+    _write(
+        repo / "scripts" / "read_scars.py",
+        'import os\n'
+        'ROOT = os.path.dirname(os.path.dirname(__file__))\n'
+        'F = os.path.join(ROOT, "docs", "scars", "cicatrix-scars.md")\n',
+    )
+    base = _commit_all(repo, "base")
+
+    (repo / "docs" / "scars").mkdir(parents=True, exist_ok=True)
+    _git(repo, "mv", ".claude/rules/cicatrix-scars.md", "docs/scars/cicatrix-scars.md")
+    _git(repo, "commit", "-q", "-m", "move the scar corpus")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "CONSUMER_MAP_LIVE_COUNT=0" in result.stdout
+
+
+def test_guilt_a_consumer_still_naming_the_OLD_path_still_blocks(tmp_path: Path) -> None:
+    """THE COLLEAGUE TEST. Loosening rename-safety must not stop it catching the
+    thing it exists for: a consumer that genuinely still opens the old location.
+    Without this, 'segments in order' could be satisfied by any line at all."""
+    repo = _init_repo(tmp_path)
+    _write(repo / ".claude" / "rules" / "cicatrix-scars.md", "# scars\n")
+    _write(
+        repo / "scripts" / "stale_reader.py",
+        'from pathlib import Path\n'
+        'ACTIVE = Path(".claude") / "rules" / "cicatrix-scars.md"\n',
+    )
+    base = _commit_all(repo, "base")
+
+    (repo / "docs" / "scars").mkdir(parents=True, exist_ok=True)
+    _git(repo, "mv", ".claude/rules/cicatrix-scars.md", "docs/scars/cicatrix-scars.md")
+    _git(repo, "commit", "-q", "-m", "move the scar corpus")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "scripts/stale_reader.py" in result.stdout
+    assert "CONSUMER_MAP_LIVE_COUNT=1" in result.stdout
+
+
+def test_guilt_segments_OUT_OF_ORDER_do_not_count_as_a_repoint(tmp_path: Path) -> None:
+    """The ordered test is what keeps this from being a bag of words. A line
+    holding the right words in the wrong order names no destination, and
+    accepting it would be the under-match twin this cure would otherwise create
+    (W94: a fix for an over-match births its opposite unless the corpus covers
+    composition)."""
+    repo = _init_repo(tmp_path)
+    _write(repo / ".claude" / "rules" / "cicatrix-scars.md", "# scars\n")
+    _write(
+        repo / "scripts" / "wordy.py",
+        'NAME = "cicatrix-scars.md"\n'
+        'PARTS = ["scars", "docs"]        # right words, wrong order\n'
+        'ACTIVE = open(".claude/rules/" + NAME)\n',
+    )
+    base = _commit_all(repo, "base")
+
+    (repo / "docs" / "scars").mkdir(parents=True, exist_ok=True)
+    _git(repo, "mv", ".claude/rules/cicatrix-scars.md", "docs/scars/cicatrix-scars.md")
+    _git(repo, "commit", "-q", "-m", "move the scar corpus")
+
+    result = _run(repo, "--base", base)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "scripts/wordy.py" in result.stdout
