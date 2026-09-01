@@ -23,13 +23,23 @@ const CANDIDATE = "Natalie Mahodim";
 const ROLE = "Finance & Client Services Coordinator";
 const PANEL_INBOX = "zero@balizero.com";
 const STORAGE_KEY = "bz-interview-natalie-v1";
+const SUBMIT_TIMEOUT_MS = 20_000;
 
-type Phase = "intro" | "running" | "done";
+/**
+ * The URL is guessable and the page is public. Nothing identifying — not the
+ * candidate's name, not the question about the two dates in her file — renders
+ * before this code is entered. The panel reads it out in the room; it is a
+ * shutter, not an authentication system, and it is not asked to be one.
+ */
+const ACCESS_CODE = "SUNSET-2026";
+
+type Phase = "locked" | "intro" | "running" | "done";
 
 interface Persisted {
   answers: Record<string, string>;
   index: number;
   submitted: string[];
+  /** Epoch ms at which the CURRENT exercise's window opened. */
   startedAt: number | null;
 }
 
@@ -54,60 +64,82 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function newExerciseTelemetry(ex: Exercise): ExerciseTelemetry {
+function newExerciseTelemetry(
+  ex: Exercise,
+  restored = false,
+): ExerciseTelemetry {
   const fields: Record<string, FieldTelemetry> = {};
   for (const f of ex.fields) fields[f.id] = emptyField();
-  return { elapsedMs: 0, awayMs: 0, awayCount: 0, fields, autoLocked: false };
+  return {
+    elapsedMs: 0,
+    awayMs: 0,
+    awayCount: 0,
+    fields,
+    autoLocked: false,
+    restored,
+    composedChars: 0,
+  };
 }
 
 export default function InterviewNataliePage() {
-  const [phase, setPhase] = useState<Phase>("intro");
+  const [phase, setPhase] = useState<Phase>("locked");
+  const [code, setCode] = useState("");
+  const [codeError, setCodeError] = useState(false);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState<string[]>([]);
+  const [failed, setFailed] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [remaining, setRemaining] = useState(EXERCISES[0].minutes * 60);
-  const [restored, setRestored] = useState(false);
+  const [restoredSession, setRestoredSession] = useState(false);
+  const [storageWorks, setStorageWorks] = useState(true);
+  const [locked, setLocked] = useState(false);
 
   const exercise = EXERCISES[index];
+
+  // Epoch, not performance.now(): the window has to survive a reload, and only
+  // a wall-clock baseline can say how much of it the candidate already spent.
   const startedRef = useRef<number | null>(null);
   const telemRef = useRef<ExerciseTelemetry>(
     newExerciseTelemetry(EXERCISES[0]),
   );
-  const allTelemRef = useRef<Record<string, ExerciseTelemetry>>({});
   const lastEditRef = useRef<Record<string, number>>({});
   const focusedAtRef = useRef<Record<string, number>>({});
   const awaySinceRef = useRef<number | null>(null);
+  const composingRef = useRef<Record<string, boolean>>({});
   const submitRef = useRef<(auto: boolean) => void>(() => {});
+  const restoredStartRef = useRef<number | null>(null);
 
   // ── Restore an interrupted session ──────────────────────────────
-  // Sixty minutes of handwriting cannot be asked for twice: a reload, a flat
-  // battery or a stray back-gesture must not cost the candidate her answers.
-  // Telemetry deliberately does NOT survive the reload — it would be a
-  // fabricated measurement of a session this page did not watch.
+  // Sixty minutes cannot be asked for twice: a reload, a flat battery or a
+  // stray back-gesture must not cost the candidate her answers. What it DOES
+  // cost is the keystroke record, so the restored exercise is marked and its
+  // keystroke flags are suppressed rather than fired at someone who did
+  // nothing wrong. The clock is NOT refunded either — resuming reopens the
+  // window where it was, not at the top.
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
       const saved = JSON.parse(raw) as Persisted;
-      if (saved && typeof saved === "object" && saved.answers) {
-        setAnswers(saved.answers);
-        setSubmitted(saved.submitted || []);
-        const idx = Math.min(
-          Math.max(saved.index || 0, 0),
-          EXERCISES.length - 1,
-        );
-        setIndex(idx);
-        setRestored(true);
-      }
+      if (!saved || typeof saved !== "object" || !saved.answers) return;
+      setAnswers(saved.answers);
+      setSubmitted(saved.submitted || []);
+      const idx = Math.min(Math.max(saved.index || 0, 0), EXERCISES.length - 1);
+      setIndex(idx);
+      restoredStartRef.current = saved.startedAt ?? null;
+      setRestoredSession(true);
     } catch {
-      /* a browser that refuses storage is not a reason to fail the exam */
+      setStorageWorks(false);
     }
   }, []);
 
   useEffect(() => {
-    if (phase === "intro") return;
+    // Only while an exercise is open. Persisting on "done" too would re-write
+    // the record the final submit had just deleted, and leave her salary
+    // expectation in the fields for whoever opens this URL next.
+    if (phase !== "running") return;
     try {
       window.localStorage.setItem(
         STORAGE_KEY,
@@ -116,30 +148,44 @@ export default function InterviewNataliePage() {
           index,
           submitted,
           startedAt: startedRef.current,
-        }),
+        } satisfies Persisted),
       );
     } catch {
-      /* ignore */
+      setStorageWorks(false);
     }
   }, [answers, index, submitted, phase]);
 
   // ── Countdown ───────────────────────────────────────────────────
+  const tick = useCallback(() => {
+    const started = startedRef.current;
+    if (!started) return;
+    const elapsedMs = Date.now() - started;
+    telemRef.current.elapsedMs = elapsedMs;
+    const left = exercise.minutes * 60 - Math.floor(elapsedMs / 1000);
+    setRemaining(left);
+    if (left <= 0 && !telemRef.current.autoLocked) {
+      telemRef.current.autoLocked = true;
+      setLocked(true);
+      submitRef.current(true);
+    }
+  }, [exercise]);
+
   useEffect(() => {
     if (phase !== "running") return;
-    const id = setInterval(() => {
-      const started = startedRef.current;
-      if (!started) return;
-      const elapsedMs = Date.now() - started;
-      telemRef.current.elapsedMs = elapsedMs;
-      const left = exercise.minutes * 60 - Math.floor(elapsedMs / 1000);
-      setRemaining(left);
-      if (left <= 0) {
-        telemRef.current.autoLocked = true;
-        submitRef.current(true);
-      }
-    }, 1000);
-    return () => clearInterval(id);
-  }, [phase, exercise]);
+    const id = setInterval(tick, 1000);
+    // A background tab throttles setInterval to once a minute or freezes it
+    // outright, so the window would sit open past zero until the candidate came
+    // back. Recomputing on return closes it on the spot instead of waiting for
+    // the next throttled tick.
+    const resync = () => tick();
+    window.addEventListener("focus", resync);
+    document.addEventListener("visibilitychange", resync);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", resync);
+      document.removeEventListener("visibilitychange", resync);
+    };
+  }, [phase, tick]);
 
   // ── Away-from-tab detection ─────────────────────────────────────
   useEffect(() => {
@@ -185,7 +231,13 @@ export default function InterviewNataliePage() {
       t.backspaces += 1;
       return;
     }
-    // Printable keys only: single-character key values, no modifier combo.
+    // An IME and some virtual keyboards report "Process" or "Unidentified"
+    // instead of the character; counting only single-character keys would read
+    // an honest candidate on such a keyboard as never having typed at all.
+    if (e.key === "Process" || e.key === "Unidentified") {
+      t.keystrokes += 1;
+      return;
+    }
     if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
       t.keystrokes += 1;
       if (t.timeToFirstKeyMs === null) {
@@ -201,23 +253,38 @@ export default function InterviewNataliePage() {
     const t = field(id);
     t.pasteAttempts += 1;
     t.pastedChars += (e.clipboardData?.getData("text") || "").length;
-    setNotice(
-      "Pasting is disabled in this assessment. Please type your answer.",
-    );
-    window.setTimeout(() => setNotice(null), 3500);
+    flash("Pasting is disabled in this assessment. Please type your answer.");
   };
 
-  const onCopy = (id: string, kind: "copy" | "cut") => {
-    const t = field(id);
-    if (kind === "cut") t.cutEvents += 1;
-    else t.copyEvents += 1;
+  // Cut is blocked as well as paste. Allowing one without the other lets the
+  // candidate destroy a paragraph she cannot then put back — the instrument
+  // must not be able to eat her work.
+  const onCut = (id: string, e: React.ClipboardEvent) => {
+    e.preventDefault();
+    field(id).cutEvents += 1;
+    flash(
+      "Cut is disabled — pasting is blocked, so cutting would lose the text.",
+    );
+  };
+
+  const onCopy = (id: string) => {
+    field(id).copyEvents += 1;
+  };
+
+  const flash = (msg: string) => {
+    setNotice(msg);
+    window.setTimeout(() => setNotice((n) => (n === msg ? null : n)), 4000);
   };
 
   const onChange = (id: string, value: string) => {
     const t = field(id);
     const before = answers[id] || "";
     const delta = value.length - before.length;
-    if (delta > JUMP_THRESHOLD) {
+    // An in-flight composition (IME, predictive keyboard, autocorrect) commits
+    // several characters in one input event. That is typing, not an insertion.
+    if (composingRef.current[id]) {
+      if (delta > 0) telemRef.current.composedChars += delta;
+    } else if (delta > JUMP_THRESHOLD) {
       t.jumpInsertions += 1;
       t.jumpChars += delta;
     }
@@ -236,7 +303,6 @@ export default function InterviewNataliePage() {
       if (sending || submitted.includes(exercise.key)) return;
       setSending(true);
 
-      // Close any open away-window so the last stretch is counted.
       if (awaySinceRef.current !== null) {
         telemRef.current.awayMs += Date.now() - awaySinceRef.current;
         awaySinceRef.current = null;
@@ -246,7 +312,6 @@ export default function InterviewNataliePage() {
       }
 
       const telem = telemRef.current;
-      allTelemRef.current[exercise.key] = telem;
       const flags = flagsFor(telem);
       const usedSec = Math.round(telem.elapsedMs / 1000);
 
@@ -258,13 +323,13 @@ export default function InterviewNataliePage() {
 
       body += `<h3>Integrity signals</h3>`;
       if (flags.length === 0) {
-        body += `<p>No signal raised. This is not proof of anything — it means this instrument saw nothing unusual.</p>`;
+        body += `<p>No signal raised. That is not proof of anything — it means this instrument saw nothing unusual.</p>`;
       } else {
         body += `<ul>`;
         for (const f of flags) {
           body += `<li><strong>${f.code}</strong> (${f.severity}) — ${esc(f.detail)}</li>`;
         }
-        body += `</ul><p style="font-size:12px;color:#666">Signals, not a verdict. Dictation, transcribing from paper, and an unusual keyboard trip the same wires as a chatbot.</p>`;
+        body += `</ul><p style="font-size:12px;color:#666">Signals, not a verdict. Dictation, a predictive keyboard, and transcribing an answer drafted on paper trip the same wires as a chatbot. Read the answer, then decide what the signal means.</p>`;
       }
 
       body += `<h3>Per-field measurements</h3>`;
@@ -283,49 +348,89 @@ export default function InterviewNataliePage() {
         body += `<pre style="white-space:pre-wrap;font-family:ui-monospace,monospace;background:#f5f5f5;padding:12px;border-radius:6px;margin-top:0">${esc(a || "(left blank)")}</pre>`;
       }
 
+      let ok = false;
       try {
         const res = await fetch("/api/assessment/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          // Without a deadline a server that accepts the connection and never
+          // answers leaves every field disabled and the next window unopened.
+          signal: AbortSignal.timeout(SUBMIT_TIMEOUT_MS),
           body: JSON.stringify({
             to: PANEL_INBOX,
             subject: `[Round 2] ${CANDIDATE} — Exercise ${exercise.letter} ${exercise.title} · ${mmss(usedSec)} · ${flagSummary(flags)}`,
             body,
           }),
         });
-        if (!res.ok) throw new Error(`server ${res.status}`);
-        setNotice(null);
+        ok = res.ok;
       } catch {
-        // The answers are already on disk in localStorage; say so plainly
-        // rather than implying the work is lost.
-        setNotice(
-          `Exercise ${exercise.letter} could not be sent to the panel. Your answers are saved in this browser — tell the panel now, do not close this tab.`,
-        );
+        ok = false;
       }
 
-      setSubmitted((prev) => [...prev, exercise.key]);
       setSending(false);
+
+      if (!ok) {
+        // A failed send must NOT count as a submission: marking it would retire
+        // an exercise nobody received and hand the candidate no way back to it.
+        setFailed((prev) =>
+          prev.includes(exercise.key) ? prev : [...prev, exercise.key],
+        );
+        setNotice(
+          storageWorks
+            ? `Exercise ${exercise.letter} did not reach the panel. Your answers are safe in this browser — press Send again, and tell the panel now. Do not close this tab.`
+            : `Exercise ${exercise.letter} did not reach the panel, and this browser is not saving a copy. Do not close this tab — call the panel over now.`,
+        );
+        return;
+      }
+
+      setNotice(null);
+      setFailed((prev) => prev.filter((k) => k !== exercise.key));
+      setSubmitted((prev) => [...prev, exercise.key]);
 
       if (index < EXERCISES.length - 1) {
         const next = index + 1;
         setIndex(next);
         telemRef.current = newExerciseTelemetry(EXERCISES[next]);
         startedRef.current = Date.now();
+        setLocked(false);
         setRemaining(EXERCISES[next].minutes * 60);
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
+        // Shared machine: the next person to open this URL must not find her
+        // salary expectation and her employment history sitting in the fields.
+        try {
+          window.localStorage.removeItem(STORAGE_KEY);
+        } catch {
+          /* nothing to clear */
+        }
         setPhase("done");
       }
     },
-    [answers, exercise, index, sending, submitted],
+    [answers, exercise, index, sending, storageWorks, submitted],
   );
 
   submitRef.current = submitExercise;
 
+  const unlock = () => {
+    if (code.trim().toUpperCase() !== ACCESS_CODE) {
+      setCodeError(true);
+      return;
+    }
+    setCodeError(false);
+    setPhase("intro");
+  };
+
   const begin = () => {
-    startedRef.current = Date.now();
-    telemRef.current = newExerciseTelemetry(EXERCISES[index]);
-    setRemaining(EXERCISES[index].minutes * 60);
+    const resumed = restoredStartRef.current;
+    // Resuming reopens the window where it was left, it does not restart it.
+    startedRef.current = resumed ?? Date.now();
+    telemRef.current = newExerciseTelemetry(
+      EXERCISES[index],
+      restoredSession && resumed !== null,
+    );
+    const spent = Math.floor((Date.now() - startedRef.current) / 1000);
+    setRemaining(EXERCISES[index].minutes * 60 - spent);
+    setLocked(false);
     setPhase("running");
   };
 
@@ -336,19 +441,11 @@ export default function InterviewNataliePage() {
 
   const warn = remaining <= 120;
   const danger = remaining <= 30;
+  const retry = failed.includes(exercise.key);
 
   // ── Render ──────────────────────────────────────────────────────
   return (
-    <div
-      className="min-h-screen bg-[#0a0a0b] text-[#e8e6e1]"
-      onContextMenu={(e) => {
-        if (phase === "running") {
-          const t = telemRef.current.fields[exercise.fields[0].id];
-          if (t) t.contextMenus += 1;
-        }
-        return e;
-      }}
-    >
+    <div className="min-h-screen bg-[#0a0a0b] text-[#e8e6e1]">
       <header className="sticky top-0 z-50 border-b border-white/5 bg-[#0a0a0b]/95 backdrop-blur">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
@@ -381,7 +478,6 @@ export default function InterviewNataliePage() {
                       ? "text-amber-400"
                       : "text-white/85"
                 }`}
-                aria-live="off"
               >
                 {mmss(remaining)}
               </div>
@@ -406,6 +502,54 @@ export default function InterviewNataliePage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-6 py-10">
+        {/* ── LOCKED ────────────────────────────────────────────── */}
+        {phase === "locked" && (
+          <div className="mx-auto max-w-sm space-y-6 py-20 text-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/static/balizero-logo-clean.png"
+              alt="Bali Zero"
+              className="mx-auto h-24 w-24 rounded-full opacity-90"
+            />
+            <div className="space-y-1">
+              <div className="text-xs font-semibold uppercase tracking-[0.3em] text-[#c23c2c]">
+                Bali Zero
+              </div>
+              <h1 className="text-2xl font-semibold">Written assessment</h1>
+              <p className="text-sm text-white/45">
+                The panel will give you the code for this session.
+              </p>
+            </div>
+            <input
+              type="text"
+              value={code}
+              onChange={(e) => {
+                setCode(e.target.value);
+                setCodeError(false);
+              }}
+              onKeyDown={(e) => e.key === "Enter" && unlock()}
+              placeholder="Session code"
+              autoComplete="off"
+              className={`w-full rounded-lg border bg-white/[0.03] px-4 py-3 text-center font-mono uppercase tracking-[0.2em] text-white/90 placeholder:normal-case placeholder:tracking-normal placeholder:text-white/20 focus:outline-none ${
+                codeError
+                  ? "border-[#c23c2c]"
+                  : "border-white/10 focus:border-white/30"
+              }`}
+            />
+            {codeError && (
+              <p className="text-sm text-[#c23c2c]">
+                That code is not right. Ask the panel to repeat it.
+              </p>
+            )}
+            <button
+              onClick={unlock}
+              className="w-full rounded-lg bg-[#c23c2c] px-6 py-3 font-semibold text-white transition hover:bg-[#a83326]"
+            >
+              Enter
+            </button>
+          </div>
+        )}
+
         {/* ── INTRO ─────────────────────────────────────────────── */}
         {phase === "intro" && (
           <div className="space-y-8">
@@ -434,8 +578,10 @@ export default function InterviewNataliePage() {
                 Four exercises, {TOTAL_MINUTES} minutes in total. Each exercise
                 opens in its own timed window; when the window closes, that
                 exercise is sent and the next one opens. You cannot go back.
-                Every candidate for this vacancy receives this same pack, so
-                that the results compare.
+                Every candidate for this vacancy answers the same four
+                exercises, so that the results compare — the last few lines of
+                the fact sheet are the exception, as they are about your own
+                file.
               </p>
               <ul className="space-y-2 pt-2 text-sm">
                 {EXERCISES.map((e) => (
@@ -457,17 +603,19 @@ export default function InterviewNataliePage() {
                 Please read — what this page records
               </div>
               <p>
-                This is an unaided written test. Pasting is disabled. The page
-                records how long each exercise takes, how much of it is typed,
-                whether text arrives without being typed, and whether the tab is
-                left during an exercise. It records those measurements alongside
-                your answers and sends both to the panel. It does not record
-                your screen, your camera, or anything outside this page.
+                This is an unaided written test. Pasting and cutting are
+                disabled. Alongside your answers, the page records how long each
+                exercise takes, how many keys you press, whether text appears in
+                a field without being typed, and whether you leave this tab
+                during an exercise. It sends those measurements to the panel
+                with your answers. It does not record your screen, your camera,
+                or anything outside this page.
               </p>
               <p>
-                Write in your own words. If you use a phone, another tab, or an
-                AI assistant, the measurements will show it and we would rather
-                you simply did not.
+                Those are measurements, not accusations — the panel reads them
+                next to your answer, and asks you about anything odd rather than
+                assuming. We ask you plainly instead: no phone, no other tab, no
+                AI assistant.
               </p>
               <p className="text-white/50">
                 Exercises A, B and D may be answered in English or Bahasa
@@ -477,17 +625,24 @@ export default function InterviewNataliePage() {
               </p>
             </div>
 
-            {restored && (
+            {restoredSession && (
               <p className="text-sm text-amber-400/80">
                 A previous session was found in this browser and your answers
                 have been restored. You are resuming at Exercise{" "}
-                {EXERCISES[index].letter}.
+                {exercise.letter}, with the time that was left on it — not a
+                fresh window.
+              </p>
+            )}
+            {!storageWorks && (
+              <p className="text-sm text-[#c23c2c]">
+                This browser is not letting the page keep a local copy of your
+                answers. Please tell the panel before you start.
               </p>
             )}
 
             <button
               onClick={begin}
-              className="w-full rounded-lg bg-[#c23c2c] px-6 py-4 text-base font-semibold text-white transition hover:bg-[#a83326] focus:outline-none focus:ring-2 focus:ring-[#c23c2c]/50"
+              className="w-full rounded-lg bg-[#c23c2c] px-6 py-4 text-base font-semibold text-white transition hover:bg-[#a83326]"
             >
               Start Exercise {exercise.letter} — {exercise.minutes} minutes
             </button>
@@ -632,12 +787,18 @@ deadline tomorrow and this is the second time this happens.`}
                   onFocus: () => onFocus(f.id),
                   onKeyDown: (e: React.KeyboardEvent) => onKeyDown(f.id, e),
                   onPaste: (e: React.ClipboardEvent) => onPaste(f.id, e),
-                  onCopy: () => onCopy(f.id, "copy"),
-                  onCut: () => onCopy(f.id, "cut"),
+                  onCopy: () => onCopy(f.id),
+                  onCut: (e: React.ClipboardEvent) => onCut(f.id, e),
                   onDrop: (e: React.DragEvent) => e.preventDefault(),
+                  onCompositionStart: () => {
+                    composingRef.current[f.id] = true;
+                  },
+                  onCompositionEnd: () => {
+                    composingRef.current[f.id] = false;
+                  },
                   spellCheck: false,
                   autoComplete: "off",
-                  disabled: sending,
+                  disabled: sending || locked,
                 };
                 return (
                   <div key={f.id} className="space-y-2">
@@ -659,7 +820,7 @@ deadline tomorrow and this is the second time this happens.`}
                         {...shared}
                         onChange={(e) => onChange(f.id, e.target.value)}
                         placeholder={f.placeholder}
-                        className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/90 placeholder:text-white/20 focus:border-[#c23c2c]/60 focus:outline-none"
+                        className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/90 placeholder:text-white/20 focus:border-[#c23c2c]/60 focus:outline-none disabled:opacity-60"
                       />
                     ) : (
                       <textarea
@@ -668,7 +829,7 @@ deadline tomorrow and this is the second time this happens.`}
                         {...shared}
                         onChange={(e) => onChange(f.id, e.target.value)}
                         placeholder={f.placeholder}
-                        className="w-full resize-y rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-mono text-sm leading-relaxed text-white/90 placeholder:text-white/20 focus:border-[#c23c2c]/60 focus:outline-none"
+                        className="w-full resize-y rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-mono text-sm leading-relaxed text-white/90 placeholder:text-white/20 focus:border-[#c23c2c]/60 focus:outline-none disabled:opacity-60"
                       />
                     )}
                     <div className="text-right font-mono text-[11px] text-white/25">
@@ -680,16 +841,23 @@ deadline tomorrow and this is the second time this happens.`}
             </div>
 
             <div className="space-y-3 border-t border-white/5 pt-6">
+              {locked && !retry && (
+                <p className="text-center text-sm text-amber-400/80">
+                  The window for Exercise {exercise.letter} has closed.
+                </p>
+              )}
               <button
                 onClick={() => submitExercise(false)}
-                disabled={sending || !answeredSomething}
+                disabled={sending || (!answeredSomething && !retry)}
                 className="w-full rounded-lg bg-[#c23c2c] px-6 py-4 font-semibold text-white transition hover:bg-[#a83326] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/30"
               >
                 {sending
                   ? "Sending…"
-                  : index < EXERCISES.length - 1
-                    ? `Submit ${exercise.letter} and open ${EXERCISES[index + 1].letter}`
-                    : `Submit ${exercise.letter} and finish`}
+                  : retry
+                    ? `Send Exercise ${exercise.letter} again`
+                    : index < EXERCISES.length - 1
+                      ? `Submit ${exercise.letter} and open ${EXERCISES[index + 1].letter}`
+                      : `Submit ${exercise.letter} and finish`}
               </button>
               <p className="text-center text-xs text-white/30">
                 Submitting is final for this exercise. When the countdown
@@ -710,9 +878,9 @@ deadline tomorrow and this is the second time this happens.`}
             />
             <h2 className="text-2xl font-semibold">Assessment complete</h2>
             <p className="mx-auto max-w-md text-sm text-white/60">
-              All four exercises have been sent to the panel. Thank you,{" "}
-              {CANDIDATE} — please close this tab and rejoin the room. The
-              conversation follows.
+              All four exercises reached the panel. Thank you, {CANDIDATE} —
+              please close this tab and rejoin the room. The conversation
+              follows.
             </p>
             <p className="font-mono text-xs text-white/25">{wita()} WITA</p>
           </div>

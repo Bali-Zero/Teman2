@@ -13,6 +13,8 @@ function ex(overrides: Partial<ExerciseTelemetry> = {}): ExerciseTelemetry {
     awayCount: 0,
     fields: {},
     autoLocked: false,
+    restored: false,
+    composedChars: 0,
     ...overrides,
   };
 }
@@ -72,8 +74,8 @@ describe("TAB_AWAY", () => {
     expect(away?.severity).toBe("high");
   });
 
-  it("fires on repeated short absences", () => {
-    expect(codes(ex({ awayMs: 6_000, awayCount: 3 }))).toContain("TAB_AWAY");
+  it("fires on repeated absences that add up", () => {
+    expect(codes(ex({ awayMs: 15_000, awayCount: 3 }))).toContain("TAB_AWAY");
   });
 });
 
@@ -94,5 +96,29 @@ describe("SUSTAINED_SPEED", () => {
       fields: { a: typed(1200, 1400, 200) },
     });
     expect(codes(t)).toContain("SUSTAINED_SPEED");
+  });
+});
+
+describe("the honest candidate is not accused", () => {
+  it("suppresses the keystroke family after a restored session", () => {
+    // A reload keeps the text and loses the keystrokes. Comparing one against
+    // the other afterwards accuses her of exactly what the reload cost her.
+    const f = { ...typed(900, 1, 0), jumpInsertions: 1, jumpChars: 900 };
+    const got = codes(ex({ restored: true, fields: { a: f } }));
+    expect(got).toContain("RESTORED_SESSION");
+    expect(got).not.toContain("KEYSTROKE_DEFICIT");
+    expect(got).not.toContain("EXTERNAL_INSERT");
+  });
+
+  it("counts IME and predictive-keyboard compositions as typing", () => {
+    // 900 characters, 120 keydowns the browser reported, the rest committed
+    // through composition events: an honest candidate on such a keyboard.
+    const t = ex({ composedChars: 780, fields: { a: typed(900, 120, 20) } });
+    expect(codes(t)).not.toContain("KEYSTROKE_DEFICIT");
+  });
+
+  it("still catches transplanted text when no composition explains it", () => {
+    const t = ex({ composedChars: 0, fields: { a: typed(900, 120, 20) } });
+    expect(codes(t)).toContain("KEYSTROKE_DEFICIT");
   });
 });
