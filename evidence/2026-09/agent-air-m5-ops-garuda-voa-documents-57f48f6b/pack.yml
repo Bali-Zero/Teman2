@@ -79,7 +79,9 @@ diff:
   measured_at: >-
     git diff --numstat <merge-base ae5740b59798a1bab2d07744301a18cbc7b170a0>...HEAD
     (three-dot, merge-base anchored, per W102) — 366+284+485 additions, 0 deletions,
-    across 3 new files, 1 commit. Measured LAST, after every other check in this pack.
+    across 3 new files, 2 commits (the feature commit plus this evidence-pack commit
+    added on top of it — recomputed after the fix below, not the count at authoring
+    time). Measured LAST, after every other check in this pack.
 
 residual_risks:
   - >-
