@@ -275,15 +275,28 @@ echo "cells measured: $(wc -l < "$MEASURED" | tr -d ' ')  baseline: $(wc -l < "$
 # KNOWN_BAD with a reason). The machine measures 7 fields and must never overwrite the
 # judgement, so the comparison is on fields 1-7 only. A cell whose verdict is wrong is a
 # review defect; a cell whose MEASUREMENT moved is what this script exists to catch.
-# An unjudged baseline is not a baseline. Before comparing anything, require that EVERY row
-# carries a verdict the machine did not write. Without this, `--write-baseline` followed by a
-# normal run reports STABLE against a file no human ever read.
-unjudged=$(awk -F'\t' 'NF<8 || $8=="" || $8=="UNREVIEWED"' "$BASELINE" | wc -l | tr -d ' ')
+# An unjudged baseline is not a baseline. Before comparing anything, require that every row
+# carries a verdict a human wrote. The first version of this check asked whether column 8 was
+# PRESENT — non-empty and not the literal UNREVIEWED — which is not the same question and let
+# four shapes straight through, measured: whitespace-only, `MAYBE`, a lone `-`, and a stray
+# comment. That is the original defect one layer up: "no verdict" was closed and "not a
+# verdict" was left open. So the test is now an ALLOW-LIST of the two strings that mean
+# something, which also subsumes empty and UNREVIEWED without naming them.
+unjudged=$(awk -F'\t' 'NF<8 || ($8!="OK" && $8!="KNOWN_BAD")' "$BASELINE" | wc -l | tr -d ' ')
 if [ "$unjudged" -gt 0 ]; then
-  echo "BASELINE NOT REVIEWED — $unjudged of $(wc -l < "$BASELINE" | tr -d ' ') cells carry no verdict (or UNREVIEWED)." >&2
-  echo "  The verdict column is written by a human, never by this script. Judge each cell OK or" >&2
-  echo "  KNOWN_BAD (with a reason) before this matrix can pass. Offending cells:" >&2
-  awk -F'\t' 'NF<8 || $8=="" || $8=="UNREVIEWED" {print "    " $1 "|" $2 "|" $3}' "$BASELINE" >&2
+  echo "BASELINE NOT REVIEWED — $unjudged of $(wc -l < "$BASELINE" | tr -d ' ') cells carry no usable verdict." >&2
+  echo "  Column 8 must be exactly OK or KNOWN_BAD (the reason goes in column 9). A verdict this" >&2
+  echo "  script wrote, an empty field, or anything else is not a judgement. Offending cells:" >&2
+  awk -F'\t' 'NF<8 || ($8!="OK" && $8!="KNOWN_BAD") {print "    " $1 "|" $2 "|" $3 "   verdict=[" $8 "]"}' "$BASELINE" >&2
+  rm -f "$MEASURED"; exit 2
+fi
+# Coordinate keys must be unique. Nothing enforced this, and the carry-forward awk keys on
+# fields 1-3 — so two rows sharing a key would both inherit ONE verdict, and the second would
+# be judged by a decision made about the first.
+dupes=$(cut -f1-3 "$BASELINE" | sort | uniq -d)
+if [ -n "$dupes" ]; then
+  echo "BASELINE HAS DUPLICATE COORDINATE KEYS — a cell judged twice, or one verdict standing in for two:" >&2
+  printf '    %s\n' "$dupes" | tr '\t' '|' >&2
   rm -f "$MEASURED"; exit 2
 fi
 cut -f1-7 "$BASELINE" > "$BASELINE.cmp"
