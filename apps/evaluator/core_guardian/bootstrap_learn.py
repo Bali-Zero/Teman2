@@ -39,7 +39,7 @@ logger = logging.getLogger("bootstrap")
 
 _GUARDIAN_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _GUARDIAN_DIR.parent.parent.parent
-_CICATRIX_FILE = _PROJECT_ROOT / ".claude" / "rules" / "cicatrix-scars.md"
+_CICATRIX_FILE = _PROJECT_ROOT / "docs" / "scars" / "cicatrix-scars.md"
 _MOS_DB_CMD = Path.home() / ".claude" / "scripts" / "mos-db"
 
 BOOTSTRAP_RUN_ID = "bootstrap-mos-v1"

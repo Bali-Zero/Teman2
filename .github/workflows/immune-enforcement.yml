@@ -86,6 +86,15 @@ jobs:
           # on it is disarmed.
           while IFS= read -r f; do
             case "$f" in
+              scripts/injected_surface_attest.py|\
+              scripts/hooks/injected_surface_sessionstart.sh|\
+              scripts/tests/test_injected_surface_budget.py|\
+              scripts/tests/test_injected_surface_attest.py|\
+              scripts/scar_query.py|\
+              scripts/test_scar_query.py|\
+              CLAUDE.md|\
+              .claude/rules/*|\
+              docs/scars/*|\
               scripts/lint_home_fork.py|\
               scripts/proprioception.py|\
               scripts/agent_start.py|\
@@ -468,6 +477,8 @@ jobs:
           python -m pip install --quiet pytest PyYAML==6.0.3
           fail=0
           for t in \
+            scripts/tests/test_injected_surface_budget.py \
+            scripts/tests/test_injected_surface_attest.py \
             scripts/tests/test_agent_start.py \
             scripts/tests/test_lint_doctrine_citations.py \
             scripts/tests/test_lint_home_fork.py \

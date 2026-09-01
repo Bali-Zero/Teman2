@@ -69,7 +69,7 @@ git -C ~/nuzantara/.worktrees/<lane>-<task-id> status --short
 
 In the worktree:
 
-1. Read existing code, memory (`mem recent`), cicatrix (`grep` `.claude/rules/cicatrix-scars.md`)
+1. Read existing code, memory (`mem recent`), cicatrix (`grep` `docs/scars/cicatrix-scars.md`)
 2. Plan changes (use Plan tool if architectural, dispatch 4-LLM panel if cross-cutting)
 3. Write/Edit files (all absolute paths starting with worktree path)
 4. Test (pytest scope-relative)

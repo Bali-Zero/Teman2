@@ -9,7 +9,7 @@ description: Append cicatrix-scars.md entry strutturato (TRAUMA/ANTIBODY/GOTCHA)
 
 Per-command contract (T3.4 panel amendment):
 
-- **Side effects**: APPEND to `~/nuzantara/.claude/rules/cicatrix-scars.md` ONLY. NO git commit, NO push.
+- **Side effects**: APPEND to `~/nuzantara/docs/scars/cicatrix-scars.md` ONLY. NO git commit, NO push.
 - **Input schema**: `<severity> <one-line description>`. Severity ∈ {P0, P1, P2, P3, RESOLVED, INFO}.
 - **Failure mode**: if severity unrecognized or `$ARGUMENTS` empty → ABORT with format reminder.
 - **Audit**: log timestamp + severity + description to `~/.claude/state/scar-audit.log`.
@@ -39,12 +39,12 @@ Icon mapping: P0=🚨, P1=⚠️, P2=⚠️, P3=ℹ️, RESOLVED=✅, INFO=ℹ�
 4. Append via Bash heredoc (bypass Write hook for cicatrix path — appends are allowed, not destructive):
 
 ```bash
-cat >> ~/nuzantara/.claude/rules/cicatrix-scars.md <<'SCAREOF'
+cat >> ~/nuzantara/docs/scars/cicatrix-scars.md <<'SCAREOF'
 <entry>
 SCAREOF
 ```
 
-5. Propagate to worktrees: `cp ~/nuzantara/.claude/rules/cicatrix-scars.md <worktree>/.claude/rules/cicatrix-scars.md` (inode-independent).
+5. Propagate to worktrees: `cp ~/nuzantara/docs/scars/cicatrix-scars.md <worktree>/docs/scars/cicatrix-scars.md` (inode-independent).
 
 6. Append audit log:
 
