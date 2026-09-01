@@ -1,0 +1,99 @@
+task_id: pull-renames-0901
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Make the Pro/Mini main-checkout puller see a locally-modified path that
+  origin RENAMED AWAY, so the fleet's 5-minute sync stops wedging.
+
+  Measured on Pro 2026-09-01 rather than assumed:
+
+    git -C ~/nuzantara diff --name-only HEAD origin/main        -> 119 paths
+    git -C ~/nuzantara diff --no-renames --name-only HEAD ...   -> 121 paths
+
+    the two that appear:
+      .claude/rules/cicatrix-scars.md          (M, locally modified)
+      .claude/rules/cicatrix-scars-archive.md  (M, locally modified)
+
+  `resolve_collisions()` in scripts/pro/pro-git-pull.sh asked git for the
+  incoming path set with rename detection at its DEFAULT (on). A rename
+  R->D collapses into one entry naming only D, so a local modification to R
+  is never classified as a collision: not backed up, not reset. git then
+  refuses the fast-forward because it would delete a locally-modified file,
+  and the tick exits skipped — every five minutes, on both machines, with
+  nothing red anywhere. Family #2 (Esiste != Armato): the puller ran, exited,
+  and reported; only its OUTPUT was wrong.
+
+  The trigger was a real migration: #5331 moved
+  .claude/rules/cicatrix-scars{,-archive}.md to docs/scars/ while a HOME-only
+  rotation cron (/Users/nuzantara/scripts/cicatrix-rotation.py, unversioned)
+  kept writing the old paths. Family #1 (HOME-fork drift) feeding family #2.
+
+  The cure is one flag. With --no-renames the source reappears as a deletion,
+  and the tracked-collision branch the script ALREADY has handles it
+  correctly: back the local content up, reset the path, let the ff delete it.
+  No manual gesture, and nothing to discard by hand.
+constraints:
+  - "The fix must not widen the reset blast radius. The core Pro guarantee is
+    that a tracked local modification origin did NOT touch survives the ff
+    untouched (case D2) — the checkout is permanently dirty with pipeline
+    output. Case J carries its own innocence assertion for exactly this, so a
+    regression cannot hide behind five other cases being green."
+  - "No new behaviour class. Plain deletions were always in the --name-only
+    set, so an untracked local file at a deleted path is handled exactly as
+    before; --no-renames only makes rename SOURCES join the deletions already
+    there. If that were untrue the flag would be trading one silent
+    disturbance for another."
+  - "Recoverability is not optional. Every path the resolver clears is copied
+    to the backup root first; case J asserts the local modification to the
+    renamed-away file is readable from that backup afterwards, because the
+    whole failure mode here is silent loss."
+acceptance:
+  - text: >
+      WHEN origin renames a tracked file the local tree has modified, the
+      puller SHALL classify the renamed-away SOURCE as a collision, back its
+      local content up, and let the fast-forward land.
+    status: verified
+    probe: "bash scripts/pro/test_pro_git_pull.sh  (case J: rc=0, HEAD==origin/main, backup holds the local append)"
+  - text: >
+      WHILE case J holds, a tracked file modified locally and untouched by the
+      incoming rename SHALL NOT be reset.
+    status: verified
+    probe: "bash scripts/pro/test_pro_git_pull.sh  (case J innocence assertion, plus pre-existing D2/C)"
+  - text: >
+      IF the --no-renames flag is reverted, case J SHALL go RED.
+    status: verified
+    probe: "pre-fix run: 5 FAIL (rc=1, HEAD frozen, old path present, destination missing, local mod not backed up); post-fix: 61 passed / 0 failed"
+  - text: >
+      WHEN this corpus changes, a workflow SHALL run it — the corpus was run
+      by NO workflow before this PR.
+    status: verified
+    probe: "grep -rn test_pro_git_pull .github/workflows/ (empty on origin/main); after: immune-enforcement.yml paths alternation + run step; test_immune_enforcement_trigger_symmetry.py 12 passed"
+  - text: >
+      WHERE the workflow is edited, actionlint SHALL report no NEW finding.
+    status: verified
+    probe: "before/after control against origin/main's copy: 6 findings each, identical set, one line number shifted by the 2 added lines"
+  - text: >
+      IF the incoming change REMOVES a keep-local allowlisted path, the puller SHALL
+      still keep the local content AND announce the resulting untracked orphan; WHILE a
+      keep-local path origin merely MODIFIES SHALL NOT be announced.
+    status: verified
+    probe: "bash scripts/pro/test_pro_git_pull.sh (case K, 7 assertions incl. the innocence half); control tree with the alert block excised: 66 passed / 2 failed, the two being exactly K's announcement assertions"
+risks:
+  - "This is Pro's and Mini's only automatic main-sync path and it runs every
+    five minutes on a permanently dirty checkout. A wrong reset here destroys
+    pipeline output. Mitigated by the backup-before-clear the script already
+    performs and by case J asserting recoverability, not just rc=0."
+  - "--no-renames enlarges the incoming set (119 -> 121 here; in general by one
+    entry per rename). The set is only ITERATED, and each entry acts only when
+    it collides, so the cost is proportional and the semantics unchanged — but
+    a very rename-heavy incoming range does more ls-files calls per tick."
+  - "Arming the corpus makes a previously invisible suite blocking. If it is
+    flaky in CI it now blocks PRs. It is hermetic by construction (local bare
+    repo, no network, per-case tmp dirs, PRO_GIT_PULL_NO_ALERT=1) and was run
+    repeatedly here, but this is the first time it runs anywhere but a Mac."
+  - "The other 12 orphan shell corpora stay unarmed. That is deliberate — the
+    modus PENDING-ARMS line says triaging thirteen files beside an unrelated
+    diff is how findings get waved through (W95) — but it means this PR does
+    not close that row."
+pii: none

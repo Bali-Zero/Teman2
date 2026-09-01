@@ -1,0 +1,258 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Zero's ruling 2026-09-01 was "(a) commit the cicatrix rotation output in a small dedicated PR",
+  chosen to unwedge Pro's 5-minute main sync. Investigation flipped it before a line was written:
+  the rotation output sits at `.claude/rules/cicatrix-scars{,-archive}.md`, paths #5331 MOVED to
+  `docs/scars/` — committing them would resurrect an abandoned path. The wedge's real cause is one
+  git flag, and curing it needs no manual gesture at all, so the manual gesture Zero was about to
+  authorise is replaced by a durable fix. Reported as a changed answer, not slipped through.
+
+lanes:
+  - lane: pull-renames-ground
+    role: read
+    seat: >-
+      claude-opus-5 (conducting session, Pro). Root-caused by MEASUREMENT on the live wedged
+      checkout, not by reading the script: `diff --name-only HEAD origin/main` = 119 paths vs
+      `--no-renames` = 121, the two added being exactly the locally-modified files blocking the
+      fast-forward. Also established what the fix does NOT reach: Mini runs an unversioned HOME
+      fork (`~/scripts/mini-git-pull.sh`) whose line 203 carries the identical defective call.
+  - lane: pull-renames-build
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session, Pro). Wrote test case J BEFORE the flag and ran it
+      against the uncured script (5 FAIL) so the corpus proves the defect rather than describing
+      it; then the flag; then case K after the refuter round. Also armed the corpus itself, which
+      no workflow ran.
+  - lane: pull-renames-refute-agy
+    role: review
+    seat: >-
+      agy / Gemini 3.1 Pro, cross-family, fresh context, given the function body and the diff.
+      Returned 7 findings and drove real change: its Finding 1 is the only edge this diff
+      INTRODUCES and is now cured (loud instead of silent, case K). Its Findings 2/3 are real but
+      were reproduced WITHOUT any rename, so they are inherited; Finding 4 is real but reproduces
+      byte-identically on origin/main's script, and its stated mechanism was wrong; Finding 7 is
+      refuted empirically. Every one was re-run here — none accepted on the seat's word.
+  - lane: pull-renames-grade
+    role: review
+    seat: >-
+      claude-opus-5 subagent on fresh context (generator != grader), instructed to construct each
+      failure itself rather than read docstrings, and told explicitly that REFUTED is an
+      acceptable answer so a padded finding list is not the path of least resistance.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane, so D3's non-Anthropic BUILD-seat requirement does not apply by its own terms
+  (">= 2 build lanes"). Cross-family pressure is present where it is load-bearing — on REVIEW: agy
+  refuted the draft and is the reason this PR contains the keep-local announcement and case K at
+  all. Two further cross-family seats were attempted and are NOT counted, because a seat that
+  produces nothing has not judged anything: tp1-qwen3.8-max returned "tp1_call: timed out" after
+  ~7 minutes, and codex/kimi were already dead at session start (arsenal probe: codex
+  UNKNOWN_ERR, kimi QUOTA_DEAD). Recorded ok:false in the council_run rather than silently
+  dropped.
+
+diff:
+  files: 3
+  net_lines: 101
+  measured_at: >-
+    `git diff --numstat <merge-base>...HEAD` (three-dot; two-dot on a branch accuses it of
+    deleting main's later additions, W102) taken after the second commit and before the pack was
+    written. Within the ~400 net-line guideline. 48 of the 101 lines are the two test cases and
+    their explanatory headers; the behavioural change is one flag plus a six-line announcement.
+
+residual_risks:
+  - >-
+    THIS PR DOES NOT CURE THE FLEET, ONLY PRO. Mini's 5-minute sync is driven by
+    `/Users/nuzantara/scripts/mini-git-pull.sh`, an unversioned HOME-only fork (613 lines, 11
+    `git stash` calls — the mechanism the versioned puller was written to avoid) launched by
+    `com.nuzantara.git-pull-main.5min`. Its line 203 is
+    `changed_paths=$(git -c core.quotepath=false diff --name-only HEAD "$TARGET_REF")` — the same
+    defective call, which this diff cannot reach. Mini also HAS the versioned script on disk
+    (2026-07-17) and simply does not run it. Superscar #1. Mini is additionally wedged right now
+    on a different disease (unmerged `QWEN.md` from an interrupted `stash pop` at 09:46, stash
+    holding only `qwen.md | 46 deletions` — the lowercase half of the 2026-08-31 rename). Ledger
+    row, not a silent "fleet cured".
+  - >-
+    Two inherited abort paths in `resolve_collisions()` are CONFIRMED and deliberately left. A
+    tracked incoming path deleted locally with a bare `rm` makes `cp -p "$REPO/$f"` fail; a
+    STAGED deletion makes `git show ":$f"` exit 128. Both abort the tick fail-safe (loud in the
+    log, nothing touched) and both were reproduced with a plain modify+delete, NO rename
+    involved, so they predate this change. `--no-renames` does enlarge the set of paths that can
+    reach them. Curing them here would be curing what the diff inherits.
+  - >-
+    A dir<->file type change also aborts the tick (`cp: ... is a directory`). Reproduced on THIS
+    branch and, as a control, on origin/main's script: byte-identical rc=1 and log line. So it is
+    inherited too — and the refuter's stated mechanism for it (the untracked branch moving the
+    whole tree via `mv -n`) is WRONG: `git ls-files --error-unmatch dir` returns 0 because the
+    pathspec matches `dir/file`, so it takes the TRACKED branch and dies on the `cp`.
+  - >-
+    The keep-local announcement tells the operator about the orphan; it does not MIGRATE the
+    file. Following a renamed keep-local path to its destination needs `--name-status` rename
+    topology plus a migration rule for the allowlist itself — a redesign, refused inside a
+    one-flag fix.
+  - >-
+    Arming this corpus makes a previously invisible suite blocking. It is hermetic by
+    construction (local bare repo, no network, per-case tmp dirs, PRO_GIT_PULL_NO_ALERT=1) and
+    was run ~12 times here, but this is the first time it runs anywhere but a Mac. The other 12
+    orphan shell corpora stay unarmed on purpose (that ledger row's own reasoning: W95).
+
+pii_scan: clean
+
+dissent:
+  - seat: agy-gemini-3.1-pro
+    status: CONFIRMED
+    objection: >-
+      "Upstream rename of a keep-local file silently splits and orphans runtime state: local
+      writes continue to the untracked old path while git and origin look at the new one."
+      Reproduced and accepted as the ONE edge this diff introduces. CURED, but not the way the
+      refuter implied — the local content is still kept (losing a Pro-authoritative superset
+      would be worse than the divergence), and what changes is that the orphaning is now
+      ANNOUNCED: a WARNING line plus a P0 telegram_alert, pinned by case K's guilt and innocence
+      halves.
+  - seat: agy-gemini-3.1-pro
+    status: CONFIRMED
+    objection: >-
+      "A tracked incoming path deleted locally with a bare `rm` makes `cp -p` fail and wedges the
+      tick; a STAGED deletion makes `git show \":$f\"` exit 128 and wedges it too." Both real,
+      both reproduced. NOT cured here: both were reproduced with a plain modify+delete and NO
+      rename, so they are inherited, and the disagreement with the refuter is about SCOPE, not
+      about the defects. Carried in residual_risks.
+  - seat: agy-gemini-3.1-pro
+    status: RETRACTED
+    objection: >-
+      "A dir->file type change makes the untracked branch `mv -n` the whole directory away, then
+      the tracked branch's `cp` fails on the moved parent." The WEDGE is real; the MECHANISM is
+      not, and the finding is not about this diff. `git ls-files --error-unmatch dir` returns 0
+      (the pathspec matches `dir/file`), so it never reaches the untracked branch; and running
+      origin/main's own script on the same fixture produces the identical rc=1 and identical log
+      line, so rename detection was never what protected it.
+  - seat: agy-gemini-3.1-pro
+    status: RETRACTED
+    objection: >-
+      "`--name-only` without `-z` splits filenames containing embedded newlines across
+      iterations." Measured on a real file named `a<newline>b`: git emits `"a\\nb"` — quoted,
+      C-escaped, ONE line, 7 bytes. `core.quotepath=false` disables non-ASCII quoting only; it
+      does not disable control-character escaping. The refuter marked this CERTAIN and was
+      speculating.
+  - seat: agy-gemini-3.1-pro
+    status: PLAUSIBLE
+    objection: >-
+      "Case J leaks its `tmp` directory when a fixture step aborts, and covers only a 100%
+      similarity rename." The leak is real and matches the pattern the file already uses in cases
+      D3 and I5, so fixing it in J alone would leave the corpus inconsistent — a corpus-wide trap
+      cleanup is a separate concern. The coverage half names shapes worth testing (rename into an
+      existing untracked destination, rename below 100% similarity); one of the four it named,
+      the keep-local rename, IS now covered by case K.
+  - seat: session (self-refute, before the council)
+    status: RETRACTED
+    objection: >-
+      My own commit message claimed "an untracked local file at a deleted path is handled exactly
+      as before", which quietly assumed such a case is reachable. It is not: a path origin
+      deletes is in HEAD by definition, so `git ls-files --error-unmatch` returns 0 and it ALWAYS
+      takes the tracked branch. Tested in a throwaway repo rather than reasoned. The claim
+      survives and is stronger than stated; the reasoning behind it was wrong.
+  - seat: session (self-refute, during the anti-vacuity control)
+    status: CONFIRMED
+    objection: >-
+      Case K's counter was written `WARN=$(grep -c ... || echo 0)`. `grep -c` PRINTS 0 and EXITS
+      1 on no-match, so the fallback appended a SECOND line and the arithmetic test died on
+      "0\\n0". The control tree still went red — by shell error, not by the assertion. A test that
+      fails for the wrong reason is not a proof; fixed to `|| true` and the control re-run, which
+      now fails cleanly on exactly the two announcement assertions.
+
+receipts:
+  - claim: >-
+      The wedge's cause is rename detection, measured on the live checkout rather than inferred
+    cmd: >-
+      git -C ~/nuzantara -c core.quotepath=false diff --name-only HEAD origin/main | wc -l, then
+      the same with --no-renames, then both scoped to .claude/rules/ and docs/scars/
+    result: >-
+      119 vs 121 paths; the two added are .claude/rules/cicatrix-scars.md and
+      cicatrix-scars-archive.md, both ` M` in git status — exactly the files git refuses to
+      delete during the ff
+    exit: 0
+    ts: 2026-09-01T16:40Z
+    seat: session (Pro)
+  - claim: >-
+      Case J is a real guilt proof, not a description of one
+    cmd: "bash scripts/pro/test_pro_git_pull.sh, run against the UNCURED script before the flag"
+    result: >-
+      5 FAIL — rc=1 (want 0), HEAD frozen at e24988d5 instead of 518c4247, old path still
+      present, destination missing, local mod not in backup. Its innocence assertion PASSED
+      pre-fix, so it is a control and not a passenger.
+    exit: 1
+    ts: 2026-09-01T16:30Z
+    seat: session (Pro)
+  - claim: >-
+      Case K is non-vacuous, and fails for the RIGHT reason
+    cmd: >-
+      control tree built by excising only the `git cat-file -e "$REMOTE:$f"` block, asserting the
+      warning string is absent from the copy, then running the suite against it
+    result: >-
+      66 passed / 2 failed, the two being exactly K's announcement assertions; the innocence
+      assertion stays green. First attempt failed with a shell error instead (the `grep -c ||
+      echo 0` defect) — counted as a non-proof and redone.
+    exit: 1
+    ts: 2026-09-01T17:05Z
+    seat: session (Pro)
+  - claim: >-
+      The dir<->file wedge the refuter reported is NOT introduced by this diff
+    cmd: >-
+      same fixture run twice — once against this branch's script, once against
+      `git show origin/main:scripts/pro/pro-git-pull.sh`
+    result: >-
+      identical on both: rc=1, HEAD not advanced, log line
+      "cp: .../l/dir is a directory (not copied)" then "ERROR: backup cp failed for tracked dir"
+    exit: 1
+    ts: 2026-09-01T16:52Z
+    seat: session (Pro)
+  - claim: >-
+      The embedded-newline finding is refuted, by bytes rather than by argument
+    cmd: >-
+      created a file literally named a<newline>b, then
+      git -c core.quotepath=false diff --name-only HEAD | od -c
+    result: '"   a   \\   n   b   "  \\n  — 7 bytes, ONE line'
+    exit: 0
+    ts: 2026-09-01T16:49Z
+    seat: session (Pro)
+  - claim: >-
+      The corpus this PR strengthens was run by NO workflow, and is armed on both layers now
+    cmd: >-
+      grep -rn test_pro_git_pull .github/workflows/ (before); then after the edit,
+      python -m pytest scripts/tests/test_immune_enforcement_trigger_symmetry.py -q
+    result: >-
+      before: no output, rc=1 — the only repo-wide mentions were a wrapper comment and the modus
+      PENDING-ARMS row that already censused it as one of 13 orphans. After: 12 passed.
+    exit: 0
+    ts: 2026-09-01T16:44Z
+    seat: session (Pro)
+  - claim: >-
+      Editing the workflow introduced no new actionlint finding
+    cmd: >-
+      actionlint on origin/main's copy extracted to a scratch tree, then on this tree, comparing
+      the sorted SC-code sets
+    result: >-
+      6 findings each, identical SC2221/SC2222 set, one line number shifted 183->185 by the two
+      added lines. A remembered count of 4 was wrong; the control settled it.
+    exit: 0
+    ts: 2026-09-01T16:38Z
+    seat: session (Pro)
+  - claim: >-
+      This fix does not reach Mini, and Mini carries the same defective line
+    cmd: >-
+      ssh mini, read-only: grep -n "name-only" /Users/nuzantara/scripts/mini-git-pull.sh and
+      grep -c "git stash", plus ls of the versioned script and the loaded plist
+    result: >-
+      line 203 has the identical `diff --name-only HEAD "$TARGET_REF"` with no --no-renames; 11
+      `git stash` call sites; `~/nuzantara/scripts/pro/pro-git-pull.sh` present (2026-07-17) but
+      not the program launchd runs
+    exit: 0
+    ts: 2026-09-01T17:00Z
+    seat: session (Pro)
+  - claim: >-
+      The suite is green and the pre-existing assertions are untouched
+    cmd: "bash scripts/pro/test_pro_git_pull.sh"
+    result: "68 passed / 0 failed — 56 pre-existing + 6 (case J) + 7 (case K), minus one merged count"
+    exit: 0
+    ts: 2026-09-01T17:06Z
+    seat: session (Pro)
