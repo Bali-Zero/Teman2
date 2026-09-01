@@ -175,4 +175,4 @@ spend:
   adversarial_rounds: 1
 
 diff:
-  net_lines: "34 files, +284/-133, 3 commits"
+  net_lines: "measured by CI from git numstat at merge-base..HEAD; not narrated here because the local three-dot count and the CI count disagreed (superscar family nine shape, two-dot vs merge ref) — the CI-computed value governs"
