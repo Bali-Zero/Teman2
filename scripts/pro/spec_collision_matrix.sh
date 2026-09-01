@@ -100,6 +100,8 @@ build_origin_action() {
     *) rm -rf "$tmp"; echo "UNCONSTRUCTIBLE"; return 1 ;;
   esac
   git -C "$tmp/w" commit -qm "origin: $action" >/dev/null || fatal "origin commit $action"
+  assert_origin_action "$tmp/w" "$action" \
+    || fatal "incoming action '$action' did not produce what its label claims at $P"
   git -C "$tmp/w" push -q origin HEAD:main || fatal "origin push $action"
   rm -rf "$tmp"; return 0
 }
@@ -122,6 +124,26 @@ assert_local_state() {
     dangling_symlink) [ -L "$LOCAL/$P" ] && [ ! -e "$LOCAL/$P" ] ;;
     symlink)          [ -L "$LOCAL/$P" ] && [ -e "$LOCAL/$P" ] ;;
     untracked)        [ "$tracked" = no ] && [ -f "$LOCAL/$P" ] && [ ! -L "$LOCAL/$P" ] ;;
+    *) return 1 ;;
+  esac
+}
+
+# assert_origin_action: the POST-CONDITION for the B axis, symmetric with assert_local_state.
+# `build_origin_action`'s only safety net was its trailing `git commit || fatal`, which catches
+# "nothing changed" but NOT a partial or wrong change that still leaves something to commit --
+# the same masking class as the `del_staged` arm, on the other axis. So read back what actually
+# stands at $P in the pushed origin, by MODE and TYPE, and refuse to measure a cell whose
+# incoming side is not what its label says. Note git's object store is case-SENSITIVE even when
+# the filesystem is not, which is what makes the case-only assertion meaningful.
+assert_origin_action() {
+  local wt ent
+  wt="$1"
+  ent="$(git -C "$wt" ls-tree HEAD -- "$P" 2>/dev/null | awk '{print $1" "$2}')"
+  case "$2" in
+    modify)                              [ "$ent" = "100644 blob" ] ;;
+    delete|rename_away|rename_case_only) [ -z "$ent" ] ;;
+    rename_away_and_tree|tree_at_path)   [ "$ent" = "040000 tree" ] ;;
+    typechange)                          [ "$ent" = "120000 blob" ] ;;
     *) return 1 ;;
   esac
 }
