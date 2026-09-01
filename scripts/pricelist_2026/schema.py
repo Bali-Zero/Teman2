@@ -8,10 +8,23 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
+# Single source of truth for the digits — matches SUPPORT_WHATSAPP in
+# apps/backend-rag/backend/app/core/config.py and CANONICAL_WHATSAPP in
+# scripts/patch_pricing_contact_block.py (Meta-verified Bali Zero number).
+# `whatsapp` (human-readable) and `wa_link` (wa.me href) are both derived
+# from these digits below so they cannot disagree — a prior hand-typed
+# duplication let `wa_link` drift to a different number's digits while
+# `whatsapp` was updated (see docs/pricing/Bali_Zero_Price_List_2026.md
+# WhatsApp link mismatch, fixed 2026-08-31).
+_CANONICAL_WHATSAPP_DIGITS = "628213465159"
+
 CANONICAL_CONTACT = {
     "email": "zero@balizero.com",
-    "whatsapp": "+62 821 3465 159",
-    "wa_link": "https://wa.me/628213454721",
+    "whatsapp": (
+        f"+{_CANONICAL_WHATSAPP_DIGITS[:2]} {_CANONICAL_WHATSAPP_DIGITS[2:5]} "
+        f"{_CANONICAL_WHATSAPP_DIGITS[5:9]} {_CANONICAL_WHATSAPP_DIGITS[9:]}"
+    ),
+    "wa_link": f"https://wa.me/{_CANONICAL_WHATSAPP_DIGITS}",
     "location": "Kerobokan, Bali, Indonesia",
     "website": "balizero.com",
 }

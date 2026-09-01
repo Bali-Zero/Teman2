@@ -171,6 +171,7 @@ on:
       - Golden Rule
       - Lint — GARUDA_ENVIRONMENT workflow value matches DB schema
       - Lint i18n providers
+      - Merah Putih DAY contrast guard
       - Migration number uniqueness lint
       - Migration ROLLBACK marker lint
       - Magazine auto-assets contract
@@ -191,6 +192,8 @@ on:
       - PR size taxonomy (advisory)
       - Monthly PG Restore Drill
       - Restore drill wiring tests
+      - Promotion readiness tests
+      - queue doctor tests
       - "runbook section numbers are unique"
       - Root Guard
       - SBOM (Software Bill of Materials)

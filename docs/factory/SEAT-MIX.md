@@ -188,3 +188,28 @@ launchctl load ~/Library/LaunchAgents/com.nuzantara.seat-mix.daily.plist
 ```
 
 on both Pro and Mini (the H24 node) -- not on M5, which runs no daemons/cron by design.
+
+## Lane outcomes (mini, 2026-08-28..2026-08-30, generated 2026-08-30 20:07:29 UTC)
+
+```
+commits_in_window      120   (with a (#NNNN) merge marker: 120)
+fix-prefixed commits   42   (eligible to chain, i.e. touching a non-high-churn file: 42)
+correction chains      18   (rate over fix-prefixed: 0.4286)
+high-churn excluded    (none)
+
+builder attribution    117/118  (99.2%)   source: fetched
+  by host              {'nuzantara': 37, 'mini-pro2': 27, 'air-m5': 53}
+
+time to MERGE          n=118  median 0.51h  p90 3.7h
+```
+
+A correction chain is a `fix`-prefixed commit sharing at least one FILE with an
+earlier non-`fix` commit in the same window — never the subject prefix alone, which
+would reward relabelling. `time to MERGE` is creation-to-merge and is deliberately
+not called time-to-green: no check-suite history is fetched here.
+
+TWO POPULATIONS, on purpose and stated rather than blurred: the commit counts come
+from `git log --since/--until` (committer date, LOCAL timezone) and the attribution
+and merge-time counts come from the GitHub API filtered on `mergedAt` (UTC). They
+cover nearly the same set and not exactly the same set, so do not compute a ratio
+with a numerator from one and a denominator from the other.

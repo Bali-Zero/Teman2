@@ -1,0 +1,33 @@
+task_id: craft-s-enforcement-now
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Wave-2 Squad S, lane 6: 2/9 readiness → enforcement NOW.
+
+  Zero: «anche subito se siamo pronti». This measures "ready" rather than
+  assuming it, and moves the one date that measurably is.
+
+  Every one of the 43 open PRs linted twice — with today's dates, and with one
+  enforcement-date constant at a time pulled into the past — staged exactly as
+  harness-floor.yml stages a pack. Result: moving SEAT_RULES_ENFORCEMENT_DATE
+  alone turns ZERO open PRs red; R9_R11 turns 9 red; EVIDENCE_ROOT turns 3.
+constraints:
+  - "Each date measured ALONE. Moving them together hides which one costs what,
+    and the whole value of this lane is the decomposition."
+  - "The measurement must replicate CI's staging including --source-path. Without
+    it every pack falsely reads as a deprecated evidence/ root — the first run of
+    this harness did exactly that and would have reported a cause that does not
+    exist."
+  - "A squad never decides a needs-ruling item (battle plan §4 rule 9). This PR
+    moves the date with zero measured cost and PRICES the other two; it does not
+    rule on them."
+acceptance:
+  - text: "Moving SEAT_RULES_ENFORCEMENT_DATE alone reddens no open PR."
+    probe: "lint all 43 open PRs with that constant alone in the past"
+  - text: "The other two dates are priced per-PR, with the cause named for each."
+    probe: "the same harness, per constant"
+  - text: "The obvious cure for the R9 nine is tested and REJECTED by measurement."
+    probe: "re-lint the nine with COUNCIL_REVIEW_SEATS widened"
+  - text: "The lint's own corpus is unmoved."
+    probe: "pytest scripts/tests/test_evidence_pack_lint.py"

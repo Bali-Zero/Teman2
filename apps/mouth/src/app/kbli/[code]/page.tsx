@@ -12,7 +12,7 @@ import {
   getGoldContent,
   getKbliDatasetLastModified,
 } from "@/lib/kbli-data.server";
-import { formatTimeframe } from "@/lib/kbli-derive";
+import { formatTimeframe, riskLabelEn } from "@/lib/kbli-derive";
 import { baliBlockClause, isNationalClosure } from "@/lib/kbli-bali-block";
 import {
   isLicensingVerificationPending,
@@ -190,7 +190,6 @@ export default async function KBLICodePage({
         funnel="kbli"
         sessionId="SSR"
         trust={{
-          clientCount: 5000,
           rating: GOOGLE_RATING,
           reviewCount: GOOGLE_REVIEW_COUNT,
         }}
@@ -880,7 +879,8 @@ export default async function KBLICodePage({
                             Risk Level
                           </span>
                           <span className="text-sm font-semibold text-[var(--foreground)]">
-                            {kbli.licensing[0].riskCategory}
+                            {riskLabelEn(kbli.licensing[0].riskCategory) ??
+                              kbli.licensing[0].riskCategory}
                           </span>
                         </div>
                         <div

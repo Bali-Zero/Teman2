@@ -10,6 +10,11 @@ import {
   type QuestionId,
 } from "@/lib/secondhome-studio/sequence";
 import {
+  MERAH_PUTIH_DAY_BODY_CSS,
+  MERAH_PUTIH_DAY_CLASS,
+  MERAH_PUTIH_DAY_VARS,
+} from "@/lib/theme/merahPutihDayVars";
+import {
   E33_LIVE_PRICE_CATEGORY,
   resolveSecondHomePriceKey,
 } from "@/lib/secondhome-studio/pricing-key";
@@ -138,35 +143,52 @@ const mastheadLabelStyle: React.CSSProperties = {
 /** WCAG contrast fix (2026-08-24): `--color-border-subtle` composites to
  *  ~1.2:1 against the editorial card backdrop — invisible, and below the
  *  3.0:1 floor for non-text UI boundaries (WCAG 1.4.11). No shipped border
- *  token clears that floor on the editorial theme (`--border-strong` tops
- *  out at ~1.9:1 there), so this derives an opaque-enough value from
- *  `--text-primary` instead of inventing a bare hex — it composites to
- *  ~3.5:1 against the editorial backdrop and stays theme-adaptive. */
+ *  token cleared that floor on the editorial theme (`--border-strong` topped
+ *  out at ~1.9:1 there), so this derived an opaque-enough value from
+ *  `--text-primary`: `color-mix(--text-primary 45%, transparent)`, which
+ *  composited to ~3.5:1 against the editorial backdrop.
+ *
+ *  MERAH PUTIH DAY (2026-08-31): that mix claimed to "stay theme-adaptive",
+ *  and it does not. A FIXED percentage is tuned to one ground: composited over
+ *  the day palette it lands #969ba6 on the white QuestionCard (2.79:1) and
+ *  #92969f on carta (2.74:1) — under the same 3:1 floor the comment invokes.
+ *  This is the Back button, rendered on EVERY question step and again at the
+ *  verdict stage, so it is not an edge case. On a light ground the shipped
+ *  token finally works: `--border-strong` (#7a8093) measures 3.94:1 on the
+ *  card and 3.64:1 on carta. Mixing a token toward transparent is safe for a
+ *  TINT, but a boundary's contrast has to be re-measured whenever the ground
+ *  flips — the percentage is not the invariant, the ratio is. */
 const navButtonStyle: React.CSSProperties = {
   padding: "var(--space-2, 0.5rem) var(--space-4, 1.2rem)",
-  borderRadius: 8,
-  border: "1px solid color-mix(in srgb, var(--text-primary) 45%, transparent)",
+  borderRadius: 12,
+  border: "1px solid var(--border-strong)",
   background: "transparent",
   color: "var(--text-primary)",
   cursor: "pointer",
   minHeight: 44,
 };
 
-/** WCAG contrast fix (2026-08-24): white-on-`var(--accent-funnel)` measured
- *  3.62:1 on the visa/editorial pairing (and 4.36:1 on the editorial-base
- *  blue) — both fail the 4.5:1 floor for this 16px/600 text, which is
- *  normal-size (large-text exemption needs >=24px, or >=18.66px at
- *  weight>=700). This funnel sells E33E/E33F senior visas (55+), whose own
- *  audience skews toward LOWER contrast tolerance, not higher — so the cure
- *  is darkening the fill to clear 4.5:1, never stretching the label to
- *  dodge the floor via the large-text carve-out. Derived via color-mix so
- *  it holds across every `--accent-funnel` resolution (per-theme, not one
- *  hardcoded hex) — verified >=4.5:1 on both known resolutions. */
+/** The primary CTA takes the ACTION red, `--cta-bg` (#D01033 under the Merah
+ *  Putih DAY set): white on it measures 5.52:1, clearing the 4.5:1 floor for
+ *  this 16px/600 normal-size text (the large-text carve-out needs >=24px, or
+ *  >=18.66px at weight>=700 — never a reason to stretch a label instead of
+ *  fixing the fill, least of all on a funnel selling senior visas to a 55+
+ *  audience whose contrast tolerance skews lower, not higher).
+ *
+ *  This REPLACES a 2026-08-24 fix that read
+ *  `color-mix(in srgb, var(--accent-funnel) 85%, black)`. That was correct for
+ *  the dark theme it was written under — white on the then-current `#ff3344`
+ *  measured 3.62:1, so the fill was darkened until it cleared. Under the DAY
+ *  palette the premise is gone (white on #D01033 already clears), and the
+ *  workaround had two costs worth removing: it painted a colour that exists in
+ *  no token (measured live as rgb(170, 14, 39)), and it built the CTA out of the
+ *  STRUCTURE red when R4 §3 assigns primary CTAs to the ACTION red — the two
+ *  duties red is allowed to have, and the whole point of keeping them apart. */
 const primaryNavButtonStyle: React.CSSProperties = {
   ...navButtonStyle,
   marginLeft: "auto",
   border: "none",
-  background: "color-mix(in srgb, var(--accent-funnel) 85%, black)",
+  background: "var(--cta-bg, var(--accent-funnel-text))",
   color: "var(--text-on-accent, #fff)",
   fontWeight: 600,
 };
@@ -610,8 +632,21 @@ export function StudioApp() {
       // `funnel="visa"` prop (packages/core/components/apps/AppFrame.tsx);
       // this route has no AppFrame ancestor, so it sets the attribute here.
       data-funnel="visa"
-      className="bz-shs-studio"
+      className={`bz-shs-studio ${MERAH_PUTIH_DAY_CLASS}`}
+      style={{
+        // MERAH PUTIH DAY (R4 identity law) — see merahPutihDayVars.ts for the
+        // scoping contract and every computed ratio. Inline HERE so it beats the
+        // editorial theme's navy ground and the retired #ff3344 on this route
+        // only, and so /visa/layout.tsx's forced Montserrat stops here.
+        ...MERAH_PUTIH_DAY_VARS,
+        background: "var(--surface-base)",
+        color: "var(--text-primary)",
+        minHeight: "100vh",
+      }}
     >
+      {/* See SecondHomeLanding: <body> is an ancestor and keeps the editorial
+          navy otherwise — measured 88px of it below this wrapper. */}
+      <style>{MERAH_PUTIH_DAY_BODY_CSS}</style>
       <StudioAtmosphere />
       <div
         className="bz-shs-content"

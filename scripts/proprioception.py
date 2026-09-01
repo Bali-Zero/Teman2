@@ -76,6 +76,8 @@ KNOWN_BOUNDARY_CLASSES = [
     "worktree<->gate",          # does git actually invoke a pre-push hook in this worktree (#2)
     "tunnel<->reachable",       # declared network tunnel/forward vs live reachability (2026-08-21)
     "declared<->enforced",      # policy-as-code in the repo vs what the node actually enforces (L13, 2026-08-31)
+    "home<->home",              # the SAME control-plane file on two machines (global CLAUDE.md, 2026-08-31)
+    "door<->door",              # the SAME rule in each CLI's auto-loaded door file (2026-08-31)
 ]
 
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
@@ -902,6 +904,556 @@ def probe_repomap_size(root: Path, args: dict, timeout: int) -> tuple[str, int, 
     ]
 
 
+_CANON_OPEN_RE = re.compile(r"<!--\s*CANON:([A-Za-z0-9._-]+)\s*-->")
+_CANON_CLOSE_RE = re.compile(r"<!--\s*/CANON:([A-Za-z0-9._-]+)\s*-->")
+# The SHAPE of a marker, case-insensitively. Used only to notice one that a
+# human clearly MEANT and mis-spelled. Accepting it as valid would let
+# `canon:ship` and `CANON:ship` name two different blocks under one id, and the
+# machine carrying the lowercase spelling would read as merely ABSENT.
+_CANON_ANYCASE_RE = re.compile(r"<!--\s*/?CANON:([A-Za-z0-9._-]+)\s*-->", re.IGNORECASE)
+# A fence opens or closes on any line whose first non-space run is three or more
+# backticks or tildes. Deliberately coarser than CommonMark: an over-eager
+# toggle can only SUPPRESS a marker, and a suppressed marker on one machine
+# surfaces as "ABSENT here" against its peers rather than as silent agreement.
+_CANON_FENCE_RE = re.compile(r"^(?:`{3,}|~{3,})")
+_CANON_CLOCK_SKEW_TOLERANCE_MIN = 15.0
+
+
+def _canon_blocks(text: str) -> dict[str, str]:
+    """{block id: sha256-16 of its normalised body}.
+
+    Normalised on whitespace only — trailing spaces and line-ending differences
+    between machines are not doctrine drift, and treating them as drift would
+    make the first real finding arrive inside a crowd of false ones. Anything
+    else, including a single reworded sentence, changes the digest, which is the
+    point: this compares MEANING-BEARING text, and it cannot tell a fix from a
+    regression, only that the copies stopped agreeing.
+
+    MARKERS MUST OWN THEIR WHOLE LINE. Recognising a marker anywhere in a line
+    lets prose that merely QUOTES a close tag terminate the block early, so all
+    doctrine after that sentence is silently excluded from the comparison —
+    including on a machine where it has drifted. Measured (Codex sol,
+    2026-08-31): two files differing after an inline `<!-- /CANON:x -->` inside a
+    sentence hashed IDENTICALLY. A doctrine file that documents its own markers
+    is exactly the file where that happens.
+
+    MALFORMED CANON IS ITS OWN FINDING, never a comparable block. An unclosed
+    block, a duplicated id and a MIS-CASED marker all get a `!`-suffixed key, and
+    the probe treats any such key as a finding even when every machine agrees —
+    two machines carrying the SAME malformed marker is not fleet health, and it
+    is also the cheapest way to remove a block from comparison without deleting
+    it. `<!-- canon:x -->` used to parse to nothing at all and was not even
+    flagged: an operator who marked a block and got the case wrong got silence,
+    and the machine reading it was indistinguishable from one where the doctrine
+    is genuinely ABSENT.
+
+    FENCED MARKERS ARE EXAMPLES, NOT MARKUP. A `<!-- CANON:id -->` inside a
+    ``` or ~~~ fence is displayed text — the docstring above shows one — and used
+    to open a real, comparable block. Its body still counts as body when a block
+    is already open, because a fence's CONTENT is content; only marker
+    recognition is suppressed.
+
+    DECLARED LIMIT: a real marker accidentally written inside a fence on EVERY
+    machine drops out of comparison in silence, the same way an id nobody ever
+    marked does. It is not flagged, because flagging it would flag every
+    documentation example in every doctrine file, which is the noise that gets a
+    probe switched off. The one case where it is worth saying out loud — a file
+    whose ONLY canon-shaped lines are fenced — is named in the UNPROBEABLE
+    evidence rather than left as a bare "nothing is marked".
+    """
+    blocks: dict[str, str] = {}
+    seen: set[str] = set()
+    open_id: str | None = None
+    body: list[str] = []
+
+    def close(bid: str) -> None:
+        digest = hashlib.sha256("\n".join(ln.rstrip() for ln in body).encode()).hexdigest()[:16]
+        if bid in seen:
+            # Last-wins would hide drift in every occurrence but the last.
+            blocks[f"{bid}!duplicate"] = digest
+        else:
+            blocks[bid] = digest
+        seen.add(bid)
+
+    in_fence = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if _CANON_FENCE_RE.match(stripped):
+            in_fence = not in_fence
+            if open_id is not None:
+                body.append(line)
+            continue
+        if in_fence:
+            # Inside a fence the text is DISPLAYED, not asserted. A file that
+            # documents its own markers shows them here; this parser's own
+            # docstring does exactly that. Recognising them would grant a live
+            # ceiling to an example, which is the same defect L10-PR1 found
+            # earlier in this wave. Fence lines and their contents still count
+            # as body when a block is open — they are content, just not markup.
+            if open_id is not None:
+                body.append(line)
+            continue
+        closing = _CANON_CLOSE_RE.fullmatch(stripped)
+        if closing and open_id is not None and closing.group(1) == open_id:
+            close(open_id)
+            open_id, body = None, []
+            continue
+        opening = _CANON_OPEN_RE.fullmatch(stripped)
+        if opening and open_id is None:
+            open_id, body = opening.group(1), []
+            continue
+        miscased = _CANON_ANYCASE_RE.fullmatch(stripped)
+        if miscased:
+            # Marker-shaped, outside a fence, and not the exact spelling: someone
+            # meant this and got the case wrong. Parsing it to nothing is the
+            # silence this comparator exists to remove, so it becomes a finding
+            # of its own rather than a block that quietly does not exist. The
+            # digest is of the marker line, so two machines carrying the same
+            # typo still read as malformed rather than as agreement.
+            blocks[f"{miscased.group(1)}!miscased"] = hashlib.sha256(
+                stripped.encode()
+            ).hexdigest()[:16]
+        if open_id is not None:
+            body.append(line)
+    if open_id is not None:
+        blocks[f"{open_id}!unclosed"] = hashlib.sha256(
+            "\n".join(ln.rstrip() for ln in body).encode()
+        ).hexdigest()[:16]
+    return blocks
+
+
+def _canon_shaped_lines_in_fences(text: str) -> int:
+    """How many canon-SHAPED lines this file hides inside fences.
+
+    Only ever used to make one message honest: a file whose canon markers are
+    all fenced reads exactly like a file that was never marked, and telling
+    those two apart is the difference between "do the operator step" and "you
+    already did it, in a code block".
+    """
+    count, in_fence = 0, False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if _CANON_FENCE_RE.match(stripped):
+            in_fence = not in_fence
+            continue
+        if in_fence and _CANON_ANYCASE_RE.fullmatch(stripped):
+            count += 1
+    return count
+
+
+MALFORMED_SUFFIXES = ("!unclosed", "!duplicate", "!miscased")
+
+
+def _is_malformed(block_id: str) -> bool:
+    return block_id.endswith(MALFORMED_SUFFIXES)
+
+
+def probe_canon_blocks(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """Do the fleet's three copies of the global CLAUDE.md agree where it matters?
+
+    THE BOUNDARY: `~/.claude/CLAUDE.md` on M5 <-> on Pro <-> on Mini. It is
+    injected at turn 1 into every session and every subagent on the machine that
+    holds it, it is per-machine by design, and nothing has ever compared the
+    copies. Measured 2026-08-31: M5 27,377 B, Pro 22,795 B, Mini 22,795 B, and
+    the divergence is not cosmetic — Pro and Mini were missing the entire
+    SHIP-LIFECYCLE HARD RULE, carried the SUPERSEDED "no paid APIs ever" wording
+    of a rule Zero downgraded on 2026-06-04, and still named a seat retired on
+    2026-07-19. Two of those govern how work ships and what it may cost.
+
+    BLOCK LEVEL, NEVER WHOLE FILE. The file is SUPPOSED to differ per machine —
+    it carries machine-specific paths and roles — so hashing the whole thing
+    would alarm on every legitimate difference and be switched off within a week.
+    Only regions a human has explicitly marked as canon are compared:
+
+        <!-- CANON:<id> -->  ...doctrine...  <!-- /CANON:<id> -->
+
+    UNPROBEABLE WHEN NOTHING IS MARKED, which today is every machine (measured:
+    `grep -c 'CANON:'` returns 0 on M5 and 0 on Pro). A comparator that reported
+    "all blocks agree" across three files containing zero blocks would be the
+    purest possible instance of the disease this organ exists to detect, so the
+    absence of markers is reported as an absence and never as agreement.
+
+    READ-ONLY, and deliberately not a fourth copy of the thing it watches
+    (superscar family #1): the probe lives in the repo, runs from the checkout,
+    and never writes to `~/.claude/`.
+    """
+    home = Path(os.path.expanduser(args.get("home", "~")))
+    target = home / ".claude" / "CLAUDE.md"
+    report_dir = Path(os.path.expanduser(args.get("report_dir", "~/.claude/canon-blocks.d")))
+    max_age_min = float(args.get("max_age_min", 1440))
+
+    if not target.is_file():
+        return UNPROBEABLE, 0, [f"{target} absent — this machine has no global doctrine file"]
+
+    raw = target.read_text(encoding="utf-8", errors="replace")
+    local = _canon_blocks(raw)
+    if not local:
+        why = (
+            f"{target} carries no <!-- CANON:<id> --> markers — nothing is declared canon yet, "
+            "so there is nothing to compare (marking the blocks is an operator step)"
+        )
+        fenced = _canon_shaped_lines_in_fences(raw)
+        if fenced:
+            why += (
+                f" — note that {fenced} canon-shaped line(s) ARE present but sit inside fenced "
+                "code blocks, where they read as examples and are deliberately ignored; if one "
+                "of them was meant as a real marker, move it out of the fence"
+            )
+        return UNPROBEABLE, 0, [why]
+
+    # ONE FRAGMENT PER MACHINE. A single shared report is rewritten whole by
+    # every publisher, so two machines pushing in any order erase each other's
+    # entries with no lock and no re-merge on receipt — and a peer that was
+    # ERASED is indistinguishable from one that went quiet (kimi-code/k3,
+    # 2026-08-31). Reading a directory instead means a machine can only ever
+    # affect its own line.
+    if not report_dir.is_dir():
+        return UNPROBEABLE, 0, [
+            f"{len(local)} canon block(s) here, but no fleet fragments at {report_dir} — "
+            "one machine must run scripts/canon_blocks_publish.py before any machine can compare"
+        ]
+
+    machines: dict[str, dict] = {}
+    seen_at: dict[str, object] = {}
+    unreadable: list[str] = []
+    for frag in sorted(report_dir.glob("*.json")):
+        try:
+            data = json.loads(frag.read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            unreadable.append(f"{frag.name} ({type(exc).__name__})")
+            continue
+        # A syntactically valid fragment can still be the wrong SHAPE. Reading it
+        # optimistically raises inside the enclosing proprioception run, which
+        # turns one malformed file into a dead report for every OTHER boundary
+        # too (Codex sol, 2026-08-31).
+        if not isinstance(data, dict) or not isinstance(data.get("blocks"), dict):
+            unreadable.append(f"{frag.name} (wrong shape)")
+            continue
+        name = str(data.get("machine") or frag.stem)
+        machines[name] = data["blocks"]
+        seen_at[name] = data.get("seen_at")
+
+    self_name = str(args.get("hostname") or socket.gethostname().split(".")[0])
+
+    # THE SELF ENTRY. The report is merged, so it contains an entry for the
+    # machine reading it. Left in, a report holding ONLY this machine reads as
+    # "1 canon block identical across 1 machine" — zero peers masquerading as
+    # fleet agreement, which is the exact disease this organ exists to detect
+    # (Codex sol, 2026-08-31). Pulled out and judged separately: if it differs,
+    # the cause is local and the remedy is local, and saying "differs from
+    # <this machine>" would send a reader looking at the others.
+    self_findings: list[str] = []
+    self_blocks = machines.pop(self_name, None)
+    if isinstance(self_blocks, dict) and self_blocks != local:
+        self_findings.append(
+            f"this machine's own published snapshot is out of date "
+            f"({len(self_blocks)} block(s) published, {len(local)} here) — "
+            "run scripts/canon_blocks_publish.py; this is local, not fleet drift"
+        )
+
+    # FRESHNESS IS PER MACHINE, and its absence is not freshness. The report is
+    # merged and its mtime belongs to the LAST publisher only, so an entry with
+    # no `seen_at` would be trusted at whatever age it happens to be — and
+    # touching or republishing the container file would revive an arbitrarily
+    # stale peer (Codex sol, 2026-08-31). Nothing has ever published, so there is
+    # no back-compatible reader to protect: an unstamped entry is unverifiable,
+    # and unverifiable is reported, never assumed fresh.
+    quiet_names: set[str] = set()
+    quiet: list[str] = []
+    now = time.time()
+    for machine in sorted(machines):
+        ts = seen_at.get(machine)
+        try:
+            age = (now - float(ts)) / 60  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            quiet_names.add(machine)
+            quiet.append(f"{machine} (no usable seen_at stamp)")
+            continue
+        # A stamp in the FUTURE never ages out, so a peer whose clock runs ahead
+        # would be believed forever even if it died a year ago — the exact lie
+        # this field was added to prevent, reintroduced by clock skew
+        # (kimi-code/k3, 2026-08-31). A small tolerance absorbs ordinary drift;
+        # beyond it the stamp is unusable, not fresh.
+        if age < -_CANON_CLOCK_SKEW_TOLERANCE_MIN:
+            quiet_names.add(machine)
+            quiet.append(f"{machine} (seen_at is {int(-age)} min in the FUTURE — clock skew)")
+            continue
+        if age > max_age_min:
+            quiet_names.add(machine)
+            quiet.append(f"{machine} (last published {int(age)} min ago)")
+    # Filter by NAME, never by a string prefix of the display line: two machines
+    # whose names share a space-delimited prefix would drop each other (#3).
+    peers = {k: v for k, v in machines.items() if k not in quiet_names}
+
+    malformed = sorted(bid for bid in local if _is_malformed(bid))
+
+    if not peers:
+        ev = list(self_findings)
+        ev += [f"CANON:{bid.split('!')[0]} is malformed here ({bid.split('!')[1]})" for bid in malformed]
+        detail = ", ".join(quiet + unreadable) if (quiet or unreadable) \
+            else "no machine other than this one has published a fragment"
+        ev.append(f"no peer has published within {int(max_age_min)} min — nothing to compare against: {detail}")
+        # Malformed canon and a stale self snapshot are LOCAL facts, true whether
+        # or not a peer ever answers, so they are reported as findings here while
+        # the comparison itself is honestly declared unprobeable.
+        return (DIVERGED, len(self_findings) + len(malformed), ev) if (self_findings or malformed) \
+            else (UNPROBEABLE, 0, ev)
+
+    findings: list[str] = list(self_findings)
+    for bid in malformed:
+        base, why = bid.split("!", 1)
+        findings.append(
+            f"CANON:{base} is malformed here ({why}) — a malformed marker is a finding even "
+            "when every machine carries it, because it is also how a block leaves the comparison"
+        )
+    for block_id, digest in sorted(local.items()):
+        for machine, blocks in sorted(peers.items()):
+            other = blocks.get(block_id)
+            if other is None:
+                findings.append(f"CANON:{block_id} is here but ABSENT on {machine}")
+            elif other != digest:
+                findings.append(f"CANON:{block_id} differs from {machine} ({digest} vs {other})")
+    for machine, blocks in sorted(peers.items()):
+        for block_id in sorted(set(blocks) - set(local)):
+            findings.append(f"CANON:{block_id} exists on {machine} but is ABSENT here")
+
+    findings.extend(f"fragment {u} is unreadable" for u in unreadable)
+    if findings:
+        return DIVERGED, len(findings), findings
+    skipped = quiet + unreadable
+    note = f" (ignoring: {', '.join(skipped)})" if skipped else ""
+    return RECONCILED, 0, [
+        f"{len(local)} canon block(s) identical across this machine and "
+        f"{len(peers)} peer(s){note}"
+    ]
+
+
+DOOR_REFERENCE = "CLAUDE.md"
+DOOR_FILES = ("CLAUDE.md", "AGENTS.md", "GEMINI.md", "QWEN.md")
+
+
+def probe_door_canon_parity(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """Do the repo's DOOR files bind every builder with the same rules?
+
+    THE BOUNDARY: `CLAUDE.md` <-> `AGENTS.md` <-> `GEMINI.md` <-> `QWEN.md`, the
+    files each CLI auto-loads at the top of a session. The CI and repo layer
+    already binds every model equally — a gate does not care which family opened
+    the PR. The HARNESS layer does not: an external seat that BUILDS starts with
+    whatever its own door says, and nothing has ever compared those doors. This
+    probe closes that gap at the door, which is the only place it can be closed
+    before the first edit rather than after the first PR.
+
+    BLOCK LEVEL, NEVER WHOLE FILE — the same rule as the fleet comparator, for
+    the same reason. These files are SUPPOSED to differ: each carries its own
+    CLI's invocation, its own model roster, its own sandbox flags. Only regions a
+    human marked as canon are compared, and the parser is the one `_canon_blocks`
+    shared with the fleet probe and the publisher, never a second copy of the
+    definition (two parsers drift, and the drift reads as doctrine drift).
+
+    CLAUDE.md IS THE REFERENCE, and that is a decision rather than an accident:
+    it is the door the codeowner reads and the one the rulings land in first, so
+    "the others agree with it" is the direction that means something. A block
+    present in a peer and absent from the reference is still a finding — it is
+    doctrine that binds one seat and not the others, which is the disease.
+
+    CASE MATTERS AND THE SHELL WILL LIE ABOUT IT. `QWEN.md` is the name the Qwen
+    CLI opens, and on the APFS default (case-insensitive) `[ -f QWEN.md ]`,
+    `ls` and `wc` all answer for a lowercase `qwen.md` — measured 2026-08-31, the
+    two names shared inode 343120045 on this machine while git's index held only
+    the lowercase one. EXISTENCE is therefore established from git, never from
+    the filesystem.
+
+    TWO SOURCES, NAMED RATHER THAN BLURRED. Existence comes from `git ls-files`
+    (the INDEX of this checkout); CONTENT comes from the working tree. Neither
+    choice is free and both were argued (kimi-code/k3, 2026-08-31, which called
+    for HEAD and for hashing git blobs):
+
+      - The INDEX, not HEAD, because the question is "does the seat that opens a
+        door in THIS checkout get the rules" — a door staged here is a door here.
+        The cost is real and declared: a staged-but-uncommitted door reads as
+        present although a fresh clone would not get it, and `git rm --cached`
+        on a door still in HEAD reads as absent. Neither is silent — both change
+        the probe's verdict, which is what makes them arguable rather than
+        hidden.
+      - The WORKING TREE for content, because that is the byte sequence the CLI
+        actually loads. Hashing git blobs would make the probe immune to a dirty
+        tree, which is precisely the state in which a session is editing a door
+        and most wants to know whether it has broken parity.
+
+    The consequence is that the two sources can disagree — a tracked name whose
+    file was deleted with a plain `rm` — and that disagreement is REPORTED, never
+    allowed to raise: see `_read_door`.
+
+    UNPROBEABLE WHEN NOTHING IS MARKED, never RECONCILED — four files containing
+    zero blocks agreeing about nothing is the purest form of the disease.
+    """
+    root = Path(args.get("root") or root)
+    reference = str(args.get("reference") or DOOR_REFERENCE)
+    doors = list(dict.fromkeys([reference, *(args.get("doors") or DOOR_FILES)]))
+
+    # The reference is queried even when a caller left it out of `doors` — asking
+    # only for the names in `doors` and then reporting "the reference is not
+    # tracked" would be a false factual claim about a file nobody looked for
+    # (kimi-code/k3, 2026-08-31).
+    toplevel = _git_toplevel(root, timeout)
+    if toplevel is not None and toplevel != root.resolve():
+        # `git -C <any nested dir>` answers for the enclosing repository, so a
+        # caller pointed at a subdirectory — or at a directory inside SOMEONE
+        # ELSE'S worktree that happens to hold four decoy doors — would get a
+        # confident verdict about the wrong boundary (codex gpt-5.6-sol,
+        # 2026-08-31). Refusing is the only honest answer: this probe cannot
+        # know which repo the caller meant.
+        return UNPROBEABLE, 0, [
+            f"{root} is not a repository toplevel — git answers there for {toplevel}, so any "
+            "verdict would be about a boundary the caller did not name"
+        ]
+
+    tracked = _git_tracked_names(root, doors, timeout)
+    if tracked is None:
+        return UNPROBEABLE, 0, [
+            f"could not ask git which doors exist under {root} — the filesystem cannot be "
+            "asked instead: on a case-insensitive volume it answers for the wrong case"
+        ]
+
+    if reference not in tracked:
+        return UNPROBEABLE, 0, [
+            f"the reference door {reference} is not tracked under {root} — nothing to compare against"
+        ]
+
+    ref_text = _read_door(root, reference)
+    if ref_text is None:
+        return UNPROBEABLE, 0, [
+            f"{reference} is tracked but could not be read from {root} — git's index and the "
+            "working tree disagree (a plain `rm`, a directory of that name, or a permission "
+            "problem). Nothing can be compared until they agree"
+        ]
+    ref_blocks = _canon_blocks(ref_text)
+    if not ref_blocks:
+        why = (
+            f"{reference} carries no <!-- CANON:<id> --> markers — no rule is declared binding "
+            "across doors yet, so there is nothing to compare (marking the block is the step)"
+        )
+        fenced = _canon_shaped_lines_in_fences(ref_text)
+        if fenced:
+            why += (
+                f" — note that {fenced} canon-shaped line(s) sit inside fenced code blocks, where "
+                "they read as examples and are deliberately ignored"
+            )
+        return UNPROBEABLE, 0, [why]
+
+    findings: list[str] = []
+    for bid in sorted(ref_blocks):
+        if _is_malformed(bid):
+            base, why = bid.split("!", 1)
+            findings.append(
+                f"CANON:{base} is malformed in {reference} ({why}) — a malformed marker in the "
+                "REFERENCE door removes that rule from every comparison at once"
+            )
+
+    for door in doors:
+        if door == reference:
+            continue
+        if door not in tracked:
+            findings.append(
+                f"{door} is not tracked in this repo — that seat opens no door at all and starts "
+                "with none of the shared rules (check git, not the filesystem: a case-insensitive "
+                "volume will happily answer for the wrong case)"
+            )
+            continue
+        door_text = _read_door(root, door)
+        if door_text is None:
+            findings.append(
+                f"{door} is tracked but could not be read — git's index and the working tree "
+                "disagree about it, so its doctrine cannot be compared to anything"
+            )
+            continue
+        blocks = _canon_blocks(door_text)
+        for bid in sorted(set(ref_blocks) | set(blocks)):
+            if _is_malformed(bid):
+                if bid in blocks:
+                    base, why = bid.split("!", 1)
+                    findings.append(f"CANON:{base} is malformed in {door} ({why})")
+                continue
+            here, there = blocks.get(bid), ref_blocks.get(bid)
+            if there is None:
+                findings.append(
+                    f"CANON:{bid} is in {door} but ABSENT from {reference} — a rule that binds one "
+                    "seat and not the reference is not shared doctrine"
+                )
+            elif here is None:
+                findings.append(f"CANON:{bid} is in {reference} but ABSENT from {door}")
+            elif here != there:
+                findings.append(
+                    f"CANON:{bid} differs between {door} and {reference} ({here} vs {there})"
+                )
+
+    compared = [d for d in doors if d != reference and d in tracked]
+    if not compared:
+        # A file compared to itself is not agreement. Reaching RECONCILED here
+        # would be the purest instance of the disease this probe is named after
+        # (kimi-code/k3, 2026-08-31): a guard reporting green while comparing
+        # nothing at all.
+        return UNPROBEABLE, 0, [
+            f"only {reference} participates — no other door is both configured and tracked, so "
+            "there is no second copy to compare it against and 'they agree' would mean nothing"
+        ]
+    if findings:
+        return DIVERGED, len(findings), findings
+    return RECONCILED, 0, [
+        f"{len(ref_blocks)} canon block(s) identical across {reference} and "
+        f"{len(compared)} other door(s): {', '.join(compared)}"
+    ]
+
+
+def _git_toplevel(root: Path, timeout: int) -> Path | None:
+    """The repository root `git` would use from `root`, or None if it cannot say."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, timeout=timeout,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0 or not out.stdout.strip():
+        return None
+    return Path(out.stdout.strip()).resolve()
+
+
+def _read_door(root: Path, name: str) -> str | None:
+    """A door's text, or None if it cannot be read.
+
+    Existence is established from git and CONTENT is read from the working tree,
+    and those two sources routinely disagree: a plain `rm` leaves the name in the
+    index, a directory can be staged under a file's name, a mode can deny the
+    read. Letting any of those raise turns one unreadable door into a dead
+    proprioception run for every OTHER boundary too.
+    """
+    try:
+        return (root / name).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+
+
+def _git_tracked_names(root: Path, names: list[str], timeout: int) -> set[str] | None:
+    """Which of `names` git actually tracks at `root` — None if git cannot answer.
+
+    Asks git rather than the filesystem ON PURPOSE. See the case note in
+    probe_door_canon_parity: on APFS the shell answers for a name that differs
+    only in case, so a door that is genuinely absent to a Linux runner tests as
+    present on every Mac in this fleet.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-z", "--", *names],
+            capture_output=True, text=True, timeout=timeout,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    return {n for n in out.stdout.split("\0") if n}
+
+
 BUILTINS = {
     "git_alignment": probe_git_alignment,
     "executed_code_currency": probe_executed_code_currency,
@@ -909,6 +1461,8 @@ BUILTINS = {
     "home_fork_scripts": probe_home_fork_scripts,
     "guardian_freshness": probe_guardian_freshness,
     "repomap_size": probe_repomap_size,
+    "canon_blocks": probe_canon_blocks,
+    "door_canon_parity": probe_door_canon_parity,
 }
 
 
@@ -1129,6 +1683,24 @@ DEFAULT_REGISTRY: list[dict] = [
         "severity": "P1",
         "args": {"pairs": [{"glob": "research/regulatory/*-delta.json", "label": "regulatory deltas"}]},
         "fix_hint": "promote stranded deltas: git add research/regulatory/*-delta.json + PR",
+    },
+    {
+        "id": "canon_blocks", "type": "builtin", "target": "canon_blocks",
+        "class": "home<->home",
+        "boundary": "the canon blocks of ~/.claude/CLAUDE.md, machine against machine",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 10,
+        "severity": "P1",
+        "args": {"home": "~", "report_dir": "~/.claude/canon-blocks.d", "max_age_min": 1440},
+        "fix_hint": "port the DIVERGED block, never the whole file — it is per-machine by design; publish again from the machine that is ahead",
+    },
+    {
+        "id": "door_canon_parity", "type": "builtin", "target": "door_canon_parity",
+        "class": "door<->door",
+        "boundary": "the canon block of CLAUDE.md <-> AGENTS.md <-> GEMINI.md <-> QWEN.md",
+        "machines": ["all"], "tags": ["fast", "remote-safe"], "timeout_sec": 15,
+        "severity": "P1",
+        "args": {"reference": "CLAUDE.md", "doors": ["CLAUDE.md", "AGENTS.md", "GEMINI.md", "QWEN.md"]},
+        "fix_hint": "copy the reference door's block VERBATIM into the diverging door — the block is shared doctrine, so the cure is never to reword it locally; if the reference is the one that is wrong, fix it there and re-copy outward",
     },
     {
         "id": "repomap_size", "type": "builtin", "target": "repomap_size",

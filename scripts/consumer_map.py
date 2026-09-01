@@ -261,6 +261,58 @@ def _deleted_or_renamed_from_diff(base: str, cwd: Path | None) -> list[tuple[str
     return out
 
 
+def _line_names_new_path(content: str, new_path: str) -> bool:
+    """Has this line already been repointed at `new_path`?
+
+    The literal path is the easy case and was the only one this recognised. But
+    almost nothing in this repo writes a path as one string: consumers build it
+    from SEGMENTS, and every idiomatic form spells the destination without ever
+    containing it —
+
+        ACTIVE = REPO_ROOT / "docs" / "scars" / "cicatrix-scars.md"
+        CICATRIX_FILE = os.path.join(ROOT, "docs", "scars", "cicatrix-scars.md")
+        SCAR_LEDGER = REPO_ROOT / 'docs/scars' / 'cicatrix-scars.md'
+
+    Measured 2026-08-31 on the scar-corpus move (PR #5331): all SIX code files
+    that mention a moved basename without the literal new path were ALREADY
+    repointed, in exactly these shapes, and every one of them was reported as a
+    live consumer of a deleted file. 72 findings, zero real. A guard that fires
+    on every correctly-repointed consumer of a MOVE — the change class it exists
+    to protect — teaches its readers to reach for the kill switch, which is how a
+    guard-over-match (superscar #3) turns into a disarmed guard (#2).
+
+    So the question asked here is the ENTITY — does this line name that
+    destination — rather than the FORM in which it happens to be written. The
+    test is ORDERED and ANCHORED on the basename: every segment of `new_path`
+    must appear, in order, and the basename must be the last one matched. Order
+    is what keeps it from being a bag of words: a line mentioning `docs` and
+    `scars` and some other file does not pass, because the segments must line up
+    left to right ending at the right name.
+
+    DELIBERATELY NOT a substring test on each segment independently, and
+    deliberately not a regex over the whole line: both let an unrelated sentence
+    containing the same words launder a stale reference, which is the under-match
+    twin this cure would otherwise create (W94 — a fix for an over-match births
+    the under-match unless the corpus covers composition).
+    """
+    if new_path in content:
+        return True
+    segments = [seg for seg in new_path.split("/") if seg]
+    if len(segments) < 2:
+        # A destination at the repo root has no segments to line up, so the
+        # ordered test degenerates to "does the basename appear" — which is the
+        # grep that found this hit in the first place. Refuse rather than
+        # pass everything.
+        return False
+    cursor = 0
+    for seg in segments:
+        idx = content.find(seg, cursor)
+        if idx < 0:
+            return False
+        cursor = idx + len(seg)
+    return True
+
+
 def _git_grep_basename(needle: str, cwd: Path | None) -> list[tuple[str, int, str]]:
     """[(path, line_no, line_text), ...] for every tracked-file hit of
     `needle` at HEAD — the commit about to be pushed, robust to a dirty
@@ -380,7 +432,7 @@ def find_consumers(
                     continue  # the deleted/renamed tree itself, not a consumer
                 if _is_excluded(path):
                     continue
-                if new_path and new_path in content:
+                if new_path and _line_names_new_path(content, new_path):
                     continue  # RENAME SAFETY — already points at the new path
                 loc = f"{path}:{lineno}"
                 if loc in seen_locations:

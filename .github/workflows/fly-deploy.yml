@@ -161,7 +161,20 @@ jobs:
     name: Fly.io rolling deploy
     needs: run-migrations # BLOCCATO se migration fallisce
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 20 was enough for the happy path -- three successful deploy jobs measured
+    # 2026-08-31 took 6.8, 6.8 and 7.9 minutes -- but NOT for the depot fallback
+    # below: a depot outage burns ~10 minutes in two 5-minute waits before
+    # attempt 1 gives up, so the retry that is supposed to save the deploy would
+    # be killed mid-build and the fallback would be armed to nothing. 35 still
+    # bounds the job. NOT "three 10-minute attempts": that case cannot
+    # occur, because attempts 2 and 3 run with --depot=false and never wait on
+    # depot at all. The real worst case is one 10m01s depot attempt plus two
+    # ordinary builds, and the honest gap in this number is that no non-depot
+    # build has been timed here — every measured build (6.8/6.8/7.9 min) went
+    # through depot, and a cold non-depot cache could be slower. If it ever does
+    # overrun, the job concludes `cancelled`, which the alert condition below was
+    # widened to catch — so the residual risk is loud, not silent.
+    timeout-minutes: 35
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -173,13 +186,38 @@ jobs:
 
       - name: Deploy (rolling strategy, monorepo context)
         run: |
+          # `--depot=false` is appended only from attempt 2 onward, and only after a
+          # depot-builder failure: a retry that changes nothing is a repetition,
+          # not a retry. Measured 2026-08-31 against real job logs: the depot
+          # builder failed FOUR times between 23:06Z and 03:04Z (jobs
+          # 99336828116/99344068116/99365231097/99367317411), each dying on
+          # `Waiting for depot builder...` -> `error releasing builder:
+          # deadline_exceeded` -> `failed to fetch an image or build from
+          # source`. These four did NOT form one unbroken run: a fifth deploy
+          # in the same window (job 99361567807, 02:14-02:21Z) used the same
+          # default depot builder and succeeded, landing chronologically
+          # between the second and third failures -- so this was an
+          # intermittent fault, not a sustained outage, and delivery was not
+          # blocked for one continuous four-hour stretch. Each of the four
+          # still burned exactly ONE of the three attempts: at the time, the
+          # retry branch below only matched the LEASE signature (it has since
+          # been widened, in PR #5422 -- already merged, not part of this
+          # comment-only diff -- to also match the DEPOT signature a few
+          # lines down), so every one of these four failures fell straight
+          # through to `exit` on attempt 1. So on each of those
+          # four runs the loop had two unused attempts. Depot stays the
+          # default (it is faster); this only says that when depot itself is
+          # the thing that is down, the retry must use a different builder.
+          depot_flag=""
           for attempt in 1 2 3; do
-            echo "Fly deploy attempt ${attempt}/3"
+            echo "Fly deploy attempt ${attempt}/3${depot_flag:+ (${depot_flag})}"
             set +e
+            # shellcheck disable=SC2086
             flyctl deploy \
               --strategy rolling \
               --app nuzantara-rag \
               --remote-only \
+              ${depot_flag} \
               --dockerfile apps/backend-rag/Dockerfile \
               --config apps/backend-rag/fly.toml \
               --build-arg GIT_SHA=${{ github.sha }} 2>&1 | tee fly-deploy.log
@@ -193,6 +231,28 @@ jobs:
             if grep -Eiq "failed to acquire leases|Failed to acquire lease|lease currently held" fly-deploy.log && [ "$attempt" -lt 3 ]; then
               echo "::warning::Fly machine lease still held; retrying deploy after 90s"
               sleep 90
+              continue
+            fi
+
+            # Only "error releasing builder" is depot-specific.
+            #
+            # MEASURED, 2026-08-31, against real job logs: "Waiting for depot builder" is the
+            # routine build-phase banner -- it appears in a SUCCESSFUL deploy (job 99361567807)
+            # and in five release-command failures that had nothing to do with depot
+            # (99306685764/99310369478/99317094020/99327541263/99318055618), every one of which
+            # reached a successful build and died only when the release_command (DB migration)
+            # step ran.
+            #
+            # REASONED, not measured, from the above: "failed to fetch an image or build from
+            # source" is flyctl's generic build-phase wrapper text, not a depot-specific
+            # signature -- a finite log sample cannot measure a string's general meaning into a
+            # "never depot-specific" guarantee, so this is inference, not a grep result. Either
+            # term would make a broken Dockerfile burn two pointless retries and delay the
+            # failure alert. "error releasing builder" was present in all four real depot
+            # incidents and absent from every clean sample.
+            if grep -Eiq "error releasing builder" fly-deploy.log && [ "$attempt" -lt 3 ]; then
+              echo "::warning::Fly depot builder unreachable; retrying on the non-depot remote builder"
+              depot_flag="--depot=false"
               continue
             fi
 
@@ -653,17 +713,35 @@ jobs:
     needs: [run-migrations, deploy]
     if: |
       always() &&
-      (needs.run-migrations.result == 'failure' || needs.deploy.result == 'failure')
+      (needs.run-migrations.result == 'failure' || needs.deploy.result == 'failure' ||
+       needs.run-migrations.result == 'cancelled' || needs.deploy.result == 'cancelled')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Determine failing stage
         id: stage
         run: |
+          # This job's `if:` (above) fires on BOTH `failure` and `cancelled` for each upstream
+          # job (widened 2026-08-31 so a timeout-minutes kill — which concludes `cancelled`, not
+          # `failure` — no longer goes silent). This step used to test only for the literal
+          # string "failure", so a cancelled run-migrations fell through to the `else` branch and
+          # was reported as "deploy crashed" -- wrong stage AND wrong narrative, since deploy
+          # never even started (needs: run-migrations, no override `if:`, so deploy.result is
+          # `skipped` whenever run-migrations didn't succeed). `deploy` and `run-migrations` can
+          # never both be in a bad state in the same run -- whichever branch below matches is the
+          # one that actually broke.
           if [ "${{ needs.run-migrations.result }}" = "failure" ]; then
             echo "stage=run-migrations" >> $GITHUB_OUTPUT
             echo "icon=🧬" >> $GITHUB_OUTPUT
             echo "detail=DB migration failed before deploy. No new release shipped; previous release still live." >> $GITHUB_OUTPUT
+          elif [ "${{ needs.run-migrations.result }}" = "cancelled" ]; then
+            echo "stage=run-migrations" >> $GITHUB_OUTPUT
+            echo "icon=🧬" >> $GITHUB_OUTPUT
+            echo "detail=DB migration job was cancelled (its own timeout, or the workflow run was cancelled) before deploy. No new release shipped; previous release still live." >> $GITHUB_OUTPUT
+          elif [ "${{ needs.deploy.result }}" = "cancelled" ]; then
+            echo "stage=deploy" >> $GITHUB_OUTPUT
+            echo "icon=🚨" >> $GITHUB_OUTPUT
+            echo "detail=flyctl deploy was cancelled (its own timeout, or the workflow run was cancelled) before the rolling swap reached health check. Previous release still live." >> $GITHUB_OUTPUT
           else
             echo "stage=deploy" >> $GITHUB_OUTPUT
             echo "icon=🚨" >> $GITHUB_OUTPUT
