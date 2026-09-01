@@ -58,9 +58,14 @@ diff:
   measured_at: >-
     `git diff --numstat $(git merge-base origin/main HEAD)...HEAD` (three-dot — a two-dot diff
     would accuse this branch of deleting main's later additions, scar W102) against merge-base
-    c52a04c9ee, immediately before writing this pack. Raw counts: MODEL_ROSTER.md +41/-26,
-    scripts/evidence_pack_lint.py +79/-4, scripts/tests/test_evidence_pack_lint.py +192/-0 —
-    312 insertions, 30 deletions, net 282.
+    c52a04c9ee. No line count is quoted here, and that omission is deliberate rather than lazy:
+    this pack is part of the diff it describes, so any figure written before the commit that
+    lands these evidence files is stale the instant it lands. The earlier draft did quote
+    per-file counts, taken honestly at the moment of writing and wrong by the time CI read them,
+    and the countable-claims rule was right to reject all three. Run the command above at the
+    branch tip for the live figure. Surfaces touched: MODEL_ROSTER.md (the roster table),
+    scripts/evidence_pack_lint.py (the change under review), and
+    scripts/tests/test_evidence_pack_lint.py (its tests).
 
 seat_fallback_reason: >-
   Two of the three titolari were unavailable at dispatch and both were observed, not assumed.
