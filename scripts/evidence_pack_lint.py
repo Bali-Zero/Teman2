@@ -502,6 +502,16 @@ _USES_LINE_RE = re.compile(
 )
 
 
+#: A ref that PINS. Either a full 40-hex commit SHA (what Dependabot writes when
+#: a repo pins by SHA, and what GitHub Actions requires — an abbreviated SHA is
+#: not a valid `uses:` ref) or a version-shaped tag: `v4`, `v7`, `4.37.9`,
+#: `v4.37.9`, `v1.2.3-beta.1`. Deliberately NOT `main`, `master`, `latest`,
+#: `release` or any other branch name.
+_PINNED_REF_RE = re.compile(
+    r"^(?:[0-9a-f]{40}|v?\d+(?:\.\d+)*(?:-[A-Za-z0-9.]+)?)$"
+)
+
+
 def _first_party_uses_identity(line: str) -> str | None:
     """The `<owner>/<repo>[/<path>]` of a first-party `uses:` line, else None.
 
@@ -513,6 +523,19 @@ def _first_party_uses_identity(line: str) -> str | None:
         return None
     identity = m.group("identity")
     if identity.split("/", 1)[0] not in FIRST_PARTY_ACTION_OWNERS:
+        return None
+    # The ref must PIN. "Only refs may move" was under-specified: it permitted
+    # `actions/checkout@v4` -> `@main`, which is not a version bump at all but an
+    # UNPINNING — the action stops being fixed and starts tracking a branch
+    # somebody else can move. That is a supply-chain change of exactly the kind
+    # this hot zone exists to catch, and the rule is named for version PINS.
+    # Found 2026-09-01 by the adversarial reviewer as attack 1b, which it called
+    # "worth a conscious decision, not obviously a blocker" — the decision is to
+    # refuse it. Both sides are checked (each line goes through here), so a
+    # re-pin `@main` -> `@v4` also floors at 3: rare, deliberate, and worth a
+    # human look in the direction that adds a constraint as well as the one that
+    # removes it.
+    if not _PINNED_REF_RE.match(m.group("ref")):
         return None
     return identity
 

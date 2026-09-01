@@ -3615,11 +3615,14 @@ def test_path_term_exemption_innocence_pure_pin_drops_to_one():
 def test_path_term_exemption_innocence_sha_pin_with_trailing_version_comment():
     """PR #5444's exact shape: the ref is a SHA and the version lives in a
     trailing comment. A parser that stopped at the `#` would read the two sides
-    as different identities and never exempt it."""
+    as different identities and never exempt it. The SHAs are #5444's real ones,
+    full 40 hex: an abbreviated SHA is not a valid `uses:` ref, and since the
+    pinned-ref rule landed a short one correctly floors at 3 — a fixture using
+    one was testing a shape that cannot reach production."""
     patch = _patch(
         "@@ -1 +1 @@\n"
-        "-        uses: github/codeql-action/autobuild@ff2f1c62 # v4.37.7\n"
-        "+        uses: github/codeql-action/autobuild@cdf488f5 # v4.37.9\n"
+        "-        uses: github/codeql-action/autobuild@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7\n"
+        "+        uses: github/codeql-action/autobuild@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9\n"
     )
     assert compute_floor([_WF], None, patch) == 1
 
@@ -3627,8 +3630,8 @@ def test_path_term_exemption_innocence_sha_pin_with_trailing_version_comment():
 def test_path_term_exemption_innocence_two_pins_in_one_file():
     patch = _patch(
         "@@ -1 +1 @@\n"
-        "-        uses: github/codeql-action/init@aaaaaaa # v4.37.7\n"
-        "+        uses: github/codeql-action/init@bbbbbbb # v4.37.9\n"
+        "-        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7\n"
+        "+        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9\n"
         "@@ -8 +8 @@\n"
         "-        uses: actions/cache@v3\n"
         "+        uses: actions/cache@v4\n"
@@ -3785,3 +3788,55 @@ def test_path_term_exemption_guilt_two_full_steps_swap_when_their_with_blocks_al
     )
     assert workflow_paths_exempt_from_path_term(real_git_diff) == set()
     assert compute_floor([_WF], None, real_git_diff) == 3
+
+
+@pytest.mark.parametrize(
+    "old_ref,new_ref,why",
+    [
+        ("v4", "main", "unpinning to a branch is not a version bump"),
+        ("v4", "master", "same, other branch name"),
+        ("v4", "latest", "a floating alias is not a pin"),
+        ("v4", "HEAD", "nor is a symbolic ref"),
+        ("main", "v4", "re-pinning is rare and deliberate — it gets a look too"),
+    ],
+)
+def test_path_term_exemption_guilt_a_ref_that_does_not_pin(old_ref, new_ref, why):
+    """Attack 1b from the adversarial reviewer, which it called "worth a
+    conscious decision, not obviously a blocker" — the decision is to refuse it.
+    "Only refs may move" permitted `actions/checkout@v4` -> `@main`, which is not
+    a bump at all but an UNPINNING: the action stops being fixed and starts
+    tracking a branch somebody else can move. That is precisely the supply-chain
+    change this hot zone exists to catch."""
+    patch = _patch(
+        "@@ -1 +1 @@\n"
+        f"-      - uses: actions/checkout@{old_ref}\n"
+        f"+      - uses: actions/checkout@{new_ref}\n"
+    )
+    assert compute_floor([_WF], None, patch) == 3, why
+
+
+@pytest.mark.parametrize(
+    "old_ref,new_ref",
+    [
+        ("v4", "v5"),
+        ("v4.37.7", "v4.37.9"),
+        ("4.37.7", "4.37.9"),
+        ("v1.2.3-beta.1", "v1.2.4"),
+        (
+            "ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd",
+            "cdf488f595d80d6e07e03d4674febd5ab45fa938",
+        ),
+    ],
+)
+def test_path_term_exemption_innocence_every_real_pin_shape_still_exempts(old_ref, new_ref):
+    """The innocence half of the rule above, and it is the half that matters:
+    a guilt corpus that also rejects every legitimate bump has not tightened the
+    rule, it has deleted it. These are the shapes Dependabot actually writes —
+    bare major tags, full semver, unprefixed semver, a prerelease suffix, and a
+    full 40-hex SHA pin."""
+    patch = _patch(
+        "@@ -1 +1 @@\n"
+        f"-      - uses: actions/checkout@{old_ref}\n"
+        f"+      - uses: actions/checkout@{new_ref}\n"
+    )
+    assert compute_floor([_WF], None, patch) == 1

@@ -92,6 +92,21 @@ pii_scan: clean
 
 receipts:
   - claim: >-
+      The pinned-ref rule is load-bearing in BOTH directions — it is neither refusing everything
+      nor accepting everything, which is the only measurement that distinguishes a real constraint
+      from a broken one
+    cmd: >-
+      (a) replace `if not _PINNED_REF_RE.match(...)` with `if False:`; (b) restore, then narrow the
+      regex to `^v\\d+$`; pytest -k path_term_exemption after each; restore and re-run
+    result: >-
+      baseline 32 passed. Without the check: 5 failed — exactly the five unpinning guilt cases
+      (@main/@master/@latest/@HEAD/re-pin). With the regex too tight: 6 failed — the innocence
+      cases carrying full semver, unprefixed semver, a prerelease suffix and a 40-hex SHA.
+      Restored: 32 passed. The three real blocked PR diffs still go 3 -> 1 after the rule.
+    exit: 1
+    ts: 2026-09-01T20:25Z
+    seat: session (Pro), on the reviewer's attack 1b
+  - claim: >-
       The nine shapes named in the cross-family prompt but never reached by its truncated answer
       were probed by hand, and the two that come back EXEMPTED are limits I can state rather than
       surprises
@@ -212,6 +227,35 @@ receipts:
     seat: session (Pro)
 
 dissent:
+  - seat: claude-sonnet-5 subagent (spalla-review), fresh context
+    status: CONFIRMED
+    objection: >-
+      Attack 1: two first-party actions SWAP identities across two hunks, generated with the EXACT
+      production command rather than a hand fixture. It named the consequence I had not — an `if:`
+      block sitting OFF-HUNK as unchanged context is silently rebound to a DIFFERENT action, so an
+      `always()`-gated debug step becomes the deploy and the main-gated deploy merely uploads an
+      artifact. It reviewed d82a68525f and the hole was already cured at 4213ec1cb8 by the sequence
+      fix (verified: its exact patch returns floor 3, exempt set empty, source "path"), but its
+      statement of the defect is better than the one that drove the fix and is recorded as the
+      canonical one. Same root cause the cross-family seat found; two independent seats, one hole.
+  - seat: claude-sonnet-5 subagent (spalla-review), fresh context
+    status: CONFIRMED
+    objection: >-
+      Attack 1b, which the reviewer itself graded "worth a conscious decision, not obviously a
+      blocker": `actions/checkout@v4` -> `@main` was EXEMPT. That is not a version bump, it is an
+      UNPINNING — the action stops being fixed and starts tracking a branch someone else can move,
+      which is the supply-chain change this hot zone exists for. Treated as a defect, not a scope
+      note: "only refs may move" was under-specified by me, not a decision I had made. CURED — both
+      refs must now be a 40-hex SHA or a version-shaped tag. `@main` -> `@v4` (a re-pin) also floors
+      at 3: rare, deliberate, and worth a look in the direction that ADDS a constraint too.
+  - seat: claude-sonnet-5 subagent (spalla-review), fresh context
+    status: RETRACTED
+    objection: >-
+      Attack 2, over-match: a legitimate pin bump that ALSO deletes a blank line elsewhere in the
+      file is refused, because a blank-line deletion does not parse as a `uses:` line. Real, and
+      deliberately not fixed — loosening condition 1 to permit "harmless" non-`uses:` lines is how
+      the whole exemption unravels. Recorded as a declared limit; the reviewer agreed it is the
+      safe direction.
   - seat: tp1 deepseek-v4-flash-0731
     status: CONFIRMED
     objection: >-
