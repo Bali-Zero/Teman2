@@ -1869,3 +1869,346 @@ def test_main_full_only_apply_still_rewrites_judul_and_content(monkeypatch):
     assert "||" not in sql
     assert sql.rstrip().endswith("WHERE kode_kbli = $1")
     assert args[1] is not None and args[2] is not None
+
+
+# ---------------------------------------------------------------------------
+# --licensing-only (2026-09-01, second narrow mode). Measured on prod that day:
+# the detector's `licensing presence disagrees` class held 25 codes, every one
+# a hand-written row (257-1,124 chars of prose) whose metadata carried
+# `per_skala: []`, `licensing_status: "N/A"` and a seed-era `pp28_sources`
+# array, while canonical holds real PP 28/2025 rows. The full rebuild would
+# have replaced all 25 documents (up to 20k chars each); the content-
+# preservation gate refuses exactly that. The tuple is what the channel reads.
+from backend.scripts.kbli_documents_cure import (  # noqa: E402
+    LICENSING_METADATA_KEYS,
+    licensing_metadata_from_canonical,
+    licensing_metadata_patch,
+    licensing_tuple_delta,
+    metadata_patch,
+    plan_licensing_only,
+)
+
+# The measured shape of the 25 rows: rows present-but-empty, a seed-era
+# provenance list, no verdict — under hand-written prose.
+HAND_WRITTEN_ROW_85510 = {
+    "judul": "PENDIDIKAN OLAHRAGA DAN REKREASI",
+    "content": (
+        "KBLI 85510: PENDIDIKAN OLAHRAGA DAN REKREASI\n\nWHAT IT MEANS:\n"
+        "Yoga studios, surf schools, dive instruction, retreat teaching.\n\n"
+        "BALI CONTEXT:\nCanggu and Ubud are dense with them."
+    ),
+    "metadata": {
+        "judul": "PENDIDIKAN OLAHRAGA DAN REKREASI",
+        "kode_kbli_2025": "85510",
+        "licensing_status": "N/A",
+        "per_skala": [],
+        "pma_status": "TERBUKA",
+        "pp28_sources": ["seed-2026-02-18"],
+        "sektor_id": "P",
+        "status_mapping": "MATCH_LANGSUNG",
+    },
+}
+
+RECORD_85510_SOURCED = {
+    "kode_kbli_2025": "85510",
+    "judul": "Pendidikan Olahraga dan Rekreasi",
+    "uraian": "Kelompok ini mencakup kegiatan pendidikan olahraga dan rekreasi.",
+    # Deliberately DIFFERENT from the row's PMA tuple: a licensing-only plan
+    # must not touch it even when canonical disagrees — that is --pma-only's job.
+    "pma_status": "TERBATAS",
+    "pma_max_asing": 49,
+    "pma_verification_status": "located",
+    "pma_official_basis": "Perpres 10/2021 Lampiran III fixture",
+    "pma_source_vintage": "2021-03-02",
+    "pma_cap_verified": True,
+    "per_skala": [
+        {
+            "skala": "Mikro",
+            "kategori_risiko": "Rendah",
+            "perizinan": "NIB",
+            "kewenangan": "Bupati/Wali Kota",
+        },
+        {
+            "skala": "Kecil",
+            "kategori_risiko": "Menengah Rendah",
+            "perizinan": "NIB dan Sertifikat Standar",
+            "kewenangan": "Bupati/Wali Kota",
+        },
+    ],
+    "pp28_sources": ["PP 28/2025 Lampiran I Sektor Pendidikan", "OSS RBA 2025"],
+}
+
+
+def test_licensing_only_guilt_syncs_the_tuple_and_nothing_else():
+    plan = plan_licensing_only("85510", RECORD_85510_SOURCED, HAND_WRITTEN_ROW_85510)
+    assert plan.licensing_only is True and plan.pma_only is False
+    assert plan.partial_keys == LICENSING_METADATA_KEYS
+    assert plan.update_row is True
+    assert plan.new_judul is None and plan.new_content is None
+    old = HAND_WRITTEN_ROW_85510["metadata"]
+    new = plan.new_metadata
+    assert new["per_skala"] == RECORD_85510_SOURCED["per_skala"]
+    assert new["pp28_sources"] == RECORD_85510_SOURCED["pp28_sources"]
+    # Non-empty canonical rows: the verdict is CARRIED OVER, never asserted.
+    assert new["licensing_status"] == "N/A"
+    # The PMA tuple canonical disagrees with is left exactly as stored.
+    assert new["pma_status"] == "TERBUKA"
+    assert "pma_official_basis" not in new
+    for key, value in old.items():
+        if key not in LICENSING_METADATA_KEYS:
+            assert new[key] == value, key
+    assert set(new) - set(old) <= set(LICENSING_METADATA_KEYS)
+
+
+def test_licensing_only_writes_the_same_tuple_the_full_rebuild_would():
+    """Two paths, one row-set (W105): the narrow sync and `build_cured_metadata`
+    share ONE derivation, so they cannot disagree about these three keys."""
+    narrow = plan_licensing_only("85510", RECORD_85510_SOURCED, HAND_WRITTEN_ROW_85510).new_metadata
+    full = build_cured_metadata("85510", RECORD_85510_SOURCED, HAND_WRITTEN_ROW_85510["metadata"])
+    assert {k: narrow[k] for k in LICENSING_METADATA_KEYS} == {
+        k: full[k] for k in LICENSING_METADATA_KEYS
+    }
+    # and the shared derivation itself keeps the rebuild's gap rule
+    gap = licensing_metadata_from_canonical({"per_skala": []}, {"licensing_status": "N/A"})
+    assert gap == {"per_skala": [], "pp28_sources": None, "licensing_status": "PENDING_REGULATION"}
+
+
+def test_licensing_only_really_differs_from_the_full_rebuild_on_a_hand_written_row():
+    full = plan_cure("85510", RECORD_85510_SOURCED, HAND_WRITTEN_ROW_85510)
+    assert full.update_row is True
+    assert full.new_content != HAND_WRITTEN_ROW_85510["content"]
+    assert full.new_metadata["pma_status"] == "TERBATAS"  # the rebuild moves the PMA tuple too
+    narrow = plan_licensing_only("85510", RECORD_85510_SOURCED, HAND_WRITTEN_ROW_85510)
+    assert narrow.new_content is None
+    assert narrow.new_metadata["pma_status"] == "TERBUKA"
+
+
+def test_licensing_only_innocence_is_idempotent():
+    first = plan_licensing_only("85510", RECORD_85510_SOURCED, HAND_WRITTEN_ROW_85510)
+    cured_row = {**HAND_WRITTEN_ROW_85510, "metadata": first.new_metadata}
+    second = plan_licensing_only("85510", RECORD_85510_SOURCED, cured_row)
+    assert second.update_row is False
+    assert second.new_metadata is None
+    assert "already cured" in (second.skip_reason or "")
+
+
+def test_licensing_only_compares_row_content_not_row_count():
+    """The detector measures `jsonb_array_length`; a same-length row-set with
+    different content would satisfy it and still be stale. The plan compares
+    the rows themselves."""
+    same_count_other_rows = [
+        {**row, "kategori_risiko": "Tinggi"} for row in RECORD_85510_SOURCED["per_skala"]
+    ]
+    row = {
+        **HAND_WRITTEN_ROW_85510,
+        "metadata": {
+            **HAND_WRITTEN_ROW_85510["metadata"],
+            "per_skala": same_count_other_rows,
+            "pp28_sources": RECORD_85510_SOURCED["pp28_sources"],
+        },
+    }
+    plan = plan_licensing_only("85510", RECORD_85510_SOURCED, row)
+    assert plan.update_row is True
+    assert plan.new_metadata["per_skala"] == RECORD_85510_SOURCED["per_skala"]
+
+
+def test_licensing_only_refuses_to_empty_a_stored_row_set():
+    """GUILT for the one-direction rule: canonical detached the rows (the
+    quarantine class) while the table still serves them. Emptying them here
+    would destroy a row-set while reporting a cure — the plan REFUSES."""
+    detached = {**RECORD_85510_SOURCED, "per_skala": []}
+    served = {
+        **HAND_WRITTEN_ROW_85510,
+        "metadata": {
+            **HAND_WRITTEN_ROW_85510["metadata"],
+            "per_skala": RECORD_85510_SOURCED["per_skala"],
+        },
+    }
+    plan = plan_licensing_only("85510", detached, served)
+    assert plan.update_row is False
+    assert plan.new_metadata is None
+    assert plan.licensing_only is True
+    assert "--all-quarantined" in (plan.skip_reason or "")
+    # and an honest gap on BOTH sides is equally not this mode's business —
+    # no PENDING_REGULATION write sneaks in through the narrow door
+    both_empty = plan_licensing_only("85510", detached, HAND_WRITTEN_ROW_85510)
+    assert both_empty.update_row is False
+    # INNOCENCE: a record whose per_skala key is missing entirely reads as
+    # empty too — refused, not crashed, not emptied.
+    no_key = {k: v for k, v in RECORD_85510_SOURCED.items() if k != "per_skala"}
+    assert plan_licensing_only("85510", no_key, served).update_row is False
+
+
+def test_licensing_only_skips_when_canonical_or_table_is_missing():
+    no_record = plan_licensing_only("85510", None, HAND_WRITTEN_ROW_85510)
+    assert no_record.update_row is False
+    assert no_record.licensing_only is True
+    assert no_record.skip_reason == "not in canonical dataset"
+    no_row = plan_licensing_only("85510", RECORD_85510_SOURCED, None)
+    assert no_row.update_row is False
+    assert no_row.licensing_only is True
+    assert no_row.skip_reason == "not in kbli_documents table"
+
+
+def test_licensing_tuple_delta_shows_row_counts_not_the_blob():
+    old = HAND_WRITTEN_ROW_85510["metadata"]
+    new = plan_licensing_only("85510", RECORD_85510_SOURCED, HAND_WRITTEN_ROW_85510).new_metadata
+    delta = licensing_tuple_delta(old, new)
+    assert delta == "per_skala: <0 rows> -> <2 rows>, pp28_sources: <1 rows> -> <2 rows>"
+    assert "Bupati" not in delta  # the rows themselves never reach the log line
+    assert licensing_tuple_delta(new, dict(new)) == ""
+    # the PMA delta helper is untouched by the generalisation
+    assert pma_tuple_delta(old, new) == ""
+
+
+def test_licensing_metadata_patch_binds_the_tuple_and_nothing_else():
+    new = plan_licensing_only("85510", RECORD_85510_SOURCED, HAND_WRITTEN_ROW_85510).new_metadata
+    patch = licensing_metadata_patch(new)
+    assert set(patch) == set(LICENSING_METADATA_KEYS)
+    assert "pma_status" not in patch and "judul" not in patch
+    assert patch == metadata_patch(new, LICENSING_METADATA_KEYS)
+    # a full-rebuild plan has no partial keys: the apply path must take the other branch
+    assert plan_cure("85510", RECORD_85510_SOURCED, HAND_WRITTEN_ROW_85510).partial_keys is None
+
+
+def test_parser_licensing_only_requires_an_only_scope():
+    ap = _cure_build_parser()
+    args = ap.parse_args(["--licensing-only"])
+    with pytest.raises(SystemExit):
+        _cure_validate_args(ap, args)
+
+
+@pytest.mark.parametrize(
+    "sweep", ["--all-quarantined", "--all-licensing-absent", "--all-machine-template"]
+)
+def test_parser_licensing_only_refuses_every_sweep_selector(sweep):
+    ap = _cure_build_parser()
+    args = ap.parse_args(["--licensing-only", "--only", "85510", sweep])
+    with pytest.raises(SystemExit):
+        _cure_validate_args(ap, args)
+
+
+def test_parser_refuses_both_narrow_modes_at_once():
+    ap = _cure_build_parser()
+    args = ap.parse_args(["--licensing-only", "--pma-only", "--only", "85510"])
+    with pytest.raises(SystemExit):
+        _cure_validate_args(ap, args)
+
+
+def test_parser_licensing_only_with_only_is_accepted_in_both_modes():
+    ap = _cure_build_parser()
+    dry = ap.parse_args(["--licensing-only", "--only", "85510,03231"])
+    assert _cure_validate_args(ap, dry) == "dry-run"
+    live = ap.parse_args(
+        [
+            "--licensing-only",
+            "--only",
+            "85510",
+            "--apply",
+            "--cure-run",
+            "kbli_cure:2026-09-01-licensing-only",
+        ]
+    )
+    assert _cure_validate_args(ap, live) == "kbli_cure:2026-09-01-licensing-only"
+
+
+_ROW_85510_IN_TABLE = {
+    "kode_kbli": "85510",
+    "created_at": None,
+    "updated_at": None,
+    **HAND_WRITTEN_ROW_85510,
+}
+_LICENSING_ONLY_APPLY_ARGV = [
+    "cure",
+    "--licensing-only",
+    "--only",
+    "85510",
+    "--apply",
+    "--cure-run",
+    "kbli_cure:2026-09-01-licensing-only",
+]
+
+
+def test_main_licensing_only_apply_merges_the_tuple_and_never_binds_judul_or_content(
+    monkeypatch, caplog
+):
+    """GUILT, driven through main(): the dispatch `elif args.licensing_only`
+    and the `partial_keys` branch of the apply path are what keep a hand-
+    written row's judul/content out of the UPDATE."""
+    with caplog.at_level(_logging.INFO, logger=_cure.logger.name):
+        rc, conn, archive_calls = _drive_apply(
+            monkeypatch, _LICENSING_ONLY_APPLY_ARGV, [_ROW_85510_IN_TABLE], [RECORD_85510_SOURCED]
+        )
+    assert not rc
+    updates = conn.updates()
+    assert len(updates) == 1, [q for q, _ in conn.executes]
+    sql, args = updates[0]
+    assert (
+        "(CASE WHEN jsonb_typeof(metadata) = 'object' THEN metadata ELSE '{}'::jsonb END) "
+        "|| $2::text::jsonb"
+    ) in sql
+    assert "judul" not in sql and "content" not in sql
+    assert sql.rstrip().endswith("WHERE kode_kbli = $1")
+    assert args[0] == "85510"
+    bound = _json_obl.loads(args[1])
+    assert set(bound) == set(LICENSING_METADATA_KEYS)
+    assert bound["per_skala"] == RECORD_85510_SOURCED["per_skala"]
+    assert bound["pp28_sources"] == RECORD_85510_SOURCED["pp28_sources"]
+    assert bound["licensing_status"] == "N/A"
+    assert [c["cure_run"] for c in archive_calls] == ["kbli_cure:2026-09-01-licensing-only"]
+    assert archive_calls[0]["params"][2] == HAND_WRITTEN_ROW_85510["content"]
+    messages = [r.getMessage() for r in caplog.records]
+    assert not [m for m in messages if "content-preservation gate" in m], messages
+    assert not [m for m in messages if "OVERWRITE" in m], messages
+    assert any(
+        "syncing metadata licensing tuple only" in m and "per_skala: <0 rows> -> <2 rows>" in m
+        for m in messages
+    ), messages
+
+
+def test_main_licensing_only_dry_run_binds_no_update_and_takes_no_snapshot(monkeypatch, caplog):
+    argv = [
+        a
+        for a in _LICENSING_ONLY_APPLY_ARGV
+        if a not in ("--apply", "--cure-run", "kbli_cure:2026-09-01-licensing-only")
+    ]
+    with caplog.at_level(_logging.INFO, logger=_cure.logger.name):
+        rc, conn, archive_calls = _drive_apply(
+            monkeypatch, argv, [_ROW_85510_IN_TABLE], [RECORD_85510_SOURCED]
+        )
+    assert not rc
+    assert conn.updates() == []
+    assert archive_calls == []
+    assert any("would sync metadata licensing tuple only" in r.getMessage() for r in caplog.records)
+
+
+def test_main_licensing_only_refusal_on_a_detached_code_binds_nothing(monkeypatch, caplog):
+    """The one-direction rule survives the drive: a detached canonical record
+    under --apply produces no UPDATE, no snapshot, and a named SKIP."""
+    detached = {**RECORD_85510_SOURCED, "per_skala": []}
+    with caplog.at_level(_logging.INFO, logger=_cure.logger.name):
+        rc, conn, archive_calls = _drive_apply(
+            monkeypatch, _LICENSING_ONLY_APPLY_ARGV, [_ROW_85510_IN_TABLE], [detached]
+        )
+    assert not rc
+    assert conn.updates() == []
+    assert archive_calls == []
+    assert any(
+        "SKIP 85510" in r.getMessage() and "--all-quarantined" in r.getMessage()
+        for r in caplog.records
+    )
+
+
+def test_main_pma_only_apply_still_binds_only_the_pma_tuple_after_the_generalisation(
+    monkeypatch,
+):
+    """INNOCENCE for the shared apply branch: `partial_keys` must resolve to
+    the SEVEN PMA keys under --pma-only, never to the licensing tuple."""
+    rc, conn, _ = _drive_apply(
+        monkeypatch, _PMA_ONLY_APPLY_ARGV, [_ROW_96210_IN_TABLE], [RECORD_96210_LOCATED]
+    )
+    assert not rc
+    ((_, args),) = conn.updates()
+    bound = _json_obl.loads(args[1])
+    assert set(bound) == set(PMA_METADATA_KEYS)
+    assert "per_skala" not in bound

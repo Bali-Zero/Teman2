@@ -62,6 +62,18 @@ SCOPE DISCIPLINE (mirrors `kg_kbli_license_fix.py`): `--only` is MANDATORY
 unless `--all-quarantined` is passed explicitly — this script NEVER sweeps
 the full ~1,559-row table.
 
+TWO NARROW MODES, for the rows the gate protects (2026-09-01). `--pma-only`
+and `--licensing-only` each sync ONE tuple inside `metadata` — the PMA
+evidence tuple (`PMA_METADATA_KEYS`) or the licensing tuple
+(`LICENSING_METADATA_KEYS`) — through a server-side jsonb merge that binds
+only those keys; `judul`, `content` and every other key stay byte-identical.
+Both require `--only`, refuse every `--all-*` selector and refuse each other
+(two tuples, two cure runs). `--licensing-only` is one-directional: a code
+whose canonical `per_skala` is empty is REFUSED, never emptied — that is the
+quarantine class. These modes exist because since v34 the channel reads the
+structured metadata and never the prose, so on a hand-written row the tuple
+is the only thing a client can still be told wrong.
+
 `--only` DOES NOT GET THE CONTENT-PRESERVATION GATE. That gate is scoped to
 `--all-licensing-absent`, so passing the same population as a hand-written
 `--only` list cures every code the gate would have REFUSED — on 2026-08-02
@@ -301,6 +313,21 @@ class DocumentCurePlan:
     # `judul` and `content` are left byte-identical by construction (see
     # `plan_pma_only`), so the apply path must not rewrite them either.
     pma_only: bool = False
+    # Same contract for the licensing tuple (`plan_licensing_only`). The two
+    # flags are exclusive by construction: `validate_args` refuses both.
+    licensing_only: bool = False
+
+    @property
+    def partial_keys(self) -> tuple[str, ...] | None:
+        """The metadata keys a NARROW plan binds to its server-side merge —
+        or None when the plan is a full rebuild (judul + content + whole
+        metadata). Single dispatch point for the apply path: a mode that is
+        not listed here rewrites the row wholesale, loudly, never by accident."""
+        if self.pma_only:
+            return PMA_METADATA_KEYS
+        if self.licensing_only:
+            return LICENSING_METADATA_KEYS
+        return None
 
 
 # The PMA evidence tuple `build_cured_metadata` writes — and the ONLY keys a
@@ -316,6 +343,19 @@ PMA_METADATA_KEYS: tuple[str, ...] = (
     "pma_source_vintage",
     "pma_cap_special",
     "pma_cap_verified",
+)
+
+# The licensing tuple `build_cured_metadata` writes — and the ONLY keys a
+# `--licensing-only` plan may touch. `per_skala` is the PP 28/2025 per-scale
+# row-set the conformance detector measures (`jsonb_array_length(metadata->
+# 'per_skala')` vs the canonical rows); `pp28_sources` is its provenance and
+# moves with it; `licensing_status` follows the SAME rule the full rebuild
+# applies (gap marker on an empty set, otherwise carried over — this script
+# makes no independent claim about it).
+LICENSING_METADATA_KEYS: tuple[str, ...] = (
+    "per_skala",
+    "pp28_sources",
+    "licensing_status",
 )
 
 _ABSENT = object()  # a key that is not there is not the same as a key holding null
@@ -335,8 +375,8 @@ def _json_differs(a: object, b: object) -> bool:
     )
 
 
-def pma_metadata_patch(new_metadata: dict) -> dict:
-    """Pure. The ONLY keys a `--pma-only` apply binds to its UPDATE.
+def metadata_patch(new_metadata: dict, keys: tuple[str, ...]) -> dict:
+    """Pure. The ONLY keys a narrow apply binds to its UPDATE.
 
     The write is a server-side merge (`metadata || $2::jsonb`), never a
     replacement of the whole column: the row's other keys are not
@@ -344,7 +384,39 @@ def pma_metadata_patch(new_metadata: dict) -> dict:
     plan to touch) and a write landing on some other key between our SELECT
     and our UPDATE is not clobbered.
     """
-    return {key: new_metadata[key] for key in PMA_METADATA_KEYS}
+    return {key: new_metadata[key] for key in keys}
+
+
+def pma_metadata_patch(new_metadata: dict) -> dict:
+    """Pure. The seven PMA keys a `--pma-only` apply binds — see `metadata_patch`."""
+    return metadata_patch(new_metadata, PMA_METADATA_KEYS)
+
+
+def licensing_metadata_patch(new_metadata: dict) -> dict:
+    """Pure. The three licensing keys a `--licensing-only` apply binds — see `metadata_patch`."""
+    return metadata_patch(new_metadata, LICENSING_METADATA_KEYS)
+
+
+def licensing_metadata_from_canonical(record: dict, old_metadata: dict | None) -> dict:
+    """Pure. The licensing tuple exactly as `build_cured_metadata` writes it —
+    ONE derivation shared by the full rebuild and the narrow sync, so the two
+    paths cannot disagree about the same three keys (W105).
+
+    `per_skala` is the CURRENT canonical row-set (`[]` for an honest gap);
+    `pp28_sources` is whatever canonical records as its provenance;
+    `licensing_status` gets the KG cure's `PENDING_REGULATION` marker on an
+    empty set and is otherwise carried over unchanged (`N/A` when the row
+    never had one) — the rebuild has always declined to assert it, and the
+    narrow mode inherits that restraint rather than inventing a value."""
+    old = old_metadata or {}
+    per_skala = record.get("per_skala") or []
+    return {
+        "per_skala": per_skala,
+        "pp28_sources": record.get("pp28_sources"),
+        "licensing_status": "PENDING_REGULATION"
+        if per_skala == []
+        else old.get("licensing_status", "N/A"),
+    }
 
 
 def quarantined_codes(dataset: list[dict]) -> list[str]:
@@ -741,11 +813,11 @@ def build_cured_metadata(code: str, record: dict, old_metadata: dict | None) -> 
     non-gap/restored code's existing value is left untouched — this script
     makes no independent claim about it."""
     old = dict(old_metadata or {})
-    per_skala = record.get("per_skala") or []
+    licensing = licensing_metadata_from_canonical(record, old)
     pma = disclose_pma(record)
     new_meta: dict = {
         "judul": record.get("judul"),
-        "per_skala": per_skala,
+        "per_skala": licensing["per_skala"],
         "sektor_id": record.get("sektor_id"),
         "pma_status": pma["pma_status"],
         "pma_max_asing": pma["pma_max_asing"],
@@ -754,12 +826,10 @@ def build_cured_metadata(code: str, record: dict, old_metadata: dict | None) -> 
         "pma_source_vintage": pma["pma_source_vintage"],
         "pma_cap_special": pma["pma_cap_special"],
         "pma_cap_verified": pma["pma_cap_verified"],
-        "pp28_sources": record.get("pp28_sources"),
+        "pp28_sources": licensing["pp28_sources"],
         "kode_kbli_2025": code,
         "status_mapping": record.get("status_mapping"),
-        "licensing_status": "PENDING_REGULATION"
-        if per_skala == []
-        else old.get("licensing_status", "N/A"),
+        "licensing_status": licensing["licensing_status"],
     }
     data_note = record.get("_data_note") if pma_claims_verified(record) else None
     if data_note:
@@ -891,9 +961,101 @@ def plan_pma_only(code: str, record: dict | None, current_row: dict | None) -> D
     )
 
 
-def pma_tuple_delta(old_metadata: dict | None, new_metadata: dict | None) -> str:
-    """Pure. `key: old -> new` for every PMA key a `--pma-only` plan changes —
-    the run report must say WHAT moved, not just that a row was touched."""
+def plan_licensing_only(
+    code: str, record: dict | None, current_row: dict | None
+) -> DocumentCurePlan:
+    """Pure decision function for `--licensing-only` — no I/O.
+
+    Syncs the licensing tuple in `metadata` from canonical and NOTHING else:
+    `judul`, `content` and every other metadata key (the PMA tuple included)
+    are carried over unchanged. Same reason `--pma-only` exists: the rows the
+    detector reports as "canonical holds PP 28/2025 rows, the table serves
+    none" are hand-written prose the content-preservation gate refuses to
+    rebuild, and since v34 the structured metadata is the only thing the
+    channel still reads from them.
+
+    ONE DIRECTION, like `licensing_absent_codes`: this mode only ever REPLACES
+    an empty or stale row-set with canonical's non-empty one. A code whose
+    canonical `per_skala` is `[]` is refused, not emptied — a table row-set
+    that canonical has since detached is the QUARANTINE class
+    (`--all-quarantined`, which archives and rebuilds because that prose is
+    fabricated by definition). Emptying it from here would destroy a row-set
+    while reporting a cure.
+    """
+    if record is None:
+        return DocumentCurePlan(
+            code=code,
+            found_in_canonical=False,
+            found_in_table=current_row is not None,
+            is_gap=None,
+            new_judul=None,
+            new_content=None,
+            new_metadata=None,
+            update_row=False,
+            skip_reason="not in canonical dataset",
+            licensing_only=True,
+        )
+    if current_row is None:
+        return DocumentCurePlan(
+            code=code,
+            found_in_canonical=True,
+            found_in_table=False,
+            is_gap=None,
+            new_judul=None,
+            new_content=None,
+            new_metadata=None,
+            update_row=False,
+            skip_reason="not in kbli_documents table",
+            licensing_only=True,
+        )
+    if not (record.get("per_skala") or []):
+        return DocumentCurePlan(
+            code=code,
+            found_in_canonical=True,
+            found_in_table=True,
+            is_gap=True,
+            new_judul=None,
+            new_content=None,
+            new_metadata=None,
+            update_row=False,
+            skip_reason=(
+                "canonical holds no licensing rows for this code — refusing to empty the "
+                "stored row-set under --licensing-only (a detached row-set is the "
+                "--all-quarantined class)"
+            ),
+            licensing_only=True,
+        )
+
+    old_metadata = dict(current_row.get("metadata") or {})
+    new_metadata = dict(old_metadata)
+    new_metadata.update(licensing_metadata_from_canonical(record, old_metadata))
+    # Type-strict for the same reason as `plan_pma_only`: `[]` vs `null` vs a
+    # JSON string holding "[]" are three different things to jsonb and to
+    # `jsonb_array_length`, and Python's `==` would call some of them equal.
+    update_row = _json_differs(new_metadata, old_metadata)
+    return DocumentCurePlan(
+        code=code,
+        found_in_canonical=True,
+        found_in_table=True,
+        is_gap=False,
+        new_judul=None,
+        new_content=None,
+        new_metadata=new_metadata if update_row else None,
+        update_row=update_row,
+        skip_reason=None
+        if update_row
+        else "already cured (metadata licensing tuple matches canonical)",
+        licensing_only=True,
+    )
+
+
+def _tuple_delta(
+    old_metadata: dict | None, new_metadata: dict | None, keys: tuple[str, ...]
+) -> str:
+    """Pure. `key: old -> new` for every key of the tuple that moves — the run
+    report must say WHAT moved, not just that a row was touched. A list value
+    is shown by its length (a 60-row `per_skala` is a measurement, not a log
+    line); every other value by its repr."""
     old = old_metadata or {}
     new = new_metadata or {}
 
@@ -903,13 +1065,27 @@ def pma_tuple_delta(old_metadata: dict | None, new_metadata: dict | None) -> str
         return _json_differs(o, n)
 
     def _show(v: object) -> str:
-        return "<absent>" if v is _ABSENT else repr(v)
+        if v is _ABSENT:
+            return "<absent>"
+        if isinstance(v, list):
+            return f"<{len(v)} rows>"
+        return repr(v)
 
     return ", ".join(
         f"{key}: {_show(old.get(key, _ABSENT))} -> {_show(new.get(key, _ABSENT))}"
-        for key in PMA_METADATA_KEYS
+        for key in keys
         if _moved(old.get(key, _ABSENT), new.get(key, _ABSENT))
     )
+
+
+def pma_tuple_delta(old_metadata: dict | None, new_metadata: dict | None) -> str:
+    """Pure. The PMA tuple's moves — see `_tuple_delta`."""
+    return _tuple_delta(old_metadata, new_metadata, PMA_METADATA_KEYS)
+
+
+def licensing_tuple_delta(old_metadata: dict | None, new_metadata: dict | None) -> str:
+    """Pure. The licensing tuple's moves — see `_tuple_delta`."""
+    return _tuple_delta(old_metadata, new_metadata, LICENSING_METADATA_KEYS)
 
 
 def archive_params(code: str, current_row: dict) -> tuple:
@@ -972,6 +1148,15 @@ def build_parser() -> argparse.ArgumentParser:
         "`content` and every other metadata key are left byte-identical — the cure for rows "
         "whose hand-written prose the full rebuild would destroy. Refuses to combine with any "
         "--all-* selector.",
+    )
+    ap.add_argument(
+        "--licensing-only",
+        action="store_true",
+        help="with --only: sync ONLY the licensing tuple inside `metadata` from canonical "
+        "(per_skala, pp28_sources, licensing_status). `judul`, `content` and every other "
+        "metadata key are left byte-identical. One direction only: a code whose canonical "
+        "per_skala is empty is refused, never emptied (that is --all-quarantined's class). "
+        "Refuses to combine with any --all-* selector or with --pma-only.",
     )
     ap.add_argument(
         "--all-quarantined",
@@ -1047,10 +1232,24 @@ def validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> 
         parser.error(
             "--cure-run is REQUIRED when --apply is passed — each cure pass declares its own stable id"
         )
-    # --pma-only is a NARROWER write on an operator-named scope, never a sweep:
-    # the --all-* selectors each justify a WHOLESALE rebuild (marker / detector /
-    # stored text), and none of them says anything about the PMA tuple alone.
-    if getattr(args, "pma_only", False):
+    # --pma-only / --licensing-only are NARROWER writes on an operator-named
+    # scope, never a sweep: the --all-* selectors each justify a WHOLESALE
+    # rebuild (marker / detector / stored text), and none of them says anything
+    # about one tuple alone.
+    narrow = [
+        name
+        for name, on in (
+            ("--pma-only", getattr(args, "pma_only", False)),
+            ("--licensing-only", getattr(args, "licensing_only", False)),
+        )
+        if on
+    ]
+    if len(narrow) > 1:
+        parser.error(
+            "--pma-only and --licensing-only are two tuples and two cure runs — run them separately"
+        )
+    if narrow:
+        (mode,) = narrow
         sweep = [
             name
             for name, on in (
@@ -1062,10 +1261,10 @@ def validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> 
         ]
         if sweep:
             parser.error(
-                f"--pma-only cannot be combined with {' or '.join(sweep)} — name the codes with --only"
+                f"{mode} cannot be combined with {' or '.join(sweep)} — name the codes with --only"
             )
         if not args.only:
-            parser.error("--pma-only requires --only <codes> — it never guesses scope")
+            parser.error(f"{mode} requires --only <codes> — it never guesses scope")
     if not args.cure_run:
         return "dry-run"
     cure_run = args.cure_run.strip()
@@ -1214,8 +1413,8 @@ async def main() -> int | None:
             if not codes:
                 logger.warning("gate refused every selected row — nothing to do")
                 return
-        elif not args.all_quarantined and not args.pma_only:
-            # (`--pma-only` is exempt: it rewrites no prose, so the warning
+        elif not args.all_quarantined and not (args.pma_only or args.licensing_only):
+            # (the narrow modes are exempt: they rewrite no prose, so the warning
             # below would be a false alarm about an overwrite that cannot happen.)
             # `--only` BYPASSES the gate above, and that is the trap this block
             # exists to make loud. The gate cannot run here: a hand-written
@@ -1270,6 +1469,8 @@ async def main() -> int | None:
                 }
             if args.pma_only:
                 plan = plan_pma_only(code, by_code.get(code), current_row)
+            elif args.licensing_only:
+                plan = plan_licensing_only(code, by_code.get(code), current_row)
             else:
                 plan = plan_cure(code, by_code.get(code), current_row)
             plans.append(plan)
@@ -1278,13 +1479,14 @@ async def main() -> int | None:
                 logger.info("SKIP %s: %s", code, plan.skip_reason)
                 continue
 
-            if plan.pma_only:
+            if plan.partial_keys is not None:
                 assert current_row is not None
                 logger.info(
-                    "  %s: %s metadata PMA tuple only (judul/content byte-identical): %s",
+                    "  %s: %s metadata %s tuple only (judul/content byte-identical): %s",
                     code,
                     "syncing" if args.apply else "would sync",
-                    pma_tuple_delta(current_row.get("metadata"), plan.new_metadata),
+                    "PMA" if plan.pma_only else "licensing",
+                    _tuple_delta(current_row.get("metadata"), plan.new_metadata, plan.partial_keys),
                 )
             else:
                 logger.info(
@@ -1302,8 +1504,8 @@ async def main() -> int | None:
                 # precedent): bind the pre-serialized json.dumps() string to a
                 # $N::text::jsonb placeholder so the server casts text->jsonb
                 # exactly once.
-                if plan.pma_only:
-                    # Server-side merge of the tuple ONLY: `||` overwrites the 7
+                if plan.partial_keys is not None:
+                    # Server-side merge of the tuple ONLY: `||` overwrites the
                     # bound keys (a JSON null value still overwrites, it does not
                     # delete) and leaves every other key exactly as stored.
                     # The CASE guards the LEFT operand: `NULL || x` is NULL (a
@@ -1318,7 +1520,10 @@ async def main() -> int | None:
                         "THEN metadata ELSE '{}'::jsonb END) || $2::text::jsonb, "
                         "updated_at = now() WHERE kode_kbli = $1",
                         code,
-                        json.dumps(pma_metadata_patch(plan.new_metadata), ensure_ascii=False),
+                        json.dumps(
+                            metadata_patch(plan.new_metadata, plan.partial_keys),
+                            ensure_ascii=False,
+                        ),
                     )
                 else:
                     await conn.execute(
