@@ -54,13 +54,17 @@ diff:
 
 residual_risks:
   - >-
-    THE CROSS-FAMILY SEAT DID NOT SPEAK. tp1-qwen3.8-max was dispatched at effort xhigh against the
-    full diff and produced ZERO bytes in ~20 minutes; tp1-glm-5.2 was then dispatched on a tighter
-    prompt rather than letting the first one's silence pass as agreement. Neither is counted as a
-    review seat and the pack's council_run NOTICE is left STANDING rather than satisfied by a seat
-    that never answered — an empty answer is not a clean one. The adversarial pressure that DID
-    land is a Claude subagent on fresh context, which is same-family; that is a real limit on this
-    pack, stated rather than papered over.
+    THE CROSS-FAMILY REVIEW IS PARTIAL, and the part that landed was decisive. Three seats were
+    dispatched: tp1-qwen3.8-max returned ZERO bytes in ~20 minutes (timeout), tp1-glm-5.2 exhausted
+    its reasoning budget before emitting an answer TWICE (once at --max-tokens 16000), and
+    tp1 deepseek-v4-flash-0731 was cut off at 214 bytes — having already named a REAL defect that
+    the same-family reviewers and the author had all missed (the reorder hole, see dissent). So the
+    finding rate on ~214 bytes of cross-family output was one confirmed defect, while ~40 minutes of
+    same-family review found none. The remaining risk is therefore NOT "the seats agreed": it is
+    that the deepseek answer was truncated mid-list and its findings 2..N were never seen. Its
+    prompt named eleven more shapes to attack and its findings 2..N were never emitted. Nine of
+    those shapes are being probed by hand as this pack is written; whatever they return is the
+    AUTHOR probing, not the refuter answering, and is recorded as such.
   - >-
     A first-party action version could be compromised UPSTREAM, and this exemption does not defend
     against that. Neither did the Gear-3 ceremony it replaces, which reads a brief and a pack and
@@ -80,6 +84,21 @@ residual_risks:
 pii_scan: clean
 
 receipts:
+  - claim: >-
+      The reorder hole the cross-family refuter named was REAL, and the cure discriminates — the
+      old comparison is what let it through, and restoring it reddens exactly one test while its
+      innocence twin stays green
+    cmd: >-
+      revert condition 3 to `sorted(state["minus"]) != sorted(state["plus"])`, then pytest
+      scripts/tests/test_evidence_pack_lint.py -k path_term_exemption ; restore ; re-run
+    result: >-
+      with sorted(): 1 failed, 20 passed — the failure is
+      test_path_term_exemption_guilt_reordering_two_bare_steps_keeps_gear_three, and its innocence
+      twin (both actions bumped, order unchanged) stays GREEN. Restored: 21 passed. The three real
+      PR diffs still go 3 -> 1 after the cure, checked before and after.
+    exit: 1
+    ts: 2026-09-01T19:40Z
+    seat: session (Pro)
   - claim: >-
       The exemption actually moves the floor on the REAL blocked PR, not on a fixture — and the
       same call without the patch still floors at 3, which is the control that proves the patch is
@@ -157,6 +176,17 @@ receipts:
     seat: session (Pro)
 
 dissent:
+  - seat: tp1 deepseek-v4-flash-0731
+    status: CONFIRMED
+    objection: >-
+      "False positive 1 — reordering steps." Condition 3 compared the SORTED identities, so two
+      bare one-line steps whose `uses:` lines swap places have an identical multiset and were
+      EXEMPTED — while actually changing execution order, which can put a scan before the step
+      producing what it scans and pass it vacuously. Real, and cured in this PR: condition 3 now
+      compares the SEQUENCES (both lists are in file order, so a pure ref change leaves them
+      identical). Reverting to sorted() reddens exactly the new reorder test and leaves its
+      innocence twin green. The seat's answer was TRUNCATED at 214 bytes and this finding is all
+      it managed to emit — which is the argument for the seat, not against it.
   - seat: session (Pro), self-caught during BUILD
     status: CONFIRMED
     objection: >-

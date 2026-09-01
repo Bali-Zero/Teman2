@@ -3723,3 +3723,36 @@ def test_path_term_exemption_rejects_a_combined_diff():
         "++      - uses: actions/checkout@v5\n"
     )
     assert compute_floor([_WF], None, patch) == 3
+
+
+def test_path_term_exemption_guilt_reordering_two_bare_steps_keeps_gear_three():
+    """Found by a cross-family refuter (deepseek-v4-flash-0731) whose answer was
+    truncated at 214 bytes and still contained it. Two bare one-line steps whose
+    `uses:` lines swap places have an IDENTICAL multiset of action identities, so
+    the first cut of condition 3 — `sorted(minus) != sorted(plus)` — exempted a
+    reorder. Reordering steps is a semantic change: it can put a scan before the
+    step that produces what it scans, which passes vacuously. Condition 3 now
+    compares the SEQUENCES, both of which are in file order."""
+    reorder = _patch(
+        "@@ -1,2 +1,2 @@\n"
+        "-      - uses: actions/checkout@v4\n"
+        "-      - uses: actions/setup-node@v4\n"
+        "+      - uses: actions/setup-node@v4\n"
+        "+      - uses: actions/checkout@v4\n"
+    )
+    assert compute_floor([_WF], None, reorder) == 3
+    assert workflow_paths_exempt_from_path_term(reorder) == set()
+
+
+def test_path_term_exemption_innocence_two_pins_keep_their_order():
+    """The control for the test above: the same two actions, both bumped, order
+    unchanged. If sequence-equality were over-tight this would go red too, and a
+    guilt test whose innocence twin also fails proves nothing."""
+    both_bumped = _patch(
+        "@@ -1,2 +1,2 @@\n"
+        "-      - uses: actions/checkout@v4\n"
+        "-      - uses: actions/setup-node@v4\n"
+        "+      - uses: actions/checkout@v5\n"
+        "+      - uses: actions/setup-node@v5\n"
+    )
+    assert compute_floor([_WF], None, both_bumped) == 1

@@ -587,8 +587,19 @@ def workflow_paths_exempt_from_path_term(patch: str) -> set[str]:
             continue
         if not state["plus"] and not state["minus"]:
             continue  # no content hunk parsed -> not PROVEN safe -> no exemption
-        if sorted(state["minus"]) != sorted(state["plus"]):
-            continue  # a step was added, removed, or swapped for another action
+        if state["minus"] != state["plus"]:
+            # SEQUENCE equality, not multiset. The first cut compared
+            # sorted() and was defeated by a REORDER: two bare one-line
+            # steps whose `uses:` lines swap places have an identical
+            # multiset of identities, so they were exempted — while
+            # actually changing execution order, which is a semantic change
+            # and can vacuously disarm a scan that ran before the step
+            # producing what it scans. Found 2026-09-01 by a cross-family
+            # refuter (tp1 deepseek-v4-flash-0731), whose answer was cut off
+            # at 214 bytes and still contained this. Both lists are in file
+            # order, so a pure ref change leaves them identical and anything
+            # that adds, removes, swaps or REORDERS an action does not.
+            continue
         exempt.add(path)
     return exempt
 
