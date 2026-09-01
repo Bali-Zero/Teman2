@@ -62,8 +62,8 @@ of this table.
 | cells | class                                                                                                                                                                                                                                                                                                                                                               |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 6     | **`modified × *`** — 4 are the motivating defect (`× rename_away{,_and_tree}`: rename detection hides the source, the local modification is never classified as a collision, the ff aborts forever); the other 2 are `× {tree_at_path, typechange} × keeplocal`, where the keep-local restore reports success while putting Pro's content somewhere nobody declared |
-| 12    | `dangling_symlink × *` — an unresolved local symlink wedges every incoming action; no branch of the resolver handles a non-regular file                                                                                                                                                                                                                             |
-| 12    | `dir_at_path × *` — a local directory where a tracked file belongs wedges every incoming action; there is no branch for a type mismatch                                                                                                                                                                                                                             |
+| 12    | `dangling_symlink × *` — TWO mechanisms, not one: on the non-rename actions the resolver's tracked branch RUNS and crashes inside `cp -p`, which dereferences the dangling link; on the rename actions it never runs at all                                                                                                                                         |
+| 12    | `dir_at_path × *` — same split: on the non-rename actions the tracked branch RUNS and `cp` refuses a directory; on the rename actions the resolver never sees the path                                                                                                                                                                                              |
 | 12    | `symlink × *` — a RESOLVING local symlink is silently converted into a copy: `cp -p` dereferences it, so Pro-authoritative state that was a link comes back a file                                                                                                                                                                                                  |
 | 8     | `del_unstaged × {delete, tree_at_path, modify, typechange}` — nothing to collide with, yet the tick wedges permanently on a `cp` whose source does not exist                                                                                                                                                                                                        |
 | 2     | `untracked × tree_at_path` — an untracked local file meeting an incoming tree is neither backed up nor cleared, so the ff can never apply                                                                                                                                                                                                                           |
@@ -121,6 +121,15 @@ including both false ones. An unargued `KNOWN_BAD` is merely pessimistic; an una
 defect blessed in writing, which the instrument then certifies forever. The guard now demands a
 reason on the optimistic side too, wherever `OK` is a CLAIM rather than an observation: content
 was set aside (`backup=file`) and the tracked path did not come back a regular file.
+
+**Two wrong reasons hid behind one sentence.** "No branch of the resolver handles a non-regular
+file / a type mismatch" was attached to 28 rows and was false on every one of them, in two
+opposite ways. On the 16 non-rename rows of `dangling_symlink` and `dir_at_path` the branch
+EXISTS and RUNS — it reaches `cp -p` and crashes there (dereferencing a dangling link, or
+refusing a directory), leaving the tell that distinguishes the two: a backup directory that is
+created and EMPTY. On the 12 rename rows the resolver never runs at all. One sentence, two real
+mechanisms, neither of them the one it named — and each pointing a cure somewhere it would do
+nothing. All 28 were reproduced per-cell before rewriting.
 
 **The motivating defect is not 4 cells, it is 16.** The table above groups by LOCAL state, which
 hides that one mechanism cuts across four of those groups: wherever the incoming action is a
