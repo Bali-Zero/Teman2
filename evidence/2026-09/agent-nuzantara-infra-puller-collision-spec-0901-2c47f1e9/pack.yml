@@ -1,0 +1,237 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  One concern: enumerate the Pro main puller's collision surface instead of patching it a third
+  time. The builder contract's own depth-1 rule, applied literally after two consecutive
+  fix-of-a-fix cures were each wrong about a neighbouring shape (#5492, #5496). Ships NO
+  behaviour change to scripts/pro/pro-git-pull.sh.
+
+lanes:
+  - lane: matrix-ground
+    role: read
+    seat: >-
+      claude-opus-5 (conducting session, Pro). Established the premise from the record rather than
+      from the mandate text: read #5492's and #5496's real diffs and the resolver's actual branches
+      before writing a line. Produced the design rule the whole defect history reduces to —
+      classify by the TYPE of the object at "$REMOTE:$f", never by its EXISTENCE.
+  - lane: matrix-build
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session, Pro). Wrote the enumerator, the reviewed baseline, the
+      spec, and the macOS CI leg. Three defects in this lane were SELF-CAUGHT and are in the
+      journal rather than hidden: a slice replacement that duplicated 76 lines and passed `bash -n`
+      (found only because all five sabotages then reported CAUGHT on the same cell), a probe of the
+      wrong shape that refuted a CORRECT finding, and the document arithmetic error found while
+      authoring this pack.
+  - lane: matrix-grade-instrument
+    role: review
+    seat: >-
+      claude-sonnet-5 subagents on fresh context, grading a diff they did not author and instructed
+      to CONSTRUCT defeating fixtures rather than read and agree. Between them: content-blindness
+      (three faces, one cure), the filesystem-scope defect behind the CI red, and an engineered
+      hash collision — a regular file carrying the symlink target's exact bytes — used to prove the
+      cure discriminates. Verdicts in journal.jsonl.
+  - lane: matrix-grade-verdicts
+    role: review
+    seat: >-
+      claude-sonnet-5 subagents on fresh context, grading the HUMAN half — the eighth column no
+      machine check reads. Found two false OK verdicts, two over-harsh KNOWN_BADs, and 28 rows
+      whose shared reason named neither of the two mechanisms that actually fire. A second pass
+      reproduced 22 cells individually to separate the two. Verdicts in journal.jsonl.
+
+seat_diversity: NOT-SATISFIED
+seat_diversity_note: >-
+  STATED AS A GAP, NOT ARGUED AWAY. Every lane above is Anthropic-family: opus-5 conducting,
+  sonnet-5 grading. R9's Gear-3 council quorum requires distinct cross-family review seats and
+  this pack does not have them — measured, not assumed, on 2026-09-01 and re-measured 2026-09-02:
+  codex returns 401 Unauthorized (its OAuth token needs an interactive `codex login`, which is a
+  GUI action only the owner can perform) and kimi returns 403 weekly-limit. Only tp1-qwen3.8-max
+  answers, and one seat is not a quorum. R9 moved from NOTICE to hard violation on
+  R9_R11_ENFORCEMENT_DATE = 2026-09-02, i.e. today — so this pack is honest about failing it
+  rather than dressing a same-family review as a council. The blocker is owner-only and repo-wide:
+  it stops every Gear-3 PR, not this one.
+
+diff:
+  files: 7
+  net_lines: 1346
+  measured_at: >-
+    counted with `git diff --numstat --cached $(git merge-base origin/main HEAD)` — the CACHED
+    form, not the three-dot one, and the difference is the whole point: the three files under
+    evidence/ ARE this pack, so a figure taken before staging them would have read 4 / 938 and
+    would have described a diff other than the one being shipped. (Two dots would have been wrong
+    for the opposite reason — it would accuse this branch of deleting main's later additions,
+    W102.) All seven files are additions; the workflow file is +99 -0, one appended job, and the
+    other six are new.
+
+residual_risks:
+  - >-
+    THE VERDICT COLUMN IS THE UNGUARDED HALF AND IT WAS MEASURED WRONG. On 2026-09-01 an
+    independent audit graded it for the first time and found two false OK verdicts and forty
+    reasons naming a mechanism other than the one that fires. NONE of it was visible to the
+    machine: the seven measured fields were correct from the start and never moved through any of
+    it. The guard was extended to the optimistic side in response, but a guard that demands a
+    reason cannot check that the reason is TRUE — that remains a human-review surface with no
+    automated backstop, and it has a measured failure rate rather than a hypothetical one.
+  - >-
+    FIFTY-TWO DEFECTS ARE MADE LEGIBLE AND NONE IS CURED. This is the intended trade — the surface
+    was under-specified, so the spec ships first and each cure lands later as a reviewable diff of
+    baseline rows — but it must not be read as "the puller is now safe". It is exactly as unsafe as
+    it was, and now says so in a file.
+  - >-
+    THE GUILT CORPUS IS UNDER-SELECTED, and is treated as such rather than as coverage. Five
+    sabotages, each caught on the correct origin action. Known-unattacked: a fixture whose ORIGIN
+    action is right but whose LOCAL state is silently wrong (the A axis has no sabotage of its
+    own), a cell whose policy column disagrees with the allowlist the run actually wrote, and the
+    four `untracked` cells, which are built by a different path than the other 98.
+  - >-
+    THE CASE-ONLY AXIS IS ONLY PARTLY CLOSED AND ONLY ON SOME VOLUMES. Measured: Subject.md ->
+    subject.md at the repo root against all seven local states, on a case-folding filesystem only —
+    held out entirely on the ubuntu leg. Never measured anywhere: a case-only rename whose source
+    is allowlisted keep-local, and a case-only rename of a DIRECTORY. A submodule/gitlink (commit
+    object) at a renamed-away name is unmeasured too, and that same clause produced two of the
+    three regressions on record.
+  - >-
+    scripts/mini/mini-git-pull.sh IS A SECOND IMPLEMENTATION of this resolver and this instrument
+    does not touch it. Named here rather than widening scope: one PR, one concern. Every cell is
+    also a single tick against a quiet origin moving exactly one path — no second puller, no lock
+    contention, no origin advancing mid-tick, and no multi-path tick where an early abort would
+    hide every later path's behaviour.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      The enumerator measures all 102 cells on a case-FOLDING volume and holds out exactly the 14
+      rename_case_only rows on a case-SENSITIVE one, saying so in its own output both times
+    cmd: "GitHub Actions run 33530625598 @ bcd4643a6a — jobs `antidotes` (ubuntu) and `collision-matrix-case-folding` (macos-latest)"
+    result: >-
+      antidotes: "filesystem: case-SENSITIVE — SKIPPING the rename_case_only axis" / "cells
+      measured: 88  baseline: 102 minus 14 held out on the rename_case_only axis" / "MATRIX
+      STABLE". case-folding leg: "runner folds case — the rename_case_only axis is in scope" /
+      "filesystem: case-FOLDING — all 7 origin actions in scope" / "cells measured: 102  baseline:
+      102" / "MATRIX STABLE". Both SUCCESS.
+    exit: 0
+    ts: 2026-09-01T16:21Z
+    seat: CI (github-actions)
+  - claim: >-
+      The macOS leg cannot go green-on-nothing — if GitHub handed it a case-sensitive runner it
+      would go RED instead of quietly measuring 88 cells
+    cmd: "step 'The runner's filesystem must actually fold case' in .github/workflows/immune-enforcement.yml"
+    result: >-
+      Observed emitting its POSITIVE branch, "runner folds case — the rename_case_only axis is in
+      scope". Its negative branch is `::error::` + `exit 1`, not a skip — so the axis this job
+      exists for can never be silently held out inside the job that exists to measure it.
+    exit: 0
+    ts: 2026-09-01T16:16Z
+    seat: CI (github-actions)
+  - claim: >-
+      The content-blindness cure DISCRIMINATES — it is not passing by accident of shape
+    cmd: >-
+      independent verifier, fresh context: built a REGULAR FILE whose bytes are exactly the symlink
+      target string ("bystander.md", no trailing newline) and ran it through the typechange arm
+    result: >-
+      The forged blob has the target's hash but mode 100644 where the assertion pins 120000 — the
+      run aborts. Before the cure the same fixture satisfied the probe, because the probe read
+      presence and type only. Innocence run green at 102/102 in the same pass.
+    exit: 0
+    ts: 2026-09-01T13:55Z
+    seat: claude-sonnet-5 (subagent, generator != grader)
+  - claim: >-
+      Five sabotaged fixtures are each CAUGHT, and on the correct origin action — a corpus that
+      catches everything on one cell is a corpus that is not discriminating
+    cmd: "5-sabotage guilt corpus + un-sabotaged innocence run"
+    result: >-
+      innocence: rc=0, "cells measured: 102  baseline: 102", MATRIX STABLE. guilt:
+      modify-stesso-prefisso CAUGHT on `modify` · rename-dst-non-mosso CAUGHT on `rename_away` ·
+      albero-nome-sbagliato CAUGHT on `tree_at_path` · albero-file-in-piu CAUGHT on `tree_at_path`
+      · case-only-degenerato CAUGHT on `rename_case_only`.
+    exit: 0
+    ts: 2026-09-01T15:40Z
+    seat: session (Pro)
+  - claim: >-
+      The register table's arithmetic is self-checking against the baseline, and the axis
+      definition's was NOT — found and fixed while authoring this pack
+    cmd: >-
+      awk -F'\t' '{s[$1];a[$2];p[$3]} END{print length(s)*length(a)*length(p), NR}' baseline
+      ; awk -F'\t' '$8=="KNOWN_BAD"{print $1}' baseline | sort | uniq -c
+    result: >-
+      "112 102" — so 8 states x 7 actions x 2 policies, 102 constructible, 10 not. The document
+      said "88 of the 98" and its A-axis list omitted `symlink`, which has a 12-cell row in the
+      register directly below it. The register itself was correct throughout:
+      12+12+12+8+6+2 = 52 = the baseline's KNOWN_BAD count exactly, and every per-class action list
+      matches row for row. Fixed in 644a9fe0d2.
+    exit: 0
+    ts: 2026-09-02T00:20Z
+    seat: session (Pro), self-caught
+  - claim: >-
+      Every KNOWN_BAD carries a reason and no reason field is empty — the guard is not passing
+      because it has nothing to judge
+    cmd: >-
+      awk -F'\t' '$8=="KNOWN_BAD" && (NF<9 || $9 ~ /^[ \t]*$/)' baseline | wc -l ; awk -F'\t'
+      '$8=="OK"' baseline | wc -l
+    result: >-
+      0 KNOWN_BAD without a reason; 0 rows with an empty reason field; 52 KNOWN_BAD / 50 OK, of
+      which 17 OKs carry a reason and 33 do not (an OK is allowed to be a bare observation; it is
+      required to argue only where it is a CLAIM — backup taken on a path with no local file).
+    exit: 0
+    ts: 2026-09-02T00:25Z
+    seat: session (Pro)
+
+dissent:
+  - seat: claude-sonnet-5 (matrix-refuter, fresh context)
+    objection: >-
+      THE INSTRUMENT WAS CONTENT-BLIND. Its ls-tree probes asserted an object's silhouette —
+      presence, and at best type — and never its identity, so a fixture built with the wrong
+      content satisfied the assertion and the cell recorded a measurement of something else.
+      Three faces of the same defect.
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED and cured with ONE change rather than three patches: assert mode + type + blob SHA
+      against hashes derived from the fixture constants, plus a recursive blob count under the
+      path. Independently confirmed by a second seat with an engineered collision (receipt above).
+  - seat: claude-sonnet-5 (fs-scope-refuter, fresh context)
+    objection: >-
+      THE CI RED WAS NOT A FLAKE AND NOT A BUG IN THE FIXTURES. The rename_case_only axis measures
+      a defect that exists only where the filesystem folds case; on ubuntu the cells still RAN but
+      measured an ordinary rename between two distinct paths. It further showed macos-latest was
+      already available in-repo — closing a coverage gap the author had deferred.
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED on both counts. The filesystem became a declared coordinate (three-outcome probe,
+      axis held out with the count printed inline, --write-baseline refuses from a partial run),
+      and the macOS leg shipped in the same PR rather than as a promise.
+  - seat: claude-sonnet-5 (verdict-auditor, fresh context)
+    objection: >-
+      TWO `OK` VERDICTS WERE FALSE. Where the resolver's tracked branch crashes inside cp -p the
+      cell had been blessed as fail-safe; it is not. Two further KNOWN_BADs were over-harsh, and
+      four more carried misattributed reasons.
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED. Verdicts moved 54/48 -> 50/52 and the guard was extended to the optimistic side.
+      The deeper lesson is recorded in the spec: an unargued KNOWN_BAD is merely pessimistic, an
+      unargued OK is a defect blessed in writing which the instrument then certifies forever.
+  - seat: claude-sonnet-5 (cell-reproducer, fresh context)
+    objection: >-
+      ONE SENTENCE COVERED 28 ROWS AND NAMED NEITHER MECHANISM, in two opposite ways. "No branch of
+      the resolver handles a non-regular file" is false on 16 non-rename rows, where the branch
+      RUNS and crashes inside cp -p (signature: backup directory created and EMPTY), and false on
+      the 12 rename rows, where the resolver never runs at all because rename detection hides the
+      source from `git diff --name-only`.
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED, and the row numbers were re-derived from the FILE rather than from the report —
+      which caught that the new (B) reason quotes the old phrase to refute it, so a naive grep for
+      the old text also matched already-fixed rows. Four further rows were carrying a keeplocal
+      clause inapplicable under `ordinary`; removed.
+  - seat: session (Pro) — self-dissent, recorded because the wrong answer was already reported
+    objection: >-
+      I REFUTED A CORRECT FINDING WITH A PROBE OF THE WRONG SHAPE. `cp -p` onto a dangling symlink
+      exits 1 when the target has a missing intermediate directory, and exits 0 while FOLLOWING
+      the link when the target is a bare filename with an existing parent. I probed the first; the
+      committed fixture is the second.
+    status: CONFIRMED
+    disposition: >-
+      The wrong mechanism reached the baseline, the spec and a report to the owner before being
+      corrected in all three. The spec's own text now carries this error as its worked example,
+      and the rule it produced is in the shell-traps memory: if you test a mechanism, run THE
+      FIXTURE, not your reconstruction of it.
