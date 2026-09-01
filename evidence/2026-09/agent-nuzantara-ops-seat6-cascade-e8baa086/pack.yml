@@ -10,9 +10,9 @@ diff:
     _5 to _6 (same fallback-of-last-resort semantics, correct trigger now)"
   net_lines:
     "measured merge-base-anchored, CUMULATIVE with unmerged sibling #4640:
-    +364/-126, net +238; 17 files changed (eca4b258e..cd01a1ffc, git diff --numstat).
-    This PR's OWN incremental commits on top of #4640's tip (3204fa225..cd01a1ffc):
-    +121/-17 net +104 across 4 files before this evidence commit."
+    +631/-126, net +505; 19 files changed (929f67b01..1573424a7,
+    git diff --no-renames --numstat). Re-measured after this PR's evidence moved
+    to its per-PR directory and main was merged in; see this commit's message."
 receipts:
   - claim: "PR #4644 (branch agent/nuzantara/ops/seat6-cascade), merge-base
       anchored against origin/main, touches 17 files: 364 insertions, 126
