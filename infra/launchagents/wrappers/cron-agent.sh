@@ -7,7 +7,7 @@
 #
 # Features:
 #   - Telegram alert on failure (with cooldown)
-#   - Claude OAuth fallback (TOKEN_1 → ... → TOKEN_5 → legacy → keychain)
+#   - Claude OAuth fallback (TOKEN_1 → ... → TOKEN_5 → TOKEN_6 [Team, last-resort] → legacy → keychain)
 #   - Structured logging to ~/logs/cron-agent/
 #   - Timeout enforcement
 #   - Lock file (prevents concurrent runs of same job)
@@ -15,7 +15,8 @@
 #
 # Environment:
 #   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID — alerts (loaded from ~/.nuzantara-secrets.env)
-#   CLAUDE_CODE_OAUTH_TOKEN_{1,2,3,4,5} — Claude subscription accounts for agent tier
+#   CLAUDE_CODE_OAUTH_TOKEN_{1,2,3,4,5} — 5 Claude MAX subscription accounts for agent tier
+#   CLAUDE_CODE_OAUTH_TOKEN_6 — Claude Team seat (zero@balizero.com), weekly-capped, LAST RESORT ONLY
 #   CRON_AGENT_TIMEOUT — override default timeout (default: 300s exec, 600s agent)
 #   CRON_AGENT_DRY_RUN — set to "1" to print commands without executing
 #
@@ -442,10 +443,11 @@ leaving no output (W89 class-audit, regulatory-watcher incident 2026-07-05)."
         fi
     fi
 
-    # Five numbered seats, then legacy and keychain fallback.
+    # Five MAX seats, then the Team seat (6, weekly-capped, last-resort by
+    # position — never reorder this ahead of 1-5), then legacy and keychain.
     local tokens=()
     local labels=()
-    for i in 1 2 3 4 5; do
+    for i in 1 2 3 4 5 6; do
         local var_name="CLAUDE_CODE_OAUTH_TOKEN_${i}"
         local tok="${!var_name:-}"
         local is_dup=0

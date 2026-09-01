@@ -147,6 +147,7 @@ jobs:
               scripts/tests/test_codex_seat_lib.py|\
               scripts/tests/test_claude_cascade_shell.py|\
               infra/launchagents/wrappers/claude-cascade.sh|\
+              scripts/tests/test_claude_oauth_slot6_coverage.py|\
               scripts/auth_sentinel.py|\
               scripts/tests/test_tri_llm_claude_seat_token.py|\
               scripts/lint_doc_executable_refs.py|\
@@ -979,6 +980,7 @@ jobs:
           python -m pip install --quiet pytest
           python -m pytest scripts/tests/test_codex_seat_lib.py -q
           python -m pytest scripts/tests/test_claude_cascade_shell.py -q
+          python -m pytest scripts/tests/test_claude_oauth_slot6_coverage.py -q
 
       - name: Claude seat helper corpus (a plain script must reach a live seat)
         if: steps.paths.outputs.relevant == 'true'
