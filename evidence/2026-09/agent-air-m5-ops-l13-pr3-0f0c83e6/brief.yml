@@ -1,0 +1,92 @@
+task_id: l13-pr3
+gear: 1
+l_level: L1
+gate_class: opus
+objective: |
+  L13-PR3 (docs/plans/2026-08-29-beyond-sota-craft-wave/L13-security-secrets-pii.md):
+  extend scripts/pending_arms_report.py with a value-free operator[secret] ager
+  view — non-reversible fingerprint + age for every OPEN row tagged
+  operator[secret], excluding every closed row, JSON+text output, no send
+  side effect. Rebased onto L10-PR1 (#5328, "PENDING-ARMS overdue ratchet"),
+  confirmed merged and in origin/main's ancestry before this branch was cut
+  (`git merge-base --is-ancestor <5328 merge sha> origin/main`).
+
+  Adds three functions (is_operator_secret_entry, operator_secret_fingerprint,
+  build_operator_secret_digest) plus render/JSON wrappers and a new
+  `--operator-secret-digest` CLI mode, reusing the existing parser/Entry
+  machinery — no second ledger parser, per spec's explicit constraint.
+constraints:
+  - "No second ledger parser: reuses load_entries/parse_entry/Entry.cls —
+    selection is `cls == CLASS_OPERATOR_GATED` plus 'secret' in the owner's
+    declared operator[<cat>] tag set, not a new regex over raw text."
+  - "Fingerprint is non-reversible and built ONLY from the row's stable
+    identity fields (artifact + owner + opened_date) — never from
+    missing_step/proof prose, and never from secret material (this ledger
+    never stores secret values in the first place, per CLAUDE.md's own ban)."
+  - "Rendered/JSON digest output carries fingerprint + age_days + overdue +
+    a fixed class label only — artifact/owner/missing_step/proof text is
+    never emitted, so no endpoint, partial credential name, or recovery
+    detail from the ledger's free-text fields can leak into a channel this
+    gets pasted into."
+  - "Read-only / no side effect: the new CLI branch returns before
+    annotate_pr_refs (gh) and _ledger_freshness (git) ever run — no network,
+    no subprocess call, no write."
+acceptance:
+  - text: >
+      WHEN the digest is built over a ledger with >=3 open operator[secret]
+      rows, several open non-secret rows, and one CLOSED operator[secret]
+      row, it SHALL include exactly the open secret rows and exclude every
+      other row, including the closed one.
+    status: verified
+    probe: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_pending_arms_report.py -k operator_secret -q"
+  - text: >
+      WHEN the digest (text or JSON) is rendered, it SHALL NOT contain any
+      sentinel token planted only in missing_step/proof/artifact free text
+      of excluded or included rows.
+    status: verified
+    probe: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_pending_arms_report.py -k leak -q"
+  - text: >
+      WHEN --operator-secret-digest runs, it SHALL invoke zero subprocess
+      calls (no gh, no git freshness check).
+    status: verified
+    probe: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_pending_arms_report.py -k no_send_side_effect -q"
+  - text: >
+      WHEN run against the REAL ledger, the digest SHALL list at least three
+      open operator[secret] fingerprints with ages and zero closed rows —
+      the PR-3 arming/prove-live bar from the plan.
+    status: verified
+    probe: "apps/backend-rag/.venv/bin/python scripts/pending_arms_report.py --operator-secret-digest --json"
+  - text: >
+      WHEN the full existing suite runs post-change, it SHALL stay green —
+      L10-PR1's ratchet behavior and every pre-existing test must be
+      unaffected (spec: 'Preserve all L10 PR-1 behavior and tests').
+    status: verified
+    probe: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_pending_arms_report.py -q"
+risks:
+  - "The identity key (artifact|owner|opened_date) can collide for two real
+    ledger rows that are near-duplicate revisions of the same underlying
+    entry (same opened date, same owner label, same bold artifact title,
+    differing only in missing_step/proof prose) — observed live on the real
+    ledger's two 2026-08-10 Merge-OS-v2 rows, which the digest renders as
+    one fingerprint appearing twice. This is a deliberate trade-off, not an
+    oversight: including missing_step/proof in the identity would make the
+    fingerprint churn on every prose edit/append, defeating 'stable
+    fingerprint for the same row across weekly runs'. Left as-is (Gear 1,
+    out of scope) rather than silently deduped, since deduping could also
+    hide a genuine second open rotation that happens to share a date."
+  - "operator_secret_fingerprint truncates SHA-256 to 16 hex chars (64 bits,
+    widened from 48 during round-1 adversarial review) — adequate for the
+    handful of rows this ledger carries (measured live: 30 open
+    operator[secret] rows today), not a cryptographic commitment against a
+    dictionary/enumeration attack (the identity fields are low-entropy and
+    guessable). No delivery lane is wired in this PR, so the only current
+    audience already has ledger read access; hardening to a keyed HMAC
+    before any external delivery is tracked in a new PENDING-ARMS row, not
+    silently dropped. Documented in the function's own docstring."
+  - "Round-2 adversarial review found --operator-secret-digest silently lost
+    to --ratchet/--ratchet-selftest (mode precedence) and silently ignored
+    --check-pr-refs, and the ratchet's own RED path can print ledger prose
+    in the clear — fixed by rejecting every incompatible combination with
+    exit 2 before any mode runs, consolidated into one guard at the top of
+    main()."
+pii: none
