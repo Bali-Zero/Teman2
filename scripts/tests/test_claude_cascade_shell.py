@@ -30,7 +30,8 @@ TOKEN_VALUES = {
     "token2": "fixture-seat-two-secret",
     "token3": "fixture-seat-three-secret",
     "token4": "fixture-seat-four-secret",
-    "token5": "fixture-zero-team-secret",
+    "token5": "fixture-seat-five-secret",
+    "token6": "fixture-zero-team-secret",
     "legacy": "fixture-legacy-secret",
 }
 
@@ -55,7 +56,15 @@ def _fake_fleet(
 
     cases = "\n".join(
         f'  "{TOKEN_VALUES[label]}") label="{label}" ;;'
-        for label in ("token1", "token2", "token3", "token4", "token5", "legacy")
+        for label in (
+            "token1",
+            "token2",
+            "token3",
+            "token4",
+            "token5",
+            "token6",
+            "legacy",
+        )
     )
     actions = "\n".join(
         f'  "{label}") {seat_bodies[label]} ;;'
@@ -65,6 +74,7 @@ def _fake_fleet(
             "token3",
             "token4",
             "token5",
+            "token6",
             "legacy",
             "keychain",
         )
@@ -197,6 +207,7 @@ def _default_bodies() -> dict[str, str]:
         "token3": "exit 1",
         "token4": "exit 1",
         "token5": "exit 1",
+        "token6": "exit 1",
         "legacy": "exit 1",
         "keychain": "exit 1",
         "team-wrapper": "exit 1",
@@ -477,6 +488,81 @@ def test_team_wrapper_is_only_used_when_explicit_team_token_is_absent(
         "team-wrapper",
     ]
     assert "used: claude-token-6-team-wrapper" in result.stderr
+
+
+def test_numbered_team_slot_fires_only_after_the_five_max_seats_fail(
+    tmp_path: Path,
+) -> None:
+    """The Team seat is LAST RESORT: it is reached, but only at the end.
+
+    Every other slot-6 test in this file exercises the compatibility
+    "team-wrapper" fallback, which fires precisely BECAUSE
+    CLAUDE_CODE_OAUTH_TOKEN_6 is unset. That leaves the numbered slot-6 branch
+    -- the one the 2026-08-23 remap actually added -- unexercised. This test
+    sets the token so that branch runs, and pins the ORDER rather than the mere
+    fact of the call.
+    """
+    bodies = _default_bodies()
+    bodies.update(
+        {
+            "token1": 'printf "authentication required\\n" >&2\nexit 0',
+            "token2": 'printf "weekly limit reached\\n"\nexit 0',
+            "token3": "exit 1",
+            "token4": 'printf "401 Unauthorized\\n" >&2\nexit 1',
+            "token5": "exit 1",
+            "token6": 'printf "team-seat-success\\n"\nexit 0',
+        }
+    )
+    call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
+    env["CLAUDE_CODE_OAUTH_TOKEN_6"] = TOKEN_VALUES["token6"]
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "team-seat-success\n"
+    assert _labels(call_log) == [
+        "token1",
+        "token2",
+        "token3",
+        "token4",
+        "token5",
+        "token6",
+    ]
+    # The label is asymmetric with slots 1-5 on purpose: the wrapper marks the
+    # premium seat so a log reader can see when it was spent.
+    assert "used: claude-token-6-team-env" in result.stderr
+    assert list(temp_dir.iterdir()) == []
+
+
+def test_team_slot_is_not_spent_when_an_earlier_max_seat_succeeds(
+    tmp_path: Path,
+) -> None:
+    """The half of "last resort" that costs money if it regresses.
+
+    The five MAX x20 seats reset on a rolling 5h window; the Team premium seat
+    has WEEKLY caps with no rolling reset (CLAUDE.md, RULING Zero 2026-08-23),
+    so spending it early is exactly how it is found empty when it is needed.
+    A slot-6 branch inserted at the wrong point in the loop would still pass
+    the test above -- it would be called, just too early -- and only this test
+    goes red.
+
+    Measured against origin/main's wrapper (no slot 6 at all) this assertion
+    passes VACUOUSLY: nothing is ever labelled token6 there. What keeps it
+    honest is the test above, which goes red the moment slot 6 stops being
+    reachable -- the pair is the guard, neither half alone.
+    """
+    bodies = _default_bodies()
+    bodies["token3"] = 'printf "seat-three-success\\n"\nexit 0'
+    bodies["token6"] = 'printf "TEAM SEAT SPENT TOO EARLY\\n"\nexit 0'
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    env["CLAUDE_CODE_OAUTH_TOKEN_6"] = TOKEN_VALUES["token6"]
+
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "seat-three-success\n"
+    assert _labels(call_log) == ["token1", "token2", "token3"]
+    assert "token6" not in _labels(call_log)
 
 
 def test_claude_only_never_crosses_provider_boundary_when_all_seats_fail(
