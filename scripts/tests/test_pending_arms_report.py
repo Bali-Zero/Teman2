@@ -1926,6 +1926,36 @@ def test_cli_operator_secret_digest_json(operator_secret_ledger_path, capsys):
     assert "SENTINEL-CLOSED" not in dumped
 
 
+def test_cli_operator_secret_digest_never_prints_a_realistic_secret_shape(tmp_path, capsys):
+    """CodeQL `py/clear-text-logging-sensitive-data` (found 2026-09-02, PR
+    #5535 CI) flags the two `main()` prints this test exercises — the exact
+    lines the ledger's real-world proof text could carry a live credential
+    fragment (rotation missing-step/proof prose routinely names an endpoint
+    or a partial token). This is the guilt half of that suppression's
+    justification: a ledger row whose proof text is a REALISTIC secret shape
+    (a GitHub PAT pattern) must never reach either digest output, in text or
+    JSON mode — not merely the SENTINEL-token fixture used elsewhere in this
+    file, which proves prose-exclusion in general but does not itself look
+    like credential material.
+    """
+    fake_token = "ghp_FAKE1234567890abcdef1234567890abcd"
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(
+        "# modus — PENDING-ARMS (the W81 ledger: built != armed)\n\n"
+        "> Format: `opened YYYY-MM-DD | artifact | missing arming step | "
+        "owner (me|operator[<category>]) | proof-of-armed`\n\n"
+        f"- opened 2026-06-20 | rotate leaked github token | revoke {fake_token} "
+        f"on github settings | operator[secret] | old value was {fake_token}\n",
+        encoding="utf-8",
+    )
+    for extra_args in ([], ["--json"]):
+        code = par.main(["--ledger", str(p), "--now", NOW, "--operator-secret-digest", *extra_args])
+        assert code == 0
+        out = capsys.readouterr().out
+        assert fake_token not in out
+        assert "github settings" not in out
+
+
 def test_cli_operator_secret_digest_empty_says_none(tmp_path, capsys):
     p = tmp_path / "PENDING-ARMS.md"
     p.write_text(

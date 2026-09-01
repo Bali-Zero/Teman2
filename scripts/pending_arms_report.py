@@ -2262,10 +2262,29 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         # Its own mode, same reasoning as --ratchet above: a caller piping
         # this into a delivery channel must never also receive 600 lines of
         # full ledger prose ahead of the value-free rows.
+        #
+        # CodeQL's `py/clear-text-logging-sensitive-data` flags both prints
+        # below (found 2026-09-02, PR #5535 CI): its heuristic taints any
+        # value returned from a function whose NAME matches "secret" and
+        # follows it into a print/log sink — it does not model what the
+        # function body actually returns. Both callees are exactly the
+        # value-free view this module documents at length
+        # (`operator_secret_fingerprint.__doc__`, `build_operator_secret_
+        # digest.__doc__`): fingerprint (sha256, truncated, one-way) + age +
+        # a class LABEL, never the ledger's artifact/owner/missing-step/
+        # proof prose where a real secret fragment could live. Proven, not
+        # asserted: `test_guilt_rendered_digest_never_leaks_ledger_prose` and
+        # `test_guilt_json_digest_never_leaks_ledger_prose_and_excludes_
+        # closed` (scripts/tests/test_pending_arms_report.py) build a fixture
+        # ledger whose prose fields carry unique sentinel tokens and grep
+        # every line of both outputs for them. Same false-positive shape,
+        # same suppression convention, as `scripts/lint_pg_dsn_credentials.py`
+        # lines 442/498 — CodeQL does not model hashing as a sanitizer for
+        # this rule.
         if args.json:
-            print(json.dumps(build_operator_secret_digest_json(entries, now), indent=2))
+            print(json.dumps(build_operator_secret_digest_json(entries, now), indent=2))  # lgtm[py/clear-text-logging-sensitive-data]
         else:
-            print(render_operator_secret_digest(entries, now), end="")
+            print(render_operator_secret_digest(entries, now), end="")  # lgtm[py/clear-text-logging-sensitive-data]
         return 0
 
     if args.check_pr_refs:
