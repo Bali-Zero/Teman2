@@ -1306,12 +1306,16 @@ async def main() -> int | None:
                     # Server-side merge of the tuple ONLY: `||` overwrites the 7
                     # bound keys (a JSON null value still overwrites, it does not
                     # delete) and leaves every other key exactly as stored.
-                    # coalesce(): `NULL || x` is NULL, which would make a row
-                    # with an empty metadata column a silent no-op.
+                    # The CASE guards the LEFT operand: `NULL || x` is NULL (a
+                    # silent no-op on an empty column), and a JSON scalar or
+                    # array on the left — `'null'::jsonb || {..}` — does not
+                    # merge, it BUILDS AN ARRAY, so the next run would not be
+                    # idempotent. `coalesce` alone only covers the SQL NULL.
                     assert plan.new_metadata is not None
                     await conn.execute(
                         "UPDATE kbli_documents "
-                        "SET metadata = coalesce(metadata, '{}'::jsonb) || $2::text::jsonb, "
+                        "SET metadata = (CASE WHEN jsonb_typeof(metadata) = 'object' "
+                        "THEN metadata ELSE '{}'::jsonb END) || $2::text::jsonb, "
                         "updated_at = now() WHERE kode_kbli = $1",
                         code,
                         json.dumps(pma_metadata_patch(plan.new_metadata), ensure_ascii=False),

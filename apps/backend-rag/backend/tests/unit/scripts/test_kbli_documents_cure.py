@@ -1816,8 +1816,15 @@ def test_main_pma_only_apply_merges_the_tuple_and_never_binds_judul_or_content(m
     updates = conn.updates()
     assert len(updates) == 1, [q for q, _ in conn.executes]
     sql, args = updates[0]
-    assert "coalesce(metadata, '{}'::jsonb) || $2::text::jsonb" in sql
+    # Left operand guarded by TYPE, not by coalesce: `'null'::jsonb || {..}`
+    # builds an array, so an object-or-empty CASE is the only idempotent shape.
+    assert (
+        "(CASE WHEN jsonb_typeof(metadata) = 'object' THEN metadata ELSE '{}'::jsonb END) "
+        "|| $2::text::jsonb"
+    ) in sql
     assert "judul" not in sql and "content" not in sql
+    # the predicate is pinned too: `<> $1` would cure every row but the target
+    assert sql.rstrip().endswith("WHERE kode_kbli = $1")
     assert args[0] == "96210"
     bound = _json_obl.loads(args[1])
     assert set(bound) == set(PMA_METADATA_KEYS)
@@ -1860,4 +1867,5 @@ def test_main_full_only_apply_still_rewrites_judul_and_content(monkeypatch):
     sql, args = updates[0]
     assert "judul = $2, content = $3" in sql
     assert "||" not in sql
+    assert sql.rstrip().endswith("WHERE kode_kbli = $1")
     assert args[1] is not None and args[2] is not None
