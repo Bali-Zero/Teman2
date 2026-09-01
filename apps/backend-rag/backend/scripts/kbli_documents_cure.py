@@ -318,6 +318,34 @@ PMA_METADATA_KEYS: tuple[str, ...] = (
     "pma_cap_verified",
 )
 
+_ABSENT = object()  # a key that is not there is not the same as a key holding null
+
+
+def _json_differs(a: object, b: object) -> bool:
+    """Type-strict inequality for JSON-shaped values.
+
+    Python's `==` says `False == 0` and `1 == True`; jsonb does not, and
+    neither does the channel (`_public_pma_cap` demands a real bool before it
+    publishes a cap). Comparing the serialised forms makes `false`/`0` and
+    `80`/`80.0` differ exactly the way the store and the reader see them, so
+    a bool-coerced tuple is reported stale instead of "already cured".
+    """
+    return json.dumps(a, sort_keys=True, ensure_ascii=False) != json.dumps(
+        b, sort_keys=True, ensure_ascii=False
+    )
+
+
+def pma_metadata_patch(new_metadata: dict) -> dict:
+    """Pure. The ONLY keys a `--pma-only` apply binds to its UPDATE.
+
+    The write is a server-side merge (`metadata || $2::jsonb`), never a
+    replacement of the whole column: the row's other keys are not
+    round-tripped through Python (no float re-encoding of a value we did not
+    plan to touch) and a write landing on some other key between our SELECT
+    and our UPDATE is not clobbered.
+    """
+    return {key: new_metadata[key] for key in PMA_METADATA_KEYS}
+
 
 def quarantined_codes(dataset: list[dict]) -> list[str]:
     """Codes whose canonical record carries ANY `per_skala_disputed_*` key —
@@ -845,7 +873,10 @@ def plan_pma_only(code: str, record: dict | None, current_row: dict | None) -> D
     new_metadata = dict(old_metadata)
     for key in PMA_METADATA_KEYS:
         new_metadata[key] = pma[key]
-    update_row = new_metadata != old_metadata
+    # Type-strict on purpose: a row holding `pma_cap_verified: 1` or
+    # `pma_max_asing: false` reads as unverified at the surface, so it is
+    # stale even though Python's `==` would call it equal to `True` / `0`.
+    update_row = _json_differs(new_metadata, old_metadata)
     return DocumentCurePlan(
         code=code,
         found_in_canonical=True,
@@ -865,10 +896,19 @@ def pma_tuple_delta(old_metadata: dict | None, new_metadata: dict | None) -> str
     the run report must say WHAT moved, not just that a row was touched."""
     old = old_metadata or {}
     new = new_metadata or {}
+
+    def _moved(o: object, n: object) -> bool:
+        if (o is _ABSENT) or (n is _ABSENT):
+            return o is not n  # absent -> null IS a move; absent -> absent is not
+        return _json_differs(o, n)
+
+    def _show(v: object) -> str:
+        return "<absent>" if v is _ABSENT else repr(v)
+
     return ", ".join(
-        f"{key}: {old.get(key)!r} -> {new.get(key)!r}"
+        f"{key}: {_show(old.get(key, _ABSENT))} -> {_show(new.get(key, _ABSENT))}"
         for key in PMA_METADATA_KEYS
-        if old.get(key) != new.get(key)
+        if _moved(old.get(key, _ABSENT), new.get(key, _ABSENT))
     )
 
 
@@ -1263,11 +1303,18 @@ async def main() -> int | None:
                 # $N::text::jsonb placeholder so the server casts text->jsonb
                 # exactly once.
                 if plan.pma_only:
+                    # Server-side merge of the tuple ONLY: `||` overwrites the 7
+                    # bound keys (a JSON null value still overwrites, it does not
+                    # delete) and leaves every other key exactly as stored.
+                    # coalesce(): `NULL || x` is NULL, which would make a row
+                    # with an empty metadata column a silent no-op.
+                    assert plan.new_metadata is not None
                     await conn.execute(
-                        "UPDATE kbli_documents SET metadata = $2::text::jsonb, "
+                        "UPDATE kbli_documents "
+                        "SET metadata = coalesce(metadata, '{}'::jsonb) || $2::text::jsonb, "
                         "updated_at = now() WHERE kode_kbli = $1",
                         code,
-                        json.dumps(plan.new_metadata, ensure_ascii=False),
+                        json.dumps(pma_metadata_patch(plan.new_metadata), ensure_ascii=False),
                     )
                 else:
                     await conn.execute(

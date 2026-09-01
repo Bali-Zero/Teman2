@@ -1648,7 +1648,8 @@ def test_pma_tuple_delta_names_only_the_keys_that_move():
     new = plan_pma_only("96210", RECORD_96210_LOCATED, HAND_WRITTEN_ROW_96210).new_metadata
     delta = pma_tuple_delta(old, new)
     assert delta.startswith("pma_status: 'TERBUKA' -> 'TERBATAS'")
-    assert "pma_official_basis: None -> " in delta
+    # The hand-written row never had the key: that is `<absent>`, not `None`.
+    assert "pma_official_basis: <absent> -> " in delta
     # An unchanged tuple reports as empty, never as a list of no-ops.
     assert pma_tuple_delta(new, dict(new)) == ""
 
@@ -1678,3 +1679,185 @@ def test_parser_pma_only_with_only_is_accepted_in_both_modes():
         ["--pma-only", "--only", "96210", "--apply", "--cure-run", "kbli_cure:2026-09-01-pma-only"]
     )
     assert _cure_validate_args(ap, live) == "kbli_cure:2026-09-01-pma-only"
+
+
+# --- refuter round 1 (Codex sol, 2026-09-01): the four findings, pinned ----------
+from backend.scripts.kbli_documents_cure import pma_metadata_patch  # noqa: E402
+
+_CURED_TUPLE_96210 = plan_pma_only(
+    "96210", RECORD_96210_LOCATED, HAND_WRITTEN_ROW_96210
+).new_metadata
+
+
+def test_pma_only_reports_a_bool_int_confused_tuple_as_stale():
+    """GUILT (MAJOR #2). `False == 0` and `1 == True` in Python, so a plain
+    `!=` on the dicts called this row 'already cured' — while the channel's
+    `_public_pma_cap` refuses a cap whose `pma_cap_verified` is not a real
+    bool, i.e. the client was still told NOT_VERIFIED."""
+    assert _CURED_TUPLE_96210 is not None
+    coerced = dict(_CURED_TUPLE_96210)
+    coerced["pma_max_asing"] = False  # canonical: 0
+    coerced["pma_cap_special"] = 0  # canonical: False
+    coerced["pma_cap_verified"] = 1  # canonical: True
+    row = {**HAND_WRITTEN_ROW_96210, "metadata": coerced}
+    plan = plan_pma_only("96210", RECORD_96210_LOCATED, row)
+    assert plan.update_row is True, plan.skip_reason
+    patch = pma_metadata_patch(plan.new_metadata)
+    assert patch["pma_max_asing"] == 0 and type(patch["pma_max_asing"]) is int
+    assert patch["pma_cap_special"] is False
+    assert patch["pma_cap_verified"] is True
+    # and the report names the three coercions, not an empty delta
+    delta = pma_tuple_delta(coerced, plan.new_metadata)
+    assert "pma_max_asing: False -> 0" in delta
+    assert "pma_cap_special: 0 -> False" in delta
+    assert "pma_cap_verified: 1 -> True" in delta
+
+
+def test_pma_metadata_patch_binds_the_tuple_and_nothing_else():
+    """BLOCKER #1. The UPDATE merges server-side; what crosses the wire is the
+    seven keys, so `per_skala`, `pp28_sources`, ... are never re-encoded."""
+    assert _CURED_TUPLE_96210 is not None
+    patch = pma_metadata_patch(_CURED_TUPLE_96210)
+    assert set(patch) == set(PMA_METADATA_KEYS)
+    assert "per_skala" not in patch and "pp28_sources" not in patch
+
+
+def test_pma_tuple_delta_names_an_absent_key_as_absent_not_as_none():
+    """MINOR #4. A repair that only ADDS keys holding null used to render as an
+    empty delta (`.get()` on both sides said None -> None). Absent -> null is a
+    move; null -> null is not."""
+    assert _CURED_TUPLE_96210 is not None
+    without_basis = {k: v for k, v in _CURED_TUPLE_96210.items() if k != "pma_official_basis"}
+    with_null_basis = {**_CURED_TUPLE_96210, "pma_official_basis": None}
+    assert pma_tuple_delta(without_basis, with_null_basis) == (
+        "pma_official_basis: <absent> -> None"
+    )
+    assert pma_tuple_delta(with_null_basis, dict(with_null_basis)) == ""
+
+
+class _UpdateSpyConn:
+    """asyncpg stand-in that RECORDS every execute() so the SQL the apply path
+    really binds can be asserted — the plan-level tests cannot see it."""
+
+    def __init__(self, rows):
+        self._rows = rows
+        self.executes: list[tuple[str, tuple]] = []
+
+    async def execute(self, query: str, *args):
+        self.executes.append((query, args))
+        return "UPDATE 1"
+
+    async def fetch(self, _sql, codes):
+        return [r for r in self._rows if r["kode_kbli"] in codes]
+
+    async def fetchval(self, _sql, *_a):
+        return True  # archive schema already has cure_run + composite constraint
+
+    async def close(self):
+        return None
+
+    def updates(self) -> list[tuple[str, tuple]]:
+        return [
+            (q, a)
+            for q, a in self.executes
+            if q.lstrip().upper().startswith("UPDATE KBLI_DOCUMENTS")
+        ]
+
+
+def _drive_apply(monkeypatch, argv, rows, dataset):
+    monkeypatch.setattr(_sys, "argv", argv)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/fake")
+    conn = _UpdateSpyConn(rows)
+
+    async def _dataset(_source):
+        return list(dataset)
+
+    async def _connect(_dsn):
+        return conn
+
+    archive_calls: list[dict] = []
+
+    async def _spy_archive_row(_conn, code, params, cure_run, **kw):
+        archive_calls.append({"code": code, "params": params, "cure_run": cure_run})
+
+    monkeypatch.setattr(_cure, "load_dataset", _dataset)
+    monkeypatch.setattr(_cure.asyncpg, "connect", _connect)
+    monkeypatch.setattr(_cure, "archive_row", _spy_archive_row)
+    rc = _asyncio.run(_cure.main())
+    return rc, conn, archive_calls
+
+
+_ROW_96210_IN_TABLE = {
+    "kode_kbli": "96210",
+    "created_at": None,
+    "updated_at": None,
+    **HAND_WRITTEN_ROW_96210,
+}
+_PMA_ONLY_APPLY_ARGV = [
+    "cure",
+    "--pma-only",
+    "--only",
+    "96210",
+    "--apply",
+    "--cure-run",
+    "kbli_cure:2026-09-01-pma-only",
+]
+
+
+def test_main_pma_only_apply_merges_the_tuple_and_never_binds_judul_or_content(monkeypatch, caplog):
+    """GUILT (MAJOR #3). Driven through main(): the mutation `if plan.pma_only`
+    -> `if False` survived every plan-level test while the full UPDATE would
+    have written `judul = NULL, content = NULL` on a hand-written row."""
+    with caplog.at_level(_logging.INFO, logger=_cure.logger.name):
+        rc, conn, archive_calls = _drive_apply(
+            monkeypatch, _PMA_ONLY_APPLY_ARGV, [_ROW_96210_IN_TABLE], [RECORD_96210_LOCATED]
+        )
+    assert not rc  # main() returns None on success, a non-zero int on refusal
+    updates = conn.updates()
+    assert len(updates) == 1, [q for q, _ in conn.executes]
+    sql, args = updates[0]
+    assert "coalesce(metadata, '{}'::jsonb) || $2::text::jsonb" in sql
+    assert "judul" not in sql and "content" not in sql
+    assert args[0] == "96210"
+    bound = _json_obl.loads(args[1])
+    assert set(bound) == set(PMA_METADATA_KEYS)
+    assert bound["pma_status"] == "TERBATAS" and bound["pma_max_asing"] == 0
+    assert bound["pma_verification_status"] == "located"
+    # the snapshot is still taken, keyed by the CLI cure_run
+    assert [c["cure_run"] for c in archive_calls] == ["kbli_cure:2026-09-01-pma-only"]
+    assert archive_calls[0]["params"][2] == HAND_WRITTEN_ROW_96210["content"]
+    messages = [r.getMessage() for r in caplog.records]
+    assert not [m for m in messages if "content-preservation gate" in m], messages
+    assert any("syncing metadata PMA tuple only" in m for m in messages), messages
+
+
+def test_main_pma_only_dry_run_binds_no_update_and_takes_no_snapshot(monkeypatch, caplog):
+    """INNOCENCE. Without --apply the same drive reports and writes nothing."""
+    argv = [
+        a
+        for a in _PMA_ONLY_APPLY_ARGV
+        if a not in ("--apply", "--cure-run", "kbli_cure:2026-09-01-pma-only")
+    ]
+    with caplog.at_level(_logging.INFO, logger=_cure.logger.name):
+        rc, conn, archive_calls = _drive_apply(
+            monkeypatch, argv, [_ROW_96210_IN_TABLE], [RECORD_96210_LOCATED]
+        )
+    assert not rc  # main() returns None on success, a non-zero int on refusal
+    assert conn.updates() == []
+    assert archive_calls == []
+    assert any("would sync metadata PMA tuple only" in r.getMessage() for r in caplog.records)
+
+
+def test_main_full_only_apply_still_rewrites_judul_and_content(monkeypatch):
+    """INNOCENCE for the branch itself: the mutation `if plan.pma_only` ->
+    `if True` would route every full rebuild through the merge and silently
+    stop replacing prose. The plain `--only` apply must still bind all three."""
+    argv = [a for a in _PMA_ONLY_APPLY_ARGV if a != "--pma-only"]
+    rc, conn, _ = _drive_apply(monkeypatch, argv, [_ROW_96210_IN_TABLE], [RECORD_96210_LOCATED])
+    assert not rc  # main() returns None on success, a non-zero int on refusal
+    updates = conn.updates()
+    assert len(updates) == 1
+    sql, args = updates[0]
+    assert "judul = $2, content = $3" in sql
+    assert "||" not in sql
+    assert args[1] is not None and args[2] is not None
