@@ -64,7 +64,10 @@ from backend.services.garuda_documents.models import (
     UncertainReviewField,
     UnreadableOutcome,
 )
-from backend.services.garuda_documents.ports import IdempotencyConflictError
+from backend.services.garuda_documents.ports import (
+    IdempotencyConflictError,
+    ReadyOutcomeValueNotPersisted,
+)
 from backend.services.garuda_flow.public_api import PersistencePolicyUnavailable
 
 logger = logging.getLogger(__name__)
@@ -80,38 +83,54 @@ _STATE_LOW_CONFIDENCE = "LOW_CONFIDENCE"
 _STATE_READY_FOR_REVIEW = "READY_FOR_REVIEW"
 _STATE_UNREADABLE = "UNREADABLE"
 
+# ``ReadyOutcomeValueNotPersisted`` itself now lives in ``ports.py`` (re-exported here for
+# every existing importer) -- THE GAP it documents is unchanged (this store never
+# persists ``ReviewField.value``, the actual OCR'd passport field content, because the
+# PII boundary forbids storing extracted identity-document field VALUES in cleartext, and
+# inventing an encryption scheme to route around that is explicitly out of scope for this
+# file). What moved: it now carries the persisted STRUCTURE (field names +
+# ``confirmation_required`` flags, never a value) alongside ``document_id``, so a
+# storage-agnostic caller holding its OWN independently-derived ``ReadyOutcome`` for the
+# identical bytes (``service.py``'s commit-race loser) can verify agreement and recover
+# without the store ever handing back -- or fabricating -- a value. See ``service.py``'s
+# ``_reconcile_lost_race_ready_replay`` for the one caller that does this; an ordinary
+# sequential replay (no independent outcome to reconcile against) still lets this
+# propagate, which is the "genuinely unpersisted" case ``ReadyOutcomeValueNotPersisted``'s
+# own docstring discusses.
 
-class ReadyOutcomeValueNotPersisted(Exception):
-    """Raised by ``get_existing()`` when a replayed key resolves to a ``ReadyOutcome``.
+# The single operation this store's `key_sha256` namespace belongs to. A store-level
+# constant, not a caller-supplied parameter: this table backs exactly one endpoint
+# (`uploadIntakeDocument`), so there is no second value it could ever take today. Folded
+# into the hash anyway per the contract's `IdempotencyKey` scoping ("actor and
+# operation") and so a FUTURE second operation sharing this table would not silently
+# collide with this one's key space.
+_OPERATION_UPLOAD_INTAKE_DOCUMENT = "upload_intake_document"
 
-    THE GAP (module docstring above carries the full argument): this store never
-    persists ``ReviewField.value`` -- the actual OCR'd passport field content -- because
-    the PII boundary forbids storing extracted identity-document field VALUES in
-    cleartext, and inventing an encryption scheme to route around that is explicitly out
-    of scope for this file. Only the field NAMES and their ``confirmation_required``
-    flags survive; the value itself has no column to rehydrate from.
 
-    This is a genuine, UNRESOLVED architecture question -- ``ports.py``'s idempotency
-    contract and the PII boundary are in direct tension for this one outcome kind.
-    Candidates for whoever resolves it (none chosen here):
+def _scoped_key_sha256(*, actor_id: str, operation: str, environment: str, idempotency_key: str) -> bytes:
+    """Canonical, unambiguous hash of (actor, operation, environment, idempotency_key).
 
-    (a) a short-TTL, non-durable cache (e.g. Redis with a bounded expiry) holding the raw
-        values only long enough to cover a realistic client retry window, kept separate
-        from this durable Postgres row;
-    (b) the router answers a REPLAY of an already-READY document differently -- e.g.
-        re-running OCR (defeats the point of idempotency, but costs nothing sensitive to
-        store), or a distinct "already processed, re-upload to see values again" shape;
-    (c) a product decision that idempotent replay never needs bit-identical values for
-        this one endpoint, and this exception is simply what a caller must handle.
+    NOT a bare `sha256(idempotency_key)` -- the contract's `IdempotencyKey` parameter
+    (openapi.yaml) is explicit: "Scoped to actor and operation." A bare hash of the
+    client-supplied key string means two different actors who happen to reuse the same
+    literal key collide on the SAME `key_sha256` PRIMARY KEY row -- one actor's
+    `get_existing` could read (or `commit` could clobber) another actor's document
+    outcome. `environment` is included for the same reason: without it, the identical
+    key submitted under TEST and PRODUCTION would also collide on this table's single
+    `key_sha256` primary key.
 
-    Never caught silently: a caller that swallows this and fabricates a placeholder
-    ``ReviewField`` would present invented data as if it were the customer's real
-    passport -- worse than a visible error.
+    Length-prefixed, never separator-joined: `"|".join((actor_id, operation, ...))` would
+    let `("ab", "c")` and `("a", "bc")` hash identically -- exactly the ambiguity this
+    scoping fix exists to close, just moved one layer down. Each component is prefixed
+    with its own big-endian uint32 byte length, so no component's content can ever be
+    reinterpreted as a length prefix or as another component's boundary.
     """
-
-
-def _key_sha256(idempotency_key: str) -> bytes:
-    return hashlib.sha256(idempotency_key.encode()).digest()
+    buf = bytearray()
+    for part in (actor_id, operation, environment, idempotency_key):
+        encoded = part.encode("utf-8")
+        buf += len(encoded).to_bytes(4, "big")
+        buf += encoded
+    return hashlib.sha256(bytes(buf)).digest()
 
 
 def _payload_sha256_bytes(payload_hash: str) -> bytes:
@@ -167,7 +186,10 @@ def _rehydrate(
             "ReadyOutcomeValueNotPersisted rather than fabricating a placeholder",
             document_id,
         )
-        raise ReadyOutcomeValueNotPersisted(document_id)
+        persisted_fields = tuple(
+            (PassportReviewFieldName(row["field_path"]), row["confirmation_required"]) for row in field_rows
+        )
+        raise ReadyOutcomeValueNotPersisted(document_id, persisted_fields)
     raise ValueError(f"unrecognized processing_state column value: {processing_state!r}")  # pragma: no cover
 
 
@@ -178,8 +200,15 @@ class PostgresDocumentStore:
         self._pool = pool
         self._environment = environment
 
-    async def get_existing(self, idempotency_key: str, payload_hash: str) -> DocumentOutcome | None:
-        key_hash = _key_sha256(idempotency_key)
+    async def get_existing(
+        self, idempotency_key: str, payload_hash: str, *, actor_id: str
+    ) -> DocumentOutcome | None:
+        key_hash = _scoped_key_sha256(
+            actor_id=actor_id,
+            operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT,
+            environment=self._environment,
+            idempotency_key=idempotency_key,
+        )
         payload_hash_bytes = _payload_sha256_bytes(payload_hash)
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -205,8 +234,15 @@ class PostgresDocumentStore:
             )
         return _rehydrate(row["document_id"], row["processing_state"], field_rows)
 
-    async def commit(self, idempotency_key: str, payload_hash: str, outcome: DocumentOutcome) -> bool:
-        key_hash = _key_sha256(idempotency_key)
+    async def commit(
+        self, idempotency_key: str, payload_hash: str, outcome: DocumentOutcome, *, actor_id: str
+    ) -> bool:
+        key_hash = _scoped_key_sha256(
+            actor_id=actor_id,
+            operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT,
+            environment=self._environment,
+            idempotency_key=idempotency_key,
+        )
         payload_hash_bytes = _payload_sha256_bytes(payload_hash)
         processing_state, fields = _decompose(outcome)
 

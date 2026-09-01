@@ -41,7 +41,9 @@ import pytest
 asyncpg = pytest.importorskip("asyncpg")
 
 from backend.db.migration_base import split_migration_sql
+from backend.services.garuda_documents import service as service_module
 from backend.services.garuda_documents.models import (
+    DocumentKind,
     LowConfidenceOutcome,
     PassportReviewFieldName,
     ProcessingOutcome,
@@ -50,13 +52,18 @@ from backend.services.garuda_documents.models import (
     UncertainReviewField,
     UnreadableOutcome,
 )
+from backend.services.garuda_documents.ocr_client import OcrPassResult
 from backend.services.garuda_documents.ports import IdempotencyConflictError
 from backend.services.garuda_documents.postgres_store import (
+    _OPERATION_UPLOAD_INTAKE_DOCUMENT,
     PostgresDocumentStore,
     ReadyOutcomeValueNotPersisted,
+    _scoped_key_sha256,
 )
+from backend.services.garuda_documents.service import DocumentIntakeService
 from backend.services.garuda_flow.public_api import PersistencePolicyUnavailable
 from backend.tests.fixtures.prod_shaped_pool import create_prod_shaped_pool
+from backend.tests.services.garuda_documents.fixtures.synthetic_images import valid_png_bytes
 
 pytestmark = pytest.mark.asyncio
 
@@ -263,25 +270,30 @@ def _ready(document_id: str) -> ReadyOutcome:
 
 async def test_exact_replay_returns_the_original_low_confidence_outcome(store: PostgresDocumentStore):
     outcome = _low_confidence(_doc_id("doc-replay-0000000000000001"))
-    won = await store.commit("key-replay-1", "aa" * 32, outcome)
+    won = await store.commit("key-replay-1", "aa" * 32, outcome, actor_id="actor-1")
     assert won is True
 
-    replayed = await store.get_existing("key-replay-1", "aa" * 32)
+    replayed = await store.get_existing("key-replay-1", "aa" * 32, actor_id="actor-1")
     assert replayed == outcome
 
 
 async def test_exact_replay_does_not_create_a_second_row(store: PostgresDocumentStore, pool: asyncpg.Pool):
     outcome = _low_confidence(_doc_id("doc-replay-0000000000000002"))
-    await store.commit("key-replay-2", "bb" * 32, outcome)
+    await store.commit("key-replay-2", "bb" * 32, outcome, actor_id="actor-1")
     # A second commit call under the identical key+payload — the shape
     # `service.py` takes when `get_existing` is skipped or races.
-    won_again = await store.commit("key-replay-2", "bb" * 32, outcome)
+    won_again = await store.commit("key-replay-2", "bb" * 32, outcome, actor_id="actor-1")
     assert won_again is False
 
     async with pool.acquire() as conn:
         count = await conn.fetchval(
             "SELECT count(*) FROM public.garuda_documents WHERE key_sha256 = $1",
-            hashlib.sha256(b"key-replay-2").digest(),
+            _scoped_key_sha256(
+                actor_id="actor-1",
+                operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT,
+                environment=_ENV,
+                idempotency_key="key-replay-2",
+            ),
         )
     assert count == 1, "a replayed commit must never create a second row"
 
@@ -294,23 +306,23 @@ async def test_ready_outcome_replay_raises_documented_value_gap_instead_of_fabri
     loudly rather than return a placeholder that looks like real passport data.
     """
     outcome = _ready(_doc_id("doc-ready-0000000000000001"))
-    won = await store.commit("key-ready-1", "cc" * 32, outcome)
+    won = await store.commit("key-ready-1", "cc" * 32, outcome, actor_id="actor-1")
     assert won is True
 
     with pytest.raises(ReadyOutcomeValueNotPersisted):
-        await store.get_existing("key-ready-1", "cc" * 32)
+        await store.get_existing("key-ready-1", "cc" * 32, actor_id="actor-1")
 
 
 async def test_processing_and_unreadable_outcomes_replay_faithfully(store: PostgresDocumentStore):
     """Innocence companions to the READY gap above — these two outcome kinds carry no
     review fields at all, so nothing is lost persisting or rehydrating them."""
     processing = ProcessingOutcome(document_id=_doc_id("doc-processing-000000000001"))
-    await store.commit("key-processing-1", "dd" * 32, processing)
-    assert await store.get_existing("key-processing-1", "dd" * 32) == processing
+    await store.commit("key-processing-1", "dd" * 32, processing, actor_id="actor-1")
+    assert await store.get_existing("key-processing-1", "dd" * 32, actor_id="actor-1") == processing
 
     unreadable = UnreadableOutcome(document_id=_doc_id("doc-unreadable-000000000001"))
-    await store.commit("key-unreadable-1", "ee" * 32, unreadable)
-    assert await store.get_existing("key-unreadable-1", "ee" * 32) == unreadable
+    await store.commit("key-unreadable-1", "ee" * 32, unreadable, actor_id="actor-1")
+    assert await store.get_existing("key-unreadable-1", "ee" * 32, actor_id="actor-1") == unreadable
 
 
 # ---------------------------------------------------------------------------
@@ -323,11 +335,11 @@ async def test_commit_with_a_different_payload_under_the_same_key_raises_conflic
     store: PostgresDocumentStore, pool: asyncpg.Pool
 ):
     first = _low_confidence(_doc_id("doc-conflict-0000000000000001"))
-    await store.commit("key-conflict-1", "11" * 32, first)
+    await store.commit("key-conflict-1", "11" * 32, first, actor_id="actor-1")
 
     second = _low_confidence(_doc_id("doc-conflict-0000000000000002"))
     with pytest.raises(IdempotencyConflictError):
-        await store.commit("key-conflict-1", "22" * 32, second)
+        await store.commit("key-conflict-1", "22" * 32, second, actor_id="actor-1")
 
     async with pool.acquire() as conn:
         count = await conn.fetchval("SELECT count(*) FROM public.garuda_documents")
@@ -338,10 +350,10 @@ async def test_get_existing_with_a_different_payload_under_the_same_key_raises_c
     store: PostgresDocumentStore,
 ):
     outcome = _low_confidence(_doc_id("doc-conflict-0000000000000003"))
-    await store.commit("key-conflict-2", "33" * 32, outcome)
+    await store.commit("key-conflict-2", "33" * 32, outcome, actor_id="actor-1")
 
     with pytest.raises(IdempotencyConflictError):
-        await store.get_existing("key-conflict-2", "44" * 32)
+        await store.get_existing("key-conflict-2", "44" * 32, actor_id="actor-1")
 
 
 # ---------------------------------------------------------------------------
@@ -364,8 +376,8 @@ async def test_two_concurrent_commits_same_key_exactly_one_wins(
     outcome_b = _low_confidence(_doc_id("doc-race-b-00000000000001"))
 
     results = await asyncio.gather(
-        store_a.commit("key-race-1", "55" * 32, outcome_a),
-        store_b.commit("key-race-1", "55" * 32, outcome_b),
+        store_a.commit("key-race-1", "55" * 32, outcome_a, actor_id="actor-1"),
+        store_b.commit("key-race-1", "55" * 32, outcome_b, actor_id="actor-1"),
     )
 
     assert sorted(results) == [False, True], f"expected exactly one winner: {results!r}"
@@ -379,8 +391,8 @@ async def test_second_sequential_commit_of_an_already_committed_key_returns_fals
     store: PostgresDocumentStore,
 ):
     outcome = _low_confidence(_doc_id("doc-sequential-0000000000001"))
-    first = await store.commit("key-sequential-1", "66" * 32, outcome)
-    second = await store.commit("key-sequential-1", "66" * 32, outcome)
+    first = await store.commit("key-sequential-1", "66" * 32, outcome, actor_id="actor-1")
+    second = await store.commit("key-sequential-1", "66" * 32, outcome, actor_id="actor-1")
     assert first is True
     assert second is False
 
@@ -398,13 +410,114 @@ async def test_commit_fails_closed_with_no_active_policy_for_the_environment(poo
     outcome = _low_confidence(_doc_id("doc-nopolicy-00000000000001"))
 
     with pytest.raises(PersistencePolicyUnavailable):
-        await staging_store.commit("key-nopolicy-1", "77" * 32, outcome)
+        await staging_store.commit("key-nopolicy-1", "77" * 32, outcome, actor_id="actor-1")
 
     async with pool.acquire() as conn:
         count = await conn.fetchval(
             "SELECT count(*) FROM public.garuda_documents WHERE environment = 'STAGING'"
         )
     assert count == 0, "a fail-closed commit must not write a row"
+
+
+# ---------------------------------------------------------------------------
+# Behaviour 5 — the idempotency key is scoped to actor (contract's
+# `IdempotencyKey` parameter: "Scoped to actor and operation"). GUILT would be
+# a bare `sha256(idempotency_key)`: two different actors reusing the same
+# literal key would collide on the same `key_sha256` PRIMARY KEY row, so one
+# actor's `commit` could clobber or be read back by another. INNOCENCE is
+# every other test in this file, which all use one actor and never exercise
+# this dimension at all.
+# ---------------------------------------------------------------------------
+
+
+async def test_same_idempotency_key_different_actor_does_not_collide(
+    store: PostgresDocumentStore, pool: asyncpg.Pool
+):
+    outcome_alice = _low_confidence(_doc_id("doc-actor-alice-0000000001"))
+    outcome_bob = _low_confidence(_doc_id("doc-actor-bob-00000000001"))
+
+    won_alice = await store.commit("shared-literal-key", "aa" * 32, outcome_alice, actor_id="alice")
+    won_bob = await store.commit("shared-literal-key", "aa" * 32, outcome_bob, actor_id="bob")
+
+    # Both actors' commits win -- a real collision would have made bob's
+    # commit a replay (won=False) or, worse, an IdempotencyConflictError
+    # (same key bound to what bob's INSERT would see as "another" payload
+    # under alice's row).
+    assert won_alice is True
+    assert won_bob is True
+
+    async with pool.acquire() as conn:
+        count = await conn.fetchval("SELECT count(*) FROM public.garuda_documents")
+    assert count == 2, "two different actors reusing the same literal key must get two rows, not one"
+
+
+async def test_same_idempotency_key_different_actor_cannot_read_the_other_actors_document(
+    store: PostgresDocumentStore,
+):
+    outcome_alice = _low_confidence(_doc_id("doc-actor-alice-0000000002"))
+    await store.commit("another-shared-key", "bb" * 32, outcome_alice, actor_id="alice")
+
+    # bob has never submitted anything under this key -- get_existing for bob
+    # must see a first-time submission (None), never alice's row.
+    bob_view = await store.get_existing("another-shared-key", "bb" * 32, actor_id="bob")
+    assert bob_view is None
+
+    # alice's own replay still works, unaffected by bob's absent binding.
+    alice_view = await store.get_existing("another-shared-key", "bb" * 32, actor_id="alice")
+    assert alice_view == outcome_alice
+
+
+async def test_same_actor_same_key_same_environment_replay_still_hits_the_same_row(
+    store: PostgresDocumentStore,
+):
+    """Innocence companion to the two guilt tests above: fixing the collision must not
+    also break the ordinary single-actor replay every other test in this file relies on.
+    """
+    outcome = _low_confidence(_doc_id("doc-actor-replay-000000001"))
+    won = await store.commit("actor-replay-key", "cc" * 32, outcome, actor_id="alice")
+    assert won is True
+
+    replayed = await store.get_existing("actor-replay-key", "cc" * 32, actor_id="alice")
+    assert replayed == outcome
+
+
+def test_scoped_key_hash_is_not_ambiguous_across_component_boundaries():
+    """The whole point of scoping is defeated if a separator-joined encoding let two
+    DIFFERENT tuples collide. `("actorab", "c")` and `("actora", "bc")` must never hash
+    the same -- proves the length-prefixing, not just that SOME hash changes with actor.
+    """
+    same_key = "idem-key-1"
+    same_env = "TEST"
+    same_op = _OPERATION_UPLOAD_INTAKE_DOCUMENT
+
+    hash_1 = _scoped_key_sha256(actor_id="actorab", operation="c", environment=same_env, idempotency_key=same_key)
+    hash_2 = _scoped_key_sha256(actor_id="actora", operation="bc", environment=same_env, idempotency_key=same_key)
+    assert hash_1 != hash_2, "different component boundaries must never hash identically"
+
+    # Same shift, one boundary over, across the operation/environment pair.
+    hash_3 = _scoped_key_sha256(actor_id="alice", operation="opTEST", environment="", idempotency_key=same_key)
+    hash_4 = _scoped_key_sha256(actor_id="alice", operation="op", environment="TEST", idempotency_key=same_key)
+    assert hash_3 != hash_4, "different component boundaries must never hash identically"
+
+    # And the un-shifted baseline really is deterministic and stable.
+    hash_5 = _scoped_key_sha256(actor_id="alice", operation=same_op, environment=same_env, idempotency_key=same_key)
+    hash_6 = _scoped_key_sha256(actor_id="alice", operation=same_op, environment=same_env, idempotency_key=same_key)
+    assert hash_5 == hash_6
+
+
+def test_scoped_key_hash_differs_by_actor_and_matches_for_the_same_tuple():
+    hash_alice = _scoped_key_sha256(
+        actor_id="alice", operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT, environment="TEST", idempotency_key="k"
+    )
+    hash_bob = _scoped_key_sha256(
+        actor_id="bob", operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT, environment="TEST", idempotency_key="k"
+    )
+    assert hash_alice != hash_bob
+
+    hash_alice_again = _scoped_key_sha256(
+        actor_id="alice", operation=_OPERATION_UPLOAD_INTAKE_DOCUMENT, environment="TEST", idempotency_key="k"
+    )
+    assert hash_alice == hash_alice_again, "same (actor, operation, environment, key) must replay to the same hash"
 
 
 # ---------------------------------------------------------------------------
@@ -483,3 +596,120 @@ async def test_low_privilege_role_insert_fails_once_the_function_is_mis_owned_ag
         assert "visa_decision_retention_policies" in str(raised.value)
     finally:
         await conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Behaviour 6 — DocumentIntakeService.submit_document() over the REAL
+# PostgresDocumentStore no longer lets a commit-race loser's READY_FOR_REVIEW
+# outcome unconditionally raise ReadyOutcomeValueNotPersisted (contract:
+# top-level description "An exact scoped key plus canonical-payload replay
+# returns the originally committed status and body ... and causes no
+# IDEMPOTENCY_CONFLICT"). GUILT would be the pre-fix behaviour: the race
+# loser calls get_existing() on the winner's row and the store cannot
+# rehydrate a ReviewField.value (PII boundary), so the exception propagated
+# straight out of submit_document() instead of returning a body at all.
+#
+# INNOCENCE (paired, same service+store combination): an ORDINARY sequential
+# replay -- no race, OCR never runs on the replaying call -- has no
+# independently-derived outcome to reconcile against and must still raise.
+# `test_ready_outcome_replay_raises_documented_value_gap_instead_of_fabricating_data`
+# above already proves this at the bare-store level; the test below proves it
+# again one layer up, through the same `DocumentIntakeService` the guilt test
+# uses, so the pairing is apples-to-apples.
+# ---------------------------------------------------------------------------
+
+_READY_VALUES = {
+    "full_name": "JANE TEST TRAVELER",
+    "passport_number": "X1234567",
+    "nationality": "TESTLANDIA",
+    "passport_expiry_date": "2031-06-15",
+}
+
+
+def _confident_pass_pair() -> tuple[OcrPassResult, OcrPassResult]:
+    p = OcrPassResult(values=dict(_READY_VALUES), self_confidence=dict.fromkeys(_READY_VALUES, 0.97))
+    return (p, p)
+
+
+async def test_lost_race_on_a_ready_document_returns_the_committed_body_instead_of_raising(
+    store: PostgresDocumentStore, pool: asyncpg.Pool, monkeypatch: pytest.MonkeyPatch
+):
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def slow_confident_pair(_image_b64: str):
+        started.set()
+        await release.wait()
+        return _confident_pass_pair()
+
+    monkeypatch.setattr(service_module, "extract_passport_biodata_dual_pass", slow_confident_pair)
+
+    svc = DocumentIntakeService(store=store)
+    payload = valid_png_bytes()
+
+    async def submit():
+        return await svc.submit_document(
+            raw_bytes=payload,
+            declared_media_type="image/png",
+            document_kind=DocumentKind.PASSPORT_BIODATA,
+            idempotency_key="race-ready-key",
+            actor_id="actor-race",
+        )
+
+    task_a = asyncio.create_task(submit())
+    await started.wait()
+    started.clear()
+    task_b = asyncio.create_task(submit())
+    await started.wait()  # both blocked inside OCR, neither has committed yet
+    release.set()
+
+    # Before the fix, the loser's branch raised ReadyOutcomeValueNotPersisted here
+    # instead of returning — asyncio.gather would propagate it as this call's
+    # exception rather than yielding two outcomes.
+    outcome_a, outcome_b = await asyncio.gather(task_a, task_b)
+
+    assert isinstance(outcome_a, ReadyOutcome)
+    assert isinstance(outcome_b, ReadyOutcome)
+    assert outcome_a == outcome_b, "two racers must agree on the full outcome, including document_id"
+    # The values are the caller's own real OCR result, not a placeholder.
+    assert {rf.field_path.value: rf.value for rf in outcome_a.review_fields} == _READY_VALUES
+
+    async with pool.acquire() as conn:
+        count = await conn.fetchval("SELECT count(*) FROM public.garuda_documents WHERE document_id = $1", outcome_a.document_id)
+    assert count == 1, "exactly one row for the document_id both callers agreed on"
+
+
+async def test_ordinary_sequential_replay_of_a_ready_document_still_raises(
+    store: PostgresDocumentStore, monkeypatch: pytest.MonkeyPatch
+):
+    """Innocence control for the guilt test above, at the SAME service+store layer: no
+    race, so `submit_document`'s FIRST `get_existing()` call (before OCR ever runs on
+    this call) is the one that raises, and there is no independently-derived outcome for
+    the reconciliation path to recover from. The fix must not paper over this genuinely
+    unresolved gap.
+    """
+
+    async def fake_dual_pass(_image_b64: str):
+        return _confident_pass_pair()
+
+    monkeypatch.setattr(service_module, "extract_passport_biodata_dual_pass", fake_dual_pass)
+    svc = DocumentIntakeService(store=store)
+    payload = valid_png_bytes()
+
+    first = await svc.submit_document(
+        raw_bytes=payload,
+        declared_media_type="image/png",
+        document_kind=DocumentKind.PASSPORT_BIODATA,
+        idempotency_key="sequential-ready-key",
+        actor_id="actor-sequential",
+    )
+    assert isinstance(first, ReadyOutcome)
+
+    with pytest.raises(ReadyOutcomeValueNotPersisted):
+        await svc.submit_document(
+            raw_bytes=payload,
+            declared_media_type="image/png",
+            document_kind=DocumentKind.PASSPORT_BIODATA,
+            idempotency_key="sequential-ready-key",
+            actor_id="actor-sequential",
+        )
