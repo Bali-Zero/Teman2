@@ -2,6 +2,7 @@
 date: 2026-09-02
 domain: compliance
 client_case: none
+adversarial_review: codex
 sources:
   - apps/backend-rag/backend/db/migrations_v2/281_garuda_voa_retention.sql
   - apps/backend-rag/backend/db/migrations_v2/285_garuda_magic_link.sql
@@ -66,7 +67,19 @@ need, each with a different remedy shape.
 |---|---|---|---|
 | 1 | Widen the `policy_scope` CHECK to add `GARUDA_DOCUMENT` | table ownership (`ALTER TABLE`) | **Done in production**, verified read-only 2026-09-01T22:05:43Z: the CHECK's `ARRAY` now includes `GARUDA_DOCUMENT` (before: four values without it) |
 | 2 | `garuda_documents.retention_policy_id` FK REFERENCES the table | the `REFERENCES` privilege (a `GRANT`, not ownership) | **Done**, same verification pass: `has_table_privilege('backend_rag_v2', 'public.visa_decision_retention_policies', 'REFERENCES')` went `false` → `true` |
-| 3 | `bind_garuda_document_retention_policy()` (the `BEFORE INSERT` trigger function) must be owned by `visa_ledger_owner`, not `backend_rag_v2`, so its `SECURITY DEFINER` body can take the `FOR SHARE` lock the table owner already holds | role membership in `visa_ledger_owner`, or a superuser connection, at `ALTER FUNCTION ... OWNER TO` time | **Not done.** `pg_has_role('backend_rag_v2', 'visa_ledger_owner', 'MEMBER')` is `false`; the migration-runner role's `rolsuper` is `false`. `304_garuda_documents.sql`'s `DO $garuda_304_owner_transfer$` block (lines 266-304) attempts `ALTER FUNCTION public.bind_garuda_document_retention_policy() OWNER TO visa_ledger_owner` (line 289), catches the resulting `insufficient_privilege` and converts it to a `RAISE NOTICE` (lines 290-293), re-reads the owner, and then, finding it still `backend_rag_v2`, `RAISE EXCEPTION`s at line 299. Because `migration_base.py` applies the whole file in one transaction, that abort rolls back the `CREATE FUNCTION` earlier in the same block — the remedy the error message itself names ("run the ALTER on a superuser connection, then re-apply") has nothing left to `ALTER` once the transaction unwinds. |
+| 3 | `bind_garuda_document_retention_policy()` (the `BEFORE INSERT` trigger function) must be owned by `visa_ledger_owner`, not `backend_rag_v2`, so its `SECURITY DEFINER` body can take the `FOR SHARE` lock the table owner already holds | role membership in `visa_ledger_owner` **with the schema's CREATE privilege also held by that role and the membership's `SET` option granted** (see correction below), or a superuser connection, at `ALTER FUNCTION ... OWNER TO` time | **Not done.** `pg_has_role('backend_rag_v2', 'visa_ledger_owner', 'MEMBER')` is `false`; the migration-runner role's `rolsuper` is `false`. `304_garuda_documents.sql`'s `DO $garuda_304_owner_transfer$` block (lines 266-304) attempts `ALTER FUNCTION public.bind_garuda_document_retention_policy() OWNER TO visa_ledger_owner` (line 289), catches the resulting `insufficient_privilege` and converts it to a `RAISE NOTICE` (lines 290-293), re-reads the owner, and then, finding it still `backend_rag_v2`, `RAISE EXCEPTION`s at line 299 — a raise that is conditional on three things holding at once (the role existing, the function resolving, and the transfer not having landed on the re-check), not unconditional, though in the stated production configuration it is deterministic. Because `migration_base.py` applies the whole file in one transaction, that abort rolls back the `CREATE FUNCTION` earlier in the same block — the remedy the error message itself names ("run the ALTER on a superuser connection, then re-apply") has nothing left to `ALTER` once the transaction unwinds. **A fourth branch exists and is untested**: lines 273-277 `RETURN` early — recording 304 as cleanly applied — if `visa_ledger_owner` does not exist in the target database at all, leaving the trigger owned by `backend_rag_v2` with no exception raised. Every environment this repo runs in today has the role, so the branch is dormant, not live — but nothing in `test_post_d1_migrations_guard_ledger_owned_ddl.py` or elsewhere asserts the migration refuses to record itself as applied on a database that lacks the role, and a database that reached this state would silently reproduce 285's original pre-301 defect (a `SECURITY DEFINER` function that 500s on its first real INSERT) with a green migration log. |
+
+**Correction against PostgreSQL's own ownership-transfer rule, found by adversarial review
+(below):** `ALTER FUNCTION ... OWNER TO` does not accept role membership as the whole
+precondition. The session must additionally be able to `SET ROLE` to the new owner — which
+requires the membership to carry the `SET` option, a thing distinct from the `INHERIT` option
+that governs automatic privilege inheritance — and the new owner role must hold `CREATE` on
+the function's containing schema (`public`). A plain `GRANT visa_ledger_owner TO
+backend_rag_v2` with neither `SET` nor confirmed schema `CREATE` would still fail the same
+`insufficient_privilege` branch the table row above describes. Whichever option below is
+chosen, these two facts must be proven true of the target database before the grant is
+treated as sufficient — this spec does not assert they are currently false, only that no
+evidence on file established they are true.
 
 Requirement 3 is not a corner case this repo has never handled — it is the norm. Six
 sibling trigger functions already do, in production, exactly what 304's cannot yet do:
@@ -164,6 +177,26 @@ one more human-held grant. This spec argues that paying once is cheaper than pay
 surface — but it is a real fourth payment, not a free lunch, and it should be scheduled
 deliberately rather than smuggled into a feature PR.
 
+**Second cost, found by adversarial review, that the "integrity guarantee is not weakened"
+claim above overstated:** the standing `GRANT INSERT ... TO backend_rag_v2` on the lookup
+table is *permanent*, not scoped to the one-time migration, and it changes who can mint a
+legal scope value. Under the CHECK, `backend_rag_v2` could never add a new value to the
+enum by itself — that required `ALTER TABLE`, which is ownership-gated, so a compromised
+application role was structurally unable to legalize an arbitrary `policy_scope` string.
+Under the lookup table, that same compromised role holds standing `INSERT` and can insert an
+arbitrary new row into `visa_retention_policy_scopes`, then reference it from a
+`visa_decision_retention_policies` row the FK will accept without complaint — the FK rejects
+an *unregistered* scope exactly as claimed, but it cannot reject a scope the attacker just
+registered. This is not a reason to reject the repair (the enum-registration win for
+requirement 1 is real and the FK still catches a typo or an unregistered surface), but the
+integrity property changes shape: from "no application-role write can create a new legal
+value" to "an application-role write can, but it lands in an audit-visible row rather than a
+silent constraint edit." The acceptance criteria below should require whichever
+implementation follows this spec to either scope the `INSERT` narrower than the bare
+runtime role (a dedicated migration role, or a `SECURITY DEFINER` function the runtime role
+may call but not the bare table) or to accept and document this shape change explicitly
+rather than carry forward the stronger claim made above.
+
 The lookup-table repair above closes requirement 1 for good. It says nothing about
 requirements 2 and 3 — a FK REFERENCES grant and a trigger-function ownership transfer are
 not schema changes to the enum's own CHECK, so a future GARUDA surface that needs its own
@@ -224,17 +257,107 @@ its own cost: for the length of the window, `backend_rag_v2` — the application
 role, reachable from ordinary request-handling code — can do anything `visa_ledger_owner` can,
 against a live production database, not a sandbox. That is a broader blast radius than an
 operator's own session doing one `ALTER FUNCTION` by hand, which is the precedented
-alternative — call it **(A′) manual superuser application**: the operator runs 304's full SQL
-directly against production over a superuser connection, before the automated
-`fly-deploy.yml` release path ever attempts it, and the migration-tracking table records it as
-applied so the automated runner skips it on merge. Cost, stated honestly: this takes one
-migration's actual application to production outside the automated, CI-reviewed deploy
-pipeline — the merged file becomes a record of what was run rather than what runs the schema
-change, so the operator's manual execution and the committed file must match exactly, and
-nothing mechanical enforces that they do. Also note this is not the *permanent* membership
-already rejected under "Why the obvious repairs do not work" above (which was rejected as an
-indefinite workaround for the enum specifically): both (A) and (A′) here are bounded and
-verified, not indefinite — the earlier rejection does not settle either of these on its own.
+alternative — call it **(A′) manual superuser application** (corrected below).
+
+**(A) is worse than "a broader blast radius" — adversarial review named concrete failure
+modes this spec had not enumerated, and they change (A) from a bounded-window trick into an
+operationally live hazard**, none of them requiring anything to go wrong beyond ordinary
+concurrent traffic:
+
+- The grant elevates the *live application role* — every runtime request-handling session,
+  not just the migration process, inherits `visa_ledger_owner`'s privileges over every
+  ledger-owned object for the length of the window, not only the one function 304 needs.
+- A session that has already run `SET ROLE visa_ledger_owner` before the `REVOKE` commits is
+  not neutralized by the revoke: PostgreSQL does not force a running session back off a role
+  it already switched into. That session must be individually reset or terminated, and
+  nothing in this repo's runtime currently enumerates or does that.
+- Objects created, altered, or granted while a session holds the elevated role survive the
+  revoke — a persistent side effect from what was meant to be a transient window.
+- `backend_rag_v2` acquiring `SET ROLE` ability at all depends on the membership carrying the
+  `SET` option (and automatic inheritance separately on `INHERIT`) — a plain `GRANT ROLE`
+  without specifying these does not necessarily grant what (A) assumes it grants.
+- **The migration runner does not treat the pending batch as one transaction**
+  (`migration_manager.py::_apply_all_pending_locked`, verified by reading the loop at
+  lines 507-528): each pending migration gets its own `try`/`except`, and a failure is
+  appended to a `failed` list — the `for` loop continues to the *next* migration_info
+  regardless. So if 304 is not the only pending migration at merge time, other migrations can
+  commit while the elevated membership is still live, extending the exposure window in a way
+  the "REVOKE immediately after verification" framing does not account for.
+- Revoke timing is exact and easy to get wrong in both directions: revoking before the
+  *new* image's `release_command` actually reaches 304 reproduces the RAISE EXCEPTION failure
+  this spec already describes (304 only exists in the new image, so an old-image pre-deploy
+  revoke is simply too early); revoking too late leaves the window open longer than intended.
+- The one existing advisory lock in the runner (`_APPLY_ALL_LOCK_ID`, `migration_manager.py`)
+  serializes concurrent *migration runs* against each other — it does nothing to prevent
+  ordinary application traffic from using the elevated role while the grant is active.
+- A revoke that fails or is forgotten converts a "temporary" workaround into a permanent
+  least-privilege regression on `backend_rag_v2` — silently, unless something checks for it.
+
+Minimum controls a real implementation of (A) would need, none of which exist today: 304
+must be the sole pending migration at grant time; the grant must specify `WITH SET` (and
+confirm `INHERIT` as needed) rather than a bare `GRANT ROLE`; `visa_ledger_owner`'s `CREATE`
+privilege on `public` must be confirmed before the grant is trusted to work at all (see the
+correction on Requirement 3 above); the grant should be issued as close as possible to the
+actual `release_command` invocation, not at an arbitrary point in the deploy window; the
+revoke must be followed by an explicit sweep for sessions that already ran `SET ROLE` and
+still hold it; and the revoke's success must itself be verified, not assumed. Adversarial
+review's own conclusion: "a dedicated migration role would be substantially cleaner than
+elevating the runtime role" — worth naming as a fourth option a future revision of this spec
+could specify, not something this one adopts, since inventing the mechanism is exactly the
+kind of decision this spec has deliberately left to the codeowner.
+
+Also note (A) and (A′) below are not the *permanent* membership already rejected under "Why
+the obvious repairs do not work" above (which was rejected as an indefinite workaround for
+the enum specifically): both here are meant to be bounded and verified, not indefinite — the
+earlier rejection does not settle either of these on its own, and the danger list above is
+about how hard "bounded and verified" actually is to make true, not a claim that bounded
+membership is as bad as permanent membership.
+
+**(A′) manual superuser application, corrected.** The operator runs 304's full SQL directly
+against production over a superuser connection, before the automated `fly-deploy.yml` release
+path ever attempts it. **This spec previously claimed "the migration-tracking table records
+it as applied so the automated runner skips it on merge" — that claim is FALSE, found by
+adversarial review and confirmed by reading the runner: both tracking tables
+(`schema_migrations`, read by `BaseMigration._is_applied`, and `_schema_versions`, read by
+`MigrationManager.get_applied_migrations`) are written by `BaseMigration._log_migration`
+(`migration_base.py:521-585`), a Python method invoked from inside `BaseMigration.apply()`'s
+own transaction (`:665-701`) — migration 304's own SQL file never touches either table.**
+Running `psql -f 304_garuda_documents.sql` against a superuser connection applies the DDL and
+leaves BOTH ledgers exactly as they were: 304 still reads as pending, so the very next
+`apply_all_pending()` (i.e. the next `release_command`) tries it again — and fails immediately
+on the bare `CREATE TABLE public.garuda_documents` (no `IF NOT EXISTS`; only the two `DO`
+blocks in 304 are catalog-guarded) with a duplicate-object error, aborting that release the
+same way 281/285 originally aborted production. (A′) as a bare "run the file by hand" is
+therefore not a fix at all unless something ALSO writes the two ledger rows — and a
+hand-fabricated `INSERT INTO schema_migrations / _schema_versions` reintroduces exactly the
+provenance risk the spec's own migration-299 checksum/`applied_via`/`applied_as` columns
+exist to prevent (see `migration_base.py`'s provenance helpers).
+
+A second defect, independent of the ledger one: applying the **entire** migration file as
+superuser makes every object it creates superuser-owned by default *except* the one function
+304's own `DO $garuda_304_owner_transfer$` block explicitly transfers — that is, both new
+tables (`garuda_documents`, `garuda_document_review_fields`) and the other two functions
+(`active_garuda_document_policy_available`, `guard_garuda_document_mutation`) would end up
+owned by the superuser, not `backend_rag_v2`. In normal operation these are owned by
+`backend_rag_v2` implicitly, because that is the role that runs the migration — 304 contains
+no explicit `GRANT` to `backend_rag_v2` on any of them because it has never needed one. Under
+(A′) as a bare superuser apply, runtime code's `SELECT`/`INSERT` against these tables
+(`postgres_store.py`) would fail on ordinary permission grounds the day this ships, a defect
+this spec did not previously name.
+
+**A properly specified (A′)** — the shape adversarial review recommends in place of either
+the bare-`psql` variant above or a bare superuser DSN through the Python runner (which fixes
+the ledger problem but not the ownership one) — would need, inside one superuser transaction:
+(1) `SET LOCAL ROLE backend_rag_v2` for the ordinary `CREATE TABLE`/`CREATE FUNCTION`
+statements, so those objects are owned the same way they would be under a normal deploy;
+(2) `RESET ROLE` (back to the privileged connection) for the one `ALTER FUNCTION ... OWNER
+TO` transfer; (3) assertion of every final owner and privilege against the catalog before
+committing; and (4) driving the whole thing through `BaseMigration.apply()` (with
+`settings.database_url` pointed at the superuser DSN for this one invocation) rather than raw
+`psql`, so `_log_migration` still runs and both ledgers are written atomically with the DDL.
+That is no longer "apply the migration file exactly as committed" — it is a distinct,
+operator-sensitive procedure this spec has not fully written out, and it would need its own
+proof before being trusted as a fixed recipe rather than a sketch.
 
 **(C) Split forward.** 304 creates `garuda_documents` and `garuda_document_review_fields`
 without the ownership transfer and without the trigger depending on it — ship the tables
@@ -349,6 +472,108 @@ option A or C" into an acceptance criterion, since that choice is the codeowner'
    fails CI. Without this the class returns in a new costume.
 4. A test proving the FK rejects an unknown scope, and an innocence control proving every
    value the CHECK accepted before is still accepted.
+5. Added by adversarial review: either the standing `GRANT INSERT` on
+   `visa_retention_policy_scopes` is scoped narrower than the bare runtime role (a dedicated
+   migration role, or a `SECURITY DEFINER` registration function `backend_rag_v2` may call
+   but not the table directly), or the integrity-guarantee claim in "The repair that removes
+   the class" is rewritten to state the weaker, honest shape ("rejects unregistered scopes,
+   does not prevent an application-role write from registering a new one") rather than the
+   stronger claim made today.
+
+## Adversarial review
+
+Seat: **codex**, model `gpt-5.6-sol` at `model_reasoning_effort=xhigh`, `--sandbox
+read-only`, invoked 2026-09-02 against this file at branch sha `57e745cc47`. **Verdict:
+BLOCK** — not softened here; the review named concrete, checkable defects in both named
+options for closing requirement 3, and this section records what was verified against the
+actual migration files (`304_garuda_documents.sql`, `301_garuda_magic_link_binding_owner.sql`)
+and the migration runner (`migration_base.py`, `migration_manager.py`) rather than accepted on
+the reviewer's word.
+
+**Confirmed and folded into the text above:**
+
+- The `ALTER FUNCTION ... OWNER TO` precondition is incomplete as stated — role membership
+  alone is not sufficient; the session also needs the membership's `SET` option and the new
+  owner needs `CREATE` on the target schema. Folded into the Requirement 3 table row.
+- `304`'s `RAISE EXCEPTION` at line 299 is conditional (role exists, function resolves,
+  transfer still hasn't landed), not unconditional. Folded into the same row. The exact
+  phrase "RAISEs unconditionally" that the review corrects does not appear verbatim anywhere
+  in this spec at the reviewed sha — it is not clear what text the reviewer was quoting from,
+  and this is named here rather than silently accepted, per this repo's anti-hallucination
+  discipline. The underlying substance (the raise is conditional) is independently confirmed
+  by reading `304_garuda_documents.sql:266-304` directly, so the correction is folded in on
+  its own merits, not on trust in the quote.
+- Temporary role membership (Option A) elevates the *live application role*, not merely the
+  migration process — `backend_rag_v2` is the same role runtime request-handling code uses
+  (this spec's own "disease" section already says so). Confirmed and folded in as the
+  danger-list under Option A.
+- A revoked `SET ROLE` does not retroactively neutralize a session that already switched into
+  the elevated role; the membership's `SET`/`INHERIT` options are distinct and both matter.
+  Standard PostgreSQL role-membership semantics (this repo runs Postgres 17.7), folded in.
+- The migration runner does **not** treat the pending batch as one transaction and does
+  **not** stop on a single migration's failure — verified by reading
+  `migration_manager.py::_apply_all_pending_locked` (`:507-528`): the `for` loop over
+  `pending` migrations wraps each `apply_migration` call in its own `try`/`except`, appends
+  failures to a list, and continues to the next migration regardless. Confirmed, folded into
+  Option A's danger list.
+- The advisory lock (`_APPLY_ALL_LOCK_ID`, `migration_manager.py`) serializes concurrent
+  migration *runs* only — it does nothing to stop ordinary application sessions from using an
+  elevated role. Confirmed by reading the lock's scope (acquired on one dedicated connection
+  around `_apply_all_pending_locked` only) and folded in.
+- Option A′ ("manual superuser application") as this spec previously described it was
+  **factually wrong**, not merely risky: the claim that "the migration-tracking table records
+  it as applied so the automated runner skips it on merge" is false. Both migration ledgers
+  (`schema_migrations`, `_schema_versions`) are written by `BaseMigration._log_migration`, a
+  Python method called from inside `BaseMigration.apply()`'s own transaction
+  (`migration_base.py:521-701`) — migration 304's SQL file itself never touches either table.
+  Running the file via raw `psql` leaves both ledgers unchanged, so the very next automated
+  `release_command` would try 304 again and fail on the bare (non-catalog-guarded)
+  `CREATE TABLE public.garuda_documents`. This is the most consequential finding in the
+  review: it directly contradicts a claim this spec made with confidence, and it is corrected
+  in place above rather than left standing next to the correction.
+- Applying the whole migration as superuser leaves every object it creates
+  superuser-owned except the one function 304 explicitly transfers — both new tables and the
+  other two functions would end up owned by the wrong role, breaking runtime
+  `SELECT`/`INSERT` the moment traffic hits them, since 304 contains no explicit `GRANT` to
+  `backend_rag_v2` (it has never needed one — normal application means `backend_rag_v2` is
+  the creating role by default). Confirmed by reading 304's DDL in full (two `CREATE TABLE`,
+  three `CREATE FUNCTION`, one explicit `OWNER TO`) and folded in as a second, independent
+  defect in the bare-(A′) shape.
+- The `visa_ledger_owner`-absent branch (`304_garuda_documents.sql:273-277`) `RETURN`s early
+  rather than enforcing the owner postcondition, so a database lacking that role would record
+  304 as cleanly applied with the trigger function still owned by `backend_rag_v2`. Confirmed
+  by reading the branch; folded into the Requirement 3 row as a fourth, currently-dormant
+  branch. Every environment this repo runs today has the role, so this is a latent gap, not a
+  live one — stated exactly that way rather than escalated.
+- The lookup-table repair's standing `GRANT INSERT` on `visa_retention_policy_scopes` weakens
+  the stated integrity guarantee: a compromised `backend_rag_v2` could register a new scope
+  and then reference it, which the CHECK design structurally prevented. Confirmed as a real
+  design gap (the FK still rejects an *unregistered* scope, so the finding narrows rather than
+  voids the repair's value) and folded into that section's cost paragraph plus a fifth
+  acceptance criterion above.
+
+**Accepted as a well-founded recommendation, not adopted as this spec's choice:** the
+review's proposed "properly specified (A′)" (`SET LOCAL ROLE` for ordinary object creation,
+`RESET ROLE` for the transfer, catalog assertion, driven through the Python runner so both
+ledgers are written) is folded in above as a sketch of what a correct (A′) would need — it is
+not fully specified here and this spec does not adopt it as the answer, consistent with
+leaving the A/A′/C choice to the codeowner. Likewise "a dedicated migration role would be
+substantially cleaner than elevating the runtime role" is recorded as a fourth option a
+future revision could specify, not adopted here.
+
+**Not independently verified (outside what this session can check from a read-only repo
+checkout):** whether `visa_ledger_owner` currently holds `CREATE` on `public` in the live
+production database. The review treats this as a precondition to prove before trusting either
+option, not as an assertion that it is currently false, and this spec keeps it in that form —
+naming it as a gap in the evidence, not manufacturing a verdict this session has no DB access
+to support.
+
+**No findings were rejected.** Every substantive finding in the review's four numbered
+sections was either independently confirmed against the actual files (above) or is a
+recommendation this spec explicitly declines to adopt while still recording it. The one
+imprecision found in the review itself — attributing the phrase "RAISEs unconditionally" to
+this spec when that exact phrase does not appear in it — does not change any disposition
+above, since the substance behind it is independently true.
 
 ## Until then
 
@@ -378,3 +603,17 @@ options above (temporary membership, or a split-forward migration), made and exe
 *before* the merge, per "the apply protocol." Until that decision is made, #5526 is
 suspended per Agent PR Contract rule 8 — not retried a fourth time on the same cause, and
 not merged on an assumption about which option will be chosen.
+
+**Updated 2026-09-02, after the cross-family adversarial review above (verdict BLOCK):**
+neither named option is ready to execute as originally specified. (A) needs its minimum
+controls list satisfied (sole-pending-migration, `SET`/`INHERIT` confirmed, a session sweep
+after revoke) before "temporary membership" is actually temporary in practice, not just in
+intent. (A′) needs the ledger-population defect fixed — the bare "run the file by hand"
+shape this spec described does not, on its own, stop the automated runner from retrying 304
+and failing — so any execution of (A′) must go through a corrected procedure (drive
+`BaseMigration.apply()` itself against a privileged DSN with `SET LOCAL ROLE` scoping
+ordinary object creation, per the review's sketch above), not the plain superuser `psql`
+session this spec originally described. (C) is unaffected by the review's findings, since it
+avoids the privileged-transfer question entirely by deferring it. The codeowner decision this
+section already calls for is therefore now a decision among a corrected (A), a corrected
+(A′), or (C) — not among the three options as this spec first wrote them.
