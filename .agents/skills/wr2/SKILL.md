@@ -1,7 +1,11 @@
 ---
 name: wr2
-description: "WR2 corner — the live shared context for the War Room 2 editorial organism (intel → carousel → Instagram). Load BEFORE touching any WR2 script, the Control app, the queue, metrics, or brand surfaces — or when Zero says /wr2, 'war room', 'carosello', 'WR2'. Holds: the north star (a self-improving, facts-honest editorial machine), the anatomy map (every hot file/daemon/log), LIVE STATE, blood-bought rules, and the standing GROWTH LOOP mandate for no-stop improvement sessions."
+description: "WR2 corner — shared context for the War Room 2 editorial organism (intel→carousel→Instagram). Load before touching any WR2 script/queue/metrics, or when Zero says /wr2, 'war room', 'carosello'."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Also covers brand surfaces. Holds: the north star (a self-improving, facts-honest editorial machine), the anatomy map (every hot file/daemon/log), LIVE STATE, blood-bought rules, and the standing GROWTH LOOP mandate for no-stop improvement sessions.
 
 # /wr2 — War Room 2 corner (project brain)
 
