@@ -513,7 +513,7 @@ def _load_img_token_chain() -> list[tuple[str, str]]:
     """Load ordered list of (label, oauth_token) for image prompt generation."""
     chain: list[tuple[str, str]] = []
     seen: set[str] = set()
-    for i in (1, 2, 3, 4, 5):
+    for i in (1, 2, 3, 4, 5, 6):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
         if tok and tok not in seen:
             chain.append((f"token_{i}", tok))
@@ -563,7 +563,7 @@ def _img_retry_reason(stdout: str, stderr: str) -> str | None:
 
 def _prompt_via_claude(title: str, category: str, summary: str, mood: str) -> str | None:
     """Call Claude Haiku via CLI subprocess to generate visual concept.
-    Multi-account fallback: tries TOKEN_1→2→3→4→5→legacy→keychain.
+    Multi-account fallback: tries TOKEN_1→2→3→4→5→6 (Team, last-resort)→legacy→keychain.
     Returns the raw prompt string, or None if CLI unavailable/failed."""
     user_msg = _build_llm_user_prompt(title, category, summary, mood)
     combined = f"{_VISUAL_DIRECTOR_SYSTEM}\n\n{user_msg}"
