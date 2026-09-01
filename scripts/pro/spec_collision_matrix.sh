@@ -117,7 +117,15 @@ assert_local_state() {
   { [ -e "$LOCAL/$P" ] || [ -L "$LOCAL/$P" ]; } && exists=yes
   case "$1" in
     clean)            [ "$tracked" = yes ] && [ "$exists" = yes ] && git -C "$LOCAL" diff --quiet HEAD -- "$P" ;;
-    modified)         [ "$tracked" = yes ] && [ "$exists" = yes ] && ! git -C "$LOCAL" diff --quiet HEAD -- "$P" ;;
+    # `modified` must say REGULAR FILE, not merely "tracked and different". An empirical 8x8
+    # confusion matrix over these predicates found this one arm matching three OTHER states'
+    # real on-disk shapes: dir_at_path, dangling_symlink and symlink all leave `tracked` yes
+    # (their arms run no git add/rm), satisfy `-e`/`-L`, and are never `diff --quiet` because
+    # the TYPE changed. Unreachable today — run_cell always passes the same $A to apply and
+    # assert — so this masked nothing; a post-condition that cannot tell four states apart is
+    # still not a post-condition, and the next refactor of the dispatch is what it would cost.
+    modified)         [ "$tracked" = yes ] && [ -f "$LOCAL/$P" ] && [ ! -L "$LOCAL/$P" ] \
+                        && ! git -C "$LOCAL" diff --quiet HEAD -- "$P" ;;
     del_unstaged)     [ "$tracked" = yes ] && [ "$exists" = no ] ;;
     del_staged)       [ "$tracked" = no ]  && [ "$exists" = no ] ;;
     dir_at_path)      [ -d "$LOCAL/$P" ] && [ ! -L "$LOCAL/$P" ] ;;
