@@ -73,8 +73,11 @@ assumptions:
       raw file bytes — so a comment-only correction (this ceremony's fix 2,
       see dissent[]) does not require a checksum bump.
     status: verified
-    probe: "PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry apps/organism/organism/organs_registry.yaml"
-      before and after the comment-only edit; both '✓ ... valid'.
+    probe: >-
+      PYTHONPATH=apps/organism python3 -m
+      organism.tools.validate_organs_registry
+      apps/organism/organism/organs_registry.yaml — run before and after the
+      comment-only edit; both '✓ ... valid'.
   - text: >-
       The severity_on_silence field driving the 1.5x/2.0x tier split is
       pre-existing registry data this diff does not touch (only

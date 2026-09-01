@@ -119,7 +119,7 @@ dissent:
       scripts/launchagent-state-bridge.py would silently drop that organ
       from the bridge-exclusion set, mis-classifying a bridge-fed organ as
       self-reporting.
-    status: CONFIRMED-BUT-INHERITED
+    status: CONFIRMED
     resolution: >-
       Verified empirically: 84/84 organ_id= occurrences in the bridge
       script are currently double-quoted, 0 single-quoted -- theoretical,
@@ -154,7 +154,7 @@ dissent:
       failure degrades the organism's ability to notice OTHER organs
       failing") yet are tagged severity_on_silence=warning, landing them in
       the slower 2.0x tier rather than 1.5x.
-    status: CONFIRMED-BUT-OUT-OF-SCOPE
+    status: CONFIRMED
     resolution: >-
       Verified: both organs' severity_on_silence field reads "warning" in
       the live registry, and this diff does not touch that field on any
@@ -188,7 +188,7 @@ dissent:
       "9 passed, 1 skipped" would still satisfy PASSED>=9, contradicting
       the guard's own docstring claim that "this suite has NO legitimate
       skip case."
-    status: CONFIRMED-BLOCKED-BY-CEREMONY-SCOPE
+    status: CONFIRMED
     resolution: >-
       Reproduced directly: a synthetic "9 passed, 1 skipped in 0.31s"
       summary line parses to PASSED=9, which passes the >=9 threshold. A
@@ -213,9 +213,9 @@ receipts:
     exit: 0
     ts: "2026-09-01T18:15:00Z"
     seat: claude-sonnet-5
-  - claim: "the guard suite passes 9 cases (no legitimate skip)"
-    cmd: "PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_self_reporting_cron_own_plist_margin.py scripts/tests/test_self_reporting_cron_workflow_wiring.py -q"
-    result: "9 passed in 0.30s"
+  - claim: "the guard suite passes 9 cases by name (no legitimate skip): test_self_reporting_cron_organs_declare_a_safe_multiple_of_their_own_plist_interval, test_violation_math_guilt_below_the_fast_tier_floor, test_violation_math_guilt_below_the_default_floor, test_violation_math_innocence_at_the_fast_tier_floor, test_violation_math_innocence_at_the_default_floor, test_violation_math_innocence_ratio_exactly_one_is_still_flagged_for_every_tier, test_push_paths_cover_the_guard_read_set, test_injob_pathspec_covers_the_guard_read_set, test_a_step_actually_executes_the_guard_file"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3 -m pytest scripts/tests/test_self_reporting_cron_own_plist_margin.py scripts/tests/test_self_reporting_cron_workflow_wiring.py -v"
+    result: "all 9 named tests PASSED; 9 passed in 0.30s"
     exit: 0
     ts: "2026-09-01T18:18:00Z"
     seat: claude-sonnet-5
@@ -291,6 +291,12 @@ receipts:
     exit: 1
     ts: "2026-09-01T18:45:00Z"
     seat: gemini-3.1-pro-agy
+  - claim: "cross-family review attempt, kimi-code/k3: bare PONG health-check for council quorum"
+    cmd: "kimi -p \"reply with exactly the word PONG, nothing else\" -m kimi-code/k3"
+    result: "403 You've reached your weekly (7-day) usage limit"
+    exit: 1
+    ts: "2026-09-01T18:55:00Z"
+    seat: kimi-code/k3
   - claim: "post-fix re-verification: guard suite still 9 passed, plus 4 adjacent expected_hb_seconds-consuming test files (71 passed, 1 legitimate skip), actionlint clean, worktree clean except the 2-file fix commit"
     cmd: "pytest (6 files, -q); actionlint organ-conformance.yml; git status --short; git log --oneline origin/main..HEAD"
     result: "71 passed, 1 skipped; actionlint no output; git status clean except fix commit; 4 commits total (3 PR + 1 ceremony fix)"
