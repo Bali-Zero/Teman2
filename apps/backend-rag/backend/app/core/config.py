@@ -26,6 +26,20 @@ class Settings(BaseSettings):
     # BALI ZERO, GREEN). The old personal number (+62 822 64xx, Antonello's)
     # no longer exists — replaced fleet-wide 2026-06-18.
     SUPPORT_WHATSAPP: str = "+62 821 3465 159"
+    # The number a CLIENT is invited to write to — NOT the same thing as
+    # SUPPORT_WHATSAPP above, and the two must be free to differ.
+    # SUPPORT_WHATSAPP is the bot's INBOUND identity: the line Meta delivers
+    # webhooks for, which no human answers. This is Ari's line, where a human
+    # does. On 2026-08-31 a fix for a real defect (two halves of the price
+    # list naming different numbers) resolved the tie toward SUPPORT_WHATSAPP
+    # and shipped the bot's inbound number to clients; the owner reversed it
+    # on 2026-09-01. It is NOT yet used everywhere it should be: eleven other
+    # client-facing surfaces (email footers, the chat CTA, the website-widget
+    # prompt) still emit SUPPORT_WHATSAPP, ledgered in PENDING-ARMS as an owner
+    # decision. Kept in sync with the price-list generator's
+    # _CANONICAL_WHATSAPP_DIGITS (scripts/pricelist_2026/schema.py) by
+    # test_client_contact_whatsapp_matches_the_price_list_generator.
+    CLIENT_CONTACT_WHATSAPP: str = "+62 821 3454 721"
     API_V1_STR: str = "/api/v1"
     environment: str = "development"  # Set via ENVIRONMENT env var (production/development)
 
