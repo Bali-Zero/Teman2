@@ -1878,7 +1878,10 @@ def test_main_full_only_apply_still_rewrites_judul_and_content(monkeypatch):
 # `per_skala: []`, `licensing_status: "N/A"` and a seed-era `pp28_sources`
 # array, while canonical holds real PP 28/2025 rows. The full rebuild would
 # have replaced all 25 documents (up to 20k chars each); the content-
-# preservation gate refuses exactly that. The tuple is what the channel reads.
+# preservation gate refuses exactly that. NOTE (grounded 2026-09-01): unlike the
+# PMA tuple, NO runtime consumer reads these three keys off this table — the
+# channel serves licensing from Qdrant text and `kg_nodes`. This mode buys
+# table<->canonical agreement (detector class closes), not a channel change.
 from backend.scripts.kbli_documents_cure import (  # noqa: E402
     LICENSING_METADATA_KEYS,
     licensing_metadata_from_canonical,
@@ -2212,3 +2215,68 @@ def test_main_pma_only_apply_still_binds_only_the_pma_tuple_after_the_generalisa
     bound = _json_obl.loads(args[1])
     assert set(bound) == set(PMA_METADATA_KEYS)
     assert "per_skala" not in bound
+
+
+# --- refuter round 1 (Codex sol, 2026-09-01) on --licensing-only: folded ------
+
+
+@pytest.mark.parametrize(
+    "malformed",
+    ["NIB dan Sertifikat Standar", {"skala": "Mikro"}, 3],
+    ids=["str", "dict", "int"],
+)
+def test_licensing_only_refuses_a_malformed_canonical_row_set(malformed):
+    """MAJOR #3a. Truthiness alone would have WRITTEN a non-empty string or
+    object as `per_skala` (and `jsonb_array_length` would then fail at the
+    detector). Shape is refused, named, and never reaches the UPDATE."""
+    record = {**RECORD_85510_SOURCED, "per_skala": malformed}
+    plan = plan_licensing_only("85510", record, HAND_WRITTEN_ROW_85510)
+    assert plan.update_row is False
+    assert plan.new_metadata is None
+    assert plan.is_gap is None
+    assert "not a list" in (plan.skip_reason or "")
+
+
+def test_main_licensing_only_malformed_canonical_binds_nothing(monkeypatch, caplog):
+    record = {**RECORD_85510_SOURCED, "per_skala": "NIB"}
+    with caplog.at_level(_logging.INFO, logger=_cure.logger.name):
+        rc, conn, archive_calls = _drive_apply(
+            monkeypatch, _LICENSING_ONLY_APPLY_ARGV, [_ROW_85510_IN_TABLE], [record]
+        )
+    assert not rc
+    assert conn.updates() == [] and archive_calls == []
+    assert any("not a list" in r.getMessage() for r in caplog.records)
+
+
+def test_main_licensing_only_second_run_on_string_metadata_is_a_no_op(monkeypatch, caplog):
+    """MINOR #5. asyncpg can hand `metadata` back as a JSON STRING; `main()`
+    decodes it before planning. A cured row re-read that way must be a
+    declared no-op — no snapshot, no UPDATE — or the mode is not idempotent
+    against the real driver. (The mutant that drops the `json.loads` branch
+    is what this catches: a str has no `.get`.)"""
+    cured = plan_licensing_only("85510", RECORD_85510_SOURCED, HAND_WRITTEN_ROW_85510).new_metadata
+    row = {**_ROW_85510_IN_TABLE, "metadata": _json_obl.dumps(cured, ensure_ascii=False)}
+    with caplog.at_level(_logging.INFO, logger=_cure.logger.name):
+        rc, conn, archive_calls = _drive_apply(
+            monkeypatch, _LICENSING_ONLY_APPLY_ARGV, [row], [RECORD_85510_SOURCED]
+        )
+    assert not rc
+    assert conn.updates() == [] and archive_calls == []
+    assert any(
+        "SKIP 85510" in r.getMessage() and "already cured" in r.getMessage() for r in caplog.records
+    )
+
+
+def test_main_summary_states_n_of_m(monkeypatch, caplog):
+    """MINOR #6 (W97). Two codes asked, one cured, one not in the table: the
+    summary must carry the denominator, not a bare count."""
+    argv = [a if a != "85510" else "85510,03231" for a in _LICENSING_ONLY_APPLY_ARGV]
+    record_03231 = {**RECORD_85510_SOURCED, "kode_kbli_2025": "03231"}
+    with caplog.at_level(_logging.INFO, logger=_cure.logger.name):
+        rc, conn, _ = _drive_apply(
+            monkeypatch, argv, [_ROW_85510_IN_TABLE], [RECORD_85510_SOURCED, record_03231]
+        )
+    assert not rc
+    assert len(conn.updates()) == 1
+    messages = [r.getMessage() for r in caplog.records]
+    assert any("APPLIED: 1 of 2 code(s) cured | 1 skipped" in m for m in messages), messages

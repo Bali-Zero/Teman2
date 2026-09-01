@@ -415,11 +415,20 @@ def licensing_metadata_from_canonical(record: dict, old_metadata: dict | None) -
     paths cannot disagree about the same three keys (W105).
 
     `per_skala` is the CURRENT canonical row-set (`[]` for an honest gap);
-    `pp28_sources` is whatever canonical records as its provenance;
+    `pp28_sources` is whatever canonical records as its provenance — verbatim,
+    and JSON `null` when canonical carries none, which the jsonb merge writes
+    OVER any stored array (parity with the rebuild, and the dry-run delta line
+    shows it as `<n rows> -> None`: a code with rows and no provenance is a
+    canonical defect to fix upstream, not one to paper over here);
     `licensing_status` gets the KG cure's `PENDING_REGULATION` marker on an
     empty set and is otherwise carried over unchanged (`N/A` when the row
     never had one) — the rebuild has always declined to assert it, and the
-    narrow mode inherits that restraint rather than inventing a value."""
+    narrow mode inherits that restraint rather than inventing a value. Declared
+    consequence (refuter 2026-09-01): a cured row can hold real rows beside
+    `licensing_status: "N/A"`. Nothing reads that key off this table; the
+    public verdict comes from `kg_nodes`, whose convention (`REGULATED`
+    default / `PENDING_REGULATION` gap) is a cross-store contract this script
+    has no mandate to set — spec it, do not improvise it per row."""
     old = old_metadata or {}
     per_skala = record.get("per_skala") or []
     return {
@@ -1023,18 +1032,26 @@ def plan_licensing_only(
             skip_reason="not in kbli_documents table",
             licensing_only=True,
         )
-    if not (record.get("per_skala") or []):
+    canonical_rows = record.get("per_skala")
+    if not isinstance(canonical_rows, list) or not canonical_rows:
+        # Shape is checked, not just truthiness: a non-empty string or object
+        # under `per_skala` is truthy, would be written as the row-set, and
+        # would then fail `jsonb_array_length` at the detector — refuse it.
+        malformed = canonical_rows is not None and not isinstance(canonical_rows, list)
         return DocumentCurePlan(
             code=code,
             found_in_canonical=True,
             found_in_table=True,
-            is_gap=True,
+            is_gap=None if malformed else True,
             new_judul=None,
             new_content=None,
             new_metadata=None,
             update_row=False,
             skip_reason=(
-                "canonical holds no licensing rows for this code — refusing to empty the "
+                f"canonical per_skala is a {type(canonical_rows).__name__}, not a list — "
+                "refusing to write a malformed row-set"
+                if malformed
+                else "canonical holds no licensing rows for this code — refusing to empty the "
                 "stored row-set under --licensing-only (a detached row-set is the "
                 "--all-quarantined class)"
             ),
@@ -1555,7 +1572,11 @@ async def main() -> int | None:
     mode = "APPLIED" if args.apply else "DRY-RUN"
     acted = [p for p in plans if p.update_row]
     skipped = [p for p in plans if not p.update_row]
-    logger.info("%s: %d code(s) cured | %d skipped", mode, len(acted), len(skipped))
+    # N of M (W97): the denominator is every code the run was asked about, so
+    # "23 cured" can never be read as "all of them".
+    logger.info(
+        "%s: %d of %d code(s) cured | %d skipped", mode, len(acted), len(plans), len(skipped)
+    )
     for p in skipped:
         logger.info("  skipped %s: %s", p.code, p.skip_reason)
     if not args.apply and acted:
