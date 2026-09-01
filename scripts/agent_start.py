@@ -1224,8 +1224,8 @@ def _gh_pr_state_for_branch(
 ) -> str | None:
     """Best-effort GitHub PR state for `branch`'s most recently created PR.
 
-    ``gh pr list --search head:<branch> --state all`` — the third, authoritative
-    arm added 2026-09-01 alongside the pre-existing ancestry/content arms (see
+    ``gh pr list --head <branch> --state all`` — the third, authoritative arm
+    added 2026-09-01 alongside the pre-existing ancestry/content arms (see
     `_branch_merge_status`): GitHub is the only party that knows a SQUASH
     merge landed, which is how every PR in this repo merges (W88) — the
     ancestor test can never be true for a squash-merged branch, and the
@@ -1235,16 +1235,34 @@ def _gh_pr_state_for_branch(
     afterward. Measured 2026-09-01: PR #5434 (MERGED) has 3 authored files of
     which 1 now differs from main; PR #5354 (MERGED) has 15 of which 2 differ.
 
+    ``--head`` (exact filter), NEVER ``--search head:<branch>`` (a search
+    QUALIFIER, prefix-matching and index-backed — superscar family #3,
+    guard-over-match). Measured live 2026-09-01 on a real sibling pair in
+    this repo: `agent/nuzantara/infra/organ-hb-cadence` is a strict prefix of
+    `agent/nuzantara/infra/organ-hb-cadence-wiring`; `--search head:` for the
+    SHORTER branch returned BOTH PRs (including the longer sibling's, #5440,
+    created later), while `--head` returned only the one PR that actually
+    belongs to it (#5431). Because this function is the AUTHORITATIVE arm
+    (a MERGED verdict overrides the content check), the search-qualifier form
+    would let a sibling branch's newer MERGED PR reap a DIFFERENT worktree
+    whose own PR is still OPEN — silent deletion of live, unmerged work, the
+    fail-OPEN direction every other branch of this function is deliberately
+    fail-CLOSED against. `headRefName` is also fetched and used to filter the
+    result set defensively before the `createdAt` tie-break, so a future `gh`
+    regression that reintroduces prefix-matching degrades to "picks the wrong
+    still-correctly-scoped row" at worst, never silently reads a plainly
+    wrong branch's PR as this branch's own.
+
     Returns one of GitHub's own state strings — "MERGED" / "OPEN" / "CLOSED" —
-    for the most recently created PR whose head is this branch (a branch can
-    accumulate more than one PR over its life — closed-then-reopened, or
-    rebuilt after a squash — ties are broken by `createdAt`, latest wins).
-    Returns "NONE" when `gh` succeeded but no PR was ever opened for this
-    branch — the single most dangerous row on the reaper's board (measured
-    2026-09-01: `wr2/websurface-cure`, `infra/hookw119`, `ops/fix5331` — real
-    committed work that exists nowhere else), which the caller must protect
-    and report distinctly, never fold silently into the generic "unmerged"
-    message.
+    for the most recently created PR whose head is EXACTLY this branch (a
+    branch can accumulate more than one PR over its life — closed-then-
+    reopened, or rebuilt after a squash — ties are broken by `createdAt`,
+    latest wins). Returns "NONE" when `gh` succeeded but no PR was ever
+    opened for this branch — the single most dangerous row on the reaper's
+    board (measured 2026-09-01: `wr2/websurface-cure`, `infra/hookw119`,
+    `ops/fix5331` — real committed work that exists nowhere else), which the
+    caller must protect and report distinctly, never fold silently into the
+    generic "unmerged" message.
 
     Returns None on ANY failure to get a trustworthy answer — `gh` missing,
     timeout, non-zero exit, unparseable JSON, or an unrecognized `state`
@@ -1257,9 +1275,9 @@ def _gh_pr_state_for_branch(
         proc = subprocess.run(
             [
                 "gh", "pr", "list",
-                "--search", f"head:{branch}",
+                "--head", branch,
                 "--state", "all",
-                "--json", "number,state,createdAt",
+                "--json", "number,state,createdAt,headRefName",
             ],
             cwd=str(cwd),
             capture_output=True,
@@ -1292,15 +1310,22 @@ def _gh_pr_state_for_branch(
         return None
     if not isinstance(data, list):
         return None
-    if not data:
+    # Defensive exact-match filter (belt-and-suspenders on top of `--head`):
+    # only rows whose own headRefName is EXACTLY this branch ever count. This
+    # is what keeps a future `gh` regression, or a differently-scoped `--head`
+    # behavior on some other `gh` version, from silently reading a sibling
+    # branch's PR as this branch's own.
+    rows = [
+        row for row in data
+        if isinstance(row, dict) and row.get("headRefName") == branch
+    ]
+    if not rows:
         return "NONE"
 
-    def _created_at(row: object) -> str:
-        return row.get("createdAt") or "" if isinstance(row, dict) else ""
+    def _created_at(row: dict) -> str:
+        return row.get("createdAt") or ""
 
-    latest = max(data, key=_created_at)
-    if not isinstance(latest, dict):
-        return None
+    latest = max(rows, key=_created_at)
     state = latest.get("state")
     if state not in ("MERGED", "OPEN", "CLOSED"):
         logger.warning(
@@ -1364,9 +1389,11 @@ def _branch_merge_status(
          upstream). This is the only arm that needs neither `gh` nor a fresh
          fetch, and it is exact — never a proxy — for a branch with no
          commits of its own yet.
-      2. The PULL REQUEST arm (added 2026-09-01): ``gh pr list --search
-         head:<branch>`` — GitHub is the only party that knows a SQUASH merge
-         landed, which is how every PR in this repo merges (W88), so the
+      2. The PULL REQUEST arm (added 2026-09-01): ``gh pr list --head
+         <branch>`` (exact filter — see `_gh_pr_state_for_branch`'s docstring
+         for why never the `--search head:` qualifier, which prefix-matches)
+         — GitHub is the only party that knows a SQUASH merge landed, which
+         is how every PR in this repo merges (W88), so the
          ancestor test in arm 1 can NEVER be true for a squash-merged branch.
          This arm is AUTHORITATIVE: a MERGED PR means landed regardless of
          what arm 3 would conclude from current file content (which can go

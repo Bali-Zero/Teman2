@@ -1305,12 +1305,70 @@ def test_gh_pr_state_for_branch_picks_most_recently_created_pr(
         bin_dir,
         "#!/bin/sh\n"
         "echo '["
-        '{"number": 41, "state": "CLOSED", "createdAt": "2026-08-20T00:00:00Z"}, '
-        '{"number": 42, "state": "MERGED", "createdAt": "2026-08-25T00:00:00Z"}'
+        '{"number": 41, "state": "CLOSED", "createdAt": "2026-08-20T00:00:00Z", '
+        '"headRefName": "some/branch"}, '
+        '{"number": 42, "state": "MERGED", "createdAt": "2026-08-25T00:00:00Z", '
+        '"headRefName": "some/branch"}'
         "]'\n",
     )
     monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
     assert mod._gh_pr_state_for_branch("some/branch", cwd=repo) == "MERGED"
+
+
+def test_gh_pr_state_for_branch_uses_exact_head_flag_and_discards_prefix_sibling_rows(
+    fake_repo, monkeypatch, tmp_path
+):
+    """GUILT (found in review, 2026-09-01): `gh pr list --search head:<branch>`
+    is a SEARCH QUALIFIER — prefix-matching and index-backed, superscar
+    family #3 (guard-over-match) — not an exact filter. Measured live on a
+    real sibling pair in this repo: `agent/nuzantara/infra/organ-hb-cadence`
+    is a strict prefix of `agent/nuzantara/infra/organ-hb-cadence-wiring`;
+    `--search head:` for the SHORTER branch returned BOTH PRs, including the
+    longer sibling's newer MERGED one (#5440), while `--head` (exact)
+    returned only the branch's own (#5431). Because this function is the
+    AUTHORITATIVE arm — a MERGED verdict overrides the content check — the
+    search-qualifier form would let a sibling's newer MERGED PR reap a
+    DIFFERENT worktree whose own PR is still OPEN: silent deletion of live,
+    unmerged work, the fail-OPEN direction this function is everywhere else
+    deliberately fail-CLOSED against.
+
+    Two independent things must hold, so this test cannot pass by accident
+    if the flag regresses back to `--search`/`head:`:
+      1. The exact argv the fake `gh` receives must use `--head`, never
+         `--search` — asserted directly, not inferred from the return value.
+      2. Even given a raw JSON payload shaped exactly like what `--search
+         head:` really returns (both the sibling's row AND this branch's own
+         row), the function's own defensive `headRefName` filter must still
+         discard the sibling's row and return this branch's OWN state
+         ("OPEN"), never the sibling's ("MERGED") — the belt-and-suspenders
+         half of the fix, independent of the flag itself.
+    """
+    mod, repo = fake_repo
+    branch = "agent/nuzantara/infra/organ-hb-cadence"
+    sibling = "agent/nuzantara/infra/organ-hb-cadence-wiring"
+    bin_dir = tmp_path / "fakebin"
+    argv_file = tmp_path / "argv.txt"
+    _install_fake_gh(
+        bin_dir,
+        "#!/bin/sh\n"
+        f'printf \'%s\\n\' "$@" > "{argv_file}"\n'
+        "echo '["
+        f'{{"number": 5440, "state": "MERGED", '
+        f'"createdAt": "2026-08-31T08:00:32Z", "headRefName": "{sibling}"}}, '
+        f'{{"number": 5431, "state": "OPEN", '
+        f'"createdAt": "2026-08-31T06:46:29Z", "headRefName": "{branch}"}}'
+        "]'\n",
+    )
+    monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
+
+    state = mod._gh_pr_state_for_branch(branch, cwd=repo)
+
+    assert state == "OPEN"  # NOT "MERGED" — the sibling's row must be discarded
+    argv_lines = argv_file.read_text().splitlines()
+    assert "--head" in argv_lines
+    assert branch in argv_lines
+    assert "--search" not in argv_lines
+    assert f"head:{branch}" not in argv_lines
 
 
 def test_gh_pr_state_for_branch_no_pr_returns_none_sentinel(
@@ -1362,7 +1420,7 @@ def test_gh_pr_state_for_branch_unrecognized_state_returns_none(
         bin_dir,
         "#!/bin/sh\n"
         "echo '[{\"number\": 1, \"state\": \"DRAFT\", "
-        '"createdAt": "2026-08-20T00:00:00Z"}]\'\n',
+        '"createdAt": "2026-08-20T00:00:00Z", "headRefName": "some/branch"}]\'\n',
     )
     monkeypatch.setenv("PATH", f"{bin_dir}:{os.environ['PATH']}")
     assert mod._gh_pr_state_for_branch("some/branch", cwd=repo) is None
