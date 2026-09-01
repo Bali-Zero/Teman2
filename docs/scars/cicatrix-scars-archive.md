@@ -1,7 +1,19 @@
 # cicatrix-scars-archive.md
 
-Resolved scars archived from `cicatrix-scars.md` to keep the active file under the 40k-char auto-load threshold.
-Each entry retains its full TRAUMA / ANTIBODY / GOTCHA context — grep-able, git-tracked, just not auto-loaded per session.
+Resolved scars archived from `cicatrix-scars.md`. Each entry keeps its full TRAUMA / ANTIBODY / GOTCHA
+context — grep-able, git-tracked, and genuinely NOT auto-loaded per session.
+
+That last clause used to be false. This header claimed it from the day the file was created while the file
+sat in `.claude/rules/`, which the harness loads in full: measured 2026-08-31, a session received this
+archive's 396,609 bytes alongside `cicatrix-scars.md`'s 296,243, inside a 783,444-byte turn-1 surface. The
+`claudeMdExcludes` entry meant to prevent that had been armed on all three machines since 2026-06-14 and did
+not exclude — a promise in a header and a setting in a file, both inert, for months (superscar #2).
+
+Both bodies now live in `docs/scars/`, outside every auto-load path, so the sentence is true because of where
+the file IS and not because of what it says about itself. Retrieval is unchanged and unconditional:
+`scar query "<theme>"`, `scar query W76`, or plain grep. The 14 KB bridge `.claude/rules/cicatrix-superscar.md`
+stays injected — being in the window is its whole job.
+
 Restore by appending an entry back to `cicatrix-scars.md` if it relapses into a STRUCTURAL pattern.
 
 ---

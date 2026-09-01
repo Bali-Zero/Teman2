@@ -722,6 +722,18 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)\.claude/rules/.*\.md$"),
         ".claude/rules markdown: operator scar notes and guardrail docs, not secrets",
     ),
+    # The same corpus, at the address it moved to. L02-PR1 took the two scar
+    # BODIES out of `.claude/rules/` (everything in that directory is injected
+    # into every session and every subagent, and the bodies were 693 KB of it);
+    # the bridge stayed. Without this rule the move alone turns `Detect Secrets`
+    # red — the rule above stops matching, and ~700 KB of scar text quoting
+    # rotated credentials reads as newly unaudited. Worth naming how it was
+    # nearly missed: the rule is a REGEX over the DIRECTORY, so it contains no
+    # occurrence of the moved filenames and no grep for them could find it.
+    (
+        re.compile(r"(^|/)docs/scars/.*\.md$"),
+        "docs/scars markdown: the cicatrix corpus relocated from .claude/rules, same nature",
+    ),
     # Claude skills markdown (modus PENDING-ARMS ledger, skill docs): proof
     # lines quote curl commands with rotated/revoked key literals and
     # placeholder env assignments (e.g. API_KEY_ROLES=<K1>:admin). Same
