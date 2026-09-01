@@ -454,6 +454,48 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "of the public signed seq-13 RulePack payload, triple-derived at "
         "run time; exact value pinned, never a credential",
     ),
+    # fold_pack_seq17.py: SEQ16_PAYLOAD_SHA256 is the chain anchor for the
+    # active seq-16 RulePack payload. The fold recomputes sha256 over the
+    # canonical seq-16 payload and aborts unless it equals this database-
+    # recorded digest before producing seq-17.
+    #
+    # Content-keyed and pinned to the exact assignment and exact digest:
+    # this production file remains closed to every other value or line, and
+    # a ride-along statement cannot match because the pattern is end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq17\.py$"
+        ),
+        re.compile(
+            r'^\s*SEQ16_PAYLOAD_SHA256\s*=\s*'
+            r'"ef17dc122380d1e5ca7a7360c21d64fbfea05681bf30b1447f6c14026bc94100"\s*$'
+        ),
+        "fold_pack_seq17.py: seq-16 chain anchor — content-derived sha256 "
+        "of the active seq-16 RulePack payload, recomputed before folding; "
+        "exact assignment and value pinned, never a credential",
+    ),
+    # fold_pack_seq18.py: SEQ17_PAYLOAD_SHA256 is the chain anchor for the
+    # seq-17 RulePack payload — the digest activated in production on
+    # 2026-08-30T15:35:49Z. The fold recomputes sha256 over the canonical
+    # seq-17 payload under RFC 8785 and aborts unless it equals this value
+    # before producing seq-18, so the anchor is verified, never asserted.
+    #
+    # Content-keyed and pinned to the exact assignment and exact digest, for
+    # the same reason as every fold above it: this production file stays
+    # closed to any other value or line, and a ride-along statement cannot
+    # match because the pattern is end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq18\.py$"
+        ),
+        re.compile(
+            r'^\s*SEQ17_PAYLOAD_SHA256\s*=\s*'
+            r'"97cb964780b114a2fa936230055327102a5af59efb010b6bf04090bb7321890b"\s*$'
+        ),
+        "fold_pack_seq18.py: seq-17 chain anchor — content-derived sha256 "
+        "of the active seq-17 RulePack payload, recomputed before folding; "
+        "exact assignment and value pinned, never a credential",
+    ),
     # scripts/kbli_bench/results/p2b_score.json (PR #4422, KBLI Navigator
     # Phase 2b benchmark run): corpus_sha256 is the content-derived sha256 of
     # the frozen benchmark corpus (scripts/kbli_bench/p2b_corpus.json), the
@@ -527,6 +569,24 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "D12 active-stay-permit source record: content_sha256 is the "
         "content-derived sha256 of a public Bali Zero policy source, "
         "not a credential",
+    ),
+    # Evidence Pack `diff.measured_at` field (harness-v2 evidence packs,
+    # scripts/evidence_pack_lint.py) — a short or full git commit SHA the
+    # pack author recorded as "which merge-base this diff was measured
+    # against". A 7-40 char lowercase-hex commit hash reads as a "Hex High
+    # Entropy String" to detect-secrets on every single evidence pack this
+    # repo produces (found 2026-08-27, PR #5054's own pack tripped it).
+    # Path-keyed to per-task pack.yml files under evidence/<month>/<slug>/
+    # (never the whole evidence/ tree — that also holds brief.yml, which
+    # this rule does not scope, and other pack fields that DO need human
+    # eyes), content-keyed to the exact `measured_at:` assignment so an
+    # unrelated real secret added to the SAME file on a different line is
+    # still left unaudited.
+    (
+        re.compile(r"(^|/)evidence/[^/]+/[^/]+/pack\.yml$"),
+        re.compile(r"^\s*measured_at:\s*[0-9a-f]{7,40}\s*$"),
+        "Evidence Pack diff.measured_at: a git commit SHA (merge-base "
+        "the diff was measured against), not a credential",
     ),
 ]
 

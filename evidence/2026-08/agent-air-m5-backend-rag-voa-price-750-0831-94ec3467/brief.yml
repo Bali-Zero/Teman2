@@ -1,0 +1,117 @@
+task_id: voa-price-750-0831
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Carry the owner's price REVERSAL into every store, including the one that has already
+  been changed in production.
+
+  Ordered by Zero on 2026-08-31, verbatim: "750". It reverses his own directive of the same
+  morning ("aggiorna ovunque il prezzo e-voa 790.000 IDR e estensione 850.000", carried by
+  PR #5407), which in turn was his directive of 2026-07-24. A price is a business decision
+  (Legge 5): the figure is transcribed here, never derived or reconciled.
+
+  He asked whether the 750 figure matched a competitor. It was not confirmed — the June
+  competitive digest records "Flado: no data" verbatim, and the 790 figure was traced to his
+  own commit 80dcb24068 (PR #3037, 2026-07-24). The evidence was put in front of him and the
+  ruling is his; this diff transcribes it.
+
+  WHAT MAKES THIS DIFFERENT FROM A REVERT. Migration 302 was APPLIED in production at
+  2026-08-31T03:51:44Z. Not by a session running flyctl: fly-deploy.yml fires on any push to
+  main touching apps/backend-rag/**, so the MERGE of #5407 at 03:43:55Z deployed by itself and
+  the release_command in fly.toml ran the migration before promotion. `public.schema_migrations`
+  records 302, so the runner will never execute anything numbered 302 again, and its ROLLBACK
+  section is only read on an explicit teardown. Deleting the file would leave production at
+  790000 with nothing in the tree explaining why. Hence a FORWARD migration 303.
+
+  The extension is untouched at 850.000: the owner questioned only the e-VOA figure, and 850.000
+  is what both the sheet and the production row already hold.
+
+  Gear 3 by PATH, deterministically: the diff touches migrations_v2/*.sql, which the harness
+  floors at 3 regardless of size.
+
+constraints:
+  - "The figure is the owner's, transcribed. A session never derives, adjusts or averages a
+    price, and never confirms a competitor's price it has not measured."
+  - "No revert, no force, no history rewrite: 302 stays in the tree exactly as merged, because
+    it is what production actually executed. The correction is additive."
+  - "One column of one row. No schema change, no ownership transfer, no grant, and no row whose
+    price merely looks implausible."
+  - "The extension is out of scope. Moving it would be a pricing decision nobody has made."
+  - "No client PII. The diff carries service codes and prices; the production read behind the
+    receipts is read-only through scripts/pg.sh and returns catalogue rows, never a client."
+
+acceptance:
+  - text: >-
+      WHEN the JSON sheet's VOA figure is edited away from 750.000 the suite SHALL go red. The
+      sheet's filename is imported from pricing_service._PRICING_FILENAME, never typed in the
+      test, so the tripwire cannot end up watching a path the service has stopped reading.
+    probe: pytest backend/tests/test_data_invariant_tripwires.py
+  - text: >-
+      WHEN migration 303's assignment is moved back to 790000 the suite SHALL go red. This is the
+      DATABASE half, and it is asserted by reading the SET clause rather than by looking for the
+      figure somewhere in the file — the substring form of this check was measured green against
+      exactly this mutation on the previous PR.
+    probe: pytest backend/tests/test_data_invariant_tripwires.py
+  - text: >-
+      WHEN a future migration moves this price without updating the ruled figure the suite SHALL
+      go red, because the frozen set of setters stops matching. Verified by hiding 303 itself.
+    probe: pytest backend/tests/test_data_invariant_tripwires.py
+  - text: >-
+      WHEN migration 303 runs against a row already at 750000 it SHALL update zero rows rather
+      than churn updated_at, and WHEN the row is absent it SHALL raise a NOTICE and return rather
+      than fail a fresh environment.
+    probe: psql against a scratch database, forward section only, rerun and absent-row scenarios
+  - text: >-
+      IF the UPDATE does not land, migration 303 SHALL raise rather than record itself applied.
+      Proven by neutering the WHERE clause so the update is skipped against a row at 900000.
+    probe: psql against a scratch database with the UPDATE predicate replaced by false
+
+consumer_map:
+  - "practice_types.base_price -> crm_practices.py:492 quotes it as the default when a practice
+    carries no explicit price, and the invoice service bills that amount. This is the surface
+    currently live at 790000 and the reason the correction cannot wait for a tidy revert."
+  - "bali_zero_official_prices_2026.json -> PricingService -> GARUDA VOA, the visa_engine pricing
+    adapter, and the WhatsApp bot's price answers, resolved per request. This is the
+    customer-facing half."
+  - "crm_handoff.py maps a GARUDA issuance to practice type visa_b1_voa and an extension to
+    ext_b1_voa, so the GARUDA flow reaches exactly the row 303 corrects. Its comment and its
+    test's now narrate both moves rather than only the first."
+  - "NOT a consumer, measured and ruled out on the previous PR and unchanged here: the legacy
+    Python migrations 066 and 123 seed a different code, visa_voa, which does not exist in
+    production and which nothing executes (migration_base.py:42-45)."
+  - "fly-deploy.yml is a consumer of the MERGE, not of any file here: merging this PR deploys
+    nuzantara-rag and applies 303. That is the whole delivery path, and it is why merge timing is
+    an owner decision under the WhatsApp window rule and not a session default."
+
+risks:
+  - "MERGING THIS DEPLOYS. nuzantara-rag runs one api machine, so a deploy gaps the WhatsApp
+    webhook; the standing rule keeps deploys outside 08:00-20:00 WITA. The previous PR was merged
+    at 11:43 WITA in the belief that the deploy was a separate step the session controlled, which
+    it is not. Surfaced to the owner rather than decided here."
+  - "Production is wrong RIGHT NOW. Between the ruling and the merge of this PR the CRM defaults
+    VOA quotes to 790000, a figure the owner has revoked. Every hour of delay is a real
+    over-quote, which is the cost that has to be weighed against the webhook gap."
+  - "The structural gap stays open: nothing reconciles the two stores at runtime, there is no sync
+    job, and the tripwire is a ratchet over migration files rather than a live comparison. The
+    fact that this price moved twice in one day through two migrations is the symptom. Tracked in
+    PENDING-ARMS, not closed here."
+  - "The database arm of the tripwire reads migration TEXT, not a database. It cannot see a value
+    changed by hand in production. Stated rather than papered over."
+  - "The migration was executed only against a scratch Postgres created by hand, not by a harness
+    the repo owns. That inherited gap — no execution harness for migrations_v2 at all — is the
+    codex seat's standing finding from the previous PR and is still ledgered, not closed."
+  - "The R9 two-seat council quorum is NOT met, and the pack does not pretend otherwise.
+    codex-gpt-5.6-sol reviewed and returned REJECT with seven findings, every one re-verified
+    on disk and cured or ledgered. The other two roster seats are DEAD with measurements, not
+    silent: kimi-code/k3 answers HTTP 403 (weekly quota), and tp1-qwen3.8-max answers a 2s ping
+    but never returns on the review payload across three attempts and two transports. The
+    pack-level seat_override suppresses both R8 and R9 — that coupling is stated in the override
+    itself rather than discovered later, because an override that quietly covers a second rule is
+    the same defect as a verdict that exists only in prose."
+  - "Seven council findings were CURED IN THIS PR rather than deferred, which is a larger diff
+    than a price change warrants and is a deliberate call: three of them (the frontend snapshot,
+    the two 790-pinned live-path tests, the absent-row branch) would each have shipped a wrong
+    price or a red CI on their own, so splitting them out would have meant merging a correction
+    that does not correct. The genuinely inherited defects — no execution harness for
+    migrations_v2, and the runner's asymmetric rollback ledger — are ledgered, not fixed."

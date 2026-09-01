@@ -53,15 +53,76 @@ export function getOrCreateSessionId(): string {
   return fresh;
 }
 
+// Same 5 UTM params the outbound builders (whatsapp-utm.ts, social-utm.ts)
+// stamp on every CTA — mirrored here for the inbound read so attribution
+// uses one shared vocabulary in both directions.
+const UTM_KEYS = [
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_content",
+  "utm_term",
+] as const;
+
+/**
+ * Reads inbound `utm_*` + referring hostname from the CURRENT navigation —
+ * but ONLY on a session's genuine first touch (no `bz_session` cookie yet).
+ * Must be called BEFORE `getOrCreateSessionId()` mints that cookie, or every
+ * call would read as "first touch". Returns `undefined` (never an empty
+ * object) when there's nothing to capture or this is a return visit, so a
+ * caller can omit the key entirely rather than clobbering an already-
+ * persisted first touch with an empty overwrite (funnel_sessions.step_state
+ * merges by top-level key, not deep-merge — see funnel.py `||` comment).
+ *
+ * Only the referring HOSTNAME is kept, never the full referrer URL — a
+ * referrer's path/query can carry a search term or an internal identifier
+ * that isn't ours to log (Law 2 minimization), and "which site sent them"
+ * is all attribution needs.
+ */
+export function readFirstTouchAttribution():
+  Record<string, string> | undefined {
+  if (readCookie(BZ_SESSION_COOKIE)) return undefined;
+  if (typeof window === "undefined") return undefined;
+
+  const attribution: Record<string, string> = {};
+  const params = new URLSearchParams(window.location.search);
+  for (const key of UTM_KEYS) {
+    const value = params.get(key);
+    if (value) attribution[key] = value;
+  }
+
+  try {
+    const referrer = typeof document !== "undefined" ? document.referrer : "";
+    if (referrer) {
+      const referrerHost = new URL(referrer).hostname;
+      if (referrerHost && referrerHost !== window.location.hostname) {
+        attribution.referrer_host = referrerHost;
+      }
+    }
+  } catch {
+    /* malformed/opaque referrer — skip, never throw on attribution */
+  }
+
+  return Object.keys(attribution).length > 0 ? attribution : undefined;
+}
+
 export async function attachToServerSession(payload: {
   funnel: "visa" | "kbli" | "tax" | "property" | "home";
   step_state?: Record<string, unknown>;
 }): Promise<void> {
+  const firstTouch = readFirstTouchAttribution();
   const sessionId = getOrCreateSessionId();
+  const step_state = firstTouch
+    ? { ...payload.step_state, first_touch: firstTouch }
+    : payload.step_state;
   await fetch("/api/funnel/session/touch", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ session_id: sessionId, ...payload }),
+    body: JSON.stringify({
+      session_id: sessionId,
+      funnel: payload.funnel,
+      step_state,
+    }),
   });
 }

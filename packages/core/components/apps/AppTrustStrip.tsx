@@ -14,8 +14,9 @@ export interface AppTrustStripProps {
 /** Two or three concrete metrics. Three was once the only shape; the tuple
  * accepts two because a strip is better short than padded with a number
  * nobody measured. X_BRAND_VOICE — never "5k+ clients ★4.9", and a rating
- * or a review count is not a substitute for a retired claim; prefer
- * "5,021 visas filed since 2019". */
+ * or a review count is not a substitute for a retired claim. A replacement number
+ * needs a measurement date, not more digits: adding precision to an
+ * unmeasured figure only makes it look measured. */
 export const AppTrustStrip: FC<AppTrustStripProps> = ({ items }) => {
   return (
     <ul

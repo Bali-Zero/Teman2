@@ -45,7 +45,7 @@ Reachability per consumer (verified 2026-08-25, see the lane report):
 from __future__ import annotations
 
 import collections
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any
 
 import pytest
@@ -65,6 +65,10 @@ from backend.services.pricing.pricing_service import (
 from backend.services.visa_engine.models import PricingKey
 from backend.services.visa_engine.pricing_adapter import resolve_candidate_pricing
 from backend.tests.services.visa_engine.gold_harness import loader as gold_loader
+
+# The date the two sellable VOA rows carry as their own `verified_on`
+# attestation in `bali_zero_official_prices_2026.json` (owner decision 7).
+_ATTESTED_ON = date(2026, 8, 25)
 
 REAL_COLLIDING_KEYS = ["Tier 0-50", "Tier 50-100", "Tier 100-200", "Tier 200+"]
 
@@ -275,7 +279,15 @@ def test_garuda_flow_price_for_case_unchanged_on_a_normal_key(
 ) -> None:
     """The fix does not alter this consumer's existing, already
     fail-closed behaviour on either B1 case type."""
-    amount, key = price_for_case(case_type, pricing=svc)
+    # `today` became a REQUIRED keyword on `price_for_case` on the product
+    # branch while this test was written on main. The two changes never
+    # touched the same line, so git merged them cleanly and only RUNNING
+    # the test revealed it. Pinned, never `date.today()`: both operands of
+    # the freshness comparison are then fixed (this constant vs the row's
+    # own `verified_on`), so it cannot drift. That is precisely the
+    # difference from W129, where a frozen fixture was compared against the
+    # REAL clock and its margin expired silently months later.
+    amount, key = price_for_case(case_type, pricing=svc, today=_ATTESTED_ON)
     assert amount is not None
     assert amount > 0
     assert key in (_ISSUANCE_PRICE_KEY, _EXTENSION_PRICE_KEY)

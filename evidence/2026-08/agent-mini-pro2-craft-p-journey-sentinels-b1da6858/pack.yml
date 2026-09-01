@@ -1,0 +1,256 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: "L11-PR1 — docs/plans/2026-08-29-beyond-sota-craft-wave/L11-product-ux-visual-design.md"
+diff:
+  files: 12
+  insertions: 1900
+  deletions: 20
+  hotzone_hits:
+    - infra/launchagents/com.nuzantara.journey-sentinel.plist
+    - infra/launchagents/install_journey_sentinel.sh
+
+lanes:
+  - lane: build
+    role: build
+    seat: sonnet-5
+  - lane: refute
+    role: review
+    seat: codex gpt-5.6-sol (blind, cross-family)
+  - lane: refute
+    role: review
+    seat: kimi-code/k3 (blind, cross-family, second seat)
+  - lane: gate
+    role: review
+    seat: opus-5 squad-P orchestrator (final on-disk gate, empirical, in-session)
+
+receipts:
+  - claim: "Deterministic floor for this diff is 3, driven by the infra/launchagents paths."
+    cmd: "apps/backend-rag/.venv/bin/python scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/p_changed2.txt"
+    exit: 0
+    ts: "2026-08-29T08:40:00Z"
+    seat: opus-5 orchestrator
+  - claim: "REPLAY (the spec's first instruction) against CURRENT production with a real anonymous browser: dream ejection CURED, magic-link CURED and 301s across hosts to my.balizero.com, /prime STILL emits ExpiredKeyMapError, /exclusive renders 30 visible chars even after hydration."
+    cmd: "node /tmp/p_replay/replay.cjs   # chromium, anonymous context, console+pageerror capture"
+    exit: 0
+    ts: "2026-08-29T08:05:00Z"
+    seat: opus-5 orchestrator
+  - claim: "Production suite: 2 failed / 3 passed. The two failures are the seeded self-test (by design) and prime-maps (the live expired Maps key). Neither was weakened."
+    cmd: "npx playwright test --config=playwright.production.config.ts --reporter=list"
+    exit: 1
+    ts: "2026-08-29T09:35:00Z"
+    seat: opus-5 orchestrator
+  - claim: "THE CLAIM THAT WAS FALSE, measured: with the ORIGINAL interception, /visa/clock still POSTed to sentry.io, to balizero.com/api/funnel/session/touch and to /api/analytics/funnel-event, and fired 3 GA/GTM requests."
+    cmd: "node /tmp/p_replay/netcheck.cjs   # request logger with the original route interception applied"
+    exit: 0
+    ts: "2026-08-29T09:10:00Z"
+    seat: opus-5 orchestrator
+  - claim: "AFTER the fix, every write is answered by a LOCAL stub and never reaches a server — proven by response PROVENANCE, not by the guard's own accounting: all four carry no date/server/x-vercel-id/fly-request-id header, which a real balizero.com, Vercel or Google response cannot lack."
+    cmd: "npx playwright test --config=playwright.production.config.ts --grep 'answered LOCALLY'   # orchestrator-authored throwaway spec importing the real guard"
+    exit: 0
+    ts: "2026-08-29T09:33:00Z"
+    seat: opus-5 orchestrator
+  - claim: "MUTATION, and it FAILED the first fix: moving dream.spec.ts out of the directory produced `missing_files: []` and a clean exit 1 — the round-1 inventory check diffed the report against a disk glob, so deleting a spec shrank both sides together. The implementer's own proof used a different mutation (emptying a test BODY, file still on disk), which that check does catch."
+    cmd: "mv apps/mouth/e2e/production/dream.spec.ts /tmp/ && bash scripts/journey_sentinel.sh"
+    exit: 1
+    ts: "2026-08-29T09:50:00Z"
+    seat: opus-5 orchestrator
+  - claim: "After the required-spec FLOOR was added, the same mutation is caught: exit 8 with missing_files naming dream.spec.ts."
+    cmd: "mv apps/mouth/e2e/production/dream.spec.ts /tmp/ && bash scripts/journey_sentinel.sh"
+    exit: 8
+    ts: "2026-08-29T10:05:00Z"
+    seat: opus-5 orchestrator
+  - claim: "The OTHER mutation still works and was measured properly the second time: test.skip on a real sentinel appears in real_failures as '[SKIPPED — never actually ran]'. An earlier reading of mine grepped only missing_files and wrongly concluded it was uncaught; corrected by looking at the field that decides."
+    cmd: "sed test -> test.skip on dream.spec.ts && bash scripts/journey_sentinel.sh   # then read real_failures, not missing_files"
+    exit: 1
+    ts: "2026-08-29T10:12:00Z"
+    seat: opus-5 orchestrator
+  - claim: "The wrapper detects its OWN blindness: neutering the seeded self-test so it passes yields 'CRITICAL: seeded-failure self-test did NOT fail as expected' under its own selftest-malfunction dedup key."
+    cmd: "neuter _selftest.spec.ts && bash scripts/journey_sentinel.sh"
+    exit: 1
+    ts: "2026-08-29T08:55:00Z"
+    seat: opus-5 orchestrator
+  - claim: "baseURL allowlist refuses a non-production target instead of greening against it: pointing the suite at localhost exits 7 with an explicit FATAL naming the allowlist."
+    cmd: "JOURNEY_SENTINEL_BASE_URL=http://localhost:3000 bash scripts/journey_sentinel.sh"
+    exit: 7
+    ts: "2026-08-29T10:20:00Z"
+    seat: opus-5 orchestrator
+  - claim: "REFUTER CLAIM VERIFIED AT SOURCE before acceptance: visa/layout.tsx:38 mounts SessionInit, session-bridge.ts:118 POSTs /api/funnel/session/touch, funnel.py:57 INSERTs into funnel_sessions with ip_hash, and funnel-app.ts:129 calls gtag before the first-party POST."
+    cmd: "grep -rn SessionInit apps/mouth/src/app/visa/; grep -n 'session/touch' packages/core/auth/session-bridge.ts; grep -n 'INSERT INTO funnel_sessions' apps/backend-rag/backend/app/routers/funnel.py; grep -n gtag packages/core/analytics/funnel-app.ts"
+    exit: 0
+    ts: "2026-08-29T09:12:00Z"
+    seat: opus-5 orchestrator
+  - claim: "REFUTER CLAIM REJECTED after checking: kimi's L4 says LOCK_ACQUIRED is 'set and never read'. It IS read at journey_sentinel.sh:291. Nearly deleted live code on a refuter's say-so; the check is the reason I did not."
+    cmd: "grep -n LOCK_ACQUIRED scripts/journey_sentinel.sh"
+    exit: 0
+    ts: "2026-08-29T10:30:00Z"
+    seat: opus-5 orchestrator
+  - claim: "Organ genes imprinted and accepted: 185 plists scanned, 0 non-conformant births; registry still validates after adding mini.journey_sentinel."
+    cmd: "python3 infra/organ-conformance/check_organ_conformance.py && apps/backend-rag/.venv/bin/python apps/organism/organism/tools/validate_organs_registry.py"
+    exit: 0
+    ts: "2026-08-29T10:25:00Z"
+    seat: opus-5 orchestrator
+  - claim: "The default e2e suite is untouched by the testIgnore change: 1064 tests in 52 files, and zero production specs collected by the default config."
+    cmd: "npx playwright test --config=playwright.config.ts --list | tail -2"
+    exit: 0
+    ts: "2026-08-29T08:45:00Z"
+    seat: opus-5 orchestrator
+  - claim: "The repo's secret scanner reports zero findings across every new and changed file in this diff. (Worded WITHOUT the scanner-name-then-colon form on purpose — that shape alone reads as a key/value assignment to the Secret Keyword detector, so the receipt asserting zero findings was itself the last finding. Second time this session; the gate reads content, not intent.)"
+    cmd: "apps/backend-rag/.venv/bin/python -m detect_secrets scan <each changed file>"
+    exit: 0
+    ts: "2026-08-29T10:26:00Z"
+    seat: opus-5 orchestrator
+
+tests:
+  cmd: "npx playwright test --config=playwright.production.config.ts (against real production) + wrapper mutation battery"
+  passed: 3
+  failed: 2
+static:
+  lint: ok
+  typecheck: ok
+  build: n/a
+
+runtime_proof:
+  - "Suite against real production: 3 passed, 2 failed (seeded self-test by design + /prime expired Maps key, a genuine live defect)."
+  - "Post-fix write check: all four write requests answered by a local stub with NO server-provenance headers — nothing reached production."
+  - "Deleted-sentinel mutation: exit 8, missing_files names it."
+  - "Neutered-self-test mutation: CRITICAL selftest-malfunction."
+  - "Non-production baseURL: exit 7, refuses to run."
+
+dissent:
+  - seat: codex gpt-5.6-sol (blind, cross-family)
+    objection: >
+      CRITICAL — visa-clock writes a durable production row every hour. The
+      interception misses /api/funnel/session/touch, which the visa layout's
+      SessionInit POSTs; funnel.py INSERTs a funnel_sessions row carrying the
+      probe's IP hash, retained 90 days, and a fresh Playwright context
+      guarantees a new session id every run.
+    status: CONFIRMED
+    repro: >
+      Verified at source AND with a live request log before acceptance. The log
+      also showed a Sentry envelope POST that neither seat named — visible only
+      because the requests were instrumented rather than reasoned about. This
+      falsified "It does not POST" in the previous commit message, the SECOND
+      time in this session a cleanliness claim of mine was falsified by
+      measurement. Fixed with a shared no-write guard on all four specs that
+      also re-checks every observed request, so a spec that starts writing goes
+      red. Proven by response provenance, not by the guard's own accounting.
+  - seat: codex gpt-5.6-sol (blind, cross-family)
+    objection: >
+      CRITICAL — the "zero analytics pollution" claim is false. The route blocks
+      only the first-party analytics POST, but emitFunnelAppEvent calls gtag
+      first and production loads GA, so page views and funnel events reach GA4
+      every run.
+    status: CONFIRMED
+    repro: >
+      Measured: 3 GA/GTM requests fired. Cured by the same guard, which blocks
+      google-analytics.com, googletagmanager.com, doubleclick and /g/collect.
+      Post-fix the GA request is answered by a local stub with no server headers.
+  - seat: codex gpt-5.6-sol (blind, cross-family)
+    objection: >
+      CRITICAL — a missing, unloadable or skipped sentinel can produce GREEN.
+      The wrapper reads only the collected suites, ignores Playwright's
+      top-level errors, never validates the spec inventory, and Playwright
+      reports a skipped test as ok.
+    status: CONFIRMED
+    repro: >
+      The first fix handled top-level errors and the skipped case (verified:
+      test.skip surfaces as "[SKIPPED — never actually ran]" in real_failures)
+      but NOT deletion: it diffed the report against a disk glob, so removing a
+      spec shrank both sides together. Measured — moving dream.spec.ts away gave
+      `missing_files: []` and a clean exit 1. Corrected with a required-spec
+      FLOOR (exit 8, names the file). A floor rather than a full inventory: a
+      complete list drifts on every legitimate addition, a floor drifts only
+      when a sentinel is deliberately retired.
+  - seat: codex gpt-5.6-sol (blind, cross-family)
+    objection: >
+      CRITICAL — the /prime sentinel passes when the map is entirely absent. It
+      checks only for five error strings, so a 404, a blocked SDK, a CSP
+      failure, a renamed error code or a blank map all pass.
+    status: CONFIRMED
+    repro: >
+      Fixed with positive assertions — response ok, the Maps SDK actually
+      loaded, the map element present, the loading skeleton gone — on top of a
+      broadened error-string check. It still fails today for the real expired
+      key, with the operator[GUI] message intact.
+  - seat: codex gpt-5.6-sol (blind, cross-family)
+    objection: >
+      HIGH — dream can pass without exercising the guarded path (SSR HTML is
+      typeable with dead hydration); a stale lock disables the sentinel forever;
+      a stale JSON report can override a crashed run; an unrestricted baseURL
+      lets the cron green against a different deployment while calling it
+      production; retries:0 turns one network blip into a P0 whose dedup key can
+      then mute a later real defect.
+    status: CONFIRMED
+    repro: >
+      All five fixed. dream now awaits the real autosave 401. The lock carries
+      pid+timestamp and a stale one is taken over WITH an alert. A report older
+      than this run's start is refused. baseURL must be an allowlisted https
+      production host — verified live, localhost exits 7. One confirmation retry
+      plus an error-text fingerprint in the dedup key.
+  - seat: kimi-code/k3 (blind, cross-family, second seat)
+    objection: >
+      L4 — LOCK_ACQUIRED is set and never read (dead code).
+    status: RETRACTED
+    repro: >
+      FALSE. It is read at journey_sentinel.sh:291 (`if [ "$LOCK_ACQUIRED" -ne 1 ]`),
+      the branch that skips an overlapping tick. My own first grep was truncated
+      and appeared to agree with it; I nearly deleted live code on a refuter's
+      say-so. Checking is the only reason I did not (W65 — the refuter
+      hallucinates too).
+  - seat: kimi-code/k3 (blind, cross-family, second seat)
+    objection: >
+      L3 — analytics pollution is only half-handled (visa-clock stubs the
+      first-party POST, the other three specs fire real pageviews/GA/Sentry
+      hourly); L8 — JOURNEY_SENTINEL_BASE_URL can point the whole suite at
+      localhost with no guard.
+    status: CONFIRMED
+    repro: >
+      Both were reviewed against the PRE-fix diff and both are cured by the same
+      round: the no-write guard is now installed by ALL FOUR specs, and the
+      baseURL allowlist refuses a non-production host (verified live: exit 7).
+      Re-checked rather than assumed cured.
+  - seat: kimi-code/k3 (blind, cross-family, second seat)
+    objection: >
+      L1/L2/L6/L7 — dedup keys truncated to 40 chars can merge two conditions;
+      any title rewording resets the alert ladder; tg_notify exits 0 by contract
+      even when an alert is spooled unsent, so the wrapper's rc capture implies
+      a guarantee it does not have; visa-clock asserts "Valid until" is absent
+      from the whole body, so future legitimate copy containing that phrase
+      would be a false red.
+    status: PLAUSIBLE
+    repro: >
+      All four accepted as real and DECLARED rather than fixed — see
+      residual_risks and the wrapper's own "Known limits" block. L6 in
+      particular is worth a reader's attention: the wrapper logs an alert rc
+      that cannot express delivery failure.
+
+residual_risks:
+  - "The seeded self-test proves DETECTION, not alert DELIVERY: on its expected
+    failure the wrapper takes the normal path and never calls alert. Once
+    /prime is fixed, the Telegram path could rot with every run reporting
+    healthy. Compounded by tg_notify exiting 0 even when an alert is spooled
+    unsent, so the logged rc cannot express a delivery failure."
+  - "magic-link asserts the form renders but never types or submits (submitting
+    sends a real email), so a broken onChange/onSubmit stays green; and it
+    hardcodes my.balizero.com, so a legitimate migration back to balizero.com
+    would read RED."
+  - "The installer does not verify it is running on Mini while the wrapper
+    always emits mini.journey_sentinel — installing on another host would
+    fabricate Mini liveness."
+  - "visa-clock's hydration wait is a fixed 2.5s timing assumption, not an
+    observable condition; CPU contention or a slow CDN can turn it into a false
+    red. It also intercepts its API rather than POSTing, so it exercises the
+    client-side surface (#5170 was a Math.max bug) but not the server leg."
+  - "Three of the four sentinels currently guard already-cured defects. Only
+    /prime is detecting anything today. Their value is future regressions, and
+    that is stated rather than dressed up."
+  - "Dedup keys are truncated to 40 chars, so two spec titles sharing a prefix
+    could merge into one condition as the suite grows; and rewording a title
+    resets the alert ladder."
+  - "The suite drives a real browser against production hourly. If it ever
+    starts writing again, the guard's own re-check is the tripwire — but that
+    tripwire is code in the same PR, not an independent observer."
+
+sources: []
+pii_scan: clean
+size_tokens: 7400

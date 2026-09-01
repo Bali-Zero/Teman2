@@ -4,7 +4,7 @@ import Link from "next/link";
 import { getAllCodes, getSections } from "@/lib/kbli-data";
 import { baliBlockedHint } from "@/lib/kbli-bali-block";
 import { KBLISearch } from "@/components/kbli/KBLISearch";
-import { KBLISectorGrid } from "@/components/kbli/KBLISectorGrid";
+import { KBLISectorBrowser } from "@/components/kbli/KBLISectorBrowser";
 import { ZantaraChat } from "@/components/kbli/ZantaraChat";
 import { KBLIPersonaDoors } from "@/components/kbli/KBLIPersonaDoors";
 import { FunnelFrame } from "@balizero/core";
@@ -43,7 +43,6 @@ export default async function KBLIHomePage({
       funnel="kbli"
       sessionId="SSR"
       trust={{
-        clientCount: 5000,
         rating: GOOGLE_RATING,
         reviewCount: GOOGLE_REVIEW_COUNT,
       }}
@@ -232,26 +231,17 @@ export default async function KBLIHomePage({
           id="search"
           className="sticky top-14 z-40 -mx-4 px-4 py-4 backdrop-blur-2xl bg-[#141416]/80 border border-white/[0.05] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)] rounded-3xl mb-8"
         >
-          <KBLISearch autoFocus initialQuery={initialQuery} />
-          <div className="mt-4 flex flex-wrap items-center gap-2 justify-center lg:justify-start">
-            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-2">
-              Quick:
-            </span>
-            {[
+          <KBLISearch
+            autoFocus
+            initialQuery={initialQuery}
+            quickFilters={[
               "Restaurant",
               "Tech",
               "Real Estate",
               "Retail",
               "Manufacturing",
-            ].map((filter) => (
-              <button
-                key={filter}
-                className="px-3.5 py-1.5 rounded-full text-xs font-medium text-zinc-400 bg-white/[0.04] backdrop-blur-md border border-white/[0.06] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:bg-white/[0.07] hover:text-white transition-all duration-300 hover:border-red-500/30 hover:shadow-[0_0_20px_rgba(220,38,38,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]"
-              >
-                {filter}
-              </button>
-            ))}
-          </div>
+            ]}
+          />
         </div>
 
         {/* ── SECTORS ── */}
@@ -259,7 +249,7 @@ export default async function KBLIHomePage({
           <h2 className="mb-4 text-xl font-semibold text-white/90">
             Browse by Sector
           </h2>
-          <KBLISectorGrid sections={sections} />
+          <KBLISectorBrowser sections={sections} />
         </section>
 
         {/* ── ZANTARA AI ── */}

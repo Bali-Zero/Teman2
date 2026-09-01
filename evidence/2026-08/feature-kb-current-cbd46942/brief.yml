@@ -1,0 +1,96 @@
+task_id: kb-current-live-integration-0826
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Land the measurement layer of the kb-current-live campaign
+  (docs/plans/2026-08-25-kb-current-live/MANDATE.md): make the legal KB's
+  correctness a thing a gate reads, rather than a thing a document asserts.
+
+  The deliverable is deliberately NOT prose. It is `kb/inventory/<topic>.yaml`
+  artifacts that a CI gate consumes, `kb/journeys/<topic>.yaml` journey
+  definitions, the probes that measure them against PRODUCTION Qdrant, and the
+  contract tests that keep all three honest about each other. Four topics landed
+  (immigration, property, tax, company) plus two field-level inventories
+  (legal_status, legal_unified_2026).
+
+  Gear 3 by PATH, not by blast radius: the deterministic floor recomputed from
+  this PR's own 59-file changed set is 3, because two files sit under
+  `infra/launchagents/` (`com.nuzantara.kb-probe-history.6h.plist` and its
+  wrapper). The floor is a lower bound computed from the diff, never the
+  conductor's choice, and it is honored here rather than argued with.
+constraints:
+  - "ZERO writes to any Qdrant collection, and ZERO deletions, for the whole
+    campaign. Every probe in this PR reads production and asserts; none mutates
+    it. The one repair this campaign identified as necessary (`legal_status` is
+    systemically false on 50.3% of points) is deliberately NOT performed here —
+    it is corpus-scale, it is fenced in PENDING-ARMS, and Zero's Decision-5
+    signature governs it."
+  - "The embedding model stays FROZEN (`text-embedding-3-small`, 1536 dims).
+    Nothing in this diff re-indexes or changes vector shape."
+  - "No PII/OSINT in any artifact. The probes read legal instruments, not client
+    records; inventories carry document ids and point counts, never client data."
+  - "`gh pr merge --auto` is NOT armed toward the integration branch. That branch
+    carries no required contexts, so arming there would mean 'merge as soon as
+    something goes green', and green there certifies nothing — measured on the
+    GARUDA line, #4899."
+  - "The probes must FAIL RED against production where production is actually
+    wrong. A probe authored green is a probe that was never pointed at anything."
+acceptance:
+  - "`python3 infra/organ-conformance/check_organ_conformance.py` exits 0, with
+    the new cron organ carrying its genes rather than being grandfathered."
+  - "The kb contract suite runs green as a whole: 428 passed / 90 skipped, exit 0."
+  - "Every guard added here is proven by a guilt AND an innocence case — a guard
+    with only innocence tests has never been shown capable of firing."
+  - "The deterministic floor recomputed from the real changed-file enumeration is
+    3, and this brief declares gear 3 — never below it."
+  - "`scripts/pending_arms_report.py` reports malformed=0 and phantom_operator=0
+    after the ledger rows this PR adds and amends."
+consumer_map:
+  - "`kb/inventory/*.yaml` (6 files) — read by `scripts/kb/*` gates and by the
+    contract tests in `apps/backend-rag/backend/tests/unit/kb/`."
+  - "`kb/journeys/*.yaml` (4 files) — read by `kb/ops/probe_retrieval.py`, which
+    queries PRODUCTION Qdrant, and folded into `kb/ops/probe_history.py`'s ledger."
+  - "`kb/ops/probe_retrieval.py`, `probe_history.py`, `kb_inventory_probe.py` —
+    the measurement surface; `probe_history.py` is what the new cron organ runs."
+  - "`infra/launchagents/com.nuzantara.kb-probe-history.6h.plist` + its wrapper —
+    the scheduled job MANDATE §8's 48h-green clock points at. BUILT, NOT ARMED."
+  - "`apps/organism/organism/organs_registry.yaml` + `infra/home-fork/declared-pairs.json`
+    — the organ registry and the HOME-fork watch list (superscar #1) now know
+    about that organ, so it cannot drift silently once installed."
+  - "`.claude/skills/modus/PENDING-ARMS.md` — carries what is measured but not yet
+    repaired, and what is built but not yet armed."
+risks:
+  - "The `legal_status` finding is measured but UNREPAIRED. The mitigating fact is
+    load-bearing and was itself found by a grader, not assumed: the live filter
+    reads a different key (`status_vigensi`, 0 points instance-wide), so the false
+    field is inert today. The fence in PENDING-ARMS — do not populate
+    `status_vigensi`, do not unify the two names — is what keeps it inert. If a
+    future reader 'tidies up' the two names before the repair lands, 42,420 points
+    are HARD-excluded from queries, invisible even to the reranker."
+  - "The cron organ is built and not armed. That is deliberate (it must not run
+    against the main checkout before this branch lands there), and it means MANDATE
+    §8's 48h-green clock has not started. Nothing here claims it has."
+  - "The topic-artifact floor asserted in the contract test is a ratchet at the
+    CURRENT count (4). If a lane legitimately retires a topic, that test goes red
+    and must be lowered deliberately — which is the intended cost of the ratchet,
+    not a defect."
+grader: |
+  generator != grader throughout, and enforced rather than asserted. The
+  cross-family refuter seat is Kimi K3 (non-Anthropic); independent graders ran on
+  fresh context and did not grade their own diffs. The one build unit produced by
+  the non-Anthropic seat in this PR (the topic-artifact floor) was graded by this
+  session, not by its builder: innocence green, guilt proven by removing a real
+  artifact and confirming the intended assertion fires with the intended message,
+  then restoring and re-confirming green with a clean `git status`.
+
+  Five substantive corrections were accepted from graders during this campaign and
+  none was found by the conducting session alone. All five share one shape — TRUE
+  BUT PARTIAL — which is recorded here because it is the failure mode this PR's own
+  evidence is most exposed to: a finding with nothing to refute, only something
+  missing.
+budget: |
+  Multi-lane campaign on an integration branch, local-first: four topic lanes plus
+  targeted fix lanes, one cross-family build lane, cross-family adversarial review
+  on the integrated diff. Flat-subscription seats only; no metered API spend.
+pii: none

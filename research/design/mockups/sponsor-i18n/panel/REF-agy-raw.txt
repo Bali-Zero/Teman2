@@ -1,0 +1,91 @@
+### F1. [CRITICAL] Contradictory Runtime Architecture: Regex Pronoun Substitution vs. Authored Locale Variants
+* **Contested claim:** Dossier 1 (§3.5, §4) mandates extending R5b’s `@you@`/`@your@` regex tag convention and `pron()` rewrite rule across the entire live VOA funnel, failing builds if untagged or un-rewritten strings appear. In contrast, Dossier 2 (§2-T1, §3.1, §4) explicitly rejects and bans regex/tag substitution across all locales, mandating dual-authored dictionary entries (`.self` and `.delegate`) and failing builds if any `.replace(/@…@/g)` logic appears.
+* **Reasoning:** These two deliverables propose mutually exclusive implementation engines for the exact same surface. If Dossier 1’s build acceptance ships, Dossier 2 fails CI; if Dossier 2 ships, Dossier 1’s tag-based acceptance test fails. Furthermore, Dossier 1’s regex approach is fundamentally un-localizable (as proven by Dossier 2’s linguistic analysis of dropped subjects and non-concordant pronouns in Indonesian).
+* **Concrete proposal:** Deprecate Dossier 1’s `pron()` regex rewrite mechanism entirely. Formally adopt Dossier 2’s authored dictionary variant model (`.self` / `.delegate`) across all VOA screens in both English and Indonesian, and align Dossier 1’s behavioral acceptance criteria to test for explicit key parity rather than regex tag replacements.
+
+---
+
+### F2. [CRITICAL] False Deletion Right and PII Trapping in Ephemeral Cookie Session
+* **Contested claim:** Dossier 1 (§3.4, §5.2) adds user-facing copy to the delegate banner: *"This browser is what controls this result — viewing or deleting it later needs this same device and session, not a login."*
+* **Reasoning:** This copy misleads the delegate and completely disenfranchises the traveller. The traveller—whose passport, biometric face image, and sensitive immigration history were uploaded—has zero standing or technical mechanism to view or delete their data because the deletion endpoint is bound exclusively to the delegate's ephemeral `garuda_result_session` cookie. If the delegate clears cookies, uses private browsing, or switches devices, the data remains retained on the backend until `{RETENTION_WINDOW}` expires with *nobody* able to delete it. Presenting an architectural session-coupling defect as a "browser control feature" makes a false privacy promise to both parties and violates legal-hygiene principles by omitting the traveller's statutory right to PII erasure.
+* **Concrete proposal:** Strike the claim that the browser "controls" deletion. Replace banner copy with an honest custody notice stating the backend retention duration and session lifespan. Hand an explicit requirement to product/ENG to provide a traveller-initiated deletion mechanism (e.g., via opaque verification code or magic link sent to the applicant's verified contact).
+
+---
+
+### F3. [CRITICAL] Identity Collapse and Notification Trap in Checkout Contact Relabeling
+* **Contested claim:** Dossier 1 (§3.6) relabels checkout contact inputs to *"Traveller's contact — for the receipt and any questions about this application"* without adding delegate contact fields to the data model.
+* **Reasoning:** This creates a severe operational and psychological failure trap. If the delegate (e.g., an executive assistant or local spouse coordinating travel) enters the traveller's contact, the delegate receives no receipt, no transaction confirmation, and no status updates. If the delegate enters their *own* email/phone to manage the logistics, `garuda_orders` silently writes the delegate's contact into `applicant_email` and `applicant_phone`, contaminating the traveller's official immigration record. Relabeling the input without supporting dual-party routing makes a false promise about where critical transaction and visa notices will actually land.
+* **Concrete proposal:** Do not rely on single-field copy relabeling to solve multi-actor communication. Explicitly label the checkout field as *"Traveller's official contact (for visa issuance and immigration records)"*, and provide an optional secondary field *"Send receipt and status copy to assistant/helper email"*. If the schema cannot support secondary contact in this release, warn the user explicitly that all receipts and government communications will be dispatched strictly to the traveller's address.
+
+---
+
+### F4. [MAJOR] Fundamental Vocabulary Contradiction: Banning vs. Proliferating the Term "Sponsor"
+* **Contested claim:** Dossier 1 (§1, §3.6, §4, §5.5) strictly forbids using the word "sponsor" for the compiler persona under any circumstance because "sponsor" is already legally owned by `family_sponsor_*` in the Oracle tree. Dossier 2 contradicts this across its entire title, premise, and copy (§1, §2, §5.5), titling itself *"Sponsor i18n"*, citing *"Bahasa Indonesia for the sponsor"*, and embedding `"a sponsor, a family member, an assistant"` directly into the `who_answers.why` copy.
+* **Reasoning:** The two dossiers are in direct lexical opposition. Dossier 2 repeatedly conflates the device operator (delegate/compiler) with the immigration sponsor (the Indonesian citizen/KITAS holder backing a family visa), re-introducing the exact domain-model ambiguity that Dossier 1 was commissioned to eliminate.
+* **Concrete proposal:** Enforce Dossier 1's lexical boundary globally. Rename Dossier 2 to *"Delegate Flow i18n"* and purge all references to "sponsor" when referring to the compiler/helper role across all UI copy, documentation, and i18n dictionaries. Reserve "sponsor" strictly for immigration visa guarantors.
+
+---
+
+### F5. [MAJOR] Business Strategy Usurped as UX Flow: Unilateral Top-of-Funnel Conversion Disqualification
+* **Contested claim:** Dossier 1 (§3.1, §6.1) introduces a 3-way who-answers gate on screen 1, immediately bouncing Option 3 (*"I'm arranging this for someone else, or for more than one person"*) to WhatsApp before collecting any intent, qualification, or contact information.
+* **Reasoning:** Routing users off-funnel at screen 1 is a commercial business decision, not a UX layout decision. As Dossier 1 (§5.4, §5.7) acknowledges, `NOT_SELF_PAY` and `GROUP_CASE` are pilot-scope operational limitations, not statutory laws, and no conversion-loss measurement exists. Hardcoding an immediate bounce on screen 1 risks severely cannibalizing high-intent conversion and destroying top-of-funnel lead capture without business owner sign-off.
+* **Concrete proposal:** Present the screen 1 routing rule as an explicit business option requiring owner authorization. Include an alternative soft-gate path where third-party payers and groups can input applicant details and contact info before receiving a pre-populated, contextual handoff link to WhatsApp.
+
+---
+
+### F6. [MAJOR] Governance Breakdown: "Adopted" vs. "Proposed" Declaration Status
+* **Contested claim:** Dossier 1 (§6) publishes its design declarations as *"Adopted under the standing pre-confirmation, async veto open"*, whereas Dossier 2 (Frontmatter, §6) explicitly notes that claiming adoption before a round-grade panel runs violates evidence standards and submits its declarations strictly as *"PROPOSED"*.
+* **Reasoning:** Two peer deliverables within the same milestone are operating under contradictory governance standards. Dossier 1 prematurely elevates unreviewed design choices to binding status, bypassing the mandatory peer review and consensus panel required for R7 doctrine closure.
+* **Concrete proposal:** Demote Dossier 1's declarations in §6 from "Adopted" to "PROPOSED". Require both dossiers to undergo joint round-grade panel evaluation before any declaration is recorded as adopted product doctrine.
+
+---
+
+### F7. [MAJOR] False Legal Guarantee: Unenforceable "Self-Pay Card" Mandate
+* **Contested claim:** Dossier 1 (§3.2, §3.5) enforces an authorization checkpoint clause: *"This does not authorize payment on the traveller's behalf. At checkout, payment still has to come from the traveller's own card."*
+* **Reasoning:** The payment gateway checks standard cardholder credentials, not whether the physical hand operating the keyboard belongs to the passport holder. The product asserts a legal restriction that it has no technical mechanism to enforce at checkout. This creates false legal anxiety for legitimate travellers whose family members or assistants are paying with permission, while providing zero actual defense against fraudulent third-party payments.
+* **Concrete proposal:** Reframe the copy from a faux-enforcement mandate to a procedural billing notice: *"Payment must be made using a valid card authorized for international transactions in the traveller's name or with the cardholder's explicit authorization."*
+
+---
+
+### F8. [MAJOR] Consumer-Psychology Trap: Confusing and Coercive Who-Answers Options
+* **Contested claim:** Dossier 1 (§3.1) splits the who-answers gate into: Option 2 (*"I'm helping one traveller who'll answer for themselves — I'm just operating the form"*) vs. Option 3 (*"I'm arranging this for someone else, or for more than one person"*).
+* **Reasoning:** This is a cognitive trap for non-native English speakers and remote assistants. An assistant or spouse filling out the form on behalf of a traveller who is not physically present is literally "arranging this for someone else" (Option 3), yet choosing Option 3 immediately disqualifies them and ejects them to WhatsApp. To proceed online, the user is forced into the awkward phrasing of Option 2 ("who'll answer for themselves"), incentivizing dishonest selection or inducing drop-off.
+* **Concrete proposal:** Rephrase the gate options to clearly distinguish solo self-pay from group/third-party payment:
+  1. *"I am the traveller (solo application, paying with my own card)"*
+  2. *"I am assisting a solo traveller who will pay with their own card"*
+  3. *"I am applying for a group (2+ people) or require third-party billing (talk to an agent)"*
+
+---
+
+### F9. [MAJOR] Indonesian Legal Misstatement: *"Atas Nama"* Asserts Unauthorized Agency
+* **Contested claim:** Dossier 2 (§3.4) proposes translating the delegate banner as: *"Anda sedang menjawab atas nama wisatawan."*
+* **Reasoning:** In Indonesian legal and administrative terminology, *"atas nama"* denotes formal legal proxy, power of attorney, or statutory representation (*kuasa hukum / perwakilan resmi*). This directly contradicts Dossier 1 (§1, §3.1, §3.2), which establishes that the delegate is merely an informal compiler/typist with zero legal agency and no payment authority. Using *"atas nama"* creates an unintended legal declaration of agency under Indonesian law.
+* **Concrete proposal:** Replace *"atas nama wisatawan"* with non-representative, procedural phrasing: *"Anda sedang membantu pengisian formulir untuk wisatawan."* (You are assisting with form completion for the traveller.)
+
+---
+
+### F10. [MAJOR] Tone & Linguistic Flaws: Accusatory Register and Unnatural Syntax in Indonesian Copy
+* **Contested claim:** Dossier 2 (§3.4) recommends the Indonesian reformulation: *"Jawablah sesuai fakta miliknya, bukan pendapat Anda sendiri"*.
+* **Reasoning:** 
+  1. *Psychological register:* *"bukan pendapat Anda sendiri"* ("not your own opinion") is accusatory, blunt, and hostile. It treats the user like a suspect prone to falsification, violating the "warm-formal" (*santun*) register mandated for the product.
+  2. *Linguistic error:* *"fakta miliknya"* is an unidiomatic literal calque of English "their facts". In formal Indonesian, "fakta" does not take possessive pronouns like "miliknya" in this context.
+* **Concrete proposal:** Rewrite the banner copy in idiomatic, respectful, warm-formal Indonesian:
+  *"Mohon berikan informasi yang sesuai dengan data dan keadaan sebenarnya dari wisatawan yang bersangkutan. Pihak yang dapat melihat data ini: {CUSTODY_WHO_SEES}."*
+
+---
+
+### F11. [MINOR] Inaccurate Visa Taxonomy: Hardcoding *"Wisatawan"* for All Applicants
+* **Contested claim:** Dossier 2 (§3.2, §4, §6.2) mandates *"wisatawan"* (tourist) as the universal neutral noun across all pre-resolution screens in the Oracle and VOA funnel.
+* **Reasoning:** The funnel handles business meetings, socio-cultural visits, pre-investment, and family visas, not merely tourism. Referring to an investor, corporate executive, or visiting spouse as *"wisatawan"* is administratively incorrect under Indonesian immigration (*Ditjen Imigrasi*) visa categories.
+* **Concrete proposal:** Adopt **"pemohon"** (applicant) or **"pemohon visa"** as the neutral noun prior to visa route resolution, reserving *"wisatawan"* strictly for explicit tourist VoA streams.
+
+---
+
+### F12. [MINOR] Statutory Terminology Error in Dossier 2
+* **Contested claim:** Dossier 2 (§3.7) lists proper statutory terms to keep untranslated as: *"Ditjen Imigrasi", "PT", "NPWP", "KITAS/KITAS", "WhatsApp"*.
+* **Reasoning:** *"KITAS/KITAS"* is an erroneous duplication for *"KITAS/KITAP"* (*Kartu Izin Tinggal Terbatas / Tetap*). In a section explicitly asserting regulatory exactness and native Imigrasi terminology, this error undermines review hygiene.
+* **Concrete proposal:** Correct the text to *"KITAS/KITAP"*.
+
+---
+
+Total: 12 findings / Critical: 3 / Major: 7 / Minor: 2

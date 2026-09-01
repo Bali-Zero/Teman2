@@ -11,6 +11,7 @@ two outputs of one generator, and this repo has already paid for that.
 
 from __future__ import annotations
 
+import ast
 import importlib.util
 import sys
 from pathlib import Path
@@ -50,6 +51,89 @@ def _probe():
     return module
 
 
+# ── AST helpers: a definition/call is a real node, never a textual coincidence ─
+#
+# `"shape_drift(" in source` and `source.count("shape_drift(") >= 3` are both
+# guard-over-match (cicatrix-superscar family #3): a comment naming a function
+# three times satisfies either check with zero real definitions or call sites.
+# `kb/ops/probe_retrieval.py:648-654`'s own comment documents this exact family
+# exploding in this repo's face already. These parse the SOURCE, not grep it.
+
+
+def _defines_function(tree: ast.AST, name: str) -> bool:
+    """True only for a REAL `def name(...)` / `async def name(...)` — never a
+    comment or docstring that merely mentions the name."""
+    return any(
+        isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name
+        for node in ast.walk(tree)
+    )
+
+
+def _call_count(tree: ast.AST, name: str) -> int:
+    """Real `ast.Call` nodes invoking a bare-name function called `name` — not
+    textual occurrences of the string `"name("`, which a comment or a fenced
+    code block in a docstring can inflate for free."""
+    return sum(
+        1
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == name
+    )
+
+
+def _assigns_string_constant(tree: ast.AST, target: str, value: str) -> bool:
+    """True only for a REAL `target = "value"` module-level assignment."""
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        if not any(isinstance(t, ast.Name) and t.id == target for t in node.targets):
+            continue
+        if isinstance(node.value, ast.Constant) and node.value.value == value:
+            return True
+    return False
+
+
+def test_guilt_a_comment_mentioning_a_function_three_times_defines_nothing():
+    tree = ast.parse(
+        "# def check_topic( is mentioned here, and again: def check_topic( "
+        "and once more: def check_topic(\n"
+    )
+    assert _defines_function(tree, "check_topic") is False
+
+
+def test_innocence_a_real_function_definition_is_detected():
+    tree = ast.parse("def check_topic(x):\n    return x\n")
+    assert _defines_function(tree, "check_topic") is True
+
+
+def test_guilt_a_comment_naming_a_call_three_times_is_zero_real_calls():
+    tree = ast.parse(
+        "# shape_drift( shape_drift( shape_drift(\n"
+        "def shape_drift(a, b, c):\n    return []\n"
+    )
+    assert _call_count(tree, "shape_drift") == 0
+
+
+def test_innocence_two_real_call_sites_are_counted():
+    tree = ast.parse(
+        "def shape_drift(a, b, c):\n    return []\n"
+        "shape_drift('topic', {}, {})\n"
+        "shape_drift('read', {}, {})\n"
+    )
+    assert _call_count(tree, "shape_drift") == 2
+
+
+def test_guilt_a_comment_naming_an_assignment_is_not_the_assignment():
+    tree = ast.parse('# the real value used to be OWNED_KIND = "topic" before a rename\n')
+    assert _assigns_string_constant(tree, "OWNED_KIND", "topic") is False
+
+
+def test_innocence_a_real_assignment_is_detected():
+    tree = ast.parse('OWNED_KIND = "topic"\n')
+    assert _assigns_string_constant(tree, "OWNED_KIND", "topic") is True
+
+
 IDENTITY_VERDICTS = frozenset({"consistent", "mistyped", "contradictory", "lost"})
 DISPOSITIONS = frozenset({
     "promote_after_repair", "discard_duplicate", "blocked_identity", "catalogue_only",
@@ -67,7 +151,15 @@ PAYLOAD_SHAPES = frozenset(_probe().PAYLOAD_SHAPES)
 # in-force/superseded/revoked, official URL). They are validated by their own gate
 # when lane A opens; this module owns `retired_collection` and must not judge a
 # topic inventory by a schema that was never meant for it.
-KINDS = frozenset({"retired_collection", "topic"})
+#
+# `field_integrity` (added 2026-08-26, kb/inventory/legal_status.yaml) is a third
+# kind for the same reason `topic` is: a census of one payload field's own
+# trustworthiness has a different shape than either a retirement triage or a
+# topic's instrument list. Its own dedicated gate is
+# test_legal_status_field_integrity_contract.py; the generic `inventory` fixture
+# below already skips it here (kind != OWNED_KIND), same mechanism that already
+# defers `topic` — no new skip logic needed, only this membership.
+KINDS = frozenset({"retired_collection", "topic", "field_integrity"})
 # MANDATE.md §5 — the seven lanes. Every document must be owned by one of them,
 # so a finding cannot be recorded with nobody on the hook for it.
 LANES = frozenset("ABCDEFP")
@@ -221,13 +313,67 @@ def test_a_proven_duplicate_is_not_left_untriaged(inventory):
             )
 
 
+def _proof_is_incomplete(proof: dict | None) -> bool:
+    """True when a `containment_proof` fails to affirmatively declare `complete: true`.
+
+    Replaces `.get("complete") is False` — an identity comparison against a literal
+    — which reads a MISSING `complete` key as complete: `None is False` is `False`,
+    so `{"distinct_fragments_covered": 40, "distinct_fragments_total": 65}` (no
+    `complete` key at all) was never flagged. §4.6's interlock is written for the
+    case where a gap is DECLARED; a proof that is merely silent about completeness
+    is not evidence of completeness, and this campaign's own rule (§4.6, "one
+    uncovered fragment means do not delete") means unknown must fail closed, not
+    open. `None` — no containment_proof at all — is deliberately NOT incomplete
+    by this predicate: a document that never claimed containment in the first
+    place (e.g. disposition=promote_after_repair) is a different question, owned
+    by test_nothing_is_discarded_without_a_containment_proof for
+    disposition == discard_duplicate.
+    """
+    if proof is None:
+        return False
+    return proof.get("complete") is not True
+
+
+def test_guilt_a_containment_proof_missing_complete_is_treated_as_a_gap():
+    """The exact shape measured live: `complete` is a MISSING key, not a declared
+    `false`, sitting next to `decision.deletions_authorized: true`. The old
+    `is False` predicate called this complete; §4.6 says an unproven fragment
+    blocks deletion, so this must be a gap."""
+    assert _proof_is_incomplete(
+        {"distinct_fragments_covered": 40, "distinct_fragments_total": 65}
+    )
+
+
+def test_guilt_a_containment_proof_declaring_false_is_still_a_gap():
+    """The case the old predicate already caught — must not regress."""
+    assert _proof_is_incomplete({"complete": False})
+
+
+def test_innocence_no_containment_proof_at_all_is_not_this_rules_business():
+    """A document that never claimed containment (promote_after_repair,
+    catalogue_only, blocked_identity) is not a gap by THIS predicate — it is the
+    ordinary shape of most rows in a retired_collection inventory, and flagging
+    it would make deletions_authorized:true fail on files with zero discard
+    candidates."""
+    assert _proof_is_incomplete(None) is False
+
+
+def test_innocence_a_containment_proof_declaring_complete_true_is_not_a_gap():
+    assert (
+        _proof_is_incomplete(
+            {"distinct_fragments_covered": 65, "distinct_fragments_total": 65, "complete": True}
+        )
+        is False
+    )
+
+
 def test_deletion_is_interlocked_on_a_complete_proof(inventory):
     """No deletion may be authorized while any containment proof declares a gap."""
     path, data = inventory
     incomplete = [
         doc["document_id"]
         for doc in data["documents"]
-        if (doc.get("containment_proof") or {}).get("complete") is False
+        if _proof_is_incomplete(doc.get("containment_proof"))
     ]
     if incomplete:
         assert data["decision"]["deletions_authorized"] is False, (
@@ -246,6 +392,180 @@ def test_a_leak_claim_is_backed_by_the_measurement(inventory):
             )
 
 
+# ── A shared identifier is not evidence of a leak, and a losing source is not an
+#    identity (measured 2026-08-25 against two false claims that landed in this
+#    file: UU_13_2016 and Permen_32_2022). Both predicates are pure so they can be
+#    exercised twice — once against the real inventory, once against synthetic
+#    guilt/innocence cases that do not depend on what the file currently contains
+#    (the anti-vacuity discipline `test_kb_topic_contract.py` documents at its top).
+
+def _leak_claim_is_evidenced(doc: dict) -> bool:
+    """True unless `leaked_to_production` is asserted on zero fragment-level support.
+
+    §4.2 says a presence/absence judgment takes more than one method; a leak claim
+    IS a presence judgment. `presence_in_legal_unified.by_document_id > 0` only
+    proves the id STRING exists in production — it says nothing about whether
+    THIS row's own content is there, and a retired collection can hold a document
+    whose id merely collides with an unrelated production document (UU_13_2016:
+    118 production points, all of them a correctly-identified Patent Law that
+    shares nothing but the string "UU_13_2016" with this row).
+
+    `fragments_absent_there` is measured per-document against the same
+    normalized-fragment hashes the containment proofs use elsewhere in this file.
+    If it equals `distinct_fragments`, NONE of this row's own fragments were found
+    in production — there is no content-level evidence at all, only the id
+    collision. A real leak leaves at least one of the row's own fragments present.
+    """
+    if not doc.get("leaked_to_production"):
+        return True
+    presence = doc["presence_in_legal_unified"]
+    return presence["fragments_absent_there"] < presence["distinct_fragments"]
+
+
+def _identity_not_named_from_losing_source(doc: dict) -> bool:
+    """True unless a `contradictory` row names `real_identity` from the side its
+    own verdict already says the text contradicts.
+
+    identity.verdict == "contradictory" means, by this file's own vocabulary,
+    "metadata and text name DIFFERENT instruments" — so within a contradictory
+    row, text and metadata already disagree by definition; the interesting
+    question is only which side `real_identity` was drawn from. §4.3 makes the
+    instrument's OWN TEXT authoritative over metadata and filename. A row that
+    sets `real_identity` to a value copied verbatim from `stated_in_metadata` (or
+    `stated_in_filename`) is naming the identity from the losing side while its
+    own `stated_in_text` field, recorded right beside it, disagrees.
+
+    Deliberately scoped to verdict == "contradictory" only:
+      - `mistyped` rows have text and metadata AGREEING on the instrument (only
+        the id's TYPE is wrong, e.g. a Pergub filed as a UU) — real_identity
+        legitimately restates metadata there, and that is not this bug.
+      - `lost` rows have no identity in the text at all (UNKNOWN placeholders) —
+        metadata is the only source there IS, so there is no losing side to have
+        preferred over it.
+    A verbatim-equality check (not a substring/contains check) is deliberate: this
+    repo's most-repeated defect class is guard-over-match, and a row where
+    `real_identity` legitimately restates the SAME instrument metadata names, in
+    different words, must not be flagged (the PP_6646_2021 shape: real_identity is
+    grounded in the filename's subject with a corrected number, not copied from
+    either losing field, even though the row is contradictory for other reasons).
+    """
+    identity = doc["identity"]
+    if identity["verdict"] != "contradictory":
+        return True
+    real = identity.get("real_identity")
+    if not real:
+        return True
+    return real != identity.get("stated_in_metadata") and real != identity.get("stated_in_filename")
+
+
+def test_a_leak_claim_has_fragment_level_evidence(inventory):
+    path, data = inventory
+    for doc in data["documents"]:
+        assert _leak_claim_is_evidenced(doc), (
+            "{}: {} claims leaked_to_production=true but fragments_absent_there "
+            "equals distinct_fragments — none of this document's own fragments "
+            "were found in production, only the id string collided. A shared "
+            "document_id is not evidence of a leak.".format(path.name, doc["document_id"])
+        )
+
+
+def test_identity_is_not_named_from_the_losing_source(inventory):
+    path, data = inventory
+    for doc in data["documents"]:
+        assert _identity_not_named_from_losing_source(doc), (
+            "{}: {} is contradictory yet real_identity is copied verbatim from "
+            "stated_in_metadata or stated_in_filename — naming the identity from "
+            "the side its own verdict says the text contradicts (§4.3: text "
+            "outranks metadata and filename).".format(path.name, doc["document_id"])
+        )
+
+
+def test_leak_and_identity_rules_have_guilt_and_innocence_cases():
+    """Synthetic proof, independent of what the real inventory currently contains.
+
+    MANDATE §4.9's anti-vacuity concern applies here too: the real file could be
+    repaired to zero violating rows (it now is) and the two rules above would
+    still report green whether or not they are actually wired correctly. These
+    cases exercise both predicates directly against the exact shapes measured
+    2026-08-25, so a regression in the predicate itself — not just an absence of
+    bad data — is what keeps this test honest.
+    """
+
+    def leak_doc(fragments_absent, distinct_fragments, claim=True):
+        return {
+            "leaked_to_production": claim,
+            "presence_in_legal_unified": {
+                "fragments_absent_there": fragments_absent,
+                "distinct_fragments": distinct_fragments,
+            },
+        }
+
+    # guilt: the exact shape of the false UU_13_2016 claim — all 7 of this row's
+    # own 7 fragments are absent from production, yet a leak is asserted anyway.
+    assert not _leak_claim_is_evidenced(leak_doc(7, 7))
+    # innocence: partial overlap IS real fragment-level evidence — the shape of
+    # the three genuine leaks still standing in this file (UU_14_2023 4/804,
+    # PP_18_2025 1/99, UU_17_2026 13/49 absent).
+    assert _leak_claim_is_evidenced(leak_doc(4, 804))
+    assert _leak_claim_is_evidenced(leak_doc(1, 99))
+    # innocence: no leak claimed at all, regardless of fragment counts — the
+    # ordinary shape of most rows in this file.
+    assert _leak_claim_is_evidenced(leak_doc(48, 48, claim=False))
+
+    def identity_doc(verdict, real, metadata, filename="whatever.pdf"):
+        return {
+            "identity": {
+                "verdict": verdict,
+                "real_identity": real,
+                "stated_in_metadata": metadata,
+                "stated_in_filename": filename,
+            }
+        }
+
+    # guilt: the exact shape of the false Permen_32_2022 claim — real_identity is
+    # a verbatim copy of stated_in_metadata on a contradictory row.
+    assert not _identity_not_named_from_losing_source(
+        identity_doc(
+            "contradictory",
+            "PER-7/PJ/2025 — NIK-NPWP Coretax",
+            "PER-7/PJ/2025 — NIK-NPWP Coretax",
+            "PER-7-PJ-2025.pdf",
+        )
+    )
+    # guilt, filename side: same inversion, sourced from the filename instead of
+    # the metadata field.
+    assert not _identity_not_named_from_losing_source(
+        identity_doc("contradictory", "legal_number=6646", "something_else", "legal_number=6646")
+    )
+    # innocence: the shape of the genuine PP_6646_2021 row — real_identity is
+    # drawn from NEITHER losing field verbatim (synthesized from the filename's
+    # subject plus a corrected number), even though the row is contradictory.
+    assert _identity_not_named_from_losing_source(
+        identity_doc(
+            "contradictory",
+            "PP 34/2021 — Penggunaan Tenaga Kerja Asing",
+            "legal_number=6646",
+            "pp_34_2021_penggunaan_tka.pdf",
+        )
+    )
+    # innocence: real_identity is null — nothing was named, so there is no source
+    # to have inverted (the UU_13_2016 / UU_31_2010 / Perda_15_2019 shape).
+    assert _identity_not_named_from_losing_source(identity_doc("contradictory", None, "x", "y"))
+    # innocence: verdict is "lost", not "contradictory" — metadata IS legitimately
+    # the identity source when text carries no identity at all (the
+    # TAX_UNKNOWN_UNKNOWN shape). Verbatim equality on purpose, to prove the
+    # verdict gate — not the string comparison — is what lets this through.
+    assert _identity_not_named_from_losing_source(
+        identity_doc("lost", "KEP-55/PJ/2026 — X", "KEP-55/PJ/2026 — X", "n/a")
+    )
+    # innocence: verdict "mistyped" — text and metadata already agree, only the
+    # id's TYPE is wrong; real_identity legitimately restates metadata (the
+    # UU_14_2023 shape). Verbatim equality again on purpose, same reason.
+    assert _identity_not_named_from_losing_source(
+        identity_doc("mistyped", "Pergub Bali 14/2023 - X", "Pergub Bali 14/2023 - X", "n/a")
+    )
+
+
 def test_decision_choice_is_from_the_mandates_three(inventory):
     path, data = inventory
     assert data["decision"]["choice"] in DECISION_CHOICES, path.name
@@ -254,9 +574,16 @@ def test_decision_choice_is_from_the_mandates_three(inventory):
 
 # ── The two cross-source rules ───────────────────────────────────────────────
 
-def test_registry_mapped_claims_match_the_real_registry(inventory):
-    """Cross-source: check the claim against collection_registry.py itself."""
-    sys.path.insert(0, str(ROOT / "apps" / "backend-rag"))
+def test_registry_mapped_claims_match_the_real_registry(inventory, monkeypatch):
+    """Cross-source: check the claim against collection_registry.py itself.
+
+    `monkeypatch.syspath_prepend` (not a bare `sys.path.insert`): pytest restores
+    `sys.path` to its pre-test state automatically at teardown, whichever entry a
+    parametrised run leaves — a bare `sys.path.insert` with no matching `.remove`/
+    `.pop` leaks a path entry into every test that runs after this one, for the
+    rest of the process.
+    """
+    monkeypatch.syspath_prepend(str(ROOT / "apps" / "backend-rag"))
     from backend.core.collection_registry import is_known_collection
 
     path, data = inventory
@@ -296,6 +623,36 @@ def test_a_retired_collection_is_named_by_no_ingest_entrypoint(inventory):
     assert offenders == [], (
         f"{path.name} declares {retired!r} retired as an ingest target, but these entrypoints still "
         f"name it: {offenders}"
+    )
+
+
+def test_the_retirement_lint_check_is_not_examining_zero_inventories():
+    """Anti-vacuity for the test above, same pattern as
+    test_the_ledger_mirror_check_is_not_examining_zero_findings below.
+
+    The cross-source check above SKIPS twice — once for `kind != retired_collection`
+    (defence in depth; the `inventory` fixture already filters this), once for
+    `decision.choice != retire_as_target`. Nothing forces at least one real file to
+    take the second branch. If none ever did, the lint would never run against a
+    real ingest entrypoint list and every parametrisation would read green while
+    checking nothing — exactly the shape MANDATE.md §4.9 warns against, and the
+    same failure class `test_the_ledger_mirror_check_is_not_examining_zero_findings`
+    already guards for `open_findings`.
+    """
+    retired_as_target = []
+    for path in _inventories():
+        data = _load(path)
+        if data.get("kind") != OWNED_KIND:
+            continue
+        if (data.get("decision") or {}).get("choice") == "retire_as_target":
+            retired_as_target.append(path.name)
+    assert retired_as_target, (
+        "no kb/inventory/*.yaml with kind=retired_collection declares "
+        "decision.choice=retire_as_target, so "
+        "test_a_retired_collection_is_named_by_no_ingest_entrypoint skips on every "
+        "parametrisation and is passing over an empty set. Either no collection is "
+        "currently queued for retirement — delete this pair of tests and say so — "
+        "or the field has been renamed and the gate now points at nothing"
     )
 
 
@@ -360,9 +717,17 @@ def test_the_probe_actually_compares_the_recorded_shapes(inventory):
     """
     del inventory  # gate on the probe source, once per parametrisation
     source = (ROOT / "scripts" / "kb" / "kb_inventory_probe.py").read_text(encoding="utf-8")
-    assert source.count("shape_drift(") >= 3, (
-        "kb_inventory_probe.py must DEFINE shape_drift and CALL it for the topic "
-        "collection and the read collection — found fewer than 3 occurrences"
+    tree = ast.parse(source)
+    assert _defines_function(tree, "shape_drift"), (
+        "kb_inventory_probe.py must DEFINE shape_drift — no real `def shape_drift` "
+        "found (a comment naming it does not count — see _defines_function)"
+    )
+    calls = _call_count(tree, "shape_drift")
+    assert calls >= 2, (
+        f"kb_inventory_probe.py must CALL shape_drift for both the topic collection "
+        f"and the read collection — found {calls} real ast.Call site(s). A comment "
+        f"naming the string three times used to satisfy this check with zero real "
+        f"calls; this counts actual Call nodes, not text occurrences."
     )
     probe = _probe()
     findings = probe.shape_drift("c", {"modern_full": 5}, {"modern_full": 4})
@@ -374,4 +739,278 @@ def test_the_probe_actually_compares_the_recorded_shapes(inventory):
     assert vanished, (
         "shape_drift stayed silent about a shape that disappeared from production — "
         "iterating the LIVE keys instead of the vocabulary is exactly this bug"
+    )
+
+
+def test_the_gate_this_module_defers_topic_inventories_to_actually_exists():
+    """This module SKIPS every kind='topic' file saying it is "owned by another gate".
+
+    Measured 2026-08-25, before `test_kb_topic_contract.py` was written: that
+    sentence was false. A three-line topic inventory whose only content was the
+    word `nonsense` passed this entire suite with rc=0 — one test looked at it,
+    skipped, and named an owner that did not exist. A defensive skip pointing at
+    a missing owner is worse than no skip, because it reads as coverage to
+    everyone downstream, including whoever adds the next `kind`.
+
+    So the deferral is now interlocked: delete or rename the topic gate and this
+    goes red, instead of quietly reopening the hole. The same interlock runs in
+    the other direction in that file.
+    """
+    owner = Path(__file__).with_name("test_kb_topic_contract.py")
+    assert owner.is_file(), (
+        f"{owner.name} is missing, but this module still skips kind='topic' files as "
+        f"'owned by another gate' — that owner is gone and topic inventories are now "
+        f"judged by nobody"
+    )
+    source = owner.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    assert _assigns_string_constant(tree, "OWNED_KIND", "topic"), (
+        f"{owner.name} exists but no real `OWNED_KIND = \"topic\"` assignment was "
+        f"found — the deferral in this module now points at a gate that has "
+        f"stopped owning what it defers (a comment mentioning the assignment does "
+        f"not count — see _assigns_string_constant)"
+    )
+    for rule in ("check_topic", "check_journey", "check_topic_inventory"):
+        assert _defines_function(tree, rule), (
+            f"{owner.name} no longer defines def {rule}( — a comment naming it "
+            f"does not count"
+        )
+
+
+GATED_DIRS = ("topics", "journeys", "inventory")
+
+
+def unreadable_artifacts(relative_paths) -> list[str]:
+    """Of these kb/-relative yaml paths, the ones no gate will ever parse.
+
+    Every gate in this campaign globs `kb/<named-dir>/*.yaml` — one level deep,
+    that extension, those three directories. Three shapes therefore fall outside
+    all of them, and a completeness review on 2026-08-26 produced a concrete
+    artifact for each:
+
+      kb/tax.yaml            top level, read by nobody (this happened, 2026-08-25)
+      kb/inventory/tax.yml   right folder, wrong extension: glob("*.yaml") misses it
+      kb/inventory/archive/tax.yaml   one level too deep, the globs are not recursive
+
+    The first version of this gate checked only the top level with two literal
+    globs, so the second and third were invisible to the guard written to catch
+    exactly this class.
+    """
+    strays = []
+    for relative in relative_paths:
+        parts = Path(relative).parts
+        if len(parts) == 2 and parts[0] in GATED_DIRS and parts[1].endswith(".yaml"):
+            continue
+        strays.append(relative)
+    return sorted(strays)
+
+
+def test_innocence_a_yaml_in_a_gated_directory_is_read():
+    assert unreadable_artifacts(["inventory/tax.yaml", "topics/company.yaml"]) == []
+
+
+def test_guilt_a_yaml_at_the_top_level_is_read_by_nobody():
+    assert unreadable_artifacts(["tax.yaml"]) == ["tax.yaml"]
+
+
+def test_guilt_a_yml_extension_in_a_gated_directory_is_read_by_nobody():
+    """The globs say `*.yaml`. A `.yml` sits in the right folder and is parsed
+    by no gate — the shape the depth-1 version of this guard could not see."""
+    assert unreadable_artifacts(["inventory/tax.yml"]) == ["inventory/tax.yml"]
+
+
+def test_guilt_a_nested_folder_hides_a_yaml_from_every_glob():
+    assert unreadable_artifacts(["inventory/archive/tax.yaml"]) == ["inventory/archive/tax.yaml"]
+
+
+def test_guilt_an_ungated_top_level_directory_is_not_a_hiding_place():
+    assert unreadable_artifacts(["ops/config.yaml"]) == ["ops/config.yaml"]
+
+
+def test_no_artifact_sits_where_no_gate_looks(capsys):
+    """A yaml directly under kb/ is read by nothing, and nothing would say so.
+
+    Every gate in this campaign scans a NAMED subdirectory — kb/topics, kb/journeys,
+    kb/inventory. A file at kb/<topic>.yaml is therefore parsed by no test, counted
+    in no census and refuted by no contract: it can be wrong forever in silence.
+
+    This is not hypothetical. On 2026-08-25 a malformed `cp` left kb/tax.yaml — a
+    stray duplicate of the tax INVENTORY — and a `git add -A` committed it. Nothing
+    failed, because nothing was looking. It is the campaign's own thesis turned on
+    its own working directory: an artifact that no gate reads is not an artifact.
+    """
+    kb = _repo_root() / "kb"
+    found = sorted(
+        str(path.relative_to(kb)) for ext in ("*.yaml", "*.yml") for path in kb.rglob(ext)
+    )
+    strays = unreadable_artifacts(found)
+    print(f"kb/: {len(found)} yaml file(s), {len(strays)} that no gate reads")
+    assert strays == [], (
+        f"these live under kb/ where no gate reads them: {strays}. Every gate globs "
+        f"kb/<named-dir>/*.yaml exactly one level deep, so anything else — the top "
+        f"level, a nested folder, or a .yml extension — is parsed by nobody. Move each "
+        f"to kb/topics, kb/journeys or kb/inventory as a .yaml, or delete it."
+    )
+
+
+# ── open_findings: a finding recorded where no alarm reads it is not a finding ──
+#
+# Measured 2026-08-26: `open_findings` appeared NOWHERE outside the yaml that
+# declares it — not in this contract, not in kb_inventory_probe.py, not in
+# scripts/pending_arms_report.py. Eight findings, three of them severity `high`,
+# sat in a field that nothing validates and nothing ages. PENDING-ARMS.md is the
+# repo's one nagging surface (pending_arms_report.py alarms on rows open >48h and
+# CI enforces its owner vocabulary), so a high-severity finding must appear there
+# too. Medium and low deliberately do NOT have to: forcing every finding into the
+# ledger would drown the surface that makes it useful, which is the over-match
+# edge of cicatrix-superscar #3.
+
+SEVERITIES = frozenset({"high", "medium", "low"})
+LEDGER = ROOT / ".claude" / "skills" / "modus" / "PENDING-ARMS.md"
+
+
+def ledger_declares(finding_id: str, ledger_text: str) -> bool:
+    """True when the ledger holds a row whose SUBJECT is this finding.
+
+    Not a substring test, and the difference is not academic. The first version
+    of this helper asked `finding_id in ledger_text`, and a mutation run against
+    the real ledger could not make it fail: the WIZ-2 and WIZ-3 rows each say
+    "for the reason in the WIZ-1 row", so deleting the WIZ-1 row entirely left
+    the string "WIZ-1" in the file and the guard stayed green. A cross-reference
+    was satisfying a rule about existence — cicatrix-superscar #3 in the guard
+    written to enforce this campaign's own discipline, caught by its own mutation.
+
+    A bare substring also cannot tell WIZ-1 from WIZ-10. Ledger rows write their
+    subject as `**WIZ-1 — title**`; prose referring to another row does not.
+    """
+    marker = f"**{finding_id} \u2014"  # bold id followed by an em dash
+    # `marker in line` alone was still not enough. A completeness review on
+    # 2026-08-26 passed all three of these with no row present at all:
+    #     <!-- **WIZ-99 - fake** -->
+    #     ```md\n**WIZ-99 - fake**\n```
+    #     > **WIZ-99 - quoted from a row that was deleted**
+    # A comment, a fenced block and a blockquote are not rows. Every real row in
+    # PENDING-ARMS.md begins `- opened `, so the line must BE a row, not merely
+    # contain the marker somewhere. (Lookalike dashes were checked and correctly
+    # rejected already: U+2013 and U+2015 do not match the em dash U+2014.)
+    return any(
+        line.lstrip().startswith("- opened ") and marker in line
+        for line in ledger_text.splitlines()
+    )
+
+
+def unmirrored_high_findings(findings, ledger_text: str) -> list[str]:
+    """Ids of severity=high findings the ledger does not declare a row for.
+
+    Pure, so both guilt and innocence are testable without touching a real file.
+    """
+    missing = []
+    for finding in findings or []:
+        if finding.get("severity") != "high":
+            continue
+        finding_id = finding.get("id") or ""
+        # A missing id would make any containment test true, so a nameless high
+        # finding would satisfy the rule by having no name at all. Caught by this
+        # module's own guilt case before it ever shipped.
+        if not finding_id or not ledger_declares(finding_id, ledger_text):
+            missing.append(finding_id)
+    return missing
+
+
+def test_guilt_a_high_finding_absent_from_the_ledger_is_reported():
+    assert unmirrored_high_findings(
+        [{"id": "WIZ-99", "severity": "high"}], "an unrelated ledger"
+    ) == ["WIZ-99"]
+
+
+def test_innocence_a_high_finding_present_in_the_ledger_is_not_reported():
+    assert unmirrored_high_findings(
+        [{"id": "WIZ-99", "severity": "high"}],
+        "- opened 2026-01-01 (x) | **WIZ-99 \u2014 the thing** | detail | owner: session",
+    ) == []
+
+
+def test_guilt_a_cross_reference_from_another_row_does_not_count_as_a_row():
+    """The evasion that defeated the first version of this guard, on real data.
+
+    Deleting the WIZ-1 row from the real ledger left the string "WIZ-1" behind in
+    two sibling rows that mention it in prose, and the substring check stayed
+    green. Mentioning a finding is not owning it.
+    """
+    ledger = (
+        "- opened 2026-01-01 (x) | **WIZ-2 \u2014 other thing** | promoted for the "
+        "reason in the WIZ-1 row | owner: session"
+    )
+    assert unmirrored_high_findings([{"id": "WIZ-1", "severity": "high"}], ledger) == ["WIZ-1"]
+
+
+def test_guilt_a_longer_id_does_not_satisfy_a_shorter_one():
+    """WIZ-1 is a prefix of WIZ-10. A containment test cannot tell them apart,
+    and the day a tenth finding is opened the first one silently stops being
+    checked."""
+    ledger = "- opened 2026-01-01 (x) | **WIZ-10 \u2014 the tenth** | d | owner: session"
+    assert unmirrored_high_findings([{"id": "WIZ-1", "severity": "high"}], ledger) == ["WIZ-1"]
+
+
+def test_innocence_a_medium_finding_is_never_required_to_be_in_the_ledger():
+    """The ledger is a nagging surface; filling it with low-severity rows is how
+    it stops being read. Only `high` is mirrored."""
+    assert unmirrored_high_findings(
+        [{"id": "WIZ-4", "severity": "medium"}, {"id": "WIZ-8", "severity": "low"}], ""
+    ) == []
+
+
+def test_guilt_a_high_finding_with_no_id_cannot_pass_by_being_nameless():
+    """An empty id would be `"" in ledger_text` -> True for any text, so a
+    nameless finding would silently satisfy the rule. It must be reported."""
+    assert unmirrored_high_findings([{"severity": "high"}], "any ledger text") == [""]
+
+
+def test_every_finding_declares_a_known_severity(inventory):
+    path, data = inventory
+    for finding in data.get("open_findings") or []:
+        severity = finding.get("severity")
+        assert severity in SEVERITIES, (
+            f"{path.name}: finding {finding.get('id')!r} declares severity "
+            f"{severity!r}, which is outside {sorted(SEVERITIES)}. A severity this "
+            f"gate does not recognise is a finding it cannot route"
+        )
+
+
+def test_every_high_severity_finding_is_mirrored_in_the_pending_arms_ledger(inventory, capsys):
+    path, data = inventory
+    findings = data.get("open_findings") or []
+    ledger_text = LEDGER.read_text(encoding="utf-8")
+    missing = unmirrored_high_findings(findings, ledger_text)
+    high = [f for f in findings if f.get("severity") == "high"]
+    print(f"{path.name}: {len(high)} high finding(s) checked against the ledger")
+    assert not missing, (
+        f"{path.name} records {missing} at severity=high, but {LEDGER.name} does not "
+        f"mention them. open_findings is read by no alarm — it is not validated by "
+        f"the probe and not aged by pending_arms_report.py — so a high finding that "
+        f"lives only there will never nag anyone. Add a ledger row per id"
+    )
+
+
+def test_the_ledger_mirror_check_is_not_examining_zero_findings():
+    """Anti-vacuity for the test above.
+
+    Every assertion there is over `open_findings`; if no inventory declared any
+    high finding, the check would be green while examining nothing — and would
+    stay green through the day someone adds one. This asserts the corpus it
+    guards is non-empty, so the guard's own silence is never mistaken for proof.
+    """
+    high_total = 0
+    for path in _inventories():
+        data = _load(path)
+        if data.get("kind") != OWNED_KIND:
+            continue
+        high_total += sum(
+            1 for f in (data.get("open_findings") or []) if f.get("severity") == "high"
+        )
+    assert high_total > 0, (
+        "no inventory declares a single severity=high finding, so the mirror check "
+        "above is passing over an empty set. Either the campaign genuinely has none "
+        "left — delete this pair of tests and say so — or the field has been renamed "
+        "and the gate is now pointed at nothing"
     )

@@ -6,7 +6,7 @@
     "contact": {
       "email": "zero@balizero.com",
       "whatsapp": "+62 821 3465 159",
-      "wa_link": "https://wa.me/628213454721",
+      "wa_link": "https://wa.me/628213465159",
       "location": "Kerobokan, Bali, Indonesia",
       "website": "balizero.com"
     },
@@ -26,11 +26,12 @@
       },
       "B1 Visa on Arrival (VOA)": {
         "name": "B1 Visa on Arrival (VOA)",
-        "price": "790.000 IDR",
+        "price": "750.000 IDR",
         "tier_range": null,
         "duration": "30 days",
         "validity": "Single entry, extendable once (+30 days)",
-        "notes": "",
+        "notes": "All-inclusive price — the government fee is included; nothing further is payable on arrival.",
+        "verified_on": "2026-08-31",
         "description_en": "Visa on Arrival issued on entry at eligible Indonesian ports of entry, valid 30 days, extendable once for another 30 days. For tourism, family visits, transit and short business meetings only — no work allowed.",
         "icon_id": "visa-tourism"
       },
@@ -40,7 +41,8 @@
         "tier_range": null,
         "duration": "30 days",
         "validity": "Extension only",
-        "notes": "",
+        "notes": "All-inclusive price — the government fee is included; nothing further is payable at the immigration office.",
+        "verified_on": "2026-08-25",
         "description_en": "Onshore extension of the B1 Visa on Arrival for an additional 30 days, processed at Indonesian immigration before the initial 30-day stay expires.",
         "icon_id": "visa-extension"
       },

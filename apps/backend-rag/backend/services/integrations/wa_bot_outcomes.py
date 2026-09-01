@@ -38,7 +38,7 @@ and belongs on the return path — see task #31.
 
 from __future__ import annotations
 
-__all__ = ["BotStandingCondition"]
+__all__ = ["BotStandingCondition", "SilentStandingCondition"]
 
 
 class BotStandingCondition(RuntimeError):
@@ -53,4 +53,33 @@ class BotStandingCondition(RuntimeError):
     Deliberately a ``RuntimeError`` subclass: every existing broad ``except
     Exception`` / ``except RuntimeError`` handler keeps catching it unchanged,
     so introducing it cannot silently alter any path that has not opted in.
+    """
+
+
+class SilentStandingCondition(BotStandingCondition):
+    """A standing condition that must notify NOBODY — client or human.
+
+    Added 2026-08-27 (Kimi K3 adversarial review of the Gemini-cut PR,
+    coordinator-weighted BLOCCANTE finding): ``wa_inbox_bot.generate_bot_reply``
+    always drew this distinction by construction — its docstring and
+    ``_tell_a_human``'s own say the two ``BotStandingCondition`` exits
+    (autoreply flag off; no customer message in the loaded window)
+    deliberately do NOT call ``_tell_a_human``, because the class exists
+    precisely to say "standing condition, not an incident", and the flag-off
+    branch alone was 44 of the 52 give-ups ever recorded. That distinction
+    lived only in "which of the 5 raise sites happens to sit before a
+    ``_tell_a_human`` call" — invisible to a caller reasoning about the
+    exception TYPE alone. The Gemini-cut PR added a new
+    ``BotStandingCondition`` raise (WA_GENERATION_PROVIDER not armed) that
+    the SAME 44-of-52 precedent does not cover — an unarmed provider is a
+    misconfiguration a human needs to know about and fix, not a "the bot is
+    intentionally off right now" state. A single exception type can no
+    longer carry both meanings, so this subclass makes the silent half
+    explicit and checkable via ``isinstance``, rather than "does or doesn't
+    happen to precede a call site".
+
+    A caller (``wa_outbox_worker._maybe_send_apology`` and its call sites)
+    must check ``isinstance(exc, SilentStandingCondition)`` — not the plain
+    ``BotStandingCondition`` — before deciding whether a standing condition
+    is apology/notify-worthy.
     """

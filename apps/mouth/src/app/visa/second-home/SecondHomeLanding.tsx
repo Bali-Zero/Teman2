@@ -9,6 +9,11 @@ import { WhatsAppLeadButton } from "@/components/lead/WhatsAppLeadButton";
 import { ConsentBanner } from "@/components/visa/ConsentBanner";
 import { usePricingData } from "@/hooks/usePricingData";
 import {
+  MERAH_PUTIH_DAY_BODY_CSS,
+  MERAH_PUTIH_DAY_CLASS,
+  MERAH_PUTIH_DAY_VARS,
+} from "@/lib/theme/merahPutihDayVars";
+import {
   E33_LIVE_PRICE_CATEGORY,
   E33_LIVE_PRICE_KEY,
 } from "@/lib/secondhome-studio/pricing-key";
@@ -132,7 +137,7 @@ const fitCheckCtaStyle: React.CSSProperties = {
   alignItems: "center",
   gap: 8,
   padding: "var(--space-3, 0.85rem) var(--space-5, 1.5rem)",
-  borderRadius: 8,
+  borderRadius: 12,
   border: "1px solid var(--accent-funnel)",
   color: "var(--accent-funnel-text, var(--accent-funnel))",
   fontWeight: 600,
@@ -230,9 +235,24 @@ export function SecondHomeLanding() {
     // defect, same fix, this route has no AppFrame ancestor either).
     <div
       data-funnel="visa"
-      className={cormorant.variable}
-      style={{ display: "grid", gap: "var(--space-6, 1.5rem)" }}
+      className={`${cormorant.variable} ${MERAH_PUTIH_DAY_CLASS}`}
+      style={{
+        // MERAH PUTIH DAY (R4 identity law) — inline on THIS wrapper, never on a
+        // shared layout: it must beat `[data-theme="editorial"] [data-funnel="visa"]`
+        // (navy ground + the retired #ff3344) for this route only. It also
+        // neutralises the Montserrat that /visa/layout.tsx forces on the funnel.
+        ...MERAH_PUTIH_DAY_VARS,
+        display: "grid",
+        gap: "var(--space-6, 1.5rem)",
+        background: "var(--surface-base)",
+        color: "var(--text-primary)",
+      }}
     >
+      {/* <body> is an ancestor of this wrapper and keeps the shared editorial
+          navy, which shows as a band under the content and as a navy page in
+          print. Scoped to pages that carry the day wrapper — see
+          MERAH_PUTIH_DAY_BODY_CSS. */}
+      <style>{MERAH_PUTIH_DAY_BODY_CSS}</style>
       <LanguageSwitcher />
 
       {/* HERO */}
@@ -243,7 +263,7 @@ export function SecondHomeLanding() {
             margin: 0,
             fontFamily: fontSerif,
             fontSize: "clamp(2.25rem, 5vw, 2.875rem)",
-            fontWeight: 360,
+            fontWeight: 500,
             lineHeight: 1.05,
             color: "var(--text-primary)",
             maxWidth: "16ch",
@@ -274,7 +294,7 @@ export function SecondHomeLanding() {
           data-testid="hero-fit-check-cta"
           style={{ ...fitCheckCtaStyle, justifySelf: "start" }}
         >
-          Start the fit-check
+          {t("secondHome.cta.fitCheck")}
         </Link>
         {price ? (
           <div
@@ -300,8 +320,8 @@ export function SecondHomeLanding() {
                 <div
                   style={{
                     fontFamily: fontSerif,
-                    fontSize: "clamp(1.3rem, 3vw, 1.6rem)",
-                    fontWeight: 340,
+                    fontSize: "clamp(1.5rem, 3vw, 1.6rem)",
+                    fontWeight: 500,
                     lineHeight: 1.1,
                     color: "var(--accent-funnel-text, var(--accent-funnel))",
                   }}
@@ -334,7 +354,7 @@ export function SecondHomeLanding() {
             margin: 0,
             fontFamily: fontSerif,
             fontSize: "clamp(1.75rem, 4vw, 2.6rem)",
-            fontWeight: 360,
+            fontWeight: 500,
             lineHeight: 1.1,
             color: "var(--text-primary)",
             maxWidth: "18ch",
@@ -392,8 +412,8 @@ export function SecondHomeLanding() {
           style={{
             margin: 0,
             fontFamily: fontSerif,
-            fontSize: "clamp(1.4rem, 3vw, 1.9rem)",
-            fontWeight: 360,
+            fontSize: "clamp(1.5rem, 3vw, 1.9rem)",
+            fontWeight: 500,
             lineHeight: 1.15,
             color: "var(--text-primary)",
           }}
@@ -454,7 +474,7 @@ export function SecondHomeLanding() {
             margin: 0,
             fontFamily: fontSerif,
             fontSize: "clamp(1.75rem, 4vw, 2.6rem)",
-            fontWeight: 360,
+            fontWeight: 500,
             lineHeight: 1.1,
             color: "var(--text-primary)",
             maxWidth: "18ch",
@@ -551,8 +571,8 @@ export function SecondHomeLanding() {
           style={{
             margin: 0,
             fontFamily: fontSerif,
-            fontSize: "clamp(1.4rem, 3vw, 1.9rem)",
-            fontWeight: 360,
+            fontSize: "clamp(1.5rem, 3vw, 1.9rem)",
+            fontWeight: 500,
             lineHeight: 1.15,
             color: "var(--text-primary)",
             maxWidth: "20ch",
@@ -577,8 +597,8 @@ export function SecondHomeLanding() {
           style={{
             margin: 0,
             fontFamily: fontSerif,
-            fontSize: "clamp(1.4rem, 3vw, 1.9rem)",
-            fontWeight: 360,
+            fontSize: "clamp(1.5rem, 3vw, 1.9rem)",
+            fontWeight: 500,
             lineHeight: 1.15,
             color: "var(--text-primary)",
           }}
@@ -624,8 +644,8 @@ export function SecondHomeLanding() {
           style={{
             margin: 0,
             fontFamily: fontSerif,
-            fontSize: "clamp(1.4rem, 3vw, 1.9rem)",
-            fontWeight: 360,
+            fontSize: "clamp(1.5rem, 3vw, 1.9rem)",
+            fontWeight: 500,
             lineHeight: 1.15,
             color: "var(--text-primary)",
           }}
@@ -650,7 +670,7 @@ export function SecondHomeLanding() {
           data-testid="footer-fit-check-cta"
           style={fitCheckCtaStyle}
         >
-          Start the fit-check
+          {t("secondHome.cta.fitCheck")}
         </Link>
       </section>
 
@@ -661,7 +681,7 @@ export function SecondHomeLanding() {
             margin: 0,
             fontFamily: fontSerif,
             fontSize: "clamp(1.75rem, 4vw, 2.6rem)",
-            fontWeight: 360,
+            fontWeight: 500,
             lineHeight: 1.1,
             color: "var(--text-primary)",
             maxWidth: "18ch",
@@ -699,7 +719,7 @@ export function SecondHomeLanding() {
             alignItems: "center",
             gap: 8,
             padding: "var(--space-3, 0.85rem) var(--space-5, 1.5rem)",
-            borderRadius: 8,
+            borderRadius: 12,
             // WCAG AA fix (measured 2026-08-24): `--text-on-accent` resolves
             // to #fff here, which on the WhatsApp green computes to ~1.98:1,
             // failing the 4.5:1 normal-text floor. Ratified cure
@@ -717,15 +737,6 @@ export function SecondHomeLanding() {
           <Phone size={18} aria-hidden />
           {t("secondHome.cta.button")}
         </WhatsAppLeadButton>
-        <p
-          style={{
-            margin: 0,
-            fontSize: "var(--text-sm, 0.82rem)",
-            color: "var(--color-text-muted)",
-          }}
-        >
-          {t("secondHome.cta.note")}
-        </p>
       </section>
 
       <ConsentBanner />

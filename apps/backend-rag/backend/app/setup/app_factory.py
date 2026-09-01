@@ -648,7 +648,6 @@ async def lifespan(app: FastAPI):
         ("backend.services.measurer.brevo_stats_client", "close_brevo_stats_client"),
         ("backend.services.measurer.ig_graph_sensor", "close_ig_graph_sensor_client"),
         ("backend.services.intel.intel_validators", "close_intel_validators_client"),
-        ("backend.services.council.cli_runners", "close_council_runner_client"),
         ("backend.self_healing.checks.http_api", "close_http_api_check_client"),
         ("backend.services.compliance.lkpm_ready_pack", "close_brevo_client"),
     )
@@ -720,6 +719,22 @@ def create_app() -> FastAPI:
         return schema
 
     app.openapi = _openapi_with_visa_decision_conditionals
+
+    # GARUDA VOA public router (`garuda_voa_public.py`) validates `result_id`
+    # by hand, never as a Pydantic path constraint, so FastAPI's automatic
+    # 422-on-any-parameterized-route default documents an outcome that
+    # cannot occur on two of its operations. Chained AFTER the visa-decision
+    # wrapper above, not replacing it — see that function's own call to
+    # `default_openapi()` for why chaining (not reassigning `app.openapi`
+    # directly) is required to keep both fixes live.
+    from backend.app.routers.garuda_voa_public import strip_unreachable_validation_errors
+
+    default_openapi_with_visa_conditionals = app.openapi
+
+    def _openapi_with_garuda_voa_fix() -> dict[str, Any]:
+        return strip_unreachable_validation_errors(default_openapi_with_visa_conditionals())
+
+    app.openapi = _openapi_with_garuda_voa_fix
 
     from backend.app.routers.root_endpoints import router as root_router
 

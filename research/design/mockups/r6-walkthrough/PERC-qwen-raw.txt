@@ -1,0 +1,4 @@
+1. **P1** — Trust **4.5/5**; scam-signal risk **2/5** — named specialist adds human accountability, but photo/name can feel risky if unverifiable.  
+2. **P2** — Trust **4.0/5**; scam-signal risk **1/5** — cleaner and safer, but less personal accountability for an anxious applicant.  
+3. **Forced choice** — **P1**, because a first-time applicant with a past overstay is likely reassured by a named human taking responsibility.  
+4. **Dark patterns** — none overt; only risk is fake/stock “agent” authority or an unclear WhatsApp handoff.

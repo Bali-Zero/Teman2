@@ -149,9 +149,21 @@ query($owner:String!, $repo:String!, $cursor:String) {
 
 
 def _run(cmd: list[str], timeout: int = 30) -> tuple[int, str, str]:
-    """Run a command; never raises. Returns (rc, stdout, stderr)."""
+    """Run a command; never raises. Returns (rc, stdout, stderr).
+
+    `errors="replace"` is what makes "never raises" TRUE rather than merely
+    intended. With the default strict decoding, `text=True` raises
+    UnicodeDecodeError — a ValueError, caught by neither arm of the except
+    below — the moment git prints a path whose bytes are not valid UTF-8, which
+    `git diff -z --name-only` will happily do. A cross-family refuter found this
+    by reading the contract rather than the code; the docstring had been lying
+    since it was written, and the fail-quiet argument for every caller rests on
+    it being true.
+    """
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, errors="replace", timeout=timeout
+        )
         return proc.returncode, proc.stdout, proc.stderr
     except (OSError, subprocess.TimeoutExpired) as exc:
         return 127, "", f"{type(exc).__name__}: {exc}"
@@ -429,6 +441,76 @@ def do_update_branch(
     return "ok", f"update-branch OK PR #{number}: {out.strip() or 'requested'}"
 
 
+#: How many changed paths `check-attr` is asked about PER CALL. This is a batch
+#: size, NOT a limit: every path is examined, in successive calls. The first cut
+#: of this function truncated at 200 and examined nothing beyond, so a large PR
+#: whose union path sorted late was reported as a race — "0 found" and "not
+#: looked at" producing the same answer, which is the failure this whole probe
+#: exists to stop making.
+_ATTR_BATCH = 200
+
+#: `check-attr` values that mean "git merges this file the ordinary way", i.e. the
+#: same way GitHub's merge machinery does. Anything ELSE is a declared driver, and
+#: GitHub honours no merge driver at all — so the two disagree by construction.
+#: Keyed on the complement rather than on the literal "union" because `merge=ours`
+#: diverges identically and would have silently regressed to the race wording
+#: (superscar #3's under-match twin, W82: a guard watching one literal string).
+#: `unset` (`-merge`) is excluded deliberately: it makes git ALWAYS conflict, so a
+#: file carrying it cannot reach this code path, which only runs when git said clean.
+_ORDINARY_MERGE_VALUES = frozenset({"unspecified", "unset", "set", "text"})
+
+
+def _driver_merged_changed_paths(
+    *, repo_root: Path, base_ref: str, pr_ref: str, timeout: int = 25
+) -> list[tuple[str, str]]:
+    """`(path, driver)` for each changed path `.gitattributes` gives a merge driver.
+
+    Read-only, and deliberately fail-quiet: every failure returns `[]`, which
+    makes the caller fall back to its pre-existing "race" wording. An empty
+    list therefore means "no driver path FOUND", never "no driver path EXISTS" —
+    so this can only ever add a diagnosis, never suppress one.
+
+    Both git calls use `-z`. That is not a style choice: `core.quotePath` defaults
+    to true, so `git diff --name-only` emits a NON-ASCII path as the C-quoted
+    literal `"caf\303\251.md"`, which `check-attr` then fails to match, returning
+    `unspecified` for a file that is in fact union-merged. Measured against the
+    first cut of this function in a real repo: it returned [] where the truth was
+    ['café.md']. `-z` also removes the `<path>: merge: <value>` parse entirely,
+    and with it the class of bug where a path containing ": " is truncated.
+    """
+    rc, out, _err = _run(
+        ["git", "-C", str(repo_root), "diff", "-z", "--name-only", f"{base_ref}...{pr_ref}"],
+        timeout=timeout,
+    )
+    if rc != 0:
+        return []
+    paths = [p for p in out.split("\0") if p]
+    if not paths:
+        return []
+    # Paths go after `--` so a leading-dash filename is not read as a flag.
+    # Capped because a huge PR would otherwise blow argv; the cap is reported by
+    # the caller rather than silently swallowed.
+    found: list[tuple[str, str]] = []
+    for start in range(0, len(paths), _ATTR_BATCH):
+        batch = paths[start:start + _ATTR_BATCH]
+        rc, out, _err = _run(
+            ["git", "-C", str(repo_root), "check-attr", "-z", "merge", "--", *batch],
+            timeout=timeout,
+        )
+        if rc != 0:
+            return []
+        # -z output is a flat NUL-separated stream of (path, attr, value) triples.
+        fields = out.split("\0")
+        for i in range(0, len(fields) - 2, 3):
+            path, attr, value = fields[i], fields[i + 1], fields[i + 2]
+            if attr != "merge" or not path:
+                continue
+            if value in _ORDINARY_MERGE_VALUES:
+                continue
+            found.append((path, value))
+    return found
+
+
 def get_conflicting_files(pr: dict, *, repo_root: Path = REPO_ROOT, timeout: int = 25) -> str:
     """Best-effort LOCAL merge simulation (git merge-tree --write-tree
     --name-only) to name the real conflicting files, without ever touching
@@ -464,8 +546,48 @@ def get_conflicting_files(pr: dict, *, repo_root: Path = REPO_ROOT, timeout: int
         )
         lines = [line for line in out.splitlines() if line.strip()]
         if rc == 0:
-            # No conflict after all (race: PR was updated between the
-            # GraphQL read and this probe) — say so plainly, don't lie.
+            # GitHub says DIRTY and the local merge says clean. There are two
+            # causes, and they want OPPOSITE responses, so naming the right one
+            # is the whole value of this branch.
+            #
+            #   1. A race: the PR moved between the GraphQL read and this probe.
+            #      Transient — the next tick reports it correctly.
+            #   2. A declared merge driver (`merge=union`, `merge=ours`, ...).
+            #      git honours it and exits 0; GitHub's merge machinery honours
+            #      NO driver and reports a real conflict. PERMANENT — re-probing
+            #      can never clear it.
+            #
+            # Measured 2026-08-31 on PRs #5331 and #5373: both DIRTY on GitHub
+            # with `merge-tree` rc=0, both touching the repo's one union path,
+            # `.claude/skills/modus/PENDING-ARMS.md`. Reported as a race, that is
+            # a permanent condition wearing a transient label.
+            #
+            # WHAT THIS MESSAGE MUST NEVER SAY, and briefly did (2026-08-31):
+            # "hand rebase that file". Hand-resolving a union file is precisely
+            # how the other lane's appended row gets deleted in silence — the
+            # loss the driver exists to prevent, which `check-ledger-no-silent-loss`
+            # then catches in CI (seen live on #5355). And `git rebase` is no
+            # safer in the other reading: rebase DOES apply the union driver, so
+            # replaying an append over a base that already carries it duplicates
+            # the row (measured on #4060), which a set-based gate cannot see.
+            # The cure is neither. It is to rebuild the append on a branch cut
+            # from fresh origin/main and prove the file's diff is +N/-0.
+            drivers = _driver_merged_changed_paths(
+                repo_root=repo_root, base_ref=base_ref, pr_ref=pr_ref, timeout=timeout
+            )
+            if drivers:
+                shown = ", ".join(
+                    f"{path} (merge={driver})" for path, driver in drivers[:5]
+                ) + (" (+more)" if len(drivers) > 5 else "")
+                return (
+                    f"none locally, but this is NOT a race: {shown} — git honours that "
+                    "driver, GitHub's merge machinery honours none, so the two disagree "
+                    "permanently and re-probing will never clear it. DO NOT hand-resolve "
+                    "the file and DO NOT rebase onto it: the first silently deletes the "
+                    "other lane's appended row, the second replays the append and "
+                    "duplicates it. Rebuild your addition on a branch cut from fresh "
+                    "origin/main, then verify `git diff origin/main -- <file>` is +N/-0."
+                )
             return "none (merge-tree found no conflict at probe time)"
         # First line is the (conflicted) tree OID; the rest, with
         # --name-only, are the conflicting paths.
@@ -499,10 +621,21 @@ def send_dirty_signal(
     sha = pr.get("head_sha") or "unknown"
     short_sha = sha[:12] if sha and sha != "unknown" else "unknown"
 
+    # S3 (2026-08-27): a state key, not the SHA/fingerprint the LOCAL
+    # dirty_seen dedup (below, in main()) already uses. This is a SEPARATE,
+    # complementary dedup at the mailbox layer: dirty_seen only guards
+    # sends from THIS machine's own state file, so if queue_unstick ever
+    # runs as a cron on more than one machine (or the state file is lost),
+    # each sender's local fingerprint check can't see the others' sends —
+    # the mailbox-side `key: queue_unstick:<PR>` still collapses them to
+    # the newest, fleet-wide, regardless of which host sent it.
+    mailbox_key = f"queue_unstick:{number}"
+
     if dry_run:
         return True, (
             f"[dry-run] would signal DIRTY PR #{number} at {short_sha} "
-            f"(conflicting files not computed in dry-run) via fleet_mail.sh {FLEET_MAIL_HOST} broadcast"
+            f"(conflicting files not computed in dry-run) via fleet_mail.sh {FLEET_MAIL_HOST} "
+            f"broadcast --key {mailbox_key}"
         )
 
     if files_desc is None:
@@ -514,7 +647,9 @@ def send_dirty_signal(
     fleet_mail = repo_root / "scripts" / "fleet_mail.sh"
     if not fleet_mail.is_file():
         return False, f"signal FAILED PR #{number}: fleet_mail.sh not found at {fleet_mail}"
-    rc, out, err = _run(["bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast", msg], timeout=30)
+    rc, out, err = _run(
+        ["bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast", "--key", mailbox_key, msg], timeout=30
+    )
     if rc != 0:
         return False, f"signal FAILED PR #{number} rc={rc}: {err.strip()[:300]}"
     return True, f"signal OK PR #{number}: {out.strip() or 'sent'}"

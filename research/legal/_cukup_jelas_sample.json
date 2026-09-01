@@ -1,0 +1,321 @@
+{
+  "total_points": 84283,
+  "damaged_fragment_count": 2019,
+  "damaged_document_count": 34,
+  "by_doc_top10": [
+    [
+      "UU_6_2023",
+      726
+    ],
+    [
+      "UU_17_2008",
+      337
+    ],
+    [
+      "PP_1_2011",
+      137
+    ],
+    [
+      "UU_43_2009",
+      84
+    ],
+    [
+      "UU_14_2025",
+      83
+    ],
+    [
+      "UU_16_2025",
+      64
+    ],
+    [
+      "UU_66_2024",
+      61
+    ],
+    [
+      "UU_11_2020",
+      53
+    ],
+    [
+      "UU_28_2007",
+      52
+    ],
+    [
+      "Perda_7_2015",
+      47
+    ]
+  ],
+  "sample_size": 45,
+  "sample_method": "stratified round-robin across distinct documents, seed=20260825, NOT the first N found",
+  "sample": [
+    {
+      "id": "d9d62b18-c414-5404-b1fe-70ecc357ac1f",
+      "document_id": "UU_9_2005",
+      "section": null,
+      "text": "Ayat (1) \n Cukup jelas \n Ayat (2) \n Cukup jelas \n Ayat (3) \n Cukup jelas \nAngka 8"
+    },
+    {
+      "id": "015f0847-c752-5759-aa74-e34caca236ab",
+      "document_id": "UU_4_1945",
+      "section": null,
+      "text": "[CONTEXT: UU - NO 4 - TAHUN 1945 - TENTANG Perdagangan Melalui Sistem Elektronik) yang telah ditandatangani Pemerintah Republik Indonesia dan Pemerintah Negara-negara Anggota Perhimpunan Bangsa-Bangsa Asia Tenggara pada tanggal 22 Januari 2019]\n\nSalah satu upaya \nuntuk mewujudkan integrasi ekonomi digital di kawasan Asia Tenggara adalah \ndengan menyusun ASEAN Agreement on Electronic Commerce (Persetujuan \nASEAN tentang Perdagangan Melalui Sistem Elektronik) \n\nPRESIDEN \nREPUBLIK INDONESIA TAMBAHAN LEMBARAN NEGARA REPUBLIK INDONESIA NOMOR 6728 \n- Pasal2 \nCukup jelas.."
+    },
+    {
+      "id": "a55288fd-350b-5807-aae3-6374c47578f7",
+      "document_id": "UU_11_2020",
+      "section": null,
+      "text": "Ayat (1)\nCukup jelas. \nAyat (2)\nCukup jelas. \nAyat (3)\nCukup jelas. \nAyat (4)\nCukup jelas. \n\nBiro Hukum Sekretariat Jenderal \nKementerian Ketenagakerjaan Ayat (5)\nBagi perusahaan yang telah \nmemberlakukan istirahat panjang tidak \nboleh mengurangi dari ketentuan yang \nsudah ada.\nAyat (6)\nCukup jelas.\nAngka 24"
+    },
+    {
+      "id": "a83ac177-5c51-58cc-8d71-6a7587e3246c",
+      "document_id": "Keppres_29_1959",
+      "section": null,
+      "text": "ayat (2) Undang -undang Dasar Sementara Republik Indonesia\n\nPRESIDEN\nREPUBLIK INDONESIA\n\nUndang -undang Darurat mempunyai derajat Undang -undang, sedang pencabutan\nitu dapat di samakan dengan penolakan, maka tidak perlu lagi ketiga Undang -undang Darurat itu ditetapkan secara formil sebagai Undang -undang.\nSedari saat pencabutan itu, berlaku ketentuan -ketentuan baru tentang Daerah -daerah yang dibubarkan menurut Undang -undang pemben tukan ini.\n4.Begitu pula dalam Undang -undang ini diberikan penegasan, bahwa semua Daerah -daerah Swapraja tidak sejati, baik yang defacto masih, maupun yang tidak\nberjalan dihapuskan berdasarkan alasan kepentingan umum berhubung dengan\ntelah sedemikian la njutnya proses demokrati sering berjalan mengenai\npemerintahan daerah, sehingga adanya Kepala -kepala Daerah yang bersandarkan\nhak asal -usul dan keturunan dianggap telah tidak wajar lagi dalam susunan\npemerintahan daerah pada dewasa ini. Akibat -akibat dari penghapusan ini akan\nditampung dengan aturan -aturan yang akan dikeluarkan oleh Menteri Dalam Negeri, sekedar belum diatur dalam Undang -undang ini.\n5.Mengenai tempat kedudukan Pemerintah Daerah Tingkat II Minahasa di Tondano\ndan Daerah Tingkat II Gorontal o di Isimu, perlu ditegaskan, bahwa tempat\nkedudukan kedua Pemerintah Daerah itu masing -masing untuk sementara masih\ntetap di Menado dan Gorontalo, dengan ketentuan, bahwa pemindahan tempat\nkedudukan akan dilakukan secara berangsur -angsur dan berencana, a pabila\nkeadaan telah mengidzinkan.\nII. PASAL DEMI PASAL.\nTidak diberikan penjelasan, karena cukup jelas.\nDiketahui:\nMenteri Kehakiman,\nG. A. MAENGKOM.\nTAMBAHAN LEMBARAN NEGARA NOMOR 1822."
+    },
+    {
+      "id": "ce7510bc-9e3f-518b-a50a-a32666776ab5",
+      "document_id": "UU_1_2019",
+      "section": null,
+      "text": "[CONTEXT: UU - NO 4 - TAHUN 1945 - TENTANG Perdagangan Melalui Sistem Elektronik) yang telah ditandatangani Pemerintah Republik Indonesia dan Pemerintah Negara-negara Anggota Perhimpunan Bangsa-Bangsa Asia Tenggara pada tanggal 22 Januari 2019]\n\nSalah satu upaya \nuntuk mewujudkan integrasi ekonomi digital di kawasan Asia Tenggara adalah \ndengan menyusun ASEAN Agreement on Electronic Commerce (Persetujuan \nASEAN tentang Perdagangan Melalui Sistem Elektronik) -2- PRESIDEN \nREPUBLIK INDONESIA TAMBAHAN LEMBARAN NEGARA REPUBLIK INDONESIA NOMOR 6728 - Pasal2 \nCukup jelas."
+    },
+    {
+      "id": "e4adcdf8-d45e-5e19-b0b5-eb6cfbb3f6cc",
+      "document_id": "UU_1_1945",
+      "section": null,
+      "text": "[CONTEXT: UU - NO 1 - TAHUN 1945 - TENTANG Perjanjian Internasional (Lembaran Negara Republik Indonesia Tahun 2000 Nomor 185, Tambahan Lembaran Negara Republik Indonesia Nomor 4012); 3. Undang-Undang Nomor 7 Tahun 2014 tentang Perdagangan (Lem - Pasal 2]\n\nCukup jelas."
+    },
+    {
+      "id": "fc8a919d-a405-5a0e-a959-0c3e9c148821",
+      "document_id": "UU_3_2009",
+      "section": null,
+      "text": "Cukup jelas. \n\nAngka 13"
+    },
+    {
+      "id": "ccd16daf-59ab-5f5d-bcbd-bf9004b076e3",
+      "document_id": "UU_2_2021",
+      "section": null,
+      "text": "[CONTEXT: UU - NO 1 - TAHUN 1945 - TENTANG Perjanjian Internasional (Lembaran Negara Republik Indonesia Tahun 2000 Nomor 185, Tambahan Lembaran Negara Republik Indonesia Nomor 4012); 3. Undang-Undang Nomor 7 Tahun 2014 tentang Perdagangan (Lem]\n\nPasal 1 \nCukup jelas."
+    },
+    {
+      "id": "837a7192-0eee-5dc0-9a8f-8be99cb27edd",
+      "document_id": "UU_14_2025",
+      "section": null,
+      "text": "Ayat (1)\nYang dimaksud dengan \"tata kelola dam\" adalah\npelayanan dam atau lndgu (denda atau sembelihan)\nbagi Jemaah Haji dan petugas haji dilaksanakan\ndengan mengikuti ketentuan yang ditetapkan oleh Pemerintah Kerajaan Arab Saudi.\nAyat (2)\nCukup jelas.\nSK No269225AAngka8.. .\n\nPRESIDEN\nREPUBLIK INDONESIA\n\nAngka 8"
+    },
+    {
+      "id": "7de18d34-1664-5dcc-b7c0-5bcf6993157e",
+      "document_id": "UU_66_2024",
+      "section": null,
+      "text": "Ayat (1)\nCukup jelas.\nAyat (2)\nCukup jelas.\nAyat (3)\nInsentif dapat berupa insentif fiskal dan/atau nonfiskal.\nAngka 3"
+    },
+    {
+      "id": "fcd7990a-e4fa-5c27-b4f2-84445e6a5633",
+      "document_id": "Perda_3_2013",
+      "section": null,
+      "text": "Pasal 1 \n Cukup Jelas."
+    },
+    {
+      "id": "678ea768-b5e5-50c3-b655-7b36ba0a6b8b",
+      "document_id": "UU_13_2006",
+      "section": null,
+      "text": "Cukup jelas."
+    },
+    {
+      "id": "dd099fab-7ff6-58eb-8c91-2473a54b9912",
+      "document_id": "Perda_7_2015",
+      "section": null,
+      "text": "Cukup Jelas"
+    },
+    {
+      "id": "5651baa3-b7bb-5149-9983-e291363bd40f",
+      "document_id": "UU_43_2009",
+      "section": null,
+      "text": "Cukup jelas."
+    },
+    {
+      "id": "7d3bb2c8-4a11-5747-a750-95ab74f7c9e7",
+      "document_id": "UU_2_1945",
+      "section": null,
+      "text": "[CONTEXT: UU - NO 2 - TAHUN 1945 - TENTANG PENETAPAN PERATURAN PEM ERINTAH PENGGANTI UN DAN G-UN DAN G NOMOR 1 TAHUN 2O2O TENTANG KEBIJAKAN KEUANGAN NEGARA DAN STAE}ILITAS SISTEM KEUANGAN UNTUK PENANGANAN PANDEMT CORONA rmUS DTSEASE 2019 (COVI - Pasal 2]\n\nCukup jelas TAMBAHAN LEMBARAN NEGARA REPUBLIK INDONESIA NOMOR 6516\nSK No 036094 A\n\nPRESIDEN\nREPUBLIK INDONESIA\nLAMPIRAN\nUNDANG-UNDANG REPUBLIK INDONESIA\nNOMOR 2 TAHUN 2O2O\nTENTANG\nPENETAPAN PERATURAN PEMERINTAH PENGGANTI\nUNDANG-UNDANG NOMOR 1 TAHUN 2O2O TENTANG\nKEBIJAKAN KEUANGAN NEGARA DAN STABILITAS\nSISTEM KEUANGAN UNTUK PENANGANAN PANDEMI\ncoRoNA yrRUS DISEASE 2019 (COVTD- 19)\nDAN/ATAU DALAM RANGKA MENGHADAPI\nANCAMAN YANG MEMBAHAYAKAN PEREKONOMIAN\nNASIONAL DAN/ATAU STABILITAS SISTEM\nKEUANGAN MENJADI UNDANG-UNDANG\nPERATURAN PEMERINTAH\nPENGGANTI UNDANG-UNDANG REPUBLIK INDONESIA\nNOMOR 1 TAHUN 2O2O\nTENTANG\nKEBIJAKAN KEUANGAN NEGARA DAN STABILITAS SISTEM KEUANGAN\nUNTUK PENANGANAN PANDEMI CORO/VA WRUS DISEASE 2019 (COVID-19)\nDAN/ATAU DALAM RANGKA MENGHADAPI ANCAMAN YANG\nMEMBAHAYAKAN PEREKONOMIAN NASIONAL DAN/ATAU STABILITAS\nSISTEM KEUANGAN\nDENGAN RAHMAT TUHAN YANG MAHA ESA\nPRESIDEN REPUBLIK INDONESIA,\nMenimbang a. bahwa penyebaran Corona Vints Disease 2019\n(COVID-19) yang dinyatakan oleh Organisasi Kesehatan Dunia (World Health Organization) sebagai pandemi pada\nsebagian besar negara-negara di seluruh dunia,\ntermasuk di Indonesia, menunjukkan peningkatan dari\nwaktu ke waktu dan telah menimbulkan korban jiwa,\ndan kerugian material yang semakin besar, sehingga\nberimplikasi pada aspek sosial, ekonomi, dan\nkesejahteraan masyarakat;\nb. bahwa implikasi pandemi Corona Virus Disease 2019\n(COVID-19) telah berdampak antara lain terhadap\nperlambatan pertumbuhan ekonomi nasional,\npenurunan penerimaan negara, dan peningkatan belanja\nnegara dan pembiayaan, sehingga diperlukan berbagai\nupaya Pemerintah untuk melakukan penyelamatan\nkesehatan dan perekonomian nasional, dengan fokus\npada belanja untuk kesehatan, jaring pengaman sosial\n(social safety net), serta pemulihan perekonomian\ntermasuk untuk dunia usaha dan masyarakat yang\nterdampak;\nc.bahwa...\nSK No 036095 A\n\nc PRESIDEN\nREPUBLIK INDONESIA\n\nbahwa implikasi pandemi Corona Virus Disease 2Ol9\n(COVID-19) telah berdampak pula terhadap\nmemburuknya sistem keuangan yang ditunjukkan\ndengan penurunan berbagai aktivitas ekonomi domestik\nsehingga perlu dimitigasi bersama oleh Pemerintah dan Komite Stabilitas Sistem Keuangan (KSSK) untuk\nmelakukan tindakan antisipasi (forward looking) dalam\nrangka menjaga stabilitas sektor keuangan;\nd. bahwa berdasarkan pertimbangan sebagaimana\ndimaksud dalam huruf a, huruf b, dan huruf c,\nPemerintah dan lembaga terkait perlu segera mengambil\nkebijakan dan langkah-langkah luar biasa dalam rangka\npenyelamatan perekonomian nasional dan stabilitas\nsistem keuangan melalui berbagai kebijakan relaksasi\nyang berkaitan dengan pelaksanaan Anggaran Pendapatan dan Belanja Negara (APBN) khususnya\ndengan melakukan peningkatan belanja untuk\nkesehatan, pengeluaran untuk jaring pengaman sosial\n(social safety net), dan pemulihan perekonomian, serta\nmemperkuat kewenangan berbagai lembaga dalam sektor\nkeuangan;\nbahwa kondisi sebagaimana dimaksud dalam huruf a,\nhuruf b, huruf c, dan huruf d, telah memenuhi\nparameter sebagai kegentingan memaksa yang\nmemberikan kewenangan kepada Presiden untuk\nmenetapkan Peraturan Pemerintah Pengganti Undang-\nUndang sebagaimana diatur dalam Pasal 22 ayat (1)\nUndang-Undang Dasar Negara Republik Indonesia Tahun\nt945;\nf. bahwa\ne SK No 036096 A\n\nMengingat Menetapkan PRESIDEN\nREPUBLIK INDONESIA\n\nf. bahwa berdasarkan pertimbangan sebagaimana\ndimaksud dalam huruf a, huruf b, huruf c, huruf d, dan\nhuruf e, serta guna memberikan landasan hukum yang\nkuat bagi Pemerintah dan lembaga terkait untuk\nmengambil kebijakan dan langkah-langkah tersebut\ndalam waktu yang sangat segera, perlu menetapkan Peraturan Pemerintah Pengganti Undang-Undang\ntentang Kebijakan Keuangan Negara dan Stabilitas Sistem Keuangan untuk Penanganan Pandemi Corona Virus Disease 2019 (COVID- 19) danlatau Dalam Rangka Menghadapi Ancaman yang Membahayakan Perekonomian Nasional dan/atau Stabilitas Sistem Keuangan;"
+    },
+    {
+      "id": "a19531e1-db36-5ec9-9b40-77b7e42bba4e",
+      "document_id": "UU_63_2024",
+      "section": null,
+      "text": "[CONTEXT: UU - NO 63 - TAHUN 2024 - TENTANG PERUBAHAN KETIGA ATAS UNDANG-UNDANG NOMOR 6 TAHUN 2011 TENTANG KEIMIGRASIAN - Pasal 64]\n\nCukup jelas.\nAngka 5\nPasal72\nAyat (1)\nPermintaan keterangan mengenai data dapat dilakukan,\nbaik secara manual maupun elektronik.\nAyat (2)\nCukup jelas.\nAyat (3)\nCukup jelas.\nAngka 6"
+    },
+    {
+      "id": "8e4d7472-35e3-5449-8fae-e54980976ade",
+      "document_id": "UU_6_2023",
+      "section": null,
+      "text": "[CONTEXT: UU - NO 6 - TAHUN 2023 - TENTANG PENETAPAN PERATURAN PEMERINTAH PENGGANTI UNDANG-UNDANG NOMOR 2 TAHUN 2022 TENTANG CIPTA KERJA MENJADI UNDANG-UNDANG - Pasal 12]\n\nCukup jelas.\nAngka 4"
+    },
+    {
+      "id": "5344e5bb-7992-51b8-8077-91ae9c92bbad",
+      "document_id": "UU_28_2007",
+      "section": null,
+      "text": "[CONTEXT: UU - NO 28 - TAHUN 2007 - TENTANG PERUBAHAN KETIGA ATAS UNDANG-UNDANG NOMOR 6 TAHUN 1983 TENTANG KETENTUAN UMUM DAN TATA CARA PERPAJAKAN I. UMUM 1. Undang-Undang tentang Ketentuan Umum dan Tata Cara Perpajakan dilandasi falsafah Panca]\n\nPasal Ayat (1)\n Cukup jelas.\n Ayat (2)\nSurat Tagihan Pajak menurut ayat ini disamakan kekuatan\nhukumnya dengan surat ketetapan pajak sehingga dalam\nhal penagihannya dapat juga dilakukan dengan Surat Paksa.\n Ayat (3)\nAyat ini mengatur pengenaan sanksi administrasi berupa\nbunga atas Surat Tagihan Pajak yang diterbitkan karena:\na. Pajak Penghasilan dalam tahun berjalan tidak atau\nkurang dibayar; atau\nb. penelitian Surat Pemberitahuan yang menghasilkan\npajak kurang dibayar karena terdapat salah tulis\ndan/atau salah hitung.\nUntuk jelasnya diberikan contoh cara penghitungan\nsebagai berikut:\n1. Pajak Penghasilan dalam tahun berjalan tidak atau\nkurang dibayar.\nPajak Penghasilan Pasal 25 tahun 2008 setiap bulan\nsebesar Rp100.000.000,00 jatuh tempo misalnya tiap\ntanggal 15. Pajak Penghasilan Pasal 25 bulan Juni 2008\ndibayar tepat waktu sebesar Rp40.000.000,00.\n Atas kekurangan Pajak Penghasilan Pasal 25 tersebut\nditerbitkan Surat Tagihan Pajak pada tanggal 18\nSeptember 2008 dengan penghitungan sebagai berikut:\n- Kekurangan . . .\n\n- Kekurangan bayar Pajak Penghasilan"
+    },
+    {
+      "id": "da964bc5-9757-584c-95b7-a006744283e2",
+      "document_id": "UU_17_2008",
+      "section": null,
+      "text": "Cukup jelas."
+    },
+    {
+      "id": "e6d8eb34-9858-5420-83cf-39b0c593b6f7",
+      "document_id": "TASSE_14_2012",
+      "section": null,
+      "text": "Cukup jelas."
+    },
+    {
+      "id": "027d5a10-aba1-43fc-92b3-db01acb0f89e",
+      "document_id": "PP_28_2025",
+      "section": null,
+      "text": "Pasal 282 Cukup jelas Pasal SK No 194488 A a PRESIDEN REPUBLIK INOONESIA -44"
+    },
+    {
+      "id": "bd91363b-6ce8-5ed7-9f1d-13505ee35946",
+      "document_id": "UU_2_1986",
+      "section": null,
+      "text": "Cukup jelas"
+    },
+    {
+      "id": "58ad1b9a-3a49-5106-aaa6-09d8971dcaed",
+      "document_id": "UU_16_2025",
+      "section": null,
+      "text": "Cukup jelas.\nAngka 50"
+    },
+    {
+      "id": "a4c42488-e3fc-594f-bbe3-779e57b2897f",
+      "document_id": "UU_25_2007",
+      "section": null,
+      "text": "Ayat (1)\n Cukup jelas.\n Ayat (2)\n Cukup jelas.\n Ayat (3)\nYang dimaksud dengan bertanggung jawab langsung kepada Presiden adalah bahwa Badan Koordinasi Penanaman Modal\ndalam melaksanakan tugas, menjalankan fungsi, dan\nmenyampaikan tanggung jawabnya langsung kepada Presiden."
+    },
+    {
+      "id": "753c1e93-c804-55a7-b3b0-3e730c95489e",
+      "document_id": "UU_35_2004",
+      "section": null,
+      "text": "Cukup jelas \n\nTAMBAHAN LEMBARAN NEGARA RE PUBLIK INDONESIA NOMOR 4441"
+    },
+    {
+      "id": "65421344-01e8-5015-a3a8-c3e58156ea35",
+      "document_id": "UU_40_2008",
+      "section": null,
+      "text": "Cukup jelas."
+    },
+    {
+      "id": "ec097fb9-2d90-514b-9e20-ea780c669438",
+      "document_id": "Perda_20_2012",
+      "section": null,
+      "text": "Ayat (1) \nCukup jelas. \nAyat (2) \nLampiran peta cakupan wilayah yang digambarkan dengan skala \n1:250.000. \nYang dimaksud dengan persetujuan pihak -pihak terkait antara lain \ndiberikan oleh bupati/walikota yang menjadi cakupan daerah otonom \nbaru, bupati/walikota da erah yang berbatasan langsung dengan \ndaerah otonom baru, gubernur provinsi induk pada peta yang \nditerbitkan Badan Informasi Geospasial (BIG). \nAyat ( 3) \nCukup jelas."
+    },
+    {
+      "id": "1e8cd500-0fdd-54c2-b4c4-ba8b6cd3c2b0",
+      "document_id": "UU_3_2022",
+      "section": null,
+      "text": "0Dengan mengesampingkan peraturan perundang-undangan yang\nmengatur tentang pemerintahan daerah, di Ibu Kota Nusantara\ndibentuk Otorita Ibu Kota Nusantara yang diberi kewenangan untuk\nmengatur dan melaksanakan fungsi pemerintahan daerah dengan\nketentuan yang diatur dengan Undang-Undang ini, termasuk tetapitidak terbatas pada pelaksanaan persiapan, pembangunan,\npemindahan, dan pengelolaan Ibu Kota Negara.\nAyat (1)\nMekanisme pemilihan Kepala Otorita Ibu Kota Nusantara dan Wakil Kepala Otorita Ibu Kota Nusantara dilakukan berbeda\ndengan mekanisme pemilihan kepala daerah lainnya.\nAyat(2) ...\nSK No 116298 A\n\nPRESIDEN\nREPUBLIK INDONESIA\n\nAyat (2)\nCukup jelas.\nAyat (3)\nKepala Otorita Ibu Kota Nusantara dan Wakil Kepala Otorita Ibu Kota Nusantara yang pertama kali diangkat oleh Presiden setelah\ndiundangkannya Undang-Undang ini ditunjuk dan diangkat oleh Presiden tanpa melalui mekanisme konsultasi dengan DPR\nsebagaimana dimaksud dalam ketentuan Pasal 5 ayat (4)."
+    },
+    {
+      "id": "baacf9f3-e572-5e2e-8899-24ca299f21cf",
+      "document_id": "UU_39_2008",
+      "section": null,
+      "text": "Cukup jelas."
+    },
+    {
+      "id": "e31ae0e7-44bd-58e6-a53d-dc9ab1aea65c",
+      "document_id": "TASSE_7_1983",
+      "section": null,
+      "text": "[CONTEXT: TASSE - NO 7 - TAHUN 1983 - TENTANG PAJAK PENGHASILAN SEBAGAIMANA TELAH DIUBAH TERAKHIR DENGAN UNDANG ‐UNDANG REPUBLIK INDONESIA NOMOR 36 TAHUN 2008 UU PPh Direktorat Jenderal Pajak Departemen Keuangan Republik Indonesia Jakarta, 2008 \"]\n\nHuruf a \nBagi Wajib Pajak baru yang mulai menjalankan  usaha atau melakukan  kegiatan dalam \ntahun pajak berjalan perlu diatur perhitungan  besarnya angsuran,  karena Wajib Pajak \nbelum pernah memasukkan  Surat Pemberitahuan  Tahunan Pajak Penghasilan,  penentuan  \nbesarnya angsuran pajak didasarkan  atas kenyataan  usaha atau kegiatan Wajib Pajak. \n\nHuruf b \nBagi Wajib Pajak yang bergerak dalam bidang perbankan,  badan usaha milik negara dan \nbadan usaha milik daerah, serta Wajib Pajak masuk bursa dan Wajib Pajak lainnya yang \nberdasarkan  ketentuan  diharuskan  membuat  laporan keuangan  berkala perlu diatur \nperhitungan  besarnya angsuran  tersendiri  karena terdapat kewajiban  menyampaikan  \nlaporan yang berkaitan  dengan pengelolaan  keuangan  dalam suatu periode tertentu \nkepada instansi Pemerintah  yang dapat dipakai sebagai dasar penghitungan  untuk \nmenentukan  besarnya angsuran pajak dalam tahun berjalan. \n\nHuruf c \nBagi Wajib Pajak orang pribadi pengusaha  tertentu, yaitu Wajib Pajak orang pribadi yang \nmempunyai  1 (satu) atau lebih tempat usaha, besarnya angsuran  pajak paling tinggi \nsebesar 0,75% (nol koma tujuh lima persen) dari peredaran  bruto. \n\nAyat (8) \nCukup jelas. \n\n\"UU PPh\" \n ki_moel - 71\n\nAyat (8a) \nCukup jelas. \n Ayat (9) \nCukup jelas. \n26"
+    },
+    {
+      "id": "b74d920b-edeb-53dd-a9d5-51d328fad62d",
+      "document_id": "PP_1_2011",
+      "section": null,
+      "text": "Cukup jelas."
+    },
+    {
+      "id": "d9a79863-3e33-5c13-ac2e-8cdf8aa0aa84",
+      "document_id": "UU_12_2017",
+      "section": null,
+      "text": "Cukup jelas.\nTAMBAHAN LEMBARAN NEGARA REPUBLIK INDONESIA 56149P 6135"
+    },
+    {
+      "id": "7eeb7e0f-4436-5c0d-933c-1659ed8bec6e",
+      "document_id": "UU_12_2008",
+      "section": null,
+      "text": "Cukup jelas. \n\n Angka 11"
+    },
+    {
+      "id": "24d6da79-a4c7-5d12-ba9c-416d2ea2b1d9",
+      "document_id": "UU_23_2002",
+      "section": null,
+      "text": "Cukup jelas."
+    },
+    {
+      "id": "2ac8d99b-3c4a-5664-b7a6-dd8c544af908",
+      "document_id": "UU_9_2005",
+      "section": null,
+      "text": "Ayat (1) \n Cukup jelas \n Ayat (2) \n Dana bagi hasil semula ditetapkan sebesar \nRp47.020.193.810.000, 00 (empat puluh tujuh triliun dua puluh \nmiliar seratus sembilan puluh tiga juta delapan ratus sepuluh ribu rupiah). \n Ayat (3) \n Dana alokasi umum semula ditetapkan sebesar \nRp88.765.600.000.000,00 (delapan puluh delapan triliun tujuh \nratus enam puluh lima miliar enam ratus juta rupiah). \n Ayat (4) \n Dana alokasi khusus semula ditetapkan sebesar \nRp4.774.440.000.000,0 0 (empat triliun tujuh ratus tujuh puluh \nempat miliar empat ratus empat puluh juta rupiah). \n Ayat (5) \n Peraturan pelaksanaan dari Undang-Undang Nomor 25 Tahun \n1999 tentang Perimbangan Keuangan antara Pemerintah Pusat \ndan Pemerintahan Daerah masih tetap berlaku sepanjang belum \ndiganti dengan peraturan pelaksanaan yang baru berdasarkan undang-undang dimaksud dalam ayat ini. \nAngka 11"
+    },
+    {
+      "id": "4d3c2d6f-90ed-5731-834c-c298d30ef448",
+      "document_id": "UU_4_1945",
+      "section": null,
+      "text": "[CONTEXT: UU - NO 4 - TAHUN 1945 - TENTANG Perdagangan Melalui Sistem Elektronik) yang telah ditandatangani Pemerintah Republik Indonesia dan Pemerintah Negara-negara Anggota Perhimpunan Bangsa-Bangsa Asia Tenggara pada tanggal 22 Januari 2019 - Pasal 1]\n\nCukup jelas. \nII. PASAL DEMI PASAL \nASEAN Agreement on Electronic Commerce (Persetujuan ASEAN tentang \nPerdagangan Melalui Sistem Elektronik) terdiri dari 19 ( sembilan belas) Pasal \nyang mengatur antara lain mekanisme dan lingkup kerja sama, fasilitasi PMSE \nlintas batas, keamanan siber, pembayaran elektronik, logistik, transparansi, \npenyelesaian sengketa, pemberlakuan Persetujuan yang bertujuan untuk \nmemfasilitasi transaksi perdagangan antarwilayah ASEAN melalui PMSE, \nmendorong penciptaan lingkungan yang kondusif dalam penggunaan PMSE, \ndan meningkatkan kerja sama antara Negara Anggota ASEAN untuk \nmengembangkan serta mendorong pemanfaatan PMSE untuk menciptakan \npertumbuhan ekonomi yang inklusif dan mengurangi kesenjangan di ASEAN. \n\nPRESIDEN \nREPUBLIK INDONESIA"
+    },
+    {
+      "id": "b3c65444-eb33-566c-bdf4-82a5f6cd80ec",
+      "document_id": "UU_11_2020",
+      "section": null,
+      "text": "Cukup jelas.\nAngka 45"
+    },
+    {
+      "id": "b60942ae-fb1d-5a7e-83cd-b15e1b6ba6e4",
+      "document_id": "UU_1_2019",
+      "section": null,
+      "text": "[CONTEXT: UU - NO 4 - TAHUN 1945 - TENTANG Perdagangan Melalui Sistem Elektronik) yang telah ditandatangani Pemerintah Republik Indonesia dan Pemerintah Negara-negara Anggota Perhimpunan Bangsa-Bangsa Asia Tenggara pada tanggal 22 Januari 2019]\n\nPasal 1 \nCukup jelas."
+    },
+    {
+      "id": "f13bb8ab-75dd-5641-bc53-b3762f0ded38",
+      "document_id": "UU_3_2009",
+      "section": null,
+      "text": "Cukup jelas. \n\nAngka 10 \nCukup jelas. \n\nAngka 11"
+    },
+    {
+      "id": "6eecbea2-07ad-5055-90f9-71e9caddeaca",
+      "document_id": "UU_2_2021",
+      "section": null,
+      "text": "[CONTEXT: UU - NO 1 - TAHUN 1945 - TENTANG Perjanjian Internasional (Lembaran Negara Republik Indonesia Tahun 2000 Nomor 185, Tambahan Lembaran Negara Republik Indonesia Nomor 4012); 3. Undang-Undang Nomor 7 Tahun 2014 tentang Perdagangan (Lem]\n\n-2- PRES I DEN \n- REPUBLIK INDONESIA SK No 083299 A TAMBAHAN LEMBARAN NEGARA REPUBLIK INDONESIA NOMOR 6684 Pasal 2 \nCukup jelas."
+    },
+    {
+      "id": "53e9acb4-a45d-5640-989b-27d48c64341e",
+      "document_id": "UU_14_2025",
+      "section": null,
+      "text": "Cukup jelas."
+    },
+    {
+      "id": "f7b609a5-fb1c-5c5f-8612-1bc7dda295f4",
+      "document_id": "UU_66_2024",
+      "section": null,
+      "text": "Cukup jelas.\nAngka 20"
+    },
+    {
+      "id": "4720faf5-500b-5509-964f-8a80d47bdbb4",
+      "document_id": "Perda_3_2013",
+      "section": null,
+      "text": "huruf a \n Cukup Jelas. \n\n huruf b \n Cukup Jelas. \n\n huruf c \n Cukup Jelas. \n\n Huruf d \n- jenis zat yang terkandung dalam air limbah adalah \nBOD (Biologi Oxygent Demand ), COD (Chemistri Design \nDemand), TSS (Total Suspende Solid) , TDS, pH \n(Potensial Hidrogen ), Sulfida , temperatur, warna, DO \n(Dissolved Oxygen ), turbidity, minyak -lemak, salinitas \n(Garam) , DHL (Daya Hantar Listrik) , logam total, Cd \n(Cadinium ), Zn, Ni (Nikel) , Fe (Fenium ) Besi , Cu(Cupim ) \nTembaga , Amonia , Fosfat , Klor bebas, Nitrit dan CN \n(Cyanida ); \n- jenis zat yang terkandung dalam pengukuran udara \nambie n adalah CO, SO2 (sulfur dioksida ), NOx, OxO \n(Oksidan ), TPS (total partikulat ), Pb (timah hitam ), HC \n(hidrokarbon ) dan kebisingan ; dan/atau \n- jenis zat yang terkandung dalam udara emisi untuk \ndapat dilakukan pengukuran adalah Amonia, Gas \nKlorin, Hidrogen Klo rida, Hidrogen Flourida, Nitrogen \nOksida, Opasitas, Sulfur Dioksida, Total Sulfur \nTereduksi, CO, CO2, O2, TS temperatur emisi () dan TA \n(temperatur udara ) serta parameter logam yaitu AS \n(arsen ), CD (kadmium ), timah Hitam (PB) dan Seng \n(Zn)."
+    },
+    {
+      "id": "f18d810d-682e-52b7-a177-d3e7dc25d750",
+      "document_id": "UU_13_2006",
+      "section": null,
+      "text": "Cukup jelas."
+    },
+    {
+      "id": "dddf2e1f-e15f-5fa4-8829-956471ceeacf",
+      "document_id": "Perda_7_2015",
+      "section": null,
+      "text": "Cukup Jelas."
+    }
+  ]
+}

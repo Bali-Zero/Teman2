@@ -1,0 +1,45 @@
+{
+  "synthetic": true,
+  "fixture_category": "bitemporal",
+  "adversarial_case_ref": "packet 06-naga-claim-ledger.md, Deliverable #2: 'Bitemporal fields and queries: \"what was true at date X?\" and \"what did Nuzantara believe at date Y?\"'",
+  "expected_behavior": "This fixture is a worked example distinguishing the two queries the deliverable names. 'What was true at date X' (a valid-time query) filters on time.valid_from <= X < time.valid_to (or valid_to IS NULL). 'What did Nuzantara believe at date Y' (a system-time query) filters on time.recorded_at <= Y, then picks the highest recorded_at among survivors. The two queries below give DIFFERENT answers for the same claim family and the same date, which is the point: a system that only implements one of the two axes cannot answer both questions correctly.",
+  "claim_family_id": "b2f1a000-0000-4000-8000-0000000000f3",
+  "revisions": [
+    {
+      "claim_id": "b2f1a000-0000-4000-8000-000000000020",
+      "time": { "valid_from": "2026-01-01T00:00:00Z", "valid_to": "2026-07-01T00:00:00Z", "recorded_at": "2025-12-15T00:00:00Z" },
+      "status": "supported",
+      "note": "SYNTHETIC — 'the KITAS renewal fee is IDR 2,000,000', valid Jan-Jul 2026 (a scheduled interim rate before a mid-year revision already announced in the same regulation)."
+    },
+    {
+      "claim_id": "b2f1a000-0000-4000-8000-000000000021",
+      "time": { "valid_from": "2026-07-01T00:00:00Z", "valid_to": null, "recorded_at": "2025-12-15T00:00:00Z" },
+      "status": "supported",
+      "supersedes_claim_ref": { "claim_id": "b2f1a000-0000-4000-8000-000000000020", "object_hash": "4444444444444444444444444444444444444444444444444444444444444444" },
+      "note": "SYNTHETIC — 'the KITAS renewal fee is IDR 2,500,000', valid from Jul 2026 onward. BOTH revisions were recorded_at the SAME instant (2025-12-15) because the source regulation announced both rates in one document at once."
+    }
+  ],
+  "queries": [
+    {
+      "query_type": "valid_time",
+      "question": "What was true on 2026-03-15?",
+      "as_of": "2026-03-15T00:00:00Z",
+      "expected_answer_claim_id": "b2f1a000-0000-4000-8000-000000000020",
+      "expected_value": "IDR 2,000,000"
+    },
+    {
+      "query_type": "valid_time",
+      "question": "What was true on 2026-08-15?",
+      "as_of": "2026-08-15T00:00:00Z",
+      "expected_answer_claim_id": "b2f1a000-0000-4000-8000-000000000021",
+      "expected_value": "IDR 2,500,000"
+    },
+    {
+      "query_type": "system_time",
+      "question": "What did Nuzantara believe about the Aug-2026 rate, as of 2025-11-01 (before either revision was recorded)?",
+      "as_of": "2025-11-01T00:00:00Z",
+      "expected_answer_claim_id": null,
+      "expected_value": "no belief — abstain, both revisions recorded_at 2025-12-15 which is after this query instant"
+    }
+  ]
+}
