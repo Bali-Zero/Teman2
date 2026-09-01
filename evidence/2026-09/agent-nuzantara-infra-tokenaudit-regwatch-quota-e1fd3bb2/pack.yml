@@ -1,0 +1,151 @@
+brief_ref: evidence/2026-09/agent-nuzantara-infra-tokenaudit-regwatch-quota-e1fd3bb2/brief.yml
+
+lanes:
+  - lane: regwatch-quota-gate-build
+    role: build
+    seat: >-
+      claude-fable-5 (this worktree session on Pro, branch
+      agent/nuzantara/infra/tokenaudit-regwatch-quota-gate; Fable selected
+      manually by Zero via /model for this session, not routed). Rewrote the
+      pilot block from its recorded contract into the canon wrapper. Single
+      build lane.
+  - lane: regwatch-quota-gate-review
+    role: review
+    seat: >-
+      tp1-qwen3.8-max (DashScope/TP1 gateway via scripts/tp1_call.py,
+      cross-family refuter, fresh context, fed the raw diff plus the gate
+      and wrapper contracts). Verbatim findings in receipts/dissent below.
+      Kimi K3 was 403 weekly-quota-dead and Codex timed out on the arsenal
+      probe at dispatch time (~/.organism/arsenal/last.json 2026-09-01T18:02Z).
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  ONE build lane, so the >= 2-build-lane non-Anthropic requirement does not
+  bind; the cross-family seat sits on REVIEW (qwen3.8-max), the seat the
+  roster counts toward Gear-3 quorum.
+
+diff:
+  files: 1
+  net_lines: 18
+  measured_at: >-
+    `git -C <worktree> diff --numstat $(git merge-base origin/main HEAD)..HEAD`
+    before this pack's own files were added: 19 insertions, 1 deletion, in
+    infra/launchagents/wrappers/regulatory-watcher-run.sh.
+
+pii_scan: clean
+
+receipts:
+  - claim: "Wrapper parses under its own interpreter"
+    cmd: "zsh -n infra/launchagents/wrappers/regulatory-watcher-run.sh"
+    result: "zsh -n OK (bash -n is NOT a valid probe here: the file uses zsh glob qualifiers (N.om) at lines 191/214, pre-existing)"
+    exit: 0
+    ts: "2026-09-01T20:33:20Z"
+    seat: session (Pro)
+  - claim: "Consumer suites green; one inherited red"
+    cmd: "apps/backend-rag/.venv/bin/python -m pytest -q scripts/tests/test_claude_cascade_shell.py scripts/tests/test_regulatory_watcher_schema_fix.py scripts/tests/test_regulatory_watcher_recover_delta.py scripts/tests/test_regulatory_watcher_gh_context.py scripts/tests/test_codex_seat_lib.py -p no:cacheprovider"
+    result: "69 passed, 1 failed (test_declared_home_fork_pair_registered)"
+    exit: 1
+    ts: "2026-09-01T20:33:05Z"
+    seat: session (Pro)
+  - claim: "The one red is pre-existing on the base commit, not introduced"
+    cmd: "cd .worktrees/infra-tokenaudit-intake-keepalive (HEAD == origin/main d35b178534 for this file set) && apps/backend-rag/.venv/bin/python -m pytest -q scripts/tests/test_regulatory_watcher_schema_fix.py::test_declared_home_fork_pair_registered -p no:cacheprovider"
+    result: "1 failed in 0.14s — same assertion ({pro,m5} vs registry {pro,m5,mini})"
+    exit: 1
+    ts: "2026-09-01T20:34:10Z"
+    seat: session (Pro)
+  - claim: "Real diffstat used for diff.files/net_lines — never hand-typed"
+    cmd: "git -C .worktrees/infra-tokenaudit-regwatch-quota-gate diff --numstat $(git merge-base origin/main HEAD)..HEAD"
+    result: "19\t1\tinfra/launchagents/wrappers/regulatory-watcher-run.sh"
+    exit: 0
+    ts: "2026-09-01T20:41:00Z"
+    seat: session (Pro)
+  - claim: "Pre-commit hooks incl. hot-zone lease-check green"
+    cmd: "git commit (pre-commit: lease-check on hot-zone path, secrets, off-limits, lint)"
+    result: "no blocking leases; All pre-commit checks passed; commit a7aa002505"
+    exit: 0
+    ts: "2026-09-01T20:33:51Z"
+    seat: session (Pro)
+
+  - claim: "Cross-family refuter (qwen3.8-max, fresh context) on the raw diff — verbatim verdict"
+    cmd: "python3 scripts/tp1_call.py --model qwen3.8-max --task-file review_task_2.txt --effort medium --max-tokens 3000 --no-stream"
+    result: |
+      NO_DEFECTS
+
+      **What I checked:**
+
+      1. **`if`→`elif` refactor preserves the original branch structure.** The old `if [ -x "$CASCADE_BIN" ]` becomes `elif [ -x "$CASCADE_BIN" ]` under the new gate test. The `else` arm (visible as context) is still reached only when the gate did *not* fire SKIP/DEGRADE **and** `CASCADE_BIN` is absent — identical to the pre-patch condition. The CASCADE_BIN invocation line and `EXIT=$?` are untouched context. No branch is lost or reordered.
+
+      2. **Fail-open contract is honoured.** `QUOTA_GATE_RC` is initialised to `0`. It is overwritten only when the gate is both enabled *and* executable. Any unexpected rc (1, 2, 127, 128+signal, etc.) fails the `-eq 3 / -eq 4` test and falls through to the `elif`, running CASCADE_BIN normally. Gate binary missing, kill-switch set, or gate crashing all result in rc 0 → GO path. No fail-closed path exists.
+
+      3. **Kill-switch semantics.** `[ "${REGWATCH_QUOTA_GATE:-1}" != "0" ]` defaults to enabled when unset, disables only on the literal string `0`. Correct.
+
+      4. **zsh compatibility.** `$?` capture, `[ … -eq … ]` numeric tests, `$( … )` command substitution, `>>`/`>` redirections, `&&`/`||` inside `$()` — all valid in zsh without `-e`. No bashisms that would misbehave.
+
+      5. **`$TMPOUT` write in the skip arm** uses `>` (truncate), matching the CASCADE_BIN invocation's `>"$TMPOUT"`. Downstream consumers see a short placeholder instead of cascade output, consistent with a tier-1 failure producing error text in the same file.
+
+      6. **`EXIT=75` and cascade continuation.** The wrapper deliberately omits `-e`; execution falls through to tier 2 regardless of EXIT's value. The comment's claim ("exactly as an ordinary tier-1 failure") holds under the sequential-cascade model described in the context. Without seeing tier-2 guards I cannot prove 75 is mishandled, and nothing in the visible diff contradicts the stated intent.
+
+      7. **Path / TOCTOU.** `$HOME/.tokenaudit/ingest/quota_gate.sh` follows the same pattern as the existing `CASCADE_BIN` (comment confirms "same shape"). The `[ -x … ]`-then-execute window is the same race that already existed for CASCADE_BIN; no new exposure.
+
+      8. **Log redirection.** Gate stdout+stderr → `>>"$LOG" 2>&1` keeps the gate's diagnostic output in the log without polluting `$TMPOUT`. Correct separation.
+
+      No wrong shell semantics, no broken exit-code contract, no fail-closed where fail-open was promised, no contradictory value.
+    exit: 0
+    ts: "2026-09-01T20:47:00Z"
+    seat: tp1-qwen3.8-max (DashScope/TP1)
+  - claim: "Acceptance probes 2 and 3 executed as written (entry conditions and skip arm read back from the file)"
+    cmd: "grep -n 'REGWATCH_QUOTA_GATE' infra/launchagents/wrappers/regulatory-watcher-run.sh; sed -n '/quota_gate rc=/,/^fi/p' infra/launchagents/wrappers/regulatory-watcher-run.sh"
+    result: "two entry conditions only (-x guard AND kill switch != 0); skip arm sets EXIT=75, writes TMPOUT, logs rc, then elif/else unchanged"
+    exit: 0
+    ts: "2026-09-01T20:33:20Z"
+    seat: session (Pro)
+  - claim: "Acceptance probe 4 executed as written"
+    cmd: "apps/backend-rag/.venv/bin/python -m pytest -q scripts/tests/test_claude_cascade_shell.py scripts/tests/test_regulatory_watcher_recover_delta.py scripts/tests/test_regulatory_watcher_gh_context.py scripts/tests/test_codex_seat_lib.py"
+    result: "all passed (subset of the 69-passed run above, excluding the inherited red)"
+    exit: 0
+    ts: "2026-09-01T20:33:05Z"
+    seat: session (Pro)
+
+residual_risks:
+  - >-
+    The live ~/scripts copy on Pro reads 0 occurrences of quota_gate until
+    pro-healer's next home-fork-drift tick after merge (<= 6h): merged is not
+    live; the PR's Bites: line names the post-tick observation.
+  - >-
+    A SKIP routes to agy, which hangs when called directly (D-016) — the
+    pre-existing path, declared, awaiting Zero's Q13 decision on the shared
+    cascade library.
+  - >-
+    The gate's SKIP/DEGRADE branches were exercised in the gate's own 21-test
+    suite and on the live quota file (GO on antozero 3 %), not through a real
+    launchd run of this wrapper — first real run after merge is the proof.
+
+dissent:
+  - seat: tp1-qwen3.8-max (DashScope/TP1), cross-family, fresh context
+    status: RETRACTED
+    objection: >-
+      Attacked eight surfaces (if->elif branch preservation, fail-open on every
+      non-{3,4} rc, kill-switch semantics, zsh compatibility, TMPOUT truncate
+      semantics, EXIT=75 cascade continuation, -x/execute TOCTOU vs the
+      pre-existing CASCADE_BIN pattern, log redirection) and found none —
+      NO_DEFECTS, verbatim in receipts. Reported as a retraction, not consent.
+  - seat: session (Pro), self-caught
+    status: PLAUSIBLE
+    objection: >-
+      A SKIP/DEGRADE verdict routes the run to tier 2 (agy), which on this
+      machine hangs past its own --print-timeout when called directly
+      (tokenaudit D-016, measured 2026-09-02): the gate can therefore turn
+      "one wasted Claude call" into "up to a hung job" on a high-quota day.
+      Same path the wrapper already takes on a real tier-1 quota failure, so
+      not new exposure — but the gate makes it MORE likely to be taken.
+      NOT CURED HERE: removing/bounding agy in the shared cascade is a
+      library change awaiting Zero (Q13).
+  - seat: session (Pro), self-caught
+    status: PLAUSIBLE
+    objection: >-
+      The gate's SKIP threshold reads the BEST seat's weekly percentage, while
+      claude-cascade.sh --claude-only walks the seats in its own fixed order:
+      a GO from the gate does not guarantee the first seat tried has margin,
+      only that some seat does. The gate prevents the all-seats-exhausted
+      case, not per-seat ordering waste. Declared limit of the design, not a
+      defect of this diff.

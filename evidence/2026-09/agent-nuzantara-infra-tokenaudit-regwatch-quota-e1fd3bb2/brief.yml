@@ -1,0 +1,85 @@
+task_id: tokenaudit-regwatch-quota-gate
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Promote tokenaudit action 53 (the quota_gate PILOT) into the repo canon of
+  infra/launchagents/wrappers/regulatory-watcher-run.sh: before the tier-1
+  Claude call, run ~/.tokenaudit/ingest/quota_gate.sh and, on exit 3 (SKIP,
+  best seat >= 85 % weekly) or 4 (DEGRADE, >= 75 %), skip the whole Claude
+  tier and let the cascade fall to tier 2 exactly as an ordinary tier-1
+  failure would. Exit 0, gate absent, or REGWATCH_QUOTA_GATE=0 is
+  byte-identical to the previous behaviour.
+
+  Grounding, measured: headless Claude jobs were dying at the weekly cap
+  (tokenaudit S3); 2026-09-02 seat 1 at 72 % weekly, ~27 %/day burn. The
+  gate itself: 21/21 tests, fail-open on any error, never selects the Team
+  seat (TOKENAUDIT_QUOTA_EXCLUDE_ACCOUNTS default zero@balizero.com — RULING
+  Zero 2026-08-23). The pilot on the LIVE ~/scripts copy was reverted by
+  pro-healer within 20 minutes because the wrapper is a declared HOME-fork
+  pair — tokenaudit D-017: the repo canon is the only side that can carry it.
+  No backup preserved the pilot text (all were pre-change), so the block is
+  rewritten from the contract recorded in tokenaudit CHANGELOG (Phase 7 item 1).
+
+  Gear 3 is the deterministic floor (hot-zone wrapper path), not a judgment.
+constraints:
+  - "The gate must never be able to STOP production: gate absent, unreadable,
+    erroring, or disabled by REGWATCH_QUOTA_GATE=0 must leave the wrapper
+    byte-identical in behaviour to before. Only exit codes 3 and 4 alter the
+    flow, and they alter it into the pre-existing tier-1-failure path."
+  - "The wrapper is #!/bin/zsh and deliberately runs without -e: the new
+    block must not introduce a construct that aborts the cascade."
+  - "No other wrapper is touched (proposed diffs for the rest stay in
+    ~/.tokenaudit/reports/07-quota-gate-rollout.md); the live ~/scripts copy
+    is NOT edited — the healer realigns it from canon."
+  - "No secrets, no PII: the gate reads ~/.claude/seat-quota.json (percentages
+    and account labels only) and the wrapper logs only the exit code."
+acceptance:
+  - text: >
+      The wrapper SHALL parse under zsh (its own interpreter) after the change.
+    status: verified
+    probe: "zsh -n infra/launchagents/wrappers/regulatory-watcher-run.sh"
+  - text: >
+      WHEN the gate binary is absent or REGWATCH_QUOTA_GATE=0, QUOTA_GATE_RC
+      SHALL stay 0 and the Claude tier SHALL run exactly as before.
+    status: verified
+    probe: "grep -n 'REGWATCH_QUOTA_GATE' infra/launchagents/wrappers/regulatory-watcher-run.sh  # the -x guard and the kill switch are the only entry conditions"
+  - text: >
+      WHEN the gate exits 3 or 4, the Claude tier SHALL be skipped with a
+      distinct log line and EXIT set non-zero (75) so the existing
+      `[ $EXIT -eq 0 ] && ... ensure_full_delta` success test cannot be
+      satisfied and the cascade proceeds to tier 2.
+    status: verified
+    probe: "sed -n '/quota_gate rc=/,/^fi/p' infra/launchagents/wrappers/regulatory-watcher-run.sh"
+  - text: >
+      The existing consumer test suites of this wrapper SHALL stay green.
+    status: verified
+    probe: "apps/backend-rag/.venv/bin/python -m pytest -q scripts/tests/test_claude_cascade_shell.py scripts/tests/test_regulatory_watcher_recover_delta.py scripts/tests/test_regulatory_watcher_gh_context.py scripts/tests/test_codex_seat_lib.py"
+  - text: >
+      WHEN pro-healer realigns the live copy after merge, the next daily run's
+      log SHALL carry a quota_gate line right after 'tier 1 — Claude
+      subscription seat cascade'.
+    status: pending
+    probe: "grep -c quota_gate ~/scripts/regulatory-watcher-run.sh; grep -n quota_gate ~/logs/regulatory-watcher.log | tail -3"
+risks:
+  - "A SKIP/DEGRADE sends the job to tier 2 (agy), which today hangs past its
+    own --print-timeout when called directly (tokenaudit D-016 / Q13 to Zero).
+    That is the pre-existing tier-1-failure path, unchanged by this diff; the
+    gate only avoids burning a Claude call that would have failed anyway."
+  - "The gate lives outside the repo (~/.tokenaudit) by design — it reads a
+    per-machine measurement. Same shape as CASCADE_BIN/agy already used by
+    this wrapper; absent gate = old behaviour, so a machine without
+    ~/.tokenaudit is not degraded."
+  - "Inherited, not cured here: scripts/tests/test_regulatory_watcher_schema_fix.py::test_declared_home_fork_pair_registered
+    is red on origin/main d35b178534 already (asserts the agent-spec pair
+    scope is {pro,m5}; declared-pairs.json widened it to {pro,m5,mini} on
+    2026-08-07 with rationale). Stale test, not stale registry — separate PR."
+instruction_to_the_grader: |
+  Grade the fail-open promise, not the prose: trace every path out of the new
+  block and confirm that only exit codes 3 and 4 change the flow, and that
+  they change it into the pre-existing failure path (EXIT non-zero, TMPOUT
+  carries a line, the tier-2 fallback fires). Then confirm zsh parses the file
+  and the listed suites are green. The inherited red test is named in risks
+  with its origin/main SHA — verify it is red there too before counting it
+  against this diff.
+pii: none
