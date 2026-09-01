@@ -33,6 +33,9 @@ on:
 # at "Expected — waiting for status" with nothing red to see. Concurrency is now
 # bounded only by the account-level ceiling, which QUEUES past it rather than
 # dropping: lateness is visible, an absent check-run is not.
+# This block is VESTIGIAL: it did not exist before the removed ternary introduced it, and
+# a github.run_id group with cancel-in-progress:false is unique per run, so it cancels
+# nothing. Kept only to avoid widening this diff; safe to delete in a separate PR.
 concurrency:
   group: ${{ format('p3-sandbox-gates-{0}-{1}', github.ref, github.run_id) }}
   cancel-in-progress: false

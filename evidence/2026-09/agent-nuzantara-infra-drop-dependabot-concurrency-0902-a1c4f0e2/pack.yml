@@ -24,11 +24,13 @@ lanes:
     seat: general-purpose subagent (sonnet-5)
 diff:
   files: 22
-  net_lines: -64
+  net_lines: -52
   net_lines_note:
-    "corrected 2026-09-02 after the review lane re-measured: `git diff --numstat origin/main...HEAD
-    -- . ':(exclude)evidence/'` sums 196 insertions / 260 deletions = -64. The -52 was wrong from the
-    first commit, not drift."
+    "re-measured 2026-09-02 from the MERGE-BASE after the gate lane's condition 2 added
+    a 3-line VESTIGIAL note to each of the 4 workflows that had no concurrency block before the removed
+    ternary: -64 -> -52. Command: git diff --numstat $(git merge-base origin/main HEAD) -- . ':(exclude)evidence/'.
+    A two-dot 'git diff origin/main' was tried first and reported 57 files / -40 — it charges this PR
+    with every file main gained meanwhile (scar W102). Three-dot / merge-base is the only honest form."
 spend:
   wall_clock_hours: 2.5
   adversarial_rounds: 2
@@ -144,8 +146,13 @@ receipts:
     ts: "2026-09-01T16:55:43Z"
     seat: claude-opus-5 (author session, Pro)
     observed_on_rerun: "3 (floor source: path — the .github/workflows/ hot zone, NOT the #5499 pin exemption)"
-  - claim: The ledger append is append-only.
-    result: 1 insertion, 0 deletions.
+  - claim:
+      "The ledger edit DESTROYS nothing: it adds one closing row and annotates two existing rows in
+      place with a '|| SUPERSEDED' suffix. It is not 'append-only' in the numstat sense."
+    result:
+      3 insertions, 2 deletions — the 2 deletions are the two annotated rows being rewritten with
+      their suffix, not information removed. Both keep their '- opened' prefix, so pending_arms_report.py
+      still counts them as OPEN, which condition (3) requires.
     cmd: git show 1ff1c7ce56 --numstat --pretty= -- .claude/skills/modus/PENDING-ARMS.md
     exit: 0
     ts: "2026-09-01T17:18:48Z"
@@ -155,6 +162,10 @@ receipts:
       cmd pinned to commit 1ff1c7ce56 — this receipt previously used a bare `HEAD` and silently
       stopped reproducing when a later commit in the same PR moved HEAD off the workflow commit; the actionlint
       one degraded into xargs over zero files, i.e. a green that ran nothing.
+    correction_note:
+      "corrected 2026-09-02: this receipt previously claimed 'append-only / 1 insertion,
+      0 deletions' while its OWN recorded observation printed '3 2'. The gate lane caught the contradiction.
+      A receipt whose result is refuted by the command printed beside it is worse than no receipt."
   - claim:
       "actionlint is clean on all 21 changed files with the shellcheck sub-linter disabled (-shellcheck=,
       CI's own invocation). Without it, 6 shellcheck warnings appear (SC2221/SC2222), all in immune-enforcement.yml,
