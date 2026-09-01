@@ -97,21 +97,39 @@ def test_classifier_stall_vocabulary_is_fully_accounted_for_without_importing_it
     """The subprocess boundary stays intact: inspect source AST, never import the classifier."""
     source = qsn.CLASSIFIER.read_text()
     tree = ast.parse(source)
-    stall_causes = next(
-        ast.literal_eval(node.value)
-        for node in tree.body
+    assigns = [
+        node for node in tree.body
         if isinstance(node, ast.Assign)
-        and any(isinstance(target, ast.Name) and target.id == "STALL_CAUSES" for target in node.targets)
-    )
+        and any(isinstance(t, ast.Name) and t.id == "STALL_CAUSES" for t in node.targets)
+    ]
+    # Both ways this extraction can break used to surface as a stack trace naming neither the
+    # cause nor the cure: a rename or a move out of module scope raised a bare StopIteration
+    # from next(), and wrapping the value in frozenset(...)/set(...) raised
+    # "ValueError: malformed node or string". Both still FAILED — nothing was ever silently
+    # skipped — but a guard whose failure does not say what to do is a guard the next person
+    # deletes. FIRST assignment wins, matching the previous next() semantics.
+    if not assigns:
+        pytest.fail(
+            "no module-level STALL_CAUSES assignment in the classifier: it was renamed, removed, "
+            "or moved inside a function. This test is the only thing keeping the notifier's cause "
+            "vocabulary aligned with the classifier's — repoint the extraction, do not delete it."
+        )
+    try:
+        stall_causes = ast.literal_eval(assigns[0].value)
+    except ValueError as exc:
+        pytest.fail(
+            f"STALL_CAUSES is no longer a literal the AST can evaluate ({exc}). It was most "
+            "likely wrapped in a call such as frozenset(...) or set(...). Read the call's "
+            "argument instead — do not delete this test: without it, a new cause in the "
+            "classifier is dropped by the notifier with no trace at all."
+        )
     # A drift guard that passes on an EMPTY read is the very disease it exists to catch:
-    # set(()) <= anything is trivially True, so an extraction that silently yields nothing
-    # would report "no drift" forever. Adversarial review could not force this by reformatting
-    # the classifier (six variants all fail loudly), but the vacuous shape is one assert away.
+    # set(()) <= anything is trivially True, so an extraction yielding nothing would report
+    # "no drift" forever.
     assert stall_causes, (
-        "extracted an EMPTY STALL_CAUSES from the classifier's source. The comparison below "
-        "would pass vacuously. Most likely the classifier moved STALL_CAUSES out of module "
-        "scope or wrapped it in a call (frozenset(...)/set(...)), which ast.literal_eval "
-        "cannot evaluate — fix the extraction, do not delete this assert."
+        "extracted an EMPTY STALL_CAUSES from the classifier's source — the comparison below "
+        "would pass vacuously. The extraction found the assignment but it evaluates to nothing; "
+        "fix the extraction, do not delete this assert."
     )
     accounted_for = qsn.REAL_STALL_CAUSES | qsn.DELIBERATELY_IGNORED
     assert set(stall_causes) <= accounted_for
@@ -567,3 +585,24 @@ def test_main_never_touches_the_real_lock_path(monkeypatch, capsys):
     qsn.main([])
     assert qsn.LOCK_FILE.exists(), "the patched lock path is the one that was used"
     assert "/.agent/decisions/state/" not in str(qsn.LOCK_FILE)
+
+
+def test_run_classifier_follows_a_patched_classifier_path_not_the_import_time_one(monkeypatch, tmp_path):
+    """Scar W96 in its second home in this file. A `Path = CLASSIFIER` default binds at IMPORT,
+    so a test that patches CLASSIFIER would still have shelled out to the REAL classifier on
+    disk. Today's only caller passes classifier_path= explicitly, so this never fired in
+    production — which is exactly why it needs a test: an unarmed landmine leaves no evidence
+    behind on the day someone arms it by writing one argument less."""
+    decoy = tmp_path / "decoy_classifier.py"
+    decoy.write_text("# never executed: the subprocess seam is stubbed\n")
+    monkeypatch.setattr(qsn, "CLASSIFIER", decoy)
+    seen: list[list[str]] = []
+    monkeypatch.setattr(qsn, "_run", lambda cmd, timeout=30: (seen.append(cmd) or (0, "{}", "")))
+
+    qsn.run_classifier(repo="owner/repo", min_age_minutes=30)
+
+    assert len(seen) == 1, "the classifier subprocess seam was not the only thing invoked"
+    assert str(decoy) in seen[0], (
+        "run_classifier ignored the patched CLASSIFIER and used the import-time default: "
+        f"{seen[0]}"
+    )
