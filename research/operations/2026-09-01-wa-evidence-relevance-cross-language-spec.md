@@ -3,6 +3,7 @@ date: 2026-09-01
 domain: compliance
 client_case: false
 status: SPEC — not yet built
+adversarial_review: codex
 sources:
   - "measured live: WhatsApp thread 30, 22 exchanges, 2026-09-01 08:31–09:28 UTC"
   - "apps/backend-rag/backend/services/rag/agentic/reasoning_utils.py::calculate_evidence_score"
@@ -131,3 +132,88 @@ The abstain has no observable record. `wa_outbox` and `meta_inbox_messages` carr
 **no** confidence, evidence or abstain column — an abstain is stored as
 `status='done'`, indistinguishable from a good answer. Criterion 4 above cannot be
 measured in production until that exists. Separate ledger item.
+
+## The pricing-evidence attempt, and why it was withdrawn
+
+A first cure was written and then **withdrawn before merge**, because two independent
+cross-family seats blocked it and both were right. It is recorded here because its
+failure is the strongest evidence for this spec's central claim: **the price book
+cannot be safely counted as evidence while relevance is measured this way.**
+
+What it did: `build_context_package` fed the sanitized `pricing_block` into
+`calculate_evidence_score` and into `context_length`, with a source score of 1.0,
+on the argument that source quality is gated behind semantic relevance (relevance 0
+→ final capped at 0.1 → still abstains).
+
+**Three defects, all verified against the source afterwards:**
+
+1. **The safety argument only covered ZERO overlap, not PARTIAL overlap.** The
+   innocence test used a query sharing no keywords with the catalogue entry
+   (motorbike rental vs company setup). But `has_pricing_intent` fires on a bare
+   "berapa"/"how much", `search_service` matches on a single keyword substring, and
+   ONE surviving keyword hit yields `semantic_relevance = 0.2`; a 1.0 source then
+   contributes `0.4 × 0.25 = 0.1`, for **0.30 — twice the 0.15 threshold**.
+   Constructed counter-examples: *"How much can a new company legally borrow?"* and
+   *"Berapa denda overstay di Indonesia?"* — both would clear the gate on a
+   catalogue entry that answers neither, and the bot could quote Rp 20.000.000 for a
+   borrowing-capacity or a statutory-penalty question.
+   **An innocence check that is not representative is worth nothing.**
+
+2. **A source score of 1.0 silently disables an existing safety gate.**
+   `reasoning_utils.py` (~line 516) uses the TOP source cosine as a sanity check: if
+   the best retrieved source scores below 0.5 against the query, the final score is
+   multiplied by 0.7 to suppress weak retrieval. A synthetic 1.0 is always the max,
+   so that penalty **stops firing on every pricing-intent query** — including for the
+   real vector chunks it was there to police. The change blinded a guard while
+   claiming to be gated by one.
+
+3. **`context_length` changes meaning, and something downstream depends on it.**
+   It counted retrieved vector chunks; it would have counted catalogue entries too.
+   `wa_finalize` treats `context_length > 0 AND evidence_score > 0` as proof of
+   grounding before it will release an abstain-labelled answer — so a fuzzy price
+   match could certify text with **zero vector grounding**. That is the frozen
+   evidence contract, broken silently.
+
+Two lesser findings, also correct: `pricing_evidence` was appended with no size or
+count cap while `chunks` are bounded (8 items, 1200 chars each); and the code comment
+justifying the service-name join — "rendering the entry alone loses the name" — was
+simply **false**, since `name` is already in `_PRICING_ENTRY_FIELDS`. The join merely
+duplicates it. A comment that misstates why code exists is worse than no comment.
+
+### Constraints any future pricing-evidence design MUST satisfy
+
+- Catalogue authority and query-match confidence are **different signals** and must
+  not share one channel. Do not inject a synthetic cosine into `sources`.
+- Preserve a distinct count of retrieved vector chunks for anything downstream that
+  reads it as grounding. If `context_length` grows a second meaning, every reader
+  must be found and updated in the same change.
+- Require a **strong** catalogue match — not "search_service returned something".
+  A single-keyword substring hit is not evidence that the entry answers the question.
+- The innocence test must include the **partial-overlap** case, in Indonesian, with a
+  query that shares one or two keywords with the entry and is answered by none of it.
+  Zero-overlap innocence proves nothing about this failure mode.
+- Bound the injected evidence the way chunks are bounded.
+
+None of this is achievable while relevance is a language-blind lexical ratio — which
+is why the metric comes first, and the price book second.
+
+## Adversarial review
+
+Refuted by **Codex GPT-5.6 Sol** (effort high) and, independently, **Gemini 3.1 Pro**
+via `agy`, both on 2026-09-01, neither the author. **Both returned BLOCK.**
+
+Their findings converged without contact on the same three defects in the withdrawn
+code change — the partial-overlap bypass, the disabled cosine sanity gate, and the
+`context_length` contract drift — all three recorded above and all three since
+verified by the author directly against `reasoning_utils.py` and
+`wa_package_builder.py`. The correct disposition was not to patch: it was to withdraw
+the code and let the spec stand alone, which is what happened.
+
+A third seat, **Kimi K3**, was unavailable (HTTP 403, weekly quota exhausted). The
+panel was two seats, not three; a seat that did not run is not a seat that agreed.
+
+Surviving disagreement: Gemini additionally claimed the service-name join "corrupts"
+the text by duplication. Codex examined the same line and concluded the duplication is
+numerically harmless, because the scorer tests keyword PRESENCE, not frequency. Codex
+is right on the mechanism; the finding stands only as the false-comment defect noted
+above, not as a scoring bug.
