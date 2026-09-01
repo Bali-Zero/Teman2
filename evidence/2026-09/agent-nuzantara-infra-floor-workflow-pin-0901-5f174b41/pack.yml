@@ -1,0 +1,70 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Owner ruling 2026-09-01, verbatim "Cambio la regola adesso" — asked whether to unblock the three
+  affected PRs first and decide the rule later, or change the rule now, and choosing the second.
+  One concern: narrow the harness floor's PATH term for first-party action version pins.
+
+lanes:
+  - lane: floor-ground
+    role: read
+    seat: >-
+      claude-opus-5 (conducting session, Pro). Established the premise by measurement rather than
+      from the mandate text: read the three blocked PRs' real diffs and their real check lists, and
+      confirmed the twin gate hot-zone-pr-gate.yml is NOT red on them — which is why HOTZONE_PATTERNS
+      is left byte-identical here and no drift is introduced against its duplicated case-block.
+  - lane: floor-build
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session, Pro). Wrote the exemption, the CLI flag, the producer step
+      in harness-floor.yml, and a guilt-first test corpus. Mutation-tested all six conditions in the
+      source: each independently reddens the suite, none reddens all of it. One write that printed
+      success did not land on disk and was caught by its own test going red, not by trusting the
+      write — re-applied and verified by re-reading the file plus an independent grep.
+  - lane: floor-grade-claude
+    role: review
+    seat: >-
+      claude-sonnet-5 subagent (spalla-review), grading a diff it did not author, on fresh context,
+      instructed to CONSTRUCT defeating inputs and run them rather than read the code and agree, and
+      to mutate at least two of the new tests and report whether they go red. Verdict recorded in
+      journal.jsonl.
+  - lane: floor-refute-crossfamily
+    role: review
+    seat: >-
+      tp1-qwen3.8-max at effort xhigh, cross-family, read-only (it cannot run code — asked to reason
+      from the diff text and name a defeating input, a line and a consequence). Verdict recorded in
+      journal.jsonl; a timeout or an exit-0-carrying-an-error is logged as a NON-JUDGEMENT and not
+      counted as a review seat.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  ONE build lane, so D3's non-Anthropic BUILD-seat requirement does not bind by its own terms
+  (">= 2 build lanes"); no second build lane was invented to satisfy a rule that does not apply.
+  Cross-family pressure is placed where it is load-bearing for THIS change — on REVIEW. An exemption
+  is a hole in a gate, so the grading effort went into adversarial input construction, not into
+  parallel authorship.
+
+diff:
+  files: 5
+  net_lines: 626
+  measured_at: >-
+    counted with `git diff --numstat $(git merge-base origin/main HEAD)...HEAD` (three-dot — a
+    two-dot diff would accuse this branch of deleting main's later additions, W102) immediately
+    before this commit.
+
+residual_risks:
+  - >-
+    A first-party action version could be compromised UPSTREAM, and this exemption does not defend
+    against that. Neither did the Gear-3 ceremony it replaces, which reads a brief and a pack and
+    not the action's changelog — the real defences (SHA pinning, actionlint, CodeQL, the CODEOWNERS
+    tier) are untouched here. Stated as a limit, not as a thing this PR solves.
+  - >-
+    The parser reads a unified diff by hand rather than through a diff library, so its blind spots
+    are its own. The `--- a/path` header trap is handled explicitly and a real diff envelope is in
+    the fixtures for that reason; `diff --cc` is tested only to prove it is REFUSED, not parsed.
+    CI never feeds it one (the producer runs a two-endpoint `git diff`), so the exposure is a
+    future caller, not this one.
+  - >-
+    The exemption widens only when someone edits FIRST_PARTY_ACTION_OWNERS or the parser. Nothing
+    in this PR alarms on that beyond the test corpus — there is no lint that would notice a future
+    diff adding a third owner to the frozenset. Recorded as unguarded rather than as covered.
