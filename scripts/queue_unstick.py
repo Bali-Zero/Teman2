@@ -821,8 +821,22 @@ def resolved_dirty_prs(seen_dirty: dict, prs_by_number: dict) -> list[str]:
     are no longer: either the PR is ABSENT from `prs_by_number` (merged or
     closed — `prs_by_number` is built from `fetch_open_prs()`, ALL open PRs,
     not just dirty ones, so absence means it left the open set) or it is
-    still open but its current `merge_state_status` is not `"DIRTY"` (queue
-    unstuck it, the driver rebased clean, a human resolved it by hand, ...).
+    still open with a DEFINITE non-DIRTY `merge_state_status` (queue unstuck
+    it, the driver rebased clean, a human resolved it by hand, ...).
+
+    FAIL-CLOSED on `"UNKNOWN"` (round-1 cross-family review, codex-gpt-5.6-sol,
+    CONFIRMED — the pre-fix version compared `!= "DIRTY"`, which reads
+    UNKNOWN as resolved): `UNKNOWN` is this file's OWN documented transient
+    state right after `main` moves — see the module's "Re-warm" section and
+    REWARM_UNKNOWN_RATIO/REWARM_UNKNOWN_MIN above — a PR that is still
+    actually DIRTY can read UNKNOWN for tens of seconds while GitHub
+    recomputes. Retracting on that reading would take back a genuinely live
+    page. `None` (a missing/malformed `mergeStateStatus`) gets the same
+    fail-closed treatment, for the same reason: an instrument that could not
+    read the state is news, not a resolution (superscar #2 spirit) — it must
+    never be treated as silent success. Only a DEFINITE terminal-or-clearly-
+    not-dirty reading (BEHIND, BLOCKED, CLEAN, DRAFT, HAS_HOOKS, UNSTABLE, or
+    any other value that is neither DIRTY nor UNKNOWN) retracts.
 
     Pure — no I/O, no network — so it is testable in isolation from the
     retract side-effect (`retract_dirty_signal`, which shells out)."""
@@ -831,9 +845,14 @@ def resolved_dirty_prs(seen_dirty: dict, prs_by_number: dict) -> list[str]:
         try:
             pr = prs_by_number.get(int(number_str))
         except (TypeError, ValueError):
-            pr = None  # a state file with a non-numeric key: treat as resolved, drop it
-        if pr is None or pr.get("merge_state_status") != "DIRTY":
-            resolved.append(number_str)
+            pr = None  # a state file with a non-numeric key: treat as resolved (merged/closed path), drop it
+        if pr is None:
+            resolved.append(number_str)  # absent from the open set entirely: merged or closed
+            continue
+        status = pr.get("merge_state_status")
+        if status in ("DIRTY", "UNKNOWN", None):
+            continue  # still dirty, or GitHub hasn't recomputed yet — never a retraction signal
+        resolved.append(number_str)
     return resolved
 
 

@@ -986,6 +986,35 @@ def test_resolved_dirty_prs_INNOCENCE_untouched_state_entries_are_left_alone():
     assert resolved == ["505"]
 
 
+def test_resolved_dirty_prs_GUILT_unknown_status_must_not_be_treated_as_resolved():
+    """CONFIRMED cross-family finding (codex-gpt-5.6-sol, round 1, PR #5561):
+    the pre-fix version compared `merge_state_status != "DIRTY"`, which reads
+    UNKNOWN as resolved. UNKNOWN is this file's OWN documented transient
+    state right after `main` moves (see the module's Re-warm section,
+    REWARM_UNKNOWN_RATIO/REWARM_UNKNOWN_MIN) — a PR that is STILL actually
+    DIRTY can read UNKNOWN for tens of seconds while GitHub recomputes.
+    Retracting on that reading would take back a genuinely live page. Fails
+    on the pre-fix `!= "DIRTY"` comparison; must stay green on the fixed
+    fail-closed version."""
+    seen = {"506": "f" * 40 + ":cccc"}
+    prs_by_number = {506: make_pr(506, merge_state_status="UNKNOWN")}
+    resolved = qu.resolved_dirty_prs(seen, prs_by_number)
+    assert resolved == [], "UNKNOWN must never be read as a retraction signal"
+
+
+def test_resolved_dirty_prs_INNOCENCE_a_definite_non_dirty_status_still_retracts():
+    """The fix must not overcorrect into never retracting anything: a
+    DEFINITE (non-UNKNOWN, non-DIRTY) reading — CLEAN here — still resolves,
+    same as the pre-existing merged/closed (absent) and BLOCKED cases above."""
+    seen = {
+        "507": "1" * 40 + ":dddd",  # CLEAN — definite, must retract
+        "508": "2" * 40 + ":eeee",  # merged/closed (absent) — must retract
+    }
+    prs_by_number = {507: make_pr(507, merge_state_status="CLEAN")}
+    resolved = qu.resolved_dirty_prs(seen, prs_by_number)
+    assert sorted(resolved) == ["507", "508"]
+
+
 def test_mailbox_key_is_shared_between_send_and_retract():
     """send_dirty_signal and retract_dirty_signal must key the SAME broadcast
     — a drift here would mean retraction silently retracts nothing."""
