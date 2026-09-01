@@ -18,6 +18,7 @@ sources:
   - .claude/skills/modus/PENDING-ARMS.md (parity-telemetry row, PR #4671)
   - https://github.com/Bali-Zero/Teman2/pull/4671
   - memory lesson_presence_value_check_and_effect_on_outcome_are_three_axes_2026_08_23
+adversarial_review: codex
 ---
 
 # Catalogue-wide sweep — "name promises a restriction the rules never test"
@@ -40,16 +41,31 @@ of the same failure shape (E31C) turned up in one day.
 
 ## SEVERITY CORRECTION (added after initial delivery, re-verified independently)
 
-**None of the findings below reach a public client's screen today.** Verified verbatim against
+**None of the findings below reach a public client's screen today — conditional on the deployed
+mode, see correction.** Verified verbatim against
 `apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.tsx:581-596`: in
 `mode === "SHADOW"`, the real engine response is fetched, compared against a local preview for
 parity telemetry, and then **discarded** — the function returns
 `buildShadowOutcome({ code: "SHADOW_VERIFICATION_ONLY", ... })`, not the engine's candidates and
 not the preview's. Every finding in this document (E31D's unconstrained rule, E30E/E30F's
 aliasing, E23's missing statutory gates, the 4 partial `known`-only failures) is real, is
-computed on every completed interview, and is not shown to a public applicant. These are
-defects waiting at the ENFORCE boundary, not defects operating in front of clients today — the
-Ranking section below is corrected on this basis.
+computed on every completed interview, and — **if the deployment is actually running in
+`SHADOW` mode** — is not shown to a public applicant. These are defects waiting at the ENFORCE
+boundary, not defects operating in front of clients today — the Ranking section below is
+corrected on this basis.
+
+**[CORRECTED per codex adversarial review, 2026-09-02]** This claim is conditional, not
+verified from the checkout. `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/runtime-mode.ts`
+shows `resolveVisaOracleMode()` defaults an unset/invalid `NEXT_PUBLIC_VISA_ORACLE_MODE` to
+`"ENGINE"` in production (`PREVIEW` is force-downgraded to `ENGINE` in production too; only
+`test` NODE_ENV defaults to `PREVIEW`). `modeUsesEngine()` treats both `ENGINE` and `SHADOW` as
+engine-backed, but only `SHADOW` discards the candidates via `buildShadowOutcome`; `ENGINE` mode
+returns the real candidates straight through. Nothing in this repo checkout records which mode
+is actually configured on the live deployment (that is an environment variable set outside
+version control) — so "not live-client-facing today" holds only if `SHADOW` is what is actually
+deployed, and this document does not establish that. Treat the severity framing below as
+correct **conditional on the deployment's `NEXT_PUBLIC_VISA_ORACLE_MODE`**, not as independently
+verified fact.
 
 **One nuance beyond "shown to nobody," verified this pass:** `OracleShell.tsx` has a second
 branch, `internalMode` (`page.tsx:16-22`, server-gated by a verified internal-access cookie —
@@ -154,10 +170,23 @@ pack. All 4 re-derived independently this session by scoping the live pack to ea
   `intent.purposes`/`work.employer_is_indonesian_entity`/`work.indonesian_work_sponsor_confirmed`/
   `investment.proposed_role`. Zero fact-path for RPTKA/KBLI-match/jabatan/prohibited-role
   anywhere in `enums.py`/`fact_registry.py`. **Fails at step 1.**
-- **E30E** ("SEZ Education Visa") — 1 scoped rule, checks `sponsor.type in [EDUCATION,
-  INDIVIDUAL]` only. Zero fact-path for KEK-zone/institution-type. **Fails at step 1.**
-- **E30F** ("Student Exchange Visa") — 1 scoped rule, checks `sponsor.type == EDUCATION` only.
-  Zero fact-path for exchange-program-type. **Fails at step 1.**
+- **E30E** ("SEZ Education Visa") — 1 scoped rule (`el.e30e-student-support`). Zero fact-path
+  for KEK-zone/institution-type. **Fails at step 1.** **[CORRECTED per codex adversarial
+  review, 2026-09-02]** The original wording here said the rule "checks `sponsor.type in
+  [EDUCATION, INDIVIDUAL]` only" — that undersold what the rule actually tests and is wrong as
+  written. Verbatim `when` (`op: all`) has four conjuncts: `intent.purposes intersects
+  [STUDY]`, `study.admission_confirmed == true`, `study.sponsor_confirmed == true`, AND
+  `sponsor.type in [EDUCATION, INDIVIDUAL]`. The step-1 finding is unaffected by the
+  correction — none of those four conjuncts is a KEK-zone/institution-type discriminator, so
+  the qualifier the product name promises is still untested — but the rule is materially less
+  permissive than "sponsor.type only" implied.
+- **E30F** ("Student Exchange Visa") — 1 scoped rule (`el.e30f-student-support`). Zero
+  fact-path for exchange-program-type. **Fails at step 1.** **[CORRECTED per codex adversarial
+  review, 2026-09-02]** Same correction as E30E: the rule is not "`sponsor.type == EDUCATION`
+  only" — verbatim `when` also requires `intent.purposes intersects [STUDY]`,
+  `study.admission_confirmed == true`, and `study.sponsor_confirmed == true` before
+  `sponsor.type == EDUCATION`. Step-1 finding unaffected: none of those four conjuncts tests
+  exchange-program-type.
 - **E31C** ("Family Visa — Child of Legal Mixed Marriage") —
   `el.e31c-mixed-marriage-parents`'s `when` is `purposes∩FAMILY AND relation_to_sponsor==PARENT
   AND family.sponsor_nationalities intersects [ID] AND family.marriage_registered==true`.
@@ -314,3 +343,42 @@ dormant/BLOCKED one like E28B-F/E33A-C). On that basis, ranked:
    E23U/E23V/E33A-C) is ever fixed — worth remembering that fixing that ONE upstream defect
    would simultaneously make 9 currently-dormant products live, several with NO SUPPORT rule
    ready to receive the traffic.
+
+## Adversarial review
+
+**Date**: 2026-09-02. **Seat**: `codex` (`gpt-5.6-sol`, `model_reasoning_effort=high`,
+`--sandbox read-only`, stance REFUTE — generator≠grader, this seat did not author the document).
+Independently re-derived all 4 headline findings from the live checkout (rule pack JSON,
+`enums.py`, `fact_registry.py`) rather than trusting the document's quotes, and spot-checked the
+SHADOW-mode severity claim against `OracleShell.tsx` and `runtime-mode.ts`. All corrections below
+were re-verified independently in this session (direct `sed`/grep against the pack JSON and
+`runtime-mode.ts`) before being folded in — not taken on the refuter's word alone.
+
+**Per-finding verdict:**
+
+- **E23** — CONFIRMED. The two product-scoped rules reference only `intent.purposes`, the two
+  work-sponsor booleans, and `investment.proposed_role`; no RPTKA/KBLI-match/jabatan/
+  prohibited-role fact-path exists anywhere in the closed vocabulary. No correction needed.
+- **E30E** — REFUTED-AND-CORRECTED. The document's "checks `sponsor.type` only" quote was
+  factually wrong (the rule's `when` has 4 conjuncts, not 1) — corrected in place above, with the
+  step-1 KEK-zone/institution-type gap finding itself unaffected.
+- **E30F** — REFUTED-AND-CORRECTED. Same defect as E30E, same correction applied.
+- **E31D** — CONFIRMED, including the STEPCHILD-enum disclaimer. All three scoped rules are
+  still `SUPPORT` on a bare `FAMILY` purpose with no relationship/marriage/nationality gate;
+  `RelationType.STEPCHILD` does now exist in `enums.py` (added 2026-08-23, matching the
+  document's own note that PR #4650 added it after this sweep), but seq-12's E31D rules consume
+  none of the new stepchild facts.
+
+**SHADOW-mode severity claim** — CONFIRMED-CONDITIONAL, folded in as a correction above. The
+code path itself is exactly as described (SHADOW discards candidates via `buildShadowOutcome`,
+`internalMode` bypasses that). What the refuter caught, and what independent re-reading of
+`runtime-mode.ts` confirmed: this checkout cannot establish which mode is *actually deployed* —
+production defaults an unset/invalid `NEXT_PUBLIC_VISA_ORACLE_MODE` to `ENGINE`, not `SHADOW`,
+and that env var lives outside version control. The "not live-client-facing today" claim is
+therefore conditional on the deployment's actual configured mode, not an independently verified
+fact from the repo alone — flagged in place above rather than asserted as settled.
+
+**BLOCKER: none surviving.** Both raised issues (E30E/E30F misquote, SHADOW-mode deployment
+assumption) were real and are folded into the document as attributed corrections; the four
+headline verdicts (E23/E30E/E30F/E31D all fail-at-step-1 / unconstrained) are unaffected by
+either correction.
