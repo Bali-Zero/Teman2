@@ -1,0 +1,380 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref:
+  "Mandate: defuse the R9 evidence-pack staging bomb before 2026-09-02. Lead:
+  research/operations/2026-08-28-beyond-sota/X1-engineering-platform-cicd.md (P0 recommendation) —
+  treated as a LEAD and re-measured from scratch, not accepted as fact."
+lanes:
+  - lane: infra-r9-staging-fix
+    role: build
+    seat:
+      "claude-opus-5 (this session, xhigh) — reproduced the red, chose the direction, authored
+      scripts/ci/stage_council_journal.py, the harness-floor.yml wiring and the test corpus"
+  - lane: infra-r9-staging-fix-refute-codex
+    role: review
+    seat:
+      "codex-gpt-5.6-sol (model_reasoning_effort=high, --sandbox read-only) — adversarial review
+      on the finished diff with its own file access, generator != grader"
+  - lane: infra-r9-staging-fix-refute-kimi
+    role: review
+    seat:
+      "kimi-code/k3 — adversarial review on the finished diff with its own file access,
+      generator != grader"
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane, so D3's >=2-build-lane seat-diversity floor does not bind. Both REVIEW seats are
+  nonetheless cross-family and non-Anthropic (OpenAI gpt-5.6-sol, Moonshot kimi-code/k3), dispatched
+  on the finished diff with file access rather than on a description of it — which is also what
+  supplies R9's own council quorum for this pack.
+diff:
+  net_lines:
+    "8 files, +1195/-1 — emitted by `evidence_pack_lint.py --print-measured`, never counted by hand
+    (#5191's countable-claims rule). The commit count is deliberately not narrated: it changes with
+    every push, and a number that goes stale between the edit and the push is exactly what that rule
+    exists to catch. OVER the ~400 guidance and declared rather than split: the bulk is the test
+    corpus and this evidence pack, and the behavioural change is the helper plus the workflow,
+    guard-conformance and CODEOWNERS edits. Splitting would ship the fix without the gate that makes
+    it stick (review finding #3) — the parts do not stand alone."
+  behaviour_change: >-
+    harness-floor.yml's pack-lint step gains one guarded call to a new CI helper, between the two
+    existing staging lines and the lint invocation. The helper reads the STAGED pack's `council_run:`
+    and copies the blob it names — resolved relative to the pack's REAL directory at HEAD, and only
+    when that blob is a regular file — into the staged pack dir at the same relative path. No rule in
+    evidence_pack_lint.py is modified; no existing staging line is modified. guard-conformance.yml
+    gains the corpus as an executed step (and the two new paths in its relevance filter);
+    CODEOWNERS gains the helper and its test at Tier 1.
+receipts:
+  - claim:
+      "THE RED. The one real council pack in the tree (evidence/2026-08/agent-air-m5-ops-garuda-staff-pages-0828-e3080f8d,
+      which declares `council_run: council-journal.jsonl` and commits a journal with two distinct
+      qualifying seats), staged exactly the way harness-floor.yml stages it, is judged by R9 as
+      declaring no council_run journal."
+    cmd:
+      "git show $HEAD:<pack> > $S/evidence/pack.yml; git show $HEAD:<brief> > $S/evidence/brief.yml;
+      python3 scripts/evidence_pack_lint.py $S/evidence/pack.yml --repo-root $S --changed-files-file
+      $S/changed-files.txt --source-path <pack>"
+    result:
+      "evidence_pack_lint: NOTICE — council_run: gear:3 pack declares no council_run journal
+      with >=2 distinct review seats from ('codex-gpt-5.6-sol', 'kimi-code/k3', 'tp1-qwen3.8-max')
+      marked ok:true"
+    exit: 0
+    ts: "2026-08-29T02:31:35Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim:
+      "THE RED IS A FAIL, NOT A NOTICE, FROM 2026-09-02. The same staged tree evaluated at
+      R9_R11_ENFORCEMENT_DATE returns a hard violation — so the gap fails every Gear-3 PR from that
+      date, independent of the diff."
+    cmd: 'python3 -c "...; check_council_run_gear3(pack, S/''evidence'', 3, today=datetime.date(2026,9,2))"'
+    result:
+      "(['council_run: gear:3 pack declares no council_run journal with >=2 distinct review
+      seats ... marked ok:true'], None)"
+    exit: 0
+    ts: "2026-08-29T02:31:36Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim:
+      "THE FIX CLEARS IT, end-to-end on that same real pack: staged with the new helper, the
+      lint reports no council_run finding at all."
+    cmd:
+      "python3 scripts/ci/stage_council_journal.py --staged-pack $S/evidence/pack.yml
+      --source-path <pack> --head-sha $HEAD --repo <worktree>; python3 scripts/evidence_pack_lint.py
+      $S/evidence/pack.yml --repo-root $S --changed-files-file $S/changed-files.txt --source-path <pack>"
+    result: "stage_council_journal: staged '<pack-dir>/council-journal.jsonl' as
+      'council-journal.jsonl' beside the staged pack / evidence_pack_lint: clean"
+    exit: 0
+    ts: "2026-08-29T02:31:37Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim:
+      "R9 IS THE ONLY RULE HIT by this staging gap: every other on-disk read in the lint
+      resolves against --repo-root (brief_ref :923, the pack itself :1710 — both already staged) or
+      against an absolute CLI path (--numstat-file, --changed-files-file)."
+    cmd: "grep -n 'is_file()\\|\\.exists()\\|read_text(\\|read_bytes(\\|open(' scripts/evidence_pack_lint.py"
+    result:
+      "9 hits: 923/926 brief_ref (repo_root), 1522/1525 council_run (pack_dir — the gap),
+      1710/1713 the pack, 1816 changed-files, 2315/2331/2357 numstat. No second surface."
+    exit: 0
+    ts: "2026-08-29T02:20:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim:
+      "THE CORPUS GOES RED WITHOUT THE FIX — mutation-proven twice, not asserted. Mutation A:
+      the helper's path sanitizer always refuses -> the innocence and nested tests fail. Mutation B:
+      the workflow's call reverted -> the static wiring pin fails."
+    cmd:
+      "mutate scripts/ci/stage_council_journal.py; pytest scripts/tests/test_stage_council_journal.py
+      -q; restore; git checkout -- .github/workflows/harness-floor.yml; pytest ...; restore"
+    result: "Mutation A: 2 failed, 7 passed. Mutation B: 1 failed, 8 passed. Restored: 9 passed."
+    exit: 1
+    ts: "2026-08-29T01:55:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim:
+      "THE REVIEW ROUND'S FIXES ARE THEMSELVES PINNED: restoring the pre-review sanitize_relpath
+      (leading-'/' string compare, blanket `..` refusal, stripped value, no reserved-name guard)
+      turns four of the corpus's tests red."
+    cmd: "restore pre-review sanitize_relpath + `return raw.strip()`; pytest
+      scripts/tests/test_stage_council_journal.py -q"
+    result:
+      "4 failed, 11 passed — [pack.yml], [brief.yml], [council/../council-journal.jsonl],
+      [' leading-space.jsonl']. Restored: 16 passed."
+    exit: 1
+    ts: "2026-08-29T02:12:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim: "No regression in the rule this PR feeds, and the modified workflow is schema-valid."
+    cmd:
+      "python3 -m pytest scripts/tests/test_evidence_pack_lint.py -q; actionlint
+      .github/workflows/harness-floor.yml; ruff check scripts/ci/stage_council_journal.py
+      scripts/tests/test_stage_council_journal.py"
+    result: "219 passed; actionlint rc=0 (no output); ruff All checks passed!"
+    exit: 0
+    ts: "2026-08-29T02:29:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim:
+      "The 'check' job's red on this PR is PRE-EXISTING on origin/main and not caused by this
+      diff: check_watcher_coverage.py reports the same single violation
+      (check-skills-canonical not covered by main-push-failure-watch.yml) against a pristine
+      origin/main export. It is also not a required context on main."
+    cmd:
+      "git archive origin/main | tar -x -C $S && cd $S && python3 scripts/check_watcher_coverage.py;
+      gh api repos/Bali-Zero/Teman2/branches/main/protection --jq '.required_status_checks.contexts'"
+    result: "Same violation on pristine origin/main. Required contexts list does not include 'check'."
+    exit: 1
+    ts: "2026-08-29T02:05:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim:
+      "THE CRITICAL FAIL-OPEN IS REAL, verified independently rather than accepted from the
+      refuter: `git show <sha>:<a tree>` succeeds and prints a header plus the child FILENAMES, one
+      per line. `git cat-file -t` is not enough to tell a file from a symlink either — a symlink is
+      a blob, and only the MODE (120000) separates them."
+    cmd:
+      "git show HEAD:evidence/2026-08/<a pack dir>; git cat-file -t HEAD:.claude/skills/bot;
+      git ls-tree HEAD -- .claude/skills/bot"
+    result:
+      "tree <sha>:<path> / brief.yml / council-journal.jsonl / pack.yml — filenames as lines.
+      .claude/skills/bot: type blob, mode 120000. Hence the mode gate, not a type check."
+    exit: 0
+    ts: "2026-08-29T02:22:00Z"
+    seat: "claude-opus-5 (build lane), verifying codex-gpt-5.6-sol finding #1"
+  - claim:
+      "GIT PATHSPEC SEMANTICS, measured because the lexical normalization depends on them:
+      `git show <sha>:<path>` REFUSES dot segments ('a/../b' and './b' both fail), and git does not
+      follow symlinks in a pathspec — so a journal can never be read from outside the pack dir."
+    cmd:
+      "git show $H:<dir>/sub/../council-journal.jsonl; git show $H:<dir>/./council-journal.jsonl;
+      git show $H:.claude/skills/bot/SKILL.md"
+    result: "REFUSED / REFUSED / NOT FOLLOWED (the symlink itself returns its target string)."
+    exit: 1
+    ts: "2026-08-29T02:24:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim:
+      "THE TWO NEW GATES ARE PINNED: removing the git-mode gate and the cancelled-prefix check
+      turns exactly the two tests written for them red."
+    cmd:
+      "mutate journal_bytes_at_head (drop the mode gate) + the cancelled-prefix check; pytest
+      scripts/tests/test_stage_council_journal.py -q; restore"
+    result:
+      "2 failed, 17 passed — test_guilt_a_directory_named_as_the_journal_is_never_staged and
+      test_guilt_dotdot_cancelling_a_symlink_is_never_staged. Restored: 19 passed."
+    exit: 1
+    ts: "2026-08-29T02:28:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim:
+      "THE CORPUS IS NOW ACTUALLY GATED: guard-conformance.yml's relevance regex matches this
+      PR's own changed files, so the new step runs on it — and 'Every guard proves guilt AND
+      innocence' is a REQUIRED context on main."
+    cmd:
+      "git diff --name-only <merge-base>...HEAD | grep -E '<the updated relevance regex>';
+      gh api repos/Bali-Zero/Teman2/branches/main/protection --jq '.required_status_checks.contexts'"
+    result: "Matches .github/workflows/{guard-conformance,harness-floor}.yml,
+      scripts/ci/stage_council_journal.py, scripts/tests/test_stage_council_journal.py. The required
+      contexts list contains 'Every guard proves guilt AND innocence'."
+    exit: 0
+    ts: "2026-08-29T02:30:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim:
+      "COUNTABLE CLAIMS RECONCILED against #5191's rule, which merged into main after this PR's
+      first push and now recomputes them from git. The diff stats in `diff.net_lines` are the
+      `--print-measured` sentence verbatim, not a hand count; no commit or test count is narrated in
+      a scanned subtree, so none can go stale. Reaching this is a fixed point — the pack is part of
+      the diff it describes — so the digits were patched in place, without adding or removing a
+      line, until measured == narrated."
+    cmd:
+      "python3 scripts/evidence_pack_lint.py --print-measured --numstat-file <numstat>; then
+      _iter_countable_scalars(pack) cross-checked against _FILES_CLAIM_RE / _DIFFSTAT_CLAIM_RE /
+      _COMMITS_CLAIM_RE / _TESTS_CLAIM_RE"
+    result:
+      "measured '8 files, +1195/-1'; the only countable claims the rule sees are diff.net_lines
+      files=['8'] and diffstat=[('1195','1')] — both matching. COUNTABLE_SUBTREES is ('diff',
+      'lanes'), and lanes narrates no count."
+    exit: 0
+    ts: "2026-08-29T03:05:00Z"
+    seat: "claude-opus-5 (build lane)"
+  - claim:
+      "THE PER-PR EVIDENCE PATHS RESOLVE UNAMBIGUOUSLY for this PR even though a root
+      evidence/{brief,pack}.yml still exists on origin/main: evidence_paths.py matches only paths in
+      THIS PR's own changed-files list, and this diff touches the per-PR pair only."
+    cmd:
+      "git show origin/main:scripts/ci/evidence_paths.py > /tmp/ep.py; python3 /tmp/ep.py --resolve
+      brief --changed-files-file <this PR's changed files>; same for pack"
+    result:
+      "evidence/2026-08/agent-air-m5-infra-r9-staging-fix-6ded81ba/{brief,pack}.yml — no
+      AmbiguousEvidencePathError. (Root evidence/brief.yml and evidence/pack.yml do exist at
+      origin/main, so the trap is live for a PR that touches both; this one does not.)"
+    exit: 0
+    ts: "2026-08-29T03:00:00Z"
+    seat: "claude-opus-5 (build lane)"
+pii_scan: clean
+dissent:
+  - seat: "kimi-code/k3 (review lane)"
+    objection: >-
+      sanitize_relpath's absoluteness test was a string compare on `parts[0] == "/"`, but POSIX
+      reserves a LEADING DOUBLE SLASH: PurePosixPath("//x").parts[0] is "//", so the check accepted
+      it. `staged_dir / "//x"` then discards the left operand (the right is absolute) and the write
+      lands outside the staged tree — while R9 itself refuses the value via Path.is_absolute(). The
+      docstring's claim to "mirror R9's confinement by construction" was therefore false.
+    status: CONFIRMED
+    note: >-
+      Fixed by asking PurePosixPath for is_absolute() instead of comparing strings. Verified rather
+      than reasoned: test_sanitize_relpath_mirrors_r9s_confinement_in_both_directions asserts
+      sanitize_relpath("//etc/passwd") is None. The seat also traced why the end-to-end path could
+      not observe it (git show refuses that pathspec before any write), which is exactly why that
+      case is pinned by a direct unit assertion instead.
+  - seat: "kimi-code/k3 (review lane)"
+    objection: >-
+      The blanket `".." in parts -> refuse` was WRONG IN THE OTHER DIRECTION: R9 resolves
+      `(pack_dir / council_run).resolve()`, so "a/../b" is a perfectly good reference to "b" inside
+      the pack dir and R9 accepts it. The helper refused it, staged nothing, and R9 then failed a
+      legitimate pack — this PR's own defect reproduced in miniature by its own fix.
+    status: CONFIRMED
+    note: >-
+      Fixed by resolving `..` lexically the way R9's .resolve() does, refusing only what actually
+      leaves the pack dir. Pinned end-to-end by
+      test_council_run_shapes_r9_accepts_are_staged_verbatim[council/../council-journal.jsonl],
+      which goes red against the pre-review implementation.
+  - seat: "kimi-code/k3 (review lane)"
+    objection: >-
+      A `council_run:` naming "pack.yml" or "brief.yml" resolves to the canonical names CI stages the
+      pack and brief under, so the helper would write over the very files the lint is about to read.
+      The seat worked through whether this could fail-open (it cannot — two JSON-object lines are not
+      a single valid YAML document, and one line cannot carry two distinct seats) and still asked for
+      a guard rather than an argument.
+    status: CONFIRMED
+    note: >-
+      Fixed with STAGED_RESERVED_NAMES. Costs no legitimate pack anything (R9 finds no quorum in a
+      YAML document either way) and removes the clobber. Pinned by the [pack.yml] and [brief.yml]
+      legs of test_absolute_escaping_or_reserved_council_run_stages_nothing — whose assertion had to
+      be moved onto the script's REPORTED DECISION, because staging those two blobs rewrites them
+      with byte-identical content and leaves the staged file LIST unchanged.
+  - seat: "codex-gpt-5.6-sol (review lane)"
+    objection: >-
+      CRITICAL, git object-type confusion: journal_bytes_at_head used `git show <sha>:<path>` with no
+      check on the object's type or mode, and wrote whatever came back as a regular file. `git show`
+      on a TREE succeeds and prints the child FILENAMES, so a pack could declare a DIRECTORY as its
+      council_run and fill it with files whose names are complete JSON review records — the staged
+      listing then reads as a valid two-seat journal and R9 reaches quorum, while on a real tree R9
+      refuses it outright because `journal_path.is_file()` is False.
+    status: CONFIRMED
+    note: >-
+      Verified independently before fixing, not accepted on the refuter's word: `git show HEAD:<a
+      pack dir>` on this repo prints "tree <sha>:<path>" then brief.yml / council-journal.jsonl /
+      pack.yml. Fixed with a git MODE gate (100644/100755 only) — a type check would not have been
+      enough, because a symlink is also a blob and only mode 120000 distinguishes it (measured on
+      .claude/skills/bot). Pinned by test_guilt_a_directory_named_as_the_journal_is_never_staged.
+  - seat: "codex-gpt-5.6-sol (review lane)"
+    objection: >-
+      HIGH: `a/../b` is cancelled LEXICALLY here but resolved SYMLINK-AWARE by R9, so with a symlink
+      at `a` the two name different files — the script stages the pack-root journal and synthetic R9
+      then passes, where R9 on the real tree would have followed the symlink and refused.
+    status: CONFIRMED
+    note: >-
+      Demonstrated by the seat with a symlink already tracked in this repo (.claude/skills/bot ->
+      ../../.agents/skills/bot). Fixed by verifying, for every prefix a `..` cancels, that it is a
+      directory at HEAD. Scoped on measurement rather than adopted wholesale: a prefix that does NOT
+      exist is not a disagreement, because Path.resolve() is non-strict and normalizes it lexically
+      too — refusing those as well would have re-broken kimi-code/k3's finding above. Pinned by
+      test_guilt_dotdot_cancelling_a_symlink_is_never_staged.
+  - seat: "codex-gpt-5.6-sol (review lane)"
+    objection: >-
+      HIGH: the new corpus was not a PR gate at all. No workflow ran it — guard-conformance.yml runs
+      only the linter's corpus, and scripts-tests-sweep.yml is scheduled/manual with
+      `continue-on-error: true` — so a regression of this fix would never turn a required check red.
+    status: CONFIRMED
+    note: >-
+      The sharpest finding of the round, and the one that would have made the whole PR theatre.
+      Fixed by adding the corpus as an executed step in guard-conformance.yml (whose job IS a
+      required context on main) and adding the four relevant paths to its relevance filter — then
+      verifying the filter actually matches this PR's own changed files, rather than assuming it.
+  - seat: "codex-gpt-5.6-sol (review lane)"
+    objection: >-
+      HIGH: harness-floor.yml runs the helper from the BASE checkout, which makes it trusted decision
+      code, but CODEOWNERS protected the workflow and not the helper or its test. A malicious edit
+      would be judged only after merge, because a PR's own run still uses base's copy.
+    status: CONFIRMED
+    note: >-
+      Fixed by adding both files to the CODEOWNERS Tier-1 block, alongside the change_map.py /
+      impact_map.py / shard_tests.py entries that exist for exactly this trust-boundary reason.
+  - seat: "codex-gpt-5.6-sol (review lane)"
+    objection: >-
+      MEDIUM: the bootstrap guard treated ANY future absence of the helper as a legitimate bootstrap
+      window and continued with exit 0. Deleting the helper would therefore silently un-stage every
+      council journal, and while R9 is still a NOTICE (before 2026-09-02) that window passes Gear-3
+      PRs with no council at all.
+    status: CONFIRMED
+    note: >-
+      Fixed by binding the exemption to this PR's own number and failing closed otherwise — the
+      SENTINEL shape this same step already uses twice for tracked_file_present_in_diff.sh, rather
+      than a new invention.
+  - seat: "codex-gpt-5.6-sol (review lane)"
+    objection: >-
+      LOW: the wiring pin was a substring-and-order search over the raw workflow file, so a
+      COMMENTED-OUT invocation, or three flags scattered anywhere in the file, would satisfy every
+      assertion without any staging happening.
+    status: CONFIRMED
+    note: >-
+      Partially fixed and the remainder declared rather than papered over: comment lines are now
+      stripped before the search (this step's own comments quote the invocation, so the
+      commented-out bypass was live). A line parked under `if false` would still pass — presence is
+      what a static pin can prove, not reachability, and that limit is now written into the test's
+      own docstring.
+  - seat: "claude-opus-5 (build lane), against its own first implementation"
+    objection: >-
+      read_council_run returned `raw.strip()`, but R9 tests `.strip()` only for emptiness and then
+      resolves the RAW string — so a value like " journal.jsonl" names a file whose first character
+      is a space, and the helper would have staged it under a different name than the one R9 goes
+      looking for.
+    status: CONFIRMED
+    note: >-
+      Found while writing the review prompt's own question list, before either seat reported;
+      recorded here rather than quietly fixed. The value is now returned unstripped and the fixture
+      writes council_run as a JSON-quoted YAML scalar so the whitespace survives the round-trip —
+      a plain scalar would have been stripped by the YAML parser and the test would have proved
+      nothing.
+  - seat: "claude-opus-5 (build lane), on the direction of the fix itself"
+    objection: >-
+      The cheaper fix was to make R9 resolve `council_run` against --repo-root, which would have made
+      every Gear-3 PR green immediately with a one-line change to the rule.
+    status: RETRACTED
+    note: >-
+      Retracted on evidence, not on principle. R9's docstring declares `council_run` pack-dir-relative
+      and confines it there, and the only real council pack in the tree commits the journal into that
+      directory — so repo-root resolution would have been loosening a gate to make PRs pass. It is
+      also unimplementable here: this job checks out BASE, so the real per-PR pack directory does not
+      exist on disk at all and the pack itself only reaches CI through `git show`.
+tests:
+  - "scripts/tests/test_stage_council_journal.py — 19 tests, `python3 -m pytest ... -q` -> 19 passed.
+    Acceptance pair: test_guilt_pre_fix_staging_fails_a_compliant_pack_post_flip /
+    test_innocence_staged_journal_clears_a_compliant_pack_post_flip. Now EXECUTED on PRs by
+    guard-conformance.yml, whose job is a required context — before the review round nothing ran it."
+  - "scripts/tests/test_evidence_pack_lint.py — 219 passed (unchanged by this diff)."
+static:
+  - "actionlint .github/workflows/harness-floor.yml .github/workflows/guard-conformance.yml -> clean (rc 0)"
+  - "ruff check scripts/ci/stage_council_journal.py scripts/tests/test_stage_council_journal.py -> clean"
+notes:
+  - >-
+    The workflow guards its call with `if [[ -f scripts/ci/stage_council_journal.py ]]`, the same
+    bootstrap shape as the --source-path probe a few lines below: this job's checkout is BASE, so the
+    script this PR adds is not present on this PR's own run. Missing script -> stage nothing and say
+    so, which is exactly today's behavior; self-consistent from the first Gear-3 run after merge.
+    That branch is declared in `risks:` as the one path this PR cannot exercise against its own CI.
+  - >-
+    This pack exists because the diff touches `.github/workflows/`, a hot-zone path that floors at
+    Gear 3 regardless of size — the same reason PR #5000 needed one. Its `council_run:` is not
+    ceremonial: it is the first pack in the repo authored under the rule this PR repairs, and its
+    journal records the two cross-family seats that actually reviewed the diff.

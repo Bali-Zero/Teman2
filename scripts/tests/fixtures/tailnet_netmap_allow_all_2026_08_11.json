@@ -1,0 +1,46 @@
+{
+  "_comment": [
+    "SANITIZED recording of this tailnet's ENFORCED packet filter — the allow-all state.",
+    "",
+    "Recorded from `tailscale debug netmap` on Mini, 2026-08-31; the same one-rule",
+    "allow-all shape infra/tailscale/policy.hujson's header records as measured from M5 on",
+    "2026-08-11 and re-confirmed 2026-08-29. The date in this filename is that measurement,",
+    "not the day the file was written.",
+    "",
+    "SANITIZED: the live rule lists 14 source CIDRs, one per tailnet node. Those identify",
+    "devices, and this repo is public, so they are replaced with RFC 5737 documentation",
+    "ranges. Only the SHAPE is load-bearing here — 'several specific sources' vs 'any' —",
+    "and the shape is preserved exactly. Nothing else in the rule identifies anyone:",
+    "0.0.0.0/0 and ::/0 are the destinations, and IPProto 6/17/1/58 is TCP/UDP/ICMPv4/ICMPv6.",
+    "",
+    "What makes this DIVERGED against policy.hujson: every port (0-65535) to the whole",
+    "internet on four protocols, versus the policy's narrow per-service TCP grants."
+  ],
+  "PacketFilter": [
+    {
+      "Srcs": [
+        "192.0.2.1/32",
+        "192.0.2.2/32",
+        "192.0.2.3/32",
+        "198.51.100.1/32",
+        "198.51.100.2/32",
+        "198.51.100.3/32",
+        "203.0.113.1/32",
+        "203.0.113.2/32",
+        "203.0.113.3/32",
+        "203.0.113.4/32",
+        "203.0.113.5/32",
+        "203.0.113.6/32",
+        "203.0.113.7/32",
+        "203.0.113.8/32"
+      ],
+      "SrcCaps": null,
+      "Dsts": [
+        { "Net": "0.0.0.0/0", "Ports": { "First": 0, "Last": 65535 } },
+        { "Net": "::/0", "Ports": { "First": 0, "Last": 65535 } }
+      ],
+      "Caps": [],
+      "IPProto": [6, 17, 1, 58]
+    }
+  ]
+}

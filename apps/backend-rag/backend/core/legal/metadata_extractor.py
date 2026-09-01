@@ -14,7 +14,6 @@ from backend.core.legal.constants import (
     LEGAL_TYPE_ABBREV,
     LEGAL_TYPE_PATTERN,
     NUMBER_PATTERN,
-    STATUS_PATTERNS,
     TITLE_BLOCK_FALLBACK_CHARS,
     TOPIC_PATTERN,
     YEAR_PATTERN,
@@ -97,7 +96,13 @@ def extract_title_identity(text: str) -> dict[str, str] | None:
 class LegalMetadataExtractor:
     """
     Extracts metadata from Indonesian legal documents before processing.
-    Identifies document type, number, year, topic, and status.
+    Identifies document type, number, year, and topic.
+
+    Does NOT identify current legal status (in force / revoked) — that
+    derivation was retired 2026-08-25 (see constants.py's tombstone comment
+    above `# Status indicators`). No text-pattern mechanism reading only a
+    document's own body can answer that question correctly for the revoked
+    direction: revocation is always stated in a LATER, different instrument.
     """
 
     def __init__(self) -> None:
@@ -119,9 +124,9 @@ class LegalMetadataExtractor:
                 "number": str,         # "12", "12A", etc.
                 "year": str,           # "2024"
                 "topic": str,          # Topic text after "TENTANG"
-                "status": str,         # "berlaku", "dicabut", or None
                 "full_title": str,     # Full document title
             }
+            No "status" key — retired 2026-08-25, see class docstring.
         """
         if not text or not text.strip():
             logger.warning("Empty text provided to metadata extractor")
@@ -189,16 +194,13 @@ class LegalMetadataExtractor:
             logger.warning("Could not extract topic")
             metadata["topic"] = "UNKNOWN"
 
-        # Extract status (berlaku/dicabut)
-        status = None
-        for status_key, pattern in STATUS_PATTERNS.items():
-            if pattern.search(text):
-                status = status_key
-                break
-
-        metadata["status"] = status
-        if status:
-            logger.debug("Extracted status: %s", status)
+        # Status (berlaku/dicabut) extraction was RETIRED here 2026-08-25 — see
+        # constants.py's tombstone comment above `# Status indicators`. `metadata`
+        # deliberately carries no "status" key; `legal_ingestion_service.py` no
+        # longer writes a `legal_status` payload field for new ingests, which
+        # makes the field genuinely ABSENT (not a lingering `None`) — the same
+        # shape 15,756 legacy points already carry (kb/inventory/immigration.yaml
+        # LANE-A-1), so this introduces no new payload state.
 
         # Build full title
         metadata["full_title"] = self._build_full_title(metadata)

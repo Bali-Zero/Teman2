@@ -23,6 +23,19 @@ surname) from leaking to Sentry cloud on every exception. Three rules:
    is 5k events/month shared across errors AND transactions; APM sampling
    burns it silently, after which error events are dropped too. Default is
    `0.0` in prod — APM is opt-in per deploy.
+4. **Never remove `include_local_variables=False`** from `sentry_sdk.init`
+   (added 2026-08-29, gate F3 of PR #4959). `_before_send`/`_scrub` only ever
+   see the JSON-shaped event payload — but the SDK's logging integration
+   attaches RAW frame-local values to `stacktrace.frames[].vars` at capture
+   time, before `before_send` runs, whenever this is left at the SDK default
+   of `True` (the pre-2.x SDK called this kwarg `with_locals`; measure the
+   installed `sentry_sdk` version before assuming the name). A field that
+   exists only as a bare local — never a dict key — bypasses key-based
+   redaction entirely regardless of how complete `_PII_KEY_SUBSTRINGS` is;
+   see `garuda_portal_auth.py`'s `exchange_magic_link` handler for the
+   concrete case (`garuda_result_session` / `result_session_secret`) that
+   forced this. Test: `test_init_sentry_disables_local_variable_capture` in
+   `tests/unit/app/setup/test_sentry_pii_redaction.py`.
 
 When you add a new PII-bearing field to a router:
 

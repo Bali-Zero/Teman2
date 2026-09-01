@@ -26,6 +26,8 @@ Usage:
 """
 
 import base64
+import hashlib
+import json
 import logging
 import re
 import time
@@ -169,6 +171,35 @@ class GitHubPublisher:
         exists = response.status_code == 200
         logger.debug("File exists check: %s → %s", path, exists)
         return exists
+
+    async def get_file_content(self, path: str, branch: str = "main") -> str:
+        """Read one UTF-8 repository file from a named branch."""
+
+        if not self.is_configured:
+            raise GitHubPublisherError("GitHub API not configured")
+
+        path = self._validate_path(path)
+        url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/contents/{path}"
+        response = await self._get_client().get(
+            url,
+            headers=self._get_headers(),
+            params={"ref": branch},
+            timeout=30.0,
+        )
+        if response.status_code != 200:
+            raise GitHubPublisherError(
+                f"Failed to read repository file {path}: {response.text}"
+            )
+        payload = response.json()
+        encoded = payload.get("content") if isinstance(payload, dict) else None
+        if not isinstance(encoded, str):
+            raise GitHubPublisherError(f"Repository file {path} has no content")
+        try:
+            return base64.b64decode(encoded).decode("utf-8")
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise GitHubPublisherError(
+                f"Repository file {path} is not valid UTF-8 base64"
+            ) from exc
 
     async def get_file_sha(self, path: str, branch: str = "main") -> str | None:
         """
@@ -378,6 +409,172 @@ class GitHubPublisher:
             "html_url": data["html_url"],
         }
 
+    async def _find_pull_request(
+        self,
+        head_branch: str,
+        base_branch: str,
+    ) -> dict[str, Any] | None:
+        """Return an existing PR for one deterministic publication branch."""
+
+        response = await self._get_client().get(
+            f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/pulls",
+            headers=self._get_headers(),
+            params={
+                "head": f"{self.owner}:{head_branch}",
+                "base": base_branch,
+                "state": "all",
+                "per_page": 10,
+            },
+            timeout=30.0,
+        )
+        if response.status_code != 200:
+            raise GitHubPublisherError(
+                f"Failed to look up publication pull request: {response.text}"
+            )
+        payload = response.json()
+        if not isinstance(payload, list) or not payload:
+            return None
+        data = payload[0]
+        if not isinstance(data, dict):
+            return None
+        return {
+            "number": data.get("number"),
+            "node_id": data.get("node_id"),
+            "html_url": data.get("html_url"),
+            "state": data.get("state"),
+            "merged_at": data.get("merged_at"),
+            "commit_sha": (data.get("head") or {}).get("sha"),
+            "body": data.get("body") or "",
+        }
+
+    async def _get_branch_commit_sha(self, branch: str) -> str | None:
+        """Return the current commit for a branch, or ``None`` when absent."""
+
+        response = await self._get_client().get(
+            f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/ref/heads/{branch}",
+            headers=self._get_headers(),
+            timeout=30.0,
+        )
+        if response.status_code == 404:
+            return None
+        if response.status_code != 200:
+            raise GitHubPublisherError(
+                f"Failed to inspect publication branch '{branch}': {response.text}"
+            )
+        payload = response.json()
+        return (payload.get("object") or {}).get("sha")
+
+    async def _get_commit_message(self, commit_sha: str) -> str:
+        """Read the message used to bind a recovery branch to its bundle."""
+
+        response = await self._get_client().get(
+            f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/commits/{commit_sha}",
+            headers=self._get_headers(),
+            timeout=30.0,
+        )
+        if response.status_code != 200:
+            raise GitHubPublisherError(
+                f"Failed to inspect publication commit {commit_sha}: {response.text}"
+            )
+        payload = response.json()
+        return str(payload.get("message") or "")
+
+    @staticmethod
+    def _publication_fingerprint(
+        files: list[dict[str, Any]],
+        json_object_updates: dict[str, dict[str, Any]],
+    ) -> str:
+        """Hash every path, byte, and same-parent JSON mutation in a bundle."""
+
+        digest = hashlib.sha256()
+        for file_info in sorted(files, key=lambda item: str(item["path"])):
+            content = file_info["content"]
+            content_bytes = content.encode("utf-8") if isinstance(content, str) else content
+            digest.update(str(file_info["path"]).encode("utf-8"))
+            digest.update(b"\0")
+            digest.update(content_bytes)
+            digest.update(b"\0")
+        digest.update(
+            json.dumps(
+                json_object_updates,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        )
+        return digest.hexdigest()
+
+    @staticmethod
+    def _fingerprint_marker(publication_fingerprint: str) -> str:
+        return f"Publication-Fingerprint: {publication_fingerprint}"
+
+    async def _resume_publication_pull_request(
+        self,
+        *,
+        head_branch: str,
+        base_branch: str,
+        message: str,
+        files_count: int,
+        publication_fingerprint: str,
+    ) -> dict[str, Any] | None:
+        """Resume an existing idempotent PR/branch after a process interruption."""
+
+        existing_pr = await self._find_pull_request(head_branch, base_branch)
+        if existing_pr:
+            if self._fingerprint_marker(publication_fingerprint) not in str(
+                existing_pr.get("body") or ""
+            ):
+                raise GitHubPublisherError(
+                    "Existing publication pull request fingerprint does not match"
+                )
+            if existing_pr.get("state") == "closed" and not existing_pr.get("merged_at"):
+                raise GitHubPublisherError(
+                    "Publication pull request was closed without merge; manual review required"
+                )
+            return {
+                "success": True,
+                "commit_sha": existing_pr.get("commit_sha"),
+                "files_count": files_count,
+                "branch": head_branch,
+                "pull_request_url": existing_pr.get("html_url"),
+                "pull_request_number": existing_pr.get("number"),
+                "auto_merge_enabled": existing_pr.get("state") == "open",
+                "idempotent": True,
+            }
+
+        branch_sha = await self._get_branch_commit_sha(head_branch)
+        if not branch_sha:
+            return None
+        commit_message = await self._get_commit_message(branch_sha)
+        if self._fingerprint_marker(publication_fingerprint) not in commit_message:
+            raise GitHubPublisherError(
+                "Existing publication branch fingerprint does not match"
+            )
+        pr_title = message.split("\n", 1)[0]
+        pr_body = (
+            f"{message}\n\n"
+            f"{self._fingerprint_marker(publication_fingerprint)}\n\n"
+            "Auto-opened by Article Composer (News Room publish). "
+            "Auto-merge enabled — merges once required checks pass."
+        )
+        pr = await self._create_pull_request(
+            head_branch=head_branch,
+            base_branch=base_branch,
+            title=pr_title,
+            body=pr_body,
+        )
+        auto_merge_enabled = await self._enable_auto_merge(pr["node_id"])
+        return {
+            "success": True,
+            "commit_sha": branch_sha,
+            "files_count": files_count,
+            "branch": head_branch,
+            "pull_request_url": pr["html_url"],
+            "pull_request_number": pr["number"],
+            "auto_merge_enabled": auto_merge_enabled,
+            "idempotent": True,
+        }
+
     async def _enable_auto_merge(self, pr_node_id: str) -> bool:
         """
         Enable auto-merge (squash) on a PR via the GraphQL API.
@@ -434,6 +631,9 @@ class GitHubPublisher:
         branch: str = "main",
         pull_request: bool = False,
         pr_branch_prefix: str = "auto-publish",
+        idempotency_key: str | None = None,
+        must_not_exist_paths: list[str] | None = None,
+        json_object_updates: dict[str, dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """
         Create a single commit with multiple files.
@@ -457,6 +657,11 @@ class GitHubPublisher:
             branch: Target branch (default: main)
             pull_request: If True, publish via branch + PR + auto-merge.
             pr_branch_prefix: Prefix for the temporary PR branch name.
+            idempotency_key: Stable publication identity used to resume one PR.
+            must_not_exist_paths: Paths that must be absent from the exact base
+                commit used for this operation.
+            json_object_updates: Object fields to update after reading the JSON
+                file from the exact immutable parent commit.
 
         Returns:
             Commit info. When ``pull_request=True`` also includes
@@ -469,6 +674,40 @@ class GitHubPublisher:
         # Validate all paths up front before touching the GitHub API.
         for file_info in files:
             file_info["path"] = self._validate_path(file_info["path"])
+        absent_paths = [
+            self._validate_path(path) for path in (must_not_exist_paths or [])
+        ]
+        normalized_json_updates = {
+            self._validate_path(path): updates
+            for path, updates in (json_object_updates or {}).items()
+        }
+        if any(not isinstance(updates, dict) for updates in normalized_json_updates.values()):
+            raise ValueError("JSON object updates must contain object values")
+        explicit_paths = {str(file_info["path"]) for file_info in files}
+        if explicit_paths.intersection(normalized_json_updates):
+            raise ValueError("A repository path cannot be both a file and a JSON update")
+        publication_fingerprint = self._publication_fingerprint(
+            files, normalized_json_updates
+        )
+
+        deterministic_branch: str | None = None
+        if pull_request and idempotency_key:
+            safe_key = re.sub(r"[^A-Za-z0-9._-]+", "-", idempotency_key).strip("-.")
+            if not safe_key:
+                raise ValueError("Invalid publication idempotency key")
+            key_digest = hashlib.sha256(idempotency_key.encode("utf-8")).hexdigest()
+            deterministic_branch = (
+                f"{pr_branch_prefix}/{safe_key[:48]}-{key_digest[:24]}"
+            )
+            resumed = await self._resume_publication_pull_request(
+                head_branch=deterministic_branch,
+                base_branch=branch,
+                message=message,
+                files_count=len(files) + len(normalized_json_updates),
+                publication_fingerprint=publication_fingerprint,
+            )
+            if resumed is not None:
+                return resumed
 
         start_time = time.time()
         file_paths = [f["path"] for f in files]
@@ -524,6 +763,59 @@ class GitHubPublisher:
         current_tree_sha = commit_response.json()["tree"]["sha"]
         logger.debug(f"Current tree SHA: {current_tree_sha[:7]}")
 
+        # The absence assertion is bound to the SAME immutable commit SHA used
+        # as this commit's parent. If main advances later, GitHub reports a
+        # merge conflict instead of silently replacing an article at that path.
+        for protected_path in absent_paths:
+            collision_response = await client.get(
+                f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/contents/{protected_path}",
+                headers=self._get_headers(),
+                params={"ref": current_commit_sha},
+                timeout=30.0,
+            )
+            if collision_response.status_code == 200:
+                raise GitHubPublisherError(
+                    f"Protected repository path already exists: {protected_path}"
+                )
+            if collision_response.status_code != 404:
+                raise GitHubPublisherError(
+                    f"Failed to verify protected repository path {protected_path}: "
+                    f"{collision_response.text}"
+                )
+
+        # Resolve mutable JSON documents only after the immutable base commit
+        # has been selected. Concurrent homepage updates therefore conflict at
+        # merge instead of silently restoring an older layout snapshot.
+        for update_path, updates in normalized_json_updates.items():
+            update_response = await client.get(
+                f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/contents/{update_path}",
+                headers=self._get_headers(),
+                params={"ref": current_commit_sha},
+                timeout=30.0,
+            )
+            if update_response.status_code != 200:
+                raise GitHubPublisherError(
+                    f"Failed to read same-parent JSON file {update_path}: "
+                    f"{update_response.text}"
+                )
+            encoded = update_response.json().get("content")
+            try:
+                document = json.loads(base64.b64decode(encoded).decode("utf-8"))
+            except (TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise GitHubPublisherError(
+                    f"Same-parent JSON file {update_path} is invalid"
+                ) from exc
+            if not isinstance(document, dict):
+                raise GitHubPublisherError(
+                    f"Same-parent JSON file {update_path} is not an object"
+                )
+            document.update(updates)
+            files.append(
+                {
+                    "path": update_path,
+                    "content": json.dumps(document, indent=2, ensure_ascii=False) + "\n",
+                }
+            )
         # Step 3: Create blobs for each file
         logger.debug(f"Step 3/6: Creating {len(files)} blobs")
         tree_items = []
@@ -587,7 +879,11 @@ class GitHubPublisher:
             create_commit_url,
             headers=self._get_headers(),
             json={
-                "message": message,
+                "message": (
+                    f"{message}\n\n{self._fingerprint_marker(publication_fingerprint)}"
+                    if deterministic_branch
+                    else message
+                ),
                 "tree": new_tree_sha,
                 "parents": [current_commit_sha],
             },
@@ -605,21 +901,37 @@ class GitHubPublisher:
             # Step 6 (PR path): land the commit on a fresh branch, then open a
             # PR into `branch` with auto-merge. Required for protected branches
             # (direct ref update returns HTTP 422).
-            pr_branch = f"{pr_branch_prefix}/{new_commit_sha[:12]}"
+            pr_branch = deterministic_branch or f"{pr_branch_prefix}/{new_commit_sha[:12]}"
             logger.debug("Step 6/6 (PR): creating branch '%s' + pull request", pr_branch)
             await self._create_branch_ref(pr_branch, new_commit_sha)
             pr_title = message.split("\n", 1)[0]
             pr_body = (
                 f"{message}\n\n"
+                f"{self._fingerprint_marker(publication_fingerprint)}\n\n"
                 "Auto-opened by Article Composer (News Room publish). "
                 "Auto-merge enabled — merges once required checks pass."
             )
-            pr = await self._create_pull_request(
-                head_branch=pr_branch,
-                base_branch=branch,
-                title=pr_title,
-                body=pr_body,
-            )
+            try:
+                pr = await self._create_pull_request(
+                    head_branch=pr_branch,
+                    base_branch=branch,
+                    title=pr_title,
+                    body=pr_body,
+                )
+            except GitHubPublisherError:
+                # A simultaneous retry can win the deterministic branch/PR
+                # race. Reconcile against GitHub before surfacing a failure.
+                if deterministic_branch:
+                    resumed = await self._resume_publication_pull_request(
+                        head_branch=deterministic_branch,
+                        base_branch=branch,
+                        message=message,
+                        files_count=len(files),
+                        publication_fingerprint=publication_fingerprint,
+                    )
+                    if resumed is not None:
+                        return resumed
+                raise
             auto_merge_enabled = await self._enable_auto_merge(pr["node_id"])
 
             elapsed_ms = (time.time() - start_time) * 1000

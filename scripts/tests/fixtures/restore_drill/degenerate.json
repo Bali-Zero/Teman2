@@ -1,0 +1,78 @@
+{
+  "_comment": "Synthetic measurement fixture for restore_drill_verify.py's GUILT case. Only relation/column NAMES and COUNTS appear — no row values (SYMBIOSIS Law 2 / UU PDP). Deliberately MIXED, not uniformly broken: four relations each fail for a DIFFERENT reason, and one (visa_decision_retention_policies) passes clean — so a test against this file can assert the exact named-failing set instead of a blanket 'everything is red'.",
+  "relations": [
+    {
+      "_comment": "messages column dropped mid-restore (simulated schema drift). No violations key: fetch_live() never runs a check that references a missing required column, so this mirrors what a live run would actually measure.",
+      "relation": "conversations",
+      "exists": true,
+      "columns": ["id", "user_id", "created_at"],
+      "row_count": 3
+    },
+    {
+      "_comment": "table restored with correct schema but zero rows -- the 2026-06-06 auth-scope bug class this drill exists to catch.",
+      "relation": "clients",
+      "exists": true,
+      "columns": [
+        "id",
+        "full_name",
+        "client_type",
+        "google_drive_folder_id",
+        "created_at",
+        "updated_at"
+      ],
+      "row_count": 0,
+      "violations": { "client_type_unknown": 0, "lead_metadata_not_object": 0 }
+    },
+    {
+      "_comment": "two independent relational defects on the same table: a verdict outside the engine's enum, and a citations array-shape violation.",
+      "relation": "visa_decisions",
+      "exists": true,
+      "columns": [
+        "id",
+        "decision_id",
+        "environment",
+        "verdict",
+        "citations",
+        "rule_pack_id",
+        "evaluated_at"
+      ],
+      "row_count": 5,
+      "violations": {
+        "verdict_unknown": 2,
+        "environment_unknown": 0,
+        "citations_not_array": 1,
+        "temporarily_unavailable_missing_pack": 0
+      }
+    },
+    {
+      "_comment": "relation absent entirely from the restore.",
+      "relation": "events_outbox",
+      "exists": false
+    },
+    {
+      "relation": "visa_decision_retention_policies",
+      "exists": true,
+      "columns": [
+        "id",
+        "environment",
+        "policy_version",
+        "retention_interval",
+        "idempotency_retention_interval",
+        "legal_hold_review_interval",
+        "retention_anchor",
+        "effective_period",
+        "approved_by",
+        "approval_reference",
+        "created_at"
+      ],
+      "row_count": 1,
+      "violations": {
+        "environment_unknown": 0,
+        "retention_anchor_unknown": 0,
+        "idempotency_interval_out_of_bounds": 0,
+        "effective_period_invalid": 0,
+        "duplicate_environment_policy_version": 0
+      }
+    }
+  ]
+}

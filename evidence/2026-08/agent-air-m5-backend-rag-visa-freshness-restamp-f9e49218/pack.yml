@@ -1,0 +1,352 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #5311 (agent/air-m5/backend-rag/visa-freshness-restamp-seq17-0830 -> main)
+  — seq-17 re-stamp of the OFFICIAL_PORTAL source ledger after the live
+  freshness expiry of 2026-08-30T10:44:48Z. Fold doctrine inherited from
+  backend/scripts/visa_engine/fold_pack_seq15.py; ceremony runbook
+  docs/runbooks/visa-engine-key-ceremony.md.
+
+lanes:
+  - lane: seq17-restamp-build
+    role: build
+    seat: claude (this session — M5 interactive, sole build lane)
+  - lane: seq17-refuter-r1
+    role: review
+    seat: codex gpt-5.6-sol xhigh (non-Anthropic) — adversarial grader on the
+      diff, dispatched without the brief; never the build seat
+
+diff:
+  files: 12
+  net_lines: 19301
+  measured_at: 38dbf8980e
+  note: >-
+    git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD.
+    The two pack JSONs are generated artifacts of the deterministic fold plus
+    the offline signer; the hand-authored surface is the fold script, the
+    triage rule and its tests, and the two review-reason copy entries.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      The uuid5 rule_pack_id convention is real and current, not inferred from
+      the fold scripts alone: it reproduces the ids of the packs on disk AND
+      the id of the row that was active in production at the time of the fold.
+    cmd: >-
+      python3 -c "import uuid; B='https://balizero.com/visa-oracle/rule-pack/
+      PRODUCTION/ID/IMMIGRATION_VISA/'; [print(n, uuid.uuid5(uuid.NAMESPACE_URL,
+      B+str(n))) for n in (14,15,16,17)]"
+    result: >-
+      14 -> 821e2ddc-4e7c-5a06-8609-2f402c6e51f0 (equals rulepack-prod-014 on
+      disk); 15 -> ff48ba21-2eae-5fe7-ad1d-20f2cb0050e5 (equals
+      rulepack-prod-015 on disk); 16 -> 08e07e77-eb71-5490-b246-d980b6f3afb6
+      (equals the id of the then-active production row); 17 ->
+      a51a3142-df1d-5467-b015-623d9a8644e6 (minted here).
+    exit: 0
+    ts: 2026-08-30T15:20Z
+    seat: session (build lane)
+
+  - claim: >-
+      The semantic diff between the live seq-16 payload and the seq-17 source
+      is exactly the intended one. At the top level only sequence, rule_pack_id,
+      created_at, created_by, previous_payload_sha256 and source_records differ;
+      inside source_records the only records that moved carry authority_type
+      OFFICIAL_PORTAL, and on those the only fields that moved are verified_at
+      and verified_by.
+    cmd: >-
+      python3 - (structural JSON comparison of the DB export against the folded
+      source: per-key equality at top level, then per-record equality and
+      per-field diff across source_records)
+    result: >-
+      top-level keys changed = [created_at, created_by, previous_payload_sha256,
+      rule_pack_id, sequence, source_records]; changed records carry
+      authority_type OFFICIAL_PORTAL only; fields touched = [verified_at,
+      verified_by]; no rule, product, hit_policy, valid_period or non-portal
+      source record differs.
+    exit: 0
+    ts: 2026-08-30T15:25Z
+    seat: session (build lane)
+
+  - claim: >-
+      The signed bundle verifies against the pinned PRODUCTION trust-store key,
+      and still verifies after the repo's formatter rewrote the file — the
+      signature covers the canonical payload, not the file's text.
+    cmd: >-
+      VISA_ENGINE_TRUST_STORE_KEYS_JSON=<pinned prod-2026-07-1 public key>
+      PYTHONPATH=. python -c "verify_rule_pack(raw,
+      trust_store=StaticTrustStore.from_env(), observed_at=now)" — run before
+      and after `npx prettier --write` on both pack files
+    result: >-
+      FIRMA OK both times; recomputed JCS digest of the source equals the
+      payload_sha256 the signer emitted (97cb9647...).
+    exit: 0
+    ts: 2026-08-30T15:52Z
+    seat: session (build lane)
+
+  - claim: >-
+      The activation ceremony refused the FIRST seq-17 artifact rather than
+      corrupting the ledger. The initial fold carried seq-16's rule_pack_id, and
+      the writer rejected it because packs are immutable under that key. Nothing
+      was written on that attempt; the guard is why this PR contains a corrected
+      fold and not a corrupted row.
+    cmd: >-
+      python -m backend.scripts.visa_engine.activate_pack
+      /tmp/rulepack-prod-017.signed.json --current-sequence 16 ... --yes
+      (operator ceremony on Pro, two distinct ephemeral non-superuser logins)
+    result: >-
+      "FAIL: visa_rule_packs already holds 08e07e77-... with a DIFFERENT
+      payload_sha256 (ef17dc122380d1e5... vs 49a18d790ea011bf...) — packs are
+      immutable"
+    exit: 1
+    ts: 2026-08-30T15:25Z
+    seat: operator[credential] ceremony (activation requires two distinct
+      non-superuser logins; the session does not create logins)
+
+  - claim: >-
+      The corrected artifact activated in production, and the anti-rollback
+      pre-gate passed on the real chain anchor.
+    cmd: >-
+      python -m backend.scripts.visa_engine.activate_pack
+      /tmp/rulepack-prod-017.signed.json --current-sequence 16
+      --current-payload-sha256 ef17dc12... --yes
+    result: >-
+      "verified against trust store: kid=prod-2026-07-1"; "anti-rollback
+      pre-gate passed"; "pack row inserted"; "activated
+      rule_pack_id=a51a3142-df1d-5467-b015-623d9a8644e6
+      activation_id=80e6dda6-0ffb-4005-8a9c-706c23f1094d"
+    exit: 0
+    ts: 2026-08-30T15:35:49Z
+    seat: operator[credential] ceremony
+
+  - claim: >-
+      Verified from the CATALOG through the read-only production role — never
+      from the writer's own output — the active activation is the new pack, with
+      the digest the fold and the signer independently computed, and the portal
+      records now carry the new stamp.
+    cmd: >-
+      scripts/pg.sh -c "SELECT p.sequence, encode(p.payload_sha256::bytea,'hex'),
+      a.activated_by FROM visa_ruleset_activations a JOIN visa_rule_packs p ON
+      p.id=a.rule_pack_id WHERE upper_inf(a.system_period)" and a second query
+      grouping source_records by authority_type and verified_at
+    result: >-
+      sequence 17, sha 97cb964780b114a2fa936230055327102a5af59efb010b6bf04090bb7321890b,
+      activated_by operator.zero.freshness-restamp-2026-08-30, opened
+      2026-08-30 15:35:49.031881+00. Grouping shows the OFFICIAL_PORTAL records
+      at verified_at 2026-08-30T13:18:00Z; the non-portal authorities are
+      unmoved and sit inside their own much longer window.
+    exit: 0
+    ts: 2026-08-30T15:38Z
+    seat: session (independent verification)
+
+  - claim: >-
+      PROVEN LIVE against the deployed service after activation: the endpoint
+      answers with real candidates on the very cases that were folding to
+      HUMAN_REVIEW_REQUIRED, and reports the new pack as the one it used.
+    cmd: >-
+      PYTHONPATH=. python -m backend.scripts.visa_engine.probe_evaluate --url
+      https://nuzantara-rag.fly.dev/api/visa-oracle/evaluate --payload
+      <tourist> ; same for an E31A spouse payload
+    result: >-
+      both HTTP 200, mode CURATED, state SUPPORTED_CANDIDATES, rule_pack
+      sequence=17 rule_pack_id=a51a3142-df1d-5467-b015-623d9a8644e6.
+    exit: 0
+    ts: 2026-08-30T15:45Z
+    seat: session (independent verification)
+
+  - claim: >-
+      No restart or cache invalidation was needed for that to be true, and this
+      is a property of the code rather than an observation that happened to
+      hold. The active activation is re-read per request.
+    cmd: >-
+      code audit of the load path — shadow.py:340-400
+      (_resolve_active_pack_binding, acquires a connection and runs the
+      range-containment query per call), called by evaluate_path.py:1609 inside
+      run_evaluation() and by shadow.py:599 on the SHADOW path
+    result: >-
+      no lru_cache, no module-level pack global, no Redis or TTL wrapper on
+      either path; the only lru_cache in the package caches the static JSON
+      Schema validator, which is not keyed on the activation.
+    exit: 0
+    ts: 2026-08-30T15:42Z
+    seat: session (independent verification)
+
+  - claim: >-
+      The Detect Secrets red is cured for the right reason: the chain-anchor
+      digest is now audited, the file no longer appears as residue, and the gate
+      that actually fails the job exits clean.
+    cmd: >-
+      python3 scripts/detect_secrets_auto_triage.py --report ;
+      python3 scripts/detect_secrets_check_unaudited.py
+    result: >-
+      fold_pack_seq17.py absent from the residue listing; the unaudited gate
+      prints "All findings audited" and exits 0.
+    exit: 0
+    ts: 2026-08-30T23:55Z
+    seat: session (build lane)
+
+  - claim: >-
+      The frontend red is cured by the copy, proven by running the test that
+      failed rather than by reading the fix.
+    cmd: >-
+      cd apps/mouth && npx vitest run
+      "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts"
+    result: "1 file passed, 25 passed"
+    exit: 0
+    ts: 2026-08-30T23:57Z
+    seat: session (build lane)
+
+  - claim: >-
+      The rewritten fail-closed guard BITES. Eight ways a field could drift are
+      each rejected, the real fold passes, and the fold still reproduces the
+      activated artifact byte for byte after the rewrite.
+    cmd: >-
+      re-run the fold and byte-compare against the committed source; then call
+      assert_only_expected_changes on hand-built mutated pairs (jurisdiction,
+      engine_min_version, version, content_sha256 on a portal record,
+      verified_at on a NON-portal record, an added top-level key, a removed
+      record, an added record field), plus the unmutated pair
+    result: >-
+      output identical to the activated artifact; all eight mutations rejected;
+      the unmutated pair passes.
+    exit: 0
+    ts: 2026-08-31T00:40Z
+    seat: session (build lane)
+
+  - claim: >-
+      The kimi reviewer's headline precedent does not exist. It cited prior
+      restamp evidence documents under research/visa/doctrine-factory/e5/ plus a
+      source-restamp-edits.json ledger, and built its MAJOR finding on this being
+      a broken convention.
+    cmd: >-
+      find in the worktree; git ls-tree -r --name-only on origin/main; then the
+      same grep across every remote branch
+    result: >-
+      zero hits for freshness-restamp or source-restamp-edits across 440 remote
+      branches; doctrine-factory absent from main. The convention was invented.
+      The reviewer's underlying point about unprovable attestation stands on its
+      own and is acted on; the precedent it claimed does not.
+    exit: 0
+    ts: 2026-08-31T00:50Z
+    seat: session (independent verification of a reviewer's claim)
+
+council_run: council-run.jsonl
+
+dissent:
+  - seat: codex gpt-5.6-sol (round 1)
+    objection: >-
+      BLOCKER — the attestation is unprovable and slightly overstated. Nothing in
+      the diff proves anyone read the eighteen pages; running the fold offline
+      against the seq-16 payload yields the identical stamp. The stamp instant
+      also sits after the last reader returned.
+    status: CONFIRMED
+    resolution: >-
+      Not repairable inside a signed, already-active artifact, and NOT papered
+      over. Recorded in full in
+      research/visa/2026-08-30-freshness-restamp-seq17-attestation.md, which
+      states plainly that the reading happened but left no per-record receipt,
+      and refuses to reconstruct quotes from memory because that would look like
+      evidence. The rule it produces — write the ledger DURING the reading, and
+      stamp the EARLIEST reader's instant — applies to the next ceremony in this
+      lane, which is the one that raises the window.
+  - seat: codex gpt-5.6-sol (round 1)
+    objection: >-
+      MAJOR — the "nothing else changes" guarantee was not enforced. The guard
+      listed keys that must not move and left version, environment, jurisdiction,
+      decision_domain and the three engine_*_version keys unguarded; the record
+      comparison covered only NON-portal records, so content_sha256 on a portal
+      record could drift unnoticed.
+    status: CONFIRMED
+    resolution: >-
+      Fixed. The polarity is inverted: an explicit allow-list of what MAY change,
+      universal equality for everything else, at both the payload level and the
+      record level, plus RulePackPayload.model_validate on the result. Extracted
+      as assert_only_expected_changes so it can be tested at all — the first
+      guilt test was VACUOUS, because mutating the fold's input is caught by the
+      chain-anchor digest first, which is exactly how a green test can prove
+      nothing.
+  - seat: codex gpt-5.6-sol (round 1)
+    objection: >-
+      MINOR — "seq-16 does not exist in this repository at all" is false; the
+      signed bundle is on origin/feature/visa-oracle with the active digest.
+    status: CONFIRMED
+    resolution: >-
+      Verified with git show, then corrected in all three places the false claim
+      had already reached: the fold docstring, this PR's brief, and this pack.
+      The real gap is narrower and still open — seq-16's source never reached
+      main.
+  - seat: codex gpt-5.6-sol (round 1)
+    objection: >-
+      MAJOR — the operational cause is untouched. The records expire again one
+      week out, and the sentinel's dedup is stable per sequence, so if the first
+      seq-17 alert is not acted on the rest are suppressed and the Oracle goes
+      quiet again.
+    status: CONFIRMED
+    resolution: >-
+      Out of scope here and NOT claimed as fixed. Raising the window is a
+      separate signed ceremony (the value lives only in the pack; there is no
+      config override anywhere), already ordered. The dedup that swallowed the
+      warning is its own open item and this PR does not touch it.
+  - seat: kimi-code/k3 (round 1)
+    objection: >-
+      MINOR — `version` still reads 2026.8.26 although earlier folds set it to
+      the fold date, so the catalog holds a pack created 2026-08-30 whose version
+      says 2026-08-26.
+    status: CONFIRMED
+    resolution: >-
+      Real and NOT fixable here: the artifact is signed and live, so changing it
+      would invalidate the signature and diverge from the activated row. Nothing
+      reads the field for decisions. Recorded in the attestation document so the
+      next fold sets it.
+  - seat: kimi-code/k3 (round 1)
+    objection: >-
+      MINOR — the E23V copy narrows the pack's own product name, dropping "and
+      Economic" and calling it a "trade representative office".
+    status: CONFIRMED
+    resolution: >-
+      Fixed. Both entries now follow the pack's product names verbatim — "Foreign
+      Diplomat House Assistant" and "Trade and Economic Office" — in EN and ID.
+  - seat: kimi-code/k3 (round 1)
+    objection: >-
+      MINOR — no backend witness file for seq-17, where every pack from seq-6 to
+      seq-15 has one.
+    status: CONFIRMED
+    resolution: >-
+      Fixed: test_seq17_freshness_restamp.py adds identity, chain, signature,
+      freshness-shape and the guard's guilt/innocence witnesses.
+  - seat: kimi-code/k3 (round 1)
+    objection: >-
+      MAJOR — every prior restamp in this lane shipped an evidence document with
+      verbatim per-record quotes plus a source-restamp-edits.json ledger; seq-17
+      ships none, breaking the lane's convention.
+    status: RETRACTED
+    resolution: >-
+      The convention does not exist. Searched the worktree, origin/main and all
+      440 remote branches: zero hits for freshness-restamp or
+      source-restamp-edits, and doctrine-factory is absent from main. The cited
+      paths and dates were fabricated. The reviewer's underlying point — that the
+      attestation is unprovable — is separately CONFIRMED above and acted on; only
+      the claimed precedent is refuted. Recorded because a finding taken on trust
+      is how a wrong fact enters the record.
+  - seat: session (self-audit)
+    objection: >-
+      This PR ships an artifact that was ALREADY ACTIVE in production before
+      review. The ordering was forced — every visa product was answering nothing
+      — but it inverts the usual guarantee: review documents a change that is
+      already load-bearing.
+    status: CONFIRMED
+    resolution: >-
+      Stated rather than smoothed over. The honest remedy for any rejected
+      finding is a forward pack, never an edit to a signed artifact that is live;
+      that is what happened for every finding above that could not be fixed here.
+  - seat: session (self-audit)
+    objection: >-
+      content_sha256 was deliberately left untouched on every record, on the
+      readers' judgement that no page changed semantically. Nothing in CI can
+      check that judgement.
+    status: CONFIRMED
+    resolution: >-
+      Named as a residual risk in the attestation document, including the exact
+      circumstance that would make it wrong: a page that changed while a reader
+      judged the change non-semantic leaves a fresh attestation over a stale
+      fingerprint, undetectable by any later hash audit because the method was
+      reading, not re-hashing.

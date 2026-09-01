@@ -115,11 +115,11 @@ Packets release as soon as their own predecessors have valid review receipts. A 
 |---|---|---|---|
 | A — bootstrap | `04`, `03`, `01-prep` Tasks 1–6 | `02-prep`, `05-prep`, `06-prep`, then `07/08/17` fixtures as capacity permits | P04 independent contract PASS; P01 shadow-ready; P03 zero-spend trace |
 | B — contract adoption | `01-final`, `02`, `05`, `06` | `07`, `08`, `12`, `14`, `17`, `18` bounded preparation | G0 and G1 evidence; migrations 271–273 integrated serially |
-| C — evidence spine | `07`, `08`, `17`, plus `09-schema` only | P12/P18 prototypes; P09–11 fixtures; P13/14 schemas | G2; migration 274 integrated without activating P09 runtime |
-| D1 — action spine | `12` | P18 refresh; P09–11 lossless-interface fixtures | One canonical Action Inbox; migration 275 |
+| C — evidence spine | `07`, `08`, `17`, plus `09-schema` only | P12/P18 prototypes; P09–11 fixtures; P13/14 schemas | G2; `research_os_publication_projection` integrated without activating P09 runtime |
+| D1 — action spine | `12` | P18 refresh; P09–11 lossless-interface fixtures | One canonical Action Inbox; `research_os_action_inbox` |
 | D2 — operator bridge | `18` | fresh P09–11 successor dispatches from the integrated checkpoint; P13 collectors in fixture mode | Hash-bound handoff that cannot execute by itself |
 | E — outcome surfaces | `09-runtime`, `10`, `11` | P13 integration prep; P19–23 inventories | Lossless IDs/receipts across all three surfaces; manual outward stop |
-| F — return path | `13` | P14 advisory harness and adoption fixtures | Runnable outcomes; migration 276; complete reporting windows |
+| F — return path | `13` | P14 advisory harness and adoption fixtures | Runnable outcomes; `research_os_outcome_collectors`; complete reporting windows |
 | G — release gate | `14` | No canary may use its incomplete measurements | Independent Phase B gate; `insufficient_evidence` does not pass |
 | H — adoption | `15`, `19`, `20`, `21`, `22`, `23` | Retirement inventory may refresh read-only | Six independently reviewed lanes and their required windows |
 | I — simplification | `16-inventory`, then one named `disable`, then one later `remove` | Other candidate audits may be read-only only | G4, observed disabled window, owner sign-off, separate removal receipt |
@@ -133,18 +133,18 @@ Calendar duration is deliberately not guessed. Preregistered operating windows g
 | P | Workstream | Prep now | Mutation/integration gate | Primary node/lane | Shared collision |
 |---:|---|---|---|---|---|
 | 01 | NEXUS containment | Tasks 1–6 after a sanitized Pro snapshot | Task 7 waits for reviewed P04 primitive and five exact effect authorities | Pro, external OSINT-Nexus worktree | NEXUS runtime; P07 waits for containment |
-| 02 | Publishing truth | Audit, policy fixtures, golden set | P04 contract PASS; migration 271 after P04's `research_os_contract_core` migration (no fixed number — see §0) | Pro / `backend-rag` | publication state and migration train |
+| 02 | Publishing truth | Audit, policy fixtures, golden set | P04 contract PASS; `research_os_publication_truth` after P04's `research_os_contract_core` migration (no fixed number — see §0) | Pro / `backend-rag` | publication state and migration train |
 | 03 | WR3/FlowKit readiness | Yes, zero-spend only | Compatibility review against P04 before it can unlock P11 | Pro / `wr3` | same WR3 runtime files later owned by P11 |
 | 04 | Canonical contracts | Ready first | None beyond fresh Pro truth and exclusive leases | Pro / `backend-rag` | contract exports, repository core, `research_os_contract_core` migration (no fixed number — see §0) |
-| 05 | Intel Lake + MATA | Inventory, replay fixtures, ownership map | P04 PASS; migration 272 after 271 | Pro | Intel/MATA queues and schema |
-| 06 | NAGA claim ledger | Schema mapping, fixtures, temporal cases | P04 PASS; migration 273 after 272 | Pro | claim/evidence registry and schema |
+| 05 | Intel Lake + MATA | Inventory, replay fixtures, ownership map | P04 PASS; `research_os_intel_lake_events` after `research_os_publication_truth` (no fixed number — see §0/§5) | Pro | Intel/MATA queues and schema |
+| 06 | NAGA claim ledger | Schema mapping, fixtures, temporal cases | P04 PASS; `research_os_naga_claims` after `research_os_intel_lake_events` (no fixed number — see §0/§5) | Pro | claim/evidence registry and schema |
 | 07 | NEXUS entity resolution | Golden set and synthetic clone plan | P01, P04, P05, P06 PASS; never mutate production graph | Pro / `organism` | P01 external repo boundary; P05 typed message |
 | 08 | Hybrid retrieval | Baseline and labeled query set | P05 and P06 PASS; P17 before any grounded canary | Pro | retrieval registry; no embedding change |
 | 09 | Blog/Magazine/SEO | Fixtures and schema design | Schema 274 after P02/P04; runtime after P12/P18 | Pro / `cell` | evaluator tree, publication adapter, migration train |
 | 10 | WR2 foundry | Visual-contract fixtures and recent-output baseline | P04, P06, P18 PASS | Pro / `wr2` | WR2 scripts and critic path |
 | 11 | WR3 foundry | Non-overlapping fixtures only | P03 compatibility PASS plus P04/P06/P12/P18 | Pro / `wr3` | exclusive with P03-owned WR3 files; paid pilot separately gated |
-| 12 | Kita Action Inbox | State fixtures and UI prototype | P04/P05/P06/P07 PASS; P08 and P17 required before canary; migration 275 after 274 | Pro / `backend-rag` + `frontend` | action schema, router and Kita route registry |
-| 13 | Outcome telemetry | Taxonomy, source mappings, synthetic collectors | P04 and P09–P12 PASS; migration 276 after 275 | Pro / `cell` | Packet 09 SEO files and Packet 14 evaluator tree |
+| 12 | Kita Action Inbox | State fixtures and UI prototype | P04/P05/P06/P07 PASS; P08 and P17 required before canary; `research_os_action_inbox` after `research_os_publication_projection` (no fixed number — see §0/§5) | Pro / `backend-rag` + `frontend` | action schema, router and Kita route registry |
+| 13 | Outcome telemetry | Taxonomy, source mappings, synthetic collectors | P04 and P09–P12 PASS; `research_os_outcome_collectors` after `research_os_action_inbox` (no fixed number — see §0/§5) | Pro / `cell` | Packet 09 SEO files and Packet 14 evaluator tree |
 | 14 | Cross-system evaluations | Advisory harness, labeling guide, public/synthetic sets | Blocking Phase B waits for P05–P13, P17, P18 and runnable P13 measurements | Pro | broad evaluator ownership; file-exact lease required |
 | 15 | Active learning | Shadow decision collection and offline fixtures | P12/P13/P14/P18 PASS; no autonomous routing mutation | Pro / `ops` | outcome and action registries |
 | 16 | Controlled retirement | Inventory and live-use instrumentation plan | All P01–P15/P17–P23 plus G4; one target per dispatch | Pro / `ops` | flags, schedulers, queues, routes; exclusive effect gate |
@@ -161,27 +161,55 @@ Calendar duration is deliberately not guessed. Preregistered operating windows g
 Schema design can happen on packet branches. Migration integration and application are one ordered queue:
 
 ```text
-research_os_contract_core P04 canonical core (symbolic name, integer bound at integration time — see §0; shipped as 279)
+research_os_contract_core        P04 canonical core        (shipped as 279)
   ↓
-271 P02 publication truth
+research_os_publication_truth    P02 publication truth     (integer unbound)
   ↓
-272 P05 Intel Lake v2
+research_os_intel_lake_events    P05 Intel Lake v2         (integer unbound)
   ↓
-273 P06 NAGA
+research_os_naga_claims          P06 NAGA                  (integer unbound)
   ↓
-274 P09 schema-only projections and cursors
+research_os_publication_projection  P09 schema-only projections and cursors  (integer unbound)
   ↓
-275 P12 Action Inbox
+research_os_action_inbox         P12 Action Inbox          (integer unbound)
   ↓
-276 P13 outcome aggregates
+research_os_outcome_collectors   P13 outcome aggregates    (integer unbound)
 ```
+
+**CORRECTED 2026-08-26 — this queue previously read `271`…`276`, and every one of
+those integers was already taken.** Measured on disk in the correcting session, and
+re-measured in a second fresh worktree before writing:
+
+| was reserved for | integer | what actually occupies it today |
+|---|---|---|
+| P02 publication truth | `271` | `271_wa_broker_gauge_half_open_at.sql` |
+| P05 Intel Lake v2 | `272` | `272_wa_broker_package_text.sql` |
+| P06 NAGA | `273` | `273_wa_broker_completion_digest.sql` |
+| P09 schema-only | `274` | `274_wa_broker_completed_at_check.sql` |
+| P12 Action Inbox | `275` | `275_war_room_vision_circuit_breaker.sql` |
+| P13 outcome aggregates | `276` | `276_garuda_voa_archive_comments.sql` |
+
+The real head is **`287`** (`287_garuda_practices.sql`), and the sequence is **not
+dense** — `282` is absent — so a head derived by counting files is wrong where
+`max + 1` is right.
+
+**This correction introduces no new judgement: it applies §0, which had already
+decided this and was not carried down here.** §0 refused a contiguous re-reservation
+on the grounds that "a contiguous integer block frozen at time T against a global
+mutable counter decays monotonically," and ruled that a packet reserves a symbolic
+name, that the integer is bound at integration time from a head re-measured in that
+same session, and that **no number is reserved for a packet that has not authored its
+SQL**. This section had gone on reserving six integers for six packets that have not.
+The predicted decay is exactly what the table above records. Nothing downstream may
+read an integer from this file — not even the ones above, which are historical
+evidence of the failure mode, not reservations.
 
 Packet 09 is deliberately split:
 
-- `P09-schema` may prepare and integrate migration 274 after P02/P04 contracts pass; it remains disabled and performs no outward action.
+- `P09-schema` may prepare and integrate `research_os_publication_projection` after P02/P04 contracts pass; it remains disabled and performs no outward action.
 - `P09-runtime` still waits for P12 and P18 before integrating action/publication adapters.
 
-If migration 274 cannot validate without P12/P18, the queue stops. The Conductor raises a formal ledger revision; no worker skips 274, renumbers independently, or applies 275 first.
+If `research_os_publication_projection` cannot validate without P12/P18, the queue stops. The Conductor raises a formal ledger revision; no worker skips it, binds an integer independently, or integrates `research_os_action_inbox` ahead of it. (Corrected 2026-08-26 with the queue above: this paragraph named `274` and `275`, both of which belong to the WhatsApp broker and the War Room vision breaker respectively — a prohibition that named the wrong files protected nothing and left the real target unnamed.)
 
 Packets 17 and 18 have no reservation. They must reuse P04/P12 persistence. Any newly discovered persistence requirement is a hard stop and requires a versioned migration-ledger decision before implementation.
 
@@ -192,7 +220,7 @@ The Conductor maintains one active owner for each shared resource:
 | Lease | Normal owner/order | Rule |
 |---|---|---|
 | `research-os-contract-export` | P04, then compatibility integrator | No domain packet edits canonical definitions |
-| `migration-ledger-270-276` | I1 only | Design parallel; integrate/apply serial |
+| `migration-ledger-research-os` | I1 only | Design parallel; integrate/apply serial. Renamed 2026-08-26: was `migration-ledger-270-276`, a window in which all seven integers now belong to other domains (see §5). The lease is over the Research OS migration TRAIN, not over a numeric range — a range-named lease silently stops matching the thing it guards. |
 | `backend-router-registry` | I1 | Domain routers are namespaced; mount changes queue serially |
 | `mouth-route-registry` | P12, then P18, then P19–23 through I1 | Domain sessions do not concurrently edit shared navigation |
 | `wr3-runtime` | P03, then P11 | P11 may prepare non-overlapping fixtures but cannot edit P03 paths concurrently |
@@ -286,10 +314,10 @@ Gate policy:
 The frozen artifacts expose several boundaries that execution must resolve conservatively without silently editing the DAG:
 
 1. **P08 and P12:** the written G2 prose says retrieval supports Action Inbox, but there is no hard `08 → 12` graph edge. P12 may build its core after its declared predecessors; no P12 canary or broader consumer opens before P08 baseline and G2 are valid.
-2. **P09 migration 274 versus P12 migration 275:** split `P09-schema` from `P09-runtime` as described above. Stop for a ledger revision if 274 is not independently valid.
+2. **P09 `research_os_publication_projection` versus P12 `research_os_action_inbox`:** split `P09-schema` from `P09-runtime` as described above. Stop for a ledger revision if `research_os_publication_projection` is not independently valid.
 3. **P17 canary scope:** P17 does not block offline P08/P12 construction, but grounded canaries that rely on specialist verification wait for its valid receipt.
 4. **P03 versus P04 contracts:** P03 may prove zero-spend readiness with frozen fixtures/local adapters. It receives a P04 compatibility review before it can unlock P11.
-5. **P17/P18 persistence:** neither invents migration 277 or a private store. They reuse the canonical repositories or stop.
+5. **P17/P18 persistence:** neither invents a migration of its own or a private store (this read "migration 277", now `277_correct_ari_email_typo.sql`). They reuse the canonical repositories or stop.
 6. **Wave labels versus DAG:** waves are thematic. The DAG and valid receipts determine execution order; specifically, P12 precedes P18, which precedes P09–11.
 
 ## 11. Replanning rules
@@ -307,6 +335,63 @@ Recompute the launch queue whenever:
 
 Replanning changes the coordinator board or creates a successor Dispatch Manifest. It never edits an accepted immutable manifest in place.
 
+## 12. Cohort B outcome — preparation landed, BUILD GATED (2026-08-26)
+
+> **Provenance of this section.** The `adversarial_review: codex` stamp in this file's
+> frontmatter belongs to the 2026-08-23 review of §0-§11 and does NOT cover §12. This section
+> was written by the gating session on 2026-08-26 and is a RECORD of two reviews that did
+> happen — Kimi K3 against P05 and P06, each dispatched on a frozen head, each finding
+> re-verified on disk before acceptance. The reviews themselves live in the per-file
+> `## Adversarial review` sections of the two bundles; nothing here is a new unreviewed claim.
+
+P05 (Intel Lake / MATA GARUDA) and P06 (NAGA claim ledger) were dispatched one lane per packet
+on the frozen contracts and inside the §7 limits of `evidence/p04/contract-pass-001.md`. Both
+delivered PREPARATION bundles only; neither claims implementation readiness, and both say so in
+their own README.
+
+- P05 → `evidence/p05/ros-v1-p05-intel-prep-b01/` (PR #4996, merged 2026-08-26)
+- P06 → `evidence/p06/ros-v1-p06-naga-prep-b01/` (PR #4997)
+
+Each bundle was reviewed by a cross-family seat (Kimi K3) dispatched against a FROZEN head — the
+generator was dead before the refuter ran, so nothing moved under it — and every finding was
+then re-verified against disk by the gating session before it was accepted or rejected. The
+per-finding disposition is recorded in each file's own `## Adversarial review` section.
+
+**A build lane must NOT consume the P06 bundle until these are ruled on.** They are recorded in
+full in `evidence/p06/ros-v1-p06-naga-prep-b01/07-open-questions-and-corrections.md` §B1-B4 and
+deliberately NOT patched, because answering them is a contract decision this packet has no
+authority to make:
+
+| # | Blocking condition | Why it cannot be patched inside the packet |
+|---|---|---|
+| B1 | Supersession requires two coupled writes: the successor is written AND the predecessor is re-marked. But `Claim` carries a required `object_hash` (`claim.schema.json:618`) and every pointer is a `ClaimRef{claim_id, object_hash}` — a pinned revision — so re-marking the predecessor changes its hash and invalidates the reference the successor uses to point at it. | Needs atomicity. §7 forbids Cohort B from relying on **D10** (atomic repo primitive) and **D11** (atomic classification-change). The ruling is: predecessor state derived at read time from successor edges and never stored, OR supersession waits for D10/D11. |
+| B2 | The two supersession fixtures encode opposite conventions for the same role: `bitemporal/01` leaves the predecessor `supported` with `valid_to: null`; `supersession/01` flips it to `superseded` with `valid_to` closed. `bitemporal/01`'s shape trips the "FALSE if" condition of this bundle's own temporal-exclusion test row. | Picking one convention IS answering B1. Both left visible on purpose. |
+| B3 | `bitemporal/03` uses `supersedes_claim_ref` for calendared succession (a scheduled rate change) rather than correction — the predecessor is not wrong, it is the fixture's own expected answer for an earlier instant. | The packet never distinguishes "supersede = correction" from "supersede = next interval". |
+| B4 | Fixtures are stamped "100% invented" but embed real regulatory figures (PMA paid-up capital, a per-kanim deadline) that this session did NOT re-verify. | Either strip to invented numbers or re-ground against the live corpus. Do not cite as validated. |
+
+**Two further conditions carried out of P05**, recorded in that bundle:
+
+- The `object_hash` plan and the MATA-side hash reconciliation need the same RFC 8785+sha256
+  digest in **two independent implementations** — `apps/mata-garuda` caps runtime dependencies at
+  `pydantic>=2` and cannot import `research_os.hashing`. That is **D7**, which §7 also forbids
+  relying on. Do not design that reconciliation until D7 lands.
+- P05 had NO live-database access at all (`UNKNOWNS.md` §1: the local Postgres MCP failed on a
+  bare `SELECT 1`). Every quantitative statement in that bundle is a static code or schema fact.
+  The producer registry and health baseline the packet asks for remain unmeasured — this is the
+  next session's first job, and "unknown" here is not "zero".
+
+**Baseline correction that outlived its PR.** Six frozen work-packets under
+`research/operations/specs/evidence-to-action-freeze-2026-08-15/work-packets/` still carry
+migration-integer reservations that belong to other lanes (the WhatsApp-broker block). They were
+NOT edited — frozen artifacts are not amended in place, and each packet already routes this case
+to a versioned ledger revision. Whoever integrates binds `max+1` re-measured from
+`apps/backend-rag/backend/db/migrations_v2/` at integration time, never a number copied from any
+document, this board included. The sequence is not dense.
+
 ## Adversarial review
+
+Scope note: this review covers §0-§11. §12 (Cohort B outcome, added 2026-08-26) carries its
+own provenance block and is a record of the two Kimi K3 bundle reviews, not new unreviewed
+material.
 
 Seat: **Codex** (`codex exec --sandbox read-only`, high effort), 2026-08-23 — generator ≠ grader, a different model family from the Sonnet 5 drafter and the Opus 5 Conductor. Verdict: DEFECTIVE, 15 findings, all disposed of before landing. Findings against this file specifically were unsuperseded S00 sentences and a builder-count arithmetic error, all corrected here. The full review record, including the four findings re-verified against the source files, is in [`README.md`](README.md#adversarial-review).

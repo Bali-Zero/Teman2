@@ -1,0 +1,11 @@
+1. C1 — Internally contradictory — High — It asserts an exclusive two-place verbatim price rule while the report renders the price in three places, creating a direct compliance/counting conflict.
+
+2. C2 — In tension with itself — High — It condemns silently discarded controls yet keeps rail-name badges that imply a selectable choice on a page the product does not control.
+
+3. C3 — Unsupported — Critical — It makes the PNBP line conditional on a resolved state figure while providing no source or backend field for that figure, so the condition has no implementation path.
+
+4. C4 — In tension with its own artifacts — Low — It denies being a loop round while reusing the loop’s round-grade panel and conventions, making the “not a loop” distinction unsupported unless explicitly decoupled.
+
+5. C5 — Internally contradictory — Critical — It claims the guard copy “passes” based on a walkthrough capture that simultaneously shows the checkout step failing/quitting at that same guard.
+
+6. C6 — Unsupported / authority conflict — High — It requires team-control for a production default while publishing an SLA promise that, per R4, only Zero can commit to, so the page ships an unowned commitment.

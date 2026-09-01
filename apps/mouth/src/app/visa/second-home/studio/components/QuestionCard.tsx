@@ -123,8 +123,10 @@ export function QuestionCard({
         tabIndex={-1}
         style={{
           margin: 0,
+          // R4 §3: Cormorant is display-only and never below 24px — under that,
+          // low-DPI Android antialiasing shreds the serif.
           fontFamily: "var(--font-serif, Georgia, serif)",
-          fontSize: "clamp(1.25rem, 3vw, 1.6rem)",
+          fontSize: "clamp(1.5rem, 3vw, 1.6rem)",
           color: "var(--text-primary)",
         }}
       >
@@ -198,9 +200,17 @@ export function QuestionCard({
          * actually take effect — an inline style attribute always beats a
          * stylesheet rule regardless of pseudo-class, so a hover rule
          * targeting a JS-computed inline border/background would silently
-         * never apply. */
+         * never apply.
+         * WCAG 2.2 SC 1.4.11 (2026-09-01): this is the sole resting-state
+         * boundary of every wizard option, and --color-border-subtle
+         * composites to 1.21:1 on carta / 1.31:1 on white — the hairline is
+         * decorative-only (merahPutihDayVars.ts's own comment says so) and
+         * never the sole identifier of an interactive component. RadioAffordance
+         * and CheckAffordance below already use --border-strong (3.64:1 on
+         * carta / 3.94:1 on white) for the same reason; this outer boundary
+         * now matches instead of undercutting them. */
         .bz-shs-option {
-          border: 1px solid var(--color-border-subtle);
+          border: 1px solid var(--border-strong);
           background: transparent;
           box-shadow: inset 0 0 0 0 transparent;
           transition:
@@ -212,13 +222,20 @@ export function QuestionCard({
           border-color: var(--accent-funnel);
           background: color-mix(in srgb, var(--accent-funnel) 6%, transparent);
         }
+        /* R4 §3/§4.5: the chosen option is an INK outline, never red. Red is
+           allowed exactly two duties on this page — structure (the progress
+           fill, brand marks) and action (the single primary CTA). Painting
+           "chosen" in the same red is the three-meaning collision the identity
+           law exists to remove, and it also made the selected option compete
+           with the Continue button for the eye. Ink at 14.79:1 on carta is a
+           stronger boundary than the red it replaces. */
         .bz-shs-option[data-selected="true"] {
-          border-color: var(--accent-funnel);
-          background: color-mix(in srgb, var(--accent-funnel) 12%, transparent);
-          box-shadow: inset 0 0 0 2px var(--accent-funnel);
+          border-color: var(--text-primary);
+          background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+          box-shadow: inset 0 0 0 2px var(--text-primary);
         }
         .bz-shs-option[data-selected="true"]:hover {
-          background: color-mix(in srgb, var(--accent-funnel) 16%, transparent);
+          background: color-mix(in srgb, var(--text-primary) 9%, transparent);
         }
         .bz-shs-option:focus-visible {
           outline: 3px solid var(--text-primary);
@@ -272,9 +289,17 @@ function RadioAffordance({ selected }: { selected: boolean }) {
         width: 20,
         height: 20,
         borderRadius: "50%",
+        // R4 §3/§4.5: SELECTION IS NEVER RED. Red carries exactly two duties —
+        // structure and action — and letting it also mean "chosen" is the
+        // three-meaning collision the identity law exists to kill. Selected is
+        // an INK outline; the unselected ring uses border-input (#7a8093,
+        // 3.64:1 on carta), never the hairline (1.21:1), because this ring is
+        // what identifies an interactive control (WCAG 2.2 SC 1.4.11).
+        // The signal is not colour-alone either way: ring weight changes and
+        // the inner mark appears.
         border: selected
-          ? "2px solid var(--accent-funnel)"
-          : "1.5px solid var(--color-border-subtle)",
+          ? "2px solid var(--text-primary)"
+          : "1.5px solid var(--border-strong)",
       }}
     >
       {selected ? (
@@ -283,7 +308,7 @@ function RadioAffordance({ selected }: { selected: boolean }) {
             width: 10,
             height: 10,
             borderRadius: "50%",
-            background: "var(--accent-funnel)",
+            background: "var(--text-primary)",
           }}
         />
       ) : null}
@@ -306,11 +331,15 @@ function CheckAffordance({ selected }: { selected: boolean }) {
         width: 20,
         height: 20,
         borderRadius: 5,
+        // R4 §3/§4.5: selection is never red — ink box + white check. The
+        // unselected boundary is border-input, not the decorative hairline.
+        // White on ink measures 16.00:1; the check glyph is a second,
+        // non-colour channel on top of the fill.
         border: selected
-          ? "2px solid var(--accent-funnel)"
-          : "1.5px solid var(--color-border-subtle)",
-        background: selected ? "var(--accent-funnel)" : "transparent",
-        color: "var(--text-on-accent, #fff)",
+          ? "2px solid var(--text-primary)"
+          : "1.5px solid var(--border-strong)",
+        background: selected ? "var(--text-primary)" : "transparent",
+        color: "#ffffff",
         fontSize: 13,
         lineHeight: 1,
       }}
@@ -351,7 +380,7 @@ export function OptionButton({
         alignItems: "center",
         gap: "var(--space-3, 0.75rem)",
         padding: "var(--space-3, 0.85rem) var(--space-4, 1.1rem)",
-        borderRadius: 8,
+        borderRadius: 12,
         color: "var(--text-primary)",
         textAlign: "left",
         cursor: "pointer",

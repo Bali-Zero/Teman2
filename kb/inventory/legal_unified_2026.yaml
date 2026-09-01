@@ -376,7 +376,7 @@ documents:
     points: 26
     identity:
       verdict: contradictory
-      real_identity: "PER-7/PJ/2025 — NIK-NPWP Coretax"
+      real_identity: null
       stated_in_text: "(1) Penentuan dan penetapan pembeli ..."
       stated_in_metadata: "PER-7/PJ/2025 — NIK-NPWP Coretax"
       stated_in_filename: "PER-7-PJ-2025.pdf"
@@ -386,7 +386,23 @@ documents:
       fragments_absent_there: 26
     disposition: blocked_identity
     lane: C
-    reason: "A 2025 DJP regulation carrying a 2022 ministerial id. 26 points cannot be the whole instrument either."
+    reason: >-
+      Not PER-7/PJ/2025. §4.3 makes the instrument's own text authoritative over
+      metadata and filename, and here both of those agree with EACH OTHER, not
+      with the document — the earlier reading named `real_identity` from the
+      losing pair anyway. Independently sampled chunks of this document's own
+      text (2026-08-25, corroborating lane C's six-chunk read) are consistently
+      a Peraturan Gubernur Sumatera Selatan on non-auction disposal of
+      regional-government property (Penjualan Tanpa Lelang Barang Milik Daerah)
+      — "Provinsi Sumatera Selatan", "Gubernur Sumatera Selatan", "BMD",
+      "Penjualan Tanpa Lelang" throughout, zero mention of NIK, NPWP, or
+      Coretax anywhere sampled. `real_identity` is left null rather than
+      guessed: the fragments establish subject and jurisdiction but not this
+      Pergub's own number/year. PER-7/PJ/2025 — NIK-NPWP Coretax is a real DJP
+      tax regulation (enacted 2025-05-21; that is where the metadata and
+      filename were copied from) — it is simply not what this document_id's
+      content is, and this row must not be read as having found it anywhere in
+      this corpus. Corrected 2026-08-25.
 
   - document_id: TAX_UNKNOWN_UNKNOWN
     points: 21
@@ -461,11 +477,21 @@ documents:
       fragments_absent_there: 7
     disposition: blocked_identity
     lane: C
-    leaked_to_production: true
+    leaked_to_production: false
     reason: >-
       Id says a 2016 statute, metadata a 2018 PMK on SPT filing, text a governor's
-      annex on fuel-tax revenue sharing. And 118 points of `UU_13_2016` are already
-      in production.
+      annex on fuel-tax revenue sharing — none of which can be trusted for this
+      copy. Production DOES hold 118 points under the `UU_13_2016` id, but that is
+      not this document leaking: a full scroll of all 118 (independently
+      corroborated by lane C's own read) shows every one carries
+      `book_title = "UU No 13 Tahun 2016 Tentang PATEN"`, `legal_type: UU`
+      throughout, and patent-law text (lisensi wajib, gugatan, Bab XIII) — a real,
+      correctly-identified Indonesian Patent Law that merely collides with this
+      retired copy on the id STRING. None of this copy's own 7 fragments were
+      found there (fragments_absent_there == distinct_fragments = 7 of 7): zero
+      content-level overlap, only an identifier collision. The earlier reading
+      of this row mistook the presence of the label for evidence about the
+      thing — exactly the error §4.3 exists to prevent. Corrected 2026-08-25.
 
   - document_id: Perda_15_2019
     points: 2

@@ -7,6 +7,7 @@ sources:
   - gh api repos/Balizero1987/Teman2/branches/main/protection/required_status_checks (live read 2026-06-09)
   - .github/workflows/verify-the-verifiers.yml, p1s2-mutation-incremental.yml
   - .github/CODEOWNERS
+adversarial_review: kimi-k3
 ---
 
 # FASE-0 BUCO #1 — make the P* workflows required-status-checks (sequenced, NOT executed)
@@ -25,12 +26,12 @@ sources:
    by an agent, by design. `verify-the-verifiers.yml` is additionally
    tamper-evident (sha256 `.github/verify-the-verifiers.sha256` + the workflow
    lists itself in its own `paths:`).
-2. **The PUT must come AFTER the sentinel is on `main` + green-stable** (W69
+2. **The PATCH must come AFTER the sentinel is on `main` + green-stable** (W69
    trap #1). The sentinel-workflow edits must be merged + observed reporting
-   `success` on a path-miss PR BEFORE any `required_status_checks` PUT. That
+   `success` on a path-miss PR BEFORE any `required_status_checks` write. That
    merge + multi-run confirmation cannot complete inside one session.
 
-Doing the PUT before the sentinel is on main = the exact pending-forever trap
+Doing that write before the sentinel is on main = the exact pending-forever trap
 (`verify-the-verifiers` / `p1s2` are `paths:`-filtered → they do not run on a PR
 that does not touch their paths → a required check that never runs blocks EVERY
 such PR). Confirmed live: PR #1199 does NOT trigger `verify-the-verifiers` (its
@@ -38,7 +39,7 @@ paths are untouched) — had it been required, #1199 would be stuck pending.
 
 ## Empirical ground truth (live 2026-06-09)
 
-**Current required_status_checks (strict=true) — PRESERVE ALL 9 in any PUT:**
+**Current required_status_checks (strict=true) — PRESERVE ALL 9 in any write:**
 ```
 E2E Tests (Playwright)
 MCP Server Tests
@@ -110,12 +111,23 @@ gh run list --workflow p1s2-mutation-incremental.yml --branch main -L 5 --json c
 Then open a throwaway markdown-only PR and confirm BOTH checks report `success`
 (NOT skipped, NOT pending) on it. Only proceed if so.
 
-## Step 3 — PUT required (preserve the 9, ADD the 2)
+## Step 3 — PATCH required (preserve the 9, ADD the 2)
+
+> **Verb corrected 2026-08-31.** This section prescribed `-X PUT` in prose and in
+> two copy-pasteable commands. The postscript at the bottom of this file has said
+> since 2026-06-09 that **PUT 404s on this sub-resource and the original spec verb
+> was wrong** — but only the postscript was fixed, so the runbook a reader actually
+> executes went on prescribing the broken verb. Correcting the sentence that NAMES
+> a mistake while leaving the commands that COMMIT it is the same defect found the
+> same day in `.github/workflows/with-seat-broker-tests.yml`; this one was surfaced
+> by a systematic sweep for that shape, and it is the worse form — not a wrong
+> claim, a wrong command. The word "PUT" survives in the surrounding prose only
+> where it refers to this history.
 
 Get the EXACT check-context names first (job display names) from a recent PR's
 check list — likely `verify-the-verifiers` and the p1s2 job name. Then:
 ```
-# READ current, then PUT current+2 (NEVER overwrite blindly):
+# READ current, then PATCH current+2 (NEVER overwrite blindly):
 gh api repos/Balizero1987/Teman2/branches/main/protection/required_status_checks \
   > /tmp/req.json
 python3 - <<'PY'
@@ -125,7 +137,7 @@ ctx=set(d['contexts'])
 ctx.update(['verify-the-verifiers','<exact p1s2 context name>'])
 json.dump({'strict':d['strict'],'contexts':sorted(ctx)}, open('/tmp/req-new.json','w'))
 PY
-gh api -X PUT repos/Balizero1987/Teman2/branches/main/protection/required_status_checks \
+gh api -X PATCH repos/Balizero1987/Teman2/branches/main/protection/required_status_checks \
   --input /tmp/req-new.json
 ```
 
@@ -135,10 +147,10 @@ Open a markdown-only canary PR. It MUST NOT be stuck pending-forever; both new
 checks must report `success` (sentinel path-miss). If it hangs pending → the
 sentinel did not take → **ROLLBACK immediately**:
 ```
-gh api -X PUT repos/Balizero1987/Teman2/branches/main/protection/required_status_checks \
+gh api -X PATCH repos/Balizero1987/Teman2/branches/main/protection/required_status_checks \
   --input /tmp/req.json   # the original 9-context snapshot
 ```
-The PUT is fully reversible in one command; the blast radius (PRs can't merge)
+The PATCH is fully reversible in one command; the blast radius (PRs can't merge)
 is caught by the canary and undone by the rollback.
 
 ## Out of scope (still)
@@ -154,3 +166,33 @@ each only after it is green-stable on main with its own sentinel.
 - `required_status_checks` updated via **PATCH** (NOT PUT — PUT 404s on this sub-resource; the original spec verb was wrong) to 11 contexts: the original 9 + `verify-the-verifiers` + `Canary self-test + incremental mutation`. strict=true preserved.
 - This markdown-only PR is the falsifiable canary: it MUST merge (path-miss → sentinel SUCCESS), proving the new required checks do NOT pending-forever-block doc PRs.
 - Rollback (if ever needed): `gh api -X PATCH .../required_status_checks --input <original-9-snapshot>`.
+## Adversarial review
+
+**Seat:** `kimi-code/k3` (Moonshot, non-Anthropic cross-family, flat subscription), fresh
+context, 2026-08-31. Reviewing the PUT→PATCH correction above. The seat is not the author
+of either the 2026-06-09 spec or the 2026-08-31 correction.
+
+**Surviving objections: none. Five attack lines raised, all resolved:**
+
+1. *"Is PATCH actually correct, or does this diff make the runbook worse?"* — RESOLVED,
+   and this was the one that mattered. Confirmed independently: GitHub documents only
+   `PATCH` for updating `.../protection/required_status_checks`; `PUT` exists solely on the
+   parent `branches/{branch}/protection` endpoint, which is exactly why PUT 404s on the
+   sub-resource.
+2. *Does changing "the PUT" to "the PATCH"/"write" break any meaning, particularly
+   "fully reversible in one command" and "PRESERVE ALL 9"?* — RESOLVED, meaning preserved.
+3. *Is PATCH right for the ROLLBACK too? PATCH merges, PUT replaces — could a rollback
+   leave extra contexts behind?* — RESOLVED, and the seat refuted the attack rather than
+   conceding it: this endpoint replaces the whole `required_status_checks` object
+   (`strict` + the full `contexts` array) rather than JSON-merging, so replaying the
+   9-context snapshot restores the prior state exactly.
+4. *Does the correction note overstate its own edit by claiming every surviving "PUT" is
+   historical?* — RESOLVED. The seat opened by reading the file on disk to test that claim
+   instead of accepting it, and found it true (noting that two apparent hits are
+   `GITHUB_OUTPUT` substring false positives).
+5. *Should a CLOSED historical spec be edited in place, or left with an erratum?* —
+   RESOLVED in favour of editing: an erratum at the bottom already existed since
+   2026-06-09 and demonstrably failed to stop readers executing the body's PUT. The dated
+   note preserves the record.
+
+**Verdict: SHIP.**

@@ -1,0 +1,298 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR pending (agent/air-m5/backend-rag/price-review-0831 -> main) — the price half of Zero's
+  2026-08-31 re-check mandate, scoped by his amendment to Bali Zero's own pricing tool only.
+lanes:
+  - lane: price-review-build
+    role: build
+    seat: claude (this session — M5 interactive, sole build lane)
+diff:
+  files: 10
+  net_lines: 1827
+  measured_at: f01a5ec5c0
+  note: >-
+    git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD — never a two-dot
+    diff against a stale base (W102). Measured LAST, after every other edit: each earlier figure
+    here was true when written and stale by the next commit, and one fossil 1493 survived three
+    rounds. The fill is digits-for-digits, one line for one, so re-measuring returns 1827 again.
+pii_scan: clean
+receipts:
+  - claim: >-
+      metadata.last_updated is not maintained — it can prove OVERDUE but never FRESH. This is the
+      premise the whole design rests on.
+    cmd: >-
+      python3 -c "json.load(...)['metadata']" + git log -1 --format=%cI -- <sheet>
+    result: >-
+      field = 2026-05-06; last commit touching the file = 2026-08-26T00:22:20Z; newest per-entry
+      verified_on = 2026-08-25. The field is 112 days older than a demonstrated change to the file.
+    exit: 0
+    ts: 2026-08-31T08:40Z
+    seat: session (build lane)
+  - claim: 113 priced entries, of which only 2 carry any verified_on attestation.
+    cmd: python3 - (walk services, count leaves with price or tier_range)
+    result: >-
+      priced entries 113; with verified_on 2 (both GARUDA VOA rows, 2026-08-25). The other 111 are
+      UNKNOWN, not fresh.
+    exit: 0
+    ts: 2026-08-31T08:40Z
+    seat: session (build lane)
+  - claim: The sentinel watches the file the LIVE service loads, not a filename typed twice.
+    cmd: >-
+      grep -n "_PRICING_FILENAME" backend/services/pricing/pricing_service.py; then
+      ./.venv/bin/python -c "from backend.services.pricing.pricing_service import _PRICING_FILENAME"
+    result: >-
+      pricing_service.py:29 defines it; the import succeeds under the backend venv (3.11.11).
+      CORRECTED 2026-08-31 after the Gear-3 gate: this receipt originally concluded "so it also
+      works under plain /usr/bin/python3, which is what the launchd wrapper uses", and BOTH halves
+      were wrong. The reasoning looked only at pricing_service.py''s own module-level imports
+      (stdlib only — true) and never at the package __init__ Python executes first, which reaches
+      a `str | None` annotation evaluated at class creation. /usr/bin/python3 is 3.9.6 on Pro AND
+      M5, where that is a TypeError. Measured: `/usr/bin/python3 scripts/price_review_sentinel.py
+      --dry-run` returns CANNOT_VERIFY, rc=2, every time. The wrapper now uses the venv
+      interpreter and a test asserts it does.
+    exit: 0
+    ts: 2026-08-31T08:44Z
+    seat: session (build lane)
+  - claim: Running the sentinel against the real sheet returns ATTESTATION_UNMAINTAINED, exit 1.
+    cmd: python3 scripts/price_review_sentinel.py --dry-run --json --now 2026-08-31
+    result: >-
+      outcome ATTESTATION_UNMAINTAINED, age_days 117, git_last_change 2026-08-26,
+      newest_verified_on 2026-08-25, EXIT=1. CORRECTED: this said "ran under system python3, no
+      venv", which named the wrong instrument — `python3` on this PATH is mise 3.11.15, not
+      /usr/bin/python3 (3.9.6). The run was real and its verdict stands; what it did NOT establish
+      is the interpreter claim receipt[2] rested on.
+    exit: 1
+    ts: 2026-08-31T09:05Z
+    seat: session (build lane)
+  - claim: >-
+      Every guard in the classifier is covered by a test that goes red when the guard is removed —
+      the suite is not decorative.
+    cmd: >-
+      six single-anchor mutations of scripts/price_review_sentinel.py, each followed by
+      python3 -m pytest scripts/tests/test_price_review_sentinel.py and a restore from a
+      pristine copy (never `git checkout --`, which would have destroyed uncommitted work).
+      No -q: this repo's pytest.ini already sets it and a duplicate trips the verbosity guard.
+    result: >-
+      RE-MEASURED at the final tree, superseding an earlier reading taken when the suite was
+      smaller. Baseline 46 passed. contradiction check disabled -> 6 failed, 40 passed;
+      corroboration gate disabled -> 2 failed, 44 passed; future-date check disabled -> 3 failed,
+      43 passed; metadata isinstance guard disabled -> 2 failed, 44 passed; interval 90->365 ->
+      3 failed, 43 passed; grace 1->30 -> 3 failed, 43 passed. Restored byte-identical (cmp),
+      back to 46 passed.
+    exit: 0
+    ts: 2026-08-31T08:58Z
+    seat: session (build lane)
+  - claim: The full suite passes at this HEAD.
+    cmd: python3 -m pytest scripts/tests/test_price_review_sentinel.py
+    result: 46 passed
+    exit: 0
+    ts: 2026-08-31T09:09Z
+    seat: session (build lane)
+  - claim: >-
+      The sentinel's notion of "a priced row" agrees with the live pricing service's own, and the
+      test that says so is not vacuous.
+    cmd: >-
+      pytest scripts/tests/test_price_review_sentinel.py::test_the_sentinels_walker_agrees_with_the_live_services_own_iterator,
+      then two mutations modelling the divergence and a restore
+    result: >-
+      113 = 113, compared by object identity (both walk the same loaded dict). Non-vacuity proven
+      by mutation, and the FIRST mutation I tried was inert: dropping `tier_range` from the
+      walker's predicate left the test GREEN, because zero rows in today's sheet carry
+      `tier_range` without `price` — the mutation was dead against the DATA, not the test. The two
+      that model the real scenario both go RED: emptying the service's `_NESTED_CATEGORIES`
+      (its hardcoded fan-out list, the thing that will not know about a new nested category), and
+      making the sentinel's walker stop descending into sub-blocks. Restored byte-identical.
+    exit: 0
+    ts: 2026-08-31T10:05Z
+    seat: session (build lane)
+  - claim: >-
+      The organ's heartbeat budget carries slack, so a healthy daily cron is never graded stale in
+      the minutes before its own next run.
+    cmd: >-
+      edit organs_registry.yaml expected_hb_seconds 86400 -> 90000; then
+      PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry <registry>
+      --update-checksum; then python3 infra/organ-conformance/check_organ_conformance.py
+    result: >-
+      86400 equalled the plist StartInterval exactly, and sentinel-aggregate.py:19-20 grades `ok`
+      only while age <= expected_hb_seconds — a false amber every day, forever. 90000 is the house
+      convention (48 organs carry it; only 4 carry the bare 86400). Checksum
+      9f0733f0fbb5343e -> 731ec7b43eeac57f; conformance 189 plists, 0 regressions, 0
+      non-conformant births. The DEFAULT in organ_birth.py that minted the wrong value is
+      inherited by this diff, not introduced by it, and is ledgered rather than changed here.
+    exit: 0
+    ts: 2026-08-31T10:05Z
+    seat: session (build lane)
+  - claim: The organ birth is conformant and the registry stays valid.
+    cmd: >-
+      python3 infra/organ-conformance/check_organ_conformance.py; then
+      python3 -m organism.tools.validate_organs_registry <registry>
+    result: >-
+      189 plists scanned, 121 grandfathered, 0 regressions, 0 non-conformant births; registry valid.
+    exit: 0
+    ts: 2026-08-31T09:08Z
+    seat: session (build lane)
+  - claim: >-
+      The neighbouring tests still pass — the birth did not disturb organ_birth or the ledger
+      reporter.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_price_review_sentinel.py
+      scripts/tests/test_organ_birth.py scripts/tests/test_pending_arms_report.py
+    result: >-
+      159 passed, re-run at the final tree. An earlier reading of 135 was taken at the first
+      commit, when the price suite held 22 tests; it now holds 46.
+    exit: 0
+    ts: 2026-08-31T08:52Z
+    seat: session (build lane)
+  - claim: >-
+      `practice_types.base_price` is a second, independent price store — but it has NOT broadly
+      drifted, contrary to the subagent report that first raised it.
+    cmd: >-
+      ./scripts/pg.sh -At -F'|' -c "SELECT name, base_price FROM practice_types WHERE base_price
+      IS NOT NULL ORDER BY name;" then a normalized-name join against the sheet
+    result: >-
+      112 priced rows; 74 match a sheet entry by normalized name and ALL 74 are identical to the
+      cent; 38 have no counterpart by name. The single live divergence is B1 - VOA at 750.000
+      against the sheet's 790.000. Five rows priced 1.000-3.000 IDR exist but are is_active = f,
+      so they cannot default a quote. The subagent had inferred drift from migration dates rather
+      than from the numbers; the numbers refute it.
+    exit: 0
+    ts: 2026-08-31T09:14Z
+    seat: session (build lane, refuting a subagent finding)
+risks:
+  - >-
+    EVERY MUTATION-VERIFIED RECEIPT IN THIS PACK IS A STATEMENT ABOUT ONE LAPTOP, NOT ABOUT CI.
+    The interpreter guard, the log-offset guard, the STATE_MISSING derivation guard and the
+    walker-parity pin execute in NO PR-time context: no workflow names
+    scripts/tests/test_price_review_sentinel.py, and the only thing that runs scripts/tests/ as a
+    directory triggers on schedule + workflow_dispatch, never on pull_request. This file's first
+    CI execution will be the nightly on main AFTER this merges. A reader who counts six
+    mutation-verified receipts here and infers CI coverage would be wrong, which is why the
+    sentence is in the pack and not only in the ledger. The gap is inherited — 174 of 235 files
+    under scripts/tests are named by nothing — and its two-part fix, the second part
+    operator-gated, is in PENDING-ARMS.
+  - >-
+    A REQUIRED, GREEN CHECK CURRENTLY ASSERTS THE OPPOSITE. `Every guard proves guilt AND
+    innocence` succeeds with the line "all armed in CI", and its census has never heard of these
+    four guards. That sentence, not the missing workflow, is what a future reader is most likely
+    to be misled by.
+
+council_run: council-run.jsonl
+dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      A review date in the FUTURE returns OUTCOME_OK. A negative age is trivially inside the
+      interval and no real trace can be newer than a date that has not happened, so the shape
+      slips past every check — the reason literally read "reviewed -123 days ago".
+    status: CONFIRMED
+    resolution: >-
+      Reproduced before adoption. New OUTCOME_ANOMALY, exit 1, covering a future last_updated and
+      a future verified_on alike. Commit e7ef7e9dc0.
+  - seat: kimi-code/k3
+    objection: >-
+      With no trace at all the contradiction check passes VACUOUSLY, so the sentinel reports OK
+      saying "nothing shows the sheet changed" when nothing could have. Reachable: git_last_change
+      returns None on any git failure and only 2 of 113 entries carry verified_on.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced. OK now requires corroboration, not merely absence of contradiction; the case
+      returns CANNOT_VERIFY. The asymmetry is preserved — REVIEW_DUE is still decided first,
+      because overdue is provable from the field alone. Commit e7ef7e9dc0.
+  - seat: kimi-code/k3
+    objection: >-
+      A malformed `metadata` crashes on .get(); Python exits 1 on a traceback and the wrapper reads
+      rc=1 as "finding delivered", so the organism sees a healthy organ that reported a finding it
+      never computed.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced for null, str and list. Fixed at both levels: an isinstance guard for the
+      instance, and a catch around classify() plus one around main() for the class, so rc=1 means
+      only what the wrapper thinks it means. Commit e7ef7e9dc0.
+  - seat: kimi-code/k3
+    objection: The grace day's UTC/WITA justification is factually inverted.
+    status: CONFIRMED
+    resolution: >-
+      Correct — UTC is BEHIND WITA, so a commit's UTC date can never run ahead of the WITA date a
+      reviewer would type. The real reason is merge lag. The value stays 1; the comment is now true
+      and states the cost it buys. Commit e7ef7e9dc0.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      An empty or structurally incomplete sheet returns OK with priced_entries=0. The >=100
+      invariant exists only in a test against today's artifact, not at runtime.
+    status: CONFIRMED
+    resolution: Zero priced entries is CANNOT_VERIFY at runtime now. Commit 72a92ae9a1.
+  - seat: codex-gpt-5.6-sol
+    objection: _ISO_DATE is not end-anchored, so a trailing-garbage date is partially believed.
+    status: CONFIRMED
+    resolution: End-anchored on a date or a full ISO instant. Commit 72a92ae9a1.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      An uncommitted working-tree edit leaves git history untouched, so an edited sheet reads as
+      reviewed-and-unchanged.
+    status: CONFIRMED
+    resolution: >-
+      Not theoretical — the Pro checkout routinely carries uncommitted files. `git status
+      --porcelain` is a third trace, dated today, which is the conservative direction.
+      Commit 72a92ae9a1.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Alert delivery is never verified but the wrapper claims it happened; and the supplied
+      failing-gateway test enshrines believing the printed line over the return code.
+    status: CONFIRMED
+    resolution: >-
+      send_alert returns a Delivery record, a non-zero gateway rc is not a delivery, an undelivered
+      finding exits 3, and the wrapper maps 3 to error. The offending test is rewritten to assert
+      the opposite. Commit 72a92ae9a1.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      The sidecar records only organism health and discards the domain condition, so four months
+      overdue looks identical to a clean run.
+    status: CONFIRMED
+    resolution: >-
+      The sentinel prints one machine-readable last line (outcome, delivery, rc) and the wrapper
+      carries it into the heartbeat note. Commit 72a92ae9a1.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      test_every_outcome_has_a_deliberate_exit_code enumerates OUTCOME_ constants, not outcomes the
+      classifier returns, so Verdict(outcome="TYPO") stays green.
+    status: CONFIRMED
+    resolution: >-
+      Replaced by a matrix that drives classify() down every branch and asserts each RETURNED
+      outcome is mapped, with a non-vacuity floor on how many distinct branches it reached. The
+      constant-vs-table check is kept separately, for what it does cover. Commit 72a92ae9a1.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      The 90-day boundary is off by one — a 90-day interval has elapsed at day 90, and the code
+      printed "due in 0 day(s)" while returning APPROACHING.
+    status: CONFIRMED
+    resolution: ">= not >. The test that locked in the delay is rewritten. Commit 72a92ae9a1."
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Several tests are vacuous with respect to the central logic — the resolver test, the parser
+      test and the gateway tests would all pass with classification deleted.
+    status: PLAUSIBLE
+    resolution: >-
+      Accurate as a description, declined as a defect. Those are resolver, parser and gateway
+      tests; they are not claimed to exercise classification, and the classification branches are
+      covered by the guilt/innocence pairs and the outcome matrix. Not adopted, recorded so the
+      next reader knows it was weighed rather than missed.
+  - seat: session (build lane, self-audit while fixing the delivery finding)
+    objection: >-
+      send_alert took the gateway as a DEFAULT ARGUMENT bound at import, so a test patching
+      TG_NOTIFY reached the REAL gateway and ran it at tier p0.
+    status: CONFIRMED
+    resolution: >-
+      Nothing was delivered — the tg_notify spool holds no matching entry and its last write
+      predates the run — but that is luck, not design. The path resolves at call time now, and the
+      shape is written into the docstring: a module constant used as a default argument is frozen
+      at import. Commit 72a92ae9a1.
+  - seat: session (build lane, refuting a subagent)
+    objection: >-
+      A consumer-map subagent reported that practice_types.base_price has ALREADY drifted from the
+      sheet, calling it "drift that has already happened, not a hypothetical".
+    status: RETRACTED
+    resolution: >-
+      Refuted on the numbers. The claim was inferred from migration dates. Measured against the
+      live DB: 74 of 112 rows match by normalized name and all 74 are identical to the cent. One
+      real divergence exists (B1 - VOA 750.000 vs the sheet's 790.000) and five placeholder-priced
+      rows exist but are is_active = f. The structural risk — two stores, no shared naming, no
+      reconciliation — is real and is recorded in PENDING-ARMS; the asserted broad drift is not.

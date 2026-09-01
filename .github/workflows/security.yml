@@ -7,18 +7,38 @@ on:
     types: [opened, synchronize, reopened]
   merge_group:
   schedule:
-    # Daily backstop, 19:17 UTC = 03:17 WITA next day. Prerequisite for a
-    # later PR to remove this workflow's `push: main` trigger (Merge-OS v3
-    # build order step 2 — research/operations/2026-08-14-merge-os-v3-research-council.md
-    # §6): that dedupe only lands after this schedule has produced at least
-    # one green scheduled run, so there is never a window with no confirmed
-    # backstop. The weekly Sunday entry stays until then — two schedules
-    # overlapping is harmless.
+    # Daily backstop, 19:17 UTC = 03:17 WITA next day. Added (#4184,
+    # 2026-08-14) as the prerequisite for removing this workflow's
+    # `push: main` trigger (Merge-OS v3 build order step 2 —
+    # research/operations/2026-08-14-merge-os-v3-research-council.md §6):
+    # that dedupe was gated on this schedule producing at least one green
+    # scheduled run first, so there was never a window with no confirmed
+    # backstop.
+    #
+    # CORRECTED 2026-08-27: the removal already happened — #4218
+    # (2026-08-16) dropped `main` from `on.push.branches` below, once the
+    # first scheduled run came back green. This paragraph used to describe
+    # that as still-pending future work; PENDING-ARMS carried a matching
+    # stale row (opened 2026-08-15, "PR OPEN AS DRAFT") for the same reason
+    # — both were still true the day they were written and neither was
+    # updated after the PR merged. A comment that outlives the state it
+    # describes reads as a standing TODO to the next session (W106: "a cure
+    # anchored to a frozen measurement of the world"), which is what
+    # produced a second Zero GO order to re-run a step already complete.
+    # The weekly Sunday entry stays regardless of any of the above — it is
+    # a second independent sample, not a stand-in for the daily one.
     - cron: "17 19 * * *" # Daily security backstop, 03:17 WITA
     - cron: "0 0 * * 0" # Weekly scan on Sunday
   workflow_dispatch:
 
 concurrency:
+  # Per-PR/per-ref for every author. A shared per-workflow group keyed on
+  # github.actor was removed 2026-09-02: GitHub keeps only ONE pending run per
+  # group, so a 3rd near-simultaneous arrival was cancelled BEFORE any job
+  # started — no check-run object is created, so a required context sits at
+  # "Expected — waiting for status" with nothing red to see. Concurrency is now
+  # bounded only by the account-level ceiling, which QUEUES past it rather than
+  # dropping: lateness is visible, an absent check-run is not.
   group: security-${{ github.ref }}
   # Cancel superseded runs on PR branches; NEVER on main.
   #
@@ -351,7 +371,7 @@ jobs:
           CVE_EXCEPTIONS_PATH: .security/exceptions.yaml
 
       - name: Upload Snyk results
-        uses: github/codeql-action/upload-sarif@v4.37.7
+        uses: github/codeql-action/upload-sarif@v4.37.9
         if: always() && hashFiles('snyk.sarif') != ''
         continue-on-error: true
         with:
@@ -418,7 +438,7 @@ jobs:
           CVE_EXCEPTIONS_PATH: .security/exceptions.yaml
 
       - name: Upload Snyk results
-        uses: github/codeql-action/upload-sarif@v4.37.7
+        uses: github/codeql-action/upload-sarif@v4.37.9
         if: always() && hashFiles('snyk.sarif') != ''
         continue-on-error: true
         with:
@@ -624,7 +644,7 @@ jobs:
 
       - name: Initialize CodeQL
         if: env.RUN_THIS_LANGUAGE == 'true'
-        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
@@ -632,11 +652,11 @@ jobs:
 
       - name: Autobuild
         if: env.RUN_THIS_LANGUAGE == 'true'
-        uses: github/codeql-action/autobuild@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        uses: github/codeql-action/autobuild@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
 
       - name: Perform CodeQL Analysis
         if: env.RUN_THIS_LANGUAGE == 'true'
-        uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           category: "/language:${{matrix.language}}"
 

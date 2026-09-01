@@ -1,0 +1,154 @@
+name: Merah Putih DAY contrast guard
+
+# WHY THIS FILE EXISTS: the guard it runs was written, merged, and never armed.
+#
+# `scripts/tests/test_merah_putih_day_contrast.py` is the machine-checked identity
+# law for the Merah Putih DAY palette — every text/ground pair on the public
+# second-home surfaces must clear WCAG AA, and no retired colour or Montserrat face
+# may reappear there. It has been on `main` since the migration landed, it passes
+# (42 tests), and it demonstrably goes red on both a contrast drift and a
+# `color-mix`-derived colour. What it has never had is a trigger.
+#
+# Measured on origin/main 2026-08-31 by reading all 116 workflow files' contents
+# (not `git grep <ref> -- <path>`, which returns empty for BOTH a real miss and a
+# broken probe — the first attempt at this measurement had a positive control that
+# also came back empty, and was thrown away rather than believed): ZERO workflows
+# named `merah_putih_day_contrast`. The only place it executed at all was
+# `scripts-tests-sweep.yml`, which is `schedule:`-only, `continue-on-error: true`,
+# not required, and says in its own header that it gates nothing. So a PR touching
+# only `merahPutihDayVars.ts` started no blocking check on it whatsoever.
+#
+# That is cicatrix family #2 — "esiste != armato" — and the token file's own
+# doc-comment made the stronger claim that the guard "fails the build if any pair
+# below drifts", which was simply false as measured. This workflow makes it true.
+#
+# THE PATHS FILTER IS DERIVED FROM WHAT THE GUARD ACTUALLY READS, not from what
+# seems related — and the first version of this list got that wrong in exactly the
+# way this paragraph warns about. It named `merahPutihDayVars.ts`, the `*.tsx`
+# tree under `app/visa/second-home/`, and `packages/core/tokens/semantic.css`, and
+# stopped there. But `_perimeter_sources()` also resolves every `@/components/...`
+# import it finds in the two wrappers and scans those files too — today
+# `ConsentBanner.tsx` and `WhatsAppLeadButton.tsx`, which is precisely how the
+# guard caught a 2.56:1 consent bar. A real regression in either would have
+# started NO check. Caught by a cross-family refuter (kimi-code/k3) before this
+# shipped, confirmed by reading the guard's source.
+#
+# `apps/mouth/src/components/**` is a TRUE superset, not a second hand-kept list:
+# the resolver's regex is anchored to `@/components/`, so every import it can ever
+# resolve lands under that prefix. The guard's own docstring is blunt about why
+# this matters — "a hand-kept list would rot on its first commit" — which is
+# exactly what it did.
+#
+# And the sync is now MACHINE-CHECKED rather than asserted in prose:
+# `test_the_workflow_trigger_covers_every_file_this_guard_reads` parses this
+# file's own `paths:` block and fails if any file the guard reads is not matched
+# by a pattern in it. The test file and this workflow are in the filter too, so a
+# change to either re-runs the pair.
+#
+# WHAT THIS BUYS, AND WHAT IT DOES NOT. It buys a check run that STARTS on the
+# right PRs and goes RED on a real regression, where previously nothing ran at all.
+# It does NOT block the merge queue: this context is not in
+# `infra/required.d/contexts.json` and not in branch protection, so a red here is
+# visible, not fatal. A cross-family reviewer called that gap a reason not to ship,
+# and the gap is real — but its prescribed cure is refused, with reason. Making the
+# context REQUIRED would oblige this workflow to carry a `merge_group:` trigger too
+# (a required context that never runs on the queue's ref leaves entries waiting
+# forever — that failure is what jammed this repo's queue on 2026-08-30), and that
+# is precisely the queue cost the 2026-08-27 slim cure exists to prevent. Promotion
+# is therefore a branch-protection decision with its own queue-cost analysis and its
+# own PR — not a line smuggled into the PR that merely turns the guard on.
+#
+# NO `merge_group:` TRIGGER, DELIBERATELY. This workflow is advisory — it backs no
+# entry in `infra/required.d/contexts.json` and none in branch protection. Zero's
+# 2026-08-27 queue-slim cure asks advisory workflows to stay out of the merge queue,
+# because every queue entry used to spawn ~50 runs and the gating contexts starved
+# behind the ~40 that gate nothing. That cure is UNENFORCED in this direction (its
+# test guards only that REQUIRED workflows keep their trigger), so obeying it here
+# is a choice, stated rather than assumed — see #5378, which removed exactly such an
+# accidental trigger from `with-seat-broker-tests.yml` after it ran 57 times in the
+# queue and zero times on a PR, counted between that file landing (19:15:44Z) and the
+# first run its own fix triggered. Re-verified 2026-08-31 against the complete run
+# list (`--limit 500`, 86 runs returned, so not capped): inside that window exactly
+# 57 merge_group and no pull_request run other than the one that closes it.
+#
+# That number survived being wrongly "corrected" here, and the near-miss is worth a
+# line. A count of ALL runs of that workflow gives 72 / 12 / 2, and a reviewer holding
+# only those totals reported the 57 as a display-cap error and the zero as plainly
+# false. Both readings collapse once the window is applied: the 4 stray pull_request
+# runs are from the PR that INTRODUCED the file, at 17:08-17:33Z, before the window
+# opens. The lesson is not "the reviewer was wrong" — it is that a scoped claim and an
+# unscoped measurement of the same workflow disagree by construction, so the window
+# must be read off the claim BEFORE its number is judged.
+# `pull_request.paths` and `push.paths` are the same anchored list, so this file can
+# never develop the head-green/queue-red asymmetry that jammed the queue that night.
+
+on:
+  pull_request:
+    paths: &guarded_paths
+      - "apps/mouth/src/lib/theme/merahPutihDayVars.ts"
+      - "apps/mouth/src/app/visa/second-home/**"
+      - "apps/mouth/src/components/**"
+      - "packages/core/tokens/semantic.css"
+      - "scripts/tests/test_merah_putih_day_contrast.py"
+      - ".github/workflows/merah-putih-day-contrast.yml"
+  push:
+    branches: [main]
+    paths: *guarded_paths
+
+permissions:
+  contents: read
+
+concurrency:
+  group: merah-putih-day-contrast-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contrast-guard:
+    name: Merah Putih DAY palette holds its contrast law
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: The guard's own corpus is green
+        run: |
+          # pyyaml is not decoration: the conformance test below parses THIS
+          # file's own `paths:` block, so without it that test ERRORS instead of
+          # guarding — a green job on an unchecked filter.
+          python3 -m pip install --quiet --disable-pip-version-check pytest pyyaml
+          python3 -m pytest scripts/tests/test_merah_putih_day_contrast.py -v
+
+      # A guard that cannot go red is not a guard. This step proves the job would
+      # FAIL on a real regression, using the cheapest possible mutation: swap the
+      # DAY ink for a retired colour in the token file, assert pytest exits
+      # non-zero, then restore and assert it is green again. Without this, a future
+      # refactor that silently disconnects the test from the token file would leave
+      # this job passing forever on nothing — which is the exact failure this
+      # workflow was created to end, and it would be embarrassing to reproduce it
+      # here.
+      - name: The guard can still go red (guilt control)
+        run: |
+          set -euo pipefail
+          TOKENS=apps/mouth/src/lib/theme/merahPutihDayVars.ts
+          cp "$TOKENS" /tmp/tokens.orig
+          python3 - <<'PY'
+          import pathlib, sys
+          p = pathlib.Path("apps/mouth/src/lib/theme/merahPutihDayVars.ts")
+          t = p.read_text()
+          if '"--text-primary": "#16213a"' not in t:
+              sys.exit("guilt control cannot find the ink token to mutate — "
+                       "the token file changed shape; fix this step rather than deleting it")
+          p.write_text(t.replace('"--text-primary": "#16213a"', '"--text-primary": "#ff3344"', 1))
+          PY
+          if python3 -m pytest scripts/tests/test_merah_putih_day_contrast.py -q; then
+            cp /tmp/tokens.orig "$TOKENS"
+            echo "::error::GUILT CONTROL FAILED — the guard stayed GREEN with the DAY ink replaced by a retired colour. It is no longer connected to what it claims to protect; this job is passing on nothing."
+            exit 1
+          fi
+          cp /tmp/tokens.orig "$TOKENS"
+          git diff --exit-code -- "$TOKENS"
+          python3 -m pytest scripts/tests/test_merah_putih_day_contrast.py -q
+          echo "guilt control: guard went RED on a retired-ink mutation and GREEN again after restore"

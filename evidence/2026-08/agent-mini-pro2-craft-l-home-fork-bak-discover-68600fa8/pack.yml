@@ -1,0 +1,229 @@
+# STAGING PATH, NOT THE REAL ONE — the documented contract, not an oversight.
+# harness-floor.yml copies both files into a synthetic tree at
+# /tmp/evidence-check/evidence/{brief,pack}.yml under their CANONICAL names,
+# whatever their real location, and evidence_pack_lint.py resolves brief_ref
+# against THAT root. So this field must read the literal evidence/brief.yml even
+# though the real brief for this PR lives at
+# evidence/2026-08/agent-mini-pro2-craft-l-home-fork-bak-discover-68600fa8/brief.yml.
+brief_ref: evidence/brief.yml
+plan_ref: "docs/plans/2026-08-29-beyond-sota-craft-wave/L08-observability-immune-self-healing.md — PR-3; squad ledger issue #5319"
+lanes:
+  - lane: bak-discovery
+    role: build
+    seat: "claude-opus-5 (this session — the enumerator, the CLI surface, the workflow arming, and the corpus)"
+  - lane: refute-round-1
+    role: review
+    seat: "gpt-5.6-sol xhigh, --sandbox read-only (cross-family; given the raw diff and a seven-point attack list, never a narrative). DO-NOT-SHIP, 9 findings, 4 blockers."
+  - lane: refute-round-2
+    role: review
+    seat: "kimi-code/k3 (Moonshot — a SECOND family, run in parallel on the same diff and the same attack list, with no sight of the first round's output). DO-NOT-SHIP, 9 findings, 5 of them the first round did not reach."
+  - lane: refute-round-3
+    role: review
+    seat: "gpt-5.6-sol xhigh, --sandbox read-only, re-pointed at what rounds 1 and 2 CURED rather than at the original diff. DO-NOT-SHIP, 6 findings, and it found a FALSE-CLEAN that both earlier rounds and this gate had missed."
+  - lane: final-gate
+    role: review
+    seat: "claude-opus-5 (this orchestrator — every command in the receipts re-run here, this turn, and every refuter claim checked against the real files before it was acted on)"
+seat_diversity: ok
+seat_diversity_note: >-
+  One build lane (Anthropic) and TWO review lanes across two other families
+  (OpenAI, Moonshot). D3 is satisfied by real review lanes, not by
+  seat_override.
+
+  Recorded because it is the measurement, not the principle: the two reviewers
+  ran on the same diff with the same attack list and overlapped on only four of
+  eighteen findings. Kimi alone caught that the cure for the out-of-HOME defect
+  was ITSELF fooled — `home in Path("<home>/../../usr/local/bin").parents` is
+  True, because `.parents` walks the string — which the first round had asked
+  about and not reached. A second family was not redundancy here; it was the
+  difference between shipping the fix and shipping the fix's own twin defect.
+diff:
+  net_lines: >-
+    AS OF this commit (pinned — a bare byte count inside a file every subsequent
+    commit rewrites is a claim that decays by construction): 7 files, +1347/-2,
+    measured against the MERGE BASE with `git diff --cached --numstat`.
+
+    Over the ~400-line target and said plainly rather than split: 825 of those
+    lines are the test corpus and roughly 150 more are load-bearing comment —
+    the executable surface is one enumerator, one containment predicate, one
+    CLI flag and one refusal. Splitting the corpus from the code it guards would
+    land an instrument whose guilt fixtures arrive in a later PR, which is the
+    exact shape this lane exists to stop.
+
+    The count INCLUDES this evidence pack (3 of the 7 files), because that is
+    what `git diff --numstat` against the merge base measures and a number that
+    quietly excluded itself would be the same convenient half-truth these
+    receipts spend their time refusing.
+
+    Deterministic gear floor recomputed from this diff = 3 (source: path —
+    .github/workflows/). Gear 3 is the floor, not a choice.
+  behaviour_change: >-
+    `--discover` gains a third finding: `.bak` shadows beside a declared live
+    payload. Advisory by default — the exit code is byte-for-byte what it was
+    unless `--strict-bak` is passed, which adds bit 8 and nothing else. Measured
+    on Mini: rc stays 2 (undeclared payloads, pre-existing) with the flag off,
+    and 10 with it on.
+
+    `--check` alone is completely unchanged, which matters because
+    pro-healer.sh — the lint's only executable consumer — calls exactly that and
+    reads the result with a bitmask.
+
+    `--strict-bak` combined with `--check` and no `--discover` now REFUSES with
+    exit 2 instead of being accepted and silently ignored.
+receipts:
+  - claim: "The gear floor is 3, recomputed from this diff rather than taken from the brief"
+    cmd: "git diff --cached --name-only > changed.txt; scripts/evidence_pack_lint.py --print-floor --changed-files-file changed.txt"
+    result: "3 (floor-source: path — .github/workflows/immune-enforcement.yml)"
+    exit: 0
+    ts: "2026-08-31T03:12Z"
+    seat: "session (mini, final gate)"
+  - claim: "The bite: the lint names the 35 .bak files in ~/.claude/hooks that --check was structurally blind to, and the number agrees with a census that never touches the lint"
+    cmd: "python3 scripts/lint_home_fork.py --discover --json | jq -r '.discover_bak_shadows[]'   # then, independently:  ls -1 ~/.claude/hooks/ | grep -E '\\.bak($|[-._])' | wc -l"
+    result: "lint: 9 directories, 83 files, of which '~/.claude/hooks — 35 .bak shadow(s) beside 10 declared pair(s)'. Independent ls census of that directory: 35. The two agree."
+    exit: 2
+    ts: "2026-08-31T03:05Z"
+    seat: "session (mini, read-only on the live machine)"
+  - claim: "The machine filter was hiding nine real files on this very machine — found by this seat before either refuter"
+    cmd: "python3 scripts/lint_home_fork.py --discover   # before and after removing pair_applies() from the directory set"
+    result: "8 directories / 74 files before, 9 / 83 after. The missing directory was ~/scripts/cron-agent-python, whose every declared pair is machines:['pro'] while the directory is fully populated on Mini."
+    exit: 2
+    ts: "2026-08-31T02:41Z"
+    seat: "session (mini)"
+  - claim: "Path.is_dir() swallows ELOOP and answers False, so a symlink loop was reading identical to 'the directory is not here' — measured, not reasoned"
+    cmd: 'python3 -c "from pathlib import Path; p=Path(''/tmp/loopdemo/a''); print(p.is_dir()); list(p.iterdir())"'
+    result: "is_dir() -> False; iterdir raised OSError errno 62. The gate is now an explicit stat() so absent and unreachable stay distinguishable."
+    exit: 0
+    ts: "2026-08-31T02:58Z"
+    seat: "session (mini)"
+  - claim: "Lexical containment is fooled by `..`, which is why the cure uses realpath on BOTH sides — and why it does not use Path.resolve()"
+    cmd: 'python3 -c "from pathlib import Path; import os; h=Path(''/tmp/ctest/home''); e=Path(''/tmp/ctest/home/../../usr/local/bin''); print(h in e.parents, os.path.realpath(e))"'
+    result: "True /private/tmp/usr/local/bin — the lexical test says contained, the real path is not. Separately measured: Path.resolve() on a symlink loop raises RuntimeError, NOT OSError, so it would sail past the handlers and crash the lint; os.path.realpath never raises."
+    exit: 0
+    ts: "2026-08-31T03:20Z"
+    seat: "session (mini)"
+  - claim: "The lint's only executable consumer reads the exit code as a bitmask, so bit 8 cannot disturb it — audited, not assumed"
+    cmd: "grep -rn 'lint_home_fork' --include='*.sh' --include='*.py' --include='*.yml' . | grep -v research/"
+    result: "One executable consumer: infra/launchagents/wrappers/pro-healer.sh:180, which runs --check and tests `$(( RC & 1 ))` then `$(( RC & 4 ))`. No caller anywhere passes --discover, which is itself declared as a risk rather than left implicit."
+    exit: 0
+    ts: "2026-08-31T03:02Z"
+    seat: "session (mini)"
+  - claim: "Every cure is mutation-proved with bytecode disabled (W121), and the two survivors were repaired rather than reported green"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3.11 -B -m pytest -p no:cacheprovider scripts/tests/test_home_fork_bak_shadows.py   # per mutant, __pycache__ cleared, restored from a byte cp never git checkout"
+    result: "13 mutants, 13 killed. Two survived first: reverting expand_home() (my $HOME fixture sat under ~/scripts, which proprioception injects unconditionally, so it was found through an unrelated path) and reverting realpath containment (my escape fixture used one `..` where home is one level deep, so it never left HOME). Both fixtures were repaired and both mutants then died. One mutant is DECLARED surviving: narrowing the iterdir TOCTOU tuple, reachable only through a race no fixture can open."
+    exit: 0
+    ts: "2026-08-31T03:35Z"
+    seat: "session (mini, final gate)"
+  - claim: "The corpus is armed where it must be, and the four existing home-fork corpora did not regress"
+    cmd: "actionlint -shellcheck= .github/workflows/immune-enforcement.yml; grep -c test_home_fork_bak_shadows .github/workflows/immune-enforcement.yml; pytest scripts/tests/test_lint_home_fork.py scripts/tests/test_home_fork_stale_side_attribution.py scripts/tests/test_home_fork_skipped_visibility.py scripts/tests/test_proprioception_home_fork_merge.py"
+    result: "actionlint rc=0 at the version CI itself pins (1.7.12, -shellcheck=); 2 occurrences — the in-job paths detector AND the unit-test runner, because a corpus in only one of them is armed to nothing; 73 passed. The workflow has no top-level paths filter, so trigger symmetry holds by construction."
+    exit: 0
+    ts: "2026-08-31T03:30Z"
+    seat: "session (mini, final gate)"
+  - claim: "Both refuters were run on the DIFF with an explicit attack list, and their claims were checked against the real files before being acted on"
+    cmd: "codex --search exec -m gpt-5.6-sol -c model_reasoning_effort=xhigh --sandbox read-only ... ; kimi -p ... -m kimi-code/k3"
+    result: "Both returned DO-NOT-SHIP with 9 findings each. Seven were cured in code. Two are declared and not cured: the workflow's `if [ -f ]` skip (pre-existing, affects all 40+ listed corpora, has a stated rationale) and the absent --discover caller. Two refuter claims were downgraded on verification — the `$HOME`-support claim was right about the resolver but the registry has zero such pairs today, and the bit-8-collision claim found no consumer."
+    exit: 0
+    ts: "2026-08-31T03:28Z"
+    seat: "session (mini, final gate)"
+  - claim: "Every acceptance probe was run, by name, and each selector actually selects — a probe that deselects everything reports green over nothing"
+    cmd: "pytest scripts/tests/test_home_fork_bak_shadows.py ; pytest scripts/tests/test_home_fork_bak_shadows.py -k strict_bak ; pytest scripts/tests/test_home_fork_bak_shadows.py -k UNREADABLE or SYMLINK_LOOP ; pytest scripts/tests/test_home_fork_bak_shadows.py -k DOTDOT or home_itself ; pytest scripts/tests/test_home_fork_bak_shadows.py -k REFUSES"
+    result: "30 passed; then 3, 2, 2 and 1 selected respectively (27/28/28/29 deselected) — every selector matches at least one test, so none of the four is a green over an empty set."
+    exit: 0
+    ts: "2026-08-31T03:47Z"
+    seat: "session (mini, final gate)"
+  - claim: "Round 3 found a FALSE-CLEAN that rounds 1 and 2 and this gate had all missed — the worst defect of the three rounds, and it was in a CURE"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3.11 -B -m pytest -p no:cacheprovider scripts/tests/test_home_fork_bak_shadows.py   # mutant M: record the inode BEFORE the scan succeeds"
+    result: "The inode dedupe recorded a directory as seen BEFORE its enumeration succeeded, so an alias whose iterdir FAILED silently marked the real directory as a duplicate — it was then skipped and the run printed clean over a directory full of backups. Now recorded only after a successful scan; the mutant restoring the old order is killed by test_a_FAILED_first_alias_does_not_suppress_the_second."
+    exit: 0
+    ts: "2026-08-31T04:02Z"
+    seat: "session (mini, final gate) on a finding from gpt-5.6-sol"
+  - claim: "The branch this pack previously called untestable is tested, and it was also wrong"
+    cmd: "pytest scripts/tests/test_home_fork_bak_shadows.py -k vanishes_AFTER_stat"
+    result: "Passes. Round 3 showed monkeypatching Path.iterdir opens the window deterministically, and that ENOENT-after-a-successful-stat is lost verification rather than absence — so the branch now raises the error bit instead of staying silent. Two refuters disagreed about this and the reasoning for choosing one is written at the site."
+    exit: 0
+    ts: "2026-08-31T04:05Z"
+    seat: "session (mini, final gate)"
+  - claim: "18 mutants across three rounds, all killed, bytecode disabled throughout"
+    cmd: "PYTHONDONTWRITEBYTECODE=1 python3.11 -B -m pytest -p no:cacheprovider scripts/tests/test_home_fork_bak_shadows.py   # per mutant, __pycache__ cleared, restored from a byte cp"
+    result: "35 tests; 18/18 mutants killed. Three survived at first and all three were MY OWN defects, not missing coverage: two vacuous fixtures (round 2) and one wrong claim of untestability (round 3). Zero surviving mutants remain."
+    exit: 0
+    ts: "2026-08-31T04:10Z"
+    seat: "session (mini, final gate)"
+pii_scan: clean
+council_run: journal.jsonl
+dissent:
+  - seat: "gpt-5.6-sol"
+    objection: "The scan walks system directories without --system: the registry holds pairs under /usr/local and /Library/LaunchDaemons, so a vendor's backup becomes an organism finding and a foreign unreadable directory raises the error bit."
+    status: CONFIRMED
+    disposition: "Fixed. Measured 7 such pairs in the real registry. Non-HOME directories are now skipped unless --system, which is the file's own stated policy (its docstring: 'LaunchDaemons are scanned only with --system')."
+  - seat: "gpt-5.6-sol"
+    objection: "The diff hand-rolls a `~`-only resolver while the file already has expand_home(), which handles $HOME and ${HOME} too — a second source of truth for one question."
+    status: CONFIRMED
+    disposition: "Fixed by deleting the second resolver and calling expand_home(). Partially downgraded on verification: the registry has zero $HOME pairs today, so nothing was being missed in practice — the defect was latent, not active, and is recorded as such."
+  - seat: "gpt-5.6-sol"
+    objection: "The run prints 'clean — no .bak shadow' even when a directory could not be scanned; the unreadable test asserts the bit and the string but never that the clean line is ABSENT, so a mutant printing it unconditionally survives."
+    status: CONFIRMED
+    disposition: "Fixed on both sides. The verdict now reads CANNOT-VERIFY when any bak-scan error occurred, and the test asserts the clean line is absent as well as that CANNOT-VERIFY is present."
+  - seat: "gpt-5.6-sol"
+    objection: "`--check --strict-bak` accepts the flag and silently ignores it, because run_discover is false and no shadows are ever computed."
+    status: CONFIRMED
+    disposition: "Fixed. The combination is now refused with a message naming the working form. A flag that does nothing while looking like it did is superscar #2 in a single argument."
+  - seat: "gpt-5.6-sol"
+    objection: "Two pairs naming one physical directory under different spellings scan it twice and double-count."
+    status: CONFIRMED
+    disposition: "Fixed by keying identity on (st_dev, st_ino) from the stat already being performed, which also collapses symlinked aliases."
+  - seat: "kimi-code/k3"
+    objection: "The out-of-HOME cure is itself fooled: `home in Path('<home>/../../usr/local/bin').parents` is True because .parents walks the string, so `..` still escapes."
+    status: CONFIRMED
+    disposition: "Fixed, and this is the most valuable finding of either round — it is a defect INSIDE the cure for another defect. Containment is now measured on os.path.realpath of both sides. realpath rather than Path.resolve() because resolve() raises RuntimeError on a symlink loop, which the OSError handlers would not catch."
+  - seat: "kimi-code/k3"
+    objection: "`.BAK`, `.bak2` and `.bak~` are the same extension the rule claims to cover and are all missed; macOS is case-insensitive by default, which is the filesystem this lint exists for."
+    status: CONFIRMED
+    disposition: "Fixed: the separator class gained digits, `~` and space, and the match is IGNORECASE. Innocence re-proved AFTER widening rather than assumed to survive it — `recipes.baklava` and `BAKERY.SH` still pass."
+  - seat: "kimi-code/k3"
+    objection: "The strict-bak additivity test asserts `& ~8`, which any surviving bit satisfies; moving NO-REPO-TWIN from breaches to errors would downgrade the divergence verdict and leave the test green."
+    status: CONFIRMED
+    disposition: "Fixed. The test now asserts bit 1 by name. This is the same class the same reviewer was asked to hunt in the corpus, found in the corpus."
+  - seat: "kimi-code/k3"
+    objection: "The unreadable-directory test measures euid rather than behaviour: chmod 0o000 does not stop root, so under a root runner it reddens for the runner's identity."
+    status: CONFIRMED
+    disposition: "Fixed by skipping under euid 0 with the reason written out. A red that can mean two different things is worse than a skip that means one."
+  - seat: "kimi-code/k3"
+    objection: "A `.bak` DIRECTORY is counted as a shadow file while the real backups inside it are never scanned — a false positive and a false negative in one entry."
+    status: CONFIRMED
+    disposition: "Half fixed, half declared. Directories and symlinks are now annotated distinctly so the operator's purge is not sent at a `rm` that will not work. Non-recursion is deliberate and is written at the site: the next step for a directory is to look in it, and recursing turns one honest line into an unbounded listing."
+  - seat: "gpt-5.6-sol + kimi-code/k3"
+    objection: "The workflow's unit loop is `if [ -f $t ]; then pytest; else ::notice::skip`, so deleting the newly-listed corpus passes CI — it is not deletion-armed."
+    status: CONFIRMED
+    disposition: "NOT FIXED, declared. Verified in the workflow. Pre-existing, applies to all 40+ listed corpora, and has a stated rationale (the window before a lane's PR merges). Changing it would redden every lane whose corpus has not landed yet, which is a repo-wide decision and not a rider on a .bak lint. Carried in the brief's risks and to the ledger."
+  - seat: "kimi-code/k3"
+    objection: "TOCTOU: a directory deleted between stat and iterdir is CANNOT-VERIFY, while the identical state observed one syscall earlier is silent — the same world gets opposite verdicts."
+    status: CONFIRMED
+    disposition: "Fixed for consistency, and the coverage gap declared rather than papered over: no fixture can open that race deterministically, so a mutation narrowing the tuple SURVIVES the corpus. Said at the site and in the brief, because a surviving mutant that is not equivalent is a gap, not a pass."
+  - seat: "gpt-5.6-sol (round 3, aimed at the cures)"
+    objection: "The inode enters `seen_inodes` before enumeration succeeds, so a failed first alias suppresses the real directory and the run prints clean."
+    status: CONFIRMED
+    disposition: "Fixed — the worst defect of all three rounds, and it lived inside a cure. The inode is now recorded only after a successful scan, and the mutant restoring the old order is killed."
+  - seat: "gpt-5.6-sol (round 3, aimed at the cures)"
+    objection: "CANNOT-VERIFY is nested under `if not bak_shadows`, so one finding plus one denied directory never mentions the denial."
+    status: CONFIRMED
+    disposition: "Fixed. Incompleteness is a fact about the RUN, not about the findings, so it is announced either way. Round 2 wrote that cure and round 3 found it in the wrong place — which is the argument for pointing a round at the cures rather than at the original diff."
+  - seat: "gpt-5.6-sol (round 3, aimed at the cures)"
+    objection: "`Path.is_symlink()`/`is_dir()` swallow OSError, so the annotation handler is near-unreachable and an unstattable entry is labelled a plain file."
+    status: CONFIRMED
+    disposition: "Fixed with one explicit `lstat` and `stat.S_IS*`. lstat raises, so the handler is real and an entry we cannot stat says so instead of getting a confident wrong label."
+  - seat: "gpt-5.6-sol (round 3, aimed at the cures)"
+    objection: "`os.path.realpath` does raise: a path carrying an embedded NUL raises ValueError, which is not an OSError and crashes the lint."
+    status: CONFIRMED
+    disposition: "Fixed — and it corrects a claim this diff had written in its own comment ('realpath never raises'). A registry is JSON and JSON can carry \\u0000, so it is reachable from data, not only from a hostile filesystem."
+  - seat: "gpt-5.6-sol (round 3, aimed at the cures)"
+    objection: "The TOCTOU branch declared untestable is deterministically testable by monkeypatching Path.iterdir."
+    status: CONFIRMED
+    disposition: "Fixed, and the earlier declaration retracted in the brief. It also turned out the branch was wrong, not merely untested."
+  - seat: "gpt-5.6-sol (round 3, aimed at the cures)"
+    objection: "`routes.BAK-DPS.csv` is a false positive — BAK is the UN/LOCODE for Baku, not a backup."
+    status: CONFIRMED
+    disposition: "NOT cured, declared at the site with the trade written out. Dropping IGNORECASE would lose `com.x.plist.BAK`, a real backup on the filesystem this lint guards; the finding is advisory, so the false positive costs a line of output and the miss would cost a leaked key."
+  - seat: "gpt-5.6-sol"
+    objection: "Exit bit 8 could collide with or be masked by an existing meaning."
+    status: PLAUSIBLE
+    disposition: "Not reproduced. The one executable consumer reads the code with a bitmask and never calls --discover; bit 8 was unassigned. Recorded as checked-and-not-found rather than dismissed unexamined."

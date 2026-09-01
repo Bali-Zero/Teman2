@@ -1,0 +1,104 @@
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  PR #5182 (agent/air-m5/backend-rag/gold-coverage-0828 -> main) — offline
+  gold-coverage harness + corpus + divergence report; mandate anchor: the
+  4/20 zero-movement wall recorded in .agents/skills/visaoracle/SKILL.md
+  LIVE STATE (2026-08-20 entry) and the 2026-08-15 disposition.
+
+lanes:
+  - lane: gold-coverage-build
+    role: build
+    seat: claude (this session — M5 interactive, sole build lane)
+  - lane: gold-coverage-report-refuter
+    role: review
+    seat: kimi-k3 (non-Anthropic) — whole-report adversarial review,
+      CONFIRMED-WITH-FINDINGS; never the build seat
+  - lane: gold-coverage-test-verifier
+    role: review
+    seat: claude-sonnet-5 backend-verifier subagent — independent pytest
+      re-run with dot-count verification (fresh context, not the build loop)
+
+diff:
+  files: 26
+  net_lines: 1858
+  measured_at: 9d7944a846
+  note: >-
+    git diff --no-renames --numstat $(git merge-base origin/main HEAD)..HEAD
+    -> 26 files, +1858/-0: 2 scripts, 3 test files, 18 persona JSONs, the
+    research report, and 2 ledger files.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      The three gold-coverage suites are green — 11 passed — verified by an
+      independent subagent that counted the 11 dots against `collected 11
+      items` and reproduced `11 passed in 43.63s` with -v -p no:testmon
+      (pytest-testmon silently suppresses the -q summary line).
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/services/visa_engine/test_gold_coverage_floor.py
+      backend/tests/scripts/visa_engine/ -q
+    result: "11 passed (independent -v re-run: 11 passed in 43.63s)"
+    exit: 0
+    ts: 2026-08-28T20:10Z
+    seat: backend-verifier subagent (review lane)
+
+  - claim: >-
+      The measured baseline reproduces deterministically: 4/20 gold
+      personas match in full against seq-13, the same 16 divergent ids as
+      the workflow measured, and the E31B/E31D fail-open probes return
+      SUPPORTED on seq-13 (sponsor NONE -> ['C1','E31B','E31D']; FAMILY
+      intent alone -> ['C1','E31D']).
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python - <<'PY' ...
+      (import PERSONAS from test_evaluator_gold, evaluate each via
+      gold_coverage_eval._evaluate, compare all six expectation fields;
+      then the two probe personas; scripts inline in the session
+      transcript and reproducible via the report's §8 commands)
+      PY
+    result: "passed: 4 /20; divergent: [1,2,5,6,7,8,9,10,11,13,14,15,16,17,19,20]; probes SUPPORTED"
+    exit: 0
+    ts: 2026-08-29T03:50Z
+    seat: session (build lane)
+
+  - claim: >-
+      The five el.e31b-*/el.e31d-* rule bodies are predicate-identical
+      from seq-6 through the seq-14 draft: sha-256 over the sorted rule
+      JSON gives 66b2829c02a0 on every sequence 6-14 (seq 1-5 predate the
+      5-rule family).
+    cmd: >-
+      for f in backend/services/visa_engine/contracts/packs/rulepack-prod-*.source.json;
+      do python3 -c "...filter rules by prefix, sha256 sorted JSON..."; done
+    result: "66b2829c02a0 on seq 6,7,8,9,10,11,12,13,14"
+    exit: 0
+    ts: 2026-08-29T04:15Z
+    seat: session (build lane)
+
+  - claim: >-
+      The R1 adversarial-review gate passes on the report file (frontmatter
+      seat token kimi-k3 + '## Adversarial review' section present).
+    cmd: >-
+      python3 scripts/check_adversarial_review.py --files
+      research/visa/2026-08-28-visa-oracle-gold-coverage-and-divergence-adjudication.md
+    result: "PASS — 1 research file(s) carry a valid adversarial review"
+    exit: 0
+    ts: 2026-08-29T04:20Z
+    seat: session (build lane)
+
+dissent:
+  - seat: kimi-k3 (report refuter)
+    objection: >-
+      CONFIRMED-WITH-FINDINGS — four prose defects: (1) TL;DR/§5 called the
+      fail-opens "confirmed pack defects" while §2/§8 scope causes as
+      proposals; (2) TL;DR stated "highest signed pack" as bare fact while
+      §1 flags it as an unproven assumption; (3) "66/98 lanes" and "7 of 16
+      agreed" are unverifiable by construction; (4) "byte-identical since
+      seq-7" had no reproduction path.
+    status: CONFIRMED
+    resolution: >-
+      All four addressed in the committed revision: behavior/classification
+      split, the assumption caveat travels with the TL;DR, the lane counts
+      are labeled testimony, and the seq-stability claim was REPLACED with
+      a measured digest over every pack sequence in the repo (stronger:
+      identical from seq-6 through the seq-14 draft) plus its command.
