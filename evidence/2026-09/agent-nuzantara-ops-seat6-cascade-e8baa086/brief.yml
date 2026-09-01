@@ -1,0 +1,102 @@
+task_id: ops-seat6-cascade
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  `infra/launchagents/wrappers/claude-cascade.sh` is THE cascade entry point every
+  autonomous cron job on this repo shells out to (pro-healer.sh, nb-curator-daily.sh,
+  regulatory-watcher-run.sh, competitor-monitor-run.sh, wr2-ig-metrics-analyst-run.sh,
+  run-nb-curator-mode-c.sh — via `try_claude` tier 1). Before this PR it coupled each
+  numbered slot to a config directory, and after the 2026-08-23 fleet remap two of
+  those couplings were stale: slot 4's config_dir still pointed at `~/.claude-acct4`
+  (a pre-remap name) and slot 5 was labelled `claude-token-5-team-env` with
+  `config_dir=~/.claude-zero-team` — but slot 5 is actually
+  kaiser198719871987@gmail.com, a plain MAX seat, not the Team.
+
+  The load-bearing consequence: the Team seat had become UNREACHABLE from this
+  cascade. It was only reachable through the compatibility branch gated on
+  `[ -z "$CLAUDE_CODE_OAUTH_TOKEN_5" ]` — and after the remap filled slot 5 with a
+  MAX token, that branch never opens. This PR moves the Team seat to slot 6 (last
+  position, per Zero's ruling that it is a last-resort-only fallback since it is
+  weekly-capped and the 5 MAX seats are not), repoints slot 4/5's config dirs to
+  their correct accounts (`~/.claude-antozero`, `~/.claude-kaiser`), and re-gates the
+  compat branch on `CLAUDE_CODE_OAUTH_TOKEN_6` instead of `_5`.
+
+  Companion change in `scripts/wr3_dispatch_v2.py::_collect_claude_seats()`: it had
+  `range(1, 6)` (stops at slot 5, never reaches 6) and `label = "slot5-team" if slot
+  == 5` — the same stale assumption, in the WR3 dispatcher's own independent seat
+  collector.
+
+  ADDITIONAL FIX FOLDED IN (found during this session's own verification, not in the
+  original diagnosis): `scripts/tests/test_claude_cascade_shell.py` — the hermetic
+  shell-integration test suite for claude-cascade.sh — still modelled only 5 numbered
+  slots. Two of its 62 tests were RED against this PR's own diff before this fix
+  (confirmed via CI's already-running "antidotes" required check, job "Codex seat
+  corpus", independent of harness-floor): the full-chain-to-legacy test never
+  exercised a slot-6 attempt, and the compat-wrapper test popped
+  `CLAUDE_CODE_OAUTH_TOKEN_5` (no longer the gating variable) and asserted the
+  now-superseded `claude-token-5-team-wrapper` label. Fixed by adding a `token6`
+  fixture entry end-to-end and updating both tests' expectations — a Gear-3 Evidence
+  Pack claiming "tests: green" is only truthful if the tests this diff's own file
+  is covered by are actually green, so this was verified, not assumed.
+constraints:
+  - "Slot 6 stays LAST in every enumeration this PR touches — never promoted ahead of
+    a MAX seat. Same invariant as PR #4640 (seat6-consumers), extended here to the
+    cascade wrapper and the WR3 dispatcher."
+  - "zsh syntax must stay clean on claude-cascade.sh (it IS a zsh script, run via
+    /bin/zsh — the test corpus skips on machines without zsh rather than silently
+    claiming coverage it cannot exercise)."
+  - "The compatibility Team wrapper (~/.local/bin/claude-zero-team) is a
+    fallback-of-last-resort ONLY when no explicit token_6 is set — it must never be
+    tried ahead of the explicit numbered chain."
+  - "The test-fixture fix (token6 end-to-end) must not change behaviour for any of
+    the other 60 pre-existing tests in test_claude_cascade_shell.py — verified by
+    running the full file, not just the 2 tests that were red."
+acceptance:
+  - "scripts/tests/test_claude_oauth_slot6_coverage.py: 31 passed (14 consumers now
+    include claude-cascade.sh and wr3_dispatch_v2.py; +2 new tests specific to those
+    two files: a case-branch parser proving the Team config dir/label live ONLY on
+    slot 6, and a range(1,7)+label proof for the dispatcher)."
+  - "scripts/tests/test_wr3_dispatch_v2_oauth_fleet.py: 8 passed (async cascade
+    behaviour + the seat-collector unit test, both updated for the slot-6 label)."
+  - "scripts/tests/test_claude_cascade_shell.py: 62 passed (60 pre-existing +
+    2 that were RED before this session's fix, now green) — the hermetic
+    end-to-end proof that the shell script itself, not just its comments/labels,
+    behaves correctly across the full numbered-slot chain."
+  - "zsh syntax check clean on claude-cascade.sh (implicit in the 62 shell-corpus
+    tests actually invoking it via /bin/zsh)."
+consumer_map:
+  - "infra/launchagents/wrappers/claude-cascade.sh — tier-1 fallback for every
+    LaunchAgent cron wrapper's try_claude call (pro-healer, nb-curator-daily,
+    regulatory-watcher, competitor-monitor, wr2-ig-metrics-analyst, nb-curator
+    Mode C)."
+  - "scripts/wr3_dispatch_v2.py::_collect_claude_seats() — the WR3 episode
+    dispatcher's independent seat enumerator."
+  - "scripts/tests/test_claude_cascade_shell.py — hermetic fake-fleet regression
+    suite for the wrapper; the surface this session's own fix targets."
+  - "Everything already covered by PR #4640 (seat6-consumers) — this PR's diff is
+    cumulative with that one while both are open (unmerged), per GitHub's PR-diff
+    semantics; once #4640 merges, #4644's own diff against main narrows to just
+    this PR's incremental change."
+risks:
+  - "This PR's diff, as computed against origin/main WHILE #4640 is still open and
+    unmerged, includes #4640's full 14-consumer change too (GitHub PR-diff
+    semantics for a stacked branch) — the receipts and net-lines below describe
+    the diff CI actually evaluates today, not just this PR's own incremental
+    commits, so a reader comparing this pack's file list against the PR's own
+    'new commits' view should expect the larger set."
+  - "None identified to running cron behaviour beyond what #4640's pack already
+    covers: this PR's own addition (cascade.sh + wr3_dispatch_v2.py) is the same
+    additive, tail-appended slot-6 shape."
+grader:
+  session (nuzantara/Pro), independent of the diff's authorship — dispatched
+  to close the harness-floor Gear-3 evidence gap on an already-authored fix;
+  verification performed by re-running the full test suite (not just the tests the
+  prior session's summary named), which surfaced and fixed a real regression
+  (test_claude_cascade_shell.py, 2 tests) the original diagnosis had not caught.
+budget: 1 session, no council (mechanical fallback-list extension + one hermetic
+  test-fixture repair, both verified empirically against a required CI check)
+pii:
+  "clean — the identities touched are the operator's own internal multi-account
+  routing config (pre-existing in the repo, see PR 4640's pack for the same
+  finding on cli_runtime.py), not client PII/OSINT."

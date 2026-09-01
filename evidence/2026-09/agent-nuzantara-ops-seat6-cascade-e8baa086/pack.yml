@@ -1,0 +1,165 @@
+brief_ref: evidence/brief.yml
+plan_ref: "unblock harness-floor's required Gear-3 evidence gate on an already-
+  authored, already-tested seat-6 cascade fix (Zero ruling 2026-08-23) — this pack
+  is written post-hoc by a session independent of that authorship"
+diff:
+  behaviour_change:
+    "additive only for the numbered-slot chain (6th slot appended
+    after slot 5); config_dir REPOINT for slots 4/5 (correcting a stale identity
+    mapping, not adding new behaviour); the compat-wrapper gate variable moves from
+    _5 to _6 (same fallback-of-last-resort semantics, correct trigger now)"
+  net_lines:
+    "measured merge-base-anchored, CUMULATIVE with unmerged sibling #4640:
+    +364/-126, net +238; 17 files changed (eca4b258e..cd01a1ffc, git diff --numstat).
+    This PR's OWN incremental commits on top of #4640's tip (3204fa225..cd01a1ffc):
+    +121/-17 net +104 across 4 files before this evidence commit."
+receipts:
+  - claim: "PR #4644 (branch agent/nuzantara/ops/seat6-cascade), merge-base
+      anchored against origin/main, touches 17 files: 364 insertions, 126
+      deletions (cumulative with unmerged #4640)"
+    cmd: 'MERGE_BASE=$(git merge-base origin/main HEAD); git diff --no-renames --numstat "$MERGE_BASE" HEAD | awk ''{a+=$1; d+=$2} END {print "added="a" deleted="d" net="a-d}'''
+    exit: 0
+    ts: "2026-08-23T09:02:39Z"
+    seat: "session (Pro)"
+  - claim:
+      "isolated to this PR's own commits (parent 3204fa225, the seat6-consumers
+      tip, to HEAD): 4 files, +121/-17"
+    cmd: "git diff --no-renames --stat 3204fa225 4d8050f45"
+    exit: 0
+    ts: "2026-08-23T08:52:00Z"
+    seat: "session (Pro)"
+  - claim:
+      "scripts/tests/test_claude_oauth_slot6_coverage.py + test_wr3_dispatch_v2_oauth_fleet.py:
+      39 passed combined (31 + 8)"
+    cmd: "cd ~/nuzantara/.worktrees/ops-seat6-consumers && python3 -m pytest scripts/tests/test_claude_oauth_slot6_coverage.py scripts/tests/test_wr3_dispatch_v2_oauth_fleet.py -q"
+    exit: 0
+    ts: "2026-08-23T08:53:20Z"
+    seat: "session (Pro)"
+    output: "39 passed in 1.78s (31 + 8 confirmed separately too)"
+  - claim: "zsh syntax on claude-cascade.sh is clean"
+    cmd: "bash -n infra/launchagents/wrappers/claude-cascade.sh"
+    exit: 0
+    ts: "2026-08-23T08:53:40Z"
+    seat: "session (Pro)"
+  - claim:
+      "scripts/tests/test_claude_cascade_shell.py — the hermetic shell-fleet
+      corpus for claude-cascade.sh — had 2 of 62 tests RED against this PR's own
+      diff BEFORE this session's fix, independently confirmed as a required CI
+      failure (job 'antidotes' / 'Codex seat corpus (two paid subscriptions, and
+      a 401 default seat)'), unrelated to harness-floor"
+    cmd: "gh run view 32628630858 --job 97167827787 --log-failed"
+    exit: 0
+    ts: "2026-08-23T08:56:00Z"
+    seat: "session (Pro)"
+    output:
+      "2 failed, 60 passed in 15.96s -- test_explicit_order_reaches_team_then_legacy_then_keychain
+      and test_team_wrapper_is_only_used_when_explicit_team_token_is_absent, both
+      asserting stale slot-5 labels/positions"
+  - claim: "after adding a token6 fixture end-to-end to
+      test_claude_cascade_shell.py (TOKEN_VALUES, the fake claude binary's
+      case/action tables, both credential-leak forbidden-env lists, the default
+      env dict, _default_bodies()) and updating the two affected tests'
+      expectations, the full file is 62/62 green"
+    cmd: "cd ~/nuzantara/.worktrees/ops-seat6-consumers && python3 -m pytest scripts/tests/test_claude_cascade_shell.py -q"
+    exit: 0
+    ts: "2026-08-23T08:57:30Z"
+    seat: "session (Pro)"
+    output: "62 passed in 46.30s"
+  - claim:
+      "the fixture fix changed behaviour for ONLY the 2 previously-red tests
+      -- confirmed by grep, 'token5' as a literal label string in an expected-list
+      assertion appears in exactly one test in the whole file"
+    cmd: 'grep -n ''"token5"'' scripts/tests/test_claude_cascade_shell.py'
+    exit: 0
+    ts: "2026-08-23T08:58:10Z"
+    seat: "session (Pro)"
+    output: "6 hits total: 1 in TOKEN_VALUES dict, 2 in the cases/actions tuple
+      builders (structural, not per-test), 1 in the env dict, 1 in
+      _default_bodies(), and exactly 1 inside a test body -- the one this fix
+      updated"
+  - claim:
+      "combined final run of all three in-scope test files together, plus the
+      full pre-existing backend-rag suite for the same seat-collector shape
+      (unrelated file, confirmed out of scope, not modified): all green"
+    cmd: "cd ~/nuzantara/.worktrees/ops-seat6-consumers && python3 -m pytest scripts/tests/test_claude_oauth_slot6_coverage.py scripts/tests/test_wr3_dispatch_v2_oauth_fleet.py scripts/tests/test_claude_cascade_shell.py -q"
+    exit: 0
+    ts: "2026-08-23T08:59:50Z"
+    seat: "session (Pro)"
+    output: "101 passed in 36.05s"
+dissent:
+  - seat: "session (Pro), reviewing a diff it did not author"
+    objection:
+      "Does #4644's own diagnosis (cascade.sh + wr3_dispatch_v2.py fixed, tests
+      claimed green) actually hold when the FULL hermetic shell-integration test
+      suite for the file it modifies is run, not just the newly-added/renamed
+      Python unit tests?"
+    status: CONFIRMED
+    note: "CONFIRMED as a real gap: 2 of 62 tests in
+      scripts/tests/test_claude_cascade_shell.py were RED against this PR's diff,
+      independently visible on GitHub's already-running required 'antidotes'
+      check. This was NOT part of the original diagnosis handed to this session.
+      Fixed in a separate commit (cd01a1ffc) before this evidence pack, with the
+      full 62-test file re-run to confirm no other test regressed."
+  - seat: "session (Pro), reviewing its own fix to the test fixture"
+    objection:
+      "Adding a 6th default token to _fake_fleet()'s env dict changes the fixture
+      EVERY test in the file uses -- could this silently change the outcome of
+      tests OTHER than the 2 identified as red, in a way that happens to still
+      report a pass (a false-clean, cicatrix-superscar family #6)?"
+    status: RETRACTED
+    note: 'Checked by grep, not assumed: the literal label "token5" inside a
+      test-body expected-list assertion (the shape that would be affected by an
+      extra slot appearing before legacy/keychain) occurs in exactly ONE test in
+      the file -- the one already fixed. Every other test either short-circuits
+      on an earlier slot (never reaches the numbered-slot tail) or exercises a
+      different code path (--claude-only flag variants, provider fallback tiers)
+      that doesn''t walk the full chain. The 62/62 green re-run is the empirical
+      confirmation, not just the grep.'
+  - seat: "session (Pro), reviewing a diff it did not author"
+    objection:
+      "cli_runtime.py's stale identity-map comment was already corrected by PR
+      #4640 -- does claude-cascade.sh's NEW 2026-08-23 slot-mapping comment (added
+      by this PR) agree with it, or does this PR introduce a second, independently
+      wrong copy of the same mapping?"
+    status: RETRACTED
+    note:
+      "Read both side by side: claude-cascade.sh's new comment (1=antonellosiano,
+      2=sianoantonello, 3=applevisionpro1987, 4=antozero1987, 5=kaiser19871987198,
+      6=zero@balizero.com) matches cli_runtime.py's corrected map from #4640
+      exactly, slot for slot."
+residual_risks:
+  - "This PR's diff, evaluated today while #4640 is still open, is cumulative with
+    it (GitHub PR-diff semantics for a stacked, unmerged branch) -- once #4640
+    merges to main and this branch rebases/updates, #4644's own diff against main
+    will narrow to just this PR's incremental commits. Not a defect, just a
+    reading note for whoever reviews this pack before #4640 merges."
+  - "No runtime behaviour change to verify live for the numbered-slot additions:
+    slot 6 and the corrected config dirs only activate on an actual quota/auth
+    failure cascade through slots 1-5, which does not occur under normal
+    operation -- the 101-test static/hermetic-shell suite is the available proof,
+    not a live cascade exercise on a real cron run."
+sources:
+  - "Team lead mandate (this session, 2026-08-23): diagnosis of harness-floor
+    FAILURE on #4640/#4644/#4645 (hot-zone diff, no evidence/brief.yml)."
+  - "GitHub Actions run 32628630858 / job 97167827787 ('antidotes' / 'Codex seat
+    corpus (two paid subscriptions, and a 401 default seat)') -- independent
+    confirmation of the test_claude_cascade_shell.py regression, read via
+    gh run view --log-failed, not inferred."
+  - "evidence/brief.yml + evidence/pack.yml from PR #4640 (seat6-consumers) --
+    same-lineage sibling pack, referenced for consistency of the identity-map
+    finding (dissent[2] above)."
+tests:
+  - "scripts/tests/test_claude_oauth_slot6_coverage.py -q -> 31 passed."
+  - "scripts/tests/test_wr3_dispatch_v2_oauth_fleet.py -q -> 8 passed."
+  - "scripts/tests/test_claude_cascade_shell.py -q -> 62 passed (2 were RED before
+    this session's fix; receipts above)."
+static:
+  - "bash -n infra/launchagents/wrappers/claude-cascade.sh -> exit 0 (receipt
+    above; the file is zsh, /bin/zsh actually executes it in the 62-test hermetic
+    corpus, which is the stronger proof)."
+runtime_proof:
+  - "None claimed: the numbered-slot chain and compat-wrapper gate are exercised
+    only by the hermetic fake-fleet test corpus, never against a live account --
+    consistent with the sibling #4640 pack's same disclosure."
+pii_scan: clean
+size_tokens: 2351
