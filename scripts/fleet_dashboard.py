@@ -340,9 +340,9 @@ def render(d: dict[str, Any]) -> str:
     if top:
         lede = (
             f'Delle <b>{live_n}</b> proposte di modifica vive, <b>{moving}</b> si stanno '
-            f'muovendo da sole e <b>{red_n}</b> sono ferme. La causa più frequente non è '
-            f'{red_n} problemi diversi: è <b>una sola</b>, «{esc(top["check"])}», che da sola '
-            f'ferma {len(top["prs"])} proposte.'
+            f'muovendo da sole e <b>{red_n}</b> sono ferme. Il controllo che fallisce più '
+            f'spesso è «{esc(top["check"])}», su <b>{len(top["prs"])}</b> di esse — che è '
+            f'dove guardare per prima cosa, non ancora una diagnosi.'
         )
     else:
         lede = (
@@ -450,8 +450,16 @@ def render(d: dict[str, Any]) -> str:
   <section>
     <div class="eyebrow">La domanda che conta</div>
     <h2>Perché sono ferme</h2>
-    <p class="sub">Raggruppate per <em>controllo fallito</em>, non per proposta. Una riga lunga
-    significa un solo difetto ripetuto tante volte — si cura una volta e si sbloccano tutte.</p>
+    <p class="sub">Raggruppate per <em>controllo fallito</em>, non per proposta: così si vede
+    dove concentrare lo sforzo invece di leggere venti pagine di dettagli.</p>
+    <div class="note"><b>Come leggere una riga lunga — e come non leggerla.</b> Dice che quel
+    controllo è rosso su molte proposte. <em>Non</em> dice che il difetto sia lo stesso: un
+    controllo è un esame, e si può fallire lo stesso esame per motivi diversi. Misurato il
+    2026-09-01 sulla riga più lunga di questa tabella: le 12 proposte che fallivano
+    «Harness floor recompute» si dividevano in <b>cinque</b> difetti distinti — 5 senza il file
+    di sintesi richiesto, 3 con numeri sfasati nel pack, 2 semplicemente in attesa di un verdetto
+    (nessun difetto), 1 con un riferimento a un file inesistente, 1 con uno script mancante.
+    Aprire il log è quindi il passo successivo obbligato, non un di più.</div>
     <div class="scroll"><table>
       <tr><th>Controllo che fallisce</th><th>Quante</th><th></th></tr>
       {cause_rows}
