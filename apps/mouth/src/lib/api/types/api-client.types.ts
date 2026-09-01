@@ -6,6 +6,16 @@
 import { UserProfile } from "@/types";
 
 /**
+ * Cookie-primary session verdict (auth-gates-cookie-primary). Distinct from
+ * the boolean `isAuthenticated` check below: that one is local-token-only
+ * and positive-only (see its docstring in client.ts). This type carries the
+ * third, honest outcome a network probe can produce — the server was never
+ * asked, or answered ambiguously — so callers are not forced to guess
+ * "anonymous" out of a value that only ever meant "unproven".
+ */
+export type SessionState = "authenticated" | "anonymous" | "unknown";
+
+/**
  * HTTP request options
  */
 export interface ApiRequestOptions extends Omit<RequestInit, "headers"> {
@@ -96,6 +106,13 @@ export interface IApiClient {
    * Check if user is authenticated.
    */
   isAuthenticated(): boolean;
+
+  /**
+   * Cookie-primary session check (auth-gates-cookie-primary). Gates that
+   * decide whether to redirect to /login must call this, not the boolean
+   * above — see its docstring in client.ts for why.
+   */
+  hasSession(): Promise<SessionState>;
 
   /**
    * Check if user has admin role.

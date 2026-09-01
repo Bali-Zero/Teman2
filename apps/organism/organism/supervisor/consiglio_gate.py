@@ -1,18 +1,30 @@
 """L3 Consiglio v1 gate — requires 3/4 multi-LLM agreement for irreversible actions.
 
-Called by Decider BEFORE dispatching an irreversible actuator. Consiglio v1
-runs a multi-LLM deliberation (Claude + Gemini + DeepSeek + Ollama per
-spec §External LLM arsenal) and returns votes. 3/4 agree → proceed. Else
-→ defer_to_human (escalate via Telegram).
+NOT WIRED, as of 2026-08-29: this class is fully built and tested, but
+nothing on the live dispatch path (organism/supervisor/dispatch.py,
+organism/supervisor/decider.py) imports or calls it. decider.py's own
+docstring already says the true thing — L3/Consiglio is a "W2 will layer
+... on top" future plan, not a wired gate. This module's docstring used
+to claim the opposite ("Called by Decider BEFORE dispatching..."); that
+was false and is corrected here.
 
-Only invoked for:
-- rollback_deploy (can break prod for real clients)
+If wired, ConsiglioGate would run a multi-LLM deliberation (Claude +
+Kimi K3 + Gemini + Ollama per spec §External LLM arsenal — DeepSeek's
+direct door was retired 2026-07-19, the council seat moved to Kimi K3;
+this line used to say "DeepSeek", which was already stale before the
+rest of the docstring was found wrong) and return votes. 3/4 agree →
+proceed. Else → defer_to_human (escalate via Telegram).
+
+Named as requiring the gate, per IRREVERSIBLE_ACTUATORS below:
+- rollback_deploy (never reaches here in practice — it is also in
+  dispatch.py's HUMAN_ONLY_ACTUATORS, which short-circuits to
+  AWAITING_HUMAN before any actuator lookup happens)
 - propose_yaml_rule (writes new rule to repo → long-lived effect)
 - consolidate_redundancy (opens shared-infra PRs → cross-team review required)
 
-For W2 shadow mode: even irreversible decisions go through this gate.
-Dispatcher (W1.C) separately enforces HUMAN_ONLY_ACTUATORS blacklist
-— the two layers are complementary.
+Dispatcher (W1.C) separately enforces the HUMAN_ONLY_ACTUATORS blacklist,
+and that layer IS real and live today — this one is not, for the other
+two actuators above.
 """
 from __future__ import annotations
 

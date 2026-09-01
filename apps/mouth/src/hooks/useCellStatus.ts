@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api";
+import { useSessionState } from "./useSessionState";
 import { logger } from "@/lib/logger";
 
 export interface CellPulse {
@@ -45,6 +46,7 @@ export interface CellStatus {
 }
 
 export function useCellStatus(pollIntervalMs: number = 10000) {
+  const session = useSessionState();
   const [status, setStatus] = useState<CellStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,11 +69,11 @@ export function useCellStatus(pollIntervalMs: number = 10000) {
   }, []);
 
   useEffect(() => {
-    if (!api.isAuthenticated() || !api.isAdmin()) return;
+    if (session !== "authenticated" || !api.isAdmin()) return;
     fetchStatus();
     const interval = setInterval(fetchStatus, pollIntervalMs);
     return () => clearInterval(interval);
-  }, [fetchStatus, pollIntervalMs]);
+  }, [session, fetchStatus, pollIntervalMs]);
 
   return { status, loading, error, refetch: fetchStatus };
 }

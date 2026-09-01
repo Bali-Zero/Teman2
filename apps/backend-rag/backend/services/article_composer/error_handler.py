@@ -102,10 +102,11 @@ def handle_anthropic_error(
     if isinstance(error, DeepSeekAuthError):
         api_error = APIError.create(
             code=ErrorCode.API_KEY_NOT_CONFIGURED,
-            message="Invalid or missing DEEPSEEK_API_KEY",
+            message="Invalid or missing BAILIAN_TOKEN_PLAN_API_KEY",
             details={
                 **error_context,
-                "suggestion": "Check the DEEPSEEK_API_KEY environment variable",
+                "suggestion": "Check the BAILIAN_TOKEN_PLAN_API_KEY environment variable "
+                "(TP1 gateway credential — not DEEPSEEK_API_KEY, which is retired)",
             },
             request_id=request_id,
         )

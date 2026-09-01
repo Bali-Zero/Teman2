@@ -1,10 +1,16 @@
 import type { FC } from "react";
 
 /**
- * The third column used to read `~15 min` — a response-time promise nobody
- * had measured (see apps/mouth/src/components/trust/response-time-claim.test.ts
- * for the measurement that retired it). It now carries the Google review
- * count, which IS measured and carries a MEASURED_ON date.
+ * Two columns: a star rating and a Google review count. Both are measured
+ * and both carry a MEASURED_ON date at their source.
+ *
+ * A third column has been removed from this band twice, for two different
+ * reasons. It first read `~15 min` — a response-time promise nobody had
+ * measured (see apps/mouth/src/components/trust/response-time-claim.test.ts
+ * for the measurement that retired it). It then read `5k+ clients`, whose
+ * own source module records it as having no verified origin; standing next
+ * to two dated numbers, the missing date became visible. Do not add a third
+ * column unless the number carries a measurement date.
  *
  * `rating` and `reviewCount` are INJECTED, not imported. Their source of
  * truth is apps/mouth/src/lib/trust-figures.ts, and packages/core cannot
@@ -15,39 +21,24 @@ import type { FC } from "react";
  * from the call site; do not "fix" this into a cross-package import.
  */
 export interface TrustBandProps {
-  clientCount: number;
   /** Star rating, verbatim from the measured source (e.g. "4.9"). */
   rating: string;
   /** Review count, verbatim from the measured source. */
   reviewCount: number;
 }
 
-function formatK(n: number): string {
-  return n >= 1000 ? `${(n / 1000).toFixed(0)}k+` : `${n}+`;
-}
-
-export const TrustBand: FC<TrustBandProps> = ({
-  clientCount,
-  rating,
-  reviewCount,
-}) => (
+export const TrustBand: FC<TrustBandProps> = ({ rating, reviewCount }) => (
   <section
     aria-label="Trust signals"
     style={{
       display: "grid",
-      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
       gap: "var(--space-4)",
       padding: "var(--space-6) var(--space-4)",
       background: "var(--surface-subtle)",
       borderTop: "1px solid var(--color-border-subtle)",
     }}
   >
-    <div>
-      <strong style={{ fontSize: "var(--font-size-2xl)" }}>
-        {formatK(clientCount)}
-      </strong>
-      <div style={{ color: "var(--color-text-secondary)" }}>Clients</div>
-    </div>
     <div>
       <strong style={{ fontSize: "var(--font-size-2xl)" }}>★ {rating}</strong>
       <div style={{ color: "var(--color-text-secondary)" }}>Rating</div>

@@ -44,6 +44,7 @@ asyncpg = pytest.importorskip("asyncpg")
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
+from backend.app.core.database import init_asyncpg_connection
 from backend.app.routers import garuda_orders_router
 from backend.services.garuda_flow.intake import CaseType
 from backend.services.garuda_orders.ports import ReviewedCheckSnapshot
@@ -146,7 +147,18 @@ async def _close_garuda_order_test_policy(conn: asyncpg.Connection, policy_versi
 @pytest.fixture
 async def pool():
     try:
-        p = await asyncpg.create_pool(dsn=_DSN, min_size=1, max_size=2)
+        # `init=` is NOT optional here (2026-08-30) -- same reason as
+        # `backend/tests/services/garuda_portal/test_practice.py`. This fixture
+        # drives `GarudaOrderRepository`, which reaches
+        # `garuda_orders/journal.py::append_event`; that writer now binds a NATIVE
+        # Python dict to `garuda_order_journal.detail` instead of a pre-serialized
+        # string, so a pool without the canonical jsonb codec raises
+        # `DataError: ... expected str, got dict`. Found by A/B-ing the 21
+        # baselined bare-pool files against origin/main, not by reading the diff:
+        # the narrower GARUDA-suite A/B did not reach this file at all.
+        p = await asyncpg.create_pool(
+            dsn=_DSN, min_size=1, max_size=2, init=init_asyncpg_connection
+        )
     except (OSError, asyncpg.PostgresError) as exc:
         if os.environ.get("CI"):
             pytest.fail(
@@ -271,7 +283,7 @@ class TestSessionVerification:
     async def test_absent_cookie_is_rejected(self, client: AsyncClient) -> None:
         resp = await client.get("/api/visa/voa/orders/ord_absent_0000000000")
         assert resp.status_code == 401
-        assert resp.json()["detail"]["code"] == "SESSION_REQUIRED"
+        assert resp.json()["code"] == "SESSION_REQUIRED"
 
     async def test_unknown_cookie_value_is_rejected(self, client: AsyncClient) -> None:
         resp = await client.get(
@@ -279,7 +291,7 @@ class TestSessionVerification:
             cookies={_SESSION_COOKIE: "not-a-real-session-secret"},
         )
         assert resp.status_code == 401
-        assert resp.json()["detail"]["code"] == "SESSION_REQUIRED"
+        assert resp.json()["code"] == "SESSION_REQUIRED"
 
     async def test_expired_session_is_rejected(self, pool, client: AsyncClient) -> None:
         raw_secret = "expired-secret-0000000000000000000000000000"
@@ -294,7 +306,7 @@ class TestSessionVerification:
             cookies={_SESSION_COOKIE: raw_secret},
         )
         assert resp.status_code == 401
-        assert resp.json()["detail"]["code"] == "SESSION_REQUIRED"
+        assert resp.json()["code"] == "SESSION_REQUIRED"
 
     async def test_a_valid_session_reaches_past_the_401(self, pool, client: AsyncClient) -> None:
         """Positive control: a live, unexpired session gets PAST the auth
@@ -307,7 +319,7 @@ class TestSessionVerification:
             cookies={_SESSION_COOKIE: raw_secret},
         )
         assert resp.status_code == 404
-        assert resp.json()["detail"]["code"] == "ORDER_NOT_FOUND"
+        assert resp.json()["code"] == "ORDER_NOT_FOUND"
 
 
 # ============================================================
@@ -330,7 +342,7 @@ class TestGetOrderOwnership:
             cookies={_SESSION_COOKIE: raw_secret_a},
         )
         assert resp.status_code == 404
-        assert resp.json()["detail"]["code"] == "ORDER_NOT_FOUND"
+        assert resp.json()["code"] == "ORDER_NOT_FOUND"
 
     async def test_a_session_can_read_its_own_order_and_only_the_frozen_fields(
         self, pool, client: AsyncClient
@@ -381,7 +393,7 @@ class TestBrowserReturnObservationOwnership:
             json={"return_nonce": "n" * 20},
         )
         assert resp.status_code == 404
-        assert resp.json()["detail"]["code"] == "ORDER_NOT_FOUND"
+        assert resp.json()["code"] == "ORDER_NOT_FOUND"
 
         row = await pool.fetchrow(
             "SELECT browser_observation, browser_return_nonce FROM garuda_orders WHERE order_id = $1",
@@ -437,7 +449,7 @@ class TestCreateOrderOwnership:
             },
         )
         assert resp.status_code == 404
-        assert resp.json()["detail"]["code"] == "RESULT_NOT_FOUND"
+        assert resp.json()["code"] == "RESULT_NOT_FOUND"
 
         count = await pool.fetchval(
             "SELECT count(*) FROM garuda_orders WHERE result_id_ref = $1", "result-b-create-0000000"
@@ -537,7 +549,7 @@ class TestDbPoolDegradationIsFiveOhThreeNotFiveHundred:
             cookies={_SESSION_COOKIE: raw_secret},
         )
         assert resp.status_code == 503, resp.text
-        assert resp.json()["detail"]["code"] == "SERVICE_UNAVAILABLE"
+        assert resp.json()["code"] == "SERVICE_UNAVAILABLE"
 
     async def test_explicit_none_garuda_db_pool_is_503_not_500(
         self, pool, magic_link_store: PostgresMagicLinkStore, repository: GarudaOrderRepository
@@ -556,7 +568,7 @@ class TestDbPoolDegradationIsFiveOhThreeNotFiveHundred:
             cookies={_SESSION_COOKIE: raw_secret},
         )
         assert resp.status_code == 503, resp.text
-        assert resp.json()["detail"]["code"] == "SERVICE_UNAVAILABLE"
+        assert resp.json()["code"] == "SERVICE_UNAVAILABLE"
 
 
 # ============================================================
@@ -635,7 +647,7 @@ class TestTrackerDoesNotDependOnThePaymentProvider:
             f"wired: {resp.text}. A paid customer cannot see their own order because a "
             "credential they never touch is absent."
         )
-        assert resp.json()["detail"]["code"] == "ORDER_NOT_FOUND"
+        assert resp.json()["code"] == "ORDER_NOT_FOUND"
 
     async def test_creating_an_order_still_503s_without_the_repository(
         self, pool, magic_link_store: PostgresMagicLinkStore
@@ -671,4 +683,4 @@ class TestTrackerDoesNotDependOnThePaymentProvider:
             cookies={_SESSION_COOKIE: raw_secret},
         )
         assert resp.status_code == 503, resp.text
-        assert resp.json()["detail"]["code"] == "SERVICE_UNAVAILABLE"
+        assert resp.json()["code"] == "SERVICE_UNAVAILABLE"

@@ -1,0 +1,48 @@
+task_id: craft-d-l12-pr2-migration-299-provenance
+gear: 3
+l_level: L3
+gate_class: opus
+objective: |
+  Make `_schema_versions` say WHO applied a migration, THROUGH WHAT, and WITH
+  WHICH RUNNER -- and finally READ BACK the `checksum` it has stored, unread,
+  since the table existed.
+
+  Grep the tree before this PR: nothing ever compares that column. A stored
+  proof that is never verified reassures without checking. A mismatch means the
+  migration FILE is no longer the text applied to this database, so a fresh
+  environment would apply the NEW file and silently diverge from production.
+constraints:
+  - "Migration 299, not 298. The spec's number was right when written;
+    `298_garuda_payment_inbox_quarantine_reason.sql` landed since. Measured on
+    disk, because a stale number collides and the runner's uniqueness assertion
+    fails the WHOLE deploy, including migrations unrelated to the collision."
+  - "`applied_as` comes from the SERVER (`current_user`, plus `session_user`
+    when they differ), never from an environment variable a caller can set.
+    `applied_via` IS self-reported and is documented as a hint, not a fact."
+  - "No NOT NULL, no DEFAULT, no backfill. Legacy rows keep NULL, and that NULL
+    is honest: nobody recorded who applied them, and inventing a value now
+    manufactures provenance."
+  - "Touch NO object owned by visa_ledger_owner / zantara_rag_user / postgres /
+    repmgr. `_schema_versions` is not in NON_APP_OWNED_TABLES -- and that
+    snapshot is a FLOOR, not a live query, by its own comment."
+  - "THE AUDIT MUST NOT FAIL A HEALTHY DATABASE. A deploy-time verifier that
+    false-positives is worse than no verifier at all."
+acceptance:
+  - text: >-
+      WHEN the upgrade half is applied, the three provenance columns and the
+      CHECK constraint SHALL exist, and WHEN the rollback half is applied they
+      SHALL be gone with every pre-existing row intact.
+    probe: "psql -v ON_ERROR_STOP=1"
+  - text: >-
+      WHILE `applied_via` is constrained, the database SHALL reject a value
+      outside {release_command, manual, ci} and SHALL accept one inside it.
+    probe: "CHECK guilt+innocence"
+  - text: >-
+      IF a stored checksum does not match its file, THEN the audit SHALL raise
+      an error NAMING the migration number.
+    probe: "tampered names the number"
+  - text: >-
+      WHERE a ledger row carries a symbolic (non-sha256) checksum that really
+      exists in production, the audit SHALL stay silent -- and WHERE such a row
+      is not allowlisted it SHALL raise.
+    probe: "the four REAL symbolic rows produce NO finding"

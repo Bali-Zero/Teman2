@@ -5,7 +5,7 @@ apps/backend-rag/backend/services/oracle/. When ready, this module will
 read the citation log and compute the rate of Zantara responses citing
 source URLs that map to the NB UUID.
 
-Spec §3.3, §7.3. ADR-006.
+Spec §3.3, §7.3. ADR-012.
 """
 from __future__ import annotations
 

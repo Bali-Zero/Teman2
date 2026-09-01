@@ -118,6 +118,13 @@ on:
       - check-kbli-dataset-sync
       - check-skills-canonical
       - check-ledger-no-silent-loss
+      # check-skills-canonical landed unwatched with PR #5041 — inherited debt,
+      # not caused by the ACL lane. Registered here rather than left red because
+      # it is the same one-line concern as the row below it, and the sweep is
+      # all-or-nothing: leaving it blocks every subsequent PR too.
+      - check-skills-canonical
+      - check-tailnet-acl
+      - check-wal-continuity-probe
       - cron - codex autofix reaper (autonomous reap every 48h)
       - Contract Tests (Schemathesis)
       - cron - cert monitor (daily 07:00 WITA)
@@ -145,6 +152,7 @@ on:
       - manual - garuda voa arm
       - Deploy Backend to Fly.io
       - Fly.io Secrets Health Check
+      - Fleet burst dispatcher tests
       - Frontend Live Sentinel
       - Frontend typecheck (apps/mouth)
       - garuda-contract-parity
@@ -163,6 +171,7 @@ on:
       - Golden Rule
       - Lint — GARUDA_ENVIRONMENT workflow value matches DB schema
       - Lint i18n providers
+      - Merah Putih DAY contrast guard
       - Migration number uniqueness lint
       - Migration ROLLBACK marker lint
       - Magazine auto-assets contract
@@ -180,11 +189,16 @@ on:
       - P7 LEARN Shadow Harvester Gate
       - P8 Brand-API Gate
       - P9 Cost Breaker (GOVERN)
+      - PR size taxonomy (advisory)
       - Monthly PG Restore Drill
+      - Restore drill wiring tests
+      - Promotion readiness tests
+      - queue doctor tests
       - "runbook section numbers are unique"
       - Root Guard
       - SBOM (Software Bill of Materials)
       - scripts/tests/ sweep (report-only)
+      - Seat broker env-minimization tests
       - Security Scanning
       - SAST — Bandit + ESLint Security
       - SonarQube Analysis
@@ -278,6 +292,67 @@ on:
       # first run.
       - zantara-core-edit-gate
       - Vercel auto-promote organ tests
+      # Added 2026-08-30 (Handoff H2, voa-probe-tests.yml). Listed by the `name:`
+      # the workflow declares, not by its filename — the matching rule this file's
+      # own GOTCHA section states. Caught by check_watcher_coverage.py on that PR's
+      # own first run, which is the coverage gate doing exactly its job: a new
+      # push-to-main workflow that nothing watches is a red nobody would see.
+      - VOA probe organ tests
+      # Added 2026-08-29 (Handoff H3, token-contrast-tests.yml): ADVISORY job
+      # (continue-on-error: true — see the workflow's own header comment).
+      # check_watcher_coverage.py's contract is name-set membership against
+      # this file's declared name:, not whether the job is required or
+      # advisory, so listing it here is unconditional. What it is FOR, stated
+      # precisely because a plausible wrong intuition exists (a cross-family
+      # reviewer built an anti-ship case on it): this registration does NOT
+      # currently surface a failure of that job through THIS watcher, because
+      # the `alert` job below gates on the WORKFLOW RUN's own `conclusion`
+      # (see this file's own header + the `if:` on `alert`), and job-level
+      # `continue-on-error` keeps that overall conclusion `success` even when
+      # the job's own check-run concludes `failure` -- measured in this repo,
+      # not assumed: `tests.yml`'s `visa-oracle-fullstack-smoke` job (identical
+      # continue-on-error shape) has its own comment recording "the step
+      # failed and the check-run's conclusion on the commit was failure ...
+      # the overall WORKFLOW RUN conclusion is not dragged down by this job."
+      # So while continue-on-error is present, a failure here is invisible to
+      # THIS watcher specifically -- though still visible red to any human on
+      # the PR itself via `gh pr checks` or the Checks tab, which is a
+      # separate, already-live channel this entry has no bearing on. What
+      # registration DOES buy, and the actual reason to keep it: the moment
+      # `continue-on-error` is removed from that job (see its own
+      # PENDING-ARMS row), a real failure WILL flip the workflow run's
+      # conclusion to `failure`, and this entry is what lets this watcher
+      # catch it on push-to-main from that point on, with no second PR
+      # required to add it then.
+      - Token contrast tripwire tests
+      # Added with the workflow itself (PR-3, L06-ci-merge-queue-ship-
+      # pipeline.md, 2026-08-29): pr-collision-check.yml triggers on
+      # pull_request only (opened/reopened/synchronize/ready_for_review) —
+      # same non-reachable-but-still-required-for-coverage shape as
+      # actionlint / hot-zone-enforcement / Prettier (changed files) /
+      # Harness floor recompute above. check_watcher_coverage.py's
+      # contract is name-set membership against this file's `name:`, not
+      # alert-path reachability (see its own docstring).
+      - PR collision check (advisory)
+      # Added with the workflows themselves (SQUAD S lane 5, 2026-08-31).
+      # Both differ from the entry directly above in a way worth stating,
+      # because "listed for coverage" and "actually alertable" are not the
+      # same claim and this file already carries several of the first kind:
+      # these two ARE reachable by this watcher.
+      #   - `mq state oracle tests` carries `push: branches: [main]` (with a
+      #     paths filter symmetric to its pull_request one), so a direct push
+      #     to main that breaks the mq state oracle produces a failing push
+      #     run on main — exactly the event the `alert` job below acts on.
+      #   - `Craft instruments (advisory)` is schedule-triggered (nightly
+      #     21:17 UTC). `schedule` has been in this trigger's scope since
+      #     2026-07-26 (task #37, see the note above), and a scheduled run's
+      #     head_branch is `main`, so a nightly failure alerts. Its NAME says
+      #     advisory about the two REPORTS it prints; the job itself goes red
+      #     when an instrument's own corpus fails, and that red is the thing
+      #     worth waking someone for — an instrument nobody can trust is
+      #     worse than no instrument.
+      - Craft instruments (advisory)
+      - mq state oracle tests
     types: [completed]
     # 2026-08-20 CI-churn cure — see the matching GOTCHA above for the
     # measurement and the empirical proof this narrows run CREATION, never

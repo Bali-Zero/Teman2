@@ -1,0 +1,11 @@
+// GUILT (round-2 gate, finding E): Pro's address as a CIDR. Same host, spelled as a network.
+// SHELL-ROUTE: /term -> 127.0.0.1:7681 is ttyd -W zsh.
+{
+  "hosts": {"pro": "100.107.22.111", "mini": "100.93.236.6"},
+  "tagOwners": {"tag:team-device": ["autogroup:admin"]},
+  "acls": [
+    {"action": "accept", "proto": "tcp", "src": ["mini"], "dst": ["100.107.22.111/32:443"]}
+  ],
+  "ssh": [],
+  "tests": [{"src": "tag:team-device", "deny": ["pro:443"]}]
+}

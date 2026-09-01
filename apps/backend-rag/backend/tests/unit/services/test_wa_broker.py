@@ -725,6 +725,23 @@ async def test_max_codex_legs_matches_outbox_worker_max_attempts() -> None:
     assert wa_broker.MAX_CODEX_LEGS == wa_outbox_worker.MAX_ATTEMPTS
 
 
+@pytest.mark.asyncio
+async def test_lease_ttl_always_exceeds_the_exec_deadline(monkeypatch) -> None:
+    """The lease must outlive the exec deadline in the worst case (claim
+    happens the instant a job is offered, zero lag) — otherwise the reaper
+    starts expiring leases out from under jobs still executing within their
+    (larger) exec budget: a worse failure than the timeout the 2026-08-28
+    widening exists to relieve (measured incident: wa_outbox 352, thread
+    394). Checked at the shipped default AND after an operator raises
+    WA_BROKER_DEADLINE_S, so this pins a STRUCTURAL property of
+    lease_ttl_seconds() — that it derives from deadline_seconds() — not
+    just today's two numbers happening to be in the right order."""
+    assert wa_broker.lease_ttl_seconds() > wa_broker.deadline_seconds()
+
+    monkeypatch.setenv("WA_BROKER_DEADLINE_S", "120")
+    assert wa_broker.lease_ttl_seconds() > wa_broker.deadline_seconds()
+
+
 # ── wait_for_job ─────────────────────────────────────────────────────────
 
 
@@ -1079,7 +1096,7 @@ async def test_expire_stale_jobs_classifies_by_outcome_and_mode_and_folds_breake
     fetch_sql, fetch_args = pool.executed[0]
     assert "COALESCE(completed_at, created_at)" in fetch_sql
     assert "RETURNING mode, outcome" in fetch_sql
-    assert fetch_args == (wa_broker.LEASE_TTL_S * 3,)
+    assert fetch_args == (wa_broker.lease_ttl_seconds() * 3,)
 
     # the breaker was folded with the SERVE count only (2), never the total (4)
     breaker_calls = pool.sql_with_args("INSERT INTO wa_broker_gauge")

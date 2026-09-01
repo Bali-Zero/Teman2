@@ -122,7 +122,7 @@ jobs:
           # installing the whole backend test stack just to collect 5 subprocess
           # tests, and this job's pip install (pyyaml/httpx/pytest/pytest-asyncio)
           # deliberately does not include asyncpg.
-          cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/integration/test_p3_sandbox_egress.py --collect-only -q --noconftest
+          cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/integration/test_p3_sandbox_egress.py --collect-only --noconftest
 
   p3-runtime-gates:
     name: P3 runtime gates G1/G1-DLP/G4 (monitor — runs on Pro)

@@ -836,6 +836,14 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           MERGE_GROUP_HEAD_REF: ${{ github.event.merge_group.head_ref }}
           PACK_PATH: ${{ steps.evpaths.outputs.pack }}
+          # Rule 12's input. Step 2b already resolved this and Step 4 already
+          # reads it (to attribute the `gear:` declaration to THIS PR's brief),
+          # so nothing new is being computed here — the value was simply never
+          # handed to the lint, which is precisely why the BRIEF half of the
+          # root-path deprecation stayed unenforced while the PACK half
+          # shipped. Same resolution, same failure modes, passed one step
+          # further.
+          BRIEF_PATH: ${{ steps.evpaths.outputs.brief }}
         run: |
           set -u
           # Same corrected reasoning as Step 3 (Kimi K3 finding #3):
@@ -908,6 +916,50 @@ jobs:
           # writing a new pack will actually be looking.
           git show "$HEAD_SHA:${PACK_PATH}" > /tmp/evidence-check/evidence/pack.yml
           cp /tmp/brief.yml /tmp/evidence-check/evidence/brief.yml
+          # THE council_run CONTRACT (measured 2026-08-29) — the brief_ref
+          # contract above, one level deeper. R9
+          # (evidence_pack_lint.py::check_council_run_gear3) does NOT resolve
+          # against --repo-root; it resolves the pack's `council_run:`
+          # against the PACK'S OWN directory, and the staged pack dir holds
+          # only the two files written above. So a pack whose council
+          # journal IS committed next to it in the real tree still lints
+          # here as "declares no council_run journal with >=2 distinct
+          # review seats" — a NOTICE today, a hard FAIL for EVERY Gear-3 PR
+          # from 2026-09-02 (R9_R11_ENFORCEMENT_DATE), by construction and
+          # independent of the diff. The journal travels with the pack, so
+          # it is staged too. What the script deliberately declines to stage
+          # (absent / absolute / `..`-escaping / not-at-HEAD) is documented
+          # in its own docstring; every such case leaves R9 to judge the
+          # pack unaided, which is strictly stricter, never a fail-open.
+          #
+          # BOOTSTRAP — the SENTINEL shape used twice already in this step, not
+          # a bare "missing means bootstrap" (cross-family review,
+          # codex-gpt-5.6-sol, MEDIUM, on the PR that added this): this job's
+          # checkout is BASE, so the script this PR ADDS is genuinely absent on
+          # this PR's own run — but treating EVERY future absence as a
+          # legitimate bootstrap window would make deleting the helper a silent
+          # fail-open, and while R9 is still only a NOTICE (before 2026-09-02)
+          # that window passes Gear-3 PRs with no council at all. So the
+          # exemption is bound to this PR's own number and everything else
+          # fails closed, exactly like the tracked_file_present_in_diff.sh
+          # branch above.
+          if [[ -f scripts/ci/stage_council_journal.py ]]; then
+            python3 scripts/ci/stage_council_journal.py \
+              --staged-pack /tmp/evidence-check/evidence/pack.yml \
+              --source-path "$PACK_PATH" \
+              --head-sha "$HEAD_SHA"
+          else
+            COUNCIL_BOOTSTRAP_PR="5190" # this PR's own number — the one legitimate bootstrap window for this script
+            RESOLVED_COUNCIL_PR="${PR_NUMBER:-}"
+            if [[ -z "$RESOLVED_COUNCIL_PR" && "$MERGE_GROUP_HEAD_REF" =~ pr-([0-9]+)- ]]; then
+              RESOLVED_COUNCIL_PR="${BASH_REMATCH[1]}"
+            fi
+            if [[ "$RESOLVED_COUNCIL_PR" != "$COUNCIL_BOOTSTRAP_PR" ]]; then
+              echo "::error::scripts/ci/stage_council_journal.py is missing from the base checkout, and this is PR #${RESOLVED_COUNCIL_PR:-unknown}, not the declared one-time bootstrap PR (#$COUNCIL_BOOTSTRAP_PR) — failing closed. Its absence means it was deleted from main, which un-stages every Gear-3 pack's council journal."
+              exit 1
+            fi
+            echo "::notice::scripts/ci/stage_council_journal.py not in the base checkout yet (bootstrap run for PR #$COUNCIL_BOOTSTRAP_PR only) — the council journal is not staged this run, so R9 judges the pack without it (NOTICE before 2026-09-02); self-consistent from the first run after this PR merges"
+          fi
           EXTRA_ARGS=()
           if [[ "$NETLINES_AVAILABLE" == "true" ]]; then
             EXTRA_ARGS+=(--numstat-file /tmp/net-lines-numstat.txt)
@@ -939,6 +991,22 @@ jobs:
             EXTRA_ARGS+=(--source-path "$PACK_PATH")
           else
             echo "::notice::the evidence_pack_lint.py copy in use (checked out from base) does not support --source-path yet — Rule 9 (evidence root deprecation) will judge the staged canonical path instead of this PR's real per-PR path this run; self-consistent once this PR merges and base's copy is updated"
+          fi
+          # Rule 12 (the BRIEF half). Same capability-probe shape as the pack
+          # flag above and for the same reason: this job checks out BASE, so
+          # the copy running here is the one on main, not the one this PR adds
+          # — the flag only exists after this PR merges. Probed with the exact
+          # flag string rather than a version number, because a version is a
+          # proxy for a capability and this is the capability itself.
+          # Deliberately NOT defaulted to the staged canonical path when the
+          # flag is missing: staging always names the file evidence/brief.yml,
+          # so falling back would make EVERY pack look guilty of the very
+          # thing this rule forbids — a false positive on the whole fleet.
+          # Absent flag => rule inert, stated in the notice.
+          if python3 scripts/evidence_pack_lint.py --help 2>&1 | grep -q -- '--brief-source-path'; then
+            EXTRA_ARGS+=(--brief-source-path "$BRIEF_PATH")
+          else
+            echo "::notice::the evidence_pack_lint.py copy in use (checked out from base) does not support --brief-source-path yet — Rule 12 (root BRIEF deprecation) is inert this run rather than judging the staged canonical name, which would falsely accuse every pack; self-consistent once this PR merges and base's copy is updated"
           fi
           python3 scripts/evidence_pack_lint.py \
             /tmp/evidence-check/evidence/pack.yml \

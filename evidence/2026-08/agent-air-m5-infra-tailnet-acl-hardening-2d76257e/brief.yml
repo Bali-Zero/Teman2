@@ -1,0 +1,78 @@
+task_id: tailnet-acl-deny-by-default-0829
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Make the tailnet's access-control policy actually deny-by-default, and fence the
+  unauthenticated writable shell it leaves reachable.
+
+  Measured on the live tailnet (2026-08-11 from M5 via `tailscale debug netmap`, restated by
+  the orchestrator 2026-08-29): the packet filter is ONE rule — every node to 0.0.0.0/0,
+  ports 0-65535, TCP+UDP+ICMP. On top of it, `tailscale serve` on Pro publishes, tailnet-wide
+  and unauthenticated, `/term` -> 127.0.0.1:7681, which is `ttyd -p 7681 -W zsh`: `-W` is
+  writable and there is no `-c user:pass` flag. So any device on this tailnet holds an
+  unauthenticated writable zsh shell on Pro as user `nuzantara` — the host with the wa-mirror
+  raw PII, the CRM runtime and ~/.nuzantara-secrets.env.
+
+  This is NOT a live breach: all six nodes belong to antonellosiano@gmail.com. It is a hard
+  blocker on the planned team tailnet expansion, because a teammate's laptop joining an
+  allow-all tailnet inherits that shell, and the CRM's row-level RBAC is bypassed underneath
+  it at the network layer.
+
+  `infra/tailscale/policy.hujson` already existed as the proposed fix and did not fix this:
+  its rule 1 granted `antonellosiano@gmail.com -> antonellosiano@gmail.com:*` — every port on
+  every owned device, so pro:443 (the shell port) stayed open to all six nodes and any future
+  port was absorbed silently.
+
+  Gear 3 by PATH, deterministically: the diff touches `.github/workflows/**`, which is
+  hot-zone, so compute_floor() returns 3 with source `path` regardless of size. Receipt in
+  the pack.
+constraints:
+  - "Repo-only lane. No live machine state may change — no ssh mutation, no launchctl, no
+    tailscale reconfiguration, no service stop. Read-only inspection is permitted. Applying
+    the policy is operator[GUI] and stays that way: the fleet holds no Tailscale API token
+    and the CLI can neither read nor write ACLs."
+  - "Grant only flows with a cited consumer. A deny-by-default policy whose rules are guessed
+    is not deny-by-default, it is allow-by-default with extra steps. Every port in the matrix
+    is backed by a file:line in this repo, named in the rule's own comment."
+  - "Never widen a dst to `:*` to make a red go green. That is the exact defect this PR
+    removes, and the new CI guard rejects it by construction."
+  - "The tag name must match `infra/tailscale/enroll-team-device.md` verbatim
+    (`tag:team-device`). A key minted with any other tag lands the device outside every rule
+    written to contain it — a silent, total bypass."
+  - "Guard needs guilt AND innocence (infra/guard-conformance/). A guard proven only to pass
+    can report success and can never report failure."
+acceptance:
+  - "`policy.hujson` contains no wildcard `dst` host, no wildcard `dst` port, and no rule with
+    `tag:team-device` in `src` — verified by the new guard, not by reading."
+  - "The guard goes RED when the real policy is widened, not merely GREEN as shipped: proven
+    by mutating a real rule and by running it against the previous draft."
+  - "Every fleet flow the repo has a consumer for appears in the matrix with its evidence."
+  - "A runbook exists whose verification step includes a GUILT check — a command whose SUCCESS
+    proves the policy did not take effect."
+  - "`scripts/check_watcher_coverage.py` reports zero violations: the new workflow is watched."
+risks:
+  - "Deny-by-default breaks any flow that exists on the machines but nowhere in the repo. That
+    is the intended failure mode, but it surfaces at apply time, possibly hours later on a
+    cron cycle — the runbook's step 4 is where it is meant to appear, and it says so."
+  - "The `hosts` block pins magic IPs. A node removed and re-registered gets a new IP and its
+    rules stop matching. This fails loudly (service breaks) rather than silently widening, and
+    the file says so, but it is real operational debt."
+  - "Port 443 cannot be split by URL path in a Tailscale ACL, so the m5 and iOS grants
+    necessarily carry /term alongside /deck. Both are Zero's own hardware. The real fix is
+    moving /term to its own port in Pro's serve config — a change to Pro, not to this file,
+    and a business call. Declared, not hidden."
+  - "This is policy as code that no offline validator can accept. The repo-side guard checks
+    grammar and intent only; the admin console at save time is the sole authority."
+grader: |
+  generator != grader. The build lane (this session, Anthropic) never graded its own diff.
+  Round 1: codex gpt-5.6-sol at xhigh effort (OpenAI, non-Anthropic family) reviewed the full
+  diff adversarially against five named categories — ACL over-grant, broken fleet flow,
+  Tailscale syntax validity, guard bypassability, and false claims in comments/runbook. Its
+  verdict and findings are recorded verbatim in the pack's receipts and dissent, including
+  what was fixed and what was accepted as-is with reasons. The Gear-3 verdict itself is
+  posted by an independent gate seat that did not author this diff.
+budget: |
+  Flat-subscription seats only: this session (build, Claude MAX OAuth) and codex gpt-5.6-sol
+  (round-1 grader, ChatGPT Pro). No metered API spend, no paid per-token key.
+pii: none

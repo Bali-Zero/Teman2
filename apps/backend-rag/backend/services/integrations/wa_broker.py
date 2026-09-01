@@ -58,15 +58,34 @@ import asyncpg
 
 logger = logging.getLogger(__name__)
 
-# T_exec (spec 2.1): claim-wait <=3s + exec <=12s. Config override
-# WA_BROKER_DEADLINE_S; read per-call so tests and rollouts never need a
-# process restart.
-DEFAULT_DEADLINE_S = 15
+# T_exec (spec 2.1). Widened 2026-08-28 (measured incident: wa_outbox 352,
+# thread 394 — a real client message took 2m21s because a normal, slightly
+# heavier question (successful generations run 5.6-8.4s) blew through the
+# old 15s ceiling twice before succeeding on the third attempt). Target is
+# the 60s end-to-end reply budget with headroom: at 45s the effective exec
+# budget (deadline minus claim-wait minus WA_BROKER_NET_MARGIN_S, see
+# wa_codex_daemon.compute_budget_s) is ~42s, comfortably above every
+# measured successful generation, while still leaving room for the retry
+# ladder (wa_outbox_worker.MAX_ATTEMPTS) to reach a terminal apology in a
+# few minutes rather than hang open. Config override WA_BROKER_DEADLINE_S;
+# read per-call so tests and rollouts never need a process restart.
+DEFAULT_DEADLINE_S = 45
 
-# Broker claim lease: how long a leased job waits for /complete before the
-# reaper may expire it. Slightly above the deadline so the deadline (not the
-# lease) is what normally decides.
-LEASE_TTL_S = 20
+# Headroom the broker claim lease carries OVER the exec deadline (spec 2.1).
+# The two are coupled by INTENT but anchored at DIFFERENT clocks: deadline_at
+# is set relative to OFFER time (offer_job's INSERT), lease_expires_at is set
+# relative to CLAIM time (claim_job's UPDATE, which happens at or after
+# offer). A bare LEASE_TTL_S constant that does not track deadline_seconds()
+# can invert that ordering the moment WA_BROKER_DEADLINE_S is raised past the
+# constant's value: in the worst case (claim happens immediately after
+# offer, zero lag), deadline_at would then land AFTER lease_expires_at, and
+# the reaper would start expiring leases out from under jobs that are still
+# executing well within their (now larger) exec budget — a worse failure
+# than the timeout this margin exists to relieve, and one no test would
+# catch because the bare constant still "looks fine" on its own (cured
+# 2026-08-28: see lease_ttl_seconds() below, which is what claim_job and the
+# reaper actually use). Value preserves the original 20-15=5s buffer.
+LEASE_TTL_MARGIN_S = 5
 
 # Admission depth cap (spec 2.1, Codex H12): the broker is single-flight, so
 # more than one outstanding (offered|leased) job means the second cannot start
@@ -107,8 +126,14 @@ BREAKER_OPEN_SECONDS = 300
 # admission check demotes it back to open (fresh cooldown). Reachable only if
 # the canary's worker crashes between consuming the result and recording the
 # outcome — without this exit, half_open would be an absorbing state and the
-# codex route dark forever. Sized above deadline + consume grace so it can
-# never fire while a legitimate canary is still being processed.
+# codex route dark forever. The actual guard against firing while a
+# legitimate canary is still being processed is the demotion query's own
+# NOT EXISTS (offered/leased/completed_pending_consume) predicate below, not
+# this value's size relative to the exec deadline or consume grace — those
+# two grew with the 2026-08-28 exec-budget widening (deadline_seconds() +
+# lease_ttl_seconds()*3 can now exceed this constant), and the predicate is
+# what keeps that harmless: a canary still in any of those three states
+# blocks the demotion regardless of how long HALF_OPEN_ORPHAN_S is.
 HALF_OPEN_ORPHAN_S = 120
 
 # Terminal-row retention (spec 2, Codex NEW-1).
@@ -152,6 +177,16 @@ def deadline_seconds() -> int:
     except ValueError:
         return DEFAULT_DEADLINE_S
     return value if value > 0 else DEFAULT_DEADLINE_S
+
+
+def lease_ttl_seconds() -> int:
+    """How long a leased job waits for /complete before the reaper may
+    expire it. DERIVED from deadline_seconds() + LEASE_TTL_MARGIN_S rather
+    than a bare constant, so raising WA_BROKER_DEADLINE_S can never invert
+    the deadline/lease ordering (see LEASE_TTL_MARGIN_S's docstring for the
+    failure this closes). Read per-call, same reload discipline as
+    deadline_seconds()."""
+    return deadline_seconds() + LEASE_TTL_MARGIN_S
 
 
 def absent_after_seconds() -> int:
@@ -851,7 +886,7 @@ async def claim_job(
                   deadline_at, now() AS server_now
         """,
         fence_token,
-        LEASE_TTL_S,
+        lease_ttl_seconds(),
     )
     if row is not None:
         logger.info("wa_broker: job %s leased", row["job_id"])
@@ -1083,7 +1118,7 @@ async def expire_stale_jobs(pool: asyncpg.Pool) -> ReapResult:
                      AND expires_at IS NOT NULL AND expires_at <= now())
             RETURNING mode, outcome
             """,
-            LEASE_TTL_S * 3,
+            lease_ttl_seconds() * 3,
         )
         result = ReapResult()
         for row in rows:

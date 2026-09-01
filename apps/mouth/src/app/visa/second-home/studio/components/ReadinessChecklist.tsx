@@ -140,8 +140,9 @@ export function ReadinessChecklist({
       <h2
         style={{
           margin: 0,
+          // R4 §3: Cormorant is display-only and never below 24px.
           fontFamily: "var(--font-serif, Georgia, serif)",
-          fontSize: "clamp(1.2rem, 3vw, 1.5rem)",
+          fontSize: "clamp(1.5rem, 3vw, 1.75rem)",
           color: "var(--text-primary)",
         }}
       >

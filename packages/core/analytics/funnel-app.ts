@@ -14,7 +14,8 @@ export type FunnelAppName =
   | "kbli_decoder"
   | "kbli_builder"
   | "tax_gap"
-  | "zoning_check";
+  | "zoning_check"
+  | "visa_voa";
 
 /** Finite source-of-truth list of app_* event names (MYTHOS IA-8 app_*
  * reconciliation). The backend allowlist mirrors FUNNEL_EVENTS ∪ APP_EVENTS —

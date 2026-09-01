@@ -9,7 +9,9 @@ colpevolezza" — each guard needs BOTH proofs registered).
 
 from __future__ import annotations
 
+import contextlib
 import datetime
+import io
 import subprocess
 import sys
 from pathlib import Path
@@ -22,6 +24,7 @@ SCRIPTS = REPO / "scripts"
 
 sys.path.insert(0, str(SCRIPTS))
 from evidence_pack_lint import (  # noqa: E402
+    EVIDENCE_ROOT_BRIEF_DEPRECATION_DATE,
     EVIDENCE_ROOT_DEPRECATION_DATE,
     FLOOR_SOURCE_BOTH,
     FLOOR_SOURCE_NONE,
@@ -35,10 +38,15 @@ from evidence_pack_lint import (  # noqa: E402
     _is_anthropic_seat,
     _seat_rule_verdict,
     _size_term_net_lines,
+    check_acceptance_probe_pairing,
+    check_appetite_acknowledgment,
+    check_assumptions_register,
     check_brief_ref_exists,
     check_cheap_seat_floor,
     check_council_run_gear3,
+    check_countable_claims,
     check_dissent_nonempty_on_gear3,
+    check_brief_not_at_deprecated_root,
     check_gear_floor,
     check_ground_truth_lane,
     check_lanes_build_seat_diversity,
@@ -52,7 +60,10 @@ from evidence_pack_lint import (  # noqa: E402
     compute_floor_source,
     compute_seat_floor,
     effort_for_gear,
+    format_measured_claims,
     lint,
+    measured_commit_count,
+    parse_numstat_totals,
     sum_numstat,
 )
 
@@ -2237,3 +2248,1227 @@ def test_evidence_root_cli_explicit_source_path_overrides_default(tmp_repo):
     payload = _json.loads(result.stdout)
     assert payload["exit"] == 0
     assert not any("evidence_root_deprecated" in v for v in payload["violations"])
+
+
+# ---- rule 12: check_brief_not_at_deprecated_root ---------------------------
+#
+# Rule 9 above judges the PACK's path and is structurally blind to the BRIEF.
+# Measured on origin/main 2026-08-31: six open PRs wrote the root brief, and
+# #5158 had the shape rule 9 cannot see — pack already migrated to a per-task
+# directory, brief still at the root, rule 9 green while the collision was
+# live. These tests pin BOTH the new rule's guilt and the one innocence case
+# that would break the whole fleet if it regressed: the mandatory
+# `brief_ref: evidence/brief.yml` STRING must never be mistaken for a root
+# brief FILE write.
+
+_BRIEF_ROOT_PRE_FLIP = EVIDENCE_ROOT_BRIEF_DEPRECATION_DATE - datetime.timedelta(days=1)
+_BRIEF_ROOT_POST_FLIP = EVIDENCE_ROOT_BRIEF_DEPRECATION_DATE
+
+
+def test_brief_root_guilt_root_path_post_flip_rejected(tmp_path):
+    viol, notice = check_brief_not_at_deprecated_root(
+        "evidence/brief.yml", tmp_path, today=_BRIEF_ROOT_POST_FLIP
+    )
+    assert notice is None
+    assert any("evidence_root_brief_deprecated" in v for v in viol)
+    assert any("evidence/brief.yml is deprecated as a WRITE target" in v for v in viol)
+
+
+def test_brief_root_guilt_absolute_root_path_post_flip_rejected(tmp_path):
+    """An absolute path resolving to repo_root/evidence/brief.yml is judged the
+    same as its repo-relative form — a literal-string match alone would miss
+    it, so the shared resolution helper must be doing the work."""
+    absolute = tmp_path / "evidence" / "brief.yml"
+    viol, notice = check_brief_not_at_deprecated_root(
+        str(absolute), tmp_path, today=_BRIEF_ROOT_POST_FLIP
+    )
+    assert notice is None
+    assert any("evidence_root_brief_deprecated" in v for v in viol)
+
+
+def test_brief_root_guilt_dot_segments_normalize_to_root_post_flip(tmp_path):
+    """`evidence/x/../brief.yml` names the root brief; a textual comparison
+    would pass it as per-task. Same gap a cross-family review caught in rule 9
+    (see _pack_source_relpath's docstring) — it must not reopen here."""
+    viol, notice = check_brief_not_at_deprecated_root(
+        "evidence/x/../brief.yml", tmp_path, today=_BRIEF_ROOT_POST_FLIP
+    )
+    assert notice is None
+    assert any("evidence_root_brief_deprecated" in v for v in viol)
+
+
+def test_brief_root_innocence_pre_flip_notice_not_fail(tmp_path):
+    viol, notice = check_brief_not_at_deprecated_root(
+        "evidence/brief.yml", tmp_path, today=_BRIEF_ROOT_PRE_FLIP
+    )
+    assert viol == []
+    assert notice is not None
+    assert "evidence_root_brief_deprecated" in notice
+
+
+def test_brief_root_innocence_per_task_dir_clean_both_sides():
+    """A per-task brief is clean on EITHER side of the flip — this rule only
+    judges the literal root path, never the per-task shape."""
+    for today in (_BRIEF_ROOT_PRE_FLIP, _BRIEF_ROOT_POST_FLIP):
+        viol, notice = check_brief_not_at_deprecated_root(
+            "evidence/2026-08/ops-evidence-pertask-a0adff64/brief.yml",
+            Path("/repo"),
+            today=today,
+        )
+        assert viol == [] and notice is None
+
+
+def test_brief_root_innocence_no_brief_source_path_skipped(tmp_path):
+    """None/empty means the caller has no diff context — skip, don't guess.
+    This is also the LOCAL-invocation path: `evidence_pack_lint.py
+    evidence/pack.yml` knows the pack but not the brief, and there is
+    deliberately no positional fallback to invent one."""
+    for value in (None, ""):
+        viol, notice = check_brief_not_at_deprecated_root(
+            value, tmp_path, today=_BRIEF_ROOT_POST_FLIP
+        )
+        assert viol == [] and notice is None
+
+
+def test_brief_root_does_not_ride_the_pack_rules_flip_date():
+    """The two dates are deliberately separate (see the constant's comment):
+    adding the brief to the pack's 2026-09-05 would silently re-price the
+    readiness measurement taken the day this rule was written. On the pack's
+    flip date the brief must still only NOTICE."""
+    assert EVIDENCE_ROOT_BRIEF_DEPRECATION_DATE > EVIDENCE_ROOT_DEPRECATION_DATE
+    viol, notice = check_brief_not_at_deprecated_root(
+        "evidence/brief.yml", Path("/repo"), today=EVIDENCE_ROOT_DEPRECATION_DATE
+    )
+    assert viol == []
+    assert notice is not None
+
+
+def test_brief_root_innocence_mandatory_brief_ref_string_is_not_a_root_write(tmp_repo):
+    """THE load-bearing innocence case. Every conformant pack in this repo is
+    REQUIRED to declare the literal `brief_ref: evidence/brief.yml` — the
+    staging contract (scripts/ci/evidence_paths.py's module docstring). A rule
+    that judged that STRING instead of the PR's written PATH would fail every
+    correct pack in the fleet.
+
+    The pack below carries that mandatory string (asserted, not assumed) while
+    the PR's resolved brief path is per-task. The rule therefore RUNS — it is
+    given a real path, so it does not short-circuit — and must still find the
+    pack clean, which is only possible if it never reads `brief_ref` at all.
+
+    IT ASSERTS ON STDERR, NOT ONLY ON THE VIOLATION LIST, and that is the
+    whole point — two drafts of this test were insensitive before this one:
+
+      1. The first omitted `brief_source_path` entirely. VACUOUS: with no path
+         the function returns at its first line, so the assertion held whether
+         the rule existed or not. It pinned the skip-when-blind branch (already
+         covered by test_brief_root_innocence_no_brief_source_path_skipped)
+         while claiming to pin the string-vs-path distinction.
+      2. The second supplied the path but still asserted only `rc == 0` and an
+         empty violation list. Also insensitive: today is BEFORE the flip date,
+         so a rule that over-matched every path would emit a NOTICE and still
+         exit 0 — proven by mutation, `if False:` in place of the path
+         comparison left this test green.
+
+    A notice goes to stderr, so stderr is where an over-matching rule becomes
+    visible before its flip date. Verified by mutation both ways: neutering the
+    comparison kills the guilt tests, over-matching it kills this one."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    pack_file = write_pack()
+    assert "brief_ref: evidence/brief.yml" in pack_file.read_text(encoding="utf-8")
+    err = io.StringIO()
+    with contextlib.redirect_stderr(err):
+        rc, viol = lint(
+            tmp_path / "evidence" / "pack.yml",
+            tmp_path,
+            None,
+            brief_source_path="evidence/2026-08/some-task-a0adff64/brief.yml",
+        )
+    assert rc == 0
+    assert not any("evidence_root_brief_deprecated" in v for v in viol)
+    assert "evidence_root_brief_deprecated" not in err.getvalue()
+
+
+def test_brief_root_end_to_end_notice_pre_flip_does_not_fail(tmp_repo):
+    """End-to-end through lint() with a ROOT brief path: today is before the
+    flip date, so this NOTICEs and exits 0.
+
+    It asserts the notice IS EMITTED, not merely that nothing failed. Asserting
+    only `rc == 0` would leave this test green against a DELETED rule — the
+    guilt tests would still catch that, but a test that cannot tell "correctly
+    silent" from "not wired up at all" is not evidence of wiring, and wiring is
+    exactly what this end-to-end case exists to prove."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    err = io.StringIO()
+    with contextlib.redirect_stderr(err):
+        rc, viol = lint(
+            tmp_path / "evidence" / "pack.yml",
+            tmp_path,
+            None,
+            brief_source_path="evidence/brief.yml",
+        )
+    assert rc == 0
+    assert not any("evidence_root_brief_deprecated" in v for v in viol)
+    assert "evidence_root_brief_deprecated" in err.getvalue()
+
+
+def test_brief_root_resolver_seam_produces_diff_relative_paths_not_the_staged_name():
+    """THE SEAM TEST, and it exists because a cross-family reviewer refused to
+    take it on faith (tp1-glm-5.2, 2026-08-31, on this PR's own diff).
+
+    Its objection: the rule's safety rests entirely on `--brief-source-path`
+    carrying a DIFF-RELATIVE path. CI lints a synthetic tree where the brief is
+    always staged under the canonical name `evidence/brief.yml`; if the value
+    handed to this rule came from that tree, then on the flip date EVERY
+    conformant PR in the fleet would be judged as writing the root brief and
+    the whole queue would go red. The reviewer's verdict was DO-NOT-SHIP on the
+    grounds that the diff asserted the link in a docstring and pinned it
+    nowhere — the assertion spans two modules, so neither module's own tests
+    covered it.
+
+    The conclusion was wrong and the demand was right. `resolve_evidence_path`
+    is a pure function over the changed-files LIST — it never touches the
+    filesystem, so it cannot see the staged tree, and harness-floor.yml calls
+    it at Step 2b, before staging exists at all. This test pins that end to
+    end rather than restating it: the resolver's real output, for each of the
+    three diff shapes, fed to the real rule."""
+    # scripts/ci is not on sys.path for this module (only scripts/ is), and it
+    # is added HERE rather than at import time on purpose: a module-level
+    # sys.path mutation would change resolution for every other test in this
+    # file, which is a side effect nobody reading them would expect.
+    sys.path.insert(0, str(SCRIPTS / "ci"))
+    from evidence_paths import resolve_evidence_path  # noqa: PLC0415
+
+    per_task = "evidence/2026-08/agent-x-infra-thing-a0adff64/brief.yml"
+
+    # (1) a PR that wrote a per-task brief -> per-task path -> clean, even
+    #     past the flip date. This is the case the reviewer feared would
+    #     collapse to the staged canonical name. It does not.
+    resolved = resolve_evidence_path("brief", ["scripts/x.py", per_task])
+    assert resolved == per_task
+    viol, notice = check_brief_not_at_deprecated_root(
+        resolved, Path("/repo"), today=_BRIEF_ROOT_POST_FLIP
+    )
+    assert viol == [] and notice is None
+
+    # (2) a PR that wrote the ROOT brief -> root path -> flagged. The rule
+    #     must still bite, or it protects nothing.
+    resolved = resolve_evidence_path("brief", ["scripts/x.py", "evidence/brief.yml"])
+    assert resolved == "evidence/brief.yml"
+    viol, _ = check_brief_not_at_deprecated_root(
+        resolved, Path("/repo"), today=_BRIEF_ROOT_POST_FLIP
+    )
+    assert any("evidence_root_brief_deprecated" in v for v in viol)
+
+    # (3) a PR that wrote NO brief also resolves to the root path (documented
+    #     pre-migration fallback). That shape never reaches this rule, because
+    #     harness-floor.yml gates the lint step on the brief being present in
+    #     THIS PR's diff — recorded here so a future reader who finds the
+    #     fallback alarming can see it was considered, not missed.
+    assert resolve_evidence_path("brief", ["scripts/x.py"]) == "evidence/brief.yml"
+
+
+def test_brief_root_cli_accepts_and_threads_brief_source_path(tmp_repo):
+    """CLI contract: --brief-source-path is accepted and reaches the rule. Run
+    with a per-task value so the assertion is about THREADING, not about the
+    date — a value the rule must find clean, on stderr as well as in the
+    violation list (pre-flip, an over-matching rule shows up ONLY on stderr)."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    result = subprocess.run(
+        [
+            sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
+            "evidence/pack.yml", "--repo-root", str(tmp_path),
+            "--brief-source-path", "evidence/2026-08/some-task-a0adff64/brief.yml",
+            "--json",
+        ],
+        capture_output=True, text=True, timeout=30,
+    )
+    import json as _json
+
+    payload = _json.loads(result.stdout)
+    assert payload["exit"] == 0
+    assert not any("evidence_root_brief_deprecated" in v for v in payload["violations"])
+    assert "evidence_root_brief_deprecated" not in result.stderr
+
+
+def test_brief_root_cli_absent_flag_leaves_rule_inert(tmp_repo):
+    """CLI contract, and the DIVERGENCE from --source-path worth pinning:
+    --source-path defaults to the positional pack argument, --brief-source-path
+    has NO fallback. Omitted, rule 12 is inert — a local run must not invent a
+    brief location it cannot know."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1)
+    write_pack()
+    result = subprocess.run(
+        [
+            sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
+            "evidence/pack.yml", "--repo-root", str(tmp_path), "--json",
+        ],
+        capture_output=True, text=True, timeout=30,
+    )
+    import json as _json
+
+    payload = _json.loads(result.stdout)
+    assert payload["exit"] == 0
+    assert not any("evidence_root_brief_deprecated" in v for v in payload["violations"])
+    assert "evidence_root_brief_deprecated" not in result.stderr
+
+
+# --------------------------------------------------------- check_countable_claims
+
+#: A numstat blob standing in for `git diff --numstat <merge-base>..HEAD`:
+#: 2 changed files, +1860/-83. The numbers are the REAL measurement PR #5157's
+#: pack contradicted (its prose said "11 files, +1195/-119 across two commits"
+#: where the cited command returned 14 files, +1860/-83 and 6 commits).
+CC_NUMSTAT = "1800\t60\ta.py\n60\t23\tb.py\n"
+CC_RECEIPTS = [{
+    "claim": "the narrow suite passes", "cmd": "pytest -q",
+    "result": "64 passed", "exit": 0,
+    "ts": "2026-08-29T00:00:00Z", "seat": "sonnet-5",
+}]
+
+
+def test_countable_guilt_wrong_diff_stats_rejected():
+    """GUILT: narrated file count and +ins/-del that contradict the measured
+    numstat are convicted, and the message carries computed, narrated AND the
+    command that produced the computed value."""
+    violations, _notices = check_countable_claims(
+        {"diff": {"net_lines": "11 files, +1195/-119"}, "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    )
+    assert len(violations) == 2
+    joined = " ".join(violations)
+    assert '"11 files"' in joined and "changes 2" in joined
+    assert '"+1195/-119"' in joined and "+1860/-83" in joined
+    assert "git diff --numstat" in joined
+
+
+def test_countable_guilt_wrong_commit_count_rejected_digit_and_word():
+    """GUILT: "two commits" and "both commits" are both count claims, and both
+    are convicted against a 6-commit branch — #5157 made the second form."""
+    violations, _ = check_countable_claims(
+        {"diff": {"net_lines": "across two commits"},
+         "lanes": [{"lane": "D1", "role": "build", "seat": "codex",
+                    "note": "both commits reviewed"}],
+         "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    )
+    assert len(violations) == 2
+    assert all("git rev-list --count" in v for v in violations)
+
+
+def test_countable_guilt_unsubstantiated_test_count_rejected():
+    """GUILT: "the 44 tests" with no receipt reporting 44 is prose asserting a
+    measurement nobody took."""
+    violations, _ = check_countable_claims(
+        {"lanes": [{"lane": "D1", "role": "build", "seat": "codex",
+                    "note": "both lanes, the 44 tests"}],
+         "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=2,
+    )
+    assert any('"44 tests"' in v for v in violations)
+
+
+def test_countable_innocence_accurate_numbers_pass():
+    """INNOCENCE: the same fields with the COMPUTED values are clean — the rule
+    convicts inaccuracy, not the act of stating a number."""
+    assert check_countable_claims(
+        {"diff": {"net_lines": "2 files, +1860/-83 across 6 commits"},
+         "lanes": [{"lane": "D1", "role": "build", "seat": "codex",
+                    "note": "64 tests pass"}],
+         "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    ) == ([], [])
+
+
+def test_countable_innocence_unmeasured_notices_never_convicts():
+    """INNOCENCE: with no numstat and no commit count, the same wrong pack
+    NOTICEs and does not fail — "could not measure" is never "guilty" (same
+    discipline as the floor's size term)."""
+    violations, notices = check_countable_claims(
+        {"diff": {"net_lines": "11 files, +1195/-119 across two commits"},
+         "receipts": CC_RECEIPTS},
+        None, commits=None,
+    )
+    assert violations == []
+    assert len(notices) == 2
+
+
+def test_countable_innocence_dissent_and_receipts_out_of_scope():
+    """INNOCENCE (superscar #3, guard-over-match): judgment prose keeps its
+    numbers. Identical wrong figures inside `dissent` — and inside the receipts
+    themselves — are not this rule's business."""
+    assert check_countable_claims(
+        {"dissent": [{"seat": "kimi", "objection": "11 files, +1195/-119, two commits, 44 tests",
+                      "status": "CONFIRMED", "resolution": "x"}],
+         "receipts": CC_RECEIPTS},
+        CC_NUMSTAT, commits=6,
+    ) == ([], [])
+
+
+def test_countable_innocence_binary_file_downgrades_line_counts_to_notice():
+    """INNOCENCE: numstat cannot report line counts for a binary file, so the
+    computed +ins/-del is a lower bound — a mismatch NOTICEs instead of
+    convicting, while the file COUNT (which binary rows do not corrupt) stays
+    enforced."""
+    numstat = "10\t2\ta.py\n-\t-\tlogo.png\n"
+    violations, notices = check_countable_claims(
+        {"diff": {"net_lines": "2 files, +999/-999"}, "receipts": CC_RECEIPTS},
+        numstat, commits=1,
+    )
+    assert violations == []
+    assert any("+10/-2" in n for n in notices)
+
+
+def test_parse_numstat_totals_guilt_and_innocence():
+    """The pure measurement function: real rows sum, binary rows count as files
+    but not as lines, and an unusable blob returns None (never a false zero)."""
+    assert parse_numstat_totals(CC_NUMSTAT) == (2, 1860, 83, False)
+    assert parse_numstat_totals("10\t2\ta.py\n-\t-\tlogo.png\n") == (2, 10, 2, True)
+    assert parse_numstat_totals(None) is None
+    assert parse_numstat_totals("") is None
+    assert parse_numstat_totals("garbage\n") is None
+
+
+def test_measured_commit_count_reads_pull_request_event_payload(tmp_path):
+    """In CI the commit count comes from the event payload with NO workflow
+    change; an explicit flag wins, and a merge_group-shaped payload (no
+    pull_request key) degrades to None rather than guessing."""
+    import json as _json
+
+    pr_event = tmp_path / "pr.json"
+    pr_event.write_text(_json.dumps({"pull_request": {"commits": 6}}), encoding="utf-8")
+    assert measured_commit_count(None, str(pr_event)) == 6
+    assert measured_commit_count(3, str(pr_event)) == 3
+
+    mg_event = tmp_path / "mg.json"
+    mg_event.write_text(_json.dumps({"merge_group": {"head_sha": "abc"}}), encoding="utf-8")
+    assert measured_commit_count(None, str(mg_event)) is None
+    assert measured_commit_count(None, str(tmp_path / "missing.json")) is None
+
+
+def test_countable_end_to_end_red_pack_fails_and_green_pack_passes(tmp_repo):
+    """RED-FIRST PROOF, end to end through lint(): the SAME pack fails with the
+    narrated numbers PR #5157 carried and passes once they are corrected to the
+    computed ones. Nothing else about the pack changes between the two runs."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=2)
+
+    wrong = write_pack(
+        diff={"net_lines": "11 files, +1195/-119 across two commits"},
+        lanes=[{"lane": "D1", "role": "build", "seat": "codex", "note": "the 44 tests"}],
+        receipts=CC_RECEIPTS,
+    )
+    exit_code, violations = lint(
+        wrong, tmp_path, None, numstat_text=CC_NUMSTAT, measured_commits=6
+    )
+    assert exit_code == 1
+    assert len([v for v in violations if "countable claim" in v]) == 4
+
+    right = write_pack(
+        diff={"net_lines": "2 files, +1860/-83 across 6 commits"},
+        lanes=[{"lane": "D1", "role": "build", "seat": "codex", "note": "64 tests pass"}],
+        receipts=CC_RECEIPTS,
+    )
+    exit_code, violations = lint(
+        right, tmp_path, None, numstat_text=CC_NUMSTAT, measured_commits=6
+    )
+    assert exit_code == 0
+    assert violations == []
+
+
+def test_print_measured_emits_pasteable_sentence(tmp_path):
+    """The GENERATE half: `--print-measured` hands the author the canonical
+    sentence so the value never has to be counted by hand."""
+    import os as _os
+
+    numstat = tmp_path / "numstat.txt"
+    numstat.write_text(CC_NUMSTAT, encoding="utf-8")
+    env = {**_os.environ}
+    env.pop("GITHUB_EVENT_PATH", None)
+    result = subprocess.run(
+        [sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
+         "--print-measured", "--numstat-file", str(numstat), "--commit-count", "6"],
+        capture_output=True, text=True, timeout=30, env=env,
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == "2 files, +1860/-83, 6 commits"
+    assert format_measured_claims(CC_NUMSTAT, 6) == "2 files, +1860/-83, 6 commits"
+
+
+# --------------------------------------------------------- check_acceptance_probe_pairing
+
+CAP_RECEIPT_FOO = {"claim": "foo test", "cmd": "pytest -k foo", "exit": 0,
+                    "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5"}
+CAP_RECEIPT_DRAIN = {"claim": "drain test", "cmd": "pytest -k drain", "exit": 0,
+                      "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5"}
+CAP_RECEIPT_BAR = {"claim": "bar test", "cmd": "pytest -k bar", "exit": 0,
+                    "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5"}
+CAP_RECEIPT_BAZ = {"claim": "baz test", "cmd": "pytest -k baz", "exit": 0,
+                    "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5"}
+CAP_RECEIPT_SHA = {"claim": "sha256 verified against source manifest",
+                    "cmd": "python3 verify.py", "exit": 0,
+                    "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5"}
+
+
+def test_acceptance_probe_guilt_legacy_bullets_notice():
+    """GUILT: a Gear-2 brief with two legacy (bare-string) acceptance
+    bullets — a legacy bullet can never carry a `probe:` — pins exactly
+    one N1 (probe-coverage) notice naming both as uncovered. Both bullets
+    carry SHALL so N3 (EARS shape) stays silent, isolating the assertion
+    to N1 alone."""
+    brief = {
+        "acceptance": [
+            "WHEN a client submits the form THE system SHALL confirm receipt.",
+            "WHILE the queue is draining THE worker SHALL not double-process an item.",
+        ],
+    }
+    notices = check_acceptance_probe_pairing(brief, {}, 2)
+    assert len(notices) == 1
+    assert notices[0].startswith("acceptance-probe: 2 of 2")
+
+
+def test_acceptance_probe_guilt_unbound_probe_notice():
+    """GUILT: a declared probe ("pytest -k foo") that appears in no
+    receipt's claim/cmd — GOOD_RECEIPT's cmd is "pytest -q", which
+    contains neither substring in either direction — fires N2 (receipt
+    binding), naming the outcome unrecorded."""
+    brief = {
+        "acceptance": [
+            {"text": "WHEN the suite runs THE gate SHALL report the exit code.",
+             "probe": "pytest -k foo"},
+        ],
+    }
+    notices = check_acceptance_probe_pairing(brief, {"receipts": [GOOD_RECEIPT]}, 2)
+    assert any("unrecorded" in n for n in notices)
+
+
+def test_acceptance_probe_guilt_non_ears_text_notice():
+    """GUILT: a bullet's text carries no EARS keyword at all, even though
+    its probe is declared and bound to a receipt (isolating the
+    assertion to N3 — N1/N2 stay silent)."""
+    brief = {
+        "acceptance": [
+            {"text": "the deploy finishes and the health check returns green",
+             "probe": "pytest -k bar"},
+        ],
+    }
+    notices = check_acceptance_probe_pairing(brief, {"receipts": [CAP_RECEIPT_BAR]}, 2)
+    assert any("not EARS-shaped" in n for n in notices)
+
+
+def test_acceptance_probe_guilt_lowercase_ears_words_do_not_count():
+    """GUILT (case-sensitivity, the real point of this fixture): a bullet
+    reading "the check is green if the migration applies when run" has
+    lowercase "if"/"when" — ordinary prose, not an EARS clause — so N3
+    fires exactly as if no keyword were present at all. Probe is
+    declared and bound, isolating the assertion to N3."""
+    brief = {
+        "acceptance": [
+            {"text": "the check is green if the migration applies when run",
+             "probe": "pytest -k baz"},
+        ],
+    }
+    notices = check_acceptance_probe_pairing(brief, {"receipts": [CAP_RECEIPT_BAZ]}, 2)
+    assert any("not EARS-shaped" in n for n in notices)
+
+
+def test_acceptance_probe_innocence_fully_probed_pack_silent():
+    """INNOCENCE: every bullet declares a probe, every probe's stripped
+    text is a verbatim substring of a receipt's cmd, and every text
+    carries SHALL — all three notice classes stay silent."""
+    brief = {
+        "acceptance": [
+            {"text": "WHEN the suite runs THE gate SHALL report the exit code.",
+             "probe": "pytest -k foo"},
+            {"text": "WHILE the queue is draining THE worker SHALL not double-process.",
+             "probe": "pytest -k drain"},
+        ],
+    }
+    pack = {"receipts": [CAP_RECEIPT_FOO, CAP_RECEIPT_DRAIN]}
+    assert check_acceptance_probe_pairing(brief, pack, 2) == []
+
+
+def test_acceptance_probe_innocence_gear1_out_of_scope():
+    """INNOCENCE: the exact guilty shape from
+    test_acceptance_probe_guilt_legacy_bullets_notice (two uncovered
+    legacy bullets, which fires N1 at gear>=2) is silent at gear=1 — the
+    same `type(gear) is int and gear >= 2` scope guard check_gear_floor
+    itself uses."""
+    brief = {
+        "acceptance": [
+            "WHEN a client submits the form THE system SHALL confirm receipt.",
+            "WHILE the queue is draining THE worker SHALL not double-process an item.",
+        ],
+    }
+    assert check_acceptance_probe_pairing(brief, {}, 1) == []
+
+
+def test_acceptance_probe_innocence_absent_block_silent():
+    """INNOCENCE: a brief with no `acceptance:` key at all (an empty
+    mapping) is not this rule's problem at any gear >= 2."""
+    assert check_acceptance_probe_pairing({}, {}, 2) == []
+
+
+def test_acceptance_probe_innocence_probe_bound_via_claim():
+    """INNOCENCE: a probe bound via a receipt's `claim` field, not its
+    `cmd` — CAP_RECEIPT_SHA's claim contains the probe's exact text while
+    its cmd ("python3 verify.py") does not — still counts as bound (N2
+    scans BOTH fields, per rule 12's docstring)."""
+    brief = {
+        "acceptance": [
+            {"text": "WHEN the case closes THE report SHALL cite the sha.",
+             "probe": "sha256 verified against source"},
+        ],
+    }
+    assert check_acceptance_probe_pairing(brief, {"receipts": [CAP_RECEIPT_SHA]}, 2) == []
+
+
+def test_acceptance_probe_guilt_probe_not_bound_inside_longer_word():
+    """GUILT: a probe must bind as a whole token, not as a bare substring.
+    Before the 2026-08-29 adversarial fix, probe `ls` was considered BOUND by
+    a receipt reading "run the tools suite" — the under-match direction of
+    superscar #3: the notice that should have said "this probe has no
+    receipt" said nothing at all."""
+    brief = {"gear": 2, "acceptance": [{"text": "SHALL run", "probe": "ls"}]}
+    notices = check_acceptance_probe_pairing(
+        brief, {"receipts": [{"cmd": "run the tools suite"}]}, 2
+    )
+    assert any("unrecorded" in n for n in notices)
+
+
+def test_acceptance_probe_innocence_probe_binds_as_whole_token():
+    """INNOCENCE (the other half of the same fix): the boundary must not make
+    a genuine probe unbindable. `ls` IS bound by `ls -la`, and a probe whose
+    receipt carries extra flags still binds."""
+    brief = {"gear": 2, "acceptance": [{"text": "SHALL run", "probe": "ls"}]}
+    assert not any(
+        "unrecorded" in n
+        for n in check_acceptance_probe_pairing(brief, {"receipts": [{"cmd": "ls -la"}]}, 2)
+    )
+    flagged = {"gear": 2, "acceptance": [{"text": "SHALL t", "probe": "pytest -k foo"}]}
+    assert not any(
+        "unrecorded" in n
+        for n in check_acceptance_probe_pairing(
+            flagged, {"receipts": [{"cmd": "pytest -k foo --verbose"}]}, 2
+        )
+    )
+
+
+def test_acceptance_probe_innocence_duplicate_probes_counted_once():
+    """INNOCENCE: two bullets naming the SAME probe are one probe to bind.
+    Counting per-bullet made the notice overstate the gap ("2 declared
+    probe(s)" for a single string)."""
+    brief = {"gear": 2, "acceptance": [
+        {"text": "SHALL a", "probe": "same-probe"},
+        {"text": "SHALL b", "probe": "same-probe"},
+    ]}
+    notices = check_acceptance_probe_pairing(brief, {"receipts": []}, 2)
+    assert any("1 declared probe(s)" in n for n in notices)
+
+
+def test_acceptance_probe_innocence_examples_sanitize_quotes_and_newlines():
+    """INNOCENCE: acceptance text arrives from YAML block scalars and
+    legitimately carries newlines and quotes. Un-sanitised, ONE notice spanned
+    several stderr lines and its `"..."` delimiters never closed — a
+    grep-hostile message (reproduced before the fix)."""
+    notices = check_acceptance_probe_pairing(
+        {"gear": 2, "acceptance": ['he said "go"\nsecond line']}, {}, 2
+    )
+    assert notices
+    for n in notices:
+        assert "\n" not in n
+        assert '"go"' not in n
+    assert any("'go'" in n for n in notices)
+
+
+def test_acceptance_probe_innocence_non_mapping_pack_does_not_crash():
+    """INNOCENCE: a NOTICE-only rule must never be able to fail a run. Called
+    directly with `pack=None` it raised AttributeError before the fix; it now
+    treats the absent pack as carrying no receipts."""
+    brief = {"gear": 2, "acceptance": [{"text": "SHALL x", "probe": "p"}]}
+    assert any("unrecorded" in n for n in check_acceptance_probe_pairing(brief, None, 2))
+
+
+def test_acceptance_probe_end_to_end_notice_reaches_stderr(tmp_repo, capsys):
+    """End-to-end (same 'wiring, not just return value' pattern as
+    test_seat_rules_end_to_end_notice_prints_to_stderr): rule 12 is
+    NOTICE-only UNCONDITIONALLY (no phased flip date, unlike rules 8-10)
+    — lint() must return rc == 0 on a Gear-2 pack with uncovered legacy
+    acceptance bullets, and the operator must still see the
+    "acceptance-probe" text on stderr."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=2, acceptance=[
+        "WHEN a client submits the form THE system SHALL confirm receipt.",
+    ])
+    write_pack()
+    rc, viol = lint(tmp_path / "evidence" / "pack.yml", tmp_path, None)
+    assert rc == 0
+    assert viol == []
+    captured = capsys.readouterr()
+    assert "acceptance-probe" in captured.err
+    assert "NOTICE" in captured.err
+
+
+# --------------------------------------------------------- check_assumptions_register
+
+AA_RECEIPT_B211A = {"claim": "b211a probe", "cmd": "pytest -k test_b211a_probe", "exit": 0,
+                     "ts": "2026-08-29T00:00:00Z", "seat": "sonnet-5"}
+
+
+def test_assumptions_guilt_unverified_entry_notice():
+    """GUILT: a single mapping entry with `status: unverified` pins exactly
+    one N1 (unverified) notice naming the total out of one."""
+    brief = {
+        "assumptions": [
+            {"text": "the client already holds a valid B211A", "status": "unverified",
+             "probe": "pytest -k test_b211a_probe"},
+        ],
+    }
+    notices = check_assumptions_register(brief)
+    assert len(notices) == 1
+    assert notices[0].startswith("assumptions: 1 of 1")
+    assert "still 'unverified'" in notices[0]
+
+
+def test_assumptions_guilt_status_pending_fires_n2_not_n1():
+    """GUILT: `status: pending` is neither `verified` nor `unverified` — it
+    fires N2 (unadjudicated) and must NOT fire N1, or the whole point of
+    N2 (a status other than the literal string can't hide) is untested."""
+    brief = {"assumptions": [{"text": "the queue drains nightly", "status": "pending"}]}
+    notices = check_assumptions_register(brief)
+    assert any("no recognised status" in n for n in notices)
+    assert not any("still 'unverified'" in n for n in notices)
+
+
+def test_assumptions_guilt_status_typo_fires_n2_not_n1():
+    """GUILT: the typo `unverfied` (one keystroke short of `unverified`) is
+    the load-bearing case for N2 — matching only the literal `unverified`
+    string in N1 would let this escape in total silence."""
+    brief = {"assumptions": [{"text": "the mirror is idempotent", "status": "unverfied"}]}
+    notices = check_assumptions_register(brief)
+    assert any("no recognised status" in n for n in notices)
+    assert not any("still 'unverified'" in n for n in notices)
+
+
+def test_assumptions_guilt_bare_string_entry_fires_n2():
+    """GUILT: an entry that is not a mapping at all (a bare string, the
+    same legacy shape rule 12 accepts for `acceptance:`) has no status to
+    read and fires N2."""
+    brief = {"assumptions": ["the API key never expires"]}
+    notices = check_assumptions_register(brief)
+    assert any("no recognised status" in n for n in notices)
+
+
+def test_assumptions_guilt_missing_status_key_fires_n2():
+    """GUILT: a mapping entry with no `status:` key at all fires N2, same
+    as an unrecognised value — missing is not a special case."""
+    brief = {"assumptions": [{"text": "the cron runs hourly"}]}
+    notices = check_assumptions_register(brief)
+    assert any("no recognised status" in n for n in notices)
+
+
+def test_assumptions_guilt_unverified_without_probe_fires_n1_and_n3():
+    """GUILT: an `unverified` entry with no usable `probe:` fires BOTH N1
+    (it is unverified) and N3 (nothing names the check that would settle
+    it) — the two are independent facts about the same entry."""
+    brief = {"assumptions": [{"text": "the ledger is append-only", "status": "unverified"}]}
+    notices = check_assumptions_register(brief)
+    assert any("still 'unverified'" in n for n in notices)
+    assert any("declare no 'probe:'" in n for n in notices)
+
+
+def test_assumptions_innocence_all_verified_silent():
+    """INNOCENCE: every entry declaring `status: verified` is silent."""
+    brief = {
+        "assumptions": [
+            {"text": "the schema migration already ran", "status": "verified"},
+            {"text": "the receipt format is stable", "status": "verified"},
+        ],
+    }
+    assert check_assumptions_register(brief) == []
+
+
+def test_assumptions_innocence_absent_block_silent():
+    """INNOCENCE: no `assumptions:` key at all — the block is opt-in, and
+    absence must never be read as a gap."""
+    assert check_assumptions_register({}) == []
+
+
+def test_assumptions_innocence_empty_list_silent():
+    """INNOCENCE: `assumptions: []` (declared, deliberately empty) is
+    silent, same as absent."""
+    assert check_assumptions_register({"assumptions": []}) == []
+
+
+def test_assumptions_innocence_brief_none_does_not_crash():
+    """INNOCENCE: `brief=None` (rule 6's check_brief_ref_exists already
+    flagged that elsewhere) must not raise — a NOTICE-only rule crashing
+    is the one thing it can never do."""
+    assert check_assumptions_register(None) == []
+
+
+def test_assumptions_innocence_non_list_assumptions_do_not_crash():
+    """INNOCENCE: `assumptions:` present but shaped as a mapping or a bare
+    string (not a list) must not crash — it is simply out of scope,
+    identical to rule 12's `acceptance` non-list guard."""
+    assert check_assumptions_register({"assumptions": {"text": "not a list"}}) == []
+    assert check_assumptions_register({"assumptions": "not a list"}) == []
+
+
+def test_assumptions_innocence_status_tolerates_whitespace_and_case():
+    """INNOCENCE: `status` is compared stripped and lower-cased — leading/
+    trailing whitespace and any case of `VERIFIED` still reads as
+    verified."""
+    brief = {"assumptions": [{"text": "the token rotates weekly", "status": "  VERIFIED  "}]}
+    assert check_assumptions_register(brief) == []
+
+
+def test_assumptions_innocence_unverified_with_probe_fires_n1_not_n3():
+    """INNOCENCE: an `unverified` entry that DOES declare a usable `probe:`
+    still fires N1 (it is unverified) but N3 (unsettleable) stays silent
+    — the probe names the check that would settle it."""
+    brief = {
+        "assumptions": [
+            {"text": "the outbox drains within 5 minutes", "status": "unverified",
+             "probe": "pytest -k test_outbox_drain_latency"},
+        ],
+    }
+    notices = check_assumptions_register(brief)
+    assert any("still 'unverified'" in n for n in notices)
+    assert not any("declare no 'probe:'" in n for n in notices)
+
+
+def test_assumptions_innocence_examples_sanitize_quotes_and_newlines():
+    """INNOCENCE: an assumption's `text` arrives from prose that may
+    legitimately carry a newline and a double quote (the same YAML
+    block-scalar reality rule 12 already guards against) — reusing
+    `_acceptance_examples()` must keep every notice on one stderr line."""
+    notices = check_assumptions_register(
+        {"assumptions": [{"text": 'he said "go"\nsecond line', "status": "unverified"}]}
+    )
+    assert notices
+    for n in notices:
+        assert "\n" not in n
+
+
+def test_assumptions_innocence_control_bytes_never_reach_a_notice():
+    """Blind adversarial review 2026-08-29 (Kimi K3, finding 1), verified
+    on disk before it was accepted: `_acceptance_examples` collapsed
+    whitespace and swapped double quotes, but ESC/BEL/NUL are not
+    whitespace (`"\x1b".isspace()` is False), so a control byte in an
+    assumption's text travelled verbatim into a stderr-bound notice while
+    the helper's own docstring said "Every item is SANITIZED first". The
+    over-claim was the defect; the code now matches the claim. This guard
+    covers rule 12 as well, since both rules share the helper."""
+    notices = check_assumptions_register(
+        {"assumptions": [
+            {"text": "settle \x1b[31mRED\x1b[0m later \x07\x00",
+             "status": "unverified"},
+        ]}
+    )
+    assert notices
+    for n in notices:
+        assert "\x1b" not in n and "\x07" not in n and "\x00" not in n
+
+
+def test_assumptions_guilt_whitespace_only_probe_is_not_a_probe():
+    """Found by MUTATION, not by reading: making `probe_ok` accept any
+    string (dropping the `.strip()` truthiness test) left every test
+    green, so `probe: "   "` counted as a settlement path. That is
+    precisely the boilerplate degeneration N3 exists to surface — a
+    declared field carrying nothing."""
+    notices = check_assumptions_register(
+        {"assumptions": [
+            {"text": "the lease renews", "status": "unverified", "probe": "   "},
+        ]}
+    )
+    assert any("declare no 'probe:'" in n for n in notices)
+
+
+def test_assumptions_guilt_bare_string_entry_names_itself():
+    """Also found by MUTATION: collapsing a non-mapping entry's text to
+    "" survived the first corpus, and would have rendered a bare-string
+    assumption as "<non-text bullet>" in N2 — the one notice whose whole
+    job is naming the offending entry. For a bare string, the string IS
+    the text."""
+    notices = check_assumptions_register(
+        {"assumptions": ["the queue is drained by the nightly cron"]}
+    )
+    assert any("the queue is drained by the nightly cron" in n for n in notices)
+
+
+def test_assumptions_end_to_end_notice_reaches_stderr(tmp_repo, capsys):
+    """End-to-end (same 'wiring, not just return value' pattern as
+    test_acceptance_probe_end_to_end_notice_reaches_stderr): rule 13 is
+    NOTICE-only and NOT gear-gated — lint() must return rc == 0 on a pack
+    whose brief carries one unverified assumption, and the operator must
+    still see the "assumptions" text on stderr."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1, assumptions=[
+        {"text": "the mirror is idempotent", "status": "unverified"},
+    ])
+    write_pack()
+    rc, viol = lint(tmp_path / "evidence" / "pack.yml", tmp_path, None)
+    assert rc == 0
+    assert viol == []
+    captured = capsys.readouterr()
+    assert "assumptions:" in captured.err
+    assert "NOTICE" in captured.err
+
+
+# --------------------------------------------------------- check_appetite_acknowledgment
+
+
+def test_appetite_guilt_over_wall_clock_hours_no_ack_violation():
+    """GUILT: a single declared ceiling (wall_clock_hours), observed spend
+    strictly over it, and no `appetite_exceeded:` — the ONLY rule in this
+    lane that fails."""
+    brief = {"appetite": {"wall_clock_hours": 4}}
+    pack = {"spend": {"wall_clock_hours": 11}}
+    violations, notices = check_appetite_acknowledgment(brief, pack)
+    assert violations
+    assert notices == []
+    assert "appetite_exceeded" in violations[0]
+
+
+def test_appetite_guilt_over_adversarial_rounds_names_both_numbers():
+    """GUILT: the violation message names BOTH the declared ceiling and the
+    observed value for the breached dimension, so the reader can act."""
+    brief = {"appetite": {"adversarial_rounds": 2}}
+    pack = {"spend": {"adversarial_rounds": 5}}
+    violations, _notices = check_appetite_acknowledgment(brief, pack)
+    assert violations
+    assert "adversarial_rounds" in violations[0]
+    assert "declared 2" in violations[0]
+    assert "observed 5" in violations[0]
+
+
+def test_appetite_guilt_over_two_dimensions_names_both():
+    """GUILT: two breached dimensions in one pack — the message names
+    both, not just the first one found."""
+    brief = {"appetite": {"wall_clock_hours": 4, "adversarial_rounds": 2}}
+    pack = {"spend": {"wall_clock_hours": 11, "adversarial_rounds": 5}}
+    violations, _notices = check_appetite_acknowledgment(brief, pack)
+    assert len(violations) == 1
+    assert "wall_clock_hours" in violations[0]
+    assert "adversarial_rounds" in violations[0]
+
+
+def test_appetite_guilt_whitespace_only_ack_is_not_an_acknowledgment():
+    """GUILT: `appetite_exceeded: "   "` is whitespace-only — mirrors
+    `gear_override`'s `.strip()` truthiness discipline exactly; a blank
+    string must not launder a real overrun into silence."""
+    brief = {"appetite": {"wall_clock_hours": 4}}
+    pack = {"spend": {"wall_clock_hours": 11}, "appetite_exceeded": "   "}
+    violations, _notices = check_appetite_acknowledgment(brief, pack)
+    assert violations
+
+
+def test_appetite_guilt_non_str_ack_is_not_an_acknowledgment():
+    """GUILT: `appetite_exceeded: 42` (non-str) is not an acknowledgment —
+    only a genuine `str` can carry a reason."""
+    brief = {"appetite": {"wall_clock_hours": 4}}
+    pack = {"spend": {"wall_clock_hours": 11}, "appetite_exceeded": 42}
+    violations, _notices = check_appetite_acknowledgment(brief, pack)
+    assert violations
+
+
+def test_appetite_innocence_acknowledged_overrun_reports_not_fails():
+    """INNOCENCE: the SAME overrun as the first guilt test, but WITH a
+    real, non-empty `appetite_exceeded:` — 0 violations, 1 notice, mirrors
+    `gear_override`'s "reported, not failed" posture."""
+    brief = {"appetite": {"wall_clock_hours": 4}}
+    pack = {
+        "spend": {"wall_clock_hours": 11},
+        "appetite_exceeded": "hotfix under active incident, verified live",
+    }
+    violations, notices = check_appetite_acknowledgment(brief, pack)
+    assert violations == []
+    assert len(notices) == 1
+    assert "acknowledged" in notices[0]
+    assert "hotfix under active incident, verified live" in notices[0]
+
+
+def test_appetite_innocence_absent_block_silent():
+    """INNOCENCE: no `appetite:` key at all in the brief — SILENT,
+    `([], [])`."""
+    assert check_appetite_acknowledgment({"gear": 1}, {}) == ([], [])
+
+
+def test_appetite_innocence_real_corpus_string_shape_silent():
+    """INNOCENCE, the CRITICAL case: on disk right now (measured
+    2026-08-29) `appetite:` appears in 1 of 53 briefs and its value is
+    this exact free-text STRING, not a mapping —
+    evidence/2026-08/agent-nuzantara-docs-craft-wave-specs-8455f4c0/
+    brief.yml. A string declares no machine-readable ceiling and has
+    nothing to exceed, so it must ALSO stay silent, or this rule would
+    crash or falsely convict on the only real instance in the corpus."""
+    brief = {"appetite": 'one session; two adversarial rounds (Kimi, then Codex on the fixes); no third round — leftover objections become spec caveats, not rewrites.'}
+    assert check_appetite_acknowledgment(brief, {}) == ([], [])
+
+
+def test_appetite_innocence_spend_absent_unmeasured_notice():
+    """INNOCENCE: a ceiling IS declared but the pack records no `spend:`
+    at all — 0 violations, 1 "not verified this run" notice. An
+    unmeasured ceiling is not a breached one."""
+    brief = {"appetite": {"wall_clock_hours": 4}}
+    violations, notices = check_appetite_acknowledgment(brief, {})
+    assert violations == []
+    assert len(notices) == 1
+    assert "not verified this run" in notices[0]
+
+
+def test_appetite_innocence_spend_equal_to_ceiling_not_a_breach():
+    """INNOCENCE: comparison is `observed > declared` — spend EQUAL to the
+    ceiling is not a breach, SILENT."""
+    brief = {"appetite": {"wall_clock_hours": 4}}
+    pack = {"spend": {"wall_clock_hours": 4}}
+    assert check_appetite_acknowledgment(brief, pack) == ([], [])
+
+
+def test_appetite_innocence_spend_under_ceiling_silent():
+    """INNOCENCE: spend strictly under the declared ceiling is SILENT."""
+    brief = {"appetite": {"wall_clock_hours": 4}}
+    pack = {"spend": {"wall_clock_hours": 1}}
+    assert check_appetite_acknowledgment(brief, pack) == ([], [])
+
+
+def test_appetite_innocence_empty_mapping_silent():
+    """INNOCENCE: `appetite: {}` declares no recognised numeric ceiling at
+    all — SILENT, same as absence."""
+    assert check_appetite_acknowledgment({"appetite": {}}, {}) == ([], [])
+
+
+def test_appetite_innocence_bool_ceiling_not_numeric():
+    """INNOCENCE: `appetite: {wall_clock_hours: true}` — a bool is not a
+    numeric ceiling (`type(True) is int` is False, `type(True) is bool`).
+    `type(v) is int or type(v) is float` rejects it without needing a
+    separate `isinstance(v, bool)` guard."""
+    brief = {"appetite": {"wall_clock_hours": True}}
+    pack = {"spend": {"wall_clock_hours": 99}}
+    assert check_appetite_acknowledgment(brief, pack) == ([], [])
+
+
+def test_appetite_innocence_brief_none_pack_none_does_not_crash():
+    """INNOCENCE: `brief=None` and `pack=None` simultaneously must not
+    raise — this rule can FAIL a pack, but it must never crash a run."""
+    assert check_appetite_acknowledgment(None, None) == ([], [])
+
+
+def test_appetite_innocence_non_mapping_spend_does_not_crash():
+    """INNOCENCE: `spend:` shaped as a str, a list, or an int must not
+    crash — each is treated exactly like `spend:` absent, so it produces
+    the same "not verified this run" notice, never a violation."""
+    brief = {"appetite": {"wall_clock_hours": 4}}
+    for bad_spend in ("eleven hours", [1, 2, 3], 11):
+        violations, notices = check_appetite_acknowledgment(
+            brief, {"spend": bad_spend}
+        )
+        assert violations == []
+        assert len(notices) == 1
+        assert "not verified this run" in notices[0]
+
+
+def test_appetite_end_to_end_violation_reaches_lint_and_rc1(tmp_repo):
+    """End-to-end (same 'wiring, not just return value' pattern as
+    test_assumptions_end_to_end_notice_reaches_stderr): this is the ONE
+    rule in the lane that can fail, so the end-to-end proof is that a
+    genuine breach with no acknowledgment reaches lint()'s RETURNED
+    violations list and flips the exit code to 1 — not just a stderr
+    notice."""
+    tmp_path, write_brief, write_pack = tmp_repo
+    write_brief(gear=1, appetite={"wall_clock_hours": 4})
+    write_pack(spend={"wall_clock_hours": 11})
+    rc, violations = lint(tmp_path / "evidence" / "pack.yml", tmp_path, None)
+    assert rc == 1
+    assert any("appetite" in v and "appetite_exceeded" in v for v in violations)
+
+
+
+# ---------------------------------------------------------------------------
+# Rule 14 — defects found by the ORCHESTRATOR's on-disk gate (not by the
+# implementer, not by the refuter). Each test carries the measurement that
+# found it, so the next reader knows why the case exists rather than
+# guessing it was written for symmetry.
+# ---------------------------------------------------------------------------
+
+
+def test_appetite_guilt_acknowledgment_reason_is_sanitized_before_stderr():
+    """MEASURED on this branch before the fix: an `appetite_exceeded:` reason
+    containing a newline produced a notice that SPLIT ACROSS TWO stderr lines,
+    and an ESC/BEL travelled to the terminal verbatim.
+
+    That is the identical defect blind adversarial review found in rule 13 one
+    PR earlier (Kimi K3, finding 1) — the sanitiser existed, and rule 14 simply
+    did not call it. The cure was to extract it into a shared, named
+    `_sanitize_notice_text`: a sanitiser that lives inside one rule's formatter
+    is a sanitiser the next rule forgets."""
+    violations, notices = check_appetite_acknowledgment(
+        {"appetite": {"wall_clock_hours": 4}},
+        {
+            "spend": {"wall_clock_hours": 11},
+            "appetite_exceeded": "line1\nline2\x1b[31mRED\x07 tail",
+        },
+    )
+    assert violations == []
+    assert len(notices) == 1
+    assert "\n" not in notices[0]
+    assert all(ch.isprintable() or ch == " " for ch in notices[0])
+
+
+def test_appetite_guilt_control_bytes_only_reason_is_not_an_acknowledgment():
+    """Emptiness is judged AFTER sanitising. Judged before, three invisible
+    bytes would acknowledge any overrun and buy a silent pass — the exact
+    shape of a bypass, on the lane's only failing rule."""
+    violations, notices = check_appetite_acknowledgment(
+        {"appetite": {"wall_clock_hours": 4}},
+        {"spend": {"wall_clock_hours": 11}, "appetite_exceeded": "\x1b\x07"},
+    )
+    assert len(violations) == 1
+    assert notices == []
+
+
+def test_appetite_innocence_non_ascii_reason_survives_sanitizing():
+    """The sanitiser drops NON-PRINTABLES, not merely-non-ASCII text. Without
+    this the over-match twin would be silent data loss: a reason written in
+    Italian or Indonesian arriving at the reader mangled."""
+    violations, notices = check_appetite_acknowledgment(
+        {"appetite": {"tokens": 10}},
+        {"spend": {"tokens": 99}, "appetite_exceeded": "café naïve — sforato"},
+    )
+    assert violations == []
+    assert "café naïve — sforato" in notices[0]
+
+
+def test_appetite_innocence_over_long_reason_is_capped():
+    """A reason is prose, so it is capped generously (200) rather than at the
+    60 an acceptance bullet gets — but it IS capped: an unbounded field must
+    not be able to emit an unbounded stderr line."""
+    violations, notices = check_appetite_acknowledgment(
+        {"appetite": {"tokens": 10}},
+        {"spend": {"tokens": 99}, "appetite_exceeded": "x" * 400},
+    )
+    assert violations == []
+    # The reason is rendered QUOTED, so the ellipsis sits inside the quotes.
+    assert '..."' in notices[0]
+    assert len(notices[0]) < 400
+
+
+def test_appetite_partial_coverage_breach_and_unmeasured_coexist():
+    """Flagged by the implementer as pinned by NO specified case, and correct:
+    with three independent dimensions a pack can breach one while leaving
+    another unmeasured in the same call. The spec's prose decides it — a
+    declared ceiling with no matching spend contributes to the unmeasured
+    notice, "never to a violation" — so the two facts are independent and BOTH
+    must be reported. Untested, a later refactor could silently fold one into
+    the other and no case would notice."""
+    violations, notices = check_appetite_acknowledgment(
+        {"appetite": {"wall_clock_hours": 4, "tokens": 100}},
+        {"spend": {"wall_clock_hours": 11}},
+    )
+    assert len(violations) == 1
+    assert "wall_clock_hours" in violations[0]
+    assert "tokens" not in violations[0]
+    assert len(notices) == 1
+    assert "tokens" in notices[0]
+    assert "not verified this run" in notices[0]
+
+
+def test_appetite_nan_and_inf_spend_are_UNMEASURED_not_silent():
+    """THIS TEST WAS WRONG WHEN FIRST WRITTEN, AND THAT IS WHY IT IS HERE.
+
+    The orchestrator's gate found NaN, checked that it "never convicts", and
+    pinned `([], [])` — total silence — as correct, reasoning that fail-open on
+    the lane's only convicting rule is the safe direction. Half right. Fail-open
+    on the VIOLATION is safe; fail-open on the NOTICE is a BYPASS: `type(nan) is
+    float` admitted NaN as a MEASUREMENT, so it never entered `unmeasured`, and
+    a pack could report any overrun as `spend: {tokens: .nan}` and the rule
+    would say nothing at all. It also contradicted the rule's own docstring,
+    which promises a notice for a dimension with "no comparable numeric value".
+
+    Caught pre-merge by blind cross-family review (Kimi K3, finding F4), which
+    is the whole argument for generator != grader: the author had already
+    examined this exact input and pinned the wrong half of it.
+
+    NaN is not a measurement, it is the ABSENCE of one — so it must produce the
+    unmeasured NOTICE, and still never convict."""
+    for bad in (float("nan"), float("inf"), float("-inf"), -5):
+        violations, notices = check_appetite_acknowledgment(
+            {"appetite": {"tokens": 1000}}, {"spend": {"tokens": bad}}
+        )
+        assert violations == [], f"{bad!r} must never convict"
+        assert len(notices) == 1, f"{bad!r} must be reported as unmeasured, not silent"
+        assert "not verified this run" in notices[0]
+
+
+def test_appetite_innocence_nonsense_ceiling_is_not_a_ceiling():
+    """A negative or non-finite CEILING is a typo, not a declaration. Before
+    the fix, `appetite: {adversarial_rounds: -1}` was admitted as genuine and
+    an honest `spend: 0` convicted (`0 > -1`) — a false positive on the one
+    rule whose false positive costs an unrelated squad its merge (Kimi K3,
+    finding F3). Now it declares nothing, so there is nothing to exceed."""
+    for bad in (-1, float("nan"), float("inf")):
+        assert check_appetite_acknowledgment(
+            {"appetite": {"adversarial_rounds": bad}},
+            {"spend": {"adversarial_rounds": 0}},
+        ) == ([], []), f"{bad!r} must not be a ceiling"
+
+
+def test_appetite_innocence_zero_is_a_real_value_on_both_sides():
+    """The over-correction twin of the two tests above (W94: curing an
+    over-match births the under-match). The bound is `>= 0`, NOT `> 0` —
+    `wall_clock_hours: 0` is a real, harsh declaration and a real observation,
+    and a fix that excluded zero would silently disarm both."""
+    assert check_appetite_acknowledgment(
+        {"appetite": {"wall_clock_hours": 0}}, {"spend": {"wall_clock_hours": 0}}
+    ) == ([], [])
+    violations, _ = check_appetite_acknowledgment(
+        {"appetite": {"wall_clock_hours": 0}}, {"spend": {"wall_clock_hours": 1}}
+    )
+    assert len(violations) == 1
+
+
+def test_appetite_guilt_non_str_acknowledgment_message_does_not_lie():
+    """`appetite_exceeded: yes` parses as the BOOL True under YAML 1.1. The
+    conviction is CORRECT and unchanged — this field mirrors `gear_override`,
+    where the reason IS the artifact, and accepting a bare `yes` would turn the
+    lane's only failing rule into a one-token bypass. What was defective was
+    the MESSAGE: it told the author there was "no `appetite_exceeded:`
+    acknowledgment" when they had plainly written one, sending them to grep for
+    a field sitting right there (Kimi K3, finding F1, ranked HIGH). The message
+    now names the type."""
+    import yaml
+
+    pack = yaml.safe_load("spend: {tokens: 1500}\nappetite_exceeded: yes")
+    assert pack["appetite_exceeded"] is True  # premise: YAML really does this
+    violations, notices = check_appetite_acknowledgment(
+        {"appetite": {"tokens": 1000}}, pack
+    )
+    assert len(violations) == 1
+    assert "bool" in violations[0]
+    assert "not a reason" in violations[0]
+    assert "no `appetite_exceeded:` acknowledgment" not in violations[0]
+
+    int_violations, _ = check_appetite_acknowledgment(
+        {"appetite": {"tokens": 1000}}, {"spend": {"tokens": 1500}, "appetite_exceeded": 42}
+    )
+    assert len(int_violations) == 1
+    assert "int" in int_violations[0]
+
+
+def test_appetite_innocence_missing_acknowledgment_message_is_unchanged():
+    """Innocence twin of the test above: the ORIGINAL message must still be
+    what a genuinely-absent acknowledgment gets. A fix that routed every
+    conviction through the new branch would make the common case read as if
+    the author had written something."""
+    violations, _ = check_appetite_acknowledgment(
+        {"appetite": {"tokens": 1000}}, {"spend": {"tokens": 1500}}
+    )
+    assert len(violations) == 1
+    assert "no `appetite_exceeded:` acknowledgment" in violations[0]
+    assert "not a reason" not in violations[0]

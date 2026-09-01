@@ -308,6 +308,33 @@
             "scripts/tests/test_hooks_fail_open_on_garbage_payload.py"
           ],
           "note": "K3/F7 (2026-08-27): registered on THREE hook events (SubagentStop, SessionEnd, PreCompact — one script, event told apart via payload['hook_event_name'], same precedent as mailbox_inject.py in this directory). Writes an on-death handoff artifact (cwd/branch/git-diff/last-tool-names) so a turn that dies without a final message still leaves a trace. Deliberately NO real budget enforcement (2026-08-26 retro §3bis, Sol's refutation of the original F7 proposal) — visibility only, never a gate: it never blocks, never raises past main(), degrades silently on every failure. No allow/deny decision to prove guilt/innocence on, so this entry carries file-level tests: test_session_budget_handoff.py proves the one real correctness property that IS a guilt/innocence pair — a secret-shaped diff line (`sk-...`) is redacted to `[REDACTED]` (guilt: the secret must never reach the written artifact) while the surrounding non-secret diff --stat filename survives verbatim (innocence: redaction must not eat innocent content) — plus exit-0 on empty/malformed stdin. Kill switch SESSION_BUDGET_OFF=1."
+        },
+        "infra/claude-hooks/lane_check.py": {
+          "scar": [
+            "L04-PR1",
+            "superscar-2-exists-not-armed",
+            "superscar-3-entity-not-form",
+            "W104",
+            "W108"
+          ],
+          "symbols": {
+            "evaluate": {
+              "tests": [
+                "infra/claude-hooks/test_lane_check.py",
+                "infra/claude-hooks/test_lane_check_wiring.py"
+              ],
+              "note": "The ABSENT path must be byte-identical to no-op — asserted by a side-effect probe AND by a callable that records whether the change set was computed at all. That second assertion exists because the promise was FALSE at the wiring: the first version evaluated the change set as a function ARGUMENT, so three git subprocesses ran on every termination in the fleet with no contract present, and the library's own tests were structurally blind to it (a blind refuter found it). Also pinned: an untrusted `origin` resolves ABSENT and SILENT, because a subagent that clones an external repo to read it must not have that repo's `.lane-check.json` executed with shell=True. SCOPE, same function: Both under-match gemelli pinned: an UNKNOWN change set (None) and an EMPTY one ([]) must each keep the check RUNNING, never resolve OUT_OF_SCOPE. The empty case was a corpus gap found by mutation. The wiring corpus adds the third: an untracked DIRECTORY must not collapse to `newdir/` and match no file glob, which is why the hook reads `git status --porcelain -uall -z`."
+            },
+            "blocks": {
+              "tests": ["infra/claude-hooks/test_lane_check.py"],
+              "note": "Fails CLOSED on FAIL, INVALID and ERROR (incl. timeout) — the opposite of the fail-open safety guards beside it, and deliberate: those are imposed on the agent, this relays a check the LANE declared about itself, and 'could not measure' recorded as 'measured fine' is W104/W108. Guilt on each of the three; innocence on ABSENT, PASS and OUT_OF_SCOPE."
+            },
+            "_is_tautology": {
+              "tests": ["infra/claude-hooks/test_lane_check.py"],
+              "note": "Entity-wise after a quote-aware split, never a substring (superscar #3): `pytest --assert=plain test_true_positive.py` must NOT be refused, and its innocence case asserts so. TWO guilty shapes: a wholly no-op command, and a real check whose failure is swallowed by an `||` tail (`pytest x || true`) — the second was missed on the first pass and is the likelier one in practice."
+            }
+          },
+          "note": "L04-PR1. `.lane-check.json` in a worktree root is the check a lane's DESIGN stage declares about ITSELF; this module evaluates it at the stop boundary so a lane that broke its own build check cannot end a turn quietly reporting success. It is BUILD-side self-verification and explicitly NOT review: generator!=grader still applies after it passes. Registered with two corpora because they answer different questions — test_lane_check.py proves the library decides correctly, test_lane_check_wiring.py drives subagent_stop_verify.py as a subprocess with a real SubagentStop payload and proves the decision REACHES a stop boundary. That split was earned: 'imports lane_check' is not 'honours lane_check', and the missing change set at the wiring was invisible to every library test."
         }
       },
       "exempt": {
@@ -453,6 +480,85 @@
             "test_gear_floor_innocence_skipped_without_changed_files"
           ]
         },
+        "check_acceptance_probe_pairing": {
+          "scar": ["#2-esiste-non-armato", "#3-over-match"],
+          "guilt": [
+            "test_acceptance_probe_guilt_legacy_bullets_notice",
+            "test_acceptance_probe_guilt_unbound_probe_notice",
+            "test_acceptance_probe_guilt_non_ears_text_notice",
+            "test_acceptance_probe_guilt_lowercase_ears_words_do_not_count",
+            "test_acceptance_probe_guilt_probe_not_bound_inside_longer_word"
+          ],
+          "innocence": [
+            "test_acceptance_probe_innocence_fully_probed_pack_silent",
+            "test_acceptance_probe_innocence_gear1_out_of_scope",
+            "test_acceptance_probe_innocence_absent_block_silent",
+            "test_acceptance_probe_innocence_probe_bound_via_claim",
+            "test_acceptance_probe_innocence_probe_binds_as_whole_token",
+            "test_acceptance_probe_innocence_duplicate_probes_counted_once",
+            "test_acceptance_probe_innocence_examples_sanitize_quotes_and_newlines",
+            "test_acceptance_probe_innocence_non_mapping_pack_does_not_crash",
+            "test_acceptance_probe_end_to_end_notice_reaches_stderr"
+          ]
+        },
+        "check_assumptions_register": {
+          "scar": ["#2-esiste-non-armato", "W82"],
+          "guilt": [
+            "test_assumptions_guilt_unverified_entry_notice",
+            "test_assumptions_guilt_status_pending_fires_n2_not_n1",
+            "test_assumptions_guilt_status_typo_fires_n2_not_n1",
+            "test_assumptions_guilt_bare_string_entry_fires_n2",
+            "test_assumptions_guilt_missing_status_key_fires_n2",
+            "test_assumptions_guilt_unverified_without_probe_fires_n1_and_n3",
+            "test_assumptions_guilt_whitespace_only_probe_is_not_a_probe",
+            "test_assumptions_guilt_bare_string_entry_names_itself"
+          ],
+          "innocence": [
+            "test_assumptions_innocence_all_verified_silent",
+            "test_assumptions_innocence_absent_block_silent",
+            "test_assumptions_innocence_empty_list_silent",
+            "test_assumptions_innocence_brief_none_does_not_crash",
+            "test_assumptions_innocence_non_list_assumptions_do_not_crash",
+            "test_assumptions_innocence_status_tolerates_whitespace_and_case",
+            "test_assumptions_innocence_unverified_with_probe_fires_n1_not_n3",
+            "test_assumptions_innocence_examples_sanitize_quotes_and_newlines",
+            "test_assumptions_end_to_end_notice_reaches_stderr",
+            "test_assumptions_innocence_control_bytes_never_reach_a_notice"
+          ]
+        },
+        "check_appetite_acknowledgment": {
+          "scar": ["#2-esiste-non-armato"],
+          "guilt": [
+            "test_appetite_guilt_over_wall_clock_hours_no_ack_violation",
+            "test_appetite_guilt_over_adversarial_rounds_names_both_numbers",
+            "test_appetite_guilt_over_two_dimensions_names_both",
+            "test_appetite_guilt_whitespace_only_ack_is_not_an_acknowledgment",
+            "test_appetite_guilt_non_str_ack_is_not_an_acknowledgment",
+            "test_appetite_guilt_acknowledgment_reason_is_sanitized_before_stderr",
+            "test_appetite_guilt_control_bytes_only_reason_is_not_an_acknowledgment",
+            "test_appetite_partial_coverage_breach_and_unmeasured_coexist",
+            "test_appetite_guilt_non_str_acknowledgment_message_does_not_lie",
+            "test_appetite_nan_and_inf_spend_are_UNMEASURED_not_silent"
+          ],
+          "innocence": [
+            "test_appetite_innocence_acknowledged_overrun_reports_not_fails",
+            "test_appetite_innocence_absent_block_silent",
+            "test_appetite_innocence_real_corpus_string_shape_silent",
+            "test_appetite_innocence_spend_absent_unmeasured_notice",
+            "test_appetite_innocence_spend_equal_to_ceiling_not_a_breach",
+            "test_appetite_innocence_spend_under_ceiling_silent",
+            "test_appetite_innocence_empty_mapping_silent",
+            "test_appetite_innocence_bool_ceiling_not_numeric",
+            "test_appetite_innocence_brief_none_pack_none_does_not_crash",
+            "test_appetite_innocence_non_mapping_spend_does_not_crash",
+            "test_appetite_end_to_end_violation_reaches_lint_and_rc1",
+            "test_appetite_innocence_non_ascii_reason_survives_sanitizing",
+            "test_appetite_innocence_over_long_reason_is_capped",
+            "test_appetite_innocence_nonsense_ceiling_is_not_a_ceiling",
+            "test_appetite_innocence_zero_is_a_real_value_on_both_sides",
+            "test_appetite_innocence_missing_acknowledgment_message_is_unchanged"
+          ]
+        },
         "check_lanes_build_seat_diversity": {
           "scar": ["D3", "fleet-order-spec-4"],
           "guilt": [
@@ -560,6 +666,46 @@
             "test_evidence_root_cli_source_path_defaults_to_pack_path_argument",
             "test_evidence_root_cli_explicit_source_path_overrides_default"
           ]
+        },
+        "check_countable_claims": {
+          "scar": ["#6-anti-hallucination-blindness", "PR-5157-2026-08-28"],
+          "guilt": [
+            "test_countable_guilt_wrong_diff_stats_rejected",
+            "test_countable_guilt_wrong_commit_count_rejected_digit_and_word",
+            "test_countable_guilt_unsubstantiated_test_count_rejected",
+            "test_countable_end_to_end_red_pack_fails_and_green_pack_passes"
+          ],
+          "innocence": [
+            "test_countable_innocence_accurate_numbers_pass",
+            "test_countable_innocence_unmeasured_notices_never_convicts",
+            "test_countable_innocence_dissent_and_receipts_out_of_scope",
+            "test_countable_innocence_binary_file_downgrades_line_counts_to_notice",
+            "test_countable_end_to_end_red_pack_fails_and_green_pack_passes"
+          ]
+        },
+        "check_brief_not_at_deprecated_root": {
+          "scar": [
+            "#9-state-schema-mutation-drift",
+            "W82",
+            "PR-5435-2026-08-31"
+          ],
+          "guilt": [
+            "test_brief_root_guilt_root_path_post_flip_rejected",
+            "test_brief_root_guilt_absolute_root_path_post_flip_rejected",
+            "test_brief_root_guilt_dot_segments_normalize_to_root_post_flip",
+            "test_brief_root_resolver_seam_produces_diff_relative_paths_not_the_staged_name"
+          ],
+          "innocence": [
+            "test_brief_root_innocence_pre_flip_notice_not_fail",
+            "test_brief_root_innocence_per_task_dir_clean_both_sides",
+            "test_brief_root_innocence_no_brief_source_path_skipped",
+            "test_brief_root_innocence_mandatory_brief_ref_string_is_not_a_root_write",
+            "test_brief_root_does_not_ride_the_pack_rules_flip_date",
+            "test_brief_root_end_to_end_notice_pre_flip_does_not_fail",
+            "test_brief_root_cli_accepts_and_threads_brief_source_path",
+            "test_brief_root_cli_absent_flag_leaves_rule_inert",
+            "test_brief_root_resolver_seam_produces_diff_relative_paths_not_the_staged_name"
+          ]
         }
       }
     },
@@ -663,7 +809,7 @@
       }
     },
     "required_workflow_conformance": {
-      "_doc": "Merge-OS v2 Wave 0 trap-disarm (research/operations/2026-08-10-merge-os-v2-submission-system.md §4 Wave 0, Codex F12). scripts/ci/check_required_workflow_conformance.py reads infra/required.d/contexts.json and fails if a required context's defining workflow lacks a merge_group: trigger or carries a top-level pull_request.paths: filter — the exact defect docs-sync.yml and migration-lint.yml shipped (cured same PR): a required check gated by a top-level paths: filter never even starts a run on an innocent PR, so GitHub shows it 'Expected — waiting' forever. Each check_* function IS a guard in the superscar #3 sense, same shape as evidence_pack_lint.py/wr2_editorial_pregate.py.",
+      "_doc": "Merge-OS v2 Wave 0 trap-disarm (research/operations/2026-08-10-merge-os-v2-submission-system.md §4 Wave 0, Codex F12), extended 2026-08-29 (L06-PR1 trigger-symmetry, two cross-family refuter rounds). scripts/ci/check_required_workflow_conformance.py reads infra/required.d/contexts.json and fails if a required context's defining workflow: (2) lacks a merge_group: trigger; (3) lacks a pull_request: trigger entirely; (4) carries a top-level paths:/paths-ignore: filter under on.pull_request (the BRANCH axis is a declared, deliberately-unbuilt scope limit — flagging branches:/branches-ignore: by key-presence over-matched the innocent branches: [main], so the rule was withdrawn pending a directional test against the protected branch); or (5) narrows on.pull_request.types: without both opened and synchronize — each is a shape where a required check never starts a run for some legitimate PR and hangs 'Expected — waiting' forever (the exact defect docs-sync.yml and migration-lint.yml shipped, cured same PR as rule 4's paths half). No ALLOWLIST escape hatch — removed 2026-08-29: it was empty, unreachable, and silenced rules 2-5 together for any context sharing its workflow_file, wider than its own stated justification. Each check_* function IS a guard in the superscar #3 sense, same shape as evidence_pack_lint.py/wr2_editorial_pregate.py.",
       "source": "scripts/ci/check_required_workflow_conformance.py",
       "census": {
         "method": "ast-def-prefix",
@@ -676,12 +822,40 @@
           "guilt": ["test_guilt_missing_merge_group_flagged"],
           "innocence": ["test_innocence_merge_group_present_passes"]
         },
-        "check_no_pull_request_paths_filter": {
-          "scar": ["Codex-F12"],
-          "guilt": ["test_guilt_toplevel_pr_paths_filter_flagged"],
+        "check_pull_request_trigger_present": {
+          "scar": ["Codex-F12", "L06-PR1"],
+          "guilt": ["test_guilt_missing_pull_request_trigger_flagged"],
+          "innocence": [
+            "test_innocence_bare_pull_request_passes",
+            "test_innocence_pull_request_with_types_passes"
+          ]
+        },
+        "check_no_pull_request_trigger_filters": {
+          "scar": ["Codex-F12", "L06-PR1"],
+          "guilt": [
+            "test_guilt_toplevel_pr_paths_filter_flagged",
+            "test_guilt_toplevel_pr_paths_ignore_filter_flagged",
+            "test_guilt_both_paths_and_paths_ignore_flagged_once_each"
+          ],
           "innocence": [
             "test_innocence_pull_request_without_paths_passes",
+            "test_innocence_pull_request_branches_filter_is_out_of_scope",
             "test_innocence_push_paths_filter_is_out_of_scope"
+          ]
+        },
+        "check_pull_request_types_include_opened_and_synchronize": {
+          "scar": ["L06-PR1"],
+          "guilt": [
+            "test_guilt_types_missing_synchronize_flagged",
+            "test_guilt_types_missing_opened_flagged",
+            "test_guilt_types_missing_both_flagged"
+          ],
+          "innocence": [
+            "test_innocence_types_with_opened_and_synchronize_passes",
+            "test_innocence_types_with_all_three_passes",
+            "test_innocence_bare_pull_request_no_types_key_passes",
+            "test_innocence_pull_request_dict_without_types_key_passes",
+            "test_innocence_malformed_types_not_a_list_out_of_scope"
           ]
         },
         "check_context_workflow_file_exists": {
