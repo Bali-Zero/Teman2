@@ -138,10 +138,28 @@ none is quorum-eligible pending a separate owner promotion.
 | `deepseek-v4-pro`        | `TP1-OAI`                   | Hard logic, complex implementation, architecture counter-analysis, and adversarial refutation. Subscription door only; never conflate it with the retired standalone per-token endpoint.                            | high/max task class                | Implementer/refuter only; final: no; quorum: no |
 | `deepseek-v4-flash-0731` | `TP1-OAI`                   | High-throughput reasoner for batch implementation, math/logic second opinions, and fast refuter-chain hops. Exact dated slug required.                                                                              | low/medium; high for bounded tasks | Implementer/refuter only; final: no; quorum: no |
 | `glm-5.2`                | `tp1-glm-5.2` via `TP1-OAI` | Counter-builder and general refuter-ladder hop; useful for independent implementations that challenge an incumbent candidate.                                                                                       | medium/high                        | Implementer/refuter only; final: no; quorum: no |
-| `qwen3.8-max`            | `TP1-OAI`                   | Strategy-panel voice, rigorous instruction following, non-PII mass-document work, and complex pipeline execution. Compliance-exact extraction still requires an independent NotebookLM/Anthropic verification lane. | medium/high                        | Implementer/refuter only; final: no; quorum: no |
+| `qwen3.8-max`            | `TP1-OAI`                   | Strategy-panel voice, rigorous instruction following, non-PII mass-document work, and complex pipeline execution. Compliance-exact extraction still requires an independent NotebookLM/Anthropic verification lane. | medium/high                        | Implementer/refuter; final: no; **quorum: YES** — the ONLY TP1 seat that counts, see note below |
 | `qwen3.7-max`            | `TP1-OAI`                   | Strong general implementation and refutation reserve for work that needs more depth than the plus/flash lanes.                                                                                                      | medium/high                        | Implementer/refuter only; final: no; quorum: no |
 | `qwen3.7-plus`           | `TP1-OAI`                   | Economical standard implementer, second-line batch reviewer, and constructive second opinion.                                                                                                                       | low/medium                         | Implementer/refuter only; final: no; quorum: no |
 | `qwen3.6-flash`          | `TP1-OAI`                   | Fast grunt lane for classification, extraction, formatting, and bounded implementation iterations.                                                                                                                  | low; medium for bounded review     | Implementer/refuter only; final: no; quorum: no |
+
+> **Why exactly one TP1 seat says `quorum: YES` (RULED Zero 2026-09-02).** Six of the seven TP1
+> models never count toward the Gear-3 council quorum. `qwen3.8-max` does, and it is the only
+> one, because it is the only TP1 seat that was **promoted ARMED** — 2026-08-14, on 459 measured
+> calls / 74.1M tokens (`FLEET_TOPOLOGY.json`, `research/operations/2026-08-14-probe1-tp1-burn-rate.md`).
+> The quorum tuple that enforces this is `COUNCIL_REVIEW_SEATS` in `scripts/evidence_pack_lint.py`
+> (R9: a Gear-3 pack needs >=2 DISTINCT seats from it posting `role: review, ok: true`).
+>
+> This row read `quorum: no` until 2026-09-02 while the lint counted the seat anyway — a doctrine
+> file and an enforced gate saying opposite things, which went unnoticed for the ~2.5 weeks the
+> gate was still a NOTICE and would have started failing real PRs the day it turned hard. The
+> mechanism was not carelessness: `.claude/skills/modus/SKILL.md` had written the eligibility as
+> "never counts ... **until promoted ARMED**", the promotion happened, and nothing walked the
+> escape clause back to the two files that stated the pre-promotion answer as a fact. **When a
+> doc encodes a conditional that some future event flips, the event has to update the doc — or
+> write the condition where a machine can evaluate it, not where a reader must remember it.**
+> Pinned against silent re-drift by `test_roster_quorum_column_matches_the_lint` in
+> `scripts/tests/test_lint_roster_dispatch.py`.
 
 Non-text plan families remain outside `arsenal_probe.py` TP1 coverage in this task:
 
