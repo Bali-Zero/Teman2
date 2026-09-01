@@ -57,7 +57,7 @@ seat_diversity_note: >-
 
 diff:
   files: 7
-  net_lines: 1432
+  net_lines: 1457
   measured_at: >-
     counted with `git diff --numstat --cached $(git merge-base origin/main HEAD)` — the CACHED
     form, not the three-dot one, and the difference is the whole point: the three files under
@@ -79,6 +79,24 @@ residual_risks:
     because adding a required context is a branch-protection change that reaches every PR in the
     repo: ledgered as `operator[github-settings]`. An earlier revision of this PR's own `Bites:`
     line said "two required-check jobs" and was FALSE; it has been corrected.
+  - >-
+    THE REQUIRED SET IS NOT CURABLE FROM THIS REPO, AND THERE IS A DECOY THAT LOOKS LIKE IT IS.
+    `infra/required.d/contexts.json` reads like the list to edit; its own `_doc` says it is an
+    ADVISORY snapshot regenerated from the API by `snapshot_required_contexts.py`, that drift is
+    expected, and that it must never be hand-edited — so editing it arms exactly nothing. Measured
+    2026-09-02: it holds 11 entries against 12 live, already stale as its docstring predicts. The
+    correct order for whoever adds the context is branch-protection FIRST, regen second. Recorded
+    here because a future reader who finds that file will otherwise believe the fix is a one-line
+    PR.
+  - >-
+    THE macOS SENTINEL DEVIATES FROM `antidotes` ON PURPOSE, and the earlier framing of this was
+    wrong. `antidotes` reads only `pull_request.*` and therefore over-triggers on merge_group too
+    — but that is SANCTIONED by this file's header ("an under-match would skip real guards") and
+    it is a required check, so over-running is its safe direction. This job is not a gate and
+    costs 10x, so it reads `merge_group.base_sha`/`head_sha` — which is repo convention, used by
+    adversarial-review-gate.yml, hot-zone-pr-gate.yml, docs-sync.yml and docs-guardian.yml, two of
+    them required. The defect cured here was never "the job is uniquely broken"; it was a comment
+    that claimed a narrowness the code did not have, plus a real bill.
   - >-
     THIS DIFF ARMS A SECOND CORPUS IT DID NOT WRITE, AND THIS PACK DID NOT SAY SO UNTIL AN
     INDEPENDENT GRADER FOUND IT (added 2026-09-02). `scripts/pro/test_pro_git_pull.sh` — 55

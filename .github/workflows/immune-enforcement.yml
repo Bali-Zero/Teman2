@@ -1387,15 +1387,22 @@ jobs:
       - name: Does this PR touch the puller's collision surface?
         id: paths
         env:
-          # merge_group carries its OWN base/head, under a different key. Reading
-          # only `pull_request.*` made both empty there, so the sentinel below fell
-          # straight through to `relevant=true` and this 10x-billed runner started
-          # on EVERY merge group in the repo — measured at 2m38s, and flatly
-          # contradicting the comment above that says it "starts only when this
-          # surface actually moves". Fail-open was the safe DIRECTION but it was
-          # not the stated behaviour, and the bill is real.
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          # merge_group carries its OWN base/head under a different key, and this
+          # job reads it — deliberately UNLIKE the `antidotes` sentinel above, which
+          # reads only `pull_request.*`. That is not a defect there: this file's
+          # header sanctions over-triggering ("an under-match would skip real
+          # guards"), and `antidotes` IS a required check, so running it too often
+          # is the safe direction. This job is neither. It gates nothing (it is not
+          # in main's required contexts) and it costs 10x, so on `merge_group` the
+          # unread key meant the sentinel fell through to `relevant=true` and a
+          # 10x-billed macOS runner started on EVERY merge group — 2m38s measured,
+          # every batch — while the comment above claimed it "starts only when this
+          # surface actually moves". The claim was false, not the direction.
+          # The key itself is repo convention, not an invention: adversarial-review-
+          # gate.yml, hot-zone-pr-gate.yml, docs-sync.yml and docs-guardian.yml all
+          # read it, merge_group operand first, and two of those ARE required.
+          BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
         run: |
           if [ -z "$BASE_SHA" ] || [ -z "$HEAD_SHA" ]; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
