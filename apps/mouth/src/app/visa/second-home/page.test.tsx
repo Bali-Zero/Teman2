@@ -93,6 +93,36 @@ describe("SecondHomeLanding", () => {
     });
   });
 
+  /**
+   * IDR typeface, RULED 2026-09-01 (Zero, Legge 5 — «dobbiamo restare coerenti
+   * e non passare a plex mono»). R4's typography table asks for IBM Plex Mono
+   * on price figures; that requirement is AMENDED AWAY for these two routes,
+   * and the amendment note under the table in
+   * research/design/2026-08-27-r4-identity-merah-putih-token-spec.md is the law.
+   * Without this test the ruling lives only in prose, and prose does not stop
+   * the next session from "fixing" the divergence back toward mono.
+   *
+   * Sibling of the test below, and they pull in OPPOSITE directions on purpose:
+   * the price is an aligned figure and takes tabular digits; the hero
+   * statistics are prose and must stay proportional.
+   */
+  it("renders the IDR price in the page's own serif with tabular figures, never mono", () => {
+    renderLanding();
+
+    const expectedPrice = getExactSnapshotPrice(
+      "kitas_permits",
+      "E33 Second Home (5 Years)",
+    );
+    expect(expectedPrice).not.toBeNull();
+
+    const price = screen.getByText(expectedPrice as string);
+    // Assert on the value, not a boolean, so a failure prints the face that
+    // replaced the serif instead of an opaque `expected true to be false`.
+    expect(price.style.fontFamily).toBe("var(--font-serif, Georgia, serif)");
+    expect(price.style.fontVariantNumeric).toBe("tabular-nums");
+    expect(price.style.fontFeatureSettings).toMatch(/tnum/);
+  });
+
   it("keeps the hero statistics proportional rather than tabular", () => {
     renderLanding();
 
