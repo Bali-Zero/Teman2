@@ -7,8 +7,8 @@ diff:
     "additive only — a 6th fallback slot appended after slot 5 in
     14 consumers; no existing slot's behaviour changes"
   net_lines:
-    "measured merge-base-anchored: +233/-107, net +126; 13 files changed
-    (eca4b258e..3204fa225, git diff --no-renames --numstat)"
+    "measured merge-base-anchored: +449/-107, net +342; 15 files changed
+    (929f67b01..e2cc72ca3, git diff --no-renames --numstat)"
 lanes:
   - lane: "D1"
     role: "build"
