@@ -1368,8 +1368,29 @@ jobs:
   # `qwen.md -> QWEN.md` landed on main in #5371 and wedged Pro's puller.
   #
   # So the axis gets a runner that can express it. macOS runners are APFS, which
-  # folds. Deliberately narrow: one script, gated on the same four puller paths,
-  # so a 10x-billed runner starts only when this surface actually moves.
+  # folds.
+  #
+  # THIS JOB IS DELIBERATELY NOT NARROWED, AND THE COST IS REAL. It has no
+  # job-level `if:` and this workflow has no `paths:` filter, so a macOS runner
+  # is allocated on EVERY pull_request and EVERY merge_group in this repo, not
+  # only when the puller moves. Measured on PR #5497 at fc9dc803be: 18:46:53Z ->
+  # 18:48:48Z, 1m55s, billed at the macOS 10x rate; the checkout runs
+  # unconditionally and only the last two steps skip. An earlier version of this
+  # comment claimed the opposite ("a 10x-billed runner starts only when this
+  # surface actually moves") — that was FALSE about code sitting three lines
+  # below it, and an independent Gear-3 gate caught it.
+  #
+  # The narrowing is refused on purpose, because it would trade a cost for a
+  # trap. A job that skips still reports, but a REQUIRED context whose job is
+  # skipped can sit `Expected` forever — the shape this repo has already been
+  # bitten by (W123, `success` != armed). This check is intended to BECOME a
+  # required context once the instrument it runs has no confirmed defects left,
+  # and the precondition for that is that it always reports, on every PR,
+  # including the ones that touch nothing near the puller. Buying back 1m55s by
+  # adding `needs:` + `if:` would destroy exactly the property that makes it
+  # safe to require. If it is ever decided that this check will NOT be made
+  # required, then narrowing it becomes correct and this comment is the reason
+  # to revisit.
   collision-matrix-case-folding:
     runs-on: macos-latest
     timeout-minutes: 20

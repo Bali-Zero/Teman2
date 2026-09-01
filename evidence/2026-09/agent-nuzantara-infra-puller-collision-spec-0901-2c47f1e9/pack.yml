@@ -87,8 +87,8 @@ seat_diversity_note: >-
   findings, three of which are folded into this diff.
 
 diff:
-  files: 7
-  net_lines: 1670
+  files: 8
+  net_lines: 1842
   measured_at: >-
     counted with `git diff --numstat --cached $(git merge-base origin/main HEAD)` — the CACHED
     form, not the three-dot one, and the difference is the whole point: the three files under
@@ -108,7 +108,20 @@ residual_risks:
     the run and blocks nothing — scar family #2, "Esiste != Armato", introduced by the very PR
     that exists to end that shape on this surface. It is disclosed rather than silently fixed
     because adding a required context is a branch-protection change that reaches every PR in the
-    repo: ledgered as `operator[github-settings]`. An earlier revision of this PR's own `Bites:`
+    repo. THIS SENTENCE PREVIOUSLY ENDED "ledgered as `operator[github-settings]`" AND BOTH HALVES
+    OF THAT WERE WRONG — caught by the independent Gear-3 gate, which grepped instead of believing.
+    (a) NO SUCH ROW EXISTED: `grep -ci collision-matrix-case-folding
+    .claude/skills/modus/PENDING-ARMS.md` returned 0, on this branch and on origin/main. A pack
+    claiming its own gap was ledgered, with nothing behind the claim, is the same "Esiste != Armato"
+    defect one level up from the one it was disclosing. The row is now filed, and carries a stated
+    re-arm TRIGGER so it cannot rot into a standing excuse. (b) THE OWNER WAS WRONG: branch
+    protection is editable from a session (`gh api ... /branches/main/protection`), so this is not a
+    GUI-only operator surface; tagging it `operator[github-settings]` would have parked a session's
+    own decision behind a human who was never needed — a phantom operator lane in all but the
+    literal spelling the CI gate greps for. It is DEFERRED BY THIS SESSION, deliberately, and the
+    deferral is argued: arming a blocking gate whose instrument carries 56 documented KNOWN_BAD
+    cells imposes a known-wrong measurement on every PR in the repo. An earlier revision of this
+    PR's own `Bites:`
     line said "two required-check jobs" and was FALSE; it has been corrected.
   - >-
     THE REQUIRED SET IS NOT CURABLE FROM THIS REPO, AND THERE IS A DECOY THAT LOOKS LIKE IT IS.
