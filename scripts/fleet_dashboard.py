@@ -84,14 +84,19 @@ GIT_CWD = Path(__file__).resolve().parent.parent
 
 
 def _warn_if_main_checkout() -> None:
-    if GIT_CWD.name == "nuzantara" and not GIT_CWD.parent.name == ".worktrees":
-        if (GIT_CWD / ".git").is_dir():
-            sys.stderr.write(
-                f"fleet_dashboard: running from what looks like the MAIN checkout "
-                f"({GIT_CWD}). If the worktree-isolation hook is armed it will refuse "
-                "every git call and the conflict section will be empty for the wrong "
-                "reason. Run this from a worktree.\n"
-            )
+    # Judged on the FACT, not on the folder's name. An earlier version also
+    # required `GIT_CWD.name == "nuzantara"` and a parent not named
+    # `.worktrees`, which silently false-negatives on any differently-named
+    # clone. In a linked worktree `.git` is a FILE pointing at the real object
+    # store; only a primary checkout has it as a DIRECTORY. That single test is
+    # naming-independent and is the whole signal.
+    if (GIT_CWD / ".git").is_dir():
+        sys.stderr.write(
+            f"fleet_dashboard: running from what looks like the MAIN checkout "
+            f"({GIT_CWD}). If the worktree-isolation hook is armed it will refuse "
+            "every git call and the conflict section will be empty for the wrong "
+            "reason. Run this from a worktree.\n"
+        )
 
 
 def _run(args: list[str], timeout: int = 90) -> tuple[int, str, str]:
@@ -233,6 +238,13 @@ query($n: Int!) {
 """ % tuple(REPO.split("/"))
 
 
+#: Not a check name and deliberately not shaped like one: it is the answer to
+#: "why is this PR red?" when the instrument that was supposed to answer never
+#: replied. It groups into its own row in the causes table so the reader sees
+#: that the tally is incomplete rather than reading a short list as a full one.
+PROBE_UNREADABLE = "\u00b7 la sonda dei controlli non ha risposto"
+
+
 def failing_checks(number: int) -> list[str]:
     """Names of the checks that are FAILURE on this PR's head commit.
 
@@ -245,21 +257,34 @@ def failing_checks(number: int) -> list[str]:
     hundred — so the bulk query now carries the rollup state alone (cheap) and
     the detail is fetched only where it is actually read.
     """
+    def unreadable(why: str) -> list[str]:
+        # A probe that could not measure says so ON THE PAGE, not only to
+        # stderr. Returning a bare [] rendered as "red, with no reason given"
+        # and silently under-counted that check's tally in the grouped table —
+        # indistinguishable from a PR that genuinely has no named failing
+        # context. The sentinel is deliberately not check-shaped so it can
+        # never be mistaken for one, and it groups into its own row, which is
+        # what makes the incompleteness visible instead of silent.
+        sys.stderr.write(f"fleet_dashboard: checks unreadable for #{number}: {why[:160]}\n")
+        return [PROBE_UNREADABLE]
+
     rc, out, err = _run(
         ["gh", "api", "graphql", "-f", f"query={CONTEXTS_ONE}", "-F", f"n={number}"]
     )
     if rc != 0 or not out.strip():
-        sys.stderr.write(f"fleet_dashboard: checks unreadable for #{number}: {err[:160]}\n")
-        return []
+        return unreadable(err or out)
     try:
         commits = json.loads(out)["data"]["repository"]["pullRequest"]["commits"]["nodes"]
     except (KeyError, TypeError, json.JSONDecodeError):
-        return []
+        return unreadable("risposta GraphQL malformata")
     if not commits:
-        return []
+        return unreadable("nessun commit nella risposta")
     rollup = commits[0]["commit"]["statusCheckRollup"]
     if not rollup:
-        return []
+        # The bulk query already said this PR's rollup is FAILURE. A per-PR
+        # answer of "no rollup at all" contradicts that, so it is a disagreement
+        # between two probes, never a clean "no checks ran".
+        return unreadable("nessun rollup, in contraddizione con la query d'insieme")
     names = []
     for ctx in rollup["contexts"]["nodes"]:
         name = ctx.get("name") or ctx.get("context") or "?"
