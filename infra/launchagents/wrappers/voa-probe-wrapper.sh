@@ -221,7 +221,7 @@ if zmodload zsh/system 2>/dev/null; then
     fi
     case "$lock_rc" in
         0) LOCK_ACQUIRED=0 ;;
-        2)
+        99)
             echo "[voa-probe] overlapping run detected (lock busy: $LOCKFILE) — skipping this tick" >> "$LOG"
             heartbeat "warning" "skipped: overlapping run held the advisory lock"
             exit 0
