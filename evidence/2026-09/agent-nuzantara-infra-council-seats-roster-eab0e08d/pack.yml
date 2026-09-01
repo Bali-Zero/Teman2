@@ -104,6 +104,28 @@ residual_risks:
     it loses long identifiers — this pack's own qwen verdict reads <REDACTED> where the model
     named COUNCIL_REVIEW_SEATS_FALLBACK and COUNCIL_REVIEW_SEATS_TITOLARI.
   - >-
+    ONE RESERVE HAS NEVER BEEN SEATED. Measured over every journal under evidence/ (78 files),
+    parsing each line and comparing the `seat` field for exact equality the way the lint does:
+    tp1-deepseek-v4-pro has never been the seat value of a council line, in any spelling. It is
+    named only in prose, in five files, two of which are this pack and its brief — so the seat this
+    PR makes quorum-eligible has no precedent to imitate, and a wrong spelling on its first real
+    use would have nothing to look like. Stated precisely rather than as "zero occurrences in
+    evidence/", which a raw grep would refute: the structured tool and the substring tool disagree
+    here, and only the structured one answers the question the quorum actually asks. The other two
+    reserves are not in this position — agy-gemini-3.1-pro and tp1-glm-5.2 both carry real mileage
+    — so the gap is a point, not a pattern, and it is not a second independent way for the bench to
+    be thin beyond the shared-client failure domain already declared above.
+  - >-
+    THE TITOLARE/RISERVA SPLIT IS A RULING, NOT A MEASURED RANKING, and a future reader must not
+    mistake one for the other. It was decided by Zero. It is not derived from usage, and the usage
+    figures do not support reading it that way: counting quorum-eligible lines across every journal
+    under evidence/, the reserve agy-gemini-3.1-pro sits above the titolare tp1-qwen3.8-max, two
+    lines apart. That is fine — the roster is an authority decision about which seats a council may
+    lean on, not a leaderboard — but it is written down here because an unstated ordering invites
+    the next reader to reconstruct a rationale that was never given, and then to argue for a
+    promotion nobody deliberated. If the split is ever to change, it changes by a ruling, the same
+    way it was made.
+  - >-
     check_council_run_gear3 cannot verify the TRUTH of a seat_fallback_reason string, only that a
     non-empty one was written (constraints section of brief.yml, deliberate — the lint has no
     liveness data, and a guard that judges what it cannot see is scar family #3, guard-over-match).
