@@ -70,9 +70,19 @@ only those keys; `judul`, `content` and every other key stay byte-identical.
 Both require `--only`, refuse every `--all-*` selector and refuse each other
 (two tuples, two cure runs). `--licensing-only` is one-directional: a code
 whose canonical `per_skala` is empty is REFUSED, never emptied — that is the
-quarantine class. These modes exist because since v34 the channel reads the
-structured metadata and never the prose, so on a hand-written row the tuple
-is the only thing a client can still be told wrong.
+quarantine class. They exist because since v34 the channel never injects the
+prose: `chat_kbli`'s direct path selects `judul, metadata` and reads ONLY the
+PMA tuple off it (`_pma_disclosure_fields`), so on a hand-written row the PMA
+tuple is the one thing a client can still be told wrong FROM THIS TABLE.
+The licensing tuple, by contrast, has NO runtime reader on this table
+(measured 2026-09-01: `per_skala`/`licensing_status`/`pp28_sources` reach a
+client from the canonical file, from the Qdrant point text via
+`sanitize_kbli_search_result`, and from `kg_nodes` via `inspect_kbli` —
+never from `kbli_documents`). `--licensing-only` therefore buys table↔canonical
+agreement — the detector's `licensing presence disagrees` class closes and any
+future reader of the row finds government rows instead of `[]` — and does
+NOT, by itself, change what a client is told about licensing. Report it as
+exactly that.
 
 `--only` DOES NOT GET THE CONTENT-PRESERVATION GATE. That gate is scoped to
 `--all-licensing-absent`, so passing the same population as a hand-written
@@ -351,7 +361,9 @@ PMA_METADATA_KEYS: tuple[str, ...] = (
 # 'per_skala')` vs the canonical rows); `pp28_sources` is its provenance and
 # moves with it; `licensing_status` follows the SAME rule the full rebuild
 # applies (gap marker on an empty set, otherwise carried over — this script
-# makes no independent claim about it).
+# makes no independent claim about it). No runtime consumer reads these three
+# keys off THIS table (measured 2026-09-01 — module docstring); the PMA tuple
+# above is the one the channel reads.
 LICENSING_METADATA_KEYS: tuple[str, ...] = (
     "per_skala",
     "pp28_sources",
@@ -968,11 +980,14 @@ def plan_licensing_only(
 
     Syncs the licensing tuple in `metadata` from canonical and NOTHING else:
     `judul`, `content` and every other metadata key (the PMA tuple included)
-    are carried over unchanged. Same reason `--pma-only` exists: the rows the
-    detector reports as "canonical holds PP 28/2025 rows, the table serves
-    none" are hand-written prose the content-preservation gate refuses to
-    rebuild, and since v34 the structured metadata is the only thing the
-    channel still reads from them.
+    are carried over unchanged. Same shape as `--pma-only`, narrower stakes:
+    the rows the detector reports as "canonical holds PP 28/2025 rows, the
+    table serves none" are hand-written prose the content-preservation gate
+    refuses to rebuild — but unlike the PMA tuple, this tuple has no runtime
+    reader on this table today (module docstring, "TWO NARROW MODES"). What
+    this cure buys is table↔canonical agreement: the detector class closes
+    and a future reader finds rows, not `[]`. It does not change what the
+    channel serves; do not report it as if it did.
 
     ONE DIRECTION, like `licensing_absent_codes`: this mode only ever REPLACES
     an empty or stale row-set with canonical's non-empty one. A code whose
