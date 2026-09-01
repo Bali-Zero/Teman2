@@ -1,4 +1,12 @@
-# ADR-006: nb_monitor bootstrap JSON registry, migrate to notebook_registry post-FASE-2
+# ADR-012: nb_monitor bootstrap JSON registry, migrate to notebook_registry post-FASE-2
+
+> **Renumbered 2026-08-31, from ADR-006.** This file was written in `docs/adr/` while
+> `docs/ARCHITECTURE_DECISION_RECORDS.md` already held an ADR-006 ("Abstract Channel Pattern for
+> Multi-Platform Chat") — two numbering spaces, one number, and nothing that could tell them apart
+> by id. The newer, single-topic, less-embedded artefact yields, which is this one. Dated research
+> captures that cite the old filename are left alone on purpose: they record what was true when they
+> were written, and rewriting a record to match a later rename is how a repo loses its own history.
+> The decision itself is unchanged; only its identifier moved. Canonical id: **D-012**.
 
 **Status:** Accepted (2026-05-07)
 **Authors:** Antonello Siano (Zero), Claude Opus 4.7

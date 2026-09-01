@@ -122,6 +122,32 @@ if (( open_count == 0 )); then
   exit 3
 fi
 
+# ---------------------------------------------------------------------------
+# 2b. Join the merge-queue snapshot from step 1 ($inq) onto every PR object as
+#    `mergeQueueEntry` — the positive probe `queue_rearm_population.sh` now
+#    requires before calling anything a candidate (scripts/lint_arm_probe.py;
+#    proven live on PR #5422, which sat at `mergeQueueEntry {position: 1,
+#    state: AWAITING_CHECKS}` while `autoMergeRequest` read null). No second
+#    network call: $inq is already in hand from step 1, so this is one more
+#    jq pass over data this script already fetched. Without this join,
+#    `queue_rearm_population.sh` reporting "unarmed candidates: N" was
+#    counting an already-armed PR — the per-item `$inq` cross-check below
+#    (step 3) still kept the ACTION safe, but the printed COUNT was not.
+# ---------------------------------------------------------------------------
+inq_json=$(printf '%s\n' "$inq" | jq -R -c 'split(" ") | map(select(length > 0) | tonumber)')
+all_open=$(printf '%s' "$all_open" | jq --argjson inq "$inq_json" '
+  ($inq) as $inqnums
+  | map(
+      .number as $n
+      | . + {mergeQueueEntry: (if ($inqnums | any(. == $n)) then {} else null end)}
+    )
+')
+enriched_count=$(printf '%s' "$all_open" | jq 'length' 2>/dev/null)
+if [[ -z "$enriched_count" || "$enriched_count" != "$open_count" ]]; then
+  echo "🔌 merge-queue-entry join failed or changed the population size (before=$open_count after=${enriched_count:-<unparseable>}) — no verdict."
+  exit 3
+fi
+
 cand=$(printf '%s' "$all_open" | "$POPULATION" --candidates)
 total=$(printf '%s\n' "$cand" | grep -c .)
 

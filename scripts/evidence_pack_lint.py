@@ -479,6 +479,45 @@ EVIDENCE_ROOT_DEPRECATION_DATE = datetime.date(2026, 9, 5)
 #: PR's diff touches neither a root nor a per-task evidence/pack.yml.
 EVIDENCE_ROOT_PACK_PATH = "evidence/pack.yml"
 
+# Rule 12 (evidence root path deprecation — THE BRIEF HALF). Rule 9 above
+# closes only half the surface it was written for: it compares the resolved
+# PACK path against EVIDENCE_ROOT_PACK_PATH and returns clean otherwise, so it
+# is structurally blind to where the BRIEF lives. Measured on origin/main
+# 2026-08-31 by executing check_pack_not_at_deprecated_root directly with
+# `today` past the flip date: a source_path of
+# `evidence/2026-08/<slug>/pack.yml` returns ([], None) — clean at ANY date —
+# while that same PR's diff can still MODIFY the repo-root evidence/brief.yml
+# and collide with every other PR that does. That is not hypothetical: of the
+# 31 open PRs that day, SIX wrote the root brief (#5158 #5072 #5037 #4645
+# #4644 #4640), and #5158 had exactly the invisible shape — pack correctly
+# migrated to a per-task directory, brief still at the root, Rule 9 green.
+#
+# WHAT THIS RULE MUST NOT DO, and the reason it is easy to get wrong: every
+# conformant pack is REQUIRED to declare the literal string
+# `brief_ref: evidence/brief.yml` (the staging contract — harness-floor.yml
+# lints a synthetic tree where both files carry canonical names, see
+# scripts/ci/evidence_paths.py's module docstring). So that exact string
+# appears inside every correct pack in the repo. This rule judges a PATH THIS
+# PR'S DIFF WROTE, never a string in a field — conflating the two would fail
+# every conformant pack in the fleet. The innocence tests pin that distinction.
+#
+# THE DATE IS DELIBERATELY *NOT* EVIDENCE_ROOT_DEPRECATION_DATE. Riding the
+# pack's 2026-09-05 would silently re-price a measurement taken the same day
+# this rule was written: research/operations/2026-08-31-two-nine-enforcement-
+# readiness.md measured "3 PRs newly RED if EVIDENCE_ROOT moves alone"
+# (#5072 #5037 #4640) and Zero's standing instruction there was to move dates
+# only "if we are ready". Adding the brief to that date turns 3 into 6 without
+# anyone re-measuring — a number aging into a lie, which is the exact defect
+# class this file's own PR history spent 2026-08-31 correcting. So: its own
+# constant, one week past the pack's, giving the six in-flight PRs a real
+# window to migrate and giving the next readiness pass a separate number to
+# price.
+EVIDENCE_ROOT_BRIEF_DEPRECATION_DATE = datetime.date(2026, 9, 12)
+
+#: The literal root brief path — the sibling of EVIDENCE_ROOT_PACK_PATH, and
+#: the same value `resolve_evidence_path("brief", ...)` falls back to.
+EVIDENCE_ROOT_BRIEF_PATH = "evidence/brief.yml"
+
 
 # --------------------------------------------------------------------- utils
 
@@ -1836,7 +1875,17 @@ def check_lanes_build_seat_diversity(
 # named human call, never a silent pass, reported so X3 (ASSEMBLY-LINE.md
 # gate-lifecycle ledger) can count how often it fires.
 # ---------------------------------------------------------------------------
-SEAT_RULES_ENFORCEMENT_DATE = datetime.date(2026, 9, 2)
+# MOVED FORWARD 2026-09-02 -> 2026-08-31 (Squad S lane 6, Zero: «anche subito
+# se siamo pronti»). "Ready" was MEASURED, not asserted: every one of the 43
+# open PRs was linted twice, once with today's dates and once with this
+# constant alone pulled into the past, staged exactly as harness-floor.yml
+# stages a pack (--source-path included, without which every pack falsely reads
+# as a deprecated evidence/ root). Moving THIS date alone turns ZERO open PRs
+# red. The other two were measured separately and are NOT moved here:
+# R9_R11 would redden 9, and EVIDENCE_ROOT_DEPRECATION 3 — see
+# research/operations/2026-08-31-two-nine-enforcement-readiness.md for the
+# per-PR table and the two independent causes behind the 9.
+SEAT_RULES_ENFORCEMENT_DATE = datetime.date(2026, 8, 31)
 
 #: R8 — ground-truth path classes: backend KB, visa_engine (any depth —
 #: services/scripts/tests alike, fnmatch's `*` already crosses `/`), the
@@ -2418,6 +2467,62 @@ def check_pack_not_at_deprecated_root(
     return [f"evidence_root_deprecated: {message}"], None
 
 
+def check_brief_not_at_deprecated_root(
+    brief_source_path: str | None,
+    repo_root: Path,
+    today: datetime.date | None = None,
+) -> tuple[list[str], str | None]:
+    """Rule 12 — the BRIEF half of the root-path deprecation Rule 9 opened.
+
+    `brief_source_path` must be THIS PR's own diff-relative brief path — the
+    value `scripts/ci/evidence_paths.py --resolve brief` prints, which
+    harness-floor.yml's Step 2b already computes and exposes as
+    `steps.evpaths.outputs.brief`. It is resolved from the PR's changed-files
+    enumeration, so it is the path the diff actually WROTE, never a string
+    read out of the pack.
+
+    That distinction is the whole rule. A conformant pack always declares
+    `brief_ref: evidence/brief.yml` (the staging contract), so the literal
+    root string is present in every correct pack in this repo; judging that
+    string would fail the entire fleet. This function never reads the pack.
+
+    Same "skip, don't guess" shape as its pack sibling: a `None`/empty value
+    means the caller has no diff context, and returns clean with no notice
+    rather than presuming guilt or innocence. Unlike the pack rule there is
+    no CLI default that backfills it from a positional argument — a local
+    `python3 evidence_pack_lint.py evidence/pack.yml` knows the pack's path
+    but genuinely does not know the brief's, and inventing one would be a
+    guess. So this rule is inert outside CI by design, and the workflow is
+    what arms it; that is stated rather than papered over, because "the rule
+    exists" and "the rule is armed" are different claims (superscar #2).
+
+    Returns (violations, notice): before EVIDENCE_ROOT_BRIEF_DEPRECATION_DATE
+    a root-path brief NOTICEs (exit 0); on/after, it is a violation (exit 1).
+    A per-task brief is clean at any date. `today` overridable for tests
+    without monkeypatching date.today()."""
+    if not brief_source_path:
+        return [], None
+    if _pack_source_relpath(brief_source_path, repo_root) != EVIDENCE_ROOT_BRIEF_PATH:
+        return [], None
+    message = (
+        f"{EVIDENCE_ROOT_BRIEF_PATH} is deprecated as a WRITE target — write "
+        "per-task evidence to evidence/<YYYY-MM>/<task-slug>-<8hex>/brief.yml "
+        "instead (scripts/ci/evidence_paths.py --resolve brief). This does NOT "
+        "change the `brief_ref:` contract: a pack must still declare the "
+        "literal `brief_ref: evidence/brief.yml`, because CI lints a staged "
+        "tree using canonical names — only the FILE moves, never the "
+        "reference. Rule 9 deprecates the root pack for the same reason and "
+        "cannot see this half: a PR whose pack is already migrated still "
+        "makes every other root-brief PR mutually exclusive in the merge "
+        "queue by construction (six such PRs measured open on 2026-08-31)."
+    )
+    if today is None:
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+    if today < EVIDENCE_ROOT_BRIEF_DEPRECATION_DATE:
+        return [], f"evidence_root_brief_deprecated: {message}"
+    return [f"evidence_root_brief_deprecated: {message}"], None
+
+
 # ------------------------------------------------------------------- lint()
 
 
@@ -2429,6 +2534,7 @@ def lint(
     numstat_text: str | None = None,
     source_path: str | None = None,
     measured_commits: int | None = None,
+    brief_source_path: str | None = None,
 ) -> tuple[int, list[str]]:
     """Returns (exit_code, violations). exit_code: 0 clean, 1 guilty, 2 blind.
 
@@ -2508,6 +2614,19 @@ def lint(
     violations += root_violations
     if root_notice:
         print(f"evidence_pack_lint: NOTICE — {root_notice}", file=sys.stderr)
+
+    # Rule 12 — the brief half. Kept as its own call rather than folded into
+    # the pack rule above because the two take DIFFERENT inputs (the pack's
+    # real path vs the brief's real path) and flip on DIFFERENT dates; one
+    # function taking both would make it far too easy for a future edit to
+    # judge a brief against the pack's constant, which is precisely the
+    # blind spot this rule exists to close.
+    brief_root_violations, brief_root_notice = check_brief_not_at_deprecated_root(
+        brief_source_path, repo_root
+    )
+    violations += brief_root_violations
+    if brief_root_notice:
+        print(f"evidence_pack_lint: NOTICE — {brief_root_notice}", file=sys.stderr)
 
     if changed_files is None:
         # Self-contained notice (not folded into the shared "no
@@ -3817,6 +3936,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--net-lines", type=int, default=None, metavar="INT")
     parser.add_argument("--numstat-file", default=None, metavar="PATH")
     parser.add_argument("--source-path", default=None, metavar="PATH")
+    # Rule 12's input: THIS PR's own real brief path, as resolved from its
+    # changed-files list (`scripts/ci/evidence_paths.py --resolve brief`).
+    # Deliberately has NO positional fallback, unlike --source-path above: a
+    # local invocation is given the pack's path and genuinely does not know
+    # where the brief was written, so defaulting it would be a guess dressed
+    # as a measurement. Omitted => Rule 12 skips, silently and by design.
+    parser.add_argument("--brief-source-path", default=None, metavar="PATH")
     # Countable-claims rule: the PR's commit count. Optional — in CI it is read from the
     # pull_request event payload automatically (see measured_commit_count()),
     # so no workflow change is needed; this flag is for local runs and tests.
@@ -3919,7 +4045,7 @@ def main(argv: list[str] | None = None) -> int:
 
     exit_code, violations = lint(
         pack_path, repo_root, changed_files, measured_net_lines, numstat_text,
-        source_path, measured_commits,
+        source_path, measured_commits, args.brief_source_path,
     )
 
     if args.json:

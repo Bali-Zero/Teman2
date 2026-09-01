@@ -1,0 +1,54 @@
+task_id: queue-doctor-arm-0831
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Give `scripts/tests/test_queue_doctor.py` an executor that can go red.
+
+  Measured 2026-08-31 by this session: `grep -rln 'test_queue_doctor' .github/` returns NOTHING.
+  The corpus runs only inside `.github/workflows/scripts-tests-sweep.yml`, which is
+  `continue-on-error: true` and is not a required check — its own header says so — so the corpus has
+  been green by construction since it was written. That is superscar #2 (Esiste != Armato) on the
+  tool a session consults to decide whether a PR is armed, whether the pre-push suite lock is held,
+  and whether the P0 alert spool is draining.
+
+  Positive control, run in the same command so the search itself is not the thing that is broken:
+  `test_organism_stale_detector.py` returns three hits, in `organ-conformance.yml` (lines 50, 59,
+  135). The search works; the executor is absent.
+
+  This is the arming half of PR #5433, which repairs the probe itself (it reached for `ssh pro`
+  while running ON Pro, so it never measured the spool). #5433 is armed and therefore frozen per
+  Agent PR Contract rule 2, so the arming lands here, from a fresh origin/main, rather than as a
+  push to a frozen branch.
+
+  Gear is 3 DETERMINISTICALLY by PATH: the diff adds a file under `.github/workflows/`, a hot zone.
+  Reproduced with the real tool, not asserted:
+  `evidence_pack_lint.py --print-floor --changed-files-file <file>` returns `3`.
+
+acceptance:
+  - text:
+      "WHEN a PR touches the corpus, the script it drives, its autouse conftest, or this workflow,
+      the workflow SHALL trigger; and WHERE none of those change, it SHALL stay silent rather than
+      run and pass vacuously."
+    probe: "the `on:` block's two paths lists, which are symmetric, this file included"
+  - text:
+      "WHEN the corpus shrinks — a case removed, or silently skipped — the step SHALL go red. The
+      assertion is on cases that PASSED, because pytest exits 0 when every case is skipped and
+      `--collect-only` counts skipped cases too."
+    probe: "the run step's body with FLOOR=15 against a corpus of 14 -> ::error::, rc 1"
+  - text:
+      "WHEN every case in the corpus is skipped, the step SHALL go red saying so, and that branch
+      SHALL be REACHABLE rather than written and hoped for — a fail-closed branch no input can
+      reach is W101."
+    probe: "scratch module with `pytestmark = pytest.mark.skip` -> exit 0, '2 skipped', no 'N passed', step red"
+  - text: "WHILE the corpus is intact and passing, the step SHALL be green and say how many passed."
+    probe: "the run step's body, FLOOR=14 -> 'queue doctor corpus: 14 passing cases (floor 14)', rc 0"
+  - text:
+      "IF the workflow file is malformed, CI SHALL reject it; and WHERE a `paths:` filter meets a
+      `merge_group:` trigger, the two SHALL NOT coexist here, since a filter with no queue trigger
+      has nothing to diverge from."
+    probe: "actionlint .github/workflows/queue-doctor-tests.yml -> no findings"
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

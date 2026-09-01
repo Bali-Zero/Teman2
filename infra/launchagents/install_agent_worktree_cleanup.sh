@@ -1,8 +1,12 @@
 #!/bin/bash
 # install_agent_worktree_cleanup.sh — W62 ANTIBODY #1
 #
-# Install (or reload) the daily LaunchAgent that reaps abandoned agent
-# worktrees via scripts/agent_start.py --cleanup (WIP-safe + skip-recent safe).
+# Install (or reload) the LaunchAgent that reaps abandoned agent worktrees via
+# scripts/agent_start.py --cleanup (WIP-safe + skip-recent safe). It fires every
+# 3h at :15 WITA — eight passes a day, not one; see the plist header for why the
+# daily cadence was out-run by a 40-worktree burst on 2026-08-31. The LABEL still
+# ends in `.daily` on purpose (connectome probes grep it literally), so this
+# script's bootout/bootstrap keys stay valid across that cadence change.
 #
 # Usage:
 #   bash infra/launchagents/install_agent_worktree_cleanup.sh

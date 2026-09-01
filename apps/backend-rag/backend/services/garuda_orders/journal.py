@@ -9,7 +9,6 @@ takes a `conn` that is already inside one.
 
 from __future__ import annotations
 
-import json
 import secrets
 from typing import Any
 
@@ -50,7 +49,7 @@ async def append_event(
         idempotency_key_digest,
         canonical_payload_digest,
         customer_visible,
-        json.dumps(detail or {}, default=str),
+        detail or {},
     )
     return event_id
 
@@ -75,7 +74,7 @@ async def enqueue_outbox(
         order_id,
         journal_event_id,
         job_type,
-        json.dumps(payload or {}, default=str),
+        payload or {},
     )
 
 

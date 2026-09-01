@@ -374,3 +374,203 @@ def test_seeder_does_not_read_a_pin_from_the_committed_roster() -> None:
         "was removed. If it was replaced, point this test at the replacement "
         "rather than deleting the check."
     )
+
+
+def test_the_voa_prices_are_the_ones_the_owner_ruled():
+    """e-VOA 750.000 IDR, extension 850.000 IDR — ruled by the owner on
+    2026-08-31, reversing his own 2026-07-24 directive that had moved issuance
+    to 790.000. Both stores now say 750.000; migration 303 is what moved the
+    table, migration 302 (already applied in production) is what had moved it
+    to 790.000 hours earlier, and both stay in the frozen set below because
+    both really do assign this column.
+
+    This is a value tripwire, not a style check. `practice_types.base_price`
+    defaults a client quote (`crm_practices.py`), the JSON drives GARUDA and
+    the visa_engine adapter at request time, and nothing reconciles the two —
+    so a silent edit to either figure re-opens the divergence migrations 302
+    and 303 closed. If the owner rules a new price, change it here in the same commit.
+    """
+    import json
+    import re
+    from pathlib import Path
+
+    from backend.services.pricing.pricing_service import _PRICING_FILENAME
+
+    backend_dir = Path(__file__).resolve().parents[1]
+
+    # --- side 1: the JSON sheet the live pricing service loads.
+    # The filename comes from the service, never typed here: a tripwire that
+    # watches a path the service has stopped reading is worse than none.
+    sheet = json.loads(
+        (backend_dir / "data" / _PRICING_FILENAME).read_text(encoding="utf-8")
+    )
+    single = sheet["services"]["single_entry_visas"]
+    assert single["B1 Visa on Arrival (VOA)"]["price"] == "750.000 IDR"
+    assert single["B1 Visa on Arrival Extension"]["price"] == "850.000 IDR"
+
+    # --- side 2: practice_types.base_price, which is the half that was WRONG.
+    # There is no live database in a unit test, and regex-parsing SQL to work
+    # out a column's final value would be a second, worse implementation of
+    # the migration runner. So this is a RATCHET, not a parser: the set of
+    # migrations that touch each code is frozen, and the ruled figure must
+    # appear in the newest of them. A future migration that moves either
+    # price cannot do so silently — it enters the set, the set stops matching,
+    # and whoever wrote it has to come here and say what the new price is.
+    ruled = {
+        "visa_b1_voa": (750000, {"221_practice_types_b1_voa.sql",
+                                 "302_practice_types_voa_price_790.sql",
+                                 "303_practice_types_voa_price_750.sql"}),
+        "ext_b1_voa": (850000, {"221_practice_types_b1_voa.sql"}),
+    }
+    migrations = sorted(
+        (backend_dir / "db" / "migrations_v2").glob("*.sql"),
+        key=lambda f: int(f.name.split("_", 1)[0]),
+    )
+    assert migrations, "no migrations_v2/*.sql found — the glob is watching nothing"
+
+    def _forward_body(path: Path) -> str:
+        """Executable lines of the forward section — comments narrate history."""
+        forward = path.read_text(encoding="utf-8").split("-- === ROLLBACK ===")[0]
+        return "\n".join(
+            line for line in forward.splitlines()
+            if not line.lstrip().startswith("--")
+        )
+
+    def _base_price_assignments(body: str, code: str) -> tuple[list[int], list[str]]:
+        """Every site that assigns base_price, and every site not readable.
+
+        Returns (values, unreadable). A shape this cannot parse lands in
+        `unreadable` and reddens the test — silence is never the answer.
+        """
+        values: list[int] = []
+        unreadable: list[str] = []
+        consumed: list[tuple[int, int]] = []
+
+        for m in re.finditer(r"\bSET\s+base_price\s*=\s*(\d+)", body, re.I):
+            values.append(int(m.group(1)))
+            consumed.append(m.span())
+
+        # The upsert idiom: `INSERT ... ON CONFLICT DO UPDATE SET base_price =
+        # EXCLUDED.base_price` (migration 221). It carries no figure of its own
+        # — it forwards the VALUES tuple, which the INSERT branch below reads —
+        # so it is RECOGNISED and contributes nothing, rather than being
+        # mistaken for an unreadable spelling.
+        for m in re.finditer(r"\bbase_price\s*=\s*EXCLUDED\.base_price", body, re.I):
+            consumed.append(m.span())
+
+        # `SET (col, col) = (val, val)` — read base_price's value positionally.
+        for m in re.finditer(r"\bSET\s*\(([^)]*)\)\s*=\s*\(([^)]*)\)", body, re.I):
+            cols = [c.strip().lower() for c in m.group(1).split(",")]
+            vals = [v.strip() for v in m.group(2).split(",")]
+            consumed.append(m.span())
+            if "base_price" not in cols:
+                continue
+            raw = vals[cols.index("base_price")] if len(vals) == len(cols) else None
+            if raw is not None and raw.isdigit():
+                values.append(int(raw))
+            else:
+                unreadable.append(f"tuple SET with non-literal base_price: {m.group(0)[:80]}")
+
+        if not values and f"'{code}'" in body:
+            # An INSERT rather than an UPDATE: 221 seeds both codes positionally.
+            start = body.index(f"'{code}'")
+            tuple_text = body[start:body.index(")", start)]
+            values = [int(v) for v in re.findall(r"\b(\d{5,})\b", tuple_text)]
+
+        # Any remaining `base_price ... =` outside a site already consumed is a
+        # spelling this function does not know. Red, not silent.
+        for m in re.finditer(r"\bbase_price\b\s*=", body, re.I):
+            if not any(a <= m.start() < b for a, b in consumed):
+                unreadable.append(
+                    "unrecognised assignment near: "
+                    f"{body[max(0, m.start() - 40):m.start() + 40]!r}"
+                )
+        return values, unreadable
+
+    # A migration may only move base_price on rows it names LITERALLY. The same
+    # seat measured the second bypass: a migration whose predicate is
+    # `WHERE code LIKE 'visa_b1_vo%'` never enters the frozen setter set below,
+    # because the set is keyed on the literal code — so it can move a ruled
+    # price without any of this noticing. A pattern predicate is therefore
+    # refused outright rather than parsed: this tripwire is not a SQL engine and
+    # must not pretend to be one.
+    _OPAQUE_PREDICATE = re.compile(
+        r"\bcode\s*(?:LIKE|SIMILAR\s+TO|~\*?|!~|<>|!=)|\bcode\s+IN\s*\(\s*SELECT",
+        re.I,
+    )
+    for path in migrations:
+        body = _forward_body(path)
+        if "base_price" not in body:
+            continue
+        hit = _OPAQUE_PREDICATE.search(body)
+        assert hit is None, (
+            f"{path.name} assigns base_price while selecting rows by a "
+            f"NON-LITERAL code predicate: {hit.group(0) if hit else ''!r}. A "
+            "migration that moves a price must name the codes it targets "
+            "literally, or this "
+            "ratchet cannot see it move — which is precisely the bypass this "
+            "check exists to close."
+        )
+
+    for code, (expected, expected_files) in ruled.items():
+        touching = []
+        for path in migrations:
+            forward = path.read_text(encoding="utf-8").split("-- === ROLLBACK ===")[0]
+            # Comments narrate history — 302's header quotes the OLD price —
+            # so only executable lines count as touching the code.
+            body = "\n".join(
+                line for line in forward.splitlines()
+                if not line.lstrip().startswith("--")
+            )
+            if f"'{code}'" in body and "base_price" in body:
+                touching.append((path.name, body))
+
+        assert {name for name, _ in touching} == expected_files, (
+            f"the set of migrations that set base_price for {code!r} has "
+            f"changed: expected {sorted(expected_files)}, found "
+            f"{sorted(name for name, _ in touching)}. If a new migration "
+            "moves this price, update the ruled figure here in the same "
+            "commit — that is what this ratchet is for."
+        )
+        newest_name, newest_body = touching[-1]
+
+        # Read the value out of the ASSIGNMENT, never "the figure appears
+        # somewhere in the file". 302's guard clause and its exception message
+        # both contain the literal 790000, so a substring check is satisfied by
+        # a file whose SET clause says something else entirely — measured: the
+        # gate mutated only `SET base_price = 790000` to 750000 and the earlier
+        # version of this assertion stayed green.
+        #
+        # But reading ONE spelling of the assignment is the other half of the
+        # same defect, and the codex-gpt-5.6-sol seat measured it: appending
+        #
+        #     UPDATE practice_types
+        #        SET (base_price, updated_at) = (790000, CURRENT_TIMESTAMP)
+        #      WHERE code = 'visa_b1_voa';
+        #
+        # leaves the database at 790000 while `assigned` still reads only the
+        # earlier scalar SET and the test stays GREEN. So the rule here is not
+        # "recognise the shapes I thought of" but "every assignment site must be
+        # READABLE, or the test goes red": an unparsed spelling is a failure,
+        # never a pass. Under-match is the quieter twin of over-match
+        # (superscar #3 / W82) and it is the one that lets a wrong price ship.
+        assigned, unreadable = _base_price_assignments(newest_body, code)
+        assert not unreadable, (
+            f"{newest_name} assigns base_price in a form this tripwire cannot "
+            f"read: {unreadable}. That is a RED, not a pass — an unrecognised "
+            "spelling is exactly how a wrong price would slip past. Either "
+            "write the assignment as `SET base_price = <n>`, or teach "
+            "_base_price_assignments the new shape in the same commit."
+        )
+
+        assert assigned, (
+            f"{newest_name} is the newest migration touching base_price for "
+            f"{code!r}, but no assignment could be read out of it. The shape "
+            "changed; re-read the file rather than loosening this check."
+        )
+        assert set(assigned) == {expected}, (
+            f"{newest_name} is the newest migration setting base_price for "
+            f"{code!r}, and it assigns {sorted(set(assigned))} rather than the "
+            f"ruled {expected}. The database half of the price has drifted "
+            "from the sheet half — exactly the divergence migration 302 closed."
+        )
