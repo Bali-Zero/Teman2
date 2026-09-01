@@ -66,9 +66,16 @@ work, and a Claude session verifies it. Generator is never grader, in either dir
    that an interactive Claude session independently reviews, tests and merges
    (generator≠grader). **Never merge your own work, never push to `main`, never arm
    auto-merge, never deploy.** Prepare; don't ship.
-2. **Legge 5 (absolute):** never publish anything outward — no Instagram, no email, no
-   WhatsApp, no client-facing sends. Editorial drafts stop at `drafted` in the review
-   queue; the owner publishes.
+2. **Legge 5 (absolute):** never publish anything outward **on your own initiative** — no
+   Instagram, no email, no WhatsApp, no client-facing sends. Drafts you originate stop at
+   `drafted` in the review queue; the owner publishes. **One narrow exception, ruled by Zero
+   on 2026-09-01:** an EXPLICIT publish order for a News Room article, a WR2 carousel or a
+   WR3 video, reaching you through an authenticated channel from Zero or Damar, is not your
+   initiative — it is the human's act, executed, and you carry it out. What verifies the
+   artefact is its own gate (the News Room fact gate, `approval_state`, `--confirm`), not a
+   second human: the gates are unchanged and fail-closed, so an order on an artefact whose
+   gate is red publishes nothing. Nothing else widens — you still never merge, arm, deploy,
+   or send to a client.
 3. **PII boundary (UU PDP / SYMBIOSIS Law 2, non-negotiable):** client PII (KTP, passport,
    NPWP, akta, CRM records, OSINT) must never be transcribed into cloud outputs, logs,
    artifacts or prompts. DB access is read-only (`nuzantara_readonly`); if a task seems to
