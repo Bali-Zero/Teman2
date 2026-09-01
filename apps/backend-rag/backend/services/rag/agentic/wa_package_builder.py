@@ -393,6 +393,71 @@ def _sanitize_pricing_block(raw: Any) -> dict[str, Any] | None:
     return {"search_query": str(raw.get("search_query", "")), "results": clean_results}
 
 
+# Source score for the price book when it yields a match. The catalogue is a
+# deterministic lookup against the pricing SSOT, not a probabilistic vector
+# hit, so it carries no similarity score of its own and 1.0 is the honest
+# value for "this is an exact catalogue entry".
+#
+# Why a top score here cannot manufacture an answer: in
+# `calculate_evidence_score`, source quality is SECONDARY and gated by
+# semantic relevance — when relevance is 0 the final score is capped at 0.1
+# (reasoning_utils.py, "No semantic relevance" branch), which stays below
+# every abstain threshold. A price entry that does not actually match the
+# query therefore still abstains; only an entry whose text overlaps the
+# query can lift the score. That gate is what makes this safe, and
+# `test_pricing_evidence_does_not_rescue_an_unrelated_query` pins it.
+_PRICING_SOURCE_SCORE = 1.0
+
+
+def _pricing_evidence_texts(pricing_block: dict[str, Any] | None) -> list[str]:
+    """Render a sanitized pricing block into evidence-context strings.
+
+    The price book is retrieved evidence like any chunk, but until now it was
+    carried in the package WITHOUT being counted as evidence: `build_context_package`
+    scored `chunks` alone, so a question whose answer lives only in the catalogue
+    ("Harga PT PMA berapa all in?") scored ~0 against the regulatory collections
+    its domain routes to, and froze `abstain=True` while the correct price sat in
+    `pricing_block` nine lines away. Measured live 2026-09-01: the bot refused a
+    price it was holding.
+
+    This mirrors the "sufficient context as its own signal" finding in Google's
+    RAG work — sufficiency must be assessed from what was actually retrieved,
+    not from the model's confidence about one favoured slice of it.
+
+    Returns one string per entry; an empty list when nothing price-shaped is
+    present (which `_sanitize_pricing_block` already reduces to None).
+    """
+    if not pricing_block:
+        return []
+    results = pricing_block.get("results")
+    if not isinstance(results, dict):
+        return []
+
+    def _render(entry: Any) -> str | None:
+        if not isinstance(entry, dict):
+            return None
+        parts = [str(entry[f]) for f in _PRICING_ENTRY_FIELDS if entry.get(f)]
+        return " ".join(parts) if parts else None
+
+    texts: list[str] = []
+    for items in results.values():
+        rendered: list[str | None]
+        if isinstance(items, list):
+            rendered = [_render(item) for item in items]
+        elif isinstance(items, dict):
+            # 2026 shape: {service_name: entry}. The service NAME carries the
+            # words a client actually types ("PT PMA"), so it must reach the
+            # keyword overlap — rendering the entry alone loses it.
+            rendered = [
+                " ".join(filter(None, [str(name), _render(entry)]))
+                for name, entry in items.items()
+            ]
+        else:
+            continue
+        texts.extend(t for t in rendered if t)
+    return texts
+
+
 def _cap_chunks(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Enforce the chunk-count and per-chunk-length hygiene caps, LOGGING every drop."""
     capped: list[dict[str, Any]] = []
@@ -591,14 +656,19 @@ async def build_context_package(
     # Evidence inputs are FROZEN here — finalization (spec §2.3) reads these
     # fields, it never recomputes them against a possibly-drifted retrieval.
     abstain_policy = build_abstain_policy(query)
+    # The price book counts as evidence. Scoring `chunks` alone made the
+    # builder abstain on questions whose answer it was already holding in
+    # `pricing_block` (see `_pricing_evidence_texts`).
+    pricing_evidence = _pricing_evidence_texts(pricing_block)
+    pricing_sources = [{"score": _PRICING_SOURCE_SCORE}] if pricing_evidence else []
     evidence_score = calculate_evidence_score(
-        sources=[{"score": chunk["score"]} for chunk in chunks],
-        context_gathered=[chunk["text"] for chunk in chunks],
+        sources=[{"score": chunk["score"]} for chunk in chunks] + pricing_sources,
+        context_gathered=[chunk["text"] for chunk in chunks] + pricing_evidence,
         query=query,
     )
     evidence_inputs: dict[str, Any] = {
         "evidence_score": evidence_score,
-        "context_length": len(chunks),
+        "context_length": len(chunks) + len(pricing_evidence),
         "domain": plan.domain.value,
         "label_threshold": abstain_policy.label_threshold,
         "abstain": abstain_policy.label_abstains(evidence_score),

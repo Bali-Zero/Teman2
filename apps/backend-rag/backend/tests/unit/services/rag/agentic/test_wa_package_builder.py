@@ -51,6 +51,7 @@ import pytest
 
 from backend.services.rag.agentic import wa_package_builder as wpb_module
 from backend.services.rag.agentic._abstain_policy import build_abstain_policy
+from backend.services.rag.agentic.reasoning_utils import calculate_evidence_score
 from backend.services.rag.agentic.wa_package_builder import (
     ContextPackage,
     PackageUnbuildable,
@@ -701,6 +702,146 @@ class TestEvidenceFreeze:
         assert package.evidence_inputs["label_threshold"] == expected
         assert package.evidence_inputs["domain"] == "visa"
         assert package.evidence_inputs["context_length"] == len(package.chunks)
+
+
+# ============================================================================
+# 6bis. The price book counts as evidence
+# ============================================================================
+
+
+COMPANY_PRICE_QUERY = "Harga PT PMA berapa all in?"
+UNRELATED_PRICE_QUERY = "Harga sewa motor matic di Canggu berapa per bulan?"
+
+
+def _pt_pma_pricing_result(query: str) -> dict[str, Any]:
+    """A catalogue hit for the PT PMA setup service, in the real 2026 wire
+    shape. Mirrors the live entry the bot was holding on 2026-09-01 when it
+    refused to quote it."""
+    return {
+        "official_notice": "PREZZI UFFICIALI BALI ZERO 2026",
+        "search_query": query,
+        "results": {
+            "company_services": {
+                "New Company - PT PMA": {
+                    "name": "New Company - PT PMA",
+                    "price": "Rp 20.000.000",
+                    "notes": "All-inclusive price.",
+                    "_sub_block": "internal",
+                }
+            }
+        },
+        "contact_info": {"whatsapp": "+62 821 3454 721"},
+    }
+
+
+def _company_retriever() -> FakeRetriever:
+    """What QueryDomain.COMPANY actually routes to — regulatory corpora that
+    say nothing about what Bali Zero charges. This is the retrieval reality
+    that made the live query abstain."""
+    return FakeRetriever(
+        {
+            "legal_unified_hybrid": [
+                _hit("UU 40/2007 governs limited liability companies and their organs.", 0.31),
+            ],
+            "kbli_2025_final": [
+                _hit("KBLI 70209 covers other management consultancy activities.", 0.28),
+            ],
+        },
+    )
+
+
+class TestPricingCountsAsEvidence:
+    """Guilt and innocence for the fix to the live 2026-09-01 false abstain.
+
+    GUILT: the bot held Rp 20.000.000 in `pricing_block` and still answered
+    "saya tidak punya sumber yang pasti". INNOCENCE: the same mechanism must
+    not license an answer when the catalogue hit does not actually match the
+    question — otherwise the cure is just a louder bug.
+    """
+
+    async def test_catalogue_hit_is_counted_as_evidence(self) -> None:
+        """What THIS change delivers: the price book stops being invisible to
+        the evidence calculation.
+
+        It deliberately does NOT assert that the abstain clears. Measured on
+        the live query (2026-09-01, Indonesian, English catalogue): counting
+        the price moves the score 0.04 -> 0.08 against a 0.15 threshold, so
+        the refusal survives for a SECOND, INDEPENDENT and INHERITED reason —
+        `calculate_evidence_score` derives relevance from lexical overlap, so
+        an Indonesian question scores ~0.08 against English context and ~0.80
+        against the same content in Indonesian (a factor of ten decided by
+        language alone), and its `len(w) > 3` keyword filter discards the very
+        tokens that identify the subject ("PT", "PMA", "NIB", "OSS").
+
+        Asserting `abstain is False` here would make this test a claim about a
+        defect this diff does not touch, and it would go green only when
+        someone fixed something else. The cross-language scorer is specified
+        separately in `research/operations/2026-09-01-wa-evidence-relevance-cross-language-spec.md`.
+        """
+        fake_pricing = FakePricingService(_pt_pma_pricing_result(COMPANY_PRICE_QUERY))
+        with patch.object(wpb_module, "get_pricing_service", return_value=fake_pricing):
+            package = await build_context_package(
+                query=COMPANY_PRICE_QUERY,
+                history=[],
+                thread_epoch=0,
+                retriever=_company_retriever(),
+            )
+            chunks_only = calculate_evidence_score(
+                sources=[{"score": c["score"]} for c in package.chunks],
+                context_gathered=[c["text"] for c in package.chunks],
+                query=COMPANY_PRICE_QUERY,
+            )
+
+        assert package.pricing_block is not None, "precondition: the price was retrieved"
+        # The regression itself: evidence must count what was retrieved, not
+        # only the slice that came from the vector store.
+        assert package.evidence_inputs["context_length"] > len(package.chunks)
+        assert package.evidence_inputs["evidence_score"] > chunks_only, (
+            "the price book must raise the evidence score; scoring chunks alone "
+            "is what let the builder refuse a price it was holding"
+        )
+
+    async def test_pricing_evidence_does_not_rescue_an_unrelated_query(self) -> None:
+        """Innocence. Same populated `pricing_block`, a question it does not
+        answer. `calculate_evidence_score` gates source quality behind semantic
+        relevance, so a non-matching catalogue entry must leave the abstain
+        standing — a populated block is never on its own a licence to answer.
+        """
+        fake_pricing = FakePricingService(_pt_pma_pricing_result(UNRELATED_PRICE_QUERY))
+        with patch.object(wpb_module, "get_pricing_service", return_value=fake_pricing):
+            package = await build_context_package(
+                query=UNRELATED_PRICE_QUERY,
+                history=[],
+                thread_epoch=0,
+                retriever=_company_retriever(),
+            )
+
+        assert package.pricing_block is not None, "precondition: a block was still built"
+        assert package.evidence_inputs["abstain"] is True, (
+            "a catalogue entry about company setup must not license an answer "
+            "about motorbike rental"
+        )
+
+    def test_helper_renders_the_service_name_not_only_the_entry(self) -> None:
+        """The 2026 wire keys each entry by its public service name, and that
+        name carries the words a client types ("PT PMA"). Rendering the entry
+        body alone loses it, and the keyword overlap that drives relevance
+        never fires — the failure mode that made this fix look inert."""
+        texts = wpb_module._pricing_evidence_texts(
+            {
+                "search_query": COMPANY_PRICE_QUERY,
+                "results": {
+                    "company_services": {
+                        "New Company - PT PMA": {"name": "New Company - PT PMA", "price": "Rp 20.000.000"}
+                    }
+                },
+            },
+        )
+        assert texts and "PT PMA" in texts[0]
+
+    def test_absent_pricing_block_contributes_nothing(self) -> None:
+        assert wpb_module._pricing_evidence_texts(None) == []
+        assert wpb_module._pricing_evidence_texts({"results": {}}) == []
 
 
 # ============================================================================
