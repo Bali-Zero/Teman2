@@ -1,9 +1,13 @@
 ---
 name: bz-video-production
-description: Use when creating or iterating Bali Zero Morning News video production workflows, including Google Flow prompts, Zantara character consistency, studio environments, voice choices, and post-production handoff.
+description: "Use when creating/iterating Bali Zero Morning News video workflows: Google Flow prompts, Zantara character consistency, studio environments, voice choices, post-production handoff."
 metadata:
   short-description: Bali Zero video production workflow
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Full framing: "video production workflows, including...and post-production handoff."
 
 # Skill: Bali Zero Video Production (Gemini Agent)
 

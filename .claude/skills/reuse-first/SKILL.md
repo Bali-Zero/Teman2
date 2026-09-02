@@ -1,8 +1,12 @@
 ---
 name: reuse-first
-description: Use BEFORE implementing/building/writing-from-scratch any non-trivial component (queue, OCR, adapter, entity-resolution, review-UI, scraper, parser, etc.). Codifies "search for working code others already wrote before writing your own — adapt, don't reinvent". TRIGGER on every "implementa / costruisci / scrivi da zero / build / let's add X" where X is a buildable component, not a one-liner. Born from a real session where searching GitHub revealed ~70% of a document-intake system was already written by others (text-extract-api, paperless-gpt, pgqueuer, splink, instructor).
+description: "Use BEFORE implementing/building any non-trivial component (queue, OCR, adapter, review-UI, scraper, parser). TRIGGER on 'implementa/costruisci/build X'. Search before writing — adapt, don't reinvent."
 allowed-tools: Read, Edit, Write, Bash, WebSearch, WebFetch
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Full trigger set: 'implementa / costruisci / scrivi da zero / build / let's add X' where X is a buildable component, not a one-liner. Born from a real session where searching GitHub revealed ~70% of a document-intake system was already written by others (text-extract-api, paperless-gpt, pgqueuer, splink, instructor).
 
 > **CANON**: repo `.claude/` (vendored 2026-07-17, PR process-toolkit SSOT) — shadows the `~/.claude/` HOME copy. Edit HERE, never in `$HOME`. Pro/Mini shadow it on `git pull`.
 

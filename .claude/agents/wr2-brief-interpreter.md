@@ -1,6 +1,6 @@
 ---
 name: wr2-brief-interpreter
-description: MUST BE USED by wr2-design-architect at Step 2 of every carousel run. Use IMMEDIATELY when orchestrator passes a topic + research report. Queries NotebookLM Bali Zero NBs (NB-1/4/5/INTEL) for ground-truth regulatory facts, returns structured brief JSON with key facts, key numbers, audience segment, regulatory citations verbatim, bilingual lexicon list (with English assist for body explanation), taboo notes, archetype recommendation, voice register. Output is the contract that downstream workers (storyboarder, layout-composer, critic) consume verbatim — every field is load-bearing.
+description: "MUST BE USED by wr2-design-architect at Step 2 of every carousel run. Use IMMEDIATELY when orchestrator passes a topic + research report. Queries NotebookLM (NB-1/4/5/INTEL) for ground-truth facts, returns structured brief JSON."
 tools: Read, Glob, Grep, Bash, WebFetch
 disallowedTools: Write, Edit
 model: sonnet
@@ -8,6 +8,10 @@ color: pink
 skills:
   - bali-zero-brand
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Brief JSON fields: key facts, key numbers, audience segment, regulatory citations verbatim, bilingual lexicon (with English assist for body explanation), taboo notes, archetype recommendation, voice register. Downstream consumers (storyboarder, layout-composer, critic) treat every field as load-bearing. Output is the contract downstream workers (storyboarder, layout-composer, critic) consume verbatim.
 
 > CANON: repo .claude/agents/ (vendored 2026-07-16, shadows ~/.claude/agents copy — do not edit the HOME copy).
 

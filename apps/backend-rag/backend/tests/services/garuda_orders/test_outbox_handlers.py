@@ -41,12 +41,23 @@ from backend.services.garuda_orders.outbox_handlers import (
 )
 from backend.tests.fixtures.prod_shaped_pool import create_prod_shaped_pool
 
-# `_seed_full_case` is imported rather than re-implemented ON PURPOSE. Seeding a
-# usable case means check -> order -> journal -> practice PLUS an active
-# GARUDA_CHECK retention policy, because `garuda_voa_check_results` is
-# fail-closed by trigger. A second copy of that would drift from the first, and
-# this suite would start proving something the adapter suite no longer does.
-from backend.tests.services.garuda_ops.test_adapters_pg import _seed_full_case
+# `_seed_full_case` and `_reset_suite_rows` are imported rather than
+# re-implemented ON PURPOSE. Seeding a usable case means check -> order ->
+# journal -> practice PLUS an active GARUDA_CHECK retention policy, because
+# `garuda_voa_check_results` is fail-closed by trigger. A second copy of
+# either would drift from the first, and this suite would start proving
+# something the adapter suite no longer does — which is exactly what had
+# already happened to the cleanup half: this file's `pool` fixture used to
+# carry its own hand-copied TRUNCATE/DELETE block with no post-yield call,
+# so the release-job tests below (which mint real `practices` rows keyed to
+# `visa_b1_voa` via `PostgresCrmWriter`) could leave the LAST such row
+# committed for whatever runs next on this worker. See `_reset_suite_rows`'s
+# docstring for the cross-file FK violation that caused
+# (`test_migration_303_voa_price_roundtrip.py`'s DELETE on the same code).
+from backend.tests.services.garuda_ops.test_adapters_pg import (
+    _reset_suite_rows,
+    _seed_full_case,
+)
 
 _DSN = (
     os.environ.get("GARUDA_L3_TEST_DSN")
@@ -78,26 +89,17 @@ async def pool():
         # connection error if that assumption ever stops being true.
         raise
     try:
-        async with p.acquire() as conn:
-            await conn.execute(
-                "TRUNCATE garuda_practices, garuda_order_outbox, "
-                "garuda_order_journal, garuda_orders, garuda_voa_check_results "
-                "CASCADE"
-            )
-            # The weld tests below write real CRM rows, so this fixture has to
-            # clean the CRM side too. Order matters and the second delete is
-            # not redundant: the first clears what the adapter wrote (every
-            # such row carries a key), the second clears any NULL-key row the
-            # first cannot see, and both must precede the client delete or
-            # `practices_client_id_fkey` rejects it — the same teardown trap
-            # `test_adapters_pg.py`'s fixture documents.
-            await conn.execute("DELETE FROM practices WHERE source_idempotency_key IS NOT NULL")
-            await conn.execute(
-                "DELETE FROM practices WHERE client_id IN "
-                "(SELECT id FROM clients WHERE email LIKE '%@example.invalid')"
-            )
-            await conn.execute("DELETE FROM clients WHERE email LIKE '%@example.invalid'")
+        # The weld tests below write real CRM rows (via `PostgresCrmWriter`,
+        # every such row carries a key), so cleanup has to reach the CRM side
+        # too, not just this file's own garuda_* tables — exactly what
+        # `_reset_suite_rows` already does for `test_adapters_pg.py`. Called
+        # both before AND after the yield: the second call is what closes the
+        # cross-file leak (see that function's docstring) — without it, the
+        # LAST release-job test in this file left a `practices` row keyed to
+        # `visa_b1_voa` committed for whatever ran next on this worker.
+        await _reset_suite_rows(p)
         yield p
+        await _reset_suite_rows(p)
     finally:
         await p.close()
 
@@ -506,6 +508,16 @@ def test_build_handlers_routes_practice_release() -> None:
         "practice_release",
         "practice_received_email",
         "portal_invite",
+        # step 8 (round 3, item E): the 7 staff-transition customer emails,
+        # `staff_transitions.py::apply_transition`'s own job_type if/elif
+        # chain — see that module and PracticeTransitionEmailHandler above.
+        "practice_in_review_email",
+        "practice_blocked_email",
+        "practice_submitted_email",
+        "practice_approved_email",
+        "practice_rejected_email",
+        "practice_resumed_email",
+        "practice_delivered_email",
     }
     assert isinstance(handlers["practice_release"], PracticeReleaseHandler)
 

@@ -443,3 +443,144 @@ def test_a_final_frame_without_a_trailing_newline_is_not_lost(monkeypatch):
     )
     assert status == 200, "the unterminated final frame carried finish_reason"
     assert extract_answer(full)[0] == "body"
+
+
+# ------------------------------------- scrub-before-parse regression (2026-09-02)
+#
+# scrub() is applied to RAW HTTP transport text — a JSON transport envelope —
+# BEFORE json.loads() ever sees it. scrub()'s generic 24+-char pattern rewrites
+# a JSON KEY in place (a live TP1 "usage" object's "completion_tokens_details"
+# is 26 chars) and its Bearer-plus-nonspace clause has no notion of JSON
+# syntax: it eats straight through a closing quote and the next field's key
+# the moment an answer merely CONTAINS the word "Bearer" — a plausible thing
+# for a technical answer to say. GUILT tests below prove such a body still
+# parses post-fix; the INNOCENCE test proves a real secret value still never
+# reaches an emitted string.
+
+
+def test_stream_success_body_is_raw_not_prescrubbed(monkeypatch):
+    """GUILT: an answer ending in "Bearer <word>" is the exact shape that
+    broke json.loads() pre-fix. scrub()'s Bearer-plus-nonspace clause is
+    greedy and \\S includes '"' and ',' — it does not stop at the closing
+    quote of "content", it eats straight through it and the following
+    ", "reasoning_content"" boundary too, corrupting the JSON envelope
+    (confirmed live: pre-fix this exact body raises
+    `json.JSONDecodeError: Expecting ',' delimiter`). Post-fix it must still
+    parse, and extract_answer must return the answer text UNCHANGED — parsing
+    is not an output boundary, so no redaction happens here."""
+    status, full, _ = _stream(
+        monkeypatch,
+        [_frame(content="Use a Bearer token"), _DONE],
+    )
+    assert status == 200
+    json.loads(full)  # must not raise — this is what broke pre-fix
+    answer, warning, error = extract_answer(full)
+    assert error is None
+    assert answer == "Use a Bearer token"
+
+
+class _FakeNoStreamResponse:
+    """Serves a complete, non-streamed HTTP response — no read1()/SSE framing,
+    just .status and a single .read()."""
+
+    def __init__(self, body_bytes: bytes, status: int = 200):
+        self._body = body_bytes
+        self.status = status
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def read(self):
+        return self._body
+
+
+def test_no_stream_success_body_is_raw_not_prescrubbed(monkeypatch):
+    """GUILT, --no-stream transport: a real TP1 response shape — a "usage"
+    object carrying "completion_tokens_details" (26 chars, past scrub()'s
+    generic 24-char threshold) AND an answer ending in "Bearer token" (the
+    exact shape confirmed live to raise `json.JSONDecodeError: Expecting ','
+    delimiter` pre-fix, scrub()'s Bearer clause eating through the closing
+    quote of "content") — must still parse via no_stream_chat_completion +
+    extract_answer, with the answer text coming back unchanged."""
+    import tp1_call
+
+    payload = {
+        "choices": [
+            {
+                "message": {
+                    "content": "Use a Bearer token",
+                    "reasoning_content": "",
+                },
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": {
+            "prompt_tokens": 55,
+            "completion_tokens_details": {"reasoning_tokens": 5, "text_tokens": 10},
+        },
+    }
+    raw = json.dumps(payload).encode("utf-8")
+    monkeypatch.setattr(
+        tp1_call.urllib.request,
+        "urlopen",
+        lambda req, timeout=None: _FakeNoStreamResponse(raw),
+    )
+    status, full, _ = tp1_call.no_stream_chat_completion(
+        "https://example.invalid/v1/chat/completions", {}, {"model": "m"}, 60.0, ["tok"]
+    )
+    assert status == 200
+    json.loads(full)  # must not raise — this is what broke pre-fix
+    answer, warning, error = extract_answer(full)
+    assert error is None
+    assert answer == "Use a Bearer token"
+
+
+def test_no_stream_error_path_is_still_scrubbed(monkeypatch):
+    """A non-200 body is never parsed as JSON, so it keeps the old
+    always-scrubbed contract — the fix only changes the HTTP-200 case."""
+    import tp1_call
+
+    monkeypatch.setattr(
+        tp1_call.urllib.request,
+        "urlopen",
+        lambda req, timeout=None: _FakeNoStreamResponse(
+            b'{"error": "token sk-abcdefgh12345678 is invalid"}', status=500
+        ),
+    )
+    status, full, tail = tp1_call.no_stream_chat_completion(
+        "https://example.invalid/v1/chat/completions", {}, {"model": "m"}, 60.0, []
+    )
+    assert status == 500
+    assert "sk-abcdefgh12345678" not in full
+    assert "sk-abcdefgh12345678" not in tail
+    assert "<REDACTED>" in full
+
+
+def test_secret_value_never_reaches_stdout_or_stderr(monkeypatch, capsys):
+    """INNOCENCE, end-to-end via main(): a secret VALUE present in the body —
+    here the loaded credential itself, echoed back into the answer, the
+    single most damaging leak this script could produce — must never survive
+    to stdout or stderr, even though full_body is now RAW through the parse.
+    Assert on what actually leaves the process, not on an internal variable."""
+    import tp1_call
+
+    SECRET = "sk-totally-fake-secret-value-1234567890"  # pragma: allowlist secret
+    monkeypatch.setattr(tp1_call, "load_tp1_settings_key", lambda: (SECRET, None))
+    monkeypatch.setattr(
+        tp1_call.urllib.request,
+        "urlopen",
+        lambda req, timeout=None: _FakeResponse(
+            [_frame(content=f"the task is done, credential was {SECRET}"), _DONE]
+        ),
+    )
+    exit_code = tp1_call.main(
+        ["--model", "qwen3.8-max", "-p", "hi", "--effort", "low"]
+    )
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert SECRET not in captured.out
+    assert SECRET not in captured.err
+    assert "the task is done" in captured.out
