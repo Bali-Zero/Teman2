@@ -46,7 +46,7 @@ export function KBLIPersonaDoors() {
         {DOORS.map(({ id, icon: Icon, label, subtext }) => (
           <a
             key={id}
-            href="#kbli-search"
+            href="#search"
             onClick={() => handleDoorClick(id)}
             className="block p-4 rounded-xl transition-all duration-200 cursor-pointer no-underline bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.07)] hover:bg-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.12)]"
           >

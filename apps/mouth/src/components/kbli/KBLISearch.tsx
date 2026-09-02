@@ -53,6 +53,14 @@ export function KBLISearch({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Focus after hydration instead of via the HTML autofocus attribute. The
+  // attribute is present in the server-rendered markup, so the browser focuses
+  // the input while parsing and scrolls to it — which skipped the page hero on
+  // every first visit. preventScroll keeps the caret without moving the page.
+  React.useEffect(() => {
+    if (autoFocus) inputRef.current?.focus({ preventScroll: true });
+  }, [autoFocus]);
+
   // Close dropdown when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -175,7 +183,6 @@ export function KBLISearch({
           onFocus={() => query.length >= 2 && setIsOpen(true)}
           placeholder={placeholder}
           aria-label={placeholder || "Search KBLI"}
-          autoFocus={autoFocus}
           className={cn(
             "w-full pl-12 pr-10 py-4 bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl text-white placeholder-zinc-500",
             "shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)]",
