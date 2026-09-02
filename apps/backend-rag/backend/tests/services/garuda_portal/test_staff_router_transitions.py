@@ -120,6 +120,10 @@ async def _close_garuda_order_test_policy(conn: asyncpg.Connection, policy_versi
 
 @pytest.fixture
 async def pool():
+    # `pytest.fail`/`pytest.skip` both raise, but a static analyser cannot
+    # know that (CodeQL py/uninitialized-local-variable on PR #5584): keep the
+    # binding explicit so the control flow is provable, not just true.
+    p: asyncpg.Pool | None = None
     try:
         p = await asyncpg.create_pool(
             dsn=_DSN, min_size=1, max_size=2, init=init_asyncpg_connection
@@ -133,6 +137,7 @@ async def pool():
                 f"silently pass by skipping."
             )
         pytest.skip(f"no local Postgres reachable at {_DSN}: {exc}")
+    assert p is not None
     async with p.acquire() as conn:
         await conn.execute(
             "TRUNCATE garuda_practices, garuda_order_outbox, garuda_order_journal, "
