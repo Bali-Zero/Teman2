@@ -1,5 +1,5 @@
 gear: 3
-brief_ref: evidence/2026-09/agent-nuzantara-infra-dependabot-lock-pairing-ga-63a3b784/brief.yml
+brief_ref: evidence/brief.yml
 council_run: council-journal.jsonl
 lanes:
   - lane: build
