@@ -1,0 +1,68 @@
+{
+  "schema_version": "wr3.camera-probe-canary-verdict.v1",
+  "recorded_at_utc": "2026-09-02T00:24:08Z",
+  "episode_id": "S01E13",
+  "probe_id": "M02-v05",
+  "source": {
+    "pro_path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/clips/105.mp4",
+    "operator_copy": "/Users/balizero/Desktop/What Your Residency Permit Does Not Come With.mp4",
+    "sha256": "bce06c5371dd96b0d63a4cc98b09f9ab41473c4a65f400d58b4ea9cda016bfe9",
+    "bytes": 3118995,
+    "immutable_during_qa": true
+  },
+  "input_reports": {
+    "visual_identity": {
+      "path": "m02-v05-visual-identity-qa.json",
+      "sha256": "62e1984a5d76a00847f3e87997e8f71c83178b1f5c17841e99b4a682a1b2db52",
+      "verdict": "FAIL"
+    },
+    "native_audio": {
+      "path": "m02-v05-native-audio-qa.json",
+      "sha256": "1b25a9f5f81027df270c99473bf676c07bf9a92dbeac7ce2aa714410cf16154b",
+      "verdict": "FAIL"
+    }
+  },
+  "dimension_verdicts": {
+    "structural_media": "PASS",
+    "identity": "FAIL",
+    "composition": "PASS",
+    "accidental_text_ui_borders_reflections_visual_check": "PASS",
+    "locked_camera": "FAIL",
+    "inertia_stop_metaphor": "FAIL",
+    "silent_subject": "PASS",
+    "spoken_lip_sync": "NOT_APPLICABLE",
+    "audio_video_structural_sync": "PASS",
+    "native_audio_loudness": "FAIL",
+    "native_audio_true_peak": "FAIL",
+    "native_audio_content_match": "FAIL",
+    "native_audio_timbre_continuity": "FAIL"
+  },
+  "decisive_evidence": {
+    "arcface_average": 0.6295210003852845,
+    "arcface_minimum": 0.5496073961257935,
+    "arcface_hard_floor": 0.55,
+    "arcface_hard_floor_pass": false,
+    "camera_background_median_dy_px_per_0_25s": 4.278087596065575,
+    "camera_background_cumulative_dy_px": 125.58660720335948,
+    "integrated_loudness_lufs": -17.8,
+    "target_loudness_lufs": -14.0,
+    "true_peak_dbtp": -0.16,
+    "true_peak_maximum_dbtp": -1.0,
+    "spectral_energy_below_300_hz_percent": 86.41
+  },
+  "overall_verdict": "FAIL",
+  "next_gate": "CANARY_REVIEW_REQUIRED",
+  "automatic_retry_allowed": false,
+  "authorization_required_before_any_new_generation": true,
+  "execution_counters": {
+    "generation_jobs": 0,
+    "retries": 0,
+    "extensions": 0,
+    "upscales": 0,
+    "flow_credits_spent": 0,
+    "media_edits": 0,
+    "publishes": 0,
+    "deploys": 0,
+    "outward_messages": 0
+  }
+}

@@ -1,0 +1,212 @@
+{
+  "schema_version": "wr3.camera-probe-native-audio-qa.v1",
+  "recorded_at": "2026-09-02T00:19:48Z",
+  "gate": "E13_M02_V05_CLIP_QA_REQUIRED",
+  "scope": "native-audio QA evidence for the existing immutable M02-v05 MP4 only",
+  "source": {
+    "path_on_pro": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/clips/105.mp4",
+    "sha256_before_and_after_qa": "bce06c5371dd96b0d63a4cc98b09f9ab41473c4a65f400d58b4ea9cda016bfe9",
+    "bytes": 3118995,
+    "mtime_local": "2026-08-31T07:22:38+0800",
+    "modified_by_qa": false
+  },
+  "expected_audio": {
+    "source_prompt": "A007 Zantara completes her current step into stillness; blouse fabric continues briefly from inertia. Locked camera, soft daylight, unobstructed face, native room tone, silent subject.",
+    "spoken_dialogue": false,
+    "content": "native room tone",
+    "audio_mode": "native-dub-safe-ambient"
+  },
+  "contract_thresholds": {
+    "integrated_loudness_target_lufs": -14.0,
+    "integrated_loudness_pass_window_lufs": [
+      -15.0,
+      -13.0
+    ],
+    "loudness_fallback_condition": "absolute delta from -14 LUFS greater than 5 LUFS",
+    "true_peak_target_dbtp": -1.0,
+    "structural_av_sync_threshold": "audio/video start delta <= one 24 fps frame (0.041667 s) and duration delta <= one frame",
+    "silent_subject_threshold": "zero intelligible lexical words at token probability >= 0.50",
+    "intra_clip_timbre_outlier_threshold": "adjacent 0.5 s MFCC cosine distance greater than median + 5 MAD; analytical QA threshold, not a WR3 contract threshold"
+  },
+  "toolchain": {
+    "host": "nuzantara@Nuzantara",
+    "ffmpeg": "8.1",
+    "ffprobe": "8.1",
+    "whisper_cli_sha256": "ff6403f6443809e89b2fdb7b63ae2fe4f272602e97cde67736a0f395c81da400",
+    "whisper_model": "/Users/nuzantara/models/whisper/ggml-large-v3-turbo.bin",
+    "whisper_model_sha256": "1fc70f774d38eb169993ac391eea357ef47c88757ef72ee5943879b7e8e2bc69"
+  },
+  "stream_probe": {
+    "audio_present": true,
+    "codec": "aac",
+    "profile": "LC",
+    "sample_format": "fltp",
+    "sample_rate_hz": 48000,
+    "channels": 2,
+    "channel_layout": "stereo",
+    "bit_rate_bps": 139932,
+    "start_time_s": 0.0,
+    "duration_s": 8.0,
+    "audio_packets": 377,
+    "video_start_time_s": 0.0,
+    "video_duration_s": 8.0,
+    "video_frames": 192,
+    "video_fps": 24.0,
+    "decode_exit_code": 0
+  },
+  "loudness": {
+    "gate_analyzer": "ffmpeg loudnorm=I=-14:TP=-1.0:LRA=11:print_format=json",
+    "input_i_lufs": -17.8,
+    "input_tp_dbtp": -0.16,
+    "input_lra_lu": 6.0,
+    "input_threshold_lufs": -28.46,
+    "delta_from_target_lufs": -3.8,
+    "normalize_required_under_contract": true,
+    "fallback_required_under_contract": false,
+    "normalization_performed": false,
+    "secondary_ebur128_integrated_lufs": -19.0,
+    "secondary_ebur128_lra_lu": 5.0,
+    "secondary_ebur128_true_peak_dbtp": -0.2,
+    "mean_volume_dbfs": -20.5,
+    "max_sample_peak_dbfs": -0.2,
+    "absolute_sample_peak_time_s": 7.9823125,
+    "samples_at_or_above_minus_1_dbfs": 33,
+    "samples_at_or_above_minus_0_5_dbfs": 13
+  },
+  "channel_integrity": {
+    "left_rms_dbfs": -20.93622422251503,
+    "right_rms_dbfs": -20.190220307120047,
+    "left_minus_right_rms_db": -0.7460039153949815,
+    "stereo_correlation": 0.4746836672920459
+  },
+  "dialogue_and_content": {
+    "whisper_transcription_raw": " .",
+    "intelligible_lexical_word_count": 0,
+    "only_nonblank_token": {
+      "text": " .",
+      "probability": 0.0305257
+    },
+    "sampled_visual_frames": 16,
+    "sample_rate_fps": 2,
+    "open_or_articulating_mouth_visible_in_sample": false,
+    "silence_events_at_minus_45_db_for_0_20_s": 0,
+    "spectral_flatness_mean": 0.000014226022015391658,
+    "spectral_centroid_mean_hz": 765.154224306588,
+    "spectral_rolloff_85_mean_hz": 1281.005859375,
+    "energy_ratio_below_80_hz": 0.3240934352401276,
+    "energy_ratio_80_to_300_hz": 0.5400136612825781,
+    "energy_ratio_300_to_3400_hz": 0.1354662251890421,
+    "energy_ratio_3400_to_16000_hz": 0.0004266750797834521,
+    "content_diagnosis": "No intelligible speech. The signal is dominated by a strongly tonal low-frequency bed: 86.41% of measured energy is below 300 Hz, the spectral flatness is extremely low, level rises materially through the clip, and an endpoint transient reaches -0.16 dBFS. This is not a safe match for the requested quiet room-tone-only bed. No semantic sound classifier was used."
+  },
+  "timbre_continuity": {
+    "scope": "intra-clip only; cross-clip continuity is not assessable from one clip",
+    "window_s": 0.5,
+    "adjacent_mfcc_cosine_distance_median": 0.0011640099371988955,
+    "adjacent_mfcc_cosine_distance_mad": 0.0007958312837252901,
+    "outlier_threshold": 0.005143166355825346,
+    "flagged_transition_starts_s": [
+      1.5,
+      2.0,
+      5.5,
+      7.5
+    ],
+    "half_second_rms_dbfs": [
+      -40.92,
+      -44.64,
+      -48.32,
+      -27.18,
+      -22.84,
+      -22.83,
+      -22.58,
+      -25.78,
+      -27.95,
+      -25.03,
+      -26.23,
+      -20.24,
+      -19.4,
+      -18.32,
+      -20.19,
+      -15.09
+    ],
+    "endpoint_transient": {
+      "start_s": 7.98,
+      "peak_dbfs": -0.16
+    }
+  },
+  "audio_video_sync": {
+    "audio_video_start_delta_s": 0.0,
+    "audio_video_duration_delta_s": 0.0,
+    "structural_clock_sync": "PASS",
+    "dialogue_lip_sync": "NOT_APPLICABLE",
+    "dialogue_lip_sync_reason": "The source prompt requires a silent subject; Whisper found zero intelligible words and the 16-frame 2 fps visual sample shows a closed, non-articulating mouth.",
+    "exploratory_macro_event_zero_lag_correlation": 0.22468806856953963,
+    "exploratory_macro_event_best_absolute_correlation": 0.2389381836668433,
+    "exploratory_macro_event_best_lag_s": 0.625,
+    "macro_event_sync_use": "INCONCLUSIVE; no declared dialogue or discrete required sound event exists, so this exploratory correlation is not used as a pass gate"
+  },
+  "verdicts": {
+    "embedded_audio_presence": "PASS",
+    "decode_integrity": "PASS",
+    "duration_sample_rate_channels": "PASS",
+    "stereo_channel_integrity": "PASS",
+    "integrated_loudness_raw": "FAIL",
+    "true_peak_headroom_raw": "FAIL",
+    "silent_subject_no_dialogue": "PASS",
+    "quiet_room_tone_content_match": "FAIL",
+    "intra_clip_timbre_continuity": "FAIL",
+    "cross_clip_timbre_continuity": "NOT_APPLICABLE",
+    "audio_video_structural_sync": "PASS",
+    "spoken_lip_sync": "NOT_APPLICABLE",
+    "overall_native_audio_qa": "FAIL"
+  },
+  "decision": {
+    "clip_audio_gate": "FAIL",
+    "reason": "The immutable source contains valid native AAC audio and is structurally synchronized, but raw integrated loudness is outside the WR3 pass window, true peak exceeds the -1 dBTP target, the strongly tonal/rising bed is not a safe match for quiet room tone, and robust intra-clip timbre outliers include an endpoint transient.",
+    "pipeline_action_if_not_qa_only": "WR3 contract would request a loudnorm corrective pass because the loudness is outside [-15,-13] but not more than 5 LUFS from target. This QA-only task performed no normalization and did not invoke fallback.",
+    "tts_generated": false,
+    "audio_replaced": false,
+    "music_added": false,
+    "flow_calls": 0,
+    "credits_spent": 0,
+    "publication_or_deploy": false
+  },
+  "evidence_on_pro": [
+    {
+      "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/execution/audio-qa-m02-v05/105-native-audio.pcm-s16le-48k-stereo.wav",
+      "sha256": "bfcb52aaad7e612f400bf91789b3593530c47b36dbace07dbef209f947665e22",
+      "bytes": 1536078
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/execution/audio-qa-m02-v05/105-native-audio-copy.m4a",
+      "sha256": "dcf4d8c9d2253c6fe171e9bc7fbc8459926d317969ec1dda4ae21d47bb19f1c4",
+      "bytes": 142983
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/execution/audio-qa-m02-v05/105-whisper-large-v3-turbo.json",
+      "sha256": "b9cee3859b021b4e83ad72fd9b91ae521582b43c5e522338fdec4d3d0b65a5c4",
+      "bytes": 1558
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/execution/audio-qa-m02-v05/105-waveform.png",
+      "sha256": "76835d53c80bd5341d16971c5e00f299d4ce645a36b9274d1a4b335c7696bbed",
+      "bytes": 14098
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/execution/audio-qa-m02-v05/105-spectrogram.png",
+      "sha256": "2af02de0498c3e54a1f8535c4ef292b7f6837cff2df4268c79f208c2a2a6dbc1",
+      "bytes": 1584198
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/execution/audio-qa-m02-v05/105-av-contact-sheet-2fps.png",
+      "sha256": "f05fda1d7b2c553e5f84b68ef8201b3f9fcc1bb7e0b2eda440c00662028d3376",
+      "bytes": 2918637
+    }
+  ],
+  "limitations": [
+    "The gate concerns one isolated clip, so cross-clip voice or ambience timbre continuity cannot be measured.",
+    "The source intentionally contains no dialogue; spoken lip-sync is therefore not applicable. Structural A/V clock sync is measurable and passed.",
+    "No semantic audio-event classifier was invoked. The quiet-room-tone content verdict is a conservative signal-analysis verdict supported by Whisper, spectrogram, energy distribution, level trajectory, and endpoint peak evidence.",
+    "The WR3 extractor was not executed because it would normalize vo.wav and copy into the voice corpus. This task was evidence-only and prohibited audio replacement or fallback."
+  ]
+}

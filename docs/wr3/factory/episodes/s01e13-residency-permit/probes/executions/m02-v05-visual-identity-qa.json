@@ -1,0 +1,184 @@
+{
+  "schema_version": "wr3.m02.visual_identity_qa.v1",
+  "created_at_utc": "2026-09-02T00:19:10Z",
+  "gate": "E13_M02_V05_CLIP_QA_REQUIRED",
+  "scope": "visual_and_identity_only",
+  "immutable_source": {
+    "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/clips/105.mp4",
+    "sha256_before_qa": "bce06c5371dd96b0d63a4cc98b09f9ab41473c4a65f400d58b4ea9cda016bfe9",
+    "sha256_after_qa": "bce06c5371dd96b0d63a4cc98b09f9ab41473c4a65f400d58b4ea9cda016bfe9",
+    "size_bytes": 3118995,
+    "mtime": "2026-08-31T07:22:38+0800",
+    "media_probe": {
+      "duration_seconds": 8.0,
+      "video_codec": "h264",
+      "width": 720,
+      "height": 1280,
+      "frame_rate": "24/1",
+      "audio_codec": "aac",
+      "audio_sample_rate_hz": 48000,
+      "audio_channels": 2
+    }
+  },
+  "identity_reference": {
+    "anchor_image": {
+      "path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+      "sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+      "dimensions": "1402x1122"
+    },
+    "anchor_embedding": {
+      "path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/ingredients/zantara-anchor-A007.embedding.npy",
+      "sha256": "6825bdcabb2d6a95c51aeeba90bc7e89f8097b37f4fd6f3ffee0f29ebe42c78c",
+      "shape": [512],
+      "dtype": "float32"
+    }
+  },
+  "arcface_gate": {
+    "implementation": {
+      "worktree_source": "/Users/balizero/nuzantara/.worktrees/wr3-zantara-video-factory-v3/scripts/wr3_arcface_verify.py",
+      "pro_executable_copy": "/tmp/wr3_arcface_verify-e13-m02-v05.py",
+      "sha256": "1fa81a7154dce7a6c570a8cad0199671dceedf343d720fd96a3ad4dbf3138b81",
+      "python": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+      "python_version": "3.11.11",
+      "insightface_version": "0.7.3",
+      "opencv_version": "4.13.0",
+      "numpy_version": "2.4.6",
+      "model": "buffalo_l",
+      "execution_provider": "CPUExecutionProvider",
+      "mock_mode": false
+    },
+    "thresholds": {
+      "average_cosine_minimum": 0.6,
+      "per_frame_hard_floor": 0.55,
+      "canonical_sample_count": 5,
+      "rule": "PASS only when average >= 0.60 and minimum >= 0.55 with real samples"
+    },
+    "canonical_command": "scp scripts/wr3_arcface_verify.py pro:/tmp/wr3_arcface_verify-e13-m02-v05.py && ssh pro 'cd /Users/nuzantara/nuzantara && WR3_PRODUCTION=true WR3_ARCFACE_MOCK=false WR3_ARCFACE_SAMPLES=5 WR3_ARCFACE_MIN_COSINE=0.6 WR3_ARCFACE_HARD_FAIL=0.55 WR3_ARCFACE_ANCHOR=/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/ingredients/zantara-anchor-A007.embedding.npy /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -c \"import importlib.util,pathlib; p=pathlib.Path(\\\"/tmp/wr3_arcface_verify-e13-m02-v05.py\\\"); s=importlib.util.spec_from_file_location(\\\"wr3_arcface_verify_e13\\\",p); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); e=pathlib.Path(\\\"/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary\\\"); m.verify_clips_dir(e/\\\"clips\\\",e)\"'",
+    "canonical_exit_code": 1,
+    "canonical_exception": "IdentityHardFailError: identity hard-fail: overall_min=0.550 < threshold 0.55 — episode HALTED",
+    "canonical_report": {
+      "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/identity-report.json",
+      "sha256": "8ca6b08ca062a8fb1f1d0a701b87834ef2399f836162c2bccd976353b21e13f5",
+      "overall_cosine_avg": 0.6295210003852845,
+      "overall_cosine_min": 0.5496073961257935,
+      "clips_passed": 0,
+      "clips_failed": 1,
+      "hard_fail_triggered": true,
+      "samples_per_clip": 5,
+      "sample_frame_indices": [0, 38, 76, 114, 152],
+      "verdict": "FAIL"
+    },
+    "expanded_diagnostic": {
+      "purpose": "diagnostic coverage only; does not replace or relax the canonical five-frame gate",
+      "sample_frame_indices": [0, 21, 42, 63, 84, 105, 126, 147, 168],
+      "cosine_avg": 0.6330677072207133,
+      "cosine_min": 0.5797848701477051,
+      "samples": [
+        {"frame": 0, "time_seconds": 0.0, "cosine": 0.7294813990592957, "face_count": 1, "detection_score": 0.8812286257743835, "sample_sets": ["canonical", "expanded"]},
+        {"frame": 21, "time_seconds": 0.875, "cosine": 0.6921836733818054, "face_count": 1, "detection_score": 0.8804346919059753, "sample_sets": ["expanded"]},
+        {"frame": 38, "time_seconds": 1.5833333333333333, "cosine": 0.6383990049362183, "face_count": 1, "detection_score": 0.9129572510719299, "sample_sets": ["canonical"]},
+        {"frame": 42, "time_seconds": 1.75, "cosine": 0.6271606683731079, "face_count": 1, "detection_score": 0.9121975302696228, "sample_sets": ["expanded"]},
+        {"frame": 63, "time_seconds": 2.625, "cosine": 0.6311228275299072, "face_count": 1, "detection_score": 0.9148505926132202, "sample_sets": ["expanded"]},
+        {"frame": 76, "time_seconds": 3.1666666666666665, "cosine": 0.6301672458648682, "face_count": 1, "detection_score": 0.9091627597808838, "sample_sets": ["canonical"]},
+        {"frame": 84, "time_seconds": 3.5, "cosine": 0.628098726272583, "face_count": 1, "detection_score": 0.9253048896789551, "sample_sets": ["expanded"]},
+        {"frame": 105, "time_seconds": 4.375, "cosine": 0.6274095773696899, "face_count": 1, "detection_score": 0.8959881663322449, "sample_sets": ["expanded"]},
+        {"frame": 114, "time_seconds": 4.75, "cosine": 0.5999499559402466, "face_count": 1, "detection_score": 0.8913873434066772, "sample_sets": ["canonical"]},
+        {"frame": 126, "time_seconds": 5.25, "cosine": 0.600644052028656, "face_count": 1, "detection_score": 0.8920485973358154, "sample_sets": ["expanded"]},
+        {"frame": 147, "time_seconds": 6.125, "cosine": 0.5817235708236694, "face_count": 1, "detection_score": 0.8702158331871033, "sample_sets": ["expanded"]},
+        {"frame": 152, "time_seconds": 6.333333333333333, "cosine": 0.5496073961257935, "face_count": 1, "detection_score": 0.891120970249176, "sample_sets": ["canonical"], "gate_breaking": true},
+        {"frame": 168, "time_seconds": 7.0, "cosine": 0.5797848701477051, "face_count": 1, "detection_score": 0.8838514089584351, "sample_sets": ["expanded"]}
+      ]
+    }
+  },
+  "holistic_visual_qa": {
+    "method": "manual high-detail inspection of two temporal contact sheets, a face contact sheet, anchor, opening, gate-breaking, and final frames; supported by ArcFace face counts and background phase-correlation motion measurement",
+    "limitations": [
+      "The repository records the holistic VLM executable as missing, so no fabricated VLM result is reported.",
+      "Tesseract was not installed on Pro; accidental-text assessment is visual rather than OCR-backed.",
+      "Audio content and audio-correlated lip synchronization are outside this lane; only visible mouth-motion plausibility for the specified silent subject is assessed.",
+      "No numeric WR3 locked-camera or inertia-metaphor threshold exists; those two verdicts use the shot contract's semantic requirement plus measured background translation."
+    ],
+    "motion_measurement": {
+      "command_summary": "OpenCV phaseCorrelate on the top 220 pixels of each pair of frames separated by 6 frames (0.25 s at 24 fps), 31 intervals total",
+      "interval_count": 31,
+      "median_dx_px_per_0_25s": 0.8767548184705447,
+      "median_dy_px_per_0_25s": 4.278087596065575,
+      "cumulative_dx_px": 23.38834872052189,
+      "cumulative_dy_px": 125.58660720335948,
+      "median_before_4s": {"dx_px_per_0_25s": 0.9354853978079518, "dy_px_per_0_25s": 4.281813382290082},
+      "median_after_4s": {"dx_px_per_0_25s": 0.8089652325884913, "dy_px_per_0_25s": 4.2744270691974435},
+      "interpretation": "Persistent scene/background translation continues after the midpoint instead of settling to a visibly locked frame. Direction is not treated as physical camera direction; persistence and magnitude are the relevant evidence."
+    },
+    "dimensions": {
+      "identity": {
+        "verdict": "FAIL",
+        "threshold": "canonical average >= 0.60 and canonical minimum >= 0.55",
+        "evidence": "Average 0.629521 passes, but frame 152 is 0.549607 and breaches the 0.55 hard floor."
+      },
+      "composition": {
+        "verdict": "PASS",
+        "criterion": "single centered subject, unobstructed face, coherent vertical editorial framing",
+        "evidence": "One centered subject remains readable against the stone architecture; face is unobstructed and one face is detected in every measured sample."
+      },
+      "accidental_text_ui_borders_reflections": {
+        "verdict": "PASS",
+        "criterion": "no accidental text, UI, overlays, letterboxing/borders, duplicate person, or reflection",
+        "evidence": "None is visible in the 2 fps and 4 fps full-frame contact sheets or inspected raw frames; assessment is visual, not OCR-backed."
+      },
+      "motion_locked_camera": {
+        "verdict": "FAIL",
+        "criterion": "locked camera throughout",
+        "evidence": "Background phase correlation shows persistent median translation of approximately (0.88, 4.28) pixels per 0.25 s, essentially unchanged before and after 4 s."
+      },
+      "intended_inertia_stop_metaphor": {
+        "verdict": "FAIL",
+        "criterion": "subject completes the current step into stillness while blouse fabric briefly continues from inertia",
+        "evidence": "The body partially settles, but ongoing scene translation prevents a clean stillness beat and the blouse-only residual inertia is not unambiguously distinguishable from ordinary settling."
+      },
+      "visual_lip_sync_plausibility": {
+        "verdict": "PASS",
+        "criterion": "silent subject should show no obvious speech-like mouth articulation",
+        "evidence": "Mouth remains closed or neutrally posed across the 32-frame face contact sheet; no obvious speech-like articulation is visible. This is not an audio-correlated sync verdict."
+      }
+    },
+    "overall_verdict": "FAIL"
+  },
+  "evidence": {
+    "pro_directory": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m02-video-canary/execution/visual-qa-evidence",
+    "contact_sheets": [
+      {"path": "contact-sheet-2fps.png", "sha256": "12cce3f556863ae12250bc43dfe2264580c89ccb1137861a089117470d2a7201", "dimensions": "1200x2132"},
+      {"path": "contact-sheet-4fps.png", "sha256": "9ddb8982e23d1615c1958131db006df5ce954a62df1b39452fdd85b33170ebcc", "dimensions": "1440x1280"},
+      {"path": "face-contact-sheet-4fps.png", "sha256": "160d64ac69fe4ccc4ba2ae318c1f65dfa29ebec64af4c70c7654c87a9122ad89", "dimensions": "1920x960"}
+    ],
+    "raw_frame_sha256": {
+      "000.png": "e3eb9ba630da0d3fd3c4c68ab8ef9afe6bef006a10a0ad47f5d4ef9c0ded43e3",
+      "021.png": "cf841d4e8894994c04ee002ec65ada8dec9c481262c086fd348de46f151227c1",
+      "038.png": "984439d96db6da6d7c0da203a6cacce4942bc5918738779c99650a57a4f4441f",
+      "042.png": "6ad0c946d3c196d7cf57cc19038b6d4be7c6575dbc617250f3b2b73c75514769",
+      "063.png": "a2bbd3f9eead1575372b76df19ff423f742acdad1b1fe77d13ac37e191d9ce02",
+      "076.png": "f82aee8da3a4ba3a097448b84792f290d06295b53ef11c0a4c2026b31c2d2773",
+      "084.png": "f85b387e933215e0e59ce2f1fb1a6de438adcc0f70269aa3e324cec72ecdb847",
+      "105.png": "4687c946f5d969b55371e6ae2db2621b8fbb4999b6048d7840c00aa828c5d481",
+      "114.png": "6673b08f8cda140ace71ee47c757273cf9c5fba462a686f290f0d67dba2015e1",
+      "126.png": "d0b5a9c5193ee10ff11a223475ed2d0426f639a09c7572ba7c097879702569e8",
+      "147.png": "9026f206d0ecb75c881a9bd35d1ea75de465647aa9b651d25bfbbd197e7627c1",
+      "152.png": "6e61f9d6bf2b1027f481f0f54c76e593a355665a9405d503ddffc00277d758f6",
+      "168.png": "4b723850621cabdb7305f12f0628828afc2ef4b64aa71ff253d3173e7baacb03",
+      "191.png": "1c5a50e54315d351577e37107e81e411df18d453fc4817884c4ed1ece78cd14b"
+    }
+  },
+  "safety_and_state": {
+    "generation_jobs_submitted": 0,
+    "retries": 0,
+    "extensions": 0,
+    "upscales": 0,
+    "credits_spent": 0,
+    "media_edits": 0,
+    "publishes": 0,
+    "deploys": 0,
+    "outward_messages": 0,
+    "factory_state_edited": false,
+    "commit_created": false,
+    "gate_resolution": "UNRESOLVED_FAIL"
+  }
+}
