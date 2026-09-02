@@ -3344,11 +3344,35 @@ def selftest() -> int:
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(yaml.safe_dump(obj, sort_keys=False), encoding="utf-8")
 
+    def write_journal(p: Path, entries: list[dict]) -> None:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(
+            "\n".join(json.dumps(e) for e in entries) + "\n", encoding="utf-8"
+        )
+
     good_receipt = {"claim": "tests pass", "cmd": "pytest -q", "exit": 0,
                      "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5"}
 
+    #: R9 quorum fixture — 2 DISTINCT COUNCIL_REVIEW_SEATS, role:review,
+    #: ok:true, ts present. Written once and reused by every Gear-3
+    #: innocence fixture below THAT ISN'T ITSELF TESTING R9 (dissent-shape,
+    #: hotzone-floor, ceiling gear_override): those fixtures need R9
+    #: satisfied like any real Gear-3 pack would, not bypassed — R9's own
+    #: `seat_override` escape is reserved for a genuine "we skipped the
+    #: council, here's why" human call (_r9_r11_verdict's docstring), which
+    #: none of these synthetic packs has, so a real journal is the honest
+    #: cure (added post-2026-09-02 R9_R11_ENFORCEMENT_DATE flip — see the
+    #: comment above that constant).
+    good_council_journal = [
+        {"seat": "codex-gpt-5.6-sol", "role": "review", "ok": True,
+         "ts": "2026-09-01T00:00:00Z"},
+        {"seat": "kimi-code/k3", "role": "review", "ok": True,
+         "ts": "2026-09-01T00:00:00Z"},
+    ]
+
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
+        write_journal(root / "evidence" / "council.jsonl", good_council_journal)
 
         # ---- unit-level: compute_floor is pure, test directly -------------
         check("compute_floor: hotzone hit -> 3",
@@ -3422,6 +3446,7 @@ def selftest() -> int:
             "receipts": [good_receipt],
             "dissent": [{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
             "pii_scan": "clean",
+            "council_run": "council.jsonl",
         })
         rc, viol = lint(root / "evidence" / "pack.yml", root, None)
         check("innocence: non-empty dissent on gear-3 passes", rc == 0 and viol == [])
@@ -3516,6 +3541,7 @@ def selftest() -> int:
             "receipts": [good_receipt],
             "dissent": [{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
             "pii_scan": "clean",
+            "council_run": "council.jsonl",
         })
         rc, viol = lint(root / "evidence" / "pack.yml", root, hotzone_changed)
         check("innocence: gear 3 on hotzone diff passes", rc == 0 and viol == [])
@@ -3554,6 +3580,7 @@ def selftest() -> int:
             "pii_scan": "clean",
             "council": True,
             "gear_override": "hotfix under active incident, verified live",
+            "council_run": "council.jsonl",
         })
         rc, viol = lint(root / "evidence" / "pack.yml", root, ["docs/x.md"])
         check("innocence: gear_override on the same diff passes (ceiling reports, not fails)",
@@ -3603,6 +3630,7 @@ def selftest() -> int:
             "receipts": [good_receipt],
             "dissent": [{"seat": "codex-sol", "objection": "x", "status": "CONFIRMED"}],
             "pii_scan": "clean",
+            "council_run": "council.jsonl",
         })
         rc, viol = lint(root / "evidence" / "pack.yml", root, None)
         check("innocence: fully-structured dissent entry passes", rc == 0 and viol == [])
