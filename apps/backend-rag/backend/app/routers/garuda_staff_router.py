@@ -34,7 +34,6 @@ from __future__ import annotations
 import logging
 import os
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
 from typing import Any
 
 import asyncpg
@@ -43,9 +42,15 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
 from backend.app.utils.logging_utils import sanitize_for_log
-from backend.services.garuda_orders import idempotency, journal
+from backend.services.garuda_orders import idempotency
 from backend.services.garuda_orders.idempotency import IdempotencyConflict
 from backend.services.garuda_portal.staff_auth import require_garuda_staff
+from backend.services.garuda_portal.staff_transitions import (
+    TRANSITIONS,
+    apply_transition,
+    validate_transition_body,
+    visible_or_403,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -221,13 +226,6 @@ def _staff_practice_view(row: asyncpg.Record) -> dict[str, Any]:
     return body
 
 
-def _visible_or_403(row: asyncpg.Record, actor: dict[str, Any]) -> None:
-    if actor["is_admin"]:
-        return
-    if (row["assigned_to"] or "").lower() != actor["email"]:
-        raise HTTPException(status_code=403, detail={"code": "ACCESS_DENIED", "retryable": False})
-
-
 #: Status codes each operation's own call sites (plus the router-level
 #: `_require_flag` dependency) can genuinely produce — same discipline as
 #: `garuda_orders_router.py::_OPERATION_STATUS_CODES` /`_status_responses`,
@@ -331,7 +329,7 @@ async def get_staff_practice(
         raise HTTPException(
             status_code=404, detail={"code": "PRACTICE_NOT_FOUND", "retryable": False}
         )
-    _visible_or_403(row, actor)
+    visible_or_403(row, actor)
     return _staff_practice_view(row)
 
 
@@ -422,108 +420,6 @@ async def assign_practice(
     return response_body
 
 
-@dataclass(frozen=True, slots=True)
-class _TransitionSpec:
-    kind: str
-    from_states: tuple[str, ...]
-    to_state: str
-    event_name: str
-    outbox_job_type: str
-
-
-_TRANSITIONS: dict[str, _TransitionSpec] = {
-    "PR-02": _TransitionSpec("begin", ("Received",), "In_review", "practice.in_review", "practice_in_review_email"),
-    "PR-03": _TransitionSpec("block", ("Received",), "Blocked", "practice.blocked", "practice_blocked_email"),
-    "PR-05": _TransitionSpec("block", ("In_review",), "Blocked", "practice.blocked", "practice_blocked_email"),
-    "PR-08": _TransitionSpec("block", ("Submitted",), "Blocked", "practice.blocked", "practice_blocked_email"),
-    "PR-04": _TransitionSpec("submit", ("In_review",), "Submitted", "practice.submitted", "practice_submitted_email"),
-    "PR-06": _TransitionSpec("approve", ("Submitted",), "Approved", "practice.approved", "practice_approved_email"),
-    "PR-07": _TransitionSpec("reject", ("Submitted",), "Rejected", "practice.rejected", "practice_rejected_email"),
-    "PR-09": _TransitionSpec("resume", ("Blocked",), "In_review", "practice.resumed", "practice_resumed_email"),
-    "PR-10": _TransitionSpec("resume", ("Blocked",), "Submitted", "practice.resumed", "practice_resumed_email"),
-    "PR-11": _TransitionSpec("deliver", ("Approved",), "Delivered", "practice.delivered", "practice_delivered_email"),
-}
-
-_BLOCK_RESUME_TARGET: dict[str, str] = {"PR-03": "In_review", "PR-05": "In_review", "PR-08": "Submitted"}
-_RESUME_EXPECTED_TARGET: dict[str, str] = {"PR-09": "In_review", "PR-10": "Submitted"}
-#: `garuda_practice_evidence.kind`'s CHECK constraint (migration 305) —
-#: PR-04 files, PR-06 approves, PR-07 rejects, each with its own evidence.
-_EVIDENCE_KIND_BY_TRANSITION_KIND: dict[str, str] = {
-    "submit": "filing",
-    "approve": "approval",
-    "reject": "rejection",
-}
-_REASON_PATTERN = "garuda_voa.practice."
-_ACTION_PATTERN = "garuda_voa.action."
-
-
-def _validate_transition_body(transition_id: str, body: dict) -> dict[str, Any]:
-    """PR-02..PR-11 body-shape validation, mirroring the frozen contract's
-    `oneOf` discriminated on `transition_id` (`PracticeTransitionRequest`).
-    Raises 422 INVALID_REQUEST on any mismatch."""
-
-    def _fail() -> None:
-        raise HTTPException(status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False})
-
-    spec = _TRANSITIONS.get(transition_id)
-    if spec is None:
-        _fail()
-
-    if spec.kind == "begin":
-        return {}
-    if spec.kind == "block":
-        reason = body.get("customer_reason_key")
-        action = body.get("required_action_key")
-        if (
-            not isinstance(reason, str)
-            or not reason.startswith(_REASON_PATTERN)
-            or not isinstance(action, str)
-            or not action.startswith(_ACTION_PATTERN)
-        ):
-            _fail()
-        note = body.get("private_staff_note")
-        if note is not None and (not isinstance(note, str) or len(note) > 4000):
-            _fail()
-        return {"customer_reason_key": reason, "required_action_key": action, "private_staff_note": note}
-    if spec.kind in ("submit", "approve"):
-        evidence_id = body.get("evidence_id")
-        if not isinstance(evidence_id, str) or not (16 <= len(evidence_id) <= 128):
-            _fail()
-        return {"evidence_id": evidence_id}
-    if spec.kind == "reject":
-        evidence_id = body.get("evidence_id")
-        reason = body.get("customer_reason_key")
-        if (
-            not isinstance(evidence_id, str)
-            or not (16 <= len(evidence_id) <= 128)
-            or not isinstance(reason, str)
-            or not reason.startswith(_REASON_PATTERN)
-        ):
-            _fail()
-        note = body.get("private_staff_note")
-        if note is not None and (not isinstance(note, str) or len(note) > 4000):
-            _fail()
-        return {"evidence_id": evidence_id, "customer_reason_key": reason, "private_staff_note": note}
-    if spec.kind == "resume":
-        resolved_block_id = body.get("resolved_block_id")
-        if not isinstance(resolved_block_id, str) or not (16 <= len(resolved_block_id) <= 128):
-            _fail()
-        return {"resolved_block_id": resolved_block_id}
-    if spec.kind == "deliver":
-        artifact_id = body.get("artifact_id")
-        artifact_digest = body.get("artifact_digest")
-        if (
-            not isinstance(artifact_id, str)
-            or not (16 <= len(artifact_id) <= 128)
-            or not isinstance(artifact_digest, str)
-            or len(artifact_digest) != 64
-        ):
-            _fail()
-        return {"artifact_id": artifact_id, "artifact_digest": artifact_digest}
-    _fail()  # pragma: no cover - unreachable, spec is None already caught above
-    raise AssertionError  # pragma: no cover
-
-
 @router.post(
     "/practices/{practice_id}/transitions",
     operation_id="transitionPractice",
@@ -537,15 +433,21 @@ async def transition_practice(
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
     pool: asyncpg.Pool = Depends(get_pool),
 ) -> dict:
+    """Thin HTTP-shape layer (round-3 disposition item E): body parsing,
+    idempotency reserve/complete and the contract's error mapping live here;
+    the guarded UPDATE, evidence write, journal append and outbox enqueue
+    live in `services/garuda_portal/staff_transitions.py::apply_transition`,
+    which this handler calls INSIDE the same transaction/idempotency
+    envelope `resolve_late_order` uses (STEP8-SPEC point on reuse)."""
+
     _privacy_headers(response)
     actor = await _require_actor(request)
     key = _idempotency_key(idempotency_key)
 
     transition_id = body.get("transition_id")
-    if not isinstance(transition_id, str) or transition_id not in _TRANSITIONS:
+    if not isinstance(transition_id, str) or transition_id not in TRANSITIONS:
         raise HTTPException(status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False})
-    fields = _validate_transition_body(transition_id, body)
-    spec = _TRANSITIONS[transition_id]
+    fields = validate_transition_body(transition_id, body)
 
     key_digest = idempotency.scoped_key_sha256(
         actor=actor["email"], operation="transitionPractice", raw_key=key
@@ -569,169 +471,15 @@ async def transition_practice(
             return outcome.response_body
 
         async with conn.transaction():
-                row = await conn.fetchrow(
-                    """
-                    SELECT practice_id, order_id, state, assigned_to, resume_target,
-                           customer_reason_key, required_action_key, artifact_available,
-                           active_block_id
-                      FROM garuda_practices WHERE practice_id = $1 FOR UPDATE
-                    """,
-                    practice_id,
-                )
-                if row is None:
-                    raise HTTPException(
-                        status_code=404, detail={"code": "PRACTICE_NOT_FOUND", "retryable": False}
-                    )
-                _visible_or_403(row, actor)
-
-                if row["state"] not in spec.from_states:
-                    raise HTTPException(
-                        status_code=409,
-                        detail={"code": "INVALID_STATE_TRANSITION", "retryable": False},
-                    )
-                if spec.kind == "resume" and row["resume_target"] != _RESUME_EXPECTED_TARGET[
-                    transition_id
-                ]:
-                    raise HTTPException(
-                        status_code=409,
-                        detail={"code": "INVALID_STATE_TRANSITION", "retryable": False},
-                    )
-                # Round-2 disposition item B: `resume_target` above only
-                # proves the FROM/TO state pairing is legal (PR-09 resumes
-                # to In_review, PR-10 to Submitted) -- it says nothing about
-                # WHICH block the staff caller believes they are resolving.
-                # `active_block_id` (the journal event_id set below when the
-                # matching PR-03/05/08 ran) is the identity check: a staff
-                # caller resolving a stale/unrelated block reference gets
-                # 422 INVALID_REQUEST, never silently resumes the CURRENT
-                # block under a mismatched reference.
-                if spec.kind == "resume" and fields["resolved_block_id"] != row["active_block_id"]:
-                    raise HTTPException(
-                        status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False}
-                    )
-                # PR-04/06/07: an evidence_id already bound to a DIFFERENT
-                # practice is a client-side mistake (evidence identifiers
-                # are meant to be practice-scoped), not a genuine conflict
-                # worth 409 -- disposition item B calls this out explicitly
-                # as 422 INVALID_REQUEST. A replay of the SAME
-                # (practice_id, evidence_id) pair is handled by the
-                # INSERT ... ON CONFLICT DO NOTHING below, not here.
-                if spec.kind in ("submit", "approve", "reject"):
-                    other_owner = await conn.fetchval(
-                        """
-                        SELECT practice_id FROM garuda_practice_evidence
-                         WHERE evidence_id = $1 AND practice_id != $2
-                         LIMIT 1
-                        """,
-                        fields["evidence_id"],
-                        practice_id,
-                    )
-                    if other_owner is not None:
-                        raise HTTPException(
-                            status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False}
-                        )
-
-                # $1=practice_id, $2=to_state, $3=allowed-source-states array
-                # (the WHERE-clause CAS guard). Every SET-clause value past
-                # those three is numbered by `_add`, in the exact order it
-                # is appended to `params` — never computed from `len(params)`
-                # before the $3 array reservation, which was this block's
-                # first-draft bug (a $3/$4 off-by-one that bound the array
-                # where a real column value belonged).
-                set_clauses = ["state = $2"]
-                params: list[Any] = [practice_id, spec.to_state, list(spec.from_states)]
-
-                def _add(column: str, value: Any) -> None:
-                    params.append(value)
-                    set_clauses.append(f"{column} = ${len(params)}")
-
-                if spec.kind == "block":
-                    _add("customer_reason_key", fields["customer_reason_key"])
-                    _add("required_action_key", fields["required_action_key"])
-                    _add("private_staff_note", fields["private_staff_note"])
-                    _add("resume_target", _BLOCK_RESUME_TARGET[transition_id])
-                elif spec.kind == "reject":
-                    _add("customer_reason_key", fields["customer_reason_key"])
-                    _add("private_staff_note", fields["private_staff_note"])
-                elif spec.kind == "resume":
-                    set_clauses += [
-                        "resume_target = NULL",
-                        "customer_reason_key = NULL",
-                        "required_action_key = NULL",
-                        "private_staff_note = NULL",
-                        "active_block_id = NULL",
-                    ]
-                elif spec.kind == "deliver":
-                    _add("artifact_id", fields["artifact_id"])
-                    _add("artifact_digest", fields["artifact_digest"])
-                    set_clauses.append("artifact_available = TRUE")
-
-                updated = await conn.fetchrow(
-                    f"""
-                    UPDATE garuda_practices SET {', '.join(set_clauses)}
-                     WHERE practice_id = $1 AND state = ANY($3::text[])
-                     RETURNING practice_id, state, customer_reason_key, required_action_key,
-                               artifact_available
-                    """,
-                    *params,
-                )
-                if updated is None:  # pragma: no cover - defensive, FOR UPDATE prevents this
-                    raise HTTPException(
-                        status_code=409,
-                        detail={"code": "INVALID_STATE_TRANSITION", "retryable": False},
-                    )
-
-                event_id = await journal.append_event(
-                    conn,
-                    event_name=spec.event_name,
-                    aggregate_type="practice",
-                    aggregate_id=practice_id,
-                    transition_id=transition_id,
-                    customer_visible=True,
-                    idempotency_key_digest=key_digest,
-                    canonical_payload_digest=payload_digest,
-                    detail={k: v for k, v in fields.items() if k != "private_staff_note"},
-                )
-                await journal.enqueue_outbox(
-                    conn,
-                    order_id=row["order_id"],
-                    journal_event_id=event_id,
-                    job_type=spec.outbox_job_type,
-                )
-
-                # Round-2 disposition item B: `active_block_id` = this
-                # journal event's own id -- only knowable AFTER
-                # `append_event` returns, hence a follow-up UPDATE rather
-                # than a value in the CAS UPDATE above. Same transaction,
-                # same row-level lock already held by the FOR UPDATE select.
-                if spec.kind == "block":
-                    await conn.execute(
-                        "UPDATE garuda_practices SET active_block_id = $2 WHERE practice_id = $1",
-                        practice_id,
-                        event_id,
-                    )
-
-                # PR-04/06/07: bind the evidence to this practice AND this
-                # transition, in the same transaction as the CAS UPDATE
-                # (disposition item #8). `ON CONFLICT DO NOTHING` makes an
-                # exact idempotent replay of the same command a no-op here
-                # too -- the outer `idempotency.reserve`/`complete` pair
-                # already short-circuits a replay before this code runs,
-                # so this is defense-in-depth, not the primary guard.
-                if spec.kind in ("submit", "approve", "reject"):
-                    await conn.execute(
-                        """
-                        INSERT INTO garuda_practice_evidence
-                            (practice_id, transition_id, evidence_id, kind, recorded_by)
-                        VALUES ($1, $2, $3, $4, $5)
-                        ON CONFLICT (practice_id, evidence_id) DO NOTHING
-                        """,
-                        practice_id,
-                        transition_id,
-                        fields["evidence_id"],
-                        _EVIDENCE_KIND_BY_TRANSITION_KIND[spec.kind],
-                        actor["email"],
-                    )
+            updated = await apply_transition(
+                conn,
+                practice_id=practice_id,
+                transition_id=transition_id,
+                actor=actor,
+                fields=fields,
+                key_digest=key_digest,
+                payload_digest=payload_digest,
+            )
         response_body = _practice_view(updated)
         await idempotency.complete(
             conn, key_sha256=key_digest, response_status=200, response_body=response_body
