@@ -1,0 +1,44 @@
+task_id: garuda-voa-step8-staff-ui
+gear: 2
+l_level: L2
+gate_class: opus
+objective: |
+  GARUDA VOA step 8, frontend half: the kita workspace page under
+  `apps/mouth/src/app/(workspace)/garuda-voa/` where staff list VOA practices and advance them
+  through PR-02..PR-11 (Received → In review → Submitted → Approved → Delivered, plus Blocked /
+  Rejected). Typed client reconciled byte-for-byte with the contract added by the companion backend
+  PR (`products/garuda-voa/contracts/openapi.yaml`: listStaffPractices, getStaffPractice,
+  assignPractice, transitionPractice). The floor is 2 by SIZE only (10 new files, +1637 lines under
+  `apps/mouth/**`, no hot-zone path); this brief exists to satisfy that floor. Ground: the customer
+  tracker (step 7) already existed on main (PRs #4959/#4960/#5112/#5300/#5301) — this lane, opened
+  for step 7, was repurposed for the step-8 UI, hence the branch name.
+constraints:
+  - "No customer PII rendered; no artifact link ever rendered (the contract has no retrieval op)."
+  - "Visibility is server-side (`assigned=me|all`); the UI never filters as a substitute."
+  - "Transition buttons derive from the current state only (STATE-MACHINE.md transcription), so no
+    button the DB trigger would reject is ever shown; `resolved_block_id` is prefilled read-only from
+    `active_block_id`."
+  - "Idempotency-Key generated client-side per command and reused on retry of that command."
+  - "npm only (never pnpm); no new dependencies."
+acceptance:
+  - "npx vitest run 'src/app/(workspace)/garuda-voa' -- 3 files, 12 passed."
+  - "npx tsc --noEmit -- clean (exit 0)."
+  - "npx eslint 'src/app/(workspace)/garuda-voa/**' -- clean."
+  - "PROVE-LIVE after the backend PR lands: an admin session on kita.balizero.com opens /garuda-voa,
+    sees the list, opens a practice and applies PR-02; the customer tracker for that order shows
+    'In review'. Until then the page renders its error boundary on the 404 — dark by construction."
+consumer_map:
+  - "kita.balizero.com workspace route /garuda-voa (list) and /garuda-voa/[practiceId] (detail)."
+  - "Backend staff router (companion PR) via the workspace cookie session."
+risks:
+  - "If the backend's final schema diverges from the reconciled types (round-4 council fixes are in
+    flight: strict Pydantic bodies, optional required_action_key on reject), the detail forms fail on
+    422 -- the error boundary shows the contract error code; fix is a types-only follow-up."
+  - "Lands before the backend PR: the page 404s until then. Acceptable: staff-only, flag off."
+grader: |
+  generator != grader: the UI was built by a Sonnet 5 implementer lane; the orchestrator session
+  re-ran vitest/tsc itself (12/12, exit 0) and the cross-family council (codex-gpt-5.6-sol, gemini
+  via agy) reviewed the backend contract this UI consumes. Gear 2: no pack, no council required.
+budget: |
+  Flat-subscription only (Claude seat + ChatGPT Pro + Google AI Ultra). Zero metered spend.
+pii: none
