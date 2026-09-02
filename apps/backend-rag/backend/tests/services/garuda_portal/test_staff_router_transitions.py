@@ -197,7 +197,15 @@ def _bearer(email: str, role: str) -> str:
     return f"Bearer {token}"
 
 
-_ADMIN = "admin@balizero.com"
+# zero@balizero.com is in `settings.admin_emails_set`'s local-dev fallback
+# (config.py `_ADMIN_EMAILS_FALLBACK`) — used here rather than the previous
+# `admin@balizero.com` because `staff_auth.can_manage_garuda_practices` /
+# `_staff_principal_from_role` (refuter finding #6) grants `is_admin` from
+# the explicit GARUDA-practice admin allowlist (global admins + Asya), never
+# from a self-reported `role="admin"` JWT claim alone -- `admin@balizero.com`
+# is `crm_utils.CRM_EXTRA_ADMIN_EMAILS`-admin (a wider, CRM-only set this
+# module deliberately does not reuse), not a GARUDA-practice admin.
+_ADMIN = "zero@balizero.com"
 _TEAM_A = "teama@balizero.com"
 _TEAM_B = "teamb@balizero.com"
 
