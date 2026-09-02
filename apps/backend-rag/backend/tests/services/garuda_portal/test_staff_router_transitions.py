@@ -809,6 +809,76 @@ class TestAssignmentAndListVisibility:
         assert resp.status_code == 422
         assert resp.json()["code"] == "INVALID_REQUEST"
 
+    async def test_assign_to_accounting_full_view_role_is_422(
+        self, pool, order_repository
+    ) -> None:
+        """tp1-qwen3.8-max council finding #1 (final-diff review): the
+        accounting full-view role (`crm_utils.PRACTICES_EXTRA_VIEW_EMAILS`)
+        is READ-only by doctrine, but an ACTIVE `team_members` row with a
+        staff role for that email passed the operator-registry check --
+        so an admin could assign a practice to accounting, after which the
+        accounting user could transition it. The exclusion must hold on the
+        TARGET side too, not only on the admin set."""
+        from backend.app.utils.crm_utils import PRACTICES_EXTRA_VIEW_EMAILS
+
+        accounting_email = next(iter(PRACTICES_EXTRA_VIEW_EMAILS))
+        await _seed_team_member(pool, accounting_email, role="Accounting")
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-assign-acct00000", provider_event_id="evt-assign-acct"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        app = _make_app(pool)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                f"/api/visa/voa/staff/practices/{practice_id}/assignment",
+                headers={
+                    "Authorization": _bearer(_ADMIN, "admin"),
+                    "Idempotency-Key": "assign-acct-key-0000000001",
+                },
+                json={"assigned_to": accounting_email},
+            )
+        assert resp.status_code == 422
+        assert resp.json()["code"] == "INVALID_REQUEST"
+
+    async def test_accounting_full_view_role_cannot_transition_even_when_assigned(
+        self, pool, order_repository
+    ) -> None:
+        """Guilt half of the same finding: even if a practice row ends up
+        with `assigned_to` = the accounting email (legacy data, a direct
+        SQL write), the accounting identity must still be refused on every
+        staff write -- `can_manage_garuda_practices` excludes it outright,
+        it does not merely drop it from the admin set. The refusal lands at
+        eligibility time (`_staff_principal_from_role` -> None), so the
+        answer is the same 401 `SESSION_REQUIRED` a client-role JWT gets,
+        never a practice-scoped 403 that would confirm the identity is a
+        recognised staff principal."""
+        from backend.app.utils.crm_utils import PRACTICES_EXTRA_VIEW_EMAILS
+
+        accounting_email = next(iter(PRACTICES_EXTRA_VIEW_EMAILS))
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-acct-transit0000", provider_event_id="evt-acct-transit"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        await pool.execute(
+            "UPDATE garuda_practices SET assigned_to = $1 WHERE practice_id = $2",
+            accounting_email,
+            practice_id,
+        )
+        app = _make_app(pool)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                f"/api/visa/voa/staff/practices/{practice_id}/transitions",
+                headers={
+                    "Authorization": _bearer(accounting_email, "user"),
+                    "Idempotency-Key": "acct-transit-key-000000001",
+                },
+                json={"transition_id": "PR-02"},
+            )
+        assert resp.status_code == 401
+        assert resp.json()["code"] == "SESSION_REQUIRED"
+
     async def test_assigned_to_key_absent_is_422_not_unassign(
         self, pool, order_repository
     ) -> None:

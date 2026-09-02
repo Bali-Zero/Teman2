@@ -73,6 +73,7 @@ import asyncpg
 from fastapi import Request
 from jose import JWTError, jwt
 
+from backend.app.utils.crm_utils import PRACTICES_EXTRA_VIEW_EMAILS
 from backend.app.utils.service_accounts import NON_HUMAN_ROLES, normalize_role
 from backend.services.security.token_revocation import (
     RevocationStoreUnavailable,
@@ -147,6 +148,12 @@ def can_manage_garuda_practices(user: dict[str, Any] | None) -> bool:
     email = (user.get("email") or "").lower().strip()
     if not email:
         return False
+    if email in PRACTICES_EXTRA_VIEW_EMAILS:
+        # tp1-qwen3.8-max council finding #1: dropping accounting from the
+        # ADMIN set is not enough -- an active `team_members` row with a
+        # staff role would still pass `_is_staff_role` below and be able to
+        # transition any practice assigned to it. Read-only means read-only.
+        return False
     if email in _garuda_practice_admin_emails():
         return True
     return _is_staff_role(user.get("role"))
@@ -169,6 +176,10 @@ async def is_valid_garuda_assignment_target(conn: asyncpg.Connection, email: str
     """
     email = (email or "").strip().lower()
     if not email:
+        return False
+    if email in PRACTICES_EXTRA_VIEW_EMAILS:
+        # Same exclusion as `can_manage_garuda_practices`: a read-only role
+        # is never a valid assignee, whatever `team_members` says.
         return False
     if email in _garuda_practice_admin_emails():
         return True
