@@ -27,14 +27,31 @@ function expectQuestion(state: FlowState, questionId: string): void {
   });
 }
 
+/** `today` is optional and defaults to undefined, so every existing caller is
+ * unchanged. Pass it ONLY on a transition whose next node depends on a date
+ * comparison — `shouldAskRenewalPaid` is the one that does. The reducer
+ * forwards it to `computeNextNode` (flow.ts), so this is the clock the engine
+ * actually READS; freezing anything else would leave the forward build on the
+ * real wall clock, which is precisely how the two fixtures below went off. */
 function answer(
   state: FlowState,
   questionId: string,
   value: string,
+  today?: Date,
 ): FlowState {
   expectQuestion(state, questionId);
-  return reduce(state, { type: "ANSWER", questionId, value });
+  return reduce(state, { type: "ANSWER", questionId, value, today });
 }
+
+/** The date the two date-sensitive tests below were WRITTEN on. Their fixture
+ * `permit_expiry: "2026-09-01"` was picked as "8 days out" from here, so the
+ * `renewal_paid` gate skipped and the chain reached `overstay_days`. Judged
+ * against the real wall clock that stopped being true at 00:00 UTC on
+ * 2026-09-02, and both went red with no code change behind them. The sibling
+ * `renewal_paid gating` block never had this fault: its fixtures are
+ * 2020-01-01 and 2099-01-01, far enough out on both sides that no clock
+ * reaches them. Those tests are deliberately left alone. */
+const PERMIT_STILL_CURRENT = new Date("2026-08-24T00:00:00Z");
 
 function startOffshore(category?: string): FlowState {
   let state = initialFlowState("en");
@@ -349,7 +366,7 @@ describe("onshore/offshore canonical fact collection", () => {
     expectQuestion(state, "permit_expiry");
     state = answer(state, "permit_expiry", "2026-09-01");
     expectQuestion(state, "stay_permit_code");
-    state = answer(state, "stay_permit_code", "E28A");
+    state = answer(state, "stay_permit_code", "E28A", PERMIT_STILL_CURRENT);
     expectQuestion(state, "overstay_days");
     state = answer(state, "overstay_days", "0");
     expectQuestion(state, "nationalities");
@@ -916,7 +933,7 @@ describe("resume snapshot validation", () => {
     state = answer(state, "in_indonesia", "yes");
     state = answer(state, "permit_expiry", "2026-09-01");
     state = answer(state, "holds_stay_permit", "yes");
-    state = answer(state, "stay_permit_code", "E28A");
+    state = answer(state, "stay_permit_code", "E28A", PERMIT_STILL_CURRENT);
     // At save-time (2026-08-24) the permit is still 8 days from expiry, so
     // the gate skips `renewal_paid` and goes straight to `overstay_days`.
     expectQuestion(state, "overstay_days");
