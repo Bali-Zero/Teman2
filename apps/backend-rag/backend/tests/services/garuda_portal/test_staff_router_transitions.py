@@ -598,6 +598,140 @@ class TestTransitionMatrixAndReplay:
 
 
 @pytest.mark.asyncio
+class TestIdempotencyCompletionIsAtomicWithTheBusinessTransaction:
+    """Cross-family refuter (Codex) MAJOR finding #5: the business
+    transaction (state UPDATE + journal append + outbox enqueue, all inside
+    `apply_transition`) could commit, and `idempotency.complete()` run as a
+    SEPARATE, later statement -- a crash (or any exception) between those two
+    points left a permanently "reserved but never completed" idempotency row
+    even though the business effect had already happened. A retry then read
+    `completed_at IS NULL` as "still in flight, resume" (per
+    `idempotency.reserve`'s own docstring), re-ran `apply_transition`, and
+    the CAS UPDATE's `WHERE state = ANY(from_states)` failed against the
+    already-transitioned state -> 409 INVALID_STATE_TRANSITION, never the
+    committed 200 the command actually produced.
+
+    Fault-injection: force `idempotency.complete` to raise AFTER
+    `apply_transition` has run inside the same `async with pool.acquire()`.
+    If completion is atomic with the business transaction (the fix), the
+    forced failure rolls back the business writes too -- state, journal and
+    outbox all revert, proving one transaction, not two. Against the
+    pre-fix code, the business writes stay committed because
+    `apply_transition`'s own `async with conn.transaction():` block had
+    already exited before `complete()` ran."""
+
+    async def test_forced_completion_failure_rolls_back_the_business_writes_too(
+        self, pool, order_repository, monkeypatch
+    ) -> None:
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-atomic-0000000000", provider_event_id="evt-atomic-1"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+
+        from backend.services.garuda_orders import idempotency as idempotency_module
+
+        real_complete = idempotency_module.complete
+
+        async def _boom(*args, **kwargs):
+            raise RuntimeError("simulated crash between business commit and idempotency completion")
+
+        monkeypatch.setattr(garuda_staff_router.idempotency, "complete", _boom)
+
+        app = _make_app(pool)
+        transport = ASGITransport(app=app, raise_app_exceptions=False)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                f"/api/visa/voa/staff/practices/{practice_id}/transitions",
+                headers={
+                    "Authorization": _bearer(_ADMIN, "admin"),
+                    "Idempotency-Key": "atomic-key-000000000001",
+                },
+                json={"transition_id": "PR-02"},
+            )
+        assert resp.status_code == 500
+
+        row = await pool.fetchrow(
+            "SELECT state FROM garuda_practices WHERE practice_id = $1", practice_id
+        )
+        assert row["state"] == "Received", (
+            "the business write must roll back together with the failed "
+            "idempotency completion -- state must NOT have advanced to "
+            "In_review from a transaction that never fully committed"
+        )
+        # `garuda_order_journal` already carries one LEGITIMATE, already-
+        # committed row for this aggregate_id: `_create_and_pay_order` ->
+        # `handle_paid_event` writes a `practice.received` / PR-01 event
+        # when the practice row is first created, entirely before this
+        # test's own PR-02 attempt. Only a SECOND row (PR-02's own
+        # `practice.in_review`) would prove the forced failure failed to
+        # roll back -- asserting `== []` here would be asserting a fact
+        # this test never set up and never claimed.
+        journal_rows = await pool.fetch(
+            "SELECT 1 FROM garuda_order_journal WHERE aggregate_id = $1 AND transition_id = $2",
+            practice_id,
+            "PR-02",
+        )
+        assert journal_rows == [], "PR-02's journal append must roll back with the rest of the transaction"
+        outbox_rows = await pool.fetch(
+            "SELECT 1 FROM garuda_order_outbox WHERE order_id = $1 AND job_type = $2",
+            order_id,
+            "practice_in_review_email",
+        )
+        assert outbox_rows == [], "PR-02's outbox enqueue must roll back with the rest of the transaction"
+
+        # Restore and prove the SAME command now succeeds cleanly (not
+        # permanently wedged by the reservation row from the failed attempt).
+        monkeypatch.setattr(garuda_staff_router.idempotency, "complete", real_complete)
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            retry = await client.post(
+                f"/api/visa/voa/staff/practices/{practice_id}/transitions",
+                headers={
+                    "Authorization": _bearer(_ADMIN, "admin"),
+                    "Idempotency-Key": "atomic-key-000000000002",
+                },
+                json={"transition_id": "PR-02"},
+            )
+        assert retry.status_code == 200, retry.text
+        assert retry.json()["state"] == "In review"
+
+    async def test_assign_practice_forced_completion_failure_rolls_back_the_assignment(
+        self, pool, order_repository, monkeypatch
+    ) -> None:
+        """Same atomicity fix, same fault-injection shape, for
+        `assignPractice`'s own idempotency.complete call site."""
+        await _seed_team_member(pool, _TEAM_A)
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-atomic-assign00", provider_event_id="evt-atomic-assign"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+
+        async def _boom(*args, **kwargs):
+            raise RuntimeError("simulated crash")
+
+        monkeypatch.setattr(garuda_staff_router.idempotency, "complete", _boom)
+
+        app = _make_app(pool)
+        transport = ASGITransport(app=app, raise_app_exceptions=False)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                f"/api/visa/voa/staff/practices/{practice_id}/assignment",
+                headers={
+                    "Authorization": _bearer(_ADMIN, "admin"),
+                    "Idempotency-Key": "atomic-assign-key-00000001",
+                },
+                json={"assigned_to": _TEAM_A},
+            )
+        assert resp.status_code == 500
+        row = await pool.fetchrow(
+            "SELECT assigned_to FROM garuda_practices WHERE practice_id = $1", practice_id
+        )
+        assert row["assigned_to"] is None, (
+            "the assignment write must roll back together with the failed "
+            "idempotency completion"
+        )
+
+
+@pytest.mark.asyncio
 class TestAssignmentAndListVisibility:
     async def test_non_admin_cannot_assign(self, pool, order_repository) -> None:
         order_id = await _create_and_pay_order(

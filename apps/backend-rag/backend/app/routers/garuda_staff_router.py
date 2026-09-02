@@ -419,6 +419,14 @@ async def assign_practice(
             response.headers["Idempotency-Replayed"] = "true"
             return outcome.response_body
 
+        # Cross-family refuter (Codex) MAJOR finding #5: `idempotency.
+        # complete()` used to run as a SEPARATE statement AFTER this
+        # `async with conn.transaction():` block had already committed --
+        # a crash between the two left the business write committed but the
+        # idempotency row permanently "reserved, never completed", so a
+        # retry re-ran the UPDATE and got a spurious conflict instead of the
+        # committed outcome. Completion now runs INSIDE the same
+        # transaction: either both commit, or neither does.
         async with conn.transaction():
             row = await conn.fetchrow(
                 """
@@ -439,9 +447,9 @@ async def assign_practice(
                     status_code=404, detail={"code": "PRACTICE_NOT_FOUND", "retryable": False}
                 )
             response_body = _list_row_view(row)
-        await idempotency.complete(
-            conn, key_sha256=key_digest, response_status=200, response_body=response_body
-        )
+            await idempotency.complete(
+                conn, key_sha256=key_digest, response_status=200, response_body=response_body
+            )
     logger.info(
         "garuda_staff.practice_assigned",
         extra={
@@ -526,6 +534,12 @@ async def transition_practice(
             response.headers["Idempotency-Replayed"] = "true"
             return outcome.response_body
 
+        # Cross-family refuter (Codex) MAJOR finding #5: same atomicity fix
+        # as assign_practice above -- idempotency completion now runs
+        # INSIDE the same transaction as apply_transition's state/journal/
+        # outbox writes, so a crash between them can never leave a
+        # committed business effect with a permanently-unresolved
+        # idempotency reservation.
         async with conn.transaction():
             updated = await apply_transition(
                 conn,
@@ -536,10 +550,10 @@ async def transition_practice(
                 key_digest=key_digest,
                 payload_digest=payload_digest,
             )
-        response_body = _practice_view(updated)
-        await idempotency.complete(
-            conn, key_sha256=key_digest, response_status=200, response_body=response_body
-        )
+            response_body = _practice_view(updated)
+            await idempotency.complete(
+                conn, key_sha256=key_digest, response_status=200, response_body=response_body
+            )
     logger.info(
         "garuda_staff.practice_transitioned",
         extra={
