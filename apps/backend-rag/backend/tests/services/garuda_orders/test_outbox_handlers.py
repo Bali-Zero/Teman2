@@ -508,6 +508,16 @@ def test_build_handlers_routes_practice_release() -> None:
         "practice_release",
         "practice_received_email",
         "portal_invite",
+        # step 8 (round 3, item E): the 7 staff-transition customer emails,
+        # `staff_transitions.py::apply_transition`'s own job_type if/elif
+        # chain — see that module and PracticeTransitionEmailHandler above.
+        "practice_in_review_email",
+        "practice_blocked_email",
+        "practice_submitted_email",
+        "practice_approved_email",
+        "practice_rejected_email",
+        "practice_resumed_email",
+        "practice_delivered_email",
     }
     assert isinstance(handlers["practice_release"], PracticeReleaseHandler)
 

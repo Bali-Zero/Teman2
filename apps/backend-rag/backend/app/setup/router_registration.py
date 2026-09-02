@@ -233,6 +233,10 @@ def include_routers(api: FastAPI) -> None:
 
     api.include_router(garuda_documents_router.router)  # L5 documents+OCR hinge — flag GARUDA_PUBLIC_ENABLED checked per-request, not at mount; production store fails closed 503 until L1's retention-covered store exists (see module docstring)
 
+    from backend.app.routers import garuda_staff_router
+
+    api.include_router(garuda_staff_router.router)  # staff surface (step 8, PR-02..PR-11) — flag GARUDA_PUBLIC_ENABLED checked per-request, not at mount
+
     # CRM routers
     api.include_router(crm_clients.router)
     api.include_router(intake_review.router)  # [FASE 5A] doc-intake HITL review-queue
@@ -686,6 +690,10 @@ def include_light_routers(api: FastAPI) -> None:
     from backend.app.routers import garuda_documents_router
 
     api.include_router(garuda_documents_router.router)  # L5 documents+OCR hinge — flag GARUDA_PUBLIC_ENABLED checked per-request, not at mount; production store fails closed 503 until L1's retention-covered store exists (see module docstring)
+
+    from backend.app.routers import garuda_staff_router
+
+    api.include_router(garuda_staff_router.router)  # staff surface (step 8, PR-02..PR-11) — flag GARUDA_PUBLIC_ENABLED checked per-request, not at mount
 
     # Genome-backed registries (light: SQLite via cell-core, no ML deps)
     api.include_router(experience.router)  # [EXP] Experience Library (PR #54)
