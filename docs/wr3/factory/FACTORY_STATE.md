@@ -1,11 +1,11 @@
 # Zantara Video Factory — Current State
 
-- updated_at_utc: `2026-09-02T00:24:08Z`
+- updated_at_utc: `2026-09-02T02:17:46Z`
 - machine: `Air-M5`; Flow dispatch, ArcFace, media QA, and eventual ffmpeg work route to Pro.
 - branch: `agent/air-m5/wr3/zantara-video-factory-v3`
 - worktree: `/Users/balizero/nuzantara/.worktrees/wr3-zantara-video-factory-v3`
 - objective: operate one resumable WR3-based factory whose stages remain coherent while every creative decision can produce a materially different result.
-- factory_phase: `CANARY_REVIEW_REQUIRED`
+- factory_phase: `CANARY_DESIGN_APPROVAL_REQUIRED`
 - season_gate: `TOPIC_APPROVAL_REQUIRED`; only `C07` is approved as a bounded pilot.
 - episode_queue: `[S01E13]`
 - topic: `What Your Residency Permit Does Not Come With`
@@ -79,7 +79,7 @@ Two materially different methods were tested once each, with no automatic retry:
 | `M01` Flow dual-reference scene generation                 | one generated image; no video                         | one face, cosine `0.499623` | `HARD_FAIL`; closed                 |
 | `M02` identity-preserving edit of the approved composition | one generated image, then one authorized video canary | one face, cosine `0.789691` | scene start `PASS`; video generated |
 
-`M02` resolves the identity-preserving scene-start gate. It does not reopen the closed four-variant sweep: `M02-v05` is a separately authorized method canary that reuses the narrative beat while changing the scene-start construction and motion metaphor. The workflow-backed MP4 has now been recovered without regeneration; content and identity QA remain open.
+`M02` resolved the identity-preserving scene-start gate. It did not reopen the closed four-variant sweep: `M02-v05` was a separately authorized method canary whose recovered MP4 received a final `FAIL` and was rejected by the operator on 2026-09-02.
 
 The M02-v05 creative pass is now registered as child seed `4ac7cfe1-1a72-5c7e-a6a3-c0a367d0022b`. Its deterministic comparison against the root reports ten material differences, including five conceptual and five cinematic axes, with description Jaccard `0.1`. This is a post-generation backfill: it proves the stored signatures differ under the current policy, but it did not protect the historical spend. The linked receipt preserves that limitation and makes pre-spend registration mandatory for every future child.
 
@@ -101,7 +101,7 @@ The M02-v05 creative pass is now registered as child seed `4ac7cfe1-1a72-5c7e-a6
 - structural media QA: `PASS`; H.264 `720x1280`, `24 fps`, `8.000 s`, AAC stereo `48 kHz`.
 - visual/identity QA: `FAIL`; ArcFace average `0.629521`, minimum `0.549607` below hard floor `0.55`; composition and visual no-overlay checks pass, but locked-camera motion and the intended inertia-stop metaphor fail.
 - native-audio QA: `FAIL`; silent subject and structural A/V sync pass, but raw loudness `-17.8 LUFS`, true peak `-0.16 dBTP`, quiet-room-tone match, and timbre continuity fail.
-- canary verdict: `FAIL`; automatic retry is forbidden and a human review is required before any new generation authorization.
+- canary verdict: `FAIL`; operator decision: `REJECT`; automatic retry remains forbidden.
 
 The recovery client is implemented and tested to require exact project/workflow/media matching, accept only an encoded payload or an allowlisted Google media URL, validate the MP4 in a durable staging file, and publish the destination atomically. Recovery contains no generation call. A persistent non-blocking file lock serializes the full recovery state transition, and the receipt endpoint is restricted to the literal loopback FlowKit gateway on port `8100`.
 
@@ -129,47 +129,32 @@ Canonical result:
 - `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m02-v05-visual-identity-qa.json`
 - `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m02-v05-native-audio-qa.json`
 - `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m02-v05-canary-verdict.json`
+- `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m02-v05-operator-decision.json`
 - `docs/wr3/factory/episodes/s01e13-residency-permit/cinematic-research.md`
+
+## M03-v06 Zero-Spend Redesign — Awaiting Human Approval
+
+- declared axis: `ONE INPUT, ONE CIRCUIT`; Zantara presses one unlabelled brass switch, one of four practical lights activates, and the other three remain dark.
+- camera: rigid fixed three-quarter 50 mm tableau; stationary reach, press, withdraw, hold; exact A007 remains unobstructed and near-frontal.
+- originality: pre-spend `PASS`; seed `849da09a-e9fc-5caf-9567-7e9ffcf8fc6a`; signature `9f12f8f0b4a65d13a3523971b4dee52107ea63c550f7713882463c114951e3fa`; ledger sequence `3`.
+- independent pre-render verdict: `PASS` for design eligibility only.
+- current redesign spend: `0`; generation jobs, retries, extensions, and upscales: `0`.
+- future ceiling only after explicit approval and fresh live preflight: exactly one canary, maximum `10` Flow credits, no retry, extension, or upscale; projected episode accounting `40/240`.
+- Flow dispatch, clip rendering, and any authorization artifact remain closed.
+- canonical files: `originality-m03-v06-{request,receipt}.json`, `m03-v06-canary-design.json`, and `m03-v06-independent-pre-render-gate.json` in the episode directory.
 
 ## Completed Gates
 
-- `BOOT_AUDIT`
-- `EDITORIAL_COUNCIL_WAVE_1`
-- `EDITORIAL_CONSOLIDATION`
-- `EDITORIAL_SOURCE_PASS`
-- `EDITORIAL_COUNCIL_WAVE_2`
-- `EDITORIAL_FINAL_CURATION`
-- `E13_PILOT_TOPIC_APPROVAL`
-- `E13_CREATIVE_LOCK`
-- `E13_F01_V01_REVIEW`
-- `E13_F01_V02_REVIEW`
-- `E13_SCENE_START_PIPELINE_REPAIR`
-- `E13_F01_V03_STILL_GATE`
-- `E13_F01_V04_PRE_RENDER_GATE`
-- `E13_F01_V04_STILL_GATE`
-- `E13_F01_FAMILY_DECISION`
-- `E13_M01_DUAL_REFERENCE_STILL_GATE`
-- `E13_M02_IDENTITY_PRESERVE_EDIT_GATE`
-- `E13_M02_V05_PRE_RENDER_GATE`
-- `E13_M02_V05_VIDEO_GENERATION`
-- `E13_M02_V05_MEDIA_RECOVERY`
-- `E13_M02_V05_STRUCTURAL_MEDIA_QA`
-- `E13_M02_V05_VISUAL_IDENTITY_QA_EXECUTED`; `E13_M02_V05_NATIVE_AUDIO_QA_EXECUTED`
+- editorial: `BOOT_AUDIT`; both council waves; consolidation, source pass, final curation; `E13_PILOT_TOPIC_APPROVAL`; `E13_CREATIVE_LOCK`.
+- f01: v01/v02 review; scene-start repair; v03/v04 still gates; v04 pre-render; family decision.
+- M01/M02: dual-reference still gate; identity-preserve edit gate; M02-v05 pre-render, generation, recovery, structural, visual/identity, and native-audio QA.
+- decisions: `E13_M02_V05_CANARY_REJECTED`; `E13_M03_V06_ORIGINALITY_PRESPEND_GATE`; `E13_M03_V06_PRE_RENDER_DESIGN_GATE`.
 
 ## Earliest Open Gate
 
-`CANARY_REVIEW_REQUIRED`
+`CANARY_DESIGN_APPROVAL_REQUIRED`
 
-The recovered workflow-backed canary has an honest overall `FAIL`. It misses the ArcFace hard floor by `0.000393`, the camera is not locked, the inertia-stop metaphor is ambiguous, and the unprocessed native audio misses loudness, true-peak, content-match, and timbre-continuity requirements.
-
-The next bounded action is:
-
-1. stop for human review of this failed canary;
-2. do not generate, retry, extend, upscale, normalize, replace audio, or open `f02`-`f06` without a new exact authorization;
-3. if a future attempt is authorized, require a fresh creative child seed and pre-spend originality registration;
-4. review and activate the cross-pair gateway fix separately before any future workflow-aware recovery.
-
-Do not open `f02`–`f06`, submit another M02/f01 generation, enter legal scripting, publish, deploy, or send outward messages before this gate resolves.
+The rejected M02-v05 is closed. M03-v06 is original, bounded, and pre-render eligible, but this does not authorize spend. The next action is human review of the design. Do not call Flow, generate, retry, extend, upscale, normalize or replace audio, open `f02`–`f06`, enter legal scripting, publish, deploy, or send outward messages before an exact authorization resolves this gate. Any future dispatch also requires a fresh live balance check, the daily circuit breaker, and authorization bound to the reviewed design hash.
 
 ## Verification and Resume Reads
 
@@ -178,6 +163,8 @@ Do not open `f02`–`f06`, submit another M02/f01 generation, enter legal script
 - `docs/wr3/factory/episodes/s01e13-residency-permit/probes/probe-plan.json`
 - `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/f01-family-decision.json`
 - `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m02-v05-generation-result.json`
+- `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-canary-design.json`
+- `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-independent-pre-render-gate.json`
 
 ## Definition of Done for the Current Gate
 
@@ -192,6 +179,8 @@ Do not open `f02`–`f06`, submit another M02/f01 generation, enter legal script
 - `[x]` existing M02-v05 MP4 recovered and structural media properties verified
 - `[x]` visual/identity and native-audio QA executed against the immutable recovered MP4
 - `[x]` first honest canary verdict recorded as `FAIL` with zero new Flow spend
+- `[x]` failed M02-v05 canary rejected by the operator with no automatic retry
+- `[x]` M03-v06 design registered for originality and independently cleared for human review with zero spend
 - `[ ]` live FlowKit gateway rejects mismatched workflow/media pairs and returns identifiers derived from the selected payload
 - `[ ]` one scene-first f01 canary clip passes identity, motion, composition, audio, and technical QA
 - `[ ]` winning cinematic grammar selected

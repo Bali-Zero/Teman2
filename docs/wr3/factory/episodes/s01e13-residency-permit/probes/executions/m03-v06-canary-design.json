@@ -1,0 +1,213 @@
+{
+  "schema_version": "wr3.camera-probe-canary-design.v1",
+  "created_at_utc": "2026-09-02T02:12:03Z",
+  "status": "CANARY_DESIGN_APPROVAL_REQUIRED",
+  "episode_id": "s01e13-residency-permit",
+  "probe_id": "M03-v06",
+  "approved_topic": "What Your Residency Permit Does Not Come With",
+  "scope": {
+    "mode": "DESIGN_ONLY",
+    "generation_dispatched": false,
+    "flow_authorization_created_or_modified": false,
+    "paid_spend_incurred": false,
+    "media_created_or_edited": false,
+    "outward_message_sent": false,
+    "publication_allowed": false
+  },
+  "rejection_diagnosis": {
+    "source_probe": "M02-v05",
+    "source_verdict": "FAIL",
+    "failures": [
+      {
+        "dimension": "identity",
+        "evidence": "ArcFace minimum 0.5496073961257935 missed the 0.55 hard floor despite a 0.6295210003852845 average.",
+        "design_response": "Keep the exact A007 face unobstructed, near-frontal to fifteen-degree three-quarter, on one focal plane, without walking, head turns, reflections, or fabric crossing the face."
+      },
+      {
+        "dimension": "camera_lock",
+        "evidence": "Background cumulative vertical displacement reached 125.58660720335948 px; the camera was not locked.",
+        "design_response": "Use a rigid tripod tableau and explicitly ban every camera translation, rotation, zoom, drift, stabilization float, and reframing."
+      },
+      {
+        "dimension": "metaphor",
+        "evidence": "Residual blouse inertia did not read unambiguously as separate legal permissions.",
+        "design_response": "Replace fabric motion with one tactile input that produces one localized practical-light response while three adjacent practicals remain dark."
+      },
+      {
+        "dimension": "native_audio",
+        "evidence": "Raw audio measured -17.8 LUFS, -0.16 dBTP, and 86.41 percent energy below 300 Hz, mismatching the intended cloth-decay room tone.",
+        "design_response": "Request only quiet room air and one soft dry brass-switch click, with no continuous hum, bass bed, music, or speech."
+      }
+    ]
+  },
+  "creative_axis": {
+    "declared_axis": "ONE INPUT, ONE CIRCUIT",
+    "visual_metaphor": "A single unlabelled physical switch activates exactly one of four co-located practical lights. Adjacency does not imply shared permission.",
+    "editorial_reading": "One residency status can be valid without automatically activating every neighbouring right or authorization.",
+    "setting": "An austere contemporary stone research room with four architectural practical lights; no office, government counter, resort, or recognisable Bali scenery.",
+    "hero_objects": "One unlabelled brass switch and four ordinary architectural practical lights, with no text, symbols, numbers, UI, or documents."
+  },
+  "eight_second_action": [
+    {
+      "timecode": "0.0-1.5",
+      "beat": "Zantara stands still in a three-quarter tableau. Her unobstructed face, the unmarked brass switch, and four dark practical lights are all readable in one frame."
+    },
+    {
+      "timecode": "1.5-3.0",
+      "beat": "Without stepping, turning away, or changing expression theatrically, she extends one hand toward the switch."
+    },
+    {
+      "timecode": "3.0-3.5",
+      "beat": "She presses the switch once. A soft dry mechanical click is heard."
+    },
+    {
+      "timecode": "3.5-6.0",
+      "beat": "Exactly one practical light turns on in a controlled neutral pool. The three adjacent practicals remain visibly dark."
+    },
+    {
+      "timecode": "6.0-8.0",
+      "beat": "She withdraws her hand and holds measured recognition toward camera. The single lit circuit remains stable; nothing else activates."
+    }
+  ],
+  "camera_lens_blocking": {
+    "camera": "Rigid locked tripod for the full eight seconds; zero dolly, pan, tilt, orbit, zoom, handheld motion, drift, stabilization float, or digital reframing.",
+    "lens": "Natural 50 mm-equivalent perspective, no wide-angle facial distortion, fixed focus and exposure.",
+    "framing": "Vertical waist-up three-quarter tableau. Zantara occupies the central safe column; her face remains at least ten percent inside every edge. Switch and all four practicals remain simultaneously readable.",
+    "blocking": "Stationary reach, one press, withdraw, hold. No walk, step, spin, profile turn, fabric flourish, second action, or interaction with a document.",
+    "lighting": "Low restrained amber base; after the press, one neutral localized practical illuminates without changing facial geometry or blowing highlights."
+  },
+  "identity_preservation": {
+    "identity_token": "A007",
+    "approved_anchor_path_on_pro": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+    "approved_anchor_sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+    "sole_identity_reference": true,
+    "m02_scene_start_reuse_forbidden": true,
+    "requirements": [
+      "Preserve exact A007 facial proportions, eye spacing, nose, jawline, skin texture, hairline, and age.",
+      "Keep the face unobstructed and no more than fifteen degrees off-axis for all identity-check frames.",
+      "Keep face scale, focal plane, exposure, and expression stable; no speaking or mouth articulation.",
+      "No other person, duplicate, reflection, mirror, poster face, or hand crossing the face.",
+      "Canonical understated ivory-and-gold Zantara blouse remains constant with no wardrobe morphing."
+    ],
+    "future_post_render_gate": {
+      "sample_frames": [0, 38, 76, 114, 152],
+      "arcface_average_minimum": 0.6,
+      "arcface_per_frame_hard_floor": 0.55,
+      "face_count_required": 1,
+      "fail_closed": true,
+      "automatic_retry_allowed": false
+    }
+  },
+  "native_audio_plan": {
+    "mode": "native_audio_on",
+    "content": "Near-silent controlled room air plus one soft dry brass-switch click synchronized to the press.",
+    "forbidden": "No dialogue, voice, mouth sound, music, score, electrical hum, ventilation bed, bass rumble, cloth swoosh, sharp transient, reverberant boom, or unrelated ambience.",
+    "future_raw_output_qa": {
+      "integrated_loudness_target_lufs": -14.0,
+      "integrated_loudness_tolerance_lu": 1.0,
+      "true_peak_maximum_dbtp": -1.0,
+      "content_match_required": true,
+      "replacement_or_normalization_preapproved": false,
+      "automatic_retry_allowed": false
+    }
+  },
+  "flow_ready_prompt_not_dispatched": {
+    "positive": "Exact A007 Zantara, fixed three-quarter 50mm, presses one brass switch; one of four unlabelled practical lights ignites. Ivory-gold blouse, no speech, native dry click.",
+    "positive_word_count": 24,
+    "negative": "identity drift, altered facial geometry, face occlusion, profile-only face, soft-focus face, mouth movement, speaking, extra people, duplicate Zantara, reflection, mirror, walking, fabric flutter as narrative action, camera translation, dolly, pan, tilt, orbit, zoom, handheld shake, stabilization drift, reframing, multiple lights switching on, flashing lights, labels, letters, numbers, signs, interface, technical overlay, passport, stamp, document, door, airport, government insignia, tourist Bali, beach, palm tree, resort, music, dialogue, voice, electrical hum, bass rumble, sharp transient, distorted hands, extra fingers, melted switch, impossible architecture, borders, letterboxing",
+    "dispatch_status": "NOT_DISPATCHED",
+    "generation_authorized": false
+  },
+  "output_contract": {
+    "aspect_ratio": "9:16",
+    "resolution": "720x1280",
+    "fps": 24,
+    "duration_seconds": 8,
+    "native_audio": true,
+    "single_canary_only": true,
+    "continuity": [
+      "One continuous take with no cut, transition, speed ramp, time jump, or environment morph.",
+      "Switch position, hand anatomy, practical-light count, wardrobe, hair, face, background geometry, and shadow direction remain stable.",
+      "Exactly one practical changes from dark to lit; the other three remain dark through the final frame."
+    ],
+    "crop_constraints": [
+      "Compose natively at 720x1280; do not derive the portrait frame from a landscape crop.",
+      "No letterbox, pillarbox, border, split frame, or edge seam.",
+      "Keep face, switch, and four practical lights inside the central ninety percent safe area.",
+      "No generated text, captions, logo, UI, labels, technical overlays, or legal claims in-frame."
+    ]
+  },
+  "originality": {
+    "request_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-m03-v06-request.json",
+    "request_file_sha256": "d021c92f422cb8efa4ce4e894fa92b0585c133ad8f9b80a25b63f5ae47365e5b",
+    "receipt_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-m03-v06-receipt.json",
+    "receipt_file_sha256": "03927b79e04af68d90a8f08351d62abf0d136c9b52ea078db89596cf95d1471b",
+    "ledger_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-ledger.jsonl",
+    "ledger_file_sha256_after_registration": "91093002743974527626f859ded33f54bdaa843b2075eb5dc26f308593aad7fd",
+    "ledger_record_count": 3,
+    "gate_verdict": "PASS",
+    "seed_id": "849da09a-e9fc-5caf-9567-7e9ffcf8fc6a",
+    "parent_seed_id": "4ac7cfe1-1a72-5c7e-a6a3-c0a367d0022b",
+    "signature_sha256": "9f12f8f0b4a65d13a3523971b4dee52107ea63c550f7713882463c114951e3fa",
+    "comparison_to_root": {
+      "root_seed_id": "9fc9b711-be3b-45f8-9de0-fe4a7c99264e",
+      "material_differences": 10,
+      "concept_differences": 5,
+      "cinematic_differences": 5,
+      "description_jaccard": 0.151899,
+      "plain_language": "No journey, threshold, forward travel, occlusion bridge, spatial compression, voluntary stop, architectural click grammar, or warm-to-neutral traversal. The meaning comes from a stationary one-input/four-circuit test."
+    },
+    "comparison_to_m02_v05": {
+      "seed_id": "4ac7cfe1-1a72-5c7e-a6a3-c0a367d0022b",
+      "material_differences": 10,
+      "concept_differences": 5,
+      "cinematic_differences": 5,
+      "description_jaccard": 0.113924,
+      "plain_language": "No completed step, residual inertia, blouse-as-metaphor, cloth-decay sound, or body-versus-fabric disagreement. A tactile switch and localized practical-light response make the separation causal and visible."
+    }
+  },
+  "future_cost_ceiling_if_human_approved": {
+    "basis": "FACTORY_STATE measured and explicit S01E13 Tier_ONE clip cost is 10 Flow credits per eight-second 720x1280 canary.",
+    "generation_jobs": 1,
+    "retries": 0,
+    "extensions": 0,
+    "upscales": 0,
+    "image_generations": 0,
+    "maximum_incremental_flow_credits": 10,
+    "accounted_episode_flow_credits_before": 30,
+    "projected_accounted_episode_flow_credits_after": 40,
+    "episode_credit_cap": 240,
+    "within_cap": true,
+    "live_credit_balance_preflight_required_before_any_future_dispatch": true,
+    "current_design_step_flow_credits_spent": 0
+  },
+  "pre_render_qa_checklist": [
+    {"check": "Fresh M03-v06 child seed is recorded before spend and bound to the exact request, receipt, and ledger hashes.", "verdict": "PASS"},
+    {"check": "Concept is materially different from root forward-threshold grammar and M02-v05 fabric-inertia grammar.", "verdict": "PASS"},
+    {"check": "Positive prompt is at or below the 25-word Tier_ONE limit.", "verdict": "PASS"},
+    {"check": "One simple intentional action: stationary reach, single press, withdraw and hold as one continuous action phrase.", "verdict": "PASS"},
+    {"check": "Camera is explicitly rigid and locked; all movement and reframing modes are banned.", "verdict": "PASS"},
+    {"check": "Exact A007 is the sole identity reference; M02 scene-start and video assets are not reused.", "verdict": "PASS"},
+    {"check": "Canonical ivory-and-gold wardrobe, 9:16, 720x1280, 24 fps, eight seconds, native audio are fixed.", "verdict": "PASS"},
+    {"check": "Airports, passports, stamps, labelled doors, floating documents, generated text/UI/technical overlays, tourist Bali, and silent asset reuse are excluded.", "verdict": "PASS"},
+    {"check": "Exactly one future generation job, zero retries, zero extensions, zero upscales, maximum ten Flow credits.", "verdict": "PASS"},
+    {"check": "A new live Flow balance preflight and explicit human authorization are still required before dispatch.", "verdict": "PASS"}
+  ],
+  "binary_pre_render_gate": {
+    "verdict": "PASS",
+    "meaning": "Design is coherent, original, bounded, and eligible for human approval only.",
+    "spend_authorized": false,
+    "next_gate": "CANARY_DESIGN_APPROVAL_REQUIRED"
+  },
+  "execution_counters": {
+    "generation_jobs": 0,
+    "retries": 0,
+    "extensions": 0,
+    "upscales": 0,
+    "flow_credits_spent": 0,
+    "media_edits": 0,
+    "publishes": 0,
+    "deploys": 0,
+    "outward_messages": 0
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": "wr3.originality-request.v1",
+  "episode_id": "s01e13-residency-permit",
+  "seed_id": null,
+  "parent_seed_id": "4ac7cfe1-1a72-5c7e-a6a3-c0a367d0022b",
+  "description": "A stationary three-quarter tableau tests whether one physical input activates every adjacent system. Zantara presses one unmarked brass switch; one practical light answers while three neighbouring lights remain dark. The localized response turns separate permissions into independent circuits, using one tactile action, measured recognition, and a soft mechanical click without thresholds, forward travel, fabric inertia, documents, labels, or interfaces.",
+  "signature_axes": {
+    "narrative_engine_id": "single-input-nonpropagating-circuit-test",
+    "spatial_metaphor_id": "co-located-independent-light-circuits",
+    "opening_image_id": "stationary-three-quarter-figure-before-four-dark-practicals",
+    "emotional_turn_id": "expectation-of-cascade-to-measured-recognition",
+    "final_image_id": "one-lit-plane-three-adjacent-dark",
+    "camera_grammar_id": "fixed-three-quarter-50mm-tableau",
+    "transition_motif_id": "single-practical-illumination-change-without-cut",
+    "sound_motif_id": "soft-brass-switch-click-no-hum",
+    "color_arc_id": "low-amber-room-to-one-neutral-pool",
+    "blocking_id": "stationary-reach-press-withdraw-hold",
+    "hero_prop_id": "unlabelled-brass-switch-and-four-practical-lights",
+    "wardrobe_arc_id": "constant-ivory-gold"
+  }
+}

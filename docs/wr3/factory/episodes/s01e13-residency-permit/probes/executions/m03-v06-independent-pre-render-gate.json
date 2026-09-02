@@ -1,0 +1,139 @@
+{
+  "schema_version": "wr3.camera-probe-independent-pre-render-gate.v1",
+  "reviewed_at_utc": "2026-09-02T02:18:00Z",
+  "reviewer": "wr3-pre-render-gatekeeper",
+  "review_mode": "independent_design_only_pre_spend",
+  "episode_id": "s01e13-residency-permit",
+  "probe_id": "M03-v06",
+  "reviewed_design_path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-canary-design.json",
+  "reviewed_design_sha256": "3b27de1b2b370b02188178811763703d4a967a9d9fb59e98aa6efa748ac1b27f",
+  "verdict": "PASS",
+  "verdict_scope": "DESIGN_ELIGIBILITY_ONLY",
+  "checks": {
+    "cliche": {
+      "verdict": "PASS",
+      "shots_passed": 1,
+      "shots_failed": 0,
+      "external_250_plus_library_present": false,
+      "scope": "Agent-definition hard rules, creative-lock forbidden motifs, positive-prompt deterministic scan, and independent semantic review.",
+      "details": [
+        "No airport, passport or stamp, labelled door, floating document, generated text, UI, technical overlay, tourist-Bali shorthand, or silent asset reuse appears in the proposed positive prompt or action plan.",
+        "The one-input/one-circuit light test is materially different from the root threshold journey and M02-v05 fabric-inertia device."
+      ]
+    },
+    "veo_tier_one_dialect": {
+      "verdict": "PASS",
+      "positive_word_count": 24,
+      "maximum_word_count": 25,
+      "style_modifier_matches": [],
+      "sensitive_content_matches": [],
+      "city_name_matches": [],
+      "compound_dimension_issue": false,
+      "reason": "The prompt carries one subject and one physical action, with camera specification but no location or style stack."
+    },
+    "safety": {
+      "verdict": "PASS",
+      "flagged_words": [],
+      "reason": "No Veo audio-filter trigger word appears in the positive prompt."
+    },
+    "camera_lock": {
+      "verdict": "PASS",
+      "reason": "The design specifies a rigid full-duration tripod tableau and bans translation, rotation, zoom, drift, stabilization float, and reframing. The single reach-and-press action does not require camera compensation."
+    },
+    "identity": {
+      "verdict": "PASS",
+      "identity_token": "A007",
+      "sole_identity_reference": true,
+      "anchor_sha256_verified_on_pro": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+      "reason": "The face remains unobstructed, near-frontal to fifteen-degree three-quarter, on one focal plane, without speech, reflection, duplicate person, profile turn, or M02 scene-start reuse.",
+      "future_fail_closed_gate": {
+        "arcface_average_minimum": 0.6,
+        "arcface_per_frame_hard_floor": 0.55,
+        "automatic_retry_allowed": false
+      }
+    },
+    "native_audio": {
+      "verdict": "PASS",
+      "reason": "One soft dry switch click over near-silent room air is causally synchronized and unambiguous; dialogue, music, hum, bass bed, and unrelated ambience are banned.",
+      "future_raw_output_gate": {
+        "integrated_loudness_target_lufs": -14.0,
+        "integrated_loudness_tolerance_lu": 1.0,
+        "true_peak_maximum_dbtp": -1.0,
+        "content_match_required": true,
+        "replacement_or_normalization_preapproved": false
+      }
+    },
+    "originality": {
+      "verdict": "PASS",
+      "seed_id": "849da09a-e9fc-5caf-9567-7e9ffcf8fc6a",
+      "parent_seed_id": "4ac7cfe1-1a72-5c7e-a6a3-c0a367d0022b",
+      "signature_sha256": "9f12f8f0b4a65d13a3523971b4dee52107ea63c550f7713882463c114951e3fa",
+      "request_file_sha256": "d021c92f422cb8efa4ce4e894fa92b0585c133ad8f9b80a25b63f5ae47365e5b",
+      "receipt_file_sha256": "03927b79e04af68d90a8f08351d62abf0d136c9b52ea078db89596cf95d1471b",
+      "ledger_file_sha256": "91093002743974527626f859ded33f54bdaa843b2075eb5dc26f308593aad7fd",
+      "ledger_record_count": 3,
+      "receipt_status": "RECORDED",
+      "reason": "The recorded child signature differs from every prior ledger record by ten material axes, five concept axes, and five cinematic axes; maximum description Jaccard is 0.151899."
+    },
+    "output_contract": {
+      "verdict": "PASS",
+      "aspect_ratio": "9:16",
+      "resolution": "720x1280",
+      "fps": 24,
+      "duration_seconds": 8,
+      "native_audio": true,
+      "single_canary_only": true
+    },
+    "cost": {
+      "verdict": "PASS",
+      "verdict_scope": "BOUNDED_DESIGN_ENVELOPE_ONLY",
+      "generation_jobs": 1,
+      "retries": 0,
+      "extensions": 0,
+      "upscales": 0,
+      "projected_incremental_cr": 10,
+      "accounted_episode_cr_before": 30,
+      "projected_accounted_episode_cr_after": 40,
+      "episode_cap_cr": 240,
+      "within_episode_cap": true,
+      "current_design_step_cr_spent": 0,
+      "current_live_balance_verified": false,
+      "current_daily_spend_verified": false,
+      "live_preflight_required_before_dispatch": true,
+      "reason": "The latest episode accounting and explicit Tier_ONE clip-cost parameter bound one future canary to ten credits. The local quota cache is stale, so this PASS cannot authorize spending; a new live balance and daily-breaker preflight must pass after human approval."
+    },
+    "retry_contract": {
+      "verdict": "PASS",
+      "maximum_generation_calls": 1,
+      "automatic_retries": 0,
+      "automatic_extensions": 0,
+      "automatic_upscales": 0
+    }
+  },
+  "shots_passed": 1,
+  "shots_to_reroll": [],
+  "retry_reasons": [],
+  "authorization": {
+    "design_eligible_for_human_approval": true,
+    "spend_authorized": false,
+    "clip_renderer_authorized": false,
+    "flow_dispatch_allowed": false,
+    "authorization_artifact_created_or_modified": false,
+    "required_before_any_future_dispatch": [
+      "explicit human approval of M03-v06",
+      "fresh live Flow credit balance preflight",
+      "fresh daily 190-credit circuit-breaker preflight",
+      "exact one-job authorization bound to this design hash"
+    ]
+  },
+  "execution_counters": {
+    "generation_jobs": 0,
+    "retries": 0,
+    "extensions": 0,
+    "upscales": 0,
+    "flow_credits_spent": 0,
+    "media_created_or_edited": 0,
+    "outward_messages": 0
+  },
+  "next_gate": "CANARY_DESIGN_APPROVAL_REQUIRED"
+}

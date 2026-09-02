@@ -1,0 +1,14 @@
+{
+  "schema_version": "wr3.canary-operator-decision.v1",
+  "episode_id": "s01e13-residency-permit",
+  "probe_id": "M02-v05",
+  "decided_at_utc": "2026-09-02T02:17:46Z",
+  "decision": "REJECT",
+  "basis": "Operator accepted the recommendation to reject the failed canary and prepare a materially different design without generation.",
+  "reviewed_canary_verdict_path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m02-v05-canary-verdict.json",
+  "reviewed_canary_verdict_sha256": "f92f80eae7b85761e43fe5e7bad884a45300378c66906ef4b734abe7d713f71a",
+  "automatic_retry_allowed": false,
+  "generation_authorized": false,
+  "flow_credits_authorized": 0,
+  "next_action": "Prepare and present a new zero-spend canary design for explicit human approval."
+}
