@@ -1,0 +1,43 @@
+{
+  "schema_version": "wr3.camera-probe-flow-diagnosis.v1",
+  "diagnosed_at_utc": "2026-09-02T03:18:07Z",
+  "episode_id": "s01e13-residency-permit",
+  "probe_id": "M03-v06",
+  "failed_dispatch": {
+    "project_id": "fdc15b64-a422-4ca0-9a1a-9fb5bd7575d9",
+    "video_id": "1fced626-0607-4db6-a870-1afa1eab7bcb",
+    "scene_id": "acc74ab1-4bcd-4d9b-bac6-74e6630acc24",
+    "requested_paygate": "PAYGATE_TIER_ONE",
+    "http_status": 403
+  },
+  "live_account": {
+    "credits": 12550,
+    "user_paygate_tier": "PAYGATE_TIER_TIER1P5",
+    "sku": "G1_TIER1P5",
+    "service_tier": "SERVICE_TIER_ADVANCED"
+  },
+  "exact_scene_recheck": {
+    "vertical_video_status": "PENDING",
+    "vertical_video_media_id": null,
+    "vertical_video_url": null,
+    "updated_at": "2026-09-02T02:49:50Z"
+  },
+  "evidence": {
+    "flowkit_access_log": "POST /api/flow/generate-video HTTP/1.1 403 Forbidden",
+    "flowkit_runtime_sync_tier": "PAYGATE_TIER_TIER1P5",
+    "balance_delta_observed": 0,
+    "new_credit_ledger_rows": 0
+  },
+  "root_cause": "The canary requested PAYGATE_TIER_ONE while the live Ultra account and project are bound to PAYGATE_TIER_TIER1P5. The wrong tier selected the non-Ultra Veo model key and the Flow generation endpoint rejected it with HTTP 403.",
+  "confidence": "HIGH",
+  "safe_remediation": {
+    "reuse_creative_design": true,
+    "required_paygate": "PAYGATE_TIER_TIER1P5",
+    "maximum_new_generation_jobs": 1,
+    "maximum_incremental_flow_credits": 10,
+    "automatic_retries": 0,
+    "extensions": 0,
+    "upscales": 0,
+    "publication_allowed": false
+  }
+}

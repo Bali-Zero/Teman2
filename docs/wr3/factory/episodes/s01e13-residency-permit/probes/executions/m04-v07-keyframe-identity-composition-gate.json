@@ -1,0 +1,146 @@
+{
+  "schema_version": "wr3.keyframe-identity-composition-gate.v1",
+  "created_at_utc": "2026-09-02T03:56:41Z",
+  "episode_id": "s01e13-residency-permit",
+  "probe_id": "M04",
+  "variant_id": "v07",
+  "reviewer_role": "INDEPENDENT_POST_GENERATION_KEYFRAME_GATEKEEPER",
+  "verdict": "FAIL",
+  "failure_class": "IDENTITY_HARD_FAIL",
+  "video_authorized": false,
+  "automatic_retry_authorized": false,
+  "failure_action": "STOP_NO_VIDEO_NO_RETRY",
+  "bindings": {
+    "child_creative_outfit_lock": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m04-v07-child-creative-outfit-lock.json",
+      "sha256": "59b396bc9204f41739909609f62b0230f1f3487e2f0be70abc42b4d7a4cf5a88"
+    },
+    "full_scene_shot_pack": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m04-v07-full-scene-shot-pack.json",
+      "sha256": "e8c6c76e0f992d3313a92b4ba776ef598376add0cf37f6b2ff57f4dac7e35a05"
+    },
+    "independent_pre_render_gate": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m04-v07-independent-keyframe-pre-render-gate.json",
+      "sha256": "c5ec6666bdded096503a2650c9d1921fb33ec47e3253d5f58129903eaedc49b5"
+    },
+    "owner_visual_rejection": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-owner-visual-rejection.json",
+      "sha256": "af5342e8f68d431ed4547de55505513d8ec7dfc1aa144b33c337b53a3f73b0cf"
+    }
+  },
+  "keyframe": {
+    "generator_source": {
+      "path": "/tmp/m04-v07-full-scene-keyframe.jpg",
+      "sha256": "ee93ac9dc2ccdf36c22c85c5bca214a95d0dfe2845aceeb4251f3ccc5db5f374",
+      "width": 768,
+      "height": 1376
+    },
+    "normalized_pro_asset": {
+      "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m04-v07-full-scene/assets/m04-v07-full-scene-keyframe.png",
+      "sha256": "22a468c549e7c0014b2dbc0ac03da27f8698005f362f71bfc586079a561d36a6",
+      "width": 720,
+      "height": 1280
+    }
+  },
+  "identity_reference": {
+    "id": "A007",
+    "path_on_pro": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+    "sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+    "use": "IDENTITY_REFERENCE_ONLY"
+  },
+  "arcface_gate": {
+    "executed_on": "Pro",
+    "runtime": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+    "verifier": "insightface-buffalo_l",
+    "mock": false,
+    "detector_size": [
+      640,
+      640
+    ],
+    "face_count": 1,
+    "detector_confidence": 0.8298251032829285,
+    "cosine": 0.5003725290298462,
+    "pass_threshold": 0.6,
+    "hard_fail_threshold": 0.55,
+    "status": "HARD_FAIL",
+    "reason": "Exactly one face was detected, but the measured cosine is below the 0.55 hard-fail threshold.",
+    "measurement_report_path_on_pro": "/tmp/m04-v07-scene-start-identity-report.json",
+    "measurement_report_sha256": "4c57e5c390772fc9e1cfa64a0bfe521b5891f8156b72912cd1d372b80d3b50fc",
+    "anchor_embedding": {
+      "path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/ingredients/zantara-anchor-A007.embedding.npy",
+      "sha256": "6825bdcabb2d6a95c51aeeba90bc7e89f8097b37f4fd6f3ffee0f29ebe42c78c"
+    }
+  },
+  "independent_visual_gate": {
+    "inspection_method": "Original-resolution side-by-side human visual inspection of the generated keyframe and A007 anchor, supported by the real ArcFace measurement and the supplied mechanical seam-detector finding.",
+    "checks": {
+      "single_coherent_scene": {
+        "passed": true,
+        "details": "Subject, outfit, floor contact, switch, fixtures, doorway reveal, shadows and lens perspective read as one photographed architectural scene rather than an assembled portrait card."
+      },
+      "mechanical_seam_finding": {
+        "passed": true,
+        "detected_vertical_position_over_180": 14,
+        "classification": "ARCHITECTURAL_REVEAL_NOT_COLLAGE_SEAM",
+        "details": "The flagged vertical line aligns with the left smoked-brass doorway reveal and continues with physically consistent depth, shading and floor geometry; it is not a subject cutout boundary."
+      },
+      "collage_cutout_halo_cues": {
+        "passed": true,
+        "cue_count": 0,
+        "details": "No portrait-card edge, pasted-face halo, mismatched subject scale, floating feet or conflicting subject shadow was observed."
+      },
+      "material_and_perspective": {
+        "passed": true,
+        "details": "Mineral plaster, dark stone floor, smoked brass, frosted glass, petrol crepe and leather share coherent light direction, vanishing geometry and contact shadows."
+      },
+      "midnight_petrol_column_outfit": {
+        "passed": true,
+        "details": "The deep petrol asymmetric tailored jumpsuit, defined waist with brass bar, wide pressed legs, gold earrings, slim cuff, low ponytail and both black square-toe ankle boots are visible and materially integrated."
+      },
+      "exact_four_lights_all_off": {
+        "passed": true,
+        "visible_count": 4,
+        "lit_count": 0,
+        "details": "Exactly four frosted wall practicals are visible in one vertical register, with no emitted pool or activated glow."
+      },
+      "single_unlabelled_switch": {
+        "passed": true,
+        "visible_count": 1,
+        "details": "One physical smoked-brass switch is visible and unlabelled."
+      },
+      "text_ui_logo_border": {
+        "passed": true,
+        "visible_count": 0,
+        "details": "No text, letters, numbers, labels, signage, logo, captions, UI, diagram, border or panel overlay is visible."
+      },
+      "person_and_reflection_count": {
+        "passed": true,
+        "person_count": 1,
+        "human_reflection_count": 0
+      },
+      "holistic_a007_identity": {
+        "passed": false,
+        "details": "The generated face does not preserve A007 closely enough: the jaw and cheek proportions, eye shape and spacing, brow geometry, nose structure and mouth proportions visibly drift from the anchor. The real ArcFace cosine of 0.5003725290298462 corroborates the mismatch."
+      }
+    },
+    "composition_verdict": "PASS",
+    "outfit_lock_verdict": "PASS",
+    "material_and_perspective_verdict": "PASS",
+    "holistic_identity_verdict": "FAIL",
+    "overall_verdict": "FAIL"
+  },
+  "authorization": {
+    "keyframe_accepted_for_animation": false,
+    "tier_one_video_job_authorized": false,
+    "flow_credits_authorized_by_this_gate": 0,
+    "reason": "Identity is a mandatory conjunctive gate. The keyframe hard-fails both the ArcFace floor and the independent holistic A007 identity review, so no animation may be dispatched even though scene coherence, outfit and composition pass."
+  },
+  "gatekeeper_execution_counters": {
+    "media_generated": 0,
+    "flow_calls": 0,
+    "credits_spent": 0,
+    "video_jobs": 0,
+    "publishes": 0,
+    "outward_messages": 0
+  }
+}

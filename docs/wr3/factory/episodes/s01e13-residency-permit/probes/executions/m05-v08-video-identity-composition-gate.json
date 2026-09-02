@@ -1,0 +1,130 @@
+{
+  "schema_version": "wr3.m05.video_identity_composition_gate.v1",
+  "episode_id": "s01e13-residency-permit-probes-m05-v08-imagegen-full-scene",
+  "probe_id": "M05-v08",
+  "evaluated_at": "2026-09-02T12:19:27+08:00",
+  "specialist_owner": "wr3-clip-renderer",
+  "generation_policy": {
+    "authorized_generation_calls": 1,
+    "generation_calls_made": 1,
+    "automatic_retry": false,
+    "retry_calls_made": 0,
+    "publication_authorized": false,
+    "published": false
+  },
+  "accepted_start_image": {
+    "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m05-v08-imagegen-full-scene/assets/m05-v08-full-scene-keyframe.png",
+    "sha256": "1c3165a05077ad7cbe1376408e94931d381ae24d43f16c2c836fd50627291198",
+    "keyframe_gate_path": "/Users/balizero/nuzantara/.worktrees/wr3-zantara-video-factory-v3/docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m05-v08-keyframe-identity-composition-gate.json",
+    "keyframe_gate_sha256": "0c4e13bbb523c4813b43095df48e3ba1685b2aac8d5664f8d2630cbddfe616dd",
+    "keyframe_gate_verdict": "PASS"
+  },
+  "flow_generation": {
+    "endpoint": "POST /api/flow/generate-video",
+    "http_accepted": true,
+    "flow_status": "MEDIA_GENERATION_STATUS_SUCCESSFUL",
+    "requested_paygate": "PAYGATE_TIER_TIER1P5",
+    "requested_sku": "G1_TIER1P5",
+    "requested_service_tier": "advanced",
+    "actual_flow_model_key": "veo_3_1_i2v_s_fast_portrait_ultra",
+    "native_audio_requested": true,
+    "credits_before": 12540,
+    "credits_after": 12530,
+    "credits_spent": 10,
+    "operational_ceiling_credits": 100,
+    "project_id": "45198d2f-832d-416e-a583-886e439dcd60",
+    "video_id": "8a3b10d2-1fda-4086-a27d-32c0dbf0f7a7",
+    "scene_id": "2638a2b0-d712-4e5f-9bf3-b2791c0fe2a5",
+    "workflow_id": "d93cb7bd-10f1-4c20-a3a4-a11502dc0ad5",
+    "batch_id": "8663dae7-a644-47d3-acd2-6d24af596daf",
+    "media_id": "9d63d5c0-a128-4632-8c2d-73cee6ab31ae",
+    "project_url": "https://labs.google/fx/tools/flow/project/45198d2f-832d-416e-a583-886e439dcd60",
+    "prompt": "Locked static 50mm portrait scene. Zantara maintains her exact face, Midnight Petrol Column outfit, and full body from the accepted start frame. She gently presses the single smoked-brass switch once. Only the second wall light from the bottom turns on with warm controlled illumination; the other three remain off. She holds a calm serious gaze. Native audio: quiet room tone and one dry mechanical click. No speech, no music. No camera movement, no morphing, no added objects, no text, no logos, no people, no additional lights, no additional switches.",
+    "raw_cli_receipt": {
+      "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m05-v08-imagegen-full-scene/executions/m05-v08-single-veo-generation-raw.json",
+      "sha256": "2c6a79e000e9011b8697fac4a1cd67815716ddd8329133683118d97425d8d837",
+      "note": "The legacy media downloader returned INVALID_ARGUMENT after the successful generation; it did not initiate a retry."
+    },
+    "flow_project_initial_data_receipt": {
+      "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m05-v08-imagegen-full-scene/executions/m05-v08-flow-project-initial-data.json",
+      "sha256": "e1af8dc367d1ee53a83927d6d2b5d3436f5a2fa4f84c2380e05a82bb2021bb8e"
+    }
+  },
+  "output_mp4": {
+    "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m05-v08-imagegen-full-scene/clips/m05-v08-single-switch.mp4",
+    "sha256": "9375f9c881add2860783bd1c10937557ffcc0b40e9dca92f55bb7c4a9897406d",
+    "size_bytes": 1344381,
+    "duration_seconds": 8.0,
+    "width": 720,
+    "height": 1280,
+    "fps": 24,
+    "video_codec": "h264",
+    "audio": {
+      "present": true,
+      "codec": "aac",
+      "sample_rate_hz": 48000,
+      "channels": 2,
+      "layout": "stereo",
+      "duration_seconds": 8.0,
+      "single_non_silent_event": {
+        "start_seconds": 1.981521,
+        "end_seconds": 2.188271,
+        "interpretation": "single short transient consistent with the requested dry switch click"
+      }
+    },
+    "unique_against_other_episode_mp4s": true,
+    "duplicate_count": 0
+  },
+  "identity_gate": {
+    "engine": "InsightFace buffalo_l",
+    "mock": false,
+    "anchor_embedding_path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/ingredients/zantara-anchor-A007.embedding.npy",
+    "required_face_count_per_sample": 1,
+    "pass_threshold": 0.6,
+    "hard_fail_threshold": 0.55,
+    "samples": [
+      {"frame_index": 0, "timestamp_seconds": 0.0, "face_count": 1, "cosine": 0.7082573771476746},
+      {"frame_index": 48, "timestamp_seconds": 2.0, "face_count": 1, "cosine": 0.6845099329948425},
+      {"frame_index": 96, "timestamp_seconds": 4.0, "face_count": 1, "cosine": 0.702434778213501},
+      {"frame_index": 144, "timestamp_seconds": 6.0, "face_count": 1, "cosine": 0.6938697099685669},
+      {"frame_index": 191, "timestamp_seconds": 7.958333, "face_count": 1, "cosine": 0.651252031326294}
+    ],
+    "exactly_one_face_all_samples": true,
+    "cosine_average": 0.6880647659301757,
+    "cosine_minimum": 0.651252031326294,
+    "verdict": "PASS"
+  },
+  "holistic_visual_gate": {
+    "inspection_artifact": {
+      "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m05-v08-imagegen-full-scene/inspection/m05-v08-contact-sheet.png",
+      "sha256": "ab5e0d0161566a2f11b8e5c2b5aeefef4180945eb440487e83268f7ffcd5ebdb"
+    },
+    "inspection_method": "eight-frame visual contact-sheet review",
+    "checks": {
+      "coherent_single_full_scene": "PASS",
+      "no_collage_cutout_or_compositing_seam": "PASS",
+      "zantara_holistic_identity_consistent": "PASS",
+      "midnight_petrol_column_outfit_consistent": "PASS",
+      "full_body_head_to_both_boots_present": "PASS",
+      "static_camera_and_stable_composition": "PASS",
+      "exactly_four_wall_lights": "PASS",
+      "all_four_lights_off_at_start": "PASS",
+      "exactly_one_unlabeled_brass_switch": "PASS",
+      "single_switch_press": "PASS",
+      "only_second_light_from_bottom_turns_on": "FAIL",
+      "other_three_lights_remain_off": "PASS",
+      "no_added_text_ui_or_logos": "PASS",
+      "no_added_people_or_objects": "PASS"
+    },
+    "failure_reason": "The bottom-most wall light turns on. The required target was the second wall light from the bottom.",
+    "verdict": "FAIL"
+  },
+  "overall_verdict": "FAIL",
+  "video_authorized": false,
+  "downstream_assembly_authorized": false,
+  "owner_primary_requirement": {
+    "description": "Zantara is generated coherently in a new full scene with the selected outfit, not pasted as a collage.",
+    "verdict": "PASS"
+  },
+  "stop_reason": "Identity passes, but the generated action illuminates the wrong wall light. Per the one-call authorization, no retry or reroll was attempted."
+}

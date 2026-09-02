@@ -1,11 +1,11 @@
 # Zantara Video Factory — Current State
 
-- updated_at_utc: `2026-09-02T02:53:20Z`
+- updated_at_utc: `2026-09-02T04:20:58Z`
 - machine: `Air-M5`; Flow dispatch, ArcFace, media QA, and eventual ffmpeg work route to Pro.
 - branch: `agent/air-m5/wr3/zantara-video-factory-v3`
 - worktree: `/Users/balizero/nuzantara/.worktrees/wr3-zantara-video-factory-v3`
 - objective: operate one resumable WR3-based factory whose stages remain coherent while every creative decision can produce a materially different result.
-- factory_phase: `FLOW_DISPATCH_AMBIGUITY_REVIEW_REQUIRED`
+- factory_phase: `OWNER_VISUAL_REVIEW_REQUIRED`
 - season_gate: `TOPIC_APPROVAL_REQUIRED`; only `C07` is approved as a bounded pilot.
 - episode_queue: `[S01E13]`
 - topic: `What Your Residency Permit Does Not Come With`
@@ -26,7 +26,7 @@
 
 - creative_seed_id: `9fc9b711-be3b-45f8-9de0-fe4a7c99264e`
 - identity: exact `A007`
-- canonical wardrobe: ivory silk blouse with restrained gold embroidery
+- root canonical wardrobe: ivory silk blouse with restrained gold embroidery; explicitly superseded for the owner-authorized M04/M05 child by the `Midnight Petrol Column` outfit lock.
 - format: native vertical `9:16`, `720x1280`, `24 fps`, `8 s`, native audio
 - grammar: apparent oner through motivated occlusion and match-on-action; motion → compression → stasis; warm certainty → mixed ambiguity → neutral clarity; dry footstep/click/latch sound motifs with J/L bridges.
 - banned shortcuts: airports, passport/stamp imagery, literal labelled doors, floating documents, generated text, technical overlays, tourist-postcard Bali filler, and silent reuse of an old hero or start frame.
@@ -145,18 +145,40 @@ Canonical result:
 - QA: not run because no MP4 exists. Retries, extensions, upscales, extra image generations, assembly, publication, deployment, and outward messages: `0`.
 - canonical result: `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-flow-dispatch-result.json` (SHA-256 `e2818feb7f34d4c0b9f7c42f53be673b509f75f719c77d9448183cd779840d22`).
 
+## M03-v06 Tier Rebound — Generated, Then Rejected by Owner
+
+- The original `403` was diagnosed as a paygate mismatch: the Ultra account requires `PAYGATE_TIER_TIER1P5`.
+- One corrected generation completed: Flow balance `12550 → 12540`, observed delta `10` credits; no automatic retry.
+- Flow IDs: project `1c2ad889-75ee-4e37-a074-823ac79125f9`, video `d3c3e6dd-dcb6-4a5c-ae2b-f80292983cee`, scene `f5f80ddf-19f2-4a98-a954-d1c897caced0`, workflow `330a5e71-ac1b-43d4-bd0f-f8371f6764b1`, media `21e2f741-34b8-4065-ba69-7bed92d50590`.
+- The owner rejected the result as visibly composited because the raw A007 portrait had been used as the start image. It is ineligible for recovery, extension, upscale, assembly, publication, or reuse.
+- Canonical rejection: `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-owner-visual-rejection.json`.
+
+## M04-v07 and M05-v08 — Outfit-First Full-Scene Rebuild
+
+- Owner-authorized child wardrobe: `Midnight Petrol Column` — full-length midnight-petrol sculptural crepe jumpsuit, asymmetric folded shoulder, antique-brass waist bar, brushed-gold hoops, one brass cuff, black square-toe ankle boots, and a low polished ponytail.
+- Replacement contract: A007 is identity conditioning only. It may never be a start frame, crop, plate, background, edit target, wardrobe reference, lighting reference, or source-pixel layer.
+- M04 generated one coherent full-scene keyframe but failed identity: one face, ArcFace cosine `0.500372`; no video was submitted.
+- M05 changed the bounded synthesis method to identity-first full-scene generation while preserving the approved outfit and scene lock.
+- M05 keyframe passed: one coherent edge-to-edge scene, full outfit visible, no collage/cutout/seam, one face, ArcFace cosine `0.7776427269`.
+- Exactly one M05 Veo 3.1 Fast native-audio video was generated. Flow balance `12540 → 12530`, observed delta `10` credits; retries `0`.
+- M05 MP4 on Pro: `/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m05-v08-imagegen-full-scene/clips/m05-v08-single-switch.mp4`; SHA-256 `9375f9c881add2860783bd1c10937557ffcc0b40e9dca92f55bb7c4a9897406d`; H.264 `720x1280`, `24 fps`, `8.0 s`, native AAC stereo `48 kHz`.
+- Video identity passed on all five sampled frames: one face, average `0.688065`, minimum `0.651252`.
+- The owner's primary requirement passed: Zantara, body, wardrobe, light, perspective, and environment were authored together as a new full scene rather than composited from the anchor.
+- Strict composition verdict remains `FAIL` only because the bottom-most lamp activates instead of the specified second-from-bottom lamp. No reroll was made.
+- Accounted episode spend after M05: `50/100` credits under the owner-raised operating ceiling. Publications, deployments, and outward sends remain `0`.
+
 ## Completed Gates
 
 - editorial: `BOOT_AUDIT`; both council waves; consolidation, source pass, final curation; `E13_PILOT_TOPIC_APPROVAL`; `E13_CREATIVE_LOCK`.
 - f01: v01/v02 review; scene-start repair; v03/v04 still gates; v04 pre-render; family decision.
 - M01/M02: dual-reference still gate; identity-preserve edit gate; M02-v05 pre-render, generation, recovery, structural, visual/identity, and native-audio QA.
-- decisions: `E13_M02_V05_CANARY_REJECTED`; `E13_M03_V06_ORIGINALITY_PRESPEND_GATE`; `E13_M03_V06_PRE_RENDER_DESIGN_GATE`; `E13_M03_V06_FLOW_DISPATCH_AMBIGUOUS_STOP`.
+- decisions: `E13_M02_V05_CANARY_REJECTED`; `E13_M03_V06_OWNER_VISUAL_REJECTION`; `E13_M04_V07_IDENTITY_FAIL`; `E13_M05_V08_KEYFRAME_PASS`; `E13_M05_V08_VIDEO_OWNER_REQUIREMENT_PASS_STRICT_COMPOSITION_FAIL`.
 
 ## Earliest Open Gate
 
-`FLOW_DISPATCH_AMBIGUITY_REVIEW_REQUIRED`
+`OWNER_VISUAL_REVIEW_REQUIRED`
 
-M03-v06 crossed its single authorized dispatch boundary and returned an ambiguous `403`. The exact scene remains `PENDING` with no recoverable media. Do not call generation again, retry, extend, upscale, normalize or replace audio, open `f02`–`f06`, enter legal scripting, publish, deploy, or send outward messages. Only read-only exact-ID inspection of the existing project/video/scene may resolve whether media later appears; any new generation requires a new human-authorized execution envelope.
+The owner can now review the recovered M05-v08 MP4. The no-collage, new-outfit, new-scene, and identity requirements pass. The only strict shot-spec defect is which of the four lamps activates. Do not reroll, extend, upscale, assemble, publish, deploy, or send outward until the owner accepts the clip or requests a new bounded child variant.
 
 ## Verification and Resume Reads
 
@@ -169,6 +191,11 @@ M03-v06 crossed its single authorized dispatch boundary and returned an ambiguou
 - `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-independent-pre-render-gate.json`
 - `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-flow-authorization.json`
 - `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-flow-dispatch-result.json`
+- `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-owner-visual-rejection.json`
+- `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m04-v07-child-creative-outfit-lock.json`
+- `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m04-v07-keyframe-identity-composition-gate.json`
+- `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m05-v08-keyframe-identity-composition-gate.json`
+- `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m05-v08-video-identity-composition-gate.json`
 
 ## Definition of Done for the Current Gate
 
@@ -185,6 +212,13 @@ M03-v06 crossed its single authorized dispatch boundary and returned an ambiguou
 - `[x]` first honest canary verdict recorded as `FAIL` with zero new Flow spend
 - `[x]` failed M02-v05 canary rejected by the operator with no automatic retry
 - `[x]` M03-v06 design authorized, normalized by idempotent originality replay, dispatched exactly once, and stopped without resubmission on ambiguous `403`
+- `[x]` corrected M03-v06 tier rebound generated once and was rejected explicitly for visible anchor-first compositing
+- `[x]` owner-approved outfit-first replacement contract recorded with A007 restricted to identity conditioning
+- `[x]` M04-v07 coherent full-scene keyframe rejected before video on identity threshold
+- `[x]` M05-v08 coherent full-scene keyframe passed identity and anti-collage gates
+- `[x]` exactly one M05-v08 video generated, recovered, and structurally verified with zero retry
+- `[x]` M05-v08 video identity passed; owner primary no-collage requirement passed
+- `[ ]` owner accepts the M05-v08 clip despite the lamp-index deviation, or authorizes a materially new bounded child variant
 - `[ ]` live FlowKit gateway rejects mismatched workflow/media pairs and returns identifiers derived from the selected payload
 - `[ ]` one scene-first f01 canary clip passes identity, motion, composition, audio, and technical QA
 - `[ ]` winning cinematic grammar selected

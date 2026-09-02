@@ -1,0 +1,201 @@
+{
+  "schema_version": "wr3.full-scene-keyframe-animation-shot-pack.v1",
+  "created_at_utc": "2026-09-02T03:43:59Z",
+  "episode_id": "s01e13-residency-permit",
+  "probe_id": "M04",
+  "variant_id": "v07",
+  "status": "DESIGN_ONLY_NOT_DISPATCHED",
+  "approved_topic": "What Your Residency Permit Does Not Come With",
+  "design_intent": "Create one native portrait photograph of Zantara, her complete editorial outfit, and the four-circuit room as a single coherent exposure, then animate only that accepted full-scene keyframe.",
+  "bindings": {
+    "child_creative_outfit_lock_path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m04-v07-child-creative-outfit-lock.json",
+    "child_creative_outfit_lock_sha256": "59b396bc9204f41739909609f62b0230f1f3487e2f0be70abc42b4d7a4cf5a88",
+    "owner_rejection_path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-owner-visual-rejection.json",
+    "owner_rejection_sha256": "af5342e8f68d431ed4547de55505513d8ec7dfc1aa144b33c337b53a3f73b0cf",
+    "root_creative_lock_path": "docs/wr3/factory/episodes/s01e13-residency-permit/creative-lock.json",
+    "root_creative_lock_sha256": "abc57546e9c33023eb37d81a5bd12a19536f7ce33fdd5734105e85d43b101576"
+  },
+  "identity_reference": {
+    "id": "A007",
+    "path_on_pro": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+    "sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+    "use": "IDENTITY_CONDITIONING_ONLY",
+    "never_use_as": [
+      "first frame",
+      "start frame",
+      "background",
+      "environment plate",
+      "edit target",
+      "crop",
+      "cutout",
+      "pose reference",
+      "wardrobe reference",
+      "lighting reference",
+      "composition reference"
+    ]
+  },
+  "stage_1_full_scene_keyframe": {
+    "generation_count_max": 1,
+    "output_kind": "new 9:16 full-scene still image",
+    "input_policy": "A007 may be supplied only through the generator's identity-reference control. The canvas starts blank; no existing image is edited, extended, composited, inpainted, outpainted, or used as a first frame.",
+    "positive_prompt": "Create a wholly new, photorealistic vertical 9:16 editorial still photographed as one coherent scene, not an edit. Zantara is the sole person, recognizable from identity reference A007 only. Show her head to both boots in a calm three-quarter stance, face near-frontal and unobstructed, warm natural skin, subtle eyeliner, long brown hair center-parted into a low polished ponytail. Dress her in the complete Midnight Petrol Column outfit: a deep petrol matte satin-backed-crepe tailored jumpsuit with a clean asymmetric bodice, one sculptural folded shoulder, defined waist with a narrow antique-brass bar, long wide legs with pressed creases, small brushed-gold oval hoops, one slim brushed-brass cuff on the non-switch wrist, and black matte leather square-toe low block-heel ankle boots. Build her body, outfit, hair, floor contact, light, lens perspective, and room together from scratch. Place her in a monolithic warm limestone-grey mineral-plaster lighting chamber with a dark honed-stone floor and a shallow smoked-brass reveal. Beside her, show one unlabelled smoked-brass push switch and exactly four ordinary frosted-glass architectural wall lights in a clean vertical register, all four visibly off. Native portrait composition, rigid level 50 mm-equivalent camera at 1.25-metre height, approximately four metres away. Zantara occupies the left-central safe column; the complete outfit, both boots, switch, and all four practicals are readable inside the central ninety percent. Large soft 4200 K key from camera-left, restrained wall bounce, subtle negative fill, physically correct contact shadows, coherent vanishing points, protected skin highlights and readable petrol fabric. Real photographed mineral, glass, brass, crepe, skin and leather; quiet editorial authority; no text or graphic elements.",
+    "negative_prompt": "collage, cutout, pasted portrait, portrait card, identity card, face swap seam, halo edge, photo animation, reused A007 pixels, A007 background, A007 crop, edit, inpainting, outpainting, composited plate, conflicting perspective, mismatched scale, floating body, floating feet, mismatched contact shadow, synthetic skin, wax face, altered identity, altered age, face obstruction, loose hair across face, profile-only face, duplicate Zantara, extra person, reflection of a person, mirror, ivory blouse, gold-trim blouse, skirt, dress, wardrobe morph, missing boots, cropped feet, transparent fabric, sequins, logos, print, CGI, 3D render, game engine, product render, diagram, split screen, multiple panels, border, letterbox, pillarbox, text, letters, numbers, labels, signage, logo, captions, UI, hologram, technical overlay, document, passport, stamp, airport, government insignia, office counter, beach, resort, temple, tourist Bali, labelled doors, extra lights, fewer than four lights, any lit practical, glowing switch, impossible architecture, wide-angle distortion, fisheye, dutch angle, teal-orange grade, bloom, lens flare, ring light, crushed petrol fabric, clipped highlights, distorted hands, extra fingers",
+    "camera": {
+      "aspect_ratio": "9:16 native",
+      "delivery_resolution": "720x1280 minimum",
+      "lens": "50 mm-equivalent rectilinear",
+      "height_metres": 1.25,
+      "distance_metres_approx": 4.0,
+      "horizon": "level",
+      "framing": "head-to-both-boots full-scene tableau",
+      "safe_area": "face, body, boots, switch and all four practicals within central 90 percent"
+    },
+    "initial_state_invariants": [
+      "exactly one Zantara",
+      "all four practical lights visible and off",
+      "one unlabelled physical switch visible",
+      "complete locked outfit and both boots visible",
+      "face unobstructed and no more than fifteen degrees off-axis",
+      "no text, border, UI, reflections, documents, CGI, or compositing cues"
+    ],
+    "acceptance_gate": {
+      "reviewer_must_be_independent": true,
+      "composition_verdict_required": "PASS",
+      "outfit_lock_verdict_required": "PASS",
+      "material_and_perspective_verdict_required": "PASS",
+      "arcface_cosine_minimum": 0.6,
+      "face_count_required": 1,
+      "holistic_identity_verdict_required": "PASS",
+      "accidental_text_ui_border_count_max": 0,
+      "collage_or_cutout_cue_count_max": 0,
+      "keyframe_sha256_must_be_recorded": true,
+      "animation_allowed_if_gate_fails": false,
+      "automatic_keyframe_retry_allowed": false
+    }
+  },
+  "stage_2_animation": {
+    "requires_accepted_stage_1_keyframe": true,
+    "start_frame_role": "The accepted freshly generated M04-v07 full-scene keyframe, never A007 or any M03 media.",
+    "model": "veo_3_1_i2v_s_fast_portrait",
+    "tier": "Tier_ONE",
+    "aspect_ratio": "9:16",
+    "resolution": "720x1280",
+    "fps": 24,
+    "duration_seconds": 8,
+    "native_audio": true,
+    "generation_count_max": 1,
+    "tier_one_positive_prompt": "Locked 50mm: Zantara in petrol sculptural jumpsuit presses one brass switch; one of four wall lights turns on; dry click, silent hold.",
+    "tier_one_positive_word_count": 22,
+    "full_motion_prompt": "Keep the accepted full-scene keyframe completely coherent. The rigid 50 mm tripod camera never moves. Zantara remains planted and near-frontal. She makes one measured lateral reach with her switch-side hand, presses the unlabelled brass switch once, then withdraws the hand to a relaxed position and holds calm recognition toward camera. Synchronize one soft dry mechanical click to the press. Exactly the second frosted-glass practical from the bottom turns on once into a stable neutral 4800 K pool; the other three remain visibly dark through the final frame. Preserve exact A007 identity, hairline, face geometry, skin, complete Midnight Petrol Column outfit, accessories, boots, body proportions, switch position, fixture count, wall geometry, lens perspective, exposure, floor contact and all shadows. Only the reaching arm, hand, minimal physically plausible cloth settling, and the single chosen practical may change.",
+    "negative_prompt": "identity drift, altered age, altered facial geometry, mouth movement, speaking, lip articulation, face occlusion, profile turn, head turn beyond fifteen degrees, loose hair crossing face, extra person, duplicate Zantara, reflection, mirror, collage, cutout, pasted face, halo, wardrobe morph, ivory blouse, missing accessories, shoe change, body scale change, floating feet, walking, step, spin, flourish, dramatic acting, second action, extra finger, fused finger, distorted hand, melted switch, switch movement, extra switch, camera translation, dolly, pan, tilt, crane, orbit, zoom, roll, handheld shake, stabilization float, lens breathing, focus pull, exposure pumping, reframing, crop change, cut, transition, speed ramp, time jump, room morph, wall drift, floor drift, perspective drift, fixture movement, fixture count change, multiple lights activating, wrong light activating, flashing, flicker, glowing switch, CGI glow, bloom, flare, labels, text, letters, numbers, logo, captions, UI, diagram, hologram, technical overlay, border, letterbox, pillarbox, document, passport, stamp, airport, government insignia, office, beach, resort, music, speech, electrical hum, bass rumble, ventilation drone, cloth swoosh, sharp transient, reverberant boom",
+    "timecoded_action": [
+      {
+        "timecode": "0.0-1.5",
+        "beat": "Locked tableau. Zantara, the complete outfit, switch, and four dark practicals are all readable."
+      },
+      {
+        "timecode": "1.5-3.0",
+        "beat": "Without stepping or turning away, she extends one hand laterally toward the switch."
+      },
+      {
+        "timecode": "3.0-3.4",
+        "beat": "One press and one soft dry synchronized brass-switch click."
+      },
+      {
+        "timecode": "3.4-5.8",
+        "beat": "Only the second practical from the bottom turns on into one stable neutral pool; three stay dark."
+      },
+      {
+        "timecode": "5.8-8.0",
+        "beat": "She withdraws her hand and holds calm recognition; the one-circuit state remains stable."
+      }
+    ],
+    "continuity_invariants": [
+      "one continuous take",
+      "camera transform is constant",
+      "exactly one face and one body",
+      "complete outfit and hair remain unchanged",
+      "four fixtures remain fixed",
+      "only one fixture changes from off to on",
+      "switch and hand anatomy remain physically coherent",
+      "no accidental text, UI, border, reflection, cut, or scene morph"
+    ],
+    "post_render_acceptance_gate": {
+      "structural": "Eight seconds, 720x1280, 24 fps, portrait, decodable video plus native audio, unique MP4 SHA-256.",
+      "identity_frames": [
+        0,
+        38,
+        76,
+        114,
+        152
+      ],
+      "arcface_average_minimum": 0.6,
+      "arcface_per_frame_hard_floor": 0.55,
+      "face_count_required": 1,
+      "holistic_identity_verdict_required": "PASS",
+      "camera_lock_verdict_required": "PASS",
+      "composition_and_material_continuity_verdict_required": "PASS",
+      "metaphor_verdict": "PASS only if one press visibly causes exactly one of four practicals to turn on and the other three remain dark.",
+      "accidental_text_ui_border_count_max": 0,
+      "native_audio_content": "quiet room air plus one soft dry synchronized switch click only",
+      "automatic_retry_allowed": false,
+      "fail_closed": true
+    }
+  },
+  "cost_and_execution_plan": {
+    "design_lane_flow_credits_spent": 0,
+    "media_generation_dispatched_by_this_lane": false,
+    "owner_authorized_cumulative_episode_ceiling_cr": 100,
+    "accounted_episode_credits_before_m04_cr": 40,
+    "maximum_incremental_m04_envelope_cr": 60,
+    "planned_keyframe_generation_jobs_max": 1,
+    "planned_video_generation_jobs_max": 1,
+    "automatic_retries": 0,
+    "extensions": 0,
+    "upscales": 0,
+    "additional_reference_image_generations": 0,
+    "known_video_job_cost_cr": 10,
+    "keyframe_job_cost_policy": "Observe and bind the live Flow debit before animation; abort if the measured keyframe cost plus the 10-credit video would exceed the 100-credit cumulative ceiling.",
+    "pre_dispatch_requirements": [
+      "independent stage-1 prompt and composition gate",
+      "live balance and daily breaker PASS",
+      "exact SHA binding for this shot pack and child lock",
+      "one-job authorization for the full-scene keyframe",
+      "accepted keyframe SHA and independent identity/composition PASS before the separate one-job animation authorization"
+    ],
+    "uncontrolled_loop_allowed": false,
+    "stop_on_ambiguity_or_failure": true
+  },
+  "provenance": {
+    "creative_parent": "M03-v06 ONE INPUT, ONE CIRCUIT",
+    "replacement_trigger": "Owner rejection of portrait-to-scene compositing",
+    "fresh_asset_requirement": "The M04 keyframe must be a new full-scene image with a new SHA-256 and no inherited M03 media pixels.",
+    "prior_m03_media_reuse_allowed": false,
+    "a007_pixel_reuse_allowed": false,
+    "a007_semantic_identity_conditioning_allowed": true,
+    "future_lineage_required": [
+      "child lock path and SHA-256",
+      "shot pack path and SHA-256",
+      "A007 path and SHA-256",
+      "keyframe request and receipt",
+      "accepted keyframe path and SHA-256",
+      "independent keyframe gate path and SHA-256",
+      "animation authorization path and SHA-256",
+      "Flow project, scene, workflow and media IDs",
+      "final MP4 path and SHA-256"
+    ]
+  },
+  "execution_counters": {
+    "keyframe_generation_jobs": 0,
+    "video_generation_jobs": 0,
+    "retries": 0,
+    "extensions": 0,
+    "upscales": 0,
+    "flow_credits_spent": 0,
+    "media_created": 0,
+    "publishes": 0,
+    "deploys": 0,
+    "outward_messages": 0
+  },
+  "next_gate": "INDEPENDENT_KEYFRAME_PRE_RENDER_AND_SHA_BOUND_EXECUTION_GATE_REQUIRED"
+}

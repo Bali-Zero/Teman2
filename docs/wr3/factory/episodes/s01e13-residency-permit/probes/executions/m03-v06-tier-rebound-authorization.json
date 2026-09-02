@@ -1,0 +1,46 @@
+{
+  "schema_version": "wr3.camera-probe-flow-authorization.v1",
+  "authorization_id": "m03-v06-tier-rebound-20260902t031807z",
+  "created_at_utc": "2026-09-02T03:18:07Z",
+  "operator": "Antonello",
+  "authorization_basis": [
+    "Approvo al design e approvo a tutte le spese che occorreranno per la realizzazione",
+    "ok e quindi che si fa?"
+  ],
+  "normalized_authorization_text": "AUTHORIZE CORRECTED FLOW CANARY: S01E13 M03-v06 PAYGATE_TIER_TIER1P5 MAX_CREDITS: 10",
+  "authorization_scope": "exactly_one_corrected_m03_v06_canary_generation_after_proven_tier_rejection",
+  "episode_id": "s01e13-residency-permit",
+  "probe_id": "M03-v06",
+  "design": {
+    "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-canary-design.json",
+    "sha256": "3b27de1b2b370b02188178811763703d4a967a9d9fb59e98aa6efa748ac1b27f"
+  },
+  "diagnosis": {
+    "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-tier-mismatch-diagnosis.json",
+    "failed_paygate": "PAYGATE_TIER_ONE",
+    "required_paygate": "PAYGATE_TIER_TIER1P5",
+    "prior_balance_delta_observed": 0,
+    "prior_media_created": false
+  },
+  "output_contract": {
+    "model": "veo_3_1_i2v_s_fast_portrait_ultra",
+    "paygate": "PAYGATE_TIER_TIER1P5",
+    "aspect_ratio": "9:16",
+    "resolution": "720x1280",
+    "fps": 24,
+    "duration_seconds": 8,
+    "native_audio": true
+  },
+  "hard_limits": {
+    "maximum_new_generation_jobs": 1,
+    "maximum_incremental_flow_credits": 10,
+    "automatic_retries": 0,
+    "extensions": 0,
+    "upscales": 0,
+    "additional_image_generations": 0
+  },
+  "on_failure_or_ambiguity": "STOP_WITHOUT_RESUBMISSION",
+  "publication_allowed": false,
+  "spend_authorized": true,
+  "flow_dispatch_allowed": true
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": "wr3.owner-visual-rejection.v1",
+  "episode_id": "s01e13-residency-permit",
+  "variant_id": "m03-v06",
+  "recorded_at_utc": "2026-09-02T03:39:03Z",
+  "decision": "REJECTED_BY_OWNER_VISUAL_COMPOSITING",
+  "owner_feedback_verbatim": "ok, ma e' un collage pezzotto. Si deve scegliere il outfit di zantara e inserirla nella scena ex novo",
+  "diagnosis": {
+    "primary_failure": "The A007 anchor was used as the video start image, producing a visibly assembled portrait-to-scene result instead of a coherent world photographed as one shot.",
+    "creative_failure": "Wardrobe, body, lighting, perspective, and environment were not authored together as a single scene.",
+    "acceptance_consequence": "The result is not eligible for recovery, extension, upscale, assembly, publication, or reuse as a future start frame."
+  },
+  "immutable_flow_result": {
+    "generation_status": "successful",
+    "retrieval_status": "failed",
+    "project_id": "1c2ad889-75ee-4e37-a074-823ac79125f9",
+    "video_id": "d3c3e6dd-dcb6-4a5c-ae2b-f80292983cee",
+    "scene_id": "f5f80ddf-19f2-4a98-a954-d1c897caced0",
+    "workflow_id": "330a5e71-ac1b-43d4-bd0f-f8371f6764b1",
+    "media_id": "21e2f741-34b8-4065-ba69-7bed92d50590",
+    "generate_call_count": 1,
+    "credits_before": 12550,
+    "credits_after_generation": 12540,
+    "observed_global_balance_delta": 10
+  },
+  "replacement_contract": {
+    "method": "OUTFIT_FIRST_FULL_SCENE_GENERATION",
+    "a007_role": "identity_reference_only",
+    "raw_a007_may_be_start_frame": false,
+    "old_m03_media_may_be_reused": false,
+    "required_order": [
+      "select and lock one complete Zantara outfit",
+      "generate a new full-scene keyframe in which subject and environment are natively coherent",
+      "run independent composition and identity gates",
+      "animate only the accepted full-scene keyframe"
+    ],
+    "publication_allowed": false
+  }
+}

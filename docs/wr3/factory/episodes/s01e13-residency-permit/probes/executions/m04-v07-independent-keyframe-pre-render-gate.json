@@ -1,0 +1,125 @@
+{
+  "schema_version": "wr3.independent-keyframe-pre-render-gate.v1",
+  "created_at_utc": "2026-09-02T03:49:44Z",
+  "episode_id": "s01e13-residency-permit",
+  "probe_id": "M04",
+  "variant_id": "v07",
+  "reviewer_role": "INDEPENDENT_PRE_RENDER_GATEKEEPER",
+  "verdict": "PASS",
+  "authorization_scope": "ONE_FULL_SCENE_KEYFRAME_GENERATION_ONLY",
+  "animation_authorized": false,
+  "bindings": {
+    "child_creative_outfit_lock": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m04-v07-child-creative-outfit-lock.json",
+      "sha256": "59b396bc9204f41739909609f62b0230f1f3487e2f0be70abc42b4d7a4cf5a88"
+    },
+    "full_scene_shot_pack": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m04-v07-full-scene-shot-pack.json",
+      "sha256": "e8c6c76e0f992d3313a92b4ba776ef598376add0cf37f6b2ff57f4dac7e35a05"
+    },
+    "owner_visual_rejection": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-owner-visual-rejection.json",
+      "sha256": "af5342e8f68d431ed4547de55505513d8ec7dfc1aa144b33c337b53a3f73b0cf"
+    },
+    "root_creative_lock": {
+      "path": "docs/wr3/factory/episodes/s01e13-residency-permit/creative-lock.json",
+      "sha256": "abc57546e9c33023eb37d81a5bd12a19536f7ce33fdd5734105e85d43b101576",
+      "modified": false
+    },
+    "a007_identity_anchor_on_pro": {
+      "path": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+      "sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+      "verified_on_pro": true
+    }
+  },
+  "checks": {
+    "owner_rejection_remediation": {
+      "passed": true,
+      "details": "The design replaces portrait-to-scene assembly with one blank-canvas full-scene generation and forbids reuse of A007 or M03 pixels, plates, crops, edit targets, or start frames."
+    },
+    "identity_reference_only": {
+      "passed": true,
+      "identity_token": "A007",
+      "sole_identity_reference": true,
+      "details": "A007 supplies identity conditioning only. Face, body, pose, wardrobe, lighting, lens, room and composition must be generated together from scratch."
+    },
+    "outfit_lock": {
+      "passed": true,
+      "locked_outfit": "Midnight Petrol Column",
+      "details": "The complete petrol tailored jumpsuit, brass hardware, earrings, cuff, boots and low ponytail are materially specified and continuity-locked; the rejected ivory blouse is explicitly excluded."
+    },
+    "composition_and_coherence": {
+      "passed": true,
+      "details": "Native 9:16 head-to-boot composition defines one camera, one architectural plane, coherent floor contact, shadows, perspective and material response, with explicit anti-collage and anti-CGI constraints."
+    },
+    "exact_four_lights_metaphor": {
+      "passed": true,
+      "initial_state": "Exactly four ordinary frosted-glass wall lights, all off, plus one unlabelled brass switch.",
+      "animated_state": "Exactly the second light from the bottom turns on once; the other three remain dark.",
+      "details": "Fixture count, order, switch count and single-circuit transition are explicit and continuity-locked."
+    },
+    "text_ui_and_graphics": {
+      "passed": true,
+      "maximum_allowed_count": 0,
+      "details": "Prompts ban text, letters, numbers, labels, signage, logos, captions, UI, diagrams, holograms, borders and technical overlays."
+    },
+    "cliche_and_tier_dialect": {
+      "passed": true,
+      "stage_2_prompt_word_count": 22,
+      "flagged_terms": [],
+      "details": "The Tier prompt is under 25 words and contains no banned documentary or journalistic modifiers, sensitive document terms, city names, or compound location-style direction."
+    },
+    "safety": {
+      "passed": true,
+      "flagged_words": [],
+      "details": "No violence, death, prison, weapon, document, passport, stamp, city-name or other known Veo safety-trigger term appears in the Tier prompt."
+    },
+    "camera_and_motion": {
+      "passed": true,
+      "details": "One rigid 50 mm-equivalent tripod take, one measured press, one withdrawal and one hold; camera movement, cuts, morphing and secondary actions are forbidden."
+    },
+    "native_audio": {
+      "passed": true,
+      "details": "Audio is restricted to quiet room air and one soft dry synchronized switch click, with speech, music, hum and unrelated ambience banned."
+    },
+    "cost": {
+      "passed": true,
+      "flow_health": "HEALTHY_ON_PRO",
+      "live_balance_cr": 12540,
+      "paygate": "PAYGATE_TIER_TIER1P5",
+      "owner_cumulative_episode_ceiling_cr": 100,
+      "accounted_episode_credits_before_m04_cr": 40,
+      "remaining_episode_envelope_cr": 60,
+      "authorized_keyframe_jobs_now": 1,
+      "authorized_video_jobs_now": 0,
+      "future_known_video_job_cost_cr": 10,
+      "maximum_permitted_keyframe_debit_cr": 50,
+      "automatic_retries": 0,
+      "details": "This PASS authorizes one keyframe job only. Observe the live debit immediately; fail closed if it exceeds 50 credits. The separate 10-credit video remains unauthorized until the keyframe passes all identity and composition gates."
+    }
+  },
+  "keyframe_post_generation_hard_gate": {
+    "required_before_animation": true,
+    "requirements": [
+      "Record a fresh keyframe path and SHA-256 with no inherited M03 media pixels.",
+      "Exactly one detectable face.",
+      "ArcFace cosine against A007 at least 0.60.",
+      "Independent holistic identity PASS with unobstructed near-frontal face.",
+      "Independent composition, material and perspective PASS with zero collage, cutout, halo, portrait-card or CGI cue.",
+      "Complete Midnight Petrol Column outfit, accessories, ponytail and both boots visible and correct.",
+      "Exactly four physical wall lights visible and off, plus one unlabelled physical switch.",
+      "Zero visible text, UI, border, reflection, document, logo or additional person.",
+      "Bind the measured keyframe Flow debit and confirm at least 10 credits remain inside the owner ceiling for the video."
+    ],
+    "automatic_retry_allowed": false,
+    "failure_action": "STOP_NO_VIDEO_NO_RETRY",
+    "success_action": "CREATE_SEPARATE_ONE_JOB_TIER1P5_VIDEO_AUTHORIZATION"
+  },
+  "execution_counters_at_gate": {
+    "media_generated_by_gatekeeper": 0,
+    "flow_calls_by_gatekeeper": 0,
+    "credits_spent_by_gatekeeper": 0,
+    "publishes": 0,
+    "outward_messages": 0
+  }
+}
