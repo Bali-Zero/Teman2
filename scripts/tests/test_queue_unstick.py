@@ -939,3 +939,272 @@ def test_the_pinned_advice_still_forbids_both_gestures(tmp_path):
     assert "do not rebase" in lowered
     assert "origin/main" in lowered
     assert "+n/-0" in lowered
+
+
+# ── sender-side retraction of resolved DIRTY pages (2026-09-02) ─────────────
+#
+# Measured 2026-09-02 (research/operations/2026-09-02-mailbox-broadcast-
+# staleness-audit.md): 33/34 (97%) of live queue_unstick:<PR#> broadcasts on
+# Pro were for PRs already MERGED/CLOSED/no-longer-DIRTY. `resolved_dirty_prs`
+# is the pure classifier; `retract_dirty_signal` is the side-effecting call;
+# main() wires the two together and drops a retracted PR from `dirty_seen`.
+
+
+def test_resolved_dirty_prs_GUILT_pr_absent_from_open_set_is_resolved():
+    """PR 501 was signalled dirty, then merged/closed — it no longer appears
+    in fetch_open_prs() at all, so prs_by_number has no entry for it."""
+    seen = {"501": "a" * 40 + ":abcd1234"}
+    resolved = qu.resolved_dirty_prs(seen, prs_by_number={})
+    assert resolved == ["501"]
+
+
+def test_resolved_dirty_prs_GUILT_pr_present_but_no_longer_dirty_is_resolved():
+    """PR 502 is still open but the queue un-stuck it by itself (BLOCKED,
+    not DIRTY) — resolved even though it never left the open set."""
+    seen = {"502": "b" * 40 + ":abcd1234"}
+    prs_by_number = {502: make_pr(502, merge_state_status="BLOCKED")}
+    resolved = qu.resolved_dirty_prs(seen, prs_by_number)
+    assert resolved == ["502"]
+
+
+def test_resolved_dirty_prs_INNOCENCE_still_dirty_pr_is_not_resolved():
+    seen = {"503": "c" * 40 + ":abcd1234"}
+    prs_by_number = {503: make_pr(503, merge_state_status="DIRTY")}
+    resolved = qu.resolved_dirty_prs(seen, prs_by_number)
+    assert resolved == []
+
+
+def test_resolved_dirty_prs_INNOCENCE_untouched_state_entries_are_left_alone():
+    """A mix: only the resolved one comes back, the still-dirty one does not
+    contaminate the result (guards against an off-by-one over the dict)."""
+    seen = {
+        "504": "d" * 40 + ":aaaa",  # still dirty
+        "505": "e" * 40 + ":bbbb",  # resolved (merged/closed)
+    }
+    prs_by_number = {504: make_pr(504, merge_state_status="DIRTY")}
+    resolved = qu.resolved_dirty_prs(seen, prs_by_number)
+    assert resolved == ["505"]
+
+
+def test_resolved_dirty_prs_GUILT_unknown_status_must_not_be_treated_as_resolved():
+    """CONFIRMED cross-family finding (codex-gpt-5.6-sol, round 1, PR #5561):
+    the pre-fix version compared `merge_state_status != "DIRTY"`, which reads
+    UNKNOWN as resolved. UNKNOWN is this file's OWN documented transient
+    state right after `main` moves (see the module's Re-warm section,
+    REWARM_UNKNOWN_RATIO/REWARM_UNKNOWN_MIN) — a PR that is STILL actually
+    DIRTY can read UNKNOWN for tens of seconds while GitHub recomputes.
+    Retracting on that reading would take back a genuinely live page. Fails
+    on the pre-fix `!= "DIRTY"` comparison; must stay green on the fixed
+    fail-closed version."""
+    seen = {"506": "f" * 40 + ":cccc"}
+    prs_by_number = {506: make_pr(506, merge_state_status="UNKNOWN")}
+    resolved = qu.resolved_dirty_prs(seen, prs_by_number)
+    assert resolved == [], "UNKNOWN must never be read as a retraction signal"
+
+
+def test_resolved_dirty_prs_INNOCENCE_a_definite_non_dirty_status_still_retracts():
+    """The fix must not overcorrect into never retracting anything: a
+    DEFINITE (non-UNKNOWN, non-DIRTY) reading — CLEAN here — still resolves,
+    same as the pre-existing merged/closed (absent) and BLOCKED cases above."""
+    seen = {
+        "507": "1" * 40 + ":dddd",  # CLEAN — definite, must retract
+        "508": "2" * 40 + ":eeee",  # merged/closed (absent) — must retract
+    }
+    prs_by_number = {507: make_pr(507, merge_state_status="CLEAN")}
+    resolved = qu.resolved_dirty_prs(seen, prs_by_number)
+    assert sorted(resolved) == ["507", "508"]
+
+
+def test_mailbox_key_is_shared_between_send_and_retract():
+    """send_dirty_signal and retract_dirty_signal must key the SAME broadcast
+    — a drift here would mean retraction silently retracts nothing."""
+    assert qu._mailbox_key(9001) == qu._mailbox_key("9001") == "queue_unstick:9001"
+
+
+# ── retract_dirty_signal: dry-run / missing-file / non-zero-rc / success ────
+
+
+def test_retract_dirty_signal_dry_run_never_calls_run():
+    calls = []
+
+    def _never_called(cmd, timeout=30):
+        calls.append(cmd)
+        return 0, "", ""
+
+    original_run = qu._run
+    qu._run = _never_called
+    try:
+        ok, detail = qu.retract_dirty_signal("601", dry_run=True)
+    finally:
+        qu._run = original_run
+    assert ok is True
+    assert "[dry-run]" in detail
+    assert "queue_unstick:601" in detail
+    assert calls == []
+
+
+def test_retract_dirty_signal_missing_fleet_mail_reports_failure(tmp_path):
+    ok, detail = qu.retract_dirty_signal("602", dry_run=False, repo_root=tmp_path)
+    assert ok is False
+    assert "FAILED" in detail
+    assert "fleet_mail.sh not found" in detail
+
+
+def test_retract_dirty_signal_nonzero_rc_reports_failure():
+    original_run = qu._run
+    qu._run = lambda cmd, timeout=30: (1, "", "no reachable ssh route for 'pro'")
+    try:
+        ok, detail = qu.retract_dirty_signal("603", dry_run=False)
+    finally:
+        qu._run = original_run
+    assert ok is False
+    assert "FAILED" in detail
+    assert "no reachable ssh route" in detail
+
+
+def test_retract_dirty_signal_success_reports_ok_and_uses_retract_argv_shape():
+    original_run = qu._run
+    calls = []
+
+    def fake_run(cmd, timeout=30):
+        calls.append(cmd)
+        return 0, "retracted 1 message(s) matching key 'queue_unstick:604' on pro", ""
+
+    qu._run = fake_run
+    try:
+        ok, detail = qu.retract_dirty_signal("604", dry_run=False)
+    finally:
+        qu._run = original_run
+    assert ok is True
+    assert "OK" in detail
+    cmd = calls[0]
+    assert cmd[0] == "bash"
+    assert cmd[2] == qu.FLEET_MAIL_HOST
+    assert cmd[3] == "retract"
+    key_index = cmd.index("--key") + 1
+    assert cmd[key_index] == "queue_unstick:604"
+
+
+# ── send_dirty_signal: --ttl is actually wired through ──────────────────────
+
+
+def test_send_dirty_signal_dry_run_names_the_ttl_flag():
+    pr = make_pr(605, merge_state_status="DIRTY", head_sha="f" * 40)
+    ok, detail = qu.send_dirty_signal(pr, dry_run=True)
+    assert ok is True
+    assert f"--ttl {qu.DIRTY_SIGNAL_TTL_HOURS}" in detail
+
+
+def test_send_dirty_signal_production_argv_includes_ttl():
+    pr = make_pr(606, merge_state_status="DIRTY", head_sha="1" * 40)
+    original_run = qu._run
+    calls = []
+
+    def fake_run(cmd, timeout=30):
+        calls.append(cmd)
+        return 0, "delivered", ""
+
+    qu._run = fake_run
+    try:
+        ok, _ = qu.send_dirty_signal(pr, dry_run=False, files_desc="scripts/foo.py")
+    finally:
+        qu._run = original_run
+    assert ok is True
+    cmd = calls[0]
+    ttl_index = cmd.index("--ttl") + 1
+    assert cmd[ttl_index] == str(qu.DIRTY_SIGNAL_TTL_HOURS)
+
+
+# ── main(): retraction wired end-to-end ──────────────────────────────────────
+
+
+def test_main_GUILT_pr_merged_since_last_signal_is_retracted_and_dropped_from_state(
+    monkeypatch, tmp_path, capsys
+):
+    """Deleting the retraction wiring from main() makes this go red: `_run`
+    would never be called and '701' would still be in the saved state file."""
+    monkeypatch.delenv("QUEUE_UNSTICK_ENABLED", raising=False)
+    monkeypatch.setattr(qu, "STATE_DIR", tmp_path)
+    seen_file = tmp_path / "seen.json"
+    monkeypatch.setattr(qu, "DIRTY_SEEN_FILE", seen_file)
+    qu.save_dirty_seen({"701": "a" * 40 + ":aaaa1111"}, path=seen_file)
+
+    # PR 701 no longer appears in the open set at all (merged/closed).
+    monkeypatch.setattr(qu, "fetch_open_prs", lambda repo: [])
+
+    calls = []
+
+    def fake_run(cmd, timeout=30):
+        calls.append(cmd)
+        return 0, "retracted 1 message(s)", ""
+
+    monkeypatch.setattr(qu, "_run", fake_run)
+
+    rc = qu.main([])
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    retract_calls = [c for c in calls if "retract" in c]
+    assert len(retract_calls) == 1
+    key_index = retract_calls[0].index("--key") + 1
+    assert retract_calls[0][key_index] == "queue_unstick:701"
+    assert "dirty_retracted=1" in out
+    assert "dirty_retract_failed=0" in out
+    assert qu.load_dirty_seen(seen_file) == {}
+
+
+def test_main_INNOCENCE_still_dirty_pr_with_unchanged_fingerprint_is_not_retracted(
+    monkeypatch, tmp_path, capsys
+):
+    monkeypatch.delenv("QUEUE_UNSTICK_ENABLED", raising=False)
+    monkeypatch.setattr(qu, "STATE_DIR", tmp_path)
+    seen_file = tmp_path / "seen.json"
+    monkeypatch.setattr(qu, "DIRTY_SEEN_FILE", seen_file)
+
+    real_now = _dt.datetime.now(_dt.timezone.utc)
+    old_commit = _iso(real_now - _dt.timedelta(minutes=30))
+    pr = make_pr(702, merge_state_status="DIRTY", minutes_since_commit=30, head_sha="b" * 40)
+    pr["last_commit_date"] = old_commit
+    monkeypatch.setattr(qu, "fetch_open_prs", lambda repo: [pr])
+    monkeypatch.setattr(qu, "get_conflicting_files", lambda pr, repo_root=qu.REPO_ROOT, timeout=25: "scripts/foo.py")
+    stored_key = qu._dirty_fingerprint("b" * 40, "scripts/foo.py")
+    qu.save_dirty_seen({"702": stored_key}, path=seen_file)
+
+    calls = []
+
+    def _never_called(cmd, timeout=30):
+        calls.append(cmd)
+        return 0, "", ""
+
+    monkeypatch.setattr(qu, "_run", _never_called)  # still DIRTY, unchanged fingerprint -> deduped, no send, no retract
+
+    rc = qu.main([])
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    assert "dirty_retracted=0" in out
+    assert qu.load_dirty_seen(seen_file) == {"702": stored_key}
+    assert calls == [], f"still-dirty unchanged PR must trigger neither a send nor a retract; ran {calls}"
+
+
+def test_main_retract_failure_never_reddens_the_tick_but_still_drops_state(
+    monkeypatch, tmp_path, capsys
+):
+    """A failed retraction is reported, not swallowed — but never treated as
+    a tick failure: the un-retracted broadcast still self-expires via
+    DIRTY_SIGNAL_TTL_HOURS (see retract_dirty_signal's docstring)."""
+    monkeypatch.delenv("QUEUE_UNSTICK_ENABLED", raising=False)
+    monkeypatch.setattr(qu, "STATE_DIR", tmp_path)
+    seen_file = tmp_path / "seen.json"
+    monkeypatch.setattr(qu, "DIRTY_SEEN_FILE", seen_file)
+    qu.save_dirty_seen({"703": "c" * 40 + ":cccc"}, path=seen_file)
+    monkeypatch.setattr(qu, "fetch_open_prs", lambda repo: [])
+    monkeypatch.setattr(qu, "_run", lambda cmd, timeout=30: (1, "", "ssh timed out"))
+
+    rc = qu.main([])
+    out = capsys.readouterr().out
+
+    assert rc == 0, "a retract failure must never redden the tick"
+    assert "dirty_retracted=0" in out
+    assert "dirty_retract_failed=1" in out
+    assert qu.load_dirty_seen(seen_file) == {}, "dropped from state even though the retract call failed"
