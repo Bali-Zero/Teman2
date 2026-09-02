@@ -286,19 +286,33 @@ async def apply_transition(
         # `idempotency.reserve`'s replay outcome before this function is
         # ever called), but ON CONFLICT DO NOTHING is still the correct
         # posture for a retry that reaches this far and re-executes.
-        await conn.execute(
-            """
-            INSERT INTO garuda_practice_evidence
-                (practice_id, transition_id, evidence_id, kind, recorded_by)
-            VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (practice_id, evidence_id) DO NOTHING
-            """,
-            practice_id,
-            transition_id,
-            fields["evidence_id"],
-            _EVIDENCE_KIND[spec.kind],
-            actor["email"],
-        )
+        #
+        # Round-4 disposition item 3 (Codex finding #4 / Gemini finding #3):
+        # the `other_owner` SELECT above is a TOCTOU check, not a guarantee
+        # -- two concurrent transitions on DIFFERENT practices with the
+        # SAME evidence_id can both pass it before either commits. 305's
+        # global `UNIQUE(evidence_id)` index is the real guard; catching its
+        # violation here turns the loser of that race into the same
+        # deterministic 422 INVALID_REQUEST the sequential check already
+        # gives, instead of an unhandled `UniqueViolationError` -> 500.
+        try:
+            await conn.execute(
+                """
+                INSERT INTO garuda_practice_evidence
+                    (practice_id, transition_id, evidence_id, kind, recorded_by)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (practice_id, evidence_id) DO NOTHING
+                """,
+                practice_id,
+                transition_id,
+                fields["evidence_id"],
+                _EVIDENCE_KIND[spec.kind],
+                actor["email"],
+            )
+        except asyncpg.UniqueViolationError as exc:
+            raise HTTPException(
+                status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False}
+            ) from exc
 
     event_id = await journal.append_event(
         conn,

@@ -158,6 +158,21 @@ COMMENT ON TABLE public.garuda_practice_evidence IS
 CREATE INDEX IF NOT EXISTS idx_garuda_practice_evidence_practice_id
     ON public.garuda_practice_evidence (practice_id);
 
+-- Round-4 disposition item 3 (cross-family refuter, Codex finding #4 /
+-- Gemini finding #3): `UNIQUE (practice_id, evidence_id)` above only rejects
+-- an EXACT-duplicate row for the SAME practice; it never stops evidence_id
+-- being reused across DIFFERENT practices, because the composite key still
+-- differs whenever practice_id differs. `staff_transitions.py::
+-- apply_transition`'s own pre-INSERT `SELECT ... WHERE evidence_id = $1 AND
+-- practice_id != $2` is an application-level TOCTOU check, not a
+-- constraint: two concurrent transitions on two different practices with
+-- the same evidence_id can both pass that SELECT before either commits.
+-- This index makes evidence_id GLOBALLY unique at the database layer, so
+-- the second of two racing INSERTs fails deterministically instead of
+-- silently succeeding.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_garuda_practice_evidence_evidence_id
+    ON public.garuda_practice_evidence (evidence_id);
+
 -- === ROLLBACK ===
 
 -- This section deliberately runs the destructive teardown for local/CI

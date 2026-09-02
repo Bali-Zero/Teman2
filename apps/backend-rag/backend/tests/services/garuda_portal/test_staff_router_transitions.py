@@ -986,3 +986,113 @@ class TestMigration305Idempotent:
             "assigned_at",
             "assigned_by",
         }
+
+
+@pytest.mark.asyncio
+class TestEvidenceIdGloballyUnique:
+    """Round-4 disposition item 3 (Codex finding #4 / Gemini finding #3):
+    `garuda_practice_evidence`'s composite `UNIQUE(practice_id,
+    evidence_id)` never stopped the SAME evidence_id being reused across
+    DIFFERENT practices; only the application's own pre-INSERT SELECT did,
+    and that SELECT is a TOCTOU check a genuine race can defeat."""
+
+    async def test_db_constraint_rejects_cross_practice_reuse(
+        self, pool, order_repository
+    ) -> None:
+        """Proves the NEW global index exists and is enforced at the
+        database layer directly, independent of any application code path
+        (including the pre-check `apply_transition` itself runs). Uses two
+        real practices from the fixture repository -- `garuda_practices`
+        FK-references `garuda_orders`/`garuda_order_journal`, so a
+        hand-rolled row would need to satisfy those too."""
+        order_a = await _create_and_pay_order(
+            order_repository, result_id="result-evid-db-a0000000", provider_event_id="evt-evid-db-a"
+        )
+        order_b = await _create_and_pay_order(
+            order_repository, result_id="result-evid-db-b0000000", provider_event_id="evt-evid-db-b"
+        )
+        practice_a = await _practice_id_for(pool, order_a)
+        practice_b = await _practice_id_for(pool, order_b)
+        # Guarantee the NEW index exists on this test database regardless of
+        # whether the local migration runner has already applied 305's
+        # current form — same self-heal pattern TestMigration305Idempotent
+        # uses; the forward SQL is idempotent (IF NOT EXISTS throughout).
+        sql_path = "backend/db/migrations_v2/305_garuda_practices_assignment.sql"
+        with open(sql_path, encoding="utf-8") as fh:
+            forward_sql = fh.read().split("-- === ROLLBACK ===")[0]
+        async with pool.acquire() as conn:
+            await conn.execute(forward_sql)
+            await conn.execute(
+                "INSERT INTO garuda_practice_evidence "
+                "(practice_id, transition_id, evidence_id, kind, recorded_by) "
+                "VALUES ($1, 'PR-04', $2, 'filing', 'tester@balizero.com')",
+                practice_a,
+                "shared_evidence_id_00001",
+            )
+            with pytest.raises(asyncpg.UniqueViolationError):
+                await conn.execute(
+                    "INSERT INTO garuda_practice_evidence "
+                    "(practice_id, transition_id, evidence_id, kind, recorded_by) "
+                    "VALUES ($1, 'PR-04', $2, 'filing', 'tester@balizero.com')",
+                    practice_b,
+                    "shared_evidence_id_00001",
+                )
+
+    async def test_router_maps_the_raced_insert_to_422_not_500(
+        self, pool, order_repository
+    ) -> None:
+        """A genuine race: two concurrent PR-04 submissions on two
+        DIFFERENT practices, same evidence_id, both dispatched before either
+        commits so both pass `apply_transition`'s sequential pre-check.
+        Exactly one must succeed (200); the other must get the contract's
+        422 INVALID_REQUEST from the caught `UniqueViolationError`, never an
+        unhandled 500."""
+        sql_path = "backend/db/migrations_v2/305_garuda_practices_assignment.sql"
+        with open(sql_path, encoding="utf-8") as fh:
+            forward_sql = fh.read().split("-- === ROLLBACK ===")[0]
+        async with pool.acquire() as conn:
+            await conn.execute(forward_sql)
+        order_a = await _create_and_pay_order(
+            order_repository, result_id="result-evid-race-a0000", provider_event_id="evt-evid-race-a"
+        )
+        order_b = await _create_and_pay_order(
+            order_repository, result_id="result-evid-race-b0000", provider_event_id="evt-evid-race-b"
+        )
+        practice_a = await _practice_id_for(pool, order_a)
+        practice_b = await _practice_id_for(pool, order_b)
+
+        app = _make_app(pool)
+        shared_evidence_id = "raced_evidence_id_000001"
+
+        async def _submit(practice_id: str, idem_key: str):
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                # PR-02 first, both practices independently -- not part of
+                # the race, just getting each to `In_review` so PR-04 is a
+                # legal transition.
+                await client.post(
+                    f"/api/visa/voa/staff/practices/{practice_id}/transitions",
+                    headers={
+                        "Authorization": _bearer(_ADMIN, "admin"),
+                        "Idempotency-Key": f"{idem_key}-pr02",
+                    },
+                    json={"transition_id": "PR-02"},
+                )
+                return await client.post(
+                    f"/api/visa/voa/staff/practices/{practice_id}/transitions",
+                    headers={
+                        "Authorization": _bearer(_ADMIN, "admin"),
+                        "Idempotency-Key": f"{idem_key}-pr04",
+                    },
+                    json={"transition_id": "PR-04", "evidence_id": shared_evidence_id},
+                )
+
+        import asyncio
+
+        resp_a, resp_b = await asyncio.gather(
+            _submit(practice_a, "race-key-a-0000001"), _submit(practice_b, "race-key-b-0000001")
+        )
+        statuses = sorted([resp_a.status_code, resp_b.status_code])
+        assert statuses == [200, 422], (resp_a.status_code, resp_a.text, resp_b.status_code, resp_b.text)
+        loser = resp_a if resp_a.status_code == 422 else resp_b
+        assert loser.json()["code"] == "INVALID_REQUEST"
