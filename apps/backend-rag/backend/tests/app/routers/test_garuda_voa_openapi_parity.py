@@ -365,3 +365,97 @@ def test_not_yet_built_operations_are_counted_not_silently_ignored():
         f"{len(_MOUNTED_OPERATION_IDS)} mounted and checked for status "
         f"parity ({len(_KNOWN_STATUS_CODE_GAPS)} with a declared, guarded gap)"
     )
+
+
+# ---------------------------------------------------------------------------
+# Round-3 disposition item G: security scheme / Idempotency-Key requiredness
+# / Idempotency-Replayed header, for the 4 staff-practice operations.
+#
+# FastAPI infers ALL THREE of these from either a `fastapi.security.*`
+# dependency (this router has none — auth is a hand-rolled `Authorization`
+# header read via `require_garuda_staff`) or from a parameter's own default
+# (`Header(None, ...)` reads as NOT required, even though the handler's own
+# `_idempotency_key()` raises 400 IDEMPOTENCY_KEY_REQUIRED on absence). Two
+# of the three are now DECLARED via `openapi_extra` on the route decorators
+# (`_STAFF_SESSION_SECURITY` / `_TRANSITION_OPENAPI_EXTRA` in
+# garuda_staff_router.py) and checked here as real parity, not a gap.
+#
+# The third — Idempotency-Key's `required` flag on assignPractice/
+# transitionPractice — genuinely CANNOT be corrected the same way:
+# `openapi_extra`'s merge (`fastapi.utils.deep_dict_update`) concatenates
+# `parameters` LISTS rather than matching by name, so adding a second
+# `Idempotency-Key` parameter entry to force `required: true` would
+# DUPLICATE the parameter, not override it — a worse defect than the one
+# being fixed. Declared and guarded here, same discipline as
+# `_KNOWN_STATUS_CODE_GAPS` above: NOT "fixed", NOT "safe to ignore",
+# a real documentation gap awaiting a genuine fix (a custom exception
+# handler that intercepts FastAPI's own 422 for a missing `Header(...,
+# required)` and remaps it to the contract's 400 IDEMPOTENCY_KEY_REQUIRED
+# shape, which is a real behavior change outside this round's scope).
+_KNOWN_IDEMPOTENCY_KEY_NOT_MARKED_REQUIRED: frozenset[str] = frozenset(
+    {"assignPractice", "transitionPractice"}
+)
+
+_STAFF_PRACTICE_OPERATIONS: tuple[str, ...] = (
+    "listStaffPractices",
+    "getStaffPractice",
+    "assignPractice",
+    "transitionPractice",
+)
+
+
+def _idempotency_key_param(op: dict) -> dict | None:
+    for param in op.get("parameters", []):
+        if isinstance(param, dict) and param.get("name") == "Idempotency-Key":
+            return param
+    return None
+
+
+@pytest.mark.parametrize("operation_id", _STAFF_PRACTICE_OPERATIONS)
+def test_staff_operation_declares_staff_session_security(operation_id: str) -> None:
+    live_ops = _live_operations()
+    live_path, live_method, _codes = live_ops[operation_id]
+    schema = _main_api_module.app.openapi()
+    op = schema["paths"][live_path][live_method.lower()]
+    assert op.get("security") == [{"StaffSession": []}], (
+        f"{operation_id}: live security={op.get('security')!r}, expected "
+        f"the StaffSession scheme the frozen contract declares for every "
+        f"staff-practice operation"
+    )
+
+
+@pytest.mark.parametrize("operation_id", ("assignPractice", "transitionPractice"))
+def test_staff_mutating_operation_declares_idempotency_key_parameter(
+    operation_id: str,
+) -> None:
+    """Guilt+innocence anchor for `_KNOWN_IDEMPOTENCY_KEY_NOT_MARKED_REQUIRED`:
+    the parameter itself must be PRESENT (that much FastAPI already gets
+    right from the function signature) even though its `required` flag is a
+    declared, guarded gap."""
+    live_ops = _live_operations()
+    live_path, live_method, _codes = live_ops[operation_id]
+    schema = _main_api_module.app.openapi()
+    op = schema["paths"][live_path][live_method.lower()]
+    param = _idempotency_key_param(op)
+    assert param is not None, f"{operation_id}: no Idempotency-Key parameter in live schema"
+    is_required = bool(param.get("required"))
+    if operation_id in _KNOWN_IDEMPOTENCY_KEY_NOT_MARKED_REQUIRED:
+        assert not is_required, (
+            f"{operation_id}: Idempotency-Key is now documented as required — "
+            f"remove it from _KNOWN_IDEMPOTENCY_KEY_NOT_MARKED_REQUIRED instead "
+            f"of leaving a stale exemption"
+        )
+    else:
+        assert is_required, f"{operation_id}: Idempotency-Key must be required"
+
+
+def test_transition_practice_declares_idempotency_replayed_header() -> None:
+    live_ops = _live_operations()
+    live_path, live_method, _codes = live_ops["transitionPractice"]
+    schema = _main_api_module.app.openapi()
+    op = schema["paths"][live_path][live_method.lower()]
+    headers = op["responses"]["200"].get("headers", {})
+    assert "Idempotency-Replayed" in headers, (
+        "transitionPractice: live 200 response does not document the "
+        "Idempotency-Replayed header the frozen contract declares"
+    )

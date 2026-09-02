@@ -247,8 +247,21 @@ def _status_responses(operation_id: str) -> dict[int, dict[str, object]]:
     }
 
 
+#: FastAPI never infers a `security` block for a hand-rolled `Authorization`
+#: header read via `require_garuda_staff`/`_require_actor` -- there is no
+#: `fastapi.security.*` dependency in this router for it to introspect, so
+#: the live generated schema had `"security": None` for all four operations
+#: until this constant started being merged in via `openapi_extra` below.
+#: `deep_dict_update` (FastAPI's own `openapi_extra` merge) sets this key
+#: cleanly since nothing else in the generated operation touches it.
+_STAFF_SESSION_SECURITY: dict[str, object] = {"security": [{"StaffSession": []}]}
+
+
 @router.get(
-    "/practices", operation_id="listStaffPractices", responses=_status_responses("listStaffPractices")
+    "/practices",
+    operation_id="listStaffPractices",
+    responses=_status_responses("listStaffPractices"),
+    openapi_extra=_STAFF_SESSION_SECURITY,
 )
 async def list_staff_practices(
     request: Request,
@@ -305,6 +318,7 @@ async def list_staff_practices(
     "/practices/{practice_id}",
     operation_id="getStaffPractice",
     responses=_status_responses("getStaffPractice"),
+    openapi_extra=_STAFF_SESSION_SECURITY,
 )
 async def get_staff_practice(
     practice_id: str,
@@ -337,6 +351,7 @@ async def get_staff_practice(
     "/practices/{practice_id}/assignment",
     operation_id="assignPractice",
     responses=_status_responses("assignPractice"),
+    openapi_extra=_STAFF_SESSION_SECURITY,
 )
 async def assign_practice(
     practice_id: str,
@@ -420,10 +435,34 @@ async def assign_practice(
     return response_body
 
 
+#: `deep_dict_update` merges nested dicts key-by-key rather than replacing
+#: them wholesale, so adding `responses.200.headers` here does not disturb
+#: FastAPI's own auto-generated `200.description`/`200.content` for this
+#: operation's return type -- only transitionPractice's 200 declares
+#: `Idempotency-Replayed` in the frozen contract (assignPractice's 200 does
+#: not, even though the router sets the same header on an assignPractice
+#: replay too — a pre-existing contract/behavior gap this file does not
+#: introduce or fix).
+_TRANSITION_OPENAPI_EXTRA: dict[str, object] = {
+    **_STAFF_SESSION_SECURITY,
+    "responses": {
+        "200": {
+            "headers": {
+                "Idempotency-Replayed": {
+                    "description": "\"true\" on an exact command replay, absent otherwise.",
+                    "schema": {"type": "string", "enum": ["true"]},
+                }
+            }
+        }
+    },
+}
+
+
 @router.post(
     "/practices/{practice_id}/transitions",
     operation_id="transitionPractice",
     responses=_status_responses("transitionPractice"),
+    openapi_extra=_TRANSITION_OPENAPI_EXTRA,
 )
 async def transition_practice(
     practice_id: str,

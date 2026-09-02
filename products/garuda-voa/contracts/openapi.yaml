@@ -1706,6 +1706,24 @@ components:
           oneOf:
             - type: "null"
             - $ref: "#/components/schemas/PracticeState"
+        active_block_id:
+          description: >-
+            garuda_order_journal.event_id of the practice.blocked event that most recently blocked
+            this practice. null unless state is Blocked. The value a resume transition's
+            resolved_block_id must equal.
+          oneOf:
+            - type: "null"
+            - type: string
+        artifact_id:
+          oneOf:
+            - type: "null"
+            - type: string
+        artifact_digest:
+          oneOf:
+            - type: "null"
+            - type: string
+              minLength: 64
+              maxLength: 64
 
     PracticeAssignmentRequest:
       type: object
