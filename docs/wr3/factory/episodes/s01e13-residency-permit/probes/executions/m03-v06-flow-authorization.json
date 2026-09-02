@@ -1,0 +1,71 @@
+{
+  "schema_version": "wr3.camera-probe-flow-authorization.v1",
+  "authorization_id": "bc223a25-88a4-4ebb-8491-02bfff8e3aa8",
+  "created_at_utc": "2026-09-02T02:37:30Z",
+  "operator": "Antonello",
+  "operator_message": "Approvo al design e approvo a tutte le spese che occorreranno per la realizzazione",
+  "normalized_authorization_text": "AUTHORIZE FLOW CANARY: S01E13 MAX_CREDITS: 10",
+  "authorization_scope": "exactly_one_m03_v06_canary_generation",
+  "episode_id": "s01e13-residency-permit",
+  "probe_id": "M03-v06",
+  "design": {
+    "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-canary-design.json",
+    "sha256": "3b27de1b2b370b02188178811763703d4a967a9d9fb59e98aa6efa748ac1b27f"
+  },
+  "independent_pre_render_gate": {
+    "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-independent-pre-render-gate.json",
+    "sha256": "24ae8e27f2453236df4ad6a1da90f170f91aecc4cae7d7af1c7955eaf1336ee1",
+    "verdict": "PASS"
+  },
+  "live_preflight": {
+    "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-live-preflight.json",
+    "sha256": "306834641f72350317d05072c93678a3353110bf545c652352d066c8b220cc3a",
+    "verdict": "PASS",
+    "live_balance_cr": 12550,
+    "spent_today_cr": 0,
+    "daily_ceiling_cr": 190
+  },
+  "identity": {
+    "token": "A007",
+    "anchor_path_on_pro": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+    "anchor_sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026"
+  },
+  "output_contract": {
+    "model": "Veo 3.1 Fast Tier_ONE",
+    "aspect_ratio": "9:16",
+    "resolution": "720x1280",
+    "fps": 24,
+    "duration_seconds": 8,
+    "native_audio": true
+  },
+  "hard_limits": {
+    "maximum_generation_jobs": 1,
+    "maximum_flow_credits": 10,
+    "automatic_retries": 0,
+    "extensions": 0,
+    "upscales": 0,
+    "additional_image_generations": 0
+  },
+  "on_failure_or_ambiguity": "STOP_WITHOUT_RESUBMISSION",
+  "post_generation_scope": [
+    "recover_or_download the exact generated media without regeneration",
+    "run structural media QA",
+    "run real A007 identity QA",
+    "run native-audio QA",
+    "stop at human canary review"
+  ],
+  "forbidden_actions": [
+    "automatic retry",
+    "extension",
+    "upscale",
+    "additional image generation",
+    "post assembly",
+    "deploy",
+    "publication",
+    "social upload",
+    "outward message"
+  ],
+  "publication_allowed": false,
+  "spend_authorized": true,
+  "flow_dispatch_allowed": true
+}

@@ -1,0 +1,51 @@
+{
+  "schema_version": "wr3-camera-probe-gate/1.0",
+  "adapter_version": "1.2",
+  "verdict": "PASS",
+  "scope": "S01E13 M03-v06 exact human-authorized single canary only",
+  "checks": {
+    "authorization": {
+      "passed": true,
+      "generation_count": 1,
+      "selected_variant": "v06",
+      "design_sha256": "3b27de1b2b370b02188178811763703d4a967a9d9fb59e98aa6efa748ac1b27f",
+      "independent_pre_render_gate_sha256": "24ae8e27f2453236df4ad6a1da90f170f91aecc4cae7d7af1c7955eaf1336ee1",
+      "live_preflight_sha256": "306834641f72350317d05072c93678a3353110bf545c652352d066c8b220cc3a",
+      "flow_authorization_sha256": "4b1f036b94b416dfe5369ceac897eb484ee58fd8d3a6b5bf845f377ba6534c37",
+      "authorization_id": "bc223a25-88a4-4ebb-8491-02bfff8e3aa8",
+      "maximum_flow_credits": 10,
+      "automatic_retries": 0
+    },
+    "originality": {
+      "passed": true,
+      "signature_sha256": "9f12f8f0b4a65d13a3523971b4dee52107ea63c550f7713882463c114951e3fa",
+      "surface_axes_counted": false
+    },
+    "runtime_schema": {"passed": true},
+    "identity": {
+      "passed": true,
+      "required_token": "A007",
+      "anchor_sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026"
+    },
+    "output_contract": {
+      "passed": true,
+      "aspect_ratio": "9:16",
+      "resolution": "720x1280",
+      "fps": 24,
+      "duration_seconds": 8,
+      "native_audio": true
+    },
+    "flow_or_publish_side_effects_before_dispatch": {"passed": true, "count": 0}
+  },
+  "errors": [],
+  "families": [
+    {
+      "family_id": "m03-one-input-one-circuit",
+      "episode_id": "s01e13-residency-permit-probes-m03-v06",
+      "source_pack_sha256": "3b27de1b2b370b02188178811763703d4a967a9d9fb59e98aa6efa748ac1b27f",
+      "runtime_pack_sha256": "550c2994eb91a75c13fb0f7208379d19a5e586e70f59eff0ea7402bf7cefcc89",
+      "shot_count": 4,
+      "selected_variant": "v06"
+    }
+  ]
+}

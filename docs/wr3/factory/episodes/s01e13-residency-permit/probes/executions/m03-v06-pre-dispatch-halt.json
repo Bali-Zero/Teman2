@@ -1,0 +1,54 @@
+{
+  "schema_version": "wr3.camera-probe-pre-dispatch-halt.v1",
+  "observed_at_utc": "2026-09-02T02:46:31Z",
+  "machine": "Pro",
+  "probe_id": "M03-v06",
+  "stage": "local_runtime_validation_before_flow",
+  "verdict": "HALT",
+  "generation_count": 0,
+  "flow_credits_spent_by_lane": 0,
+  "workflow_id": null,
+  "media_id": null,
+  "output_episode_directory_created": false,
+  "live_balance_last_observed_cr": 12550,
+  "error": {
+    "type": "ProbeValidationError",
+    "message": "originality request seed does not match runtime pack"
+  },
+  "validation_command": {
+    "transport": "ssh pro",
+    "runtime_root": "/tmp/wr3-m03-v06-runtime.63E8fq",
+    "python": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+    "operation": "wr3_camera_probe_run.validate_run(RunConfig(shot_pack='docs/wr3/factory/episodes/s01e13-residency-permit/probes/runtime/m03-v06/m03-one-input-one-circuit/shot-pack.json', variant_id='v06', episode_dir='/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m03-v06-video-canary', endpoint='http://127.0.0.1:8100', paygate='PAYGATE_TIER_ONE', credit_cap=40, accounted_credits=30, measured_clip_cost=10, timeout_s=300))",
+    "environment": {
+      "PYTHONPATH": "scripts",
+      "WR3_FLOWKIT_CLIP_COST": "10",
+      "WR3_SPEND_DECISION": "s01e13-residency-permit-probes-m03-v06:zero:2026-09-02",
+      "WR3_VEO_AUDIO": "native",
+      "WR3_ZERO_SPEND": "0"
+    },
+    "exit_code": 1,
+    "stderr_last_line": "wr3_camera_probe_run.ProbeValidationError: originality request seed does not match runtime pack"
+  },
+  "conflict": {
+    "request_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-m03-v06-request.json",
+    "request_sha256": "d021c92f422cb8efa4ce4e894fa92b0585c133ad8f9b80a25b63f5ae47365e5b",
+    "request_seed_id": null,
+    "receipt_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-m03-v06-receipt.json",
+    "receipt_sha256": "03927b79e04af68d90a8f08351d62abf0d136c9b52ea078db89596cf95d1471b",
+    "receipt_seed_id": "849da09a-e9fc-5caf-9567-7e9ffcf8fc6a",
+    "ledger_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-ledger.jsonl",
+    "ledger_sha256": "91093002743974527626f859ded33f54bdaa843b2075eb5dc26f308593aad7fd",
+    "runtime_pack_path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/runtime/m03-v06/m03-one-input-one-circuit/shot-pack.json",
+    "runtime_pack_sha256": "a5e21c0d843cb174c39dfdd3e9535cd6dad12a023b259661bfa0c40d810274a3",
+    "runtime_seed_id": "849da09a-e9fc-5caf-9567-7e9ffcf8fc6a"
+  },
+  "policy_action": "STOP_WITHOUT_RESUBMISSION",
+  "next_gate": "HUMAN_AUTHORIZATION_REQUIRED_FOR_ANY_REBOUND_DESIGN",
+  "mutations_refused": [
+    "did not alter the SHA-bound originality request",
+    "did not weaken or bypass the runtime validator",
+    "did not submit a Flow generation",
+    "did not create a replacement originality registration"
+  ]
+}

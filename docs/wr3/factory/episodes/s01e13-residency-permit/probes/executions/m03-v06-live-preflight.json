@@ -1,0 +1,56 @@
+{
+  "schema_version": "wr3.camera-probe-live-preflight.v1",
+  "checked_at_utc": "2026-09-02T02:37:12Z",
+  "checked_at_wita": "2026-09-02T10:37:12+08:00",
+  "machine": "Pro",
+  "episode_id": "s01e13-residency-permit",
+  "probe_id": "M03-v06",
+  "design_sha256": "3b27de1b2b370b02188178811763703d4a967a9d9fb59e98aa6efa748ac1b27f",
+  "flow_gateway": {
+    "endpoint": "http://127.0.0.1:8100",
+    "health_status": "ok",
+    "gateway_version": "0.2.0",
+    "extension_connected": true,
+    "websocket_connected": true
+  },
+  "flow_account": {
+    "live_balance_cr": 12550,
+    "required_for_this_canary_cr": 10,
+    "balance_sufficient": true,
+    "paygate_tier": "PAYGATE_TIER_TIER1P5",
+    "sku": "G1_TIER1P5",
+    "service_tier": "SERVICE_TIER_ADVANCED",
+    "top_up_credits": 2500,
+    "subscription_credits": 10050
+  },
+  "daily_circuit_breaker": {
+    "business_day": "2026-09-02",
+    "timezone": "Asia/Makassar",
+    "ledger_path_on_pro": "/Users/nuzantara/.cache/wr3/credit-ledger.jsonl",
+    "ledger_integrity": "PASS",
+    "malformed_or_unparseable_rows": 0,
+    "real_rows_today": 0,
+    "spent_today_cr": 0,
+    "projected_increment_cr": 10,
+    "projected_total_cr": 10,
+    "daily_ceiling_cr": 190,
+    "passes": true
+  },
+  "identity_anchor": {
+    "identity_token": "A007",
+    "path_on_pro": "/Users/nuzantara/nuzantara/research/marketing/zantara-visual-dataset/v1/approved/anchors/zan_v1_a007_front_serious_anchor.png",
+    "sha256": "6455cc8c393b587d752e167dd81794050c40bfa8bb9fb02eb783501f651ac026",
+    "verified": true
+  },
+  "execution_envelope": {
+    "maximum_generation_jobs": 1,
+    "maximum_flow_credits": 10,
+    "automatic_retries": 0,
+    "extensions": 0,
+    "upscales": 0,
+    "additional_image_generations": 0
+  },
+  "verdict": "PASS",
+  "authorizes_dispatch": false,
+  "note": "This read-only preflight proves current gateway, balance, anchor, and daily-ceiling readiness. Dispatch still requires the separately SHA-bound operator authorization."
+}

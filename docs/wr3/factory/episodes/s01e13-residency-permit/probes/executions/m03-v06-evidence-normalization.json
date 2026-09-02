@@ -1,0 +1,40 @@
+{
+  "schema_version": "wr3.camera-probe-evidence-normalization.v1",
+  "resolved_at_utc": "2026-09-02T02:49:32Z",
+  "scope": "execution-only originality evidence normalization; no creative or reviewed-design change",
+  "prior_halt": {
+    "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-pre-dispatch-halt.json",
+    "sha256": "b6a9d5bdd7babf892ea1b389dd456dae4f1b16ea3dd893016590c0cc3372951c",
+    "resolution": "RESOLVED_BEFORE_DISPATCH"
+  },
+  "supplemental_request": {
+    "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-originality-request-seeded.json",
+    "sha256": "12dd0258305c9d417b1867e1da5df81da191ae4ccdf5e3d36c87542691ea6f1b",
+    "only_semantic_delta_from_reviewed_request": "seed_id populated with already-derived child seed",
+    "seed_id": "849da09a-e9fc-5caf-9567-7e9ffcf8fc6a"
+  },
+  "replay_receipt": {
+    "path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-originality-replay-receipt.json",
+    "sha256": "ed8da326bbafa867faa35da5af93e757de859e228df47c9287e84067a9d6a811",
+    "verdict": "PASS",
+    "status": "IDEMPOTENT_REPLAY",
+    "sequence": 3
+  },
+  "ledger": {
+    "path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-ledger.jsonl",
+    "sha256_before": "91093002743974527626f859ded33f54bdaa843b2075eb5dc26f308593aad7fd",
+    "sha256_after": "91093002743974527626f859ded33f54bdaa843b2075eb5dc26f308593aad7fd",
+    "unchanged": true
+  },
+  "runtime_binding": {
+    "pack_sha256": "550c2994eb91a75c13fb0f7208379d19a5e586e70f59eff0ea7402bf7cefcc89",
+    "lineage_sha256": "d7c51fbaae3e6fe378ead896574205ab7d660d0b681c95df379db370e764cade",
+    "gate_verdict_sha256": "d12ec4915adbea347e4be7a25c689812283a64cf66b25fa983e2ff154d13e0f4",
+    "validation": "PASS"
+  },
+  "immutable_reviewed_evidence": {
+    "design_sha256": "3b27de1b2b370b02188178811763703d4a967a9d9fb59e98aa6efa748ac1b27f",
+    "independent_pre_render_gate_sha256": "24ae8e27f2453236df4ad6a1da90f170f91aecc4cae7d7af1c7955eaf1336ee1",
+    "flow_authorization_sha256": "4b1f036b94b416dfe5369ceac897eb484ee58fd8d3a6b5bf845f377ba6534c37"
+  }
+}

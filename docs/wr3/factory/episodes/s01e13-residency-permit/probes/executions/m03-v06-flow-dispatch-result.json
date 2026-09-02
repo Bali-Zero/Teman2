@@ -1,0 +1,61 @@
+{
+  "schema_version": "wr3.camera-probe-flow-dispatch-result.v1",
+  "observed_at_utc": "2026-09-02T02:51:11Z",
+  "probe_id": "M03-v06",
+  "variant_id": "v06",
+  "runtime_pack_sha256": "550c2994eb91a75c13fb0f7208379d19a5e586e70f59eff0ea7402bf7cefcc89",
+  "dispatch": {
+    "attempt_count": 1,
+    "successful_response_count": 0,
+    "automatic_retry_count": 0,
+    "endpoint": "http://127.0.0.1:8100",
+    "paygate_requested": "PAYGATE_TIER_ONE",
+    "model": "veo_3_1_i2v_s_fast_portrait",
+    "project_id": "fdc15b64-a422-4ca0-9a1a-9fb5bd7575d9",
+    "video_id": "1fced626-0607-4db6-a870-1afa1eab7bcb",
+    "scene_id": "acc74ab1-4bcd-4d9b-bac6-74e6630acc24",
+    "anchor_media_id": "668bc5f5-b211-4fd7-aa1f-6d3138485666",
+    "workflow_id": null,
+    "media_id": null,
+    "result": "AMBIGUOUS_FAILURE",
+    "error_type": "FlowkitGenerationAmbiguousError",
+    "error_message": "generate-video was dispatched but its charge/workflow state is ambiguous; inspect the existing Flow project and do not resubmit automatically (project_id=fdc15b64-a422-4ca0-9a1a-9fb5bd7575d9, scene_id=acc74ab1-4bcd-4d9b-bac6-74e6630acc24): HTTP Error 403: Forbidden"
+  },
+  "credit_observations": {
+    "live_before_cr": 12550,
+    "live_after_cr": 12550,
+    "global_balance_delta_observed_cr": 0,
+    "new_credit_ledger_rows": 0,
+    "exact_workflow_cost_known": false,
+    "state": "AMBIGUOUS_DESPITE_ZERO_OBSERVED_DELTA"
+  },
+  "exact_id_recovery": {
+    "scene_status": "PENDING",
+    "scene_vertical_video_media_id": null,
+    "scene_vertical_video_url": null,
+    "mp4_found": false,
+    "second_generate_call_made": false
+  },
+  "durable_pro_evidence": {
+    "episode_dir": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m03-v06-video-canary",
+    "probe_run_receipt": {
+      "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m03-v06-video-canary/probe-run-receipt.json",
+      "sha256": "da9885d897dba500c560d5d9b63c6d3ee41d6ecb773a4f0e68464d16e96fbd4f"
+    },
+    "flow_context": {
+      "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m03-v06-video-canary/_flowkit_context.json",
+      "sha256": "3d44322d9295d3080cd1f91fe5d40817516ae002f82f6e4e102212b8c621b0a5"
+    },
+    "spend_decision_log": {
+      "path": "/Users/nuzantara/nuzantara/apps/war-room/output/episode/s01e13-residency-permit-probes-m03-v06-video-canary/execution/spend-decisions.jsonl",
+      "sha256": "3361a7fb63a5efc3baeb8e8dec8638621dffabe845f2ce0cd15f79dde930c76f"
+    }
+  },
+  "qa": {
+    "structural_media_qa": "NOT_RUN_NO_MP4",
+    "arcface_identity_qa": "NOT_RUN_NO_MP4",
+    "visual_qa": "NOT_RUN_NO_MP4"
+  },
+  "policy_action": "STOP_WITHOUT_RESUBMISSION",
+  "next_gate": "FLOW_DISPATCH_AMBIGUITY_REVIEW_REQUIRED"
+}

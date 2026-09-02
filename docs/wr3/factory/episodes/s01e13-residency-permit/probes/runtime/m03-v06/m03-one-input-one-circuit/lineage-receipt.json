@@ -1,0 +1,87 @@
+{
+  "schema_version": "wr3-camera-probe-lineage/1.0",
+  "adapter_version": "1.2",
+  "family_id": "m03-one-input-one-circuit",
+  "creative_seed_id": "849da09a-e9fc-5caf-9567-7e9ffcf8fc6a",
+  "originality_gate": {
+    "verdict": "PASS",
+    "registration_kind": "child",
+    "signature_sha256": "9f12f8f0b4a65d13a3523971b4dee52107ea63c550f7713882463c114951e3fa",
+    "description_sha256": "07b0b488745cb314d3753f93b0ce44132856b886fb6cb0b7d597da33699b130a",
+    "request_path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-originality-request-seeded.json",
+    "request_sha256": "12dd0258305c9d417b1867e1da5df81da191ae4ccdf5e3d36c87542691ea6f1b",
+    "receipt_path": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-originality-replay-receipt.json",
+    "receipt_sha256": "ed8da326bbafa867faa35da5af93e757de859e228df47c9287e84067a9d6a811",
+    "ledger_path": "docs/wr3/factory/episodes/s01e13-residency-permit/originality-ledger.jsonl",
+    "ledger_sha256_at_registration": "91093002743974527626f859ded33f54bdaa843b2075eb5dc26f308593aad7fd",
+    "ledger_record_count_at_registration": 3
+  },
+  "source_pack": "docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-canary-design.json",
+  "source_pack_sha256": "3b27de1b2b370b02188178811763703d4a967a9d9fb59e98aa6efa748ac1b27f",
+  "runtime_episode_id": "s01e13-residency-permit-probes-m03-v06",
+  "runtime_pack": "m03-one-input-one-circuit/shot-pack.json",
+  "runtime_pack_sha256": "550c2994eb91a75c13fb0f7208379d19a5e586e70f59eff0ea7402bf7cefcc89",
+  "authorization_chain": {
+    "design_sha256": "3b27de1b2b370b02188178811763703d4a967a9d9fb59e98aa6efa748ac1b27f",
+    "independent_pre_render_gate_sha256": "24ae8e27f2453236df4ad6a1da90f170f91aecc4cae7d7af1c7955eaf1336ee1",
+    "live_preflight_sha256": "306834641f72350317d05072c93678a3353110bf545c652352d066c8b220cc3a",
+    "flow_authorization_sha256": "4b1f036b94b416dfe5369ceac897eb484ee58fd8d3a6b5bf845f377ba6534c37",
+    "authorization_id": "bc223a25-88a4-4ebb-8491-02bfff8e3aa8"
+  },
+  "transformations": [
+    "approved M03-v06 prompt copied byte-for-byte from the authorized design",
+    "three non-selected historical adapter placeholders added to satisfy the four-shot runtime contract",
+    "exact A007 anchor and output contract preserved",
+    "authorization, independent gate, preflight, and originality hashes bound"
+  ],
+  "variants": [
+    {
+      "source_index": 3,
+      "source_prompt_sha256": null,
+      "shot_id": "s0103",
+      "global_probe_id": "s01e13-residency-permit-probes:m03-one-input-one-circuit:v03",
+      "variant_id": "v03",
+      "variant_seed_id": "07227c20-2ae9-535b-ad3f-b3d04896adbf",
+      "runtime_positive_prompt_sha256": "fcd90cfb954145e925dc8f3c2f0a472d07517c3be5e10505ce1e53cf1d8d4a42",
+      "runtime_negative_prompt_sha256": "0400d1b9f5bf3bebaf7fffbf06d00ab1598826d27a656b1b5ff9f19ac6ebfc84",
+      "selected": false,
+      "inert": true
+    },
+    {
+      "source_index": 4,
+      "source_prompt_sha256": null,
+      "shot_id": "s0104",
+      "global_probe_id": "s01e13-residency-permit-probes:m03-one-input-one-circuit:v04",
+      "variant_id": "v04",
+      "variant_seed_id": "9fa2d3ed-c75d-57b9-970b-54c1ef2c5c65",
+      "runtime_positive_prompt_sha256": "fcd90cfb954145e925dc8f3c2f0a472d07517c3be5e10505ce1e53cf1d8d4a42",
+      "runtime_negative_prompt_sha256": "0400d1b9f5bf3bebaf7fffbf06d00ab1598826d27a656b1b5ff9f19ac6ebfc84",
+      "selected": false,
+      "inert": true
+    },
+    {
+      "source_index": 5,
+      "source_prompt_sha256": null,
+      "shot_id": "s0105",
+      "global_probe_id": "s01e13-residency-permit-probes:m03-one-input-one-circuit:v05",
+      "variant_id": "v05",
+      "variant_seed_id": "8ae0de45-0072-5f64-92d2-695b1669f3e5",
+      "runtime_positive_prompt_sha256": "fcd90cfb954145e925dc8f3c2f0a472d07517c3be5e10505ce1e53cf1d8d4a42",
+      "runtime_negative_prompt_sha256": "0400d1b9f5bf3bebaf7fffbf06d00ab1598826d27a656b1b5ff9f19ac6ebfc84",
+      "selected": false,
+      "inert": true
+    },
+    {
+      "source_index": 6,
+      "source_prompt_sha256": "9263982a12c315df2d04de7c48a3146965b38d2d272d876b68223df1fe823bb2",
+      "shot_id": "s0106",
+      "global_probe_id": "s01e13-residency-permit-probes:m03-one-input-one-circuit:v06",
+      "variant_id": "v06",
+      "variant_seed_id": "acd6905a-42b5-5b37-ba28-c98c773ae6cf",
+      "runtime_positive_prompt_sha256": "9263982a12c315df2d04de7c48a3146965b38d2d272d876b68223df1fe823bb2",
+      "runtime_negative_prompt_sha256": "ba0b9fbcca386b68873a3ad941a52ceb1731801d5e11784aacddc3188a65c1e9",
+      "selected": true,
+      "inert": false
+    }
+  ]
+}

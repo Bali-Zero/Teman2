@@ -1,11 +1,11 @@
 # Zantara Video Factory — Current State
 
-- updated_at_utc: `2026-09-02T02:17:46Z`
+- updated_at_utc: `2026-09-02T02:53:20Z`
 - machine: `Air-M5`; Flow dispatch, ArcFace, media QA, and eventual ffmpeg work route to Pro.
 - branch: `agent/air-m5/wr3/zantara-video-factory-v3`
 - worktree: `/Users/balizero/nuzantara/.worktrees/wr3-zantara-video-factory-v3`
 - objective: operate one resumable WR3-based factory whose stages remain coherent while every creative decision can produce a materially different result.
-- factory_phase: `CANARY_DESIGN_APPROVAL_REQUIRED`
+- factory_phase: `FLOW_DISPATCH_AMBIGUITY_REVIEW_REQUIRED`
 - season_gate: `TOPIC_APPROVAL_REQUIRED`; only `C07` is approved as a bounded pilot.
 - episode_queue: `[S01E13]`
 - topic: `What Your Residency Permit Does Not Come With`
@@ -132,29 +132,31 @@ Canonical result:
 - `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m02-v05-operator-decision.json`
 - `docs/wr3/factory/episodes/s01e13-residency-permit/cinematic-research.md`
 
-## M03-v06 Zero-Spend Redesign — Awaiting Human Approval
+## M03-v06 Authorized Canary — Ambiguous Dispatch, No Resubmit
 
 - declared axis: `ONE INPUT, ONE CIRCUIT`; Zantara presses one unlabelled brass switch, one of four practical lights activates, and the other three remain dark.
 - camera: rigid fixed three-quarter 50 mm tableau; stationary reach, press, withdraw, hold; exact A007 remains unobstructed and near-frontal.
 - originality: pre-spend `PASS`; seed `849da09a-e9fc-5caf-9567-7e9ffcf8fc6a`; signature `9f12f8f0b4a65d13a3523971b4dee52107ea63c550f7713882463c114951e3fa`; ledger sequence `3`.
-- independent pre-render verdict: `PASS` for design eligibility only.
-- current redesign spend: `0`; generation jobs, retries, extensions, and upscales: `0`.
-- future ceiling only after explicit approval and fresh live preflight: exactly one canary, maximum `10` Flow credits, no retry, extension, or upscale; projected episode accounting `40/240`.
-- Flow dispatch, clip rendering, and any authorization artifact remain closed.
-- canonical files: `originality-m03-v06-{request,receipt}.json`, `m03-v06-canary-design.json`, and `m03-v06-independent-pre-render-gate.json` in the episode directory.
+- independent pre-render verdict, live Flow preflight, and design-hash-bound operator authorization: `PASS`; authorized envelope was exactly one job, maximum `10` credits, zero retry/extension/upscale/extra image generation.
+- a supplemental execution-only seeded request produced `IDEMPOTENT_REPLAY`; the originality ledger hash remained `91093002743974527626f859ded33f54bdaa843b2075eb5dc26f308593aad7fd`. Design hash `3b27de1b2b370b02188178811763703d4a967a9d9fb59e98aa6efa748ac1b27f` did not change.
+- the charged dispatch boundary was crossed exactly once. Flow IDs: project `fdc15b64-a422-4ca0-9a1a-9fb5bd7575d9`, video `1fced626-0607-4db6-a870-1afa1eab7bcb`, scene `acc74ab1-4bcd-4d9b-bac6-74e6630acc24`, anchor media `668bc5f5-b211-4fd7-aa1f-6d3138485666`.
+- submit result: ambiguous `HTTP 403`; exact-ID recovery observed scene `PENDING` with no workflow, media, URL, or MP4. No second generation call was made.
+- accounting observation: Flow balance `12550 → 12550`, delta `0`, and no new credit-ledger row; exact charge remains formally ambiguous because the dispatch boundary was crossed.
+- QA: not run because no MP4 exists. Retries, extensions, upscales, extra image generations, assembly, publication, deployment, and outward messages: `0`.
+- canonical result: `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-flow-dispatch-result.json` (SHA-256 `e2818feb7f34d4c0b9f7c42f53be673b509f75f719c77d9448183cd779840d22`).
 
 ## Completed Gates
 
 - editorial: `BOOT_AUDIT`; both council waves; consolidation, source pass, final curation; `E13_PILOT_TOPIC_APPROVAL`; `E13_CREATIVE_LOCK`.
 - f01: v01/v02 review; scene-start repair; v03/v04 still gates; v04 pre-render; family decision.
 - M01/M02: dual-reference still gate; identity-preserve edit gate; M02-v05 pre-render, generation, recovery, structural, visual/identity, and native-audio QA.
-- decisions: `E13_M02_V05_CANARY_REJECTED`; `E13_M03_V06_ORIGINALITY_PRESPEND_GATE`; `E13_M03_V06_PRE_RENDER_DESIGN_GATE`.
+- decisions: `E13_M02_V05_CANARY_REJECTED`; `E13_M03_V06_ORIGINALITY_PRESPEND_GATE`; `E13_M03_V06_PRE_RENDER_DESIGN_GATE`; `E13_M03_V06_FLOW_DISPATCH_AMBIGUOUS_STOP`.
 
 ## Earliest Open Gate
 
-`CANARY_DESIGN_APPROVAL_REQUIRED`
+`FLOW_DISPATCH_AMBIGUITY_REVIEW_REQUIRED`
 
-The rejected M02-v05 is closed. M03-v06 is original, bounded, and pre-render eligible, but this does not authorize spend. The next action is human review of the design. Do not call Flow, generate, retry, extend, upscale, normalize or replace audio, open `f02`–`f06`, enter legal scripting, publish, deploy, or send outward messages before an exact authorization resolves this gate. Any future dispatch also requires a fresh live balance check, the daily circuit breaker, and authorization bound to the reviewed design hash.
+M03-v06 crossed its single authorized dispatch boundary and returned an ambiguous `403`. The exact scene remains `PENDING` with no recoverable media. Do not call generation again, retry, extend, upscale, normalize or replace audio, open `f02`–`f06`, enter legal scripting, publish, deploy, or send outward messages. Only read-only exact-ID inspection of the existing project/video/scene may resolve whether media later appears; any new generation requires a new human-authorized execution envelope.
 
 ## Verification and Resume Reads
 
@@ -165,6 +167,8 @@ The rejected M02-v05 is closed. M03-v06 is original, bounded, and pre-render eli
 - `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m02-v05-generation-result.json`
 - `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-canary-design.json`
 - `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-independent-pre-render-gate.json`
+- `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-flow-authorization.json`
+- `docs/wr3/factory/episodes/s01e13-residency-permit/probes/executions/m03-v06-flow-dispatch-result.json`
 
 ## Definition of Done for the Current Gate
 
@@ -180,7 +184,7 @@ The rejected M02-v05 is closed. M03-v06 is original, bounded, and pre-render eli
 - `[x]` visual/identity and native-audio QA executed against the immutable recovered MP4
 - `[x]` first honest canary verdict recorded as `FAIL` with zero new Flow spend
 - `[x]` failed M02-v05 canary rejected by the operator with no automatic retry
-- `[x]` M03-v06 design registered for originality and independently cleared for human review with zero spend
+- `[x]` M03-v06 design authorized, normalized by idempotent originality replay, dispatched exactly once, and stopped without resubmission on ambiguous `403`
 - `[ ]` live FlowKit gateway rejects mismatched workflow/media pairs and returns identifiers derived from the selected payload
 - `[ ]` one scene-first f01 canary clip passes identity, motion, composition, audio, and technical QA
 - `[ ]` winning cinematic grammar selected
