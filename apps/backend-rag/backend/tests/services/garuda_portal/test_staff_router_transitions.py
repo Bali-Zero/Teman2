@@ -552,6 +552,33 @@ class TestTransitionMatrixAndReplay:
         assert second.headers.get("Idempotency-Replayed") == "true"
         assert "Idempotency-Replayed" not in first.headers
 
+    async def test_exact_replay_enqueues_no_second_outbox_row(
+        self, pool, order_repository
+    ) -> None:
+        """`apply_transition` only reaches `journal.enqueue_outbox` inside
+        the transaction it runs in -- a replayed command returns from
+        `idempotency.reserve`'s replay outcome in the router BEFORE
+        `apply_transition` (and therefore the outbox enqueue) ever runs
+        again. `UNIQUE(journal_event_id, job_type)` on `garuda_order_outbox`
+        is defense-in-depth for that same fact, not the only thing
+        preventing a second customer email on retry."""
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-replay-ob-000000", provider_event_id="evt-replay-ob"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        app = _make_app(pool)
+        transport = ASGITransport(app=app)
+        payload = {"transition_id": "PR-02"}
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            await self._post(client, practice_id, "replay-ob-key-000000000001", payload)
+            await self._post(client, practice_id, "replay-ob-key-000000000001", payload)
+        rows = await pool.fetch(
+            "SELECT job_type FROM garuda_order_outbox WHERE order_id = $1 "
+            "AND job_type = 'practice_in_review_email'",
+            order_id,
+        )
+        assert len(rows) == 1
+
 
 @pytest.mark.asyncio
 class TestAssignmentAndListVisibility:
