@@ -761,6 +761,186 @@ paths:
           headers: *publicPrivacyHeaders
           content: *errorContent
 
+  /api/visa/voa/staff/practices:
+    get:
+      operationId: listStaffPractices
+      tags: [Staff practice]
+      summary: List practices visible to the calling staff actor
+      description: >-
+        An admin actor sees every practice; a non-admin sees only practices whose assigned_to
+        matches the actor, regardless of the assigned query parameter. Never includes customer PII
+        or private_staff_note.
+      x-feature-flag: GARUDA_PUBLIC_ENABLED
+      security:
+        - StaffSession: []
+      parameters:
+        - name: state
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/PracticeState"
+        - name: assigned
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [me, all]
+            default: all
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/OpaqueId"
+      responses:
+        "200":
+          description: Page of staff-visible practices.
+          headers: *publicPrivacyHeaders
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/StaffPracticeListItem"
+                  next_cursor:
+                    oneOf:
+                      - type: "null"
+                      - $ref: "#/components/schemas/OpaqueId"
+        "401":
+          description: Staff session required. Code is SESSION_REQUIRED.
+          x-error-codes: [SESSION_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "404":
+          description: Surface disabled. Code is GARUDA_PUBLIC_DISABLED.
+          x-error-codes: [GARUDA_PUBLIC_DISABLED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "500":
+          description: Unexpected internal failure. Code is INTERNAL_ERROR.
+          x-error-codes: [INTERNAL_ERROR]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "503":
+          description: Storage unavailable. Code is SERVICE_UNAVAILABLE.
+          x-error-codes: [SERVICE_UNAVAILABLE]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+
+  /api/visa/voa/staff/practices/{practice_id}:
+    parameters:
+      - $ref: "#/components/parameters/PracticeId"
+    get:
+      operationId: getStaffPractice
+      tags: [Staff practice]
+      summary: Read the staff-only view of one practice
+      description: >-
+        Includes private_staff_note and resume_target — never reused by a customer-facing route.
+        Same visibility rule as listStaffPractices.
+      x-feature-flag: GARUDA_PUBLIC_ENABLED
+      security:
+        - StaffSession: []
+      responses:
+        "200":
+          description: Staff view of the practice.
+          headers: *publicPrivacyHeaders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffPracticeView"
+        "401":
+          description: Staff session required. Code is SESSION_REQUIRED.
+          x-error-codes: [SESSION_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "403":
+          description: Staff actor lacks visibility on this practice. Code is ACCESS_DENIED.
+          x-error-codes: [ACCESS_DENIED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "404":
+          description: Surface disabled or practice absent. Code is GARUDA_PUBLIC_DISABLED or PRACTICE_NOT_FOUND.
+          x-error-codes: [GARUDA_PUBLIC_DISABLED, PRACTICE_NOT_FOUND]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "500":
+          description: Unexpected internal failure. Code is INTERNAL_ERROR.
+          x-error-codes: [INTERNAL_ERROR]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "503":
+          description: Storage unavailable. Code is SERVICE_UNAVAILABLE.
+          x-error-codes: [SERVICE_UNAVAILABLE]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+
+  /api/visa/voa/staff/practices/{practice_id}/assignment:
+    parameters:
+      - $ref: "#/components/parameters/PracticeId"
+    post:
+      operationId: assignPractice
+      tags: [Staff practice]
+      summary: Assign (or unassign) a practice to a staff member
+      description: Admin only.
+      x-feature-flag: GARUDA_PUBLIC_ENABLED
+      security:
+        - StaffSession: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PracticeAssignmentRequest"
+      responses:
+        "200":
+          description: Assignment committed.
+          headers: *publicPrivacyHeaders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffPracticeListItem"
+        "400":
+          description: Idempotency-Key absent. Code is IDEMPOTENCY_KEY_REQUIRED.
+          x-error-codes: [IDEMPOTENCY_KEY_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "401":
+          description: Staff session required. Code is SESSION_REQUIRED.
+          x-error-codes: [SESSION_REQUIRED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "403":
+          description: Actor is not an admin. Code is ACCESS_DENIED.
+          x-error-codes: [ACCESS_DENIED]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "404":
+          description: Surface disabled or practice absent. Code is GARUDA_PUBLIC_DISABLED or PRACTICE_NOT_FOUND.
+          x-error-codes: [GARUDA_PUBLIC_DISABLED, PRACTICE_NOT_FOUND]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "422":
+          description: assigned_to is not a string or null. Code is INVALID_REQUEST.
+          x-error-codes: [INVALID_REQUEST]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "500":
+          description: Unexpected internal failure. Code is INTERNAL_ERROR.
+          x-error-codes: [INTERNAL_ERROR]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+        "503":
+          description: Storage unavailable. Code is SERVICE_UNAVAILABLE.
+          x-error-codes: [SERVICE_UNAVAILABLE]
+          headers: *publicPrivacyHeaders
+          content: *errorContent
+
   /api/visa/voa/staff/practices/{practice_id}/transitions:
     parameters:
       - $ref: "#/components/parameters/PracticeId"
@@ -1434,6 +1614,110 @@ components:
           pattern: "^garuda_voa\\.action\\.[a-z0-9_]+$"
         artifact_available:
           type: boolean
+
+    StaffPracticeListItem:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          practice_id,
+          order_id,
+          state,
+          assigned_to,
+          updated_at,
+          artifact_available,
+        ]
+      properties:
+        practice_id:
+          $ref: "#/components/schemas/OpaqueId"
+        order_id:
+          $ref: "#/components/schemas/OpaqueId"
+        state:
+          $ref: "#/components/schemas/PracticeState"
+        assigned_to:
+          oneOf:
+            - type: "null"
+            - type: string
+              format: email
+        updated_at:
+          type: string
+          format: date-time
+        customer_reason_key:
+          oneOf:
+            - type: "null"
+            - type: string
+              pattern: "^garuda_voa\\.practice\\.[a-z0-9_]+$"
+        required_action_key:
+          oneOf:
+            - type: "null"
+            - type: string
+              pattern: "^garuda_voa\\.action\\.[a-z0-9_]+$"
+        artifact_available:
+          type: boolean
+
+    StaffPracticeView:
+      description: >-
+        Staff-only view — a superset of StaffPracticeListItem carrying private_staff_note and
+        resume_target. Never reused by a customer-facing schema (PR-F04).
+      type: object
+      additionalProperties: false
+      required:
+        [
+          practice_id,
+          order_id,
+          state,
+          assigned_to,
+          updated_at,
+          artifact_available,
+        ]
+      properties:
+        practice_id:
+          $ref: "#/components/schemas/OpaqueId"
+        order_id:
+          $ref: "#/components/schemas/OpaqueId"
+        state:
+          $ref: "#/components/schemas/PracticeState"
+        assigned_to:
+          oneOf:
+            - type: "null"
+            - type: string
+              format: email
+        updated_at:
+          type: string
+          format: date-time
+        customer_reason_key:
+          oneOf:
+            - type: "null"
+            - type: string
+              pattern: "^garuda_voa\\.practice\\.[a-z0-9_]+$"
+        required_action_key:
+          oneOf:
+            - type: "null"
+            - type: string
+              pattern: "^garuda_voa\\.action\\.[a-z0-9_]+$"
+        artifact_available:
+          type: boolean
+        private_staff_note:
+          oneOf:
+            - type: "null"
+            - type: string
+              maxLength: 4000
+        resume_target:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/PracticeState"
+
+    PracticeAssignmentRequest:
+      type: object
+      additionalProperties: false
+      required: [assigned_to]
+      properties:
+        assigned_to:
+          oneOf:
+            - type: "null"
+            - type: string
+              format: email
+          description: null unassigns the practice.
 
     OrderView:
       type: object

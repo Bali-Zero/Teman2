@@ -200,17 +200,16 @@ def _live_path_methods() -> set[tuple[str, str]]:
 # is sufficient: it then falls into `_MOUNTED_OPERATION_IDS` automatically
 # and gets full status-parity coverage from the parametrized test, with zero
 # new test code required).
-_NOT_YET_BUILT_OPERATION_IDS = frozenset(
-    {
-        # `uploadIntakeDocument`/`listIntakeDocuments` moved to
-        # `_MOUNTED_OPERATION_IDS` when `garuda_documents_router.py` (L5
-        # hinge) was mounted — its production store still fails closed 503
-        # until L1's retention-covered store exists (see that router's
-        # module docstring), but the HTTP surface itself is real and
-        # answers every status code the frozen contract declares.
-        "transitionPractice",
-    }
-)
+# `uploadIntakeDocument`/`listIntakeDocuments` moved to
+# `_MOUNTED_OPERATION_IDS` when `garuda_documents_router.py` (L5 hinge) was
+# mounted — its production store still fails closed 503 until L1's
+# retention-covered store exists (see that router's module docstring), but
+# the HTTP surface itself is real and answers every status code the frozen
+# contract declares. `transitionPractice` moved the same way (step 8,
+# `garuda_staff_router.py`) — the frozen contract's status-code set is now
+# matched byte-for-byte by that router's own `_status_responses()` helper,
+# so it needs no `_KNOWN_STATUS_CODE_GAPS` entry either.
+_NOT_YET_BUILT_OPERATION_IDS: frozenset[str] = frozenset()
 
 # Mounted operations whose live status-code set does not fully match the
 # frozen contract for reasons that are real, separate product defects — see
