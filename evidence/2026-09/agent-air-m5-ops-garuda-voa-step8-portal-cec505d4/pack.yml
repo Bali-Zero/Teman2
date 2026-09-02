@@ -36,13 +36,13 @@ council_run: council-journal.jsonl
 
 diff:
   net_lines: >-
-    22 files changed at the head CI measures (`git diff --numstat $(git merge-base origin/main HEAD)..HEAD`
-    — the merge-base form; the two-dot form against main reports phantom deletions from main's own
-    later commits, W102). The code half is roughly half tests, a quarter contract (openapi.yaml),
-    the rest migration 305 plus the router, staff_auth, staff_transitions and outbox-handler
-    logic; the remaining files are this evidence pack (three) and the PENDING-ARMS ledger. The
-    insertion total is left to the CI numstat rather than restated here, because it moved with
-    every gate-driven commit.
+    Measured by CI from `git diff --numstat $(git merge-base origin/main HEAD)..HEAD` (the
+    merge-base form; the two-dot form against main reports phantom deletions from main's own later
+    commits, W102). No file or line count is restated here: both moved with every gate-driven
+    commit and with each merge of origin/main, and twice the restated figure lagged the computed
+    one. Shape: roughly half tests, a quarter contract (openapi.yaml), the rest migration 305 plus
+    the router, staff_auth, staff_transitions and outbox-handler logic, plus this evidence pack
+    and the PENDING-ARMS ledger.
   measured_at: "2026-09-02T03:25Z, after the tp1-qwen cure commit, before this pack was added"
   behaviour_change: >-
     New: 4 staff operations under /api/visa/voa/staff (gated by CRM JWT + operator registry, flag
