@@ -33,7 +33,7 @@ running."
   confirming the report's number precisely.
 - `scripts/tests/test_superscar_budget.py` [exists] — existing byte-budget (≤14,000 B) +
   completeness (every `W\d+` token resolves to a real heading) guard; PR-3 must keep this green.
-- `.claude/rules/cicatrix-scars.md`, `cicatrix-scars-archive.md` [exist] — the full corpus.
+- `docs/scars/cicatrix-scars.md`, `cicatrix-scars-archive.md` [exist] — the full corpus.
 - `infra/scar-gates/MANIFEST.json`, `scripts/lint_scar_number_collision.py`,
   `scripts/lint_retracted_claims.py` + `infra/retracted-claims/registry.json`,
   `infra/guard-conformance/registry.json` + `check_guard_conformance.py`,
@@ -55,10 +55,20 @@ running."
 **Gear**: 2
 **Build**:
 
-- Extend `pending_arms_report.py` with a `--budget`/ratchet mode: a JSON snapshot of the current
-  TECH-DEBT-overdue count, compared against the last committed snapshot. The count may not
-  increase without an explicit override line in the PR (same pattern as tg-gateway
-  `grandfathered.json`).
+- Extend `pending_arms_report.py` with a `--ratchet` mode. **Spec corrected in-lane 2026-08-31
+  (implementation PR, §5.1.4):** the original text asked for a committed JSON snapshot compared
+  against the live count. That shape is a countdown, not a ratchet — `tech_debt_overdue` is a
+  function of the CALENDAR (a FRESH row becomes OVERDUE at 48h), so a stored absolute number
+  reddens every innocent PR ~2 days after anyone opens a row. Shipped instead: BASE-vs-HEAD with
+  BOTH sides read at the **base commit's date**, base = `git merge-base origin/main HEAD` (W102).
+  A frozen shared `now` was the first attempt and is NOT enough — it cancels ageing only for rows
+  present on both sides, so a row the branch ADDS still ages on one side alone and the same
+  unmodified PR flips to red days later. Reading at the base commit's date removes time from the
+  computation instead of holding it still: the verdict is a pure function of (base commit, head
+  tree). What still reddens is a row the branch introduces that was already overdue when the
+  branch was cut — backdated, or resurrected. The count may not increase without an explicit
+  `RATCHET-OVERRIDE: tech_debt_overdue<=N -- <reason>` line in the ledger (same shrink-only
+  discipline as tg-gateway `grandfathered.json`); the acceptance criteria below are unchanged.
 - Extend `organism_digest.py` to name the **10 oldest** TECH-DEBT-overdue rows explicitly (the
   reporter already computes the count; this closes the gap to "an operator can see which rows").
 - Add a reporter schema self-test: assert the digest's parser reads the exact keys

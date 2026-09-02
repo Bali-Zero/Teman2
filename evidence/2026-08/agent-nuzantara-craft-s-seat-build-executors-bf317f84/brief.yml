@@ -1,0 +1,39 @@
+task_id: craft-s-seat-build-executors
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Wave-2 Squad S, lane 3: a CI executor for the three `seat_build` shell suites,
+  handed off by Squad F and never landed.
+
+  Measured on origin/main: `grep -rln 'test_seat_build' .github/workflows/`
+  returns NOTHING. `scripts/tests/test_seat_build.sh` (16 assertions),
+  `test_seat_build_tiers.sh` (25) and `test_seat_build_effort.sh` (10) — 51 in
+  total, matching Squad F's handoff exactly — are green and have no executor
+  that can go red. Their sibling `test_seat_state.sh` has had one all along, in
+  `fleet-burst-tests.yml`, which is where these three now join it.
+
+  The `scripts/tests` sweep does not count, and the reason is stronger than "it
+  is advisory": its step runs `python -m pytest scripts/tests/`, which collects
+  `test_*.py` and therefore never SEES a `.sh` suite at all.
+constraints:
+  - "The three suites are pure offline bash — measured: zero occurrences of
+    skip/SKIP, no zsh, no network call — so they run BEFORE this job's apt install
+    and origin/main fetch, and their verdict is in the log before any flake."
+  - "The `paths:` filter must cover the whole dependency closure, not just the
+    obvious files. Derived by grep, not by guessing."
+  - "Step names must be true of what each suite actually asserts. A first draft
+    described contracts the suites do not test."
+  - "Exit codes cannot see a corpus SHRINK, so the assertion count is asserted in
+    addition — as a floor, never an equality."
+acceptance:
+  - text: "The three suites run in CI and can go red."
+    probe: "three new steps in fleet-burst-tests.yml"
+  - text: "A shrinking corpus is caught: below 51 assertions must fail."
+    probe: "the corpus-shrink floor step, run against a mutated suite"
+  - text: "An aborted suite is reported as an unknown count, never as zero or fine."
+    probe: "the corpus-shrink floor step, run against an aborting suite"
+  - text:
+      "A suite that prints a clean summary early and a FAILING one at the end
+      must not have its failure masked."
+    probe: "the corpus-shrink floor step, run against a suite doing exactly that"

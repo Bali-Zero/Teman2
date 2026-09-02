@@ -400,18 +400,39 @@ update-branch` first (`lesson_gh_run_rerun_replays_the_stale_merge_commit_2026_0
 
 ## 6bis. Queue parameters, and the one knob NOT to turn
 
-Live values on ruleset `19779175`, read 2026-07-27 (re-read them, do not trust this list — the point
-of writing them down is to have something to diff against):
+Live values on ruleset `19779175`, read 2026-09-01 after the batching change below (re-read them, do
+not trust this list — the point of writing them down is to have something to diff against):
 
 | parameter                           | value      |
 | ----------------------------------- | ---------- |
 | `grouping_strategy`                 | `ALLGREEN` |
 | `max_entries_to_build`              | 5          |
 | `max_entries_to_merge`              | 4          |
-| `min_entries_to_merge`              | 1          |
-| `min_entries_to_merge_wait_minutes` | 2          |
+| `min_entries_to_merge`              | 4          |
+| `min_entries_to_merge_wait_minutes` | 15         |
 | `check_response_timeout_minutes`    | 90         |
 | `merge_method`                      | `SQUASH`   |
+
+**2026-09-01 — the queue now BATCHES (RULED by Zero: «procedi impostazione della coda»).**
+`min_entries_to_merge` 1 → 4 and `min_entries_to_merge_wait_minutes` 2 → 15; nothing else moved
+(before/after diff of the whole ruleset verified: those two fields only). Semantics: a green PR
+waits in the queue up to 15 minutes for companions; at 4 ready entries — or when the 15 minutes
+run out, whichever first — the group lands on `main` as ONE ref update, so `fly-deploy.yml`
+(trigger `push`, 100/100 runs measured) fires ONCE for the whole batch. 15 minutes is the ceiling
+a lone urgent PR pays, not a wait for "the queue to fill".
+
+Why this and not a deploy window: the 08:00–20:00 WITA "WhatsApp window" was measured dead
+(62 of the last 100 deploys landed inside it, no gate enforces it anywhere) and the per-deploy
+gap it guards against has never been measured (`research/operations/2026-08-25-wa-webhook-api-redundancy.md`
+§6 says so itself). Batching is the cheapest answer to «fondere le PR in blocchi di deploy» that
+adds no day-long "merged but not live" lag; it also relaxes the queue stability condition measured
+2026-08-31 (mean gap between landings 285 s vs a 590 s merge-group critical path → livelock), whose
+own conclusion was "widen the batch, do not re-arm faster". The definitive cure — a second `api`
+machine once the two SQLite files leave the volume — is a separate lane.
+
+Cost to expect: under `ALLGREEN` a red PR is ejected and the rest of the group is rebuilt, so
+batch CI can restart once; that is the price of batching, not a fault. Rollback: PUT the saved
+pre-change ruleset JSON back, or set the two fields to 1 / 2 by hand.
 
 ```bash
 gh api /repos/Bali-Zero/Teman2/rulesets/19779175 \

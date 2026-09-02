@@ -40,9 +40,15 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RULES_DIR = REPO_ROOT / ".claude" / "rules"
 
+SCARS_DIR = REPO_ROOT / "docs" / "scars"
+
 SUPERSCAR = RULES_DIR / "cicatrix-superscar.md"
-SCARS = RULES_DIR / "cicatrix-scars.md"
-ARCHIVE = RULES_DIR / "cicatrix-scars-archive.md"
+# The bodies live OUTSIDE `.claude/rules/` since L02-PR1: everything in that
+# directory is auto-injected into every session and every subagent, and the two
+# bodies were 693 KB of it. The bridge stays there on purpose. This guard still
+# reads all three — it just reads them from two places now.
+SCARS = SCARS_DIR / "cicatrix-scars.md"
+ARCHIVE = SCARS_DIR / "cicatrix-scars-archive.md"
 
 BYTE_BUDGET = 14_000
 
@@ -163,14 +169,18 @@ class TestTheRealLedgerIsClean:
         )
 
     def test_all_three_cicatrix_files_are_prettier_ignored(self) -> None:
+        # Asserted by the file's CURRENT path, not by the directory it used to
+        # live in: the bodies moved to docs/scars/ in L02-PR1 and a .prettierignore
+        # entry that still names .claude/rules/ would be an entry protecting
+        # nothing while reading as protection (superscar #2).
         prettierignore = (REPO_ROOT / ".prettierignore").read_text(encoding="utf-8")
-        for name in (
-            "cicatrix-superscar.md",
-            "cicatrix-scars.md",
-            "cicatrix-scars-archive.md",
+        for rel in (
+            ".claude/rules/cicatrix-superscar.md",
+            "docs/scars/cicatrix-scars.md",
+            "docs/scars/cicatrix-scars-archive.md",
         ):
-            assert f".claude/rules/{name}" in prettierignore, (
-                f".claude/rules/{name} is not listed in .prettierignore — Prettier "
+            assert rel in prettierignore, (
+                f"{rel} is not listed in .prettierignore — Prettier "
                 "rewrites literal text inside these scar records as markdown "
                 "emphasis delimiters (cicatrix-scars.md W112) and silently "
                 "corrupts the content."

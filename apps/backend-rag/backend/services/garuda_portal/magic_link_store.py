@@ -161,7 +161,20 @@ async def _default_send_magic_link_email(*, email: str, result_id: str, raw_toke
             resp = await client.post(
                 api_url,
                 headers={"X-API-Key": api_key},
-                json={"to": email, "subject": "Your Bali Zero VOA result link", "body": html_body},
+                json={
+                    "to": email,
+                    "subject": "Your Bali Zero VOA result link",
+                    "body": html_body,
+                    # DECLARED, not incidental. Without this the send
+                    # choke-point classifies the mail as ordinary client
+                    # correspondence and copies a Bali Zero address in --
+                    # which on THIS message means handing a staff member a
+                    # working login for the customer's own application.
+                    # `garuda_magic_link` is in the notifications router's
+                    # `_CREDENTIAL_DELIVERY_EMAIL_TYPES`, the set that gets
+                    # cc AND bcc stripped.
+                    "email_type": "garuda_magic_link",
+                },
             )
             resp.raise_for_status()
         logger.info("garuda_magic_link: email dispatched via Brevo")

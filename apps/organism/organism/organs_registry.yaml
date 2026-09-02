@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 3ede4951893de04e7d112e5f9413d3470388cc6d5b33b821994d9e2105014a73
+checksum: 88ee800ce53c07dba4c6213a8bb11dda00e2c4e331962ec1addc27b22be6118d
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -113,7 +113,8 @@ organs:
 - id: pro.claude_max_watcher
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 3600
+  # 7200 = 2x this organ's own 3600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 7200
   owner_module: scripts/claude-max-usage-watcher.py
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -164,7 +165,8 @@ organs:
 - id: m5.auth_sentinel
   runtime: air_launchd
   type: cron
-  expected_hb_seconds: 25200
+  # 43200 = 2x this organ's own 21600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.167x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
+  expected_hb_seconds: 43200
   owner_module: scripts/auth_sentinel_cron.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -280,7 +282,8 @@ organs:
 - id: pro.zombie_hunter
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 90
+  # 900 = 3x the bridge's 300s poll interval (this sidecar is bridge-fed) - bound to the poller, not to how fast this organ moves.
+  expected_hb_seconds: 900
   owner_module: .claude/scripts/zombie-hunter.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -297,7 +300,8 @@ organs:
 - id: pro.dlq_autopilot
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 2700
+  # 3600 = 2x this organ's own 1800s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
+  expected_hb_seconds: 3600
   owner_module: scripts/dlq_autopilot.py
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -493,6 +497,8 @@ organs:
 - id: wr2.supervisor
   runtime: pro_launchd
   type: daemon
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 300
   owner_module: scripts/wr2_supervisor.py
   dependencies:
@@ -510,6 +516,8 @@ organs:
 - id: wr2.oracle
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 1209600
   owner_module: backend.services.cognitive.oracle_cli
   dependencies:
@@ -636,6 +644,8 @@ organs:
 - id: mata_garuda.wr2_bridge_hourly.pro
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 7200
   owner_module: apps/mata-garuda/scripts/run_wr2_bridge.py
   dependencies:
@@ -869,6 +879,8 @@ organs:
 - id: wr2.connector
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 90000
   owner_module: apps/war-room/scripts/wr2_connector.py
   dependencies:
@@ -884,6 +896,8 @@ organs:
 - id: wr2.dossier_compiler
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 90000
   owner_module: apps/war-room/scripts/wr2_dossier_compiler.py
   dependencies:
@@ -898,6 +912,8 @@ organs:
 - id: wr2.draft_generator
   runtime: pro_launchd
   type: daemon
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 600
   owner_module: scripts/wr2_draft_generator.py
   dependencies:
@@ -913,6 +929,8 @@ organs:
 - id: wr2.hardening
   runtime: pro_launchd
   type: daemon
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 600
   owner_module: apps/war-room/scripts/wr2_hardening.py
   dependencies:
@@ -928,6 +946,8 @@ organs:
 - id: wr2.image_generator
   runtime: pro_launchd
   type: daemon
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 600
   owner_module: scripts/wr2_image_generator.py
   dependencies:
@@ -941,6 +961,8 @@ organs:
 - id: wr2.learner_nightly
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 90000
   owner_module: apps/war-room/scripts/wr2_learner_nightly.py
   dependencies:
@@ -956,6 +978,8 @@ organs:
 - id: wr2.measurer
   runtime: pro_launchd
   type: daemon
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 600
   owner_module: apps/war-room/scripts/wr2_measurer.py
   dependencies:
@@ -970,7 +994,8 @@ organs:
 - id: wr2.pg_proxy
   runtime: pro_launchd
   type: daemon
-  expected_hb_seconds: 60
+  # 900 = 3x the bridge's 300s poll interval (this sidecar is bridge-fed) - bound to the poller, not to how fast this organ moves.
+  expected_hb_seconds: 900
   owner_module: apps/war-room/scripts/wr2_pg_proxy.py
   dependencies:
   - wr2.supervisor
@@ -984,6 +1009,8 @@ organs:
 - id: wr2.sla_worker
   runtime: pro_launchd
   type: daemon
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 600
   owner_module: apps/war-room/scripts/wr2_sla_worker.py
   dependencies:
@@ -998,6 +1025,8 @@ organs:
 - id: wr2.strategos
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 691200
   owner_module: apps/war-room/scripts/wr2_strategos.py
   dependencies:
@@ -1013,6 +1042,8 @@ organs:
 - id: wr2.topic_selector
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 90000
   owner_module: scripts/wr2_topic_selector.py
   dependencies:
@@ -1028,6 +1059,8 @@ organs:
 - id: wr2.trend_hunter
   runtime: pro_launchd
   type: daemon
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 600
   owner_module: apps/war-room/scripts/wr2_trend_hunter.py
   dependencies:
@@ -1268,6 +1301,8 @@ organs:
 - id: wr2.canva_oauth_watchdog
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 3600
   owner_module: scripts/wr2-canva-oauth-watchdog.sh
   dependencies:
@@ -1281,7 +1316,10 @@ organs:
 - id: wr2.deploy_puller
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 600
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
+  # 7200 = 2x this organ's own 3600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 7200
   owner_module: scripts/wr2-deploy-pull.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -1293,6 +1331,8 @@ organs:
 - id: wr2.fact_checker
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 1800
   owner_module: scripts/wr2_fact_checker.py
   starved_after_periods: 2
@@ -1309,6 +1349,8 @@ organs:
 - id: wr2.fact_extractor
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 1800
   owner_module: scripts/wr2_fact_extractor.py
   starved_after_periods: 2
@@ -1325,6 +1367,8 @@ organs:
 - id: wr2.ig_scraper_daily
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 90000
   owner_module: skills/bali-zero-brand/_ig-metrics-scraper.py
   dependencies:
@@ -1338,6 +1382,8 @@ organs:
 - id: wr2.queue_server
   runtime: pro_launchd
   type: daemon
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 300
   owner_module: skills/bali-zero-brand/_damar-queue-server.py
   dependencies:
@@ -1351,6 +1397,8 @@ organs:
 - id: wr2.reflexion_weekly
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 691200
   owner_module: .claude/skills/bali-zero-brand/_reflexion-synthesis.py
   dependencies:
@@ -1364,6 +1412,8 @@ organs:
 - id: wr2.ig_metrics_analyst_weekly
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 691200
   owner_module: infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh
   dependencies:
@@ -1377,6 +1427,8 @@ organs:
 - id: wr2.external_bench_monthly
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 2764800
   owner_module: infra/launchagents/wrappers/wr2-external-bench-run.sh
   dependencies:
@@ -1390,6 +1442,8 @@ organs:
 - id: wr2.supervisor_watchdog
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 600
   owner_module: scripts/wr2_supervisor_watchdog.py
   dependencies:
@@ -1403,6 +1457,8 @@ organs:
 - id: wr2.voyager_weekly
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 691200
   owner_module: skills/bali-zero-brand/_voyager-curriculum.py
   dependencies:
@@ -1567,7 +1623,8 @@ organs:
 - id: pro.launchagent_state_bridge
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 600
+  # 900 = 3x the bridge's own 300s poll interval (it bridges its own launchd label too) - bound to the poller, not to how fast this organ moves.
+  expected_hb_seconds: 900
   owner_module: scripts/launchagent-state-bridge.py
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -1643,7 +1700,8 @@ organs:
 - id: pro.post_publish_webhook
   runtime: pro_launchd
   type: webhook
-  expected_hb_seconds: 300
+  # 900 = 3x the bridge's 300s poll interval (this sidecar is bridge-fed) - bound to the poller, not to how fast this organ moves.
+  expected_hb_seconds: 900
   owner_module: apps/bali-intel-scraper/scripts/post_publish_webhook.py
   dependencies:
   - backend.api
@@ -1742,7 +1800,8 @@ organs:
 - id: pro.prime_tunnel
   runtime: pro_launchd
   type: daemon
-  expected_hb_seconds: 300
+  # 900 = 3x the bridge's 300s poll interval (this sidecar is bridge-fed) - bound to the poller, not to how fast this organ moves.
+  expected_hb_seconds: 900
   owner_module: cloudflared/config-prime.yml
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -1847,7 +1906,8 @@ organs:
 - id: pro.bali_zero_magazine_breaking
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 600
+  # 1200 = 2x this organ's own 600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 1200
   owner_module: infra/launchagents/wrappers/bali-zero-magazine-publish.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -1918,7 +1978,8 @@ organs:
 - id: mini.healer
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 14400
+  # 21600 = 1.5x this organ's own 14400s plist cadence (self-reporting cron, not bridge-fed) - error severity gets the faster-detection floor: a flat 1x margin let the sidecar's own age cross 'stale' every cycle at the exact instant the next run was due.
+  expected_hb_seconds: 21600
   owner_module: infra/healer/healer-run.sh
   dependencies: []
   recovery_action: human_only
@@ -1941,7 +2002,8 @@ organs:
 - id: pro.healer
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 21600
+  # 32400 = 1.5x this organ's own 21600s plist cadence (self-reporting cron, not bridge-fed) - error severity gets the faster-detection floor: a flat 1x margin let the sidecar's own age cross 'stale' every cycle at the exact instant the next run was due.
+  expected_hb_seconds: 32400
   owner_module: infra/launchagents/wrappers/pro-healer.sh
   dependencies: []
   recovery_action: human_only
@@ -1961,7 +2023,8 @@ organs:
 - id: pro.tg_digest_flush
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 43200
+  # 86400 = 2x this organ's own 43200s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 86400
   owner_module: infra/launchagents/wrappers/pro-tg-digest-flush.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -1981,7 +2044,8 @@ organs:
 - id: mini.tg_digest_flush
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 43200
+  # 86400 = 2x this organ's own 43200s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 86400
   owner_module: infra/launchagents/wrappers/mini-tg-digest-flush.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2071,6 +2135,8 @@ organs:
 - id: pro.wr2_daily_carousel
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 64800
   owner_module: scripts/wr2_daily_reconciler.py
   dependencies:
@@ -2088,6 +2154,8 @@ organs:
 - id: pro.wr2_worktree_gc
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
   expected_hb_seconds: 129600
   owner_module: scripts/wr2_worktree_gc.py
   dependencies: []
@@ -2126,7 +2194,8 @@ organs:
 - id: mini.fleet_watch
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 900
+  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 1800
   owner_module: infra/launchagents/wrappers/mini-fleet-watch.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2147,7 +2216,8 @@ organs:
 - id: pro.fleet_watch
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 900
+  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 1800
   owner_module: infra/launchagents/wrappers/pro-fleet-watch.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2259,7 +2329,8 @@ organs:
 - id: pro.git_pull_main
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 900
+  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 1800
   owner_module: infra/launchagents/wrappers/pro-git-pull-main.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2326,7 +2397,8 @@ organs:
 - id: pro.log_rotate
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 86400
+  # 172800 = 2x this organ's own 86400s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 172800
   owner_module: infra/launchagents/wrappers/log-rotate-run.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2435,7 +2507,8 @@ organs:
 - id: army.jules_harvest
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 10800
+  # 21600 = 2x this organ's own 10800s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 21600
   owner_module: scripts/army/jules_lane_harvest_wrapper.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2457,7 +2530,8 @@ organs:
 - id: army.spark_lane
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 7200
+  # 14400 = 2x this organ's own 7200s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 14400
   owner_module: scripts/army/spark_lane.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2502,7 +2576,8 @@ organs:
 - id: pro.wa_mirror_freshness_liveness
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 1350
+  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
+  expected_hb_seconds: 1800
   owner_module: scripts/wa_mirror_freshness_liveness.py
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2525,7 +2600,8 @@ organs:
 - id: mini.secrets_perms_sweep
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 21600
+  # 43200 = 2x this organ's own 21600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 43200
   owner_module: infra/launchagents/wrappers/mini-secrets-perms-sweep.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2545,7 +2621,8 @@ organs:
 - id: pro.visa_freshness_sentinel
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 21600
+  # 43200 = 2x this organ's own 21600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 43200
   owner_module: infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2554,8 +2631,9 @@ organs:
     label: com.nuzantara.visa-freshness-sentinel
   severity_on_silence: warning
   notes: Alerts Telegram BEFORE the active Visa Oracle RulePack OFFICIAL_PORTAL sources
-    cross their freshness_policy window (7-day), so DECISIVE_SOURCE_STALE never trips
-    silently (born via organ_birth.py, genes imprinted 2026+)
+    cross their freshness_policy window (32-day since seq-18, 2026-08-31; was 7-day),
+    so DECISIVE_SOURCE_STALE never trips silently (born via organ_birth.py, genes
+    imprinted 2026+)
   cicatrix_refs: []
   bridge_source:
     type: state_file
@@ -2565,7 +2643,8 @@ organs:
 - id: pro.llm_burn_alarm
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 3600
+  # 7200 = 2x this organ's own 3600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 7200
   owner_module: infra/launchagents/wrappers/pro-llm-burn-alarm.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2584,7 +2663,8 @@ organs:
 - id: mini.vercel_autopromote
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 900
+  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 1800
   owner_module: infra/launchagents/wrappers/mini-vercel-autopromote.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2603,7 +2683,8 @@ organs:
 - id: mini.voa_probe
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 900
+  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 1800
   owner_module: infra/launchagents/wrappers/voa-probe-wrapper.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2629,7 +2710,8 @@ organs:
 - id: mini.voa_deadman
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 450
+  # 600 = 2x this organ's own 300s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
+  expected_hb_seconds: 600
   owner_module: infra/launchagents/wrappers/voa-deadman-wrapper.sh
   dependencies:
   - mini.voa_probe
@@ -2659,7 +2741,8 @@ organs:
 - id: pro.wa_bot_throughput_sentinel
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 1350
+  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
+  expected_hb_seconds: 1800
   owner_module: scripts/wa_bot_throughput_sentinel.py
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2686,7 +2769,8 @@ organs:
 - id: pro.iqoo_radar_relay
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 60
+  # 120 = 2x this organ's own 60s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 120
   owner_module: infra/launchagents/wrappers/pro-iqoo-radar-relay.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2705,7 +2789,8 @@ organs:
 - id: mini.iqoo_radar_relay
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 60
+  # 120 = 2x this organ's own 60s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 120
   owner_module: infra/launchagents/wrappers/mini-iqoo-radar-relay.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2724,7 +2809,8 @@ organs:
 - id: mini.journey_sentinel
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 5400
+  # 7200 = 2x this organ's own 3600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
+  expected_hb_seconds: 7200
   owner_module: scripts/journey_sentinel.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2775,7 +2861,8 @@ organs:
 - id: pro.queue_shepherd
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 900
+  # 1200 = 2x this organ's own 600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
+  expected_hb_seconds: 1200
   owner_module: scripts/queue_shepherd.py
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2833,5 +2920,27 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.seat_mix_report.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.price_review_sentinel
+  runtime: pro_launchd
+  type: cron
+  # 172800 = 2x this organ's own 86400s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.042x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
+  expected_hb_seconds: 172800
+  owner_module: infra/launchagents/wrappers/pro-price-review-sentinel.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.price-review-sentinel
+  severity_on_silence: warning
+  notes: Alerts when the Bali Zero price sheet loaded by pricing_service is past its
+    90-day review interval, or when metadata.last_updated has stopped tracking edits
+    and can no longer answer the freshness question in either direction (born via
+    organ_birth.py, genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.price_review_sentinel.json
     timestamp_field: ts
     status_field: status

@@ -6,6 +6,62 @@
 
 ---
 
+<!-- CANON:builder-contract -->
+
+## THE BUILDER CONTRACT — identical in every door, compared by machine
+
+This block is the same in `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` and `QWEN.md`, and
+`scripts/proprioception.py`'s `door_canon_parity` probe goes RED if any copy drifts from
+`CLAUDE.md`'s. "The same" is what the machine actually enforces, not more: the comparison
+hashes the block with TRAILING whitespace and line endings normalised away, so an editor that
+strips or adds them is not drift — and anything else, including one reworded sentence or one
+extra space mid-line, is. It exists because the CI layer already binds every model equally — a gate does
+not care which family opened the PR — while the harness layer did not: a seat that BUILDS used
+to start with whatever its own door happened to say. **Do not reword this block in one door.**
+Fix it in `CLAUDE.md` and copy it outward, or the probe will name your door.
+
+**1 — PR contract.** One PR, one concern, ≤ ~400 net lines where the work allows. Arming means
+freezing: after auto-merge is armed, the branch is read-only and every follow-up starts from a
+fresh `origin/main`. Never rerun a red check before you know WHY it is red — the right gesture
+depends on the cause, and a blind rerun replays a stale merge ref. Serialize PRs that share a
+lockfile. Work in a dedicated worktree on an `agent/<host>/<lane>/...` branch. Three reds for
+the SAME cause and the PR suspends instead of taking a fourth round; a fix-of-a-fix stops at
+depth 1 — if the correction is itself wrong, the surface is under-specified, so write the spec.
+
+**2 — Every PR body carries a `Bites:` line** naming the CONSUMER and the observation that
+proves the change is in force. "A future job will run it" is not a consumer: the job ships in
+the same PR. Make the observation before reporting the work done — a merged diff is not a live
+one, and this repo's scar record is mostly the distance between those two.
+
+**3 — Bans, stated as an ENTITY and not as a spelling.** What is forbidden is reaching a Claude
+model through a **paid per-token Anthropic endpoint** — because the subscription is already paid
+and a per-token key duplicates it. The sole sanctioned path is the `claude` CLI with
+`CLAUDE_CODE_OAUTH_TOKEN`. `from anthropic import Anthropic` and `ANTHROPIC_API_KEY` are the two
+shapes that usually carry it, and grepping for them is a useful first pass — but an alias, a
+renamed env var, a wrapper library or a Bedrock/Vertex route reaches the same endpoint without
+either literal, and is equally banned. Refuse any new tool, MCP server or cron that requires it. Other paid per-token APIs are not banned but are not
+yours to install: they need the owner's explicit authorization first. Never `--dangerously-bypass`
+a sandbox; never echo, print or commit a credential — `${VAR:+SET}` reports presence,
+`${VAR:-default}` prints the value.
+
+**4 — PII boundary, and it is an OUTPUT boundary.** Processing client data under an authorized
+lane is allowed; transcribing it is not. No output, memory, log, alert, report, skill, prompt
+saved for reuse, or shared artifact may carry client PII or OSINT in cleartext — use a
+`client_id`, a hash, a placeholder or a redaction. This binds every vendor identically: there is
+no cloud whose terms make cleartext PII acceptable here, and no seat exempt from it.
+
+**5 — Ship sequence.** The session that owns a mandate runs it end to end: review → merge → arm
+→ deploy → prove-live. The codeowner does not merge, does not review and does not deploy — by
+design. Arm auto-merge at PR-open. Push, create and merge are three SEPARATE commands, never a
+compound one. What stays with the human: business decisions, credentials and consents, and
+physical/GUI actions. **The one exception both ways:** an external builder seat (`AGENTS.md`,
+`GEMINI.md`, `QWEN.md`) prepares and never ships — it does not merge, arm or deploy its own
+work, and a Claude session verifies it. Generator is never grader, in either direction.
+
+<!-- /CANON:builder-contract -->
+
+---
+
 # Part A — Agent Directives
 
 ## 1. Machine & Reachability
@@ -65,9 +121,9 @@ still does not arm, merge, or deploy). The operational commands are documented i
 
 **DO NOT ask the user to write code.** Act first, ask if blocked. Use `Edit`/`Write`/`Bash` without asking permission.
 
-**No phantom operator lane** (Zero, 2026-07-06: *"io sono te — non c'è nessun operatore"*). Sessions ARE the operator for all repo/infra work, on every machine. Never park work behind a waiting-for-human fence: investigate dirty/anomalous state (whose is it? runtime-state? live sibling? residue?) and handle it — "alive" is verified (processes, mtime, file nature), never presumed. The ONLY true operator-only categories are: physical device actions, GUI-only surfaces (interactive logins, GitHub settings, external-UI paste), TCC grants, consents/credentials only the human holds, `~/.claude/hooks/` control-plane one-liners (host_boundary stays hard by design), and business decisions (Legge 5). In the PENDING-ARMS ledger these MUST be declared as `operator[<category>]`; any bare `operator` owner is flagged PHANTOM-OPERATOR by `scripts/pending_arms_report.py` (CI-enforced: `immune-enforcement.yml` strict-phantom gate + `test_real_ledger_has_zero_phantom_operator`). Sibling discipline (#5) still holds toward LIVE sessions' work. Reference: memory `feedback_no_operator_lane_io_sono_te_2026_07_06`.
+**No phantom operator lane** (Zero, 2026-07-06: *"io sono te — non c'è nessun operatore"*). Sessions ARE the operator for all repo/infra work, on every machine. Never park work behind a waiting-for-human fence: investigate dirty/anomalous state (whose is it? runtime-state? live sibling? residue?) and handle it — "alive" is verified (processes, mtime, file nature), never presumed. The ONLY true operator-only categories are: physical device actions, GUI-only surfaces (interactive logins, GitHub settings, external-UI paste), TCC grants, consents/credentials only the human holds, `~/.claude/hooks/` control-plane one-liners (host_boundary stays hard by design), and business decisions (Legge 5) — where the business decision is AUTHORISING, never executing: a publish order for a News Room article, a WR2 carousel or a WR3 video that reached you through an authenticated channel from Zero or Damar (2026-09-01 editorial delegation, `SYMBIOSIS.md` Law 5) is a decision already taken, so carrying it out is the session's work and not an operator hand-off. In the PENDING-ARMS ledger these MUST be declared as `operator[<category>]`; any bare `operator` owner is flagged PHANTOM-OPERATOR by `scripts/pending_arms_report.py` (CI-enforced: `immune-enforcement.yml` strict-phantom gate + `test_real_ledger_has_zero_phantom_operator`). Sibling discipline (#5) still holds toward LIVE sessions' work. Reference: memory `feedback_no_operator_lane_io_sono_te_2026_07_06`.
 
-**⚡ SHIP-LIFECYCLE OWNERSHIP (HARD RULE — Zero, 2026-07-16: *"tu mergi fai review armi deploy testi. il codeowner non lo fa, non lo sa fare"*).** **THE SESSION DOES IT ALL: REVIEW → MERGE → ARM → DEPLOY → PROVE-LIVE. THE CODEOWNER DOES NOT MERGE, DOES NOT REVIEW, DOES NOT DEPLOY — BY DESIGN.** Never park a PR on "waiting for the codeowner's review/merge"; never end a mandate at "attende merge". Concretely: (1) arm `gh pr merge --auto --squash` at PR-open on every L2 feature PR — "client-facing/sensitive data" is NOT an exception: sensitivity raises the rigor of the ADVERSARIAL gate (generator≠grader — the diff's author never gates its own diff), it never moves the merge to a human; (2) post-merge, the session runs the deploy and apply steps itself (dry-run → apply → verify), per §11; (3) "done" is declared only after PROVE-LIVE on EVERY consuming surface (consumer-map first — memory `feedback_merged_is_not_live_consumer_map_first_2026_07_16`); (4) the codeowner keeps ONLY: business decisions (Legge 5), consents/credentials only the human holds, physical/GUI/TCC actions; (5) the auto-merge-OFF exceptions (guardrail hooks, DB migrations, force-push class — per `feedback_arm_automerge_default_not_leave_to_operator`) still get merged by the SESSION after their specific gates, never by the codeowner. Reference: memory `feedback_session_owns_full_ship_lifecycle_2026_07_16`.
+**⚡ SHIP-LIFECYCLE OWNERSHIP (HARD RULE — Zero, 2026-07-16: *"tu mergi fai review armi deploy testi. il codeowner non lo fa, non lo sa fare"*).** **THE SESSION DOES IT ALL: REVIEW → MERGE → ARM → DEPLOY → PROVE-LIVE. THE CODEOWNER DOES NOT MERGE, DOES NOT REVIEW, DOES NOT DEPLOY — BY DESIGN.** Never park a PR on "waiting for the codeowner's review/merge"; never end a mandate at "attende merge". Concretely: (1) arm `gh pr merge --auto --squash` at PR-open on every L2 feature PR — "client-facing/sensitive data" is NOT an exception: sensitivity raises the rigor of the ADVERSARIAL gate (generator≠grader — the diff's author never gates its own diff), it never moves the merge to a human; (2) post-merge, the session runs the deploy and apply steps itself (dry-run → apply → verify), per §11; (3) "done" is declared only after PROVE-LIVE on EVERY consuming surface (consumer-map first — memory `feedback_merged_is_not_live_consumer_map_first_2026_07_16`); (4) the codeowner keeps ONLY: business decisions (Legge 5) — the DECISION itself, never its execution, so an authenticated publish order from Zero or Damar on the editorial perimeter is a decision already taken and the session carries it out; consents/credentials only the human holds; physical/GUI/TCC actions; (5) the auto-merge-OFF exceptions (guardrail hooks, DB migrations, force-push class — per `feedback_arm_automerge_default_not_leave_to_operator`) still get merged by the SESSION after their specific gates, never by the codeowner. Reference: memory `feedback_session_owns_full_ship_lifecycle_2026_07_16`.
 
 **Master loop (2026-07-02)**: skill **`modus`** (`.claude/skills/modus/`) governs every non-trivial mandate end-to-end — TRIAGE gears (1 liscio / 2 standard / 3 profondo) → GROUND → DESIGN → BUILD → VERIFY → SHIP+ARM → PROVE-LIVE → ALIGN-FLEET → CLEAN → CAPTURE. It absorbs `stadio-zero` (entry gate) and `sota-architecture-loop` (design) as stages; **`opus-mythos` is superseded** (its deep/wide TAC patterns = modus Gear 3). W81 ledger: `.claude/skills/modus/PENDING-ARMS.md` · loop scar-file: `AMENDMENTS.md` · self-refinement: `infra/workflows/modus-bench.js` (operator-gated, on demand).
 
@@ -119,6 +175,8 @@ User writes **colloquial Italian** — translate to precise technical action int
 
 **Claude 5 routing (2026-07-02; interactive default amended 2026-07-25; Fable taken out of the workflow 2026-08-20)**: interactive sessions = **Opus 5** (`claude-opus-5`, architect/orchestrator, `xhigh` effort) — ratified by Zero on 2026-07-25, superseding the previous Fable-5 interactive default. **The final on-disk gate is Opus 5 at effort `max`** (RULED 2026-08-20, below — supersedes the 2026-08-19 gear-split's Fable-on-Gear-3 carve-out): it never cascades to a weaker model, and window dead → task SUSPENDS. Gear 1-2 small interventions stay on Opus 5 as the 2026-08-19 ruling already had them — the gear-split classifier is unchanged, only the model both tiers now share. Implementer subagents/workflows = **Sonnet 5** (`claude-sonnet-5`, `model:"sonnet"`) by default; grunt = Haiku 4.5. **Amended 2026-08-14 (Zero ruling — verbatim: "ricorda che hai diversi modelli e diversi effort ... e devi stamparti in testa la lista di tutti i modelli llm e loro punti di forza"): implementer routing is task-shaped across the FULL cross-family roster, not a Sonnet-only obligation — see `MODEL_ROSTER.md` for every model × strength × effort level × door. Sonnet 5 remains the sane default for well-specified, testable BUILD units; it is no longer the only option a conductor may reach for.** Cron tier-1: repo-side pins migrated to `claude-sonnet-5` on 2026-07-03 after per-agent probes (see `research/operations/2026-07-03-sonnet5-cron-migration.md`); LIVE HOME wrappers (`~/scripts/`) still on `claude-sonnet-4-6` until the operator applies the diffs in that doc (tracked in modus PENDING-ARMS). Exception: the nb-agents slug micro-prompt stays 4-6 (probe wobble). Full arsenal routing: `.claude/skills/modus/SKILL.md` §Arsenal.
 
+**Model is fixed before turn 1 (2026-09-02).** The Pro tokenaudit session `f743c25a…` measured a `$3.65` leak from switching Opus to Fable after turn 2: the 121,644-token startup cache was written twice; see `~/.tokenaudit/reports/10-tassa-di-contesto.md` (Pro). Interactive sessions set `--model <alias>` or settings `model` before turn 1; subagents carry mandatory `model:`; cron invokes `claude -p --model …` each time. Never `/model` after the first turn — start a new session instead.
+
 **Opus 5 roster update (2026-07-25) — additive, changes no rule.** **Claude Opus 5** (`claude-opus-5`) shipped and is the current Opus tier: a drop-in successor to Opus 4.8 at the *same* price ($5/$25 per MTok, 1M context, 128K output), strongest on agentic coding and long-horizon work. Everywhere this repo names **Opus 4.8 as the capable non-Fable seat** — the (now-moot) Fable-paid contingency below, the `modus` §Arsenal fallback rows, cascade tier-1 synthesis — read **Opus 5**; 4.8 stays a valid pin, it is not deprecated. **Opus 5 at effort `max` IS the final on-disk gate** (RULED 2026-08-20, below) — Fable has no automated role left. Canonical roster — use the alias exactly as written, never invent a date suffix: `claude-fable-5` · `claude-opus-5` · `claude-opus-4-8` · `claude-sonnet-5` · `claude-sonnet-4-6` · `claude-haiku-4-5`. Haiku 4.5 is the only one that also has a real dated full ID (`claude-haiku-4-5-20251001`, used by existing pins) — both resolve; the 5-family has aliases only. `claude-fable-5` remains a valid, **existing** alias — it is simply not routed to by any doctrine, skill, cron, or script; Zero may still select it manually in an interactive session (`/model claude-fable-5`).
 
 > ✅ **RULED 2026-07-25 (Zero): the interactive default is Opus 5.** The 2026-07-02 clause declared Fable 5 while the harness actually reported `claude-opus-5` — a doctrine describing a state that did not exist. Three reasons, in order of weight: **(1)** a rule that lies is worse than either option, because the next session reads it and builds on it; **(2)** it *protects* the Fable invariant rather than eroding it — on the Team-Premium seat Fable is included only up to **50% weekly** and past that it is credits (= paying, barred by the 2026-07-12 contingency), so spending the allowance on ordinary interactive turns is exactly how the final gate ends up with none left; **(3)** the organism's own corrected blind A/B (`research/operations/2026-07-11-fable-paywall-routing.md` §0.5) found Fable and Opus-4.8 measured-indistinguishable on real grounded/structured work (KBLI, 10/14 ties, 0 factual errors either side), and Opus 5 is the drop-in successor to 4.8 at the same price.
@@ -141,7 +199,7 @@ User writes **colloquial Italian** — translate to precise technical action int
 
 **Kimi seat (added 2026-07-19, Zero GO)**: Moonshot **Kimi K3** + **kimi-for-coding 2.7** via `kimi` CLI (`~/.kimi-code/bin/kimi`, Allegro flat subscription, OAuth device-code login — no API key). Invocation: `kimi -p "..." -m kimi-code/k3` (reasoning/refuter) · `-m kimi-code/kimi-for-coding` (coding) · `-m kimi-code/kimi-for-coding-highspeed` (grunt). Cross-family council/second-opinion seat and flat-quota implementation relief; probed by `scripts/arsenal_probe.py` (seat `kimi`). Armed on all three machines 2026-07-19. Never the final gate.
 
-**Fleet order (accounts, role chains, gate taxonomy) — SSOT, 2026-08-10:** `FLEET_TOPOLOGY.json` (repo root) + `research/operations/2026-08-10-fleet-order-spec.md`. No restatement here — one SSOT. Kimi/qwen doors `kimi.md` / `qwen.md` are **door files (human/prompt-referenced only)** — NOT auto-loaded by their CLIs (Kimi CLI reads `AGENTS.md`; Qwen reads case-sensitive `QWEN.md`).
+**Fleet order (accounts, role chains, gate taxonomy) — SSOT, 2026-08-10:** `FLEET_TOPOLOGY.json` (repo root) + `research/operations/2026-08-10-fleet-order-spec.md`. No restatement here — one SSOT. Kimi's door `kimi.md` is a **door file (human/prompt-referenced only)** — the Kimi CLI reads `AGENTS.md`, not it. **Qwen's door is now `QWEN.md`** (renamed from `qwen.md` on 2026-08-31): that IS the name the Qwen CLI opens, so the seat now has a door that actually loads. The two names were the same file on every Mac in this fleet — APFS is case-insensitive by default, so `ls`, `wc` and `[ -f QWEN.md ]` all answered for the lowercase one while git's index, and any case-sensitive volume, had only `qwen.md`.
 
 > **Fable-paid contingency — MOOT as of 2026-08-20.** The 2026-07-12 "non voglio pagare" contingency
 > (Zero decision, research: `research/operations/2026-07-11-fable-paywall-routing.md`) governed

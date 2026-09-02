@@ -70,7 +70,10 @@ list." Measured that day: the frozen contract declares **13** operations;
 `garuda_orders_router.py`'s `createOrderFromCheck`/`getOrderAndPractice`/
 `observePaymentBrowserReturn`/`receivePaymentWebhook`/`resolveLateOrder`) and
 **3** have no router at all (`uploadIntakeDocument`, `listIntakeDocuments`,
-`transitionPractice`). None of the 7 L3/L4 operations were checked before
+`transitionPractice` — corrected: the first two moved to
+`_MOUNTED_OPERATION_IDS` when `garuda_documents_router.py`, L5's hinge,
+mounted; `transitionPractice` remains the only genuinely unmounted one).
+None of the 7 L3/L4 operations were checked before
 this widening — 5 of them were not even *resolvable* by operationId (their
 decorators never set `operation_id=`, so FastAPI auto-generated one from the
 Python function name), and the 2 that were resolvable (`requestMagicLink`/
@@ -199,8 +202,12 @@ def _live_path_methods() -> set[tuple[str, str]]:
 # new test code required).
 _NOT_YET_BUILT_OPERATION_IDS = frozenset(
     {
-        "uploadIntakeDocument",
-        "listIntakeDocuments",
+        # `uploadIntakeDocument`/`listIntakeDocuments` moved to
+        # `_MOUNTED_OPERATION_IDS` when `garuda_documents_router.py` (L5
+        # hinge) was mounted — its production store still fails closed 503
+        # until L1's retention-covered store exists (see that router's
+        # module docstring), but the HTTP surface itself is real and
+        # answers every status code the frozen contract declares.
         "transitionPractice",
     }
 )

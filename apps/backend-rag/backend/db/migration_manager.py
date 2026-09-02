@@ -221,6 +221,32 @@ class MigrationManager:
         """
         Rollback a specific migration.
 
+        Clears the migration from BOTH ledgers. Until 2026-09-01 it cleared only
+        `_schema_versions`, and the consequence was not merely untidy — it made
+        the rollback silently ineffective AND self-concealing:
+
+          1. `BaseMigration._is_applied` reads `schema_migrations`, by NAME
+             (migration_base.py). With that row still present, the next
+             `apply-all` takes the "already applied" early-return branch, so the
+             forward SQL NEVER re-runs — whatever the rollback tore down stays
+             torn down.
+          2. That same branch calls `_log_migration`, which re-INSERTs the
+             missing `_schema_versions` row. So the two ledgers re-converge and
+             `schema_audit`'s `tracking_divergence_canonical_only` check goes
+             green again — the one signal that could have reported the problem
+             is erased by the very run that should have fixed it.
+
+        Migrations 277 and 278 already carry a hand-written
+        `DELETE FROM schema_migrations` inside their own rollback SQL, added
+        2026-08-21 after a refuter found this by reading `_is_applied`. Those
+        stay: a second DELETE here matches zero rows and is harmless, and the
+        per-migration line documents the defect at the place someone will read
+        it. What was missing is the GENERIC fix, so migration 279 onwards does
+        not each have to remember.
+
+        Both DELETEs run inside the transaction that executes the rollback SQL,
+        so a failure leaves both ledgers untouched rather than half-cleared.
+
         Args:
             migration_name: Name of migration to rollback
 
@@ -251,10 +277,21 @@ class MigrationManager:
                 # Execute rollback
                 await conn.execute(row["rollback_sql"])
 
-                # Remove from log
+                # Remove from BOTH ledgers. `_schema_versions` is what
+                # `get_applied_migrations` reads when computing pending work;
+                # `schema_migrations` is what `BaseMigration._is_applied` reads
+                # when deciding to skip. Clearing only the first re-queues the
+                # migration and then has it skipped — see the docstring.
                 await conn.execute(
                     """
                     DELETE FROM _schema_versions
+                    WHERE migration_name = $1
+                """,
+                    migration_name,
+                )
+                await conn.execute(
+                    """
+                    DELETE FROM schema_migrations
                     WHERE migration_name = $1
                 """,
                     migration_name,

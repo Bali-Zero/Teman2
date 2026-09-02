@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # queue_rearm_population.sh — the PURE population reader behind the merge-queue
-# re-arm tool. No network, no `gh`, no git: reads the `gh pr list --json
-# number,mergeable,autoMergeRequest,title` array on stdin and answers ONE
-# question per invocation.
+# re-arm tool. No network, no `gh`, no git: reads a JSON array on stdin (the
+# `gh pr list --json number,mergeable,autoMergeRequest,title` shape, enriched
+# by the caller with one more field, `mergeQueueEntry` — see below) and
+# answers ONE question per invocation.
 #
 # WHY IT IS ITS OWN FILE: the same split as `queue_rearm_classify.sh`. The
 # orchestrator has to talk to the GitHub API, which makes it untestable without
@@ -19,6 +20,30 @@
 #
 # EXIT  0 answered · 3 the input could not be read (fail-closed: an unreadable
 #       set is never an empty one).
+#
+# THE `autoMergeRequest==null` TRAP — `mergeQueueEntry` IS THE POSITIVE PROBE.
+# `autoMergeRequest` reads `null` for a PR the queue has ACCEPTED (the request
+# is CONSUMED, not disarmed), for one it EJECTED, and for one never armed —
+# null in three different states, non-null in only one (`scripts/
+# lint_arm_probe.py`, cicatrix W111/W123/#4756/#5012/#5275). Proven live on
+# PR #5422: it sat in the queue at `mergeQueueEntry {position: 1, state:
+# AWAITING_CHECKS}` — arming had SUCCEEDED — while simultaneously reading
+# `mergeable=MERGEABLE, autoMergeRequest=null`. The OLD selectors below
+# (mergeable + autoMergeRequest alone) picked that PR up as an "unarmed
+# candidate", and `queue_rearm.sh` printed it in its "unarmed candidates: N"
+# count even though its own later per-item loop correctly skipped RE-ARMING
+# it via a separate `mergeQueue(...)` cross-check (`$inq`) — the ACTION was
+# safe, the REPORTED COUNT was not. Both `--candidates` and `--undecidable`
+# below therefore also require `mergeQueueEntry==null` — a PR already holding
+# a live queue entry is never a candidate and never undecided-and-unarmed,
+# regardless of what `mergeable`/`autoMergeRequest` say. Absent-key reads as
+# null too (jq's normal missing-key behavior), which is deliberate: it keeps
+# every caller/fixture that predates this field working exactly as before —
+# `queue_rearm.sh` is the one caller in this tree and it MUST populate the
+# field every time (fetched once via the branch-level `mergeQueue(branch:
+# "main"){entries}` snapshot it already fetches for its own `$inq` cross-check,
+# joined onto each PR object by `.number` before piping into this script) —
+# see its own comment where that join happens.
 #
 # THE SCAR THIS FILE EXISTS FOR — `mergeable` HAS THREE VALUES, NOT TWO.
 # GitHub computes it LAZILY and answers UNKNOWN while a background job runs,
@@ -54,16 +79,25 @@ fi
 
 case "$MODE" in
   --candidates)
+    # `mergeQueueEntry==null` is the positive probe: a PR already holding a
+    # live queue entry is armed (the queue consumed the request), whatever
+    # `autoMergeRequest` reads — see the module comment above for the #5422
+    # proof this guards against.
     printf '%s' "$payload" \
-      | jq -r '.[]|select(.mergeable=="MERGEABLE" and .autoMergeRequest==null)|"\(.number)\t\(.title[0:70])"'
+      | jq -r '.[]|select(.mergeable=="MERGEABLE" and .autoMergeRequest==null and .mergeQueueEntry==null)|"\(.number)\t\(.title[0:70])"'
     ;;
   --undecidable)
     # Unarmed AND neither definitively mergeable nor definitively conflicting.
     # Deliberately written as "not one of the two known-terminal values" rather
     # than "== UNKNOWN": a value this script has never heard of must land here,
     # in the bucket that forces a re-run, never in the clean one.
+    #
+    # `mergeQueueEntry==null` guards this bucket too: a PR already in the
+    # queue is armed regardless of a `mergeable` value still recomputing —
+    # it must not be counted as an undecided orphan just because GitHub
+    # hasn't finished recomputing mergeability for an already-queued PR.
     printf '%s' "$payload" \
-      | jq '[.[]|select(.autoMergeRequest==null and .mergeable!="MERGEABLE" and .mergeable!="CONFLICTING")]|length'
+      | jq '[.[]|select(.autoMergeRequest==null and .mergeQueueEntry==null and .mergeable!="MERGEABLE" and .mergeable!="CONFLICTING")]|length'
     ;;
   --open-count)
     printf '%s' "$payload" | jq 'length'

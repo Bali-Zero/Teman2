@@ -136,7 +136,10 @@ def format_rich_text(text: str, channel: str) -> str:
         # Convert **bold** → *bold* (WA uses single asterisks)
         text = re.sub(r"\*\*(.+?)\*\*", r"*\1*", text)
         # Convert headers (#{1,6} Header) → *Header*
-        text = re.sub(r"^#{1,6}\s+(.+)$", r"*\1*", text, flags=re.MULTILINE)
+        # W119c (2026-08-31): same-line separator. With `\s+` a bare `###` on its own
+        # line paired with the NEXT paragraph, delivered bold as if it were a heading.
+        # A heading and its text are on one line by definition.
+        text = re.sub(r"^#{1,6}[^\S\n]+(.+)$", r"*\1*", text, flags=re.MULTILINE)
         # Strip code blocks (WA doesn't render them well)
         text = re.sub(r"```[\s\S]*?```", lambda m: m.group(0).strip("`"), text)
         # Strip inline code backticks

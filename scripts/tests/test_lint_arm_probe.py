@@ -171,7 +171,13 @@ class TestRunDiscovery:
         assert result["exit"] & 1
         assert any("bad.py" in f for f in result["findings"])
 
-    def test_clean_file_with_probe_produces_no_finding(self, tmp_path):
+    def test_clean_file_with_probe_produces_no_finding(self, tmp_path, monkeypatch):
+        # Isolated from the real ALLOWLIST: its 2 real entries name paths
+        # that do not exist under this synthetic `repo`, and would
+        # otherwise report as spurious stale_allowlist (exit bit 2) —
+        # a real repo scan (--root ., the CLI default) never hits this,
+        # since both real paths genuinely are under the walked root there.
+        monkeypatch.setattr(larp, "ALLOWLIST", {})
         repo = tmp_path / "repo"
         (repo / "scripts").mkdir(parents=True)
         (repo / "scripts" / "good.py").write_text(INNOCENT_GET_WITH_PROBE_PY)
@@ -220,6 +226,7 @@ class TestRunDiscovery:
         assert any("unreadable.py" in e for e in result["errors"])
 
     def test_exit_bitmask_combines_findings_and_errors(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(larp, "ALLOWLIST", {})  # isolate from the 2 real entries — see above
         repo = tmp_path / "repo"
         (repo / "scripts").mkdir(parents=True)
         (repo / "scripts" / "bad.py").write_text(GUILTY_GET_PY)
@@ -241,7 +248,8 @@ class TestRunDiscovery:
 
 
 class TestMainCli:
-    def test_json_output_reports_exit_and_findings(self, tmp_path, capsys):
+    def test_json_output_reports_exit_and_findings(self, tmp_path, capsys, monkeypatch):
+        monkeypatch.setattr(larp, "ALLOWLIST", {})  # isolate from the 2 real entries — see above
         repo = tmp_path / "repo"
         (repo / "scripts").mkdir(parents=True)
         (repo / "scripts" / "bad.py").write_text(GUILTY_GET_PY)
@@ -251,13 +259,153 @@ class TestMainCli:
         assert out["exit"] == 1
         assert len(out["findings"]) == 1
 
-    def test_clean_repo_exits_zero(self, tmp_path, capsys):
+    def test_clean_repo_exits_zero(self, tmp_path, capsys, monkeypatch):
+        monkeypatch.setattr(larp, "ALLOWLIST", {})  # isolate from the 2 real entries — see above
         repo = tmp_path / "repo"
         (repo / "scripts").mkdir(parents=True)
         (repo / "scripts" / "good.py").write_text(INNOCENT_GET_WITH_PROBE_PY)
         rc = larp.main(["--repo-root", str(repo), "--root", "scripts"])
         assert rc == 0
         assert "clean" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------- ALLOWLIST (real-file exemptions)
+#
+# SUPPRESSION_MARKER is reserved for this lint's own synthetic fixtures (see
+# TestSelfScanIsClean below) — ALLOWLIST is the path-keyed mechanism for real
+# files a decision pattern matches by text alone without ever deriving a
+# verdict from it. These tests exercise the mechanism generically by
+# monkeypatching `larp.ALLOWLIST`, not the two real production entries —
+# TestRealAllowlistEntries below covers those directly.
+
+
+class TestAllowlistMechanism:
+    def test_allowlisted_guilty_file_is_reported_as_allowlisted_not_a_finding(self, tmp_path, monkeypatch):
+        repo = tmp_path / "repo"
+        (repo / "scripts").mkdir(parents=True)
+        (repo / "scripts" / "reporter.py").write_text(GUILTY_GET_PY)
+        monkeypatch.setattr(larp, "ALLOWLIST", {"scripts/reporter.py": {"lines": (2,), "reason": "test reason"}})
+        result = larp.run([repo], repo)
+        assert result["exit"] == 0
+        assert result["findings"] == []
+        assert result["allowlisted"] == [{"path": "scripts/reporter.py", "reason": "test reason", "lines": [2]}]
+        assert result["stale_allowlist"] == []
+
+    def test_allowlist_does_not_blanket_suppress_a_different_guilty_file(self, tmp_path, monkeypatch):
+        # INNOCENCE of the mechanism: allowlisting one path must not silence
+        # an unrelated real violation elsewhere in the tree.
+        repo = tmp_path / "repo"
+        (repo / "scripts").mkdir(parents=True)
+        (repo / "scripts" / "reporter.py").write_text(GUILTY_GET_PY)
+        (repo / "scripts" / "other_bad.py").write_text(GUILTY_SUBSCRIPT_PY)
+        monkeypatch.setattr(larp, "ALLOWLIST", {"scripts/reporter.py": {"lines": (2,), "reason": "test reason"}})
+        result = larp.run([repo], repo)
+        assert result["exit"] == 1
+        assert len(result["findings"]) == 1
+        assert "other_bad.py" in result["findings"][0]
+        assert result["allowlisted"] == [{"path": "scripts/reporter.py", "reason": "test reason", "lines": [2]}]
+
+    def test_allowlist_does_not_blanket_suppress_a_new_violation_in_the_same_file(self, tmp_path, monkeypatch):
+        # Axis-2 regression (cross-family review, 2026-08-31): a SECOND,
+        # genuinely different decision line inside the SAME allowlisted file
+        # must still surface. The pre-fix code checked `if result["findings"]:
+        # continue` at file granularity, so waiving line 2 would have also
+        # silently swallowed a brand-new line-3 violation with no relation to
+        # the documented reason.
+        repo = tmp_path / "repo"
+        (repo / "scripts").mkdir(parents=True)
+        (repo / "scripts" / "reporter.py").write_text(
+            'def order_queue(prs):\n'
+            '    return [p for p in prs if p.get("autoMergeRequest")]\n'  # lint-arm-probe:fixture
+            '    other = p2["data"]["autoMergeRequest"]\n'  # lint-arm-probe:fixture
+        )
+        monkeypatch.setattr(larp, "ALLOWLIST", {"scripts/reporter.py": {"lines": (2,), "reason": "test reason"}})
+        result = larp.run([repo], repo)
+        assert result["exit"] & 1
+        assert len(result["findings"]) == 1
+        assert "reporter.py:3" in result["findings"][0]
+        assert result["allowlisted"] == [{"path": "scripts/reporter.py", "reason": "test reason", "lines": [2]}]
+
+    def test_stale_allowlist_entry_reported_when_file_no_longer_matches(self, tmp_path, monkeypatch):
+        # SHRINK-ONLY discipline: a waiver over a file that no longer needs
+        # it (rewritten clean — a positive probe now co-occurs, so the line
+        # is no longer a live finding) must not sit silently forever.
+        repo = tmp_path / "repo"
+        (repo / "scripts").mkdir(parents=True)
+        (repo / "scripts" / "clean_now.py").write_text(INNOCENT_GET_WITH_PROBE_PY)
+        monkeypatch.setattr(larp, "ALLOWLIST", {"scripts/clean_now.py": {"lines": (2,), "reason": "test reason"}})
+        result = larp.run([repo], repo)
+        assert result["exit"] & 2
+        assert not result["exit"] & 1
+        assert result["allowlisted"] == []
+        assert result["stale_allowlist"] == [
+            "scripts/clean_now.py: line [2] no longer matches any decision pattern — "
+            "SHRINK-ONLY: remove it from the entry"
+        ]
+
+    def test_stale_allowlist_entry_reported_when_file_is_missing(self, tmp_path, monkeypatch):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        monkeypatch.setattr(larp, "ALLOWLIST", {"scripts/gone.py": {"lines": (1,), "reason": "test reason"}})
+        result = larp.run([repo], repo)
+        assert result["exit"] & 2
+        assert not result["exit"] & 1
+        assert result["allowlisted"] == []
+        assert result["stale_allowlist"] == [
+            "scripts/gone.py: file no longer scanned (missing, moved, or pruned) — "
+            "SHRINK-ONLY: remove this ALLOWLIST entry"
+        ]
+
+
+class TestRealAllowlistEntries:
+    """The two real entries this session added (2026-08-31, PR rescuing
+    scripts/ci/queue_rearm_population.sh's positive-probe fix) actually exist
+    on disk and, scanned raw (without ALLOWLIST), actually produce a finding
+    — i.e. neither entry is dead weight from the day it was written.
+
+    Deliberately NOT `larp.REPO_ROOT` (see `_canonical_repo_root()`'s
+    worktree-hardening): that constant redirects OUT of a `.worktrees/<lane>/`
+    checkout to the main one, which is correct for the lint's own CLI
+    default but wrong here — this test must see whatever tree it is actually
+    running in (this worktree, mid-PR), same technique as
+    `test_marker_appears_only_in_this_lints_own_test_file_and_its_definition`
+    below."""
+
+    @staticmethod
+    def _running_repo_root() -> Path:
+        this_file = Path(__file__).resolve()
+        top = subprocess.run(
+            ["git", "-C", str(this_file.parent), "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, timeout=20,
+        )
+        assert top.returncode == 0, f"git rev-parse failed: {top.stderr}"
+        return Path(top.stdout.strip())
+
+    def test_both_real_allowlist_entries_exist_on_disk(self):
+        repo_root = self._running_repo_root()
+        for relpath in larp.ALLOWLIST:
+            assert (repo_root / relpath).exists(), f"stale ALLOWLIST entry, missing: {relpath}"
+
+    def test_both_real_allowlist_entries_are_still_needed(self):
+        repo_root = self._running_repo_root()
+        for relpath, entry in larp.ALLOWLIST.items():
+            text = (repo_root / relpath).read_text(encoding="utf-8", errors="replace")
+            result = larp.scan_text(text, relpath)
+            assert result["findings"], (
+                f"{relpath} no longer matches any decision pattern — this ALLOWLIST "
+                f"entry is stale, SHRINK-ONLY says remove it"
+            )
+            # Line-scoped (2026-08-31): the declared `lines` must be EXACTLY
+            # the decision lines scan_text() finds today, not a superset
+            # (would silently waive a future, different violation on an
+            # undeclared line) or a subset (would leave a documented line
+            # unwaived, permanently red).
+            actual_lines = {ln for ln, _snippet in result["decision_lines"]}
+            assert set(entry["lines"]) == actual_lines, (
+                f"{relpath}: ALLOWLIST declares lines {sorted(entry['lines'])} but "
+                f"scan_text() finds decision lines {sorted(actual_lines)} today — "
+                f"update the entry to match"
+            )
 
 
 # ---------------------------------------------------------------- self-scan governance

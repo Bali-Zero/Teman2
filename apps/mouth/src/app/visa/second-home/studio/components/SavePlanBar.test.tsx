@@ -9,6 +9,32 @@ const originalPrintDescriptor = Object.getOwnPropertyDescriptor(
   "print",
 );
 
+describe("SavePlanBar resting-state boundary (WCAG 2.2 SC 1.4.11)", () => {
+  // Regression guard (2026-09-01): Save/Copy-Link/Print share `buttonStyle`,
+  // whose border is their ONLY resting-state boundary (transparent fill).
+  // --color-border-subtle composites to 1.21:1 on carta / 1.31:1 on white —
+  // decorative-only per merahPutihDayVars.ts's own comment, and below the
+  // 3:1 non-text UI floor (WCAG 1.4.11). --border-strong (#7a8093) measures
+  // 3.64:1 on carta / 3.94:1 on white — the same token StudioApp.tsx's
+  // navButtonStyle already uses for its Back button boundary. The "Clear
+  // saved plan" button is deliberately excluded: it owns a separate
+  // treatment via CLEAR_BUTTON_STYLES, pinned by its own tests below.
+  it("gives Save, Copy-Link and Print an AA-clearing resting border, never the decorative hairline", () => {
+    render(<SavePlanBar plan={emptyPlan()} onClear={vi.fn()} />);
+
+    for (const name of [
+      "Save on this device",
+      "Copy plan link",
+      "Print / Save as PDF",
+    ]) {
+      const button = screen.getByRole("button", { name });
+      const inlineStyle = button.getAttribute("style") ?? "";
+      expect(inlineStyle).toContain("border: 1px solid var(--border-strong)");
+      expect(inlineStyle).not.toContain("--color-border-subtle");
+    }
+  });
+});
+
 describe("SavePlanBar print action", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -157,24 +183,28 @@ describe("SavePlanBar clear-plan two-step confirm", () => {
     expect(restingRule).not.toContain("--color-error");
   });
 
-  // Regression guard (#4826, revised round c): round b pinned the armed
-  // state to --state-warning (amber) to escape a red collision with the
-  // price panel — but --state-warning is ALSO VerdictPanel's `edge_case`
-  // band accent (same outline + light-tint structure), so that just moved
-  // the same defect onto a different hue. The actual fix changes the
-  // CHANNEL: a solid, opaque fill (the darkened --accent-funnel mix
-  // StudioApp.tsx's primaryNavButtonStyle already uses) instead of a thin
-  // outline over a light tint — no verdict band or the price panel ever
-  // paints a solid fill, so this is safe regardless of hue. The boundary
-  // (border-color + focus outline) is deliberately a DIFFERENT token from
-  // the fill — --text-on-accent, not the fill color — because the dark
-  // fill that keeps text at >=4.5:1 only measures ~2.78:1 against the page
-  // surface, short of the 3:1 non-text-UI floor; a lighter fill would flip
-  // that trade the other way and fail the text floor instead. Guards all
-  // three collisions/failures seen across both rounds: never a bare/light
-  // --accent-funnel outline (the original bug), never --state-warning
-  // (round b's bug), and never a border/outline drawn in the low-contrast
-  // fill color.
+  // Regression guard (#4826, revised round c; re-pinned on the Merah Putih
+  // day palette 2026-08-31): round b pinned the armed state to
+  // --state-warning (amber) to escape a red collision with the price panel
+  // — but --state-warning is ALSO VerdictPanel's `edge_case` band accent
+  // (same outline + light-tint structure), so that just moved the same
+  // defect onto a different hue. The fix changes the CHANNEL: a solid,
+  // opaque fill instead of a thin outline over a light tint — no verdict
+  // band and no price panel ever paints one, so the fill reads as "another
+  // kind of control" regardless of hue.
+  //
+  // What this test used to pin was the MEANS, not the property: the literal
+  // color-mix(--accent-funnel 85%, black). That mix existed only to rescue
+  // #ff3344's 3.62:1 under white on the retired navy scheme, and it minted
+  // a fourth red (~#aa0e27) belonging to no token. The property it was
+  // standing in for is what is pinned now: the fill is a DECLARED token, in
+  // the one hue family this page leaves free (VerdictPanel keeps
+  // not_eligible deliberately neutral rather than --state-danger), never
+  // the funnel red that would collide with the price panel, never
+  // --state-warning, and never a red derived by mixing one of those toward
+  // black. The boundary stays a DIFFERENT token from the fill
+  // (--text-on-accent) — redundant on a light ground but harmless, and
+  // still what a dark-ground rendering would need.
   it("arms the clear button with a solid fill and a separate high-contrast boundary, never a bare accent outline or the warning accent (regression guard, #4826)", () => {
     const { container } = render(
       <SavePlanBar plan={emptyPlan()} onClear={vi.fn()} />,
@@ -190,8 +220,13 @@ describe("SavePlanBar clear-plan two-step confirm", () => {
     // band and the price panel use.
     expect(armedRule).toContain("background: var(--bz-shs-clear-armed-fill)");
     expect(armedRule).toMatch(
-      /--bz-shs-clear-armed-fill:\s*color-mix\(\s*in srgb,\s*var\(--accent-funnel\)\s*85%,\s*black\s*\)/,
+      /--bz-shs-clear-armed-fill:\s*var\(--color-error[^)]*\)/,
     );
+    // The fill is a declared token, never a red derived by mixing another
+    // one toward black — that is how a fourth, undeclared red gets minted.
+    expect(armedRule).not.toContain("color-mix");
+    // Never the funnel red: that is the price panel's own border colour.
+    expect(armedRule).not.toContain("--accent-funnel");
     // Boundary is --text-on-accent, NOT the (low-contrast-vs-surface) fill
     // token — this is what keeps the 3:1 UI-boundary floor met without
     // breaking the 4.5:1 text-vs-fill floor.

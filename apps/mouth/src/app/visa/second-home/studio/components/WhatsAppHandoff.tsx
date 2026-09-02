@@ -68,20 +68,34 @@ export function WhatsAppHandoff({ plan, verdict }: WhatsAppHandoffProps) {
           alignItems: "center",
           gap: 8,
           padding: "var(--space-3, 0.85rem) var(--space-5, 1.5rem)",
-          borderRadius: 8,
-          // WCAG AA fix (measured 2026-08-24): white on the WhatsApp brand
-          // green computes to ~1.98:1, failing the 4.5:1 normal-text floor.
-          // Ratified cure (app/(visa-oracle)/visa-oracle/oracle.css:23-30,
-          // 2026-07-17 adversarial review): #0d3a1f on #25D366 ~6.45:1. The
-          // brand green stays untouched — only the ink moves.
-          background: "#25D366",
-          color: "#0d3a1f",
+          borderRadius: 12,
+          // R4 identity spec (research/design/2026-08-27-r4-identity-
+          // merah-putih-token-spec.md §3/§4): WhatsApp is the ICON of the
+          // human exit, never a text surface — not even at a passing
+          // ratio. The 2026-08-24 fix below answered a different question
+          // ("what ink passes AA on a green button?") and its
+          // #0d3a1f-on-#25D366 ~6.45:1 does pass, but the spec names
+          // ink-on-green explicitly and rejects it anyway: it breaks the
+          // platform's mental model (a solid-green pill reads as the
+          // WhatsApp app icon). The cure that survives is the SHAPE —
+          // elevated card, border-input boundary, green confined to the
+          // icon, ink label — which is the card-with-icon component the
+          // spec's token table names (this call site's card already had
+          // the outer <section>; this is the button ITSELF adopting the
+          // same pattern). Green-on-surface-raised now measures ~1.98:1,
+          // which is EXPECTED and spec-sanctioned ("icon-only"): the
+          // adjacent text label carries the meaning independently, so
+          // WCAG 1.4.11's "graphical object required to understand
+          // content" does not apply to this icon.
+          background: "var(--surface-raised)",
+          border: "1px solid var(--border-strong)",
+          color: "var(--text-primary)",
           fontWeight: 600,
           textDecoration: "none",
           minHeight: 44,
         }}
       >
-        <Phone size={18} aria-hidden />
+        <Phone size={18} aria-hidden color="var(--accent-whatsapp, #25d366)" />
         {getCopy("whatsapp.button")}
       </WhatsAppLeadButton>
       <p

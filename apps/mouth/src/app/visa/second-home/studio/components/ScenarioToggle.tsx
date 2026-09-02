@@ -25,7 +25,7 @@ import { TimelineView } from "./TimelineView";
 import { VerdictPanel } from "./VerdictPanel";
 
 type RestingScenarioTriggerStyle = {
-  borderColor: "var(--color-border-subtle)";
+  borderColor: "var(--border-strong)";
   color: "var(--text-secondary)";
 };
 
@@ -33,8 +33,16 @@ type RestingScenarioTriggerStyle = {
 // points to it or focuses it, preserving the funnel accent for the price box.
 // These values belong to the class rule only; putting them on the element's
 // inline style would prevent the interaction selectors below from winning.
+//
+// WCAG 2.2 SC 1.4.11 (2026-09-01): borderColor used to read
+// --color-border-subtle, which composites to 1.21:1 on carta / 1.31:1 on
+// white — decorative-only per merahPutihDayVars.ts's own comment, and this
+// is the trigger's ONLY resting-state boundary (transparent fill). Now reads
+// --border-strong (#7a8093), 3.64:1 on carta / 3.94:1 on white — the same
+// token StudioApp.tsx's navButtonStyle and QuestionCard.tsx's affordance
+// rings already use for the identical reason.
 const restingScenarioTriggerStyle = {
-  borderColor: "var(--color-border-subtle)",
+  borderColor: "var(--border-strong)",
   color: "var(--text-secondary)",
 } satisfies RestingScenarioTriggerStyle;
 
@@ -60,11 +68,17 @@ const SCENARIO_TRIGGER_STYLES = `
     box-shadow: inset 0 0 0 1px currentColor;
     /* This button's label is 16px/600 — WCAG "normal text" (large-text
        exemption needs >=24px, or >=18.66px bold), so the floor is 4.5:1.
-       The full accent measures 4.13:1 on this backdrop and fails. 70%
-       accent mixed with white measures 5.59:1 and still reads as the
-       accent hue rather than washing out to pink. Do not tidy this back
-       to var(--accent-funnel). */
-    color: color-mix(in srgb, var(--accent-funnel) 70%, white);
+       MERAH PUTIH DAY (2026-08-31): this read
+       color-mix(var(--accent-funnel) 70%, white), and the measurements
+       that justified it (full accent 4.13:1, the mix 5.59:1) were taken on
+       the retired NAVY ground, where lightening a colour moves it AWAY
+       from the backdrop. On carta the same gesture runs backwards: mixed
+       toward white the label lands ~#D8586D and measures 3.07:1 against
+       this rule's own 8%-tinted hover backdrop (~#f3e4e2) — a fail. The
+       flat token is what passes here: #C8102E measures 4.77:1 on that same
+       backdrop (5.44:1 on untinted carta). Do NOT re-introduce a mix
+       toward white — on a light ground that is the direction of failure. */
+    color: var(--accent-funnel);
     text-decoration-line: underline;
     text-decoration-thickness: 2px;
     text-underline-offset: 0.2em;
@@ -182,7 +196,7 @@ export function ScenarioToggle({ plan }: ScenarioToggleProps) {
             alignItems: "center",
             gap: "var(--space-2, 0.5rem)",
             padding: "var(--space-2, 0.5rem) var(--space-4, 1.2rem)",
-            borderRadius: 8,
+            borderRadius: 12,
             cursor: "pointer",
             fontWeight: 600,
             minHeight: 44,
@@ -245,7 +259,7 @@ export function ScenarioToggle({ plan }: ScenarioToggleProps) {
           alignItems: "center",
           gap: "var(--space-2, 0.5rem)",
           padding: "6px 14px",
-          borderRadius: 8,
+          borderRadius: 12,
           border: "1px solid var(--color-border-subtle)",
           background: "transparent",
           color: "var(--text-primary)",
@@ -266,7 +280,7 @@ export function ScenarioToggle({ plan }: ScenarioToggleProps) {
             gap: "var(--space-2, 0.5rem)",
             padding: "var(--space-3, 0.75rem)",
             border: "1px solid var(--color-border-subtle)",
-            borderRadius: 8,
+            borderRadius: 12,
             background:
               "color-mix(in srgb, var(--state-warning) 6%, transparent)",
           }}

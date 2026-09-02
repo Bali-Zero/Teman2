@@ -1,133 +1,116 @@
-task_id: visa-freshness-restamp-seq17-0830
+task_id: price-review-0831
 gear: 3
 l_level: L2
 gate_class: opus
 objective: |
-  Restore the Visa Oracle, which stopped answering on every product at 2026-08-30T10:44:48Z.
+  Give Bali Zero's own price sheet an automatic re-check, so that "are the prices still current?"
+  stops being a question nobody is scheduled to ask.
 
-  Each source record in a signed RulePack carries a freshness policy. For the OFFICIAL_PORTAL
-  authority that window is seven days, and `evaluate_path.py::_evaluate_source_freshness`
-  turns a source past its window into STALE. The decisive-source gate then folds the whole
-  decision into HUMAN_REVIEW_REQUIRED with an empty candidate list. seq-16's portal records
-  were stamped 2026-08-23T10:44:48Z, so the outage began exactly one window later.
+  Ordered by Zero on 2026-08-31 as one half of a two-part mandate — "crea un trigger automatico che
+  fa partire una richiesta a NB-2 che fa anche una research live per confermare che ci sono o non
+  ci sono aggiornamenti a riguardo gli index e i prezzi" — and immediately scoped by the amendment
+  "per il prtezzo che si controlli solo il nostro pricing tool". That amendment is load-bearing and
+  is why this sentinel makes no external call at all: government PNBP is a different question with
+  a different owner, and conflating the two produces an alert nobody can act on. The 90-day review
+  interval was ratified separately by Zero ("va bene 90 giorni").
 
-  Nothing was broken. The pack simply aged out and the weekly re-attestation lane that should
-  have re-stamped it never ran. The freshness sentinel DID fire; its alert was swallowed by the
-  Telegram gateway's dedup on key `visa-freshness:approaching:16`.
+  The obvious implementation — compare `metadata.last_updated` against today — would have shipped a
+  lie. Measured on disk at 2026-08-31: the field says 2026-05-06, while the file was last committed
+  2026-08-26 and carries entries stamped `verified_on: 2026-08-25`. The field is not a review date;
+  it is a literal somebody wrote once and nobody bumps. Its one honest use is asymmetric: it can
+  prove the sheet is OVERDUE, and it can never prove the sheet is FRESH.
 
-  seq-17 therefore restamps and nothing else: the eighteen OFFICIAL_PORTAL records get a new
-  `verified_at`/`verified_by`, each backed by a live re-read of the page performed on the day.
-  No rule, product, price, hit policy or non-portal source is touched.
+  So OK requires a conjunction — inside the interval AND no independent trace of the file having
+  moved since. Two traces, both lower bounds: the last git commit touching the file, and the newest
+  per-entry `verified_on`. A newer trace yields ATTESTATION_UNMAINTAINED, a distinct loud state
+  meaning the freshness question cannot be answered in either direction. That is the live verdict
+  today, and it is the correct one.
 
-  Gear 3 by SIZE, deterministically: the generated pack artifacts put the diff far past the
-  blast-radius floor. Recomputed from the real changed-file list — receipt in the pack.
+  Gear 3 by PATH, deterministically: the diff adds a LaunchAgent wrapper and plist, which the
+  harness floors at 3 regardless of size (`--print-floor-source` returns `path`). 1827 net lines
+  across 10 files at this commit.
 
 constraints:
-  - "A re-stamp is an ATTESTATION, not a formality. `verified_at` asserts that a human or agent
-    actually read the page at that instant, and `content_sha256` stays untouched on every record
-    because no page changed semantically — moving the digest would claim a content review that
-    did not happen. TWO WEAKNESSES, named rather than smoothed over: the stamp instant sits
-    after the LAST reader returned, where it should take the EARLIEST look that backs it; and
-    nothing in the artifact proves the reading happened at all — run the fold offline having
-    read nothing and it emits the same stamp. Both are recorded in
-    research/visa/2026-08-30-freshness-restamp-seq17-attestation.md, and the rule they produce
-    — write the ledger DURING the reading — binds the next ceremony in this lane."
-  - "Derive the restamped set by ENTITY, never from a frozen id list: it must equal exactly the
-    records whose `authority_type` is OFFICIAL_PORTAL, and the expected count is pinned
-    separately as a tripwire. A pack that gained or lost a portal source was authored against a
-    different world and must abort, not adapt."
-  - "The chain anchor is read from the DATABASE, not from disk: the anchor is the live payload,
-    re-hashed under RFC 8785 here and required to equal the `payload_sha256` of the active
-    activation before anything is built on it. CORRECTED after adversarial review — an earlier
-    version of this line said seq-16 'does not exist in this repository at all', which is FALSE:
-    the signed bundle is on the unmerged branch `origin/feature/visa-oracle` with exactly the
-    active digest. Reading from the database was still right, because a branch is not evidence
-    of what production ran; the claim about version control simply had not been checked."
-  - "`rule_pack_id` is the primary key of `visa_rule_packs` and packs are immutable there.
-    Every fold from seq-9 onward mints it as uuid5 of the sequence's canonical URL; seq-17 does
-    the same and VERIFIES the convention against the pack being folded before minting."
-  - "Do not weaken any check. The reds this PR drew are answered by supplying what they ask for
-    — a triage rule for the chain-anchor digest, copy for the newly reachable review reasons,
-    and this evidence — never by touching a gate."
+  - "Absence must never read as freshness. 111 of 113 priced entries carry no `verified_on` at all;
+    they are UNKNOWN, not current, and the count travels in the alert body rather than being
+    silently dropped."
+  - "The sentinel must watch what the LIVE service loads. The filename is imported from
+    `pricing_service._PRICING_FILENAME`, never restated — a rename to a 2027 edition must not leave
+    this organ watching a dead file and reporting green (the proxy failure, superscar #9)."
+  - "A sentinel that errs must err toward noise. A reformat-only commit will trip
+    ATTESTATION_UNMAINTAINED; that false positive is accepted deliberately, because the opposite
+    error is a quiet false OK on a price sheet."
+  - "No external call, no NB-2, no web, no government fee schedule — Zero's amendment fixes the
+    scope to our own pricing tool."
+  - "WHEN the sentinel runs it SHALL emit only dates, counts and outcome names — probe:
+    `pytest scripts/tests/test_price_review_sentinel.py -k alert`. No client PII anywhere in
+    output, logs or alerts. The sheet carries only Bali Zero's own
+    published business contact block, which is already public on balizero.com."
+  - "Telegram only through the `scripts/tg_notify.py` gateway, never a direct bot call, and a
+    gateway failure must never crash the sentinel (house contract)."
+  - "Built is not armed. The organ ships unarmed and says so in PENDING-ARMS rather than letting the
+    repo read as if the price sheet were already being watched (superscar #2)."
 
 acceptance:
-  - text: >-
-      WHEN the new pack is activated, the production catalog SHALL report it as the active
-      sequence, with a digest equal to the one the fold and the signer independently computed.
-    probe: >-
-      scripts/pg.sh -c "SELECT p.sequence, encode(p.payload_sha256::bytea,'hex') FROM
-      visa_ruleset_activations a JOIN visa_rule_packs p ON p.id=a.rule_pack_id WHERE
-      upper_inf(a.system_period)"
-  - text: >-
-      WHEN a tourist case and an E31A spouse case are evaluated against the deployed service
-      after activation, the endpoint SHALL answer SUPPORTED_CANDIDATES, WHERE both previously
-      folded to HUMAN_REVIEW_REQUIRED with an empty candidate list.
-    probe: >-
-      PYTHONPATH=. python -m backend.scripts.visa_engine.probe_evaluate --url
-      https://nuzantara-rag.fly.dev/api/visa-oracle/evaluate --payload <case>
-  - text: >-
-      WHERE the folded payload is compared against the live seq-16 payload, the only differences
-      SHALL be verified_at and verified_by on the OFFICIAL_PORTAL records, plus the chain and
-      identity fields a new sequence necessarily moves.
-    probe: >-
-      pytest backend/tests/services/visa_engine/test_seq17_freshness_restamp.py
-      (TestFreshnessShape, TestIdentity)
-  - text: >-
-      IF any other payload key or record field moves, the fold SHALL abort; and WHEN the real
-      fold runs, it SHALL NOT abort.
-    probe: >-
-      pytest backend/tests/services/visa_engine/test_seq17_freshness_restamp.py
-      (TestGuardGuilt — eight mutations; TestGuardInnocence)
-  - text: >-
-      WHILE the repo formatter is free to rewrite the pack files, the signed bundle SHALL keep
-      verifying against the pinned PRODUCTION trust-store key.
-    probe: >-
-      pytest backend/tests/services/visa_engine/test_seq17_freshness_restamp.py
-      (TestSignatureAndChain)
-  - text: >-
-      WHEN each check this PR turned red is re-run, it SHALL be green for the reason the fix
-      claims, proven by running the thing itself.
-    probe: >-
-      python3 scripts/detect_secrets_check_unaudited.py ; cd apps/mouth && npx vitest run
-      "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts"
+  - "WHEN a review date sits inside the interval but a commit lands after it, classify() SHALL NOT return OK — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_guilt_a_recent_review_date_contradicted_by_a_change_is_still_not_ok`. Full statement: `classify()` returns OK only when the review date is inside the interval AND no trace shows the
+    file changed after it — verified by a guilt test where the date is INSIDE the interval but a
+    commit lands after it, which must still not be OK."
+  - "WHEN run against the real sheet the sentinel SHALL print a machine-readable last line whose
+    rc= agrees with the code it exits with — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_main_prints_a_state_line_whose_rc_matches_the_code_it_exits_with`.
+    NARROWED from an earlier 'SHALL exit 1': on 2026-08-31 it does exit 1 (ATTESTATION_UNMAINTAINED,
+    naming 2026-08-26 as the contradicting trace), but pinning that here would make the legitimate
+    cure — somebody re-attesting the sheet — break the suite. The freshness verdicts are pinned on
+    synthetic sheets by the classify() matrix, where they can be pinned honestly."
+  - "WHERE the classifier returns an outcome, that outcome SHALL have a mapped exit code — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_every_outcome_the_classifier_actually_returns_has_an_exit_code`. None falls through to CANNOT_VERIFY."
+  - "IF the real sheet were empty the suite SHALL fail rather than pass vacuously — probe: `pytest scripts/tests/test_price_review_sentinel.py::test_the_real_sheet_is_classifiable_and_not_empty`. The real sheet parses and carries >= 100 priced entries before any
+    assertion is made about it."
+  - "WHEN any guard in the classifier is removed the suite SHALL go red — probe: the six single-anchor mutations recorded in the pack. Three of them: disabling the contradiction check,
+    widening the grace day, and moving the interval."
+  - "WHEN the organ is born the conformance check SHALL stay clean — probe: `python3 infra/organ-conformance/check_organ_conformance.py`. Result: clean, and `validate_organs_registry` valid after the birth."
 
 consumer_map:
-  - "`services/visa_engine/evaluate_path.py:1609` — calls `_resolve_active_pack_binding` inside
-    `run_evaluation()` on EVERY request. This is the surface the outage was visible on and the
-    surface the cure is proven on."
-  - "`services/visa_engine/shadow.py:340-400` — `_resolve_active_pack_binding` re-runs the
-    range-containment query against `visa_ruleset_activations` per call, with no lru_cache, no
-    module global and no TTL. A new activation is therefore live on the next request with no
-    restart. Verified in code, not assumed."
-  - "`services/visa_engine/shadow.py:599` — the SHADOW match path resolves the same binding
-    through the same function, so both paths move together."
-  - "`apps/mouth/.../engine-adapter.ts` — renders review-reason codes to human copy. seq-17 is
-    the first pack ON DISK carrying the E23 diplomatic and trade-office rules, so two codes
-    became reachable here for the first time and needed copy."
-  - "`scripts/visa_freshness_sentinel.py` — derives each boundary from the pack's own policy
-    per record, so it tracks the restamp with no change. Its alert path is NOT repaired by this
-    PR; the dedup that swallowed the warning is recorded as an open item, not as done."
-  - "`visa_rule_packs` / `visa_ruleset_activations` — the write surface of the activation
-    ceremony. Deliberately NOT modified by this PR: the ceremony is run, not shipped."
+  - "`scripts/price_review_sentinel.py` — the organ itself; runs under the backend venv interpreter
+    (3.11.11), because it imports backend code and /usr/bin/python3 is 3.9.6 on both Pro and M5 —
+    too old for the `str | None` annotation in the package __init__ chain. The first draft had
+    this backwards and pinned system python in the wrapper."
+  - "`apps/backend-rag/backend/services/pricing/pricing_service.py` — read-only, for
+    `_PRICING_FILENAME` alone. Nothing in the service changes."
+  - "`apps/backend-rag/backend/data/bali_zero_official_prices_2026.json` — observed, never written."
+  - "`infra/launchagents/wrappers/pro-price-review-sentinel.sh` + `com.nuzantara.price-review-sentinel.plist`
+    — the trigger, node=pro, StartInterval 86400. NOT yet installed on Pro."
+  - "`apps/organism/organism/organs_registry.yaml` + `infra/home-fork/declared-pairs.json` — so the
+    organ has a repo trace and the home-fork lint can see its live pair (superscar #1)."
+  - "`scripts/tg_notify.py` — the only alert door; tier p0 for findings, digest for APPROACHING."
+  - "`.claude/skills/modus/PENDING-ARMS.md` — two rows: the unarmed organ, and the inherited
+    organ_birth.py YAML-quoting bug."
 
 risks:
-  - "This PR ships an artifact that is ALREADY ACTIVE in production. The activation preceded the
-    merge because the outage was live; the merge records what was done rather than authorising
-    it. If review rejects the artifact, the remedy is a forward pack, never an edit to this one."
-  - "seq-16's source never reached `main` — it lives on an unmerged branch while its signed
-    artifact ran in production. Narrower than the 'absent from version control' this brief
-    first claimed, and still open: this PR does not fix it."
-  - "The re-stamped window expires again one week out. Raising it is a separate, signed pack
-    ceremony — the value lives only inside the signed payload, with no environment or config
-    override anywhere. Tracked as its own task, not smuggled in here."
-  - "The generated pack artifacts dominate the line count. The hand-authored surface is small,
-    and the generated part is reproducible from the fold script plus the live payload."
+  - "The organ is BUILT and NOT ARMED. Until the plist is bootstrapped on Pro and a first heartbeat
+    is read back, nothing is being watched — and the repo now looks as though something is. This is
+    superscar #2 by construction, which is why it is a PENDING-ARMS row and not a claim of done."
+  - "The contradiction check depends on git being available in the cron environment. When git cannot
+    answer, the sentinel loses one of its two traces; it degrades toward silence on that trace, never
+    toward a pass, but the coverage is genuinely weaker in that state."
+  - "ATTESTATION_GRACE_DAYS = 1 is a judgment call covering MERGE LAG — the gap between reviewing a
+    price and the commit that records it. RETRACTED: an earlier draft of this line, and of the
+    code comment, justified it by the UTC-vs-WITA offset. That reasoning was inverted (WITA is
+    ahead of UTC, so the offset cannot make a same-day commit look like a later one) and it is
+    corrected at price_review_sentinel.py:104-116. A real edit made within a day of a genuine
+    review is still absorbed by the grace day; that cost is accepted, the stated reason was wrong."
+  - "The sentinel answers a narrower question than the mandate's word 'prices' might suggest: it
+    detects that OUR SHEET is overdue for review, not that the underlying prices have changed. That
+    narrowing is Zero's own amendment, stated here so nobody later reads the green as market truth."
+  - "The sheet is not the only price store. `practice_types.base_price` in Postgres is independent —
+    populated only by one-shot migrations, last price-bearing one 2026-06-09 — and
+    `crm_practices.py:491` uses it as the default `quoted_price`. Measured against the live DB
+    today: 74 of 112 rows match a sheet entry by normalized name and all 74 are IDENTICAL, so the
+    store has not broadly drifted; the one live divergence is `B1 - VOA` at 750.000 against the
+    sheet''s 790.000. This sentinel does NOT watch that store, and a green verdict from it says
+    nothing about what a client is quoted through the CRM. Recorded in PENDING-ARMS rather than
+    folded in here: the two stores do not share a naming scheme, so reconciling them is its own
+    mandate, not a widening of this one."
 
-grader: |
-  Independent verification by this session against the production catalog through the read-only
-  role, and against the deployed endpoint through the synthetic-driver probe path — never
-  against the writer's own output. One cross-family adversarial refuter (codex gpt-5.6-sol,
-  xhigh, non-Anthropic) was dispatched on the diff WITHOUT this brief, and was asked in
-  particular to attack the attestation itself: what in the diff proves anyone actually looked at
-  the pages. Generator != grader: the session that wrote the fold does not post the Gear-3
-  verdict.
+grader:
+  "Opus 5 at xhigh — the final on-disk gate (CLAUDE.md §5, 2026-08-20 ruling). Generator is
+  this session's build lane; the grader never grades its own diff, and the council seats
+  (codex-gpt-5.6-sol, kimi-code/k3) are dispatched on the diff, not on a summary of it."

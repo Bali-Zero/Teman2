@@ -503,7 +503,7 @@ def _load_token_chain() -> list[tuple[str, str]]:
     """Load ordered list of (label, oauth_token) to try."""
     chain: list[tuple[str, str]] = []
     seen: set[str] = set()
-    for i in (1, 2, 3, 4, 5):
+    for i in (1, 2, 3, 4, 5, 6):
         tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
         if tok and tok not in seen:
             chain.append((f"token_{i}", tok))
@@ -557,7 +557,7 @@ def claude_reason(entry: dict) -> dict | None:
     """
     Ask Claude CLI to reason about a DLQ entry.
     Returns {fix_type, fix_instruction, confidence, needs_code_change} or None.
-    Multi-account fallback: tries TOKEN_1→2→3→4→5→legacy→keychain.
+    Multi-account fallback: tries TOKEN_1→2→3→4→5→6 (Team, last-resort)→legacy→keychain.
     Latches exhausted tokens per-process to avoid repeated timeouts.
     """
     job = entry["job"]

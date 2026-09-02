@@ -28,28 +28,35 @@ name: P1 STRATO-2 incremental mutation gate
 # in the "Did relevant paths change?" step below, and the expensive WORK steps
 # are gated on its output. On a path-miss PR the job ENDS success (sentinel).
 # The push trigger keeps its paths filter (push only fires when work is needed).
-# NO `merge_group:` TRIGGER, and that is a measured decision rather than an
-# oversight — a round-2 cross-family refuter raised its absence and it is real:
-# a PR whose only change is a trust-path file runs the canary on `pull_request`
-# and NOT on the queue's synthetic merge SHA.
+# `merge_group:` TRIGGER — added 2026-08-31, together with the sentinel change
+# that is the whole reason it was safe to add. The previous version of this
+# comment argued the trigger should stay ABSENT, and it was right at the time
+# for a reason that has changed: this job was not a required context, so its
+# absence from the queue deadlocked nothing, while adding the trigger alone
+# would have run a full mutation gate — pip install mutmut, a mutation pass —
+# on EVERY PR entering the queue, fleet-wide, because the relevance step below
+# answered `run=true` for every non-pull_request event.
 #
-# It is left absent because closing it costs more than the gap. Measured
-# 2026-08-29: this job ("Canary self-test + incremental mutation") is NOT in
-# main's required_status_checks (11 contexts, it is not among them), so its
-# absence in the queue deadlocks nothing — the pending-forever trap that makes
-# a missing merge_group dangerous does not apply here. Meanwhile the relevance
-# step below resolves `run=true` for every non-pull_request event, so adding
-# `merge_group:` as-is would run a full mutation gate — pip install mutmut, a
-# mutation pass — on EVERY PR entering the queue, fleet-wide, for every lane.
-# That is a large recurring cost bought to close a gap in an advisory check.
+# That comment also named the honest fix, verbatim: "the relevance step must
+# first learn to compute changed files against `github.event.merge_group.base_sha`,
+# or the sentinel's own logic turns the saving off." That is exactly what the
+# step below now does, so the trigger arrives WITH its cost control and not
+# ahead of it. A queue entry that touches no trust path now skips the same
+# expensive steps an irrelevant PR skips — the pip install of mutmut and the
+# mutation pass. It does NOT end at the sentinel: three cheap unconditional
+# steps run below it on every event (the instrument census, its dep install,
+# and the sentinel's own corpus), by design and for ~10s. An earlier draft of
+# this sentence said "ends at the sentinel" and a blind refuter of this diff
+# pointed out it had stopped being true the moment those steps were added.
 #
-# The honest fix, if this ever becomes required, is NOT to add the trigger
-# alone: the relevance step must first learn to compute changed files against
-# `github.event.merge_group.base_sha`, or the sentinel's own logic turns the
-# saving off. Declared here so the next reader inherits the reasoning instead
-# of re-deriving it, or worse, adding the trigger and the cost together.
+# Why this matters now: the job is being made SAFE TO REQUIRE. A required
+# status check with no `merge_group:` trigger cannot be satisfied by a
+# merge-queue run at all (conformance guard rule 2), which either stalls the
+# queue or silently drops the check from queue enforcement. Whether this
+# context IS required lives in branch protection, not in this file.
 on:
   pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  merge_group: # required-context safe (see the header) — the sentinel resolves the queue's own base
   push:
     branches:
       - main
@@ -68,18 +75,15 @@ on:
       - "scripts/tests/test_hermetic_census.py"
 
 concurrency:
-  # Dependabot branch: ALL Dependabot PRs share one group per workflow (not
-  # per-ref), bounding concurrent Dependabot runs of THIS workflow to <=2
-  # (Agent PR Contract rule 5) instead of unbounded parallel.
-  # cancel-in-progress:false protects whichever run is RUNNING; GitHub keeps
-  # only one PENDING per group, so a 3rd+ near-simultaneous arrival cancels
-  # the pending run rather than queuing behind it — visible in the PR's
-  # checks tab (never silent), recoverable with `gh run rerun` (confirmed:
-  # docs.github.com/en/actions/using-jobs/using-concurrency + kimi-code/k3
-  # refuter round on PR #5043). Non-Dependabot branch is byte-for-byte the
-  # pre-existing expression — untouched.
-  group: ${{ github.actor == 'dependabot[bot]' && format('dependabot-lockfile-{0}', github.workflow) || format('p1s2-mutation-incremental-{0}', github.ref) }}
-  cancel-in-progress: ${{ github.actor != 'dependabot[bot]' && github.event_name != 'merge_group' }}
+  # Per-PR/per-ref for every author. A shared per-workflow group keyed on
+  # github.actor was removed 2026-09-02: GitHub keeps only ONE pending run per
+  # group, so a 3rd near-simultaneous arrival was cancelled BEFORE any job
+  # started — no check-run object is created, so a required context sits at
+  # "Expected — waiting for status" with nothing red to see. Concurrency is now
+  # bounded only by the account-level ceiling, which QUEUES past it rather than
+  # dropping: lateness is visible, an absent check-run is not.
+  group: p1s2-mutation-incremental-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 jobs:
   mutation-gate:
@@ -117,18 +121,71 @@ jobs:
         id: relevant
         run: |
           set -euo pipefail
-          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+          # Each event carries its diff base under a DIFFERENT key, so the base is
+          # resolved per event rather than assumed. `merge_group` exposes
+          # `github.event.merge_group.base_sha` — the tip of main the queue is
+          # merging onto — and nothing under `pull_request`. Before this, every
+          # non-pull_request event answered `run=true` unconditionally, which is
+          # why adding the queue trigger alone would have bought a full mutation
+          # pass on every entry, fleet-wide.
+          #
+          # `push:` and anything else keep the old unconditional `run=true`: the
+          # push trigger is already paths-filtered at the trigger, so a push run
+          # that exists is a push run that needs the work.
+          event="${{ github.event_name }}"
+          if [[ "$event" != "pull_request" && "$event" != "merge_group" ]]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::non-PR event (${{ github.event_name }}) — running full mutation gate"
+            echo "::notice::non-PR event ($event) — running full mutation gate"
             exit 0
           fi
-          base="${{ github.event.pull_request.base.sha }}"
-          if git diff --name-only "$base"...HEAD | grep -qE \
-            '^(scripts/mutation_incremental\.py|scripts/test_mutation_incremental\.py|\.github/workflows/p1s2-mutation-incremental\.yml|scripts/hermetic_verify\.sh|scripts/ci/lint_hermetic_instruments\.py|scripts/tests/test_hermetic_census\.py)$'; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
+          if [[ "$event" == "pull_request" ]]; then
+            base="${{ github.event.pull_request.base.sha }}"
           else
+            base="${{ github.event.merge_group.base_sha }}"
+          fi
+          # FAIL OPEN, toward doing the work. A sentinel that answers "nothing
+          # relevant changed" because it could not measure is a false green on a
+          # correctness gate — the one direction this job must never fail in. So
+          # an empty base or a failed diff resolves `run=true` and SAYS SO on a
+          # ::warning::, rather than being swallowed. The rc is captured with
+          # `|| rc=$?` instead of being read off a surviving pipeline: under
+          # `set -e` an unguarded failure aborts the step and the fallback below
+          # would be unreachable code on the only path it exists for (W108).
+          if [[ -z "$base" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::empty base SHA for event '$event' — cannot compute relevance, running the full mutation gate"
+            exit 0
+          fi
+          changed="$RUNNER_TEMP/p1s2-changed-files.txt"
+          diff_rc=0
+          git diff --name-only "$base"...HEAD > "$changed" || diff_rc=$?
+          if [[ "$diff_rc" -ne 0 ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::git diff against $base failed (rc=$diff_rc) — cannot compute relevance, running the full mutation gate"
+            exit 0
+          fi
+          # The alternation below is pinned EQUAL to the `push: paths:` list above by
+          # scripts/tests/test_hermetic_census.py — they are one relevance decision
+          # expressed for two event shapes, and neither may gain a path the other lacks.
+          #
+          # grep's rc is THREE-VALUED and the difference is load-bearing: 0 matched,
+          # 1 did not match, >1 an ERROR (unreadable file, exhausted descriptors).
+          # An `if grep ...; then A; else B; fi` collapses 1 and >1 into the same
+          # branch, so a grep that could not READ the file would be recorded as
+          # "nothing relevant changed" and skip the gate — a failure to measure
+          # reported as a measurement, which is the one direction this sentinel must
+          # never fail in. Found by a blind cross-family refuter of this diff.
+          grep_rc=0
+          grep -qE \
+            '^(scripts/mutation_incremental\.py|scripts/test_mutation_incremental\.py|\.github/workflows/p1s2-mutation-incremental\.yml|scripts/hermetic_verify\.sh|scripts/ci/lint_hermetic_instruments\.py|scripts/tests/test_hermetic_census\.py)$' "$changed" || grep_rc=$?
+          if [[ "$grep_rc" -eq 0 ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$grep_rc" -eq 1 ]]; then
             echo "run=false" >> "$GITHUB_OUTPUT"
             echo "::notice::no relevant paths changed — sentinel success"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::grep failed (rc=$grep_rc) reading the changed-file list — cannot compute relevance, running the full mutation gate"
           fi
 
       # UNCONDITIONAL, and the asymmetry with every step below it is the point.
@@ -164,6 +221,45 @@ jobs:
       # half-fixed.
       - name: Instrument census — every measurement instrument runs wrapped (W121)
         run: python3 scripts/ci/lint_hermetic_instruments.py
+
+      # UNCONDITIONAL, for the same reason as the census lint above and one more.
+      # This corpus EXECUTES the `relevant` step's own shell body against synthetic
+      # git repositories and asserts what it resolves for each event shape. Its
+      # subject is the sentinel that decides whether every step below this one runs
+      # at all — so gating it on that sentinel's own output would mean a broken
+      # sentinel could switch off the only thing that checks it, and the job would
+      # report success having verified nothing (superscar #2, and the precise
+      # failure this workflow exists to prevent one level down).
+      #
+      # NOT in the trust-path alternation, deliberately: this file does not change
+      # what the mutation gate MEASURES, so a PR editing it has no reason to buy a
+      # mutation pass. It runs on every pull_request and every merge_group entry
+      # because this workflow carries no pull_request paths filter.
+      #
+      # DECLARED GAP, push side only, same shape as the census lint's: a direct
+      # push to main editing ONLY this corpus does not fire the job, because the
+      # push trigger keeps its paths filter. Narrow — workflow and script edits
+      # reach main through PRs, which are covered — and declared rather than
+      # half-closed by widening the push filter, which would fire the full
+      # mutation gate on unrelated pushes.
+      #
+      # Cost measured 2026-08-31: 9 tests in 1.5s, plus ~8s for the install below.
+      # Against the merge queue's measured critical path (415s median over the last
+      # 8 entries, driven by Frontend Tests / E2E Playwright at 413s) that is
+      # immaterial — it runs in parallel with a path an order of magnitude longer.
+      #
+      # The install is explicit and not assumed away: this step runs BEFORE the
+      # relevance-gated `Set up Python`, on the runner's system python3, which does
+      # not ship pytest and is not relied upon for PyYAML anywhere in this repo —
+      # `immune-enforcement.yml` installs `pytest PyYAML==6.0.3` before its own
+      # required checks for exactly this reason, and this line matches it including
+      # the PyYAML pin. Checked rather than assumed: an unconditional step whose
+      # deps are absent fails a required check for a reason unrelated to any diff.
+      - name: Deps for the unconditional corpus (system python3 has neither)
+        run: python3 -m pip install --quiet pytest PyYAML==6.0.3
+
+      - name: The relevance sentinel resolves the right base for each event shape
+        run: python3 -m pytest scripts/tests/test_p1s2_relevance_sentinel.py -q
 
       - name: Set up Python
         if: steps.relevant.outputs.run == 'true'

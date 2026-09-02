@@ -956,17 +956,34 @@ def _resolve_fly() -> str | None:
 
 
 def read_archiver_state_via_fly(timeout: int = 90) -> tuple[dict | None, str | None]:
-    """Query the primary. Returns `(observation, failure_reason)` — exactly one is None.
+    """Query the primary via `fly ssh console`. Returns `(observation, failure_reason)`
+    — exactly one is None.
 
     TWO credentials exist and only one of them works, and WHICH one has already inverted
     once (W106: a cure pinned to today's world becomes tomorrow's bug). So we probe both
     in the order the environment offers them and LOG which was accepted — never hardcode
     that the env token is the stale one, in either direction.
 
-    NOT EXERCISED against production from the lane that wrote it: this function is the
-    one part of the probe that mutates nothing but does reach out, and the mandate that
-    commissioned it forbade touching prod. Its contract is pinned by the fixtures the
-    tests feed to `classify`; the live path is proven by the first scheduled run.
+    NO `--machine` IS PASSED, DELIBERATELY: `fly ssh console --app X` without it lands on
+    an ARBITRARY member of the HA cluster. Measured 2026-08-31: `nuzantara-postgres` runs
+    3 machines via repmgr (1 primary + 2 replica; `fly machines list -a
+    nuzantara-postgres`). Pinning a machine ID here would be exactly the W106 shape named
+    two paragraphs up — correct the day it is written, wrong the moment repmgr promotes a
+    different machine on failover, and this function has no way to re-evidence the new
+    primary's ID from inside itself. A real fix needs a DYNAMIC lookup (ask repmgr, or
+    Fly's own API, which machine holds the role right now); that is a gap, tracked, not
+    solved here — not a guess spent on a value that will not stay true.
+
+    PROVEN BROKEN, NOT PROVEN WORKING (measured 2026-08-31, this session, `--dry-run`):
+    `fly ssh console` reached a machine with no local Postgres socket at
+    `/var/run/postgresql/.s.PGSQL.5432` and the probe correctly answered CANNOT_VERIFY —
+    so the FAILURE path is now exercised, but the SUCCESS path (a console session that
+    actually reaches a `psql` that can query `pg_stat_archiver`) still never has been.
+    `scripts/pg.sh` (tried FIRST by `read_archiver_state`, below) IS proven both ways: it
+    reaches the primary through Fly's HA-aware proxy on :15432, and the same live probe
+    returned `in_recovery: false` — proof it landed on the primary, not a replica. This
+    function is kept as the FALLBACK, per this file's own "add a source, never delete
+    one" philosophy (see `read_archiver_state`) — not proven, not removed.
     """
     fly = _resolve_fly()
     if fly is None:
@@ -1007,6 +1024,91 @@ def read_archiver_state_via_fly(timeout: int = 90) -> tuple[dict | None, str | N
         failures.append(f"{source}: rc={proc.returncode} {proc.stderr.strip()[:160]}")
 
     return None, "; ".join(failures) or "no credential produced a parseable row"
+
+
+def read_archiver_state_via_pg_sh(timeout: int = 60) -> tuple[dict | None, str | None]:
+    """Query the primary through `scripts/pg.sh` — the PROVEN path (measured 2026-08-31,
+    this session: returned a real row with `in_recovery: false`, proof it reached the
+    primary and not a replica).
+
+    `pg.sh` reaches PROD through the Fly proxy it manages on :15432, which Fly's
+    postgres-flex HA setup routes to the PRIMARY member of the cluster regardless of
+    which machine that is right now — unlike `fly ssh console --app X` above, which picks
+    an arbitrary machine of the cluster because no `--machine` is (or safely can be)
+    given. `pg.sh` also owns its own credential lookup (Keychain first, a 0600
+    credential-file fallback for non-interactive callers) — opaque to this function,
+    which only needs pg.sh's exit behaviour and stdout.
+
+    Resolved relative to `PROJECT_ROOT` — this file's OWN repo root, computed once at
+    import from `__file__` — never a hardcoded `/Users/...`. A worktree checkout carries
+    its own `scripts/pg.sh` and must run ITS copy, not the main checkout's (superscar #1,
+    HOME-fork drift, generalised to worktree-fork drift).
+
+    Returns `(observation, failure_reason)` — exactly one is None. Never touches
+    `archive_command`'s VALUE: `ARCHIVER_QUERY` (the SAME constant the fly path above
+    uses — one query, one contract, two transports) only ever asks Postgres for the
+    boolean `archive_command_set`. The secret never leaves the server, so there is
+    nothing here to scrub — `sanitize_observation` in `run()` is the belt to this
+    function's already-fastened suspenders.
+    """
+    pg_sh = PROJECT_ROOT / "scripts" / "pg.sh"
+    if not pg_sh.is_file():
+        return None, f"pg.sh not found at {pg_sh}"
+
+    cmd = ["/bin/bash", str(pg_sh), "-Atc", ARCHIVER_QUERY]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return None, f"pg.sh timed out after {timeout}s"
+    except OSError as exc:
+        return None, f"pg.sh: {exc}"
+
+    for line in reversed(proc.stdout.splitlines()):
+        line = line.strip()
+        if line.startswith("{") and line.endswith("}"):
+            try:
+                return json.loads(line), None
+            except ValueError:
+                break
+    # stderr can carry pg.sh's own diagnostics (proxy-down, no Keychain password) — none
+    # of which embed a secret (pg.sh never echoes PGPASSWORD), so it is safe to surface.
+    return None, f"pg.sh: rc={proc.returncode} {proc.stderr.strip()[:200]}"
+
+
+def read_archiver_state(timeout: int = 90) -> tuple[dict | None, str | None]:
+    """Try every observation source in the order the environment actually proves them,
+    and LOG which one was accepted — the same philosophy `read_archiver_state_via_fly`
+    already applies one level down, between its two credentials, applied here one level
+    up, between two TRANSPORTS.
+
+    `pg.sh` first: measured working end-to-end against the primary (see its docstring).
+    `fly ssh console` second, kept as a fallback and NEVER deleted — today pg.sh works
+    and the fly path fails closed (a live, measured fact, not a promise it will always
+    hold), so this tries the proven source first without removing the other. Should
+    pg.sh's Keychain lookup ever go dark under launchd (a documented pg.sh caveat for
+    non-interactive callers — its own header names the 0600 credential-file fallback),
+    the fly path is still here to fall through to; that is the point of keeping it.
+
+    Returns `(observation, failure_reason)` — exactly one is None. On total failure the
+    reason names WHAT EACH SOURCE SAID, not just the last one tried — a CANNOT_VERIFY
+    alert that reports only the final attempt hides the first one's cause from whoever
+    reads the page.
+    """
+    failures: list[str] = []
+
+    obs, reason = read_archiver_state_via_pg_sh(timeout=timeout)
+    if obs is not None:
+        log("wal-continuity source accepted: scripts/pg.sh")
+        return obs, None
+    failures.append(f"pg.sh: {reason}")
+
+    obs, reason = read_archiver_state_via_fly(timeout=timeout)
+    if obs is not None:
+        log("wal-continuity source accepted: fly ssh console (pg.sh fell through)")
+        return obs, None
+    failures.append(f"fly ssh console: {reason}")
+
+    return None, "; ".join(failures)
 
 
 # ===========================================================================
@@ -1103,7 +1205,7 @@ def run(args: argparse.Namespace) -> int:
         except (OSError, ValueError) as exc:
             raw, reason = None, f"--from-json unreadable: {exc}"
     else:
-        raw, reason = read_archiver_state_via_fly()
+        raw, reason = read_archiver_state()
 
     # ---- CANNOT_VERIFY: read failed, or answered from recovery -------------
     cannot_verify_reason = reason

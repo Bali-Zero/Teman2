@@ -144,5 +144,5 @@ docs/wr3/factory/editorial/
 # This file is injected into every session's context and is grepped by `scar query`, so a
 # formatter must not be a writer here. Damage restored in the same commit as this entry.
 .claude/rules/cicatrix-superscar.md
-.claude/rules/cicatrix-scars.md
-.claude/rules/cicatrix-scars-archive.md
+docs/scars/cicatrix-scars.md
+docs/scars/cicatrix-scars-archive.md

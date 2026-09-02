@@ -44,6 +44,7 @@ asyncpg = pytest.importorskip("asyncpg")
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
+from backend.app.core.database import init_asyncpg_connection
 from backend.app.routers import garuda_orders_router
 from backend.services.garuda_flow.intake import CaseType
 from backend.services.garuda_orders.ports import ReviewedCheckSnapshot
@@ -146,7 +147,18 @@ async def _close_garuda_order_test_policy(conn: asyncpg.Connection, policy_versi
 @pytest.fixture
 async def pool():
     try:
-        p = await asyncpg.create_pool(dsn=_DSN, min_size=1, max_size=2)
+        # `init=` is NOT optional here (2026-08-30) -- same reason as
+        # `backend/tests/services/garuda_portal/test_practice.py`. This fixture
+        # drives `GarudaOrderRepository`, which reaches
+        # `garuda_orders/journal.py::append_event`; that writer now binds a NATIVE
+        # Python dict to `garuda_order_journal.detail` instead of a pre-serialized
+        # string, so a pool without the canonical jsonb codec raises
+        # `DataError: ... expected str, got dict`. Found by A/B-ing the 21
+        # baselined bare-pool files against origin/main, not by reading the diff:
+        # the narrower GARUDA-suite A/B did not reach this file at all.
+        p = await asyncpg.create_pool(
+            dsn=_DSN, min_size=1, max_size=2, init=init_asyncpg_connection
+        )
     except (OSError, asyncpg.PostgresError) as exc:
         if os.environ.get("CI"):
             pytest.fail(

@@ -251,11 +251,6 @@
       "machines": ["pro"]
     },
     {
-      "live": "~/Library/LaunchAgents/com.balizero.wr2.daily-reconciler.plist",
-      "repo": "infra/launchagents/com.balizero.wr2.daily-reconciler.plist",
-      "machines": ["pro"]
-    },
-    {
       "live": "~/scripts/mini-fleet-watch.sh",
       "repo": "infra/launchagents/wrappers/mini-fleet-watch.sh",
       "machines": ["mini"]
@@ -375,12 +370,6 @@
       "live": "~/.openclaw/bin/wr2/wr2-cron-wrapper.sh",
       "repo": "scripts/wr2-cron-wrapper.sh",
       "_note": "WR2 deep audit 2026-07-14 (§4): the HOME copy (f17092b3) had DIVERGED from the repo copy (3cd52391) on the same machine — oracle/connector/newsletter were running the stale fork. Declared so --check catches this class of drift going forward. RESOLVED same day: the live copy self-realigned via a routine pull (mtime 14:05 WITA), re-verified read-only on Pro 2026-07-14 ~15:30 WITA — sha 3cd52391 both sides, byte-identical. No manual sync pending. Consumers verified via ProgramArguments grep: com.balizero.wr2.{oracle,connector,newsletter,dossier-compiler,learner-nightly,measurer,sla-worker,strategos,trend-hunter} + com.balizero.sota.m13-* all exec ~/.openclaw/bin/wr2/wr2-cron-wrapper.sh (NOT ~/scripts/, which does not exist on Pro). Mini fact (measured 2026-08-07, deliberately NOT added to machines): Mini also has a copy at this live path, sha256 3f07eed7d2… — DIFFERENT from both the repo canon and Pro's live copy (03486087a6…) — and it is an inert ancestor: 0 crontab entries and 0 LaunchAgent plist references to wr2-cron-wrapper on Mini (Pro has 36). Declaring 'mini' here would manufacture a permanent red on a fork nothing invokes; do not add it unless something on Mini starts executing this path.",
-      "machines": ["pro"]
-    },
-    {
-      "live": "~/Library/LaunchAgents/com.balizero.wr2.image-generator.plist",
-      "repo": "infra/launchagents/com.balizero.wr2.image-generator.plist",
-      "_note": "2026-07-16: added WR2_IMAGE_VLM_URL=http://100.93.236.6:11434 (Mini tailscale IP) so the VLM quality-scorer routes off Pro's contended Ollama (176 daemons, ~60s+ under load) onto Mini's dedicated Ollama. Was undeclared before this pair was created.",
       "machines": ["pro"]
     },
     {
@@ -707,18 +696,6 @@
       "machines": ["pro"]
     },
     {
-      "live": "~/Library/LaunchAgents/com.balizero.wr2.external-bench.monthly.plist",
-      "repo": "infra/launchagents/com.balizero.wr2.external-bench.monthly.plist",
-      "_note": "PROMOTED 2026-08-09 (PENDING-ARMS 2026-08-08 entry). Was undeclared while both its wrapper (~/scripts/wr2-external-bench-run.sh, promoted 2026-08-08) and this schedule lived on Pro alone — the two ARE the same superscar #1 finding, only the wrapper got closed first. Fixed in the same commit: the XML comment's 'Per agent spec at ~/.claude/agents/wr2-external-bench.md' was stale documentation, not a runtime path — the wrapper cd's into ${HOME}/nuzantara before invoking claude and passes the spec path as a RELATIVE --append-system-prompt reference, so it always resolved against the repo checkout's .claude/agents/, never against ~/.claude/agents/ (attic'd 2026-08-08). Nothing was broken at runtime; the comment now says what the code actually does.",
-      "machines": ["pro"]
-    },
-    {
-      "live": "~/Library/LaunchAgents/com.balizero.wr2.ig-metrics-analyst.weekly.plist",
-      "repo": "infra/launchagents/com.balizero.wr2.ig-metrics-analyst.weekly.plist",
-      "_note": "PROMOTED 2026-08-09 (PENDING-ARMS 2026-08-08 entry). Same shape and same day as the external-bench.monthly pair above: wrapper (~/scripts/wr2-ig-metrics-analyst-run.sh) was promoted 2026-08-08, this schedule was left behind. Same comment-staleness fix applied — the spec-path reference resolves against the repo checkout, not the attic'd ~/.claude/agents/.",
-      "machines": ["pro"]
-    },
-    {
       "live": "~/.openclaw/bin/guardian-board-report",
       "repo": "infra/openclaw/guardian-board-report",
       "_note": "PROMOTED 2026-08-09 (organ ward-round). Was HOME-only and undeclared, invoked by plist com.nuzantara.openclaw.guardian-board (daily 08:30). Promoted together with a fix: the flat 120s subprocess timeout in run_tool() applied to every MCP tool call including guardian_risk_score (RBAC/API-contract/cache/dead-code scoring across the full codebase), which was seen degraded (timeout) 3 times in the last 15 runs. Repo canon adds a per-tool timeout override (guardian_risk_score -> 240s), all other tools stay at 120s. Live HOME copy still needs manual sync post-merge — do NOT treat this pair as aligned until the operator re-copies and sha256-verifies.",
@@ -869,6 +846,16 @@
       "live": "~/Library/LaunchAgents/com.nuzantara.secrets-perms-sweep.plist",
       "repo": "infra/launchagents/com.nuzantara.secrets-perms-sweep.plist",
       "machines": ["mini"]
+    },
+    {
+      "live": "~/scripts/pro-price-review-sentinel.sh",
+      "repo": "infra/launchagents/wrappers/pro-price-review-sentinel.sh",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.price-review-sentinel.plist",
+      "repo": "infra/launchagents/com.nuzantara.price-review-sentinel.plist",
+      "machines": ["pro"]
     },
     {
       "live": "~/scripts/pro-visa-freshness-sentinel.sh",

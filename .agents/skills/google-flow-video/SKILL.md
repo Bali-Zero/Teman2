@@ -1,6 +1,6 @@
 ---
 name: google-flow-video
-description: Generate AI video assets via Google Labs Flow + Veo 3.1 on Antonello's AI Ultra plan ($249.99/mo, 25,000 credits/month). Use when the user asks to create video shorts/reels/B-roll/explainers/testimonials for Bali Zero, ZANTARA, or any editorial deliverable. Skill is operational — not academic.
+description: "Generate AI video assets via Google Labs Flow + Veo 3.1 on Antonello's AI Ultra plan. Use when asked to create video shorts/reels/B-roll/explainers for Bali Zero, ZANTARA. Operational, not academic."
 trigger_keywords:
   [
     "flow",
@@ -28,6 +28,10 @@ authority_sources:
   - https://support.google.com/flow/answer/16935718 (Scene Builder)
   - https://support.google.com/flow/answer/17069754 (keyboard shortcuts)
 ---
+
+## Notes (moved from description 2026-09-02)
+
+AI Ultra plan detail: $249.99/mo, 25,000 credits/month. Also covers testimonials as a deliverable type.
 
 # Flow + Veo 3.1 Operational Skill (v2)
 
@@ -332,13 +336,14 @@ no shaky camera, no subtitles, no on-screen text overlays
 **Lower-priority queue** (Ultra-only freebie): Lite + Fast at 0 cr but 5–20 min wait, off-peak hours best. Use for overnight bulk B-roll harvest.
 
 **Daily workflow**:
-| Phase | Tier | Multiplier | Purpose |
-|---|---|---|---|
-| Composition drafting | Lite | 1× | Cheap iteration, find framing |
-| Refinement | Fast | 1× | Lock blocking + audio |
-| Hero render | Quality | 2× (forced) | Final shot, pick best variant |
-| Bulk harvest | Lite [Lower Priority] | 1× | Free overnight B-roll |
-| 4K hero only | Quality + upscale | — | +50 cr flat |
+
+| Phase                | Tier                  | Multiplier  | Purpose                       |
+| -------------------- | --------------------- | ----------- | ----------------------------- |
+| Composition drafting | Lite                  | 1×          | Cheap iteration, find framing |
+| Refinement           | Fast                  | 1×          | Lock blocking + audio         |
+| Hero render          | Quality               | 2× (forced) | Final shot, pick best variant |
+| Bulk harvest         | Lite [Lower Priority] | 1×          | Free overnight B-roll         |
+| 4K hero only         | Quality + upscale     | —           | +50 cr flat                   |
 
 ---
 
@@ -377,12 +382,13 @@ no shaky camera, no subtitles, no on-screen text overlays
 3. For client/staff likeness: signed written consent stored in `~/nuzantara/research/marketing/consent/<name>-<date>.pdf`
 
 > **Bali Zero verdict matrix**:
-> | Use case | Status |
-> |---|---|
-> | Generic Bali B-roll, abstract explainers, property exteriors | ✅ ship |
-> | Veronika/Adit/Surya named likeness | ⚠️ written consent required |
-> | Named clients in testimonials | ⚠️ written consent + draft review |
-> | Indonesian government officials named | ❌ never |
+>
+> | Use case                                                     | Status                            |
+> | ------------------------------------------------------------ | --------------------------------- |
+> | Generic Bali B-roll, abstract explainers, property exteriors | ✅ ship                           |
+> | Veronika/Adit/Surya named likeness                           | ⚠️ written consent required       |
+> | Named clients in testimonials                                | ⚠️ written consent + draft review |
+> | Indonesian government officials named                        | ❌ never                          |
 
 ---
 

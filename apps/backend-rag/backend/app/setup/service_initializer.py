@@ -31,7 +31,6 @@ from __future__ import annotations
 
 import asyncio
 import functools
-import json
 import logging
 import os
 import random
@@ -42,6 +41,7 @@ import asyncpg
 from fastapi import FastAPI
 
 from backend.app.core.config import settings
+from backend.app.core.database import init_asyncpg_connection
 from backend.app.core.service_health import ServiceStatus, service_registry
 
 logger = logging.getLogger("zantara.backend")
@@ -504,18 +504,11 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
 
             # Create asyncpg pool for team timesheet service
             async def init_db_connection(conn: asyncpg.Connection) -> None:
-                await conn.set_type_codec(
-                    "jsonb",
-                    encoder=json.dumps,
-                    decoder=json.loads,
-                    schema="pg_catalog",
-                )
-                await conn.set_type_codec(
-                    "json",
-                    encoder=json.dumps,
-                    decoder=json.loads,
-                    schema="pg_catalog",
-                )
+                # Codec registration: the SINGLE canonical hook shared by every
+                # pool in this repo (see backend/app/core/database.py). Encoder
+                # is `functools.partial(json.dumps, default=str)`, not bare
+                # `json.dumps` — callers hand it native Python containers.
+                await init_asyncpg_connection(conn)
                 # Prevent runaway queries (30s covers RAG KG traversal ~5-10s)
                 await conn.execute("SET statement_timeout = '30s'")
                 # Validate connection
@@ -1488,6 +1481,29 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
             bool(garuda_xendit_secret_key),
         )
 
+    # 5.8 GARUDA VOA — document intake store wiring (L5 hinge, router-owned
+    # sentinel). Unconditional (no db_pool needed): L1's retention-covered
+    # store has not merged for `garuda_documents` (no migration exists —
+    # `garuda_documents/ports.py`'s own docstring says so), and LANES.md is
+    # explicit that a lane must not persist a row before L1 covers it.
+    # `garuda_documents/ports.py` therefore ships only `InMemoryDocumentStore`,
+    # whose own docstring forbids wiring it into a running service (an
+    # in-memory PII store is worse than no endpoint — PR #5120's ledger entry).
+    # Wiring `_UnconfiguredDocumentStore` here — the documents-lane analogue of
+    # `PostgresCheckStore`'s `UnconfiguredCheckStore` fallback at 5.6 above,
+    # minus the Postgres half, which does not exist yet for this table — means
+    # the route mounted by `garuda_documents_router.py` is live and testable
+    # today, and answers 503 PERSISTENCE_POLICY_UNAVAILABLE/SERVICE_UNAVAILABLE
+    # on every real request until L1 ships. Never raises: the sentinel takes no
+    # constructor arguments and touches no pool, so this needs no try/except.
+    from backend.app.routers.garuda_documents_router import _UnconfiguredDocumentStore
+
+    app.state.garuda_document_store = _UnconfiguredDocumentStore()
+    logger.info(
+        "ℹ️ GARUDA VOA document store wired fail-closed (L1 retention-covered store "
+        "not merged yet for garuda_documents — see garuda_documents_router.py docstring)"
+    )
+
 
 async def initialize_services(app: FastAPI) -> None:
     """
@@ -1881,21 +1897,22 @@ async def initialize_services_light(app: FastAPI) -> None:
         dsn, ssl_ctx = _clean_database_dsn(settings.database_url)
 
         async def _light_init_connection(conn):
-            """Set statement timeout + register jsonb codec on every connection.
+            """Set statement timeout + register the canonical jsonb codec.
 
-            The jsonb codec lets the application pass Python dicts directly to
-            jsonb-typed parameters; asyncpg auto-serialises with json.dumps and
-            Postgres parses the result as a proper JSONB object. Without this
-            codec, code that already calls json.dumps() before passing the
-            string to the parameter ends up storing it as a JSONB string
-            scalar in production (symptom seen on practices.metadata.
-            discount_log: rows landed as '"{\"discount_log\":[...]}"' instead
-            of '{"discount_log":[...]}', breaking `metadata ? 'discount_log'`
-            and any jsonb_path_* query). With the codec active the
-            application-level json.dumps() becomes WRONG, not merely redundant:
-            asyncpg serializes a SECOND time and the value lands as a JSONB
-            scalar string. Any caller that still pre-serializes is broken by
-            this codec, not protected by it.
+            The jsonb codec lets the application pass Python dicts/lists
+            directly to jsonb-typed parameters; asyncpg auto-serialises with
+            `JSONB_ENCODER` (`functools.partial(json.dumps, default=str)`)
+            and Postgres parses the result as a proper JSONB
+            object/array. Without this codec, code that already calls
+            json.dumps() before passing the string to the parameter ends up
+            storing it as a JSONB string scalar in production (symptom seen
+            on practices.metadata.discount_log: rows landed as
+            '"{\"discount_log\":[...]}"' instead of '{"discount_log":[...]}',
+            breaking `metadata ? 'discount_log'` and any jsonb_path_* query).
+            With the codec active the application-level json.dumps() becomes
+            WRONG, not merely redundant: asyncpg serializes a SECOND time and
+            the value lands as a JSONB scalar string. Any caller that still
+            pre-serializes is broken by this codec, not protected by it.
 
             CORRECTED 2026-08-27 — this docstring used to say "the existing
             `$N::jsonb` casts are harmless". They are not, and nothing had ever
@@ -1909,29 +1926,28 @@ async def initialize_services_light(app: FastAPI) -> None:
             2026-08-27 (migration 286's CHECK calls `jsonb_array_length` on the
             value, which raises SQLSTATE 22023 on a scalar).
 
-            Still-unfixed callers of the same anti-pattern are ledgered in
-            `.claude/skills/modus/PENDING-ARMS.md`; they are NOT one-line fixes,
-            because this encoder is bare `json.dumps` with no `default=str`
-            while `garuda_orders/journal.py` relies on `default=str`.
+            CORRECTED AGAIN 2026-08-29 — the paragraph this used to carry here
+            said the encoder was bare `json.dumps` with no `default=str`,
+            "while `garuda_orders/journal.py` relies on `default=str`", and
+            called the still-unfixed callers "NOT one-line fixes" for that
+            reason. That gap is closed: the codec registered below is now
+            `JSONB_ENCODER` from `backend/app/core/database.py` — the SAME
+            `functools.partial(json.dumps, default=str)` object every pool in
+            this repo shares — so it is a strict superset of every caller's
+            own `default=str` serializer. `garuda_orders/journal.py`,
+            `garuda_orders/idempotency.py`, and `garuda_portal/idempotency.py`
+            no longer pre-serialize before binding to a jsonb/json parameter;
+            they hand this codec native Python containers directly.
 
             Aligns the api pool with the existing full-init pool
-            (`init_db_connection` ~line 459) which has always used the same
-            codec; the standalone helper in backend/app/core/database.py also
-            registers it.
+            (`init_db_connection` ~line 459), the standalone helper in
+            `backend/app/core/database.py::get_db_pool`, and the test fixture
+            in `backend/tests/fixtures/prod_shaped_pool.py` — all four call
+            `init_asyncpg_connection` (imported below), never their own
+            `set_type_codec`.
             """
             await conn.execute("SET statement_timeout = '30s'")
-            await conn.set_type_codec(
-                "jsonb",
-                encoder=json.dumps,
-                decoder=json.loads,
-                schema="pg_catalog",
-            )
-            await conn.set_type_codec(
-                "json",
-                encoder=json.dumps,
-                decoder=json.loads,
-                schema="pg_catalog",
-            )
+            await init_asyncpg_connection(conn)
 
         pool_kwargs: dict = {
             "dsn": dsn,

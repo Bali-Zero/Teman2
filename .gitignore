@@ -129,6 +129,12 @@ logs/
 
 # Reports
 reports/
+# ...but a research capture's own evidence is NOT generated output. A bare `reports/` matches
+# any directory of that name at ANY depth: on 2026-08-31 it silently swallowed the 17 lane
+# reports that a committed research INDEX.md points at, and `git add -A` exited 0 having added
+# nothing. Git cannot re-include a file whose PARENT directory is excluded, so the directory
+# itself is un-excluded here — negating only the contents would not work.
+!research/**/reports/
 *.md.report
 *.json.report
 sentinel-results/
@@ -922,8 +928,8 @@ research/commercial/*-yield-opportunities.md
 # Runtime state appended by a cron on whichever machine runs the job, same class as the
 # DLQ/heartbeat state files already excluded here — not a source artifact.
 kb/ops/probe_history.jsonl
-
 # WR3 camera-probe adapter runtime lock (machine-local concurrency guard).
 docs/wr3/factory/**/.probe-adapter.lock
 # Runtime-only WR3 Factory transition locks.
 docs/wr3/factory/episodes/**/.factory.lock
+scripts/tests/_fixtures_doctrine/

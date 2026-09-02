@@ -504,32 +504,27 @@ class TestTheFunnelAVisitorActuallyWalks:
             f"documents (got {sorted(job_types)})"
         )
 
-    async def test_outbox_payloads_are_currently_json_strings_pinning_an_open_defect(
+    async def test_outbox_payloads_are_json_objects_after_the_codec_fix(
         self, client: AsyncClient, app: FastAPI, pool
     ) -> None:
-        """Pins the latent half of #5108 as it ACTUALLY is today.
+        """Pins the RESOLVED half of #5108 (2026-08-29, L12-PR1).
 
-        This was an `xfail(strict=True)` naming the codec defect as its reason.
-        An adversarial review falsified that encoding: `xfail` without `raises=`
-        treats ANY failure as expected, and it demonstrated the test still
-        reporting `xfailed` when the feature flag was off -- i.e. for a 404
-        routing failure, not the defect the reason named. A probe that cannot
-        distinguish its own cause is not a probe.
+        Was `test_outbox_payloads_are_currently_json_strings_pinning_an_open_
+        defect`, asserting `jsonb_typeof == "string"` as a characterization of
+        the then-open codec double-encoding defect (`.claude/skills/modus/
+        PENDING-ARMS.md`: `journal.py:53,78` pre-serialized with
+        `json.dumps(default=str)` against a codec whose encoder was a bare
+        `json.dumps`). The codec's encoder is now `JSONB_ENCODER =
+        functools.partial(json.dumps, default=str)`
+        (`backend/app/core/database.py`), and `journal.py` no longer
+        pre-serializes -- it hands the codec a native dict. This test is the
+        inversion its own prior docstring called for when that landed:
+        `jsonb_typeof` is asserted `object`, not `string`.
 
-        So it is a characterization test instead: the funnel walk below is
-        asserted NORMALLY (a routing or wiring break is a real red, named), and
-        the storage shape is pinned as `string`. When the codec decision lands
-        (`.claude/skills/modus/PENDING-ARMS.md`: `journal.py:53,78` pre-serialize
-        with `json.dumps(default=str)` against a codec whose encoder is a bare
-        `json.dumps`), THIS test goes red and says so -- invert it to `object`
-        and delete this paragraph.
-
-        Nothing is broken TODAY: `outbox_consumer.py:165` reads
-        `json.loads(raw) if isinstance(raw, str)`, and that compensation is
-        itself asserted in the test below. It still matters:
-        `payload->>'k'` in SQL returns NULL against a scalar string, and the
-        next reader written against the declared jsonb type gets a `str` where
-        its annotation promises `dict[str, Any]`.
+        `outbox_consumer.py:165`'s `json.loads(raw) if isinstance(raw, str)`
+        compensation is now dead code on this path (payloads decode to `dict`
+        already) but is left in place -- removing it is a separate decision,
+        still asserted present by the sibling test below.
         """
         result_id, body, _ = await _accepted_check(client)
         app.state._e2e_actor = result_id
@@ -564,11 +559,11 @@ class TestTheFunnelAVisitorActuallyWalks:
                 )
             ]
         assert kinds, "no outbox rows to judge"
-        assert all(k == "string" for k in kinds), (
-            f"outbox payloads have jsonb_typeof {kinds}. If they are now 'object', the "
-            "codec double-encoding is FIXED: flip this assertion to 'object', drop the "
-            "PENDING-ARMS row, and remove the compensating read this file pins below. "
-            "Any other value means something new."
+        assert all(k == "object" for k in kinds), (
+            f"outbox payloads have jsonb_typeof {kinds}, expected all 'object' now that "
+            "the codec's encoder is JSONB_ENCODER (functools.partial(json.dumps, "
+            "default=str)) and journal.py hands it native dicts (L12-PR1, 2026-08-29). "
+            "A 'string' result here means the double-encoding regressed."
         )
 
     async def test_the_only_current_reader_absorbs_the_double_encoding(
