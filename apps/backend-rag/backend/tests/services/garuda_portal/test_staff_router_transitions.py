@@ -903,6 +903,35 @@ class TestAssignmentAndListVisibility:
             )
             assert other_resp.status_code == 403
 
+    async def test_assignment_log_never_contains_the_raw_staff_email(
+        self, pool, order_repository, caplog
+    ) -> None:
+        """Cross-family refuter (Codex) MINOR finding #8: `assignPractice`
+        logged the target's plaintext email (only log-injection-sanitized,
+        never PII-redacted) -- every `logger.*` call here is also a Sentry
+        breadcrumb whose PII redaction is per-KEY, not per-VALUE."""
+        await _seed_team_member(pool, _TEAM_A)
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-assign-log00000", provider_event_id="evt-assign-log"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        app = _make_app(pool)
+        transport = ASGITransport(app=app)
+        with caplog.at_level("INFO", logger="backend.app.routers.garuda_staff_router"):
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.post(
+                    f"/api/visa/voa/staff/practices/{practice_id}/assignment",
+                    headers={
+                        "Authorization": _bearer(_ADMIN, "admin"),
+                        "Idempotency-Key": "assign-log-key-0000000001",
+                    },
+                    json={"assigned_to": _TEAM_A},
+                )
+        assert resp.status_code == 200, resp.text
+        for record in caplog.records:
+            assert _TEAM_A not in str(record.msg)
+            assert _TEAM_A not in str(getattr(record, "assigned_to", ""))
+
     async def test_list_filters_non_admin_to_assigned_only(
         self, pool, order_repository
     ) -> None:

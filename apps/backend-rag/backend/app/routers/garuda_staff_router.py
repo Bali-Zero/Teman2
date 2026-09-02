@@ -31,6 +31,7 @@ import, per LANES.md file-ownership discipline (the same convention
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 from collections.abc import Awaitable, Callable
@@ -157,6 +158,20 @@ async def _require_actor(request: Request) -> dict[str, Any]:
             status_code=401, detail={"code": "SESSION_REQUIRED", "retryable": False}
         )
     return actor
+
+
+def _actor_log_id(email: str | None) -> str:
+    """Keyed hash of a staff email, for logs only (cross-family refuter
+    finding, Codex #8, MINOR). `sanitize_for_log` neutralizes log-injection
+    control characters; it does NOT redact PII, so an email that survives it
+    still reaches Sentry/log storage in the clear. Every `logger.*` call in
+    this repo is also a Sentry breadcrumb whose PII redaction is per-KEY, not
+    per-message-text (see `logging_utils.sanitize_for_log`'s own docstring),
+    so the email must never be the VALUE either. Returns `"none"` for an
+    absent/unassigned email -- the previous literal this call site logged."""
+    if not email:
+        return "none"
+    return "sha256:" + hashlib.sha256(email.strip().lower().encode()).hexdigest()[:16]
 
 
 def _idempotency_key(idempotency_key: str | None) -> str:
@@ -454,7 +469,7 @@ async def assign_practice(
         "garuda_staff.practice_assigned",
         extra={
             "practice_id": sanitize_for_log(practice_id),
-            "assigned_to": sanitize_for_log(assigned_to or "none"),
+            "assigned_to": _actor_log_id(assigned_to),
         },
     )
     return response_body
