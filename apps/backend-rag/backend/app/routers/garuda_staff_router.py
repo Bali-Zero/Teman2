@@ -206,13 +206,18 @@ def _list_row_view(row: asyncpg.Record) -> dict[str, Any]:
 
 def _staff_practice_view(row: asyncpg.Record) -> dict[str, Any]:
     """`getStaffPractice` shape — `StaffPracticeView`, staff-only, never
-    reused by a customer route (STEP8-SPEC point 3)."""
+    reused by a customer route (STEP8-SPEC point 3). Round-2 disposition
+    (item B): also exposes `active_block_id`/`artifact_id`/`artifact_digest`
+    — `assigned_to` was already carried by `_list_row_view`."""
 
     body = _list_row_view(row)
     body["private_staff_note"] = row["private_staff_note"]
     body["resume_target"] = (
         _DB_TO_WIRE_STATE[row["resume_target"]] if row["resume_target"] is not None else None
     )
+    body["active_block_id"] = row["active_block_id"]
+    body["artifact_id"] = row["artifact_id"]
+    body["artifact_digest"] = row["artifact_digest"]
     return body
 
 
@@ -316,7 +321,8 @@ async def get_staff_practice(
             """
             SELECT practice_id, order_id, state, assigned_to, updated_at,
                    customer_reason_key, required_action_key, artifact_available,
-                   private_staff_note, resume_target
+                   private_staff_note, resume_target, active_block_id,
+                   artifact_id, artifact_digest
               FROM garuda_practices WHERE practice_id = $1
             """,
             practice_id,
@@ -349,31 +355,62 @@ async def assign_practice(
     actor = await _require_actor(request)
     if not actor["is_admin"]:
         raise HTTPException(status_code=403, detail={"code": "ACCESS_DENIED", "retryable": False})
-    _idempotency_key(idempotency_key)
+    key = _idempotency_key(idempotency_key)
 
     assigned_to_raw = body.get("assigned_to")
     if assigned_to_raw is not None and not isinstance(assigned_to_raw, str):
         raise HTTPException(status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False})
     assigned_to = assigned_to_raw.strip().lower() if assigned_to_raw else None
 
-    async with pool.acquire() as conn, conn.transaction():
-        row = await conn.fetchrow(
-            """
-            UPDATE garuda_practices
-               SET assigned_to = $2::text,
-                   assigned_at = CASE WHEN $2::text IS NULL THEN NULL ELSE statement_timestamp() END,
-                   assigned_by = CASE WHEN $2::text IS NULL THEN NULL ELSE $3::text END
-             WHERE practice_id = $1
-             RETURNING practice_id, order_id, state, assigned_to, updated_at,
-                       customer_reason_key, required_action_key, artifact_available
-            """,
-            practice_id,
-            assigned_to,
-            actor["email"],
-        )
-    if row is None:
-        raise HTTPException(
-            status_code=404, detail={"code": "PRACTICE_NOT_FOUND", "retryable": False}
+    # Round-2 disposition item F: same idempotency.reserve/complete pair as
+    # transitionPractice — assignPractice previously only validated the
+    # HEADER's shape (`_idempotency_key`) without ever reserving the key,
+    # so a retried assignment (e.g. a client timeout-and-retry) could
+    # silently re-run the UPDATE and clobber a concurrent hand-off with no
+    # replay protection at all.
+    key_digest = idempotency.scoped_key_sha256(
+        actor=actor["email"], operation="assignPractice", raw_key=key
+    )
+    payload_digest = idempotency.canonical_payload_sha256(
+        {"practice_id": practice_id, "assigned_to": assigned_to}
+    )
+
+    async with pool.acquire() as conn:
+        try:
+            outcome = await idempotency.reserve(
+                conn, key_sha256=key_digest, payload_sha256=payload_digest
+            )
+        except IdempotencyConflict as exc:
+            raise HTTPException(
+                status_code=409, detail={"code": "IDEMPOTENCY_CONFLICT", "retryable": False}
+            ) from exc
+        if outcome.replayed:
+            assert outcome.response_body is not None
+            response.headers["Idempotency-Replayed"] = "true"
+            return outcome.response_body
+
+        async with conn.transaction():
+            row = await conn.fetchrow(
+                """
+                UPDATE garuda_practices
+                   SET assigned_to = $2::text,
+                       assigned_at = CASE WHEN $2::text IS NULL THEN NULL ELSE statement_timestamp() END,
+                       assigned_by = CASE WHEN $2::text IS NULL THEN NULL ELSE $3::text END
+                 WHERE practice_id = $1
+                 RETURNING practice_id, order_id, state, assigned_to, updated_at,
+                           customer_reason_key, required_action_key, artifact_available
+                """,
+                practice_id,
+                assigned_to,
+                actor["email"],
+            )
+            if row is None:
+                raise HTTPException(
+                    status_code=404, detail={"code": "PRACTICE_NOT_FOUND", "retryable": False}
+                )
+            response_body = _list_row_view(row)
+        await idempotency.complete(
+            conn, key_sha256=key_digest, response_status=200, response_body=response_body
         )
     logger.info(
         "garuda_staff.practice_assigned",
@@ -382,7 +419,7 @@ async def assign_practice(
             "assigned_to": sanitize_for_log(assigned_to or "none"),
         },
     )
-    return _list_row_view(row)
+    return response_body
 
 
 @dataclass(frozen=True, slots=True)
@@ -409,6 +446,13 @@ _TRANSITIONS: dict[str, _TransitionSpec] = {
 
 _BLOCK_RESUME_TARGET: dict[str, str] = {"PR-03": "In_review", "PR-05": "In_review", "PR-08": "Submitted"}
 _RESUME_EXPECTED_TARGET: dict[str, str] = {"PR-09": "In_review", "PR-10": "Submitted"}
+#: `garuda_practice_evidence.kind`'s CHECK constraint (migration 305) —
+#: PR-04 files, PR-06 approves, PR-07 rejects, each with its own evidence.
+_EVIDENCE_KIND_BY_TRANSITION_KIND: dict[str, str] = {
+    "submit": "filing",
+    "approve": "approval",
+    "reject": "rejection",
+}
 _REASON_PATTERN = "garuda_voa.practice."
 _ACTION_PATTERN = "garuda_voa.action."
 
@@ -528,7 +572,8 @@ async def transition_practice(
                 row = await conn.fetchrow(
                     """
                     SELECT practice_id, order_id, state, assigned_to, resume_target,
-                           customer_reason_key, required_action_key, artifact_available
+                           customer_reason_key, required_action_key, artifact_available,
+                           active_block_id
                       FROM garuda_practices WHERE practice_id = $1 FOR UPDATE
                     """,
                     practice_id,
@@ -551,6 +596,40 @@ async def transition_practice(
                         status_code=409,
                         detail={"code": "INVALID_STATE_TRANSITION", "retryable": False},
                     )
+                # Round-2 disposition item B: `resume_target` above only
+                # proves the FROM/TO state pairing is legal (PR-09 resumes
+                # to In_review, PR-10 to Submitted) -- it says nothing about
+                # WHICH block the staff caller believes they are resolving.
+                # `active_block_id` (the journal event_id set below when the
+                # matching PR-03/05/08 ran) is the identity check: a staff
+                # caller resolving a stale/unrelated block reference gets
+                # 422 INVALID_REQUEST, never silently resumes the CURRENT
+                # block under a mismatched reference.
+                if spec.kind == "resume" and fields["resolved_block_id"] != row["active_block_id"]:
+                    raise HTTPException(
+                        status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False}
+                    )
+                # PR-04/06/07: an evidence_id already bound to a DIFFERENT
+                # practice is a client-side mistake (evidence identifiers
+                # are meant to be practice-scoped), not a genuine conflict
+                # worth 409 -- disposition item B calls this out explicitly
+                # as 422 INVALID_REQUEST. A replay of the SAME
+                # (practice_id, evidence_id) pair is handled by the
+                # INSERT ... ON CONFLICT DO NOTHING below, not here.
+                if spec.kind in ("submit", "approve", "reject"):
+                    other_owner = await conn.fetchval(
+                        """
+                        SELECT practice_id FROM garuda_practice_evidence
+                         WHERE evidence_id = $1 AND practice_id != $2
+                         LIMIT 1
+                        """,
+                        fields["evidence_id"],
+                        practice_id,
+                    )
+                    if other_owner is not None:
+                        raise HTTPException(
+                            status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False}
+                        )
 
                 # $1=practice_id, $2=to_state, $3=allowed-source-states array
                 # (the WHERE-clause CAS guard). Every SET-clause value past
@@ -580,6 +659,7 @@ async def transition_practice(
                         "customer_reason_key = NULL",
                         "required_action_key = NULL",
                         "private_staff_note = NULL",
+                        "active_block_id = NULL",
                     ]
                 elif spec.kind == "deliver":
                     _add("artifact_id", fields["artifact_id"])
@@ -618,6 +698,40 @@ async def transition_practice(
                     journal_event_id=event_id,
                     job_type=spec.outbox_job_type,
                 )
+
+                # Round-2 disposition item B: `active_block_id` = this
+                # journal event's own id -- only knowable AFTER
+                # `append_event` returns, hence a follow-up UPDATE rather
+                # than a value in the CAS UPDATE above. Same transaction,
+                # same row-level lock already held by the FOR UPDATE select.
+                if spec.kind == "block":
+                    await conn.execute(
+                        "UPDATE garuda_practices SET active_block_id = $2 WHERE practice_id = $1",
+                        practice_id,
+                        event_id,
+                    )
+
+                # PR-04/06/07: bind the evidence to this practice AND this
+                # transition, in the same transaction as the CAS UPDATE
+                # (disposition item #8). `ON CONFLICT DO NOTHING` makes an
+                # exact idempotent replay of the same command a no-op here
+                # too -- the outer `idempotency.reserve`/`complete` pair
+                # already short-circuits a replay before this code runs,
+                # so this is defense-in-depth, not the primary guard.
+                if spec.kind in ("submit", "approve", "reject"):
+                    await conn.execute(
+                        """
+                        INSERT INTO garuda_practice_evidence
+                            (practice_id, transition_id, evidence_id, kind, recorded_by)
+                        VALUES ($1, $2, $3, $4, $5)
+                        ON CONFLICT (practice_id, evidence_id) DO NOTHING
+                        """,
+                        practice_id,
+                        transition_id,
+                        fields["evidence_id"],
+                        _EVIDENCE_KIND_BY_TRANSITION_KIND[spec.kind],
+                        actor["email"],
+                    )
         response_body = _practice_view(updated)
         await idempotency.complete(
             conn, key_sha256=key_digest, response_status=200, response_body=response_body

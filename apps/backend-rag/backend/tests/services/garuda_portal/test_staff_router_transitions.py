@@ -394,6 +394,68 @@ class TestTransitionMatrixAndReplay:
             assert r11.json()["state"] == "Delivered"
             assert r11.json()["artifact_available"] is True
 
+            detail = await client.get(
+                f"/api/visa/voa/staff/practices/{practice_id}",
+                headers={"Authorization": _bearer(_ADMIN, "admin")},
+            )
+            assert detail.json()["artifact_id"] == "artifact_id_0000000000001"
+            assert detail.json()["artifact_digest"] == "a" * 64
+
+        # Evidence rows (round-2 disposition #8): one per submit/approve
+        # transition, `kind` matching `_EVIDENCE_KIND_BY_TRANSITION_KIND`,
+        # inserted in the SAME transaction as the CAS UPDATE above.
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT transition_id, evidence_id, kind FROM garuda_practice_evidence"
+                " WHERE practice_id = $1 ORDER BY transition_id",
+                practice_id,
+            )
+        assert [(r["transition_id"], r["evidence_id"], r["kind"]) for r in rows] == [
+            ("PR-04", "evidence_filing_0000000001", "filing"),
+            ("PR-06", "evidence_approval_000000001", "approval"),
+        ]
+
+    async def test_evidence_id_reused_on_another_practice_is_422(
+        self, pool, order_repository
+    ) -> None:
+        """An evidence_id already bound to a DIFFERENT practice is rejected
+        (round-2 disposition item B) -- never silently accepted, never a
+        409 (that's reserved for a genuine idempotency-key/payload
+        conflict, a different failure class)."""
+        order_a = await _create_and_pay_order(
+            order_repository, result_id="result-evid-a-0000000000", provider_event_id="evt-evid-a"
+        )
+        order_b = await _create_and_pay_order(
+            order_repository, result_id="result-evid-b-0000000000", provider_event_id="evt-evid-b"
+        )
+        practice_a = await _practice_id_for(pool, order_a)
+        practice_b = await _practice_id_for(pool, order_b)
+        app = _make_app(pool)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            for practice_id, key_prefix in ((practice_a, "evid-a"), (practice_b, "evid-b")):
+                r02 = await self._post(
+                    client, practice_id, f"{key_prefix}-key-pr02-0000000001", {"transition_id": "PR-02"}
+                )
+                assert r02.status_code == 200, r02.text
+
+            r04_a = await self._post(
+                client,
+                practice_a,
+                "evid-a-key-pr04-0000000001",
+                {"transition_id": "PR-04", "evidence_id": "shared_evidence_id_00000001"},
+            )
+            assert r04_a.status_code == 200, r04_a.text
+
+            r04_b = await self._post(
+                client,
+                practice_b,
+                "evid-b-key-pr04-0000000001",
+                {"transition_id": "PR-04", "evidence_id": "shared_evidence_id_00000001"},
+            )
+            assert r04_b.status_code == 422, r04_b.text
+            assert r04_b.json()["code"] == "INVALID_REQUEST"
+
     async def test_block_then_resume_pr03_pr09(self, pool, order_repository) -> None:
         order_id = await _create_and_pay_order(
             order_repository, result_id="result-block-0000000000", provider_event_id="evt-block-1"
@@ -416,15 +478,41 @@ class TestTransitionMatrixAndReplay:
             assert r03.json()["state"] == "Blocked"
             assert r03.json()["customer_reason_key"] == "garuda_voa.practice.missing_document"
 
+            # `active_block_id` is server-generated (the PR-03 journal
+            # event's own id) -- resume must echo the REAL value, not an
+            # arbitrary client-chosen string, per the round-2 disposition's
+            # resolved_block_id == active_block_id identity check.
+            detail = await client.get(
+                f"/api/visa/voa/staff/practices/{practice_id}",
+                headers={"Authorization": _bearer(_ADMIN, "admin")},
+            )
+            active_block_id = detail.json()["active_block_id"]
+            assert active_block_id
+
+            wrong = await self._post(
+                client,
+                practice_id,
+                "block-key-pr09-wrong-0000000001",
+                {"transition_id": "PR-09", "resolved_block_id": "not-the-real-block-0000001"},
+            )
+            assert wrong.status_code == 422, wrong.text
+            assert wrong.json()["code"] == "INVALID_REQUEST"
+
             r09 = await self._post(
                 client,
                 practice_id,
                 "block-key-pr09-0000000001",
-                {"transition_id": "PR-09", "resolved_block_id": "resolved_block_id_00000001"},
+                {"transition_id": "PR-09", "resolved_block_id": active_block_id},
             )
             assert r09.status_code == 200, r09.text
             assert r09.json()["state"] == "In review"
             assert "customer_reason_key" not in r09.json()
+
+            detail_after = await client.get(
+                f"/api/visa/voa/staff/practices/{practice_id}",
+                headers={"Authorization": _bearer(_ADMIN, "admin")},
+            )
+            assert detail_after.json()["active_block_id"] is None
 
     async def test_forbidden_transition_is_409(self, pool, order_repository) -> None:
         """A `Received` practice cannot jump straight to PR-04 (submit) —

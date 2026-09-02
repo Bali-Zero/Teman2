@@ -116,6 +116,18 @@ ALTER TABLE public.garuda_practices ADD COLUMN IF NOT EXISTS assigned_at TIMESTA
 ALTER TABLE public.garuda_practices ADD COLUMN IF NOT EXISTS assigned_by TEXT NULL;
 ALTER TABLE public.garuda_practices ADD COLUMN IF NOT EXISTS active_block_id TEXT NULL;
 
+-- `artifact_id`/`artifact_digest` are requested again here by the round-2
+-- disposition ("PR-11 stores artifact_id + artifact_digest in staff-only
+-- columns, add to 305") -- they were ALREADY ADDED by migration 287
+-- (verified by reading that file), so both statements below are no-ops in
+-- every environment that has run 287. Kept as `ADD COLUMN IF NOT EXISTS`
+-- (never dropped/redefined) so this migration is safe to apply standalone
+-- too, and so the round-1/round-2 disposition text and disk state agree
+-- rather than silently diverging -- flagged in the round-2 report rather
+-- than silently ignored.
+ALTER TABLE public.garuda_practices ADD COLUMN IF NOT EXISTS artifact_id TEXT NULL;
+ALTER TABLE public.garuda_practices ADD COLUMN IF NOT EXISTS artifact_digest TEXT NULL;
+
 COMMENT ON COLUMN public.garuda_practices.assigned_to IS
     'Lower-cased staff email owning this practice. NULL = unassigned (admin-visible only until assigned). Written exclusively by garuda_staff_router.py::assign_practice.';
 COMMENT ON COLUMN public.garuda_practices.assigned_at IS

@@ -160,7 +160,7 @@ def _staff_principal_from_role(email: str, role: str | None) -> dict[str, Any] |
     never a silent bypass" contract.
     """
     email = (email or "").strip().lower()
-    if not email or not _is_staff_role(role):
+    if not email or not can_manage_garuda_practices({"email": email, "role": role}):
         return None
     return {"email": email, "is_admin": email in _garuda_practice_admin_emails()}
 
