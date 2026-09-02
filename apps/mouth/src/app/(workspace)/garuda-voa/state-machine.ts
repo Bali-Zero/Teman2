@@ -5,6 +5,12 @@
  * the actual authority — this table exists so the UI never renders a button
  * the trigger would reject, never so the UI can skip asking the server.
  *
+ * `"In review"` (with a space) is pinned against the real backend contract —
+ * verified 2026-09-02 against `products/garuda-voa/contracts/openapi.yaml`'s
+ * `PracticeState` enum (`[Received, "In review", Blocked, Submitted,
+ * Approved, Rejected, Delivered]`), NOT the DB column's `In_review` spelling.
+ * See `state-machine.test.ts` for the pinning test.
+ *
  * PR-09/PR-10 (resume from Blocked) both use the same source state
  * (`Blocked`) but resolve to a different target depending on the stored
  * `resume_target` on the practice — so `Blocked` is handled specially by the

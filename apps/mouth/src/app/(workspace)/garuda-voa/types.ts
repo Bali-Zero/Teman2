@@ -1,16 +1,16 @@
 /**
- * Hand-written types for the GARUDA VOA STAFF surface (step 8). Mirrors the
- * three NEW staff operations from `docs plans` step8 spec
- * (`listStaffPractices`, `getStaffPractice`, `assignPractice`) plus the
- * FROZEN `transitionPractice` contract already declared in
- * `products/garuda-voa/contracts/openapi.yaml`.
- *
- * `listStaffPractices`/`getStaffPractice`/`assignPractice` are NOT yet in the
- * frozen openapi.yaml as of this lane's build — the backend PR (Deliverable
- * A, built in parallel) adds them in the same step. This file is a hand
- * mirror of the step8-spec.md contract description, not a transcription of
- * an existing YAML block — verify against the merged openapi.yaml before
- * trusting field names blindly on the next touch of this file.
+ * Types for the GARUDA VOA STAFF surface (step 8), reconciled against the
+ * real backend contract diff on 2026-09-02: `git -C
+ * .worktrees/ops-garuda-voa-step8-portal diff origin/main..HEAD --
+ * products/garuda-voa/contracts/openapi.yaml` (that worktree belongs to
+ * another agent, read-only). Field names, the list envelope, and error
+ * codes below are a byte-accurate transcription of that diff's
+ * `listStaffPractices` / `getStaffPractice` / `assignPractice` /
+ * `StaffPracticeListItem` / `StaffPracticeView` / `PracticeAssignmentRequest`
+ * blocks — no longer this lane's best-effort mirror of the spec prose (see
+ * the superseded header comment in git history for the earlier assumption).
+ * `transitionPractice`/`PracticeTransitionRequest` were already frozen and
+ * unchanged by that diff.
  *
  * Same convention as `visa/voa/orders/types.ts`: no generated client yet.
  */
@@ -19,46 +19,55 @@ import type { PracticeState } from "@/app/visa/voa/orders/types";
 
 export type { PracticeState };
 
-/** Rows returned by `GET /api/visa/voa/staff/practices` — deliberately thin:
- * no customer PII beyond what the spec explicitly allows, no
- * `private_staff_note`. */
+/** `StaffPracticeListItem` (openapi.yaml) — deliberately thin: no customer
+ * PII beyond what the contract explicitly allows, no `private_staff_note`.
+ * `customer_reason_key`/`required_action_key` are `oneOf [null, string]` and
+ * NOT in the schema's `required` list — optional AND nullable on the wire. */
 export interface StaffPracticeListRow {
   practice_id: string;
   order_id: string;
   state: PracticeState;
   assigned_to: string | null;
   updated_at: string;
-  customer_reason_key?: string;
-  required_action_key?: string;
+  customer_reason_key?: string | null;
+  required_action_key?: string | null;
   artifact_available: boolean;
 }
 
+/** `listStaffPractices` 200 body — `{ items, next_cursor }`, NOT
+ * `{ practices, cursor }` (corrected 2026-09-02 against the real diff). */
 export interface StaffPracticeListResponse {
-  practices: StaffPracticeListRow[];
-  cursor: string | null;
+  items: StaffPracticeListRow[];
+  next_cursor: string | null;
 }
 
-/** Staff-only detail view — distinct schema from the customer-facing
- * `PracticeView` (orders/types.ts). Never reuse one for the other: the
- * customer shape must never carry `private_staff_note`/`resume_target`.
+/** `StaffPracticeView` (openapi.yaml) — a superset of `StaffPracticeListItem`
+ * carrying `private_staff_note` and `resume_target`. Never reused by a
+ * customer-facing schema (contract note: PR-F04).
  *
- * `active_block_id` (added post cross-family review, binding): the opaque id
- * of the CURRENTLY open block on this practice, when `state === "Blocked"`.
- * The resume transitions (PR-09/PR-10) MUST send this exact value as
- * `resolved_block_id` — the UI prefills it read-only, it is never a
- * free-text field a staffer types (see [practiceId]/page.tsx). */
+ * `active_block_id`, `artifact_id`, `artifact_digest` are NOT in the
+ * openapi.yaml diff read 2026-09-02 — the backend's round 2 will add them
+ * (per team-lead relay). Kept optional here so this lane compiles against
+ * both the current and the round-2 contract without another edit; treat a
+ * missing `active_block_id` as "no active block on record" (see
+ * [practiceId]/page.tsx's read-only resume-id field). */
 export interface StaffPracticeView extends StaffPracticeListRow {
   private_staff_note: string | null;
   resume_target: PracticeState | null;
-  active_block_id: string | null;
+  active_block_id?: string | null;
+  artifact_id?: string | null;
+  artifact_digest?: string | null;
 }
 
+/** `PracticeAssignmentRequest` (openapi.yaml) — `assigned_to` required,
+ * `null` unassigns. */
 export interface AssignPracticeRequest {
   assigned_to: string | null;
 }
 
-/** `PracticeTransitionRequest` (openapi.yaml, frozen) — one variant per
- * PR-02..PR-11. Discriminated on `transition_id`. */
+/** `PracticeTransitionRequest` (openapi.yaml, frozen, unchanged by the
+ * 2026-09-02 diff) — one variant per PR-02..PR-11. Discriminated on
+ * `transition_id`. */
 export type PracticeTransitionRequest =
   | { transition_id: "PR-02" }
   | {
@@ -84,10 +93,11 @@ export type TransitionId = PracticeTransitionRequest["transition_id"];
  * existing `PracticeView` contract type, never a second definition. */
 export type { PracticeView } from "@/app/visa/voa/orders/types";
 
-/** Closed error catalog — union of `x-error-codes` across the four staff
- * operations (transitionPractice frozen; the other three are this lane's
- * best-effort mirror of the spec's described responses). Unlisted codes are
- * still handled (see api-client.ts) as a generic retryable failure. */
+/** Closed error catalog — union of `x-error-codes` across all five staff
+ * operations in the openapi.yaml diff (listStaffPractices,
+ * getStaffPractice, assignPractice, transitionPractice — the fifth,
+ * late-resolution, is not consumed by this lane). Unlisted codes are still
+ * handled (see api-client.ts) as a generic retryable failure. */
 export type StaffErrorCode =
   | "IDEMPOTENCY_KEY_REQUIRED"
   | "SESSION_REQUIRED"

@@ -25,7 +25,7 @@ vi.mock("./api-client", () => ({
   listStaffPractices: mocks.listStaffPractices,
 }));
 
-const ADMIN_ROW: StaffPracticeListResponse["practices"][number] = {
+const ADMIN_ROW: StaffPracticeListResponse["items"][number] = {
   practice_id: "practice_1",
   order_id: "order_1",
   state: "Received",
@@ -34,7 +34,7 @@ const ADMIN_ROW: StaffPracticeListResponse["practices"][number] = {
   artifact_available: false,
 };
 
-const TEAM_ROW: StaffPracticeListResponse["practices"][number] = {
+const TEAM_ROW: StaffPracticeListResponse["items"][number] = {
   practice_id: "practice_2",
   order_id: "order_2",
   state: "In review",
@@ -52,8 +52,8 @@ describe("GarudaVoaStaffListPage", () => {
   it("shows the assigned filter and all rows for an admin", async () => {
     mocks.isAdmin.mockReturnValue(true);
     mocks.listStaffPractices.mockResolvedValue({
-      practices: [ADMIN_ROW, TEAM_ROW],
-      cursor: null,
+      items: [ADMIN_ROW, TEAM_ROW],
+      next_cursor: null,
     });
 
     render(<GarudaVoaStaffListPage />);
@@ -71,8 +71,8 @@ describe("GarudaVoaStaffListPage", () => {
   it("hides the assigned filter and forces assigned=me for a non-admin team member", async () => {
     mocks.isAdmin.mockReturnValue(false);
     mocks.listStaffPractices.mockResolvedValue({
-      practices: [TEAM_ROW],
-      cursor: null,
+      items: [TEAM_ROW],
+      next_cursor: null,
     });
 
     render(<GarudaVoaStaffListPage />);
@@ -89,8 +89,8 @@ describe("GarudaVoaStaffListPage", () => {
   it("renders an empty state when there are no practices", async () => {
     mocks.isAdmin.mockReturnValue(false);
     mocks.listStaffPractices.mockResolvedValue({
-      practices: [],
-      cursor: null,
+      items: [],
+      next_cursor: null,
     });
 
     render(<GarudaVoaStaffListPage />);

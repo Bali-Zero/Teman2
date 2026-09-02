@@ -223,12 +223,15 @@ export default function GarudaVoaStaffDetailPage() {
     if (!practiceId) return;
     setIsAssigning(true);
     try {
+      // assignPractice returns the thin StaffPracticeListItem shape (no
+      // private_staff_note/resume_target/active_block_id) — merge into the
+      // existing detail view, never replace it wholesale.
       const updated = await assignPractice({
         practiceId,
         request: { assigned_to: assignedTo || null },
         idempotencyKey: assignmentIdempotencyKeyRef.current,
       });
-      setPractice(updated);
+      setPractice((prev) => (prev ? { ...prev, ...updated } : prev));
       assignmentIdempotencyKeyRef.current = newIdempotencyKey();
       toast.success(
         "Assignment updated",

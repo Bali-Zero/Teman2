@@ -21,6 +21,7 @@ import type {
   StaffErrorCode,
   StaffErrorResponse,
   StaffPracticeListResponse,
+  StaffPracticeListRow,
   StaffPracticeView,
 } from "./types";
 
@@ -132,14 +133,18 @@ export interface AssignPracticeParams {
   signal?: AbortSignal;
 }
 
-/** Admin-only per the spec — a non-admin call is expected to 403
- * ACCESS_DENIED; this client does not pre-check the role, the server does. */
+/** Admin-only per the contract — a non-admin call is expected to 403
+ * ACCESS_DENIED; this client does not pre-check the role, the server does.
+ * Returns `StaffPracticeListItem` (openapi.yaml), NOT the full
+ * `StaffPracticeView` — no `private_staff_note`/`resume_target` on this
+ * response. Callers merge this into an existing detail view, never replace
+ * it wholesale (see [practiceId]/page.tsx::handleAssign). */
 export async function assignPractice({
   practiceId,
   request,
   idempotencyKey,
   signal,
-}: AssignPracticeParams): Promise<StaffPracticeView> {
+}: AssignPracticeParams): Promise<StaffPracticeListRow> {
   const body = await fetchJson(
     `${API_BASE_URL}/visa/voa/staff/practices/${encodeURIComponent(practiceId)}/assignment`,
     {
@@ -152,7 +157,7 @@ export async function assignPractice({
       signal,
     },
   );
-  return body as StaffPracticeView;
+  return body as StaffPracticeListRow;
 }
 
 export interface TransitionPracticeParams {

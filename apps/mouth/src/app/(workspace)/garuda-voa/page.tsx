@@ -108,7 +108,7 @@ export default function GarudaVoaStaffListPage() {
           assigned: isAdmin ? assignedFilter : "me",
           signal: controller.signal,
         });
-        setPractices(response.practices);
+        setPractices(response.items);
       } catch (error) {
         if (controller.signal.aborted) return;
         logger.error(
