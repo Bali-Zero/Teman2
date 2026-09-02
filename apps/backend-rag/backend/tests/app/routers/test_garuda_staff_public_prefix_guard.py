@@ -43,6 +43,18 @@ _APP = _main_api_module.app
 _STAFF_REQUESTS: list[tuple[str, str, str, dict]] = [
     ("list_staff_practices", "GET", "/api/visa/voa/staff/practices", {}),
     (
+        "get_staff_practice",
+        "GET",
+        "/api/visa/voa/staff/practices/prac_abc123",
+        {},
+    ),
+    (
+        "assign_practice",
+        "POST",
+        "/api/visa/voa/staff/practices/prac_abc123/assignment",
+        {"json": {"assigned_to": None}},
+    ),
+    (
         "transition_practice",
         "POST",
         "/api/visa/voa/staff/practices/prac_abc123/transitions",
@@ -80,6 +92,25 @@ async def test_staff_route_without_credential_is_rejected_by_middleware(
         f"means the request reached the handler, i.e. the request WAS authenticated (or the "
         f"middleware let it through some other way) before this router's own check ran."
     )
+
+
+@pytest.mark.asyncio
+async def test_customer_magic_link_cookie_alone_is_rejected_by_middleware() -> None:
+    """A customer's `garuda_session` magic-link cookie is a different
+    cookie NAME than `cookie_auth.JWT_COOKIE_NAME`
+    (`garuda_portal_auth.py`'s own module docstring) -- HybridAuthMiddleware
+    never decodes it into `request.state.user`, so it must be rejected the
+    SAME way a bare credential-less request is, never treated as a staff
+    session."""
+
+    transport = ASGITransport(app=_APP)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(
+            "/api/visa/voa/staff/practices",
+            cookies={"garuda_session": "customer-session-value"},
+        )
+    assert response.status_code == 401
+    assert response.headers.get("X-Auth-Type") != "public"
 
 
 def test_no_garuda_voa_public_endpoint_uses_a_prefix_match_covering_staff():
