@@ -1,0 +1,288 @@
+gear: 3
+brief_ref: evidence/2026-09/agent-nuzantara-infra-dependabot-lock-pairing-ga-63a3b784/brief.yml
+council_run: council-journal.jsonl
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5 (author session, worktree infra-dependabot-lock-pairing-gate)
+  - lane: review-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: review-tp1-qwen38max
+    role: review
+    seat: tp1-qwen3.8-max
+diff:
+  files: 7
+  net_lines: 479
+  net_lines_note:
+    "measured from the merge-base: git diff --numstat $(git merge-base origin/main HEAD) HEAD,
+    after staging the evidence set. Pure additions. The CODE diff is tiny on purpose — ONE line
+    added to the PROTECTED array of .github/workflows/auto-merge-whitelist.yml, three lines
+    wiring the new test into the already-required `antidotes` job of immune-enforcement.yml,
+    and 121 lines of new guard test — plus two ledger rows. The remainder is the Gear-3 evidence
+    set this floor demands (brief.yml, pack.yml, council-journal.jsonl). The count therefore
+    exceeds the code diff by a wide margin, and it grows again with the commit that writes this
+    very note, which is why the number is patched in after the final staging rather than
+    predicted."
+spend:
+  wall_clock_hours: 4.0
+  adversarial_rounds: 2
+appetite_exceeded:
+  "The brief declared wall_clock_hours 3.0 and adversarial_rounds 2; the rounds held, the clock
+  did not. The overrun has a single named cause and it is not drift: council round 1 returned
+  BLOCKING from BOTH seats on a completely different design (a required CI check that failed
+  bot-authored lock-only PRs — 150+172 lines, 25 tests, 3 verified mutants, real-world receipts
+  against #5452/#5453), and that design was DISCARDED rather than patched. The branch was
+  rebuilt from a clean origin/main and the second design was built, tested and put to a second
+  council round. Roughly half the elapsed time is therefore work that ships nothing, by
+  deliberate choice — the alternative was arguing with two correct objections. Recorded here
+  rather than absorbed silently, which is the whole point of rule 14."
+pii_scan: clean
+council_run_note:
+  "R9 (council_run quorum, enforced on/after 2026-09-02) asks for >=2 DISTINCT seats from
+  {codex-gpt-5.6-sol, kimi-code/k3, tp1-qwen3.8-max} journaled ok:true in council-journal.jsonl
+  in this pack directory. Two answered on the REDESIGN and are journaled, both ts
+  2026-09-02T00:34:07Z (the journal timestamp is when the verdicts were recorded, not when the
+  seats ran — the seats were dispatched in one subagent round that took 691s wall).
+  codex-gpt-5.6-sol ran as `codex exec -m gpt-5.6-sol -c model_reasoning_effort=xhigh --sandbox
+  read-only --skip-git-repo-check` with the FULL 14447-byte diff, exit 0. tp1-qwen3.8-max ran
+  over TP1/DashScope chat/completions (HTTP 200, 204.3s, 8201 completion tokens of which 7933
+  reasoning) with a DELIBERATELY TRIMMED 3930-byte context, because that seat returns a
+  non-judgement above roughly 4KB — measured three times in round 1. That trim is a real
+  limitation on that seat's verdict and the seat declared it itself in its first sentence; it is
+  reproduced verbatim in its journal note rather than smoothed away. kimi-code/k3 was NOT tried
+  in this round: it was quota-dead for the whole preceding week (`provider.auth_error: 403
+  weekly (7-day) usage limit`), a condition documented in scripts/council_journal.py's own
+  module docstring. Quorum satisfied without an override. NOTE for the grader: the two seats
+  DISAGREED on this round — codex returned BLOCKING, tp1 returned OK. The disagreement is not
+  smoothed over; it is the subject of the dissent section below."
+receipts:
+  - claim:
+      The one regex added to PROTECTED matches both compiled locks that actually exist today,
+      and does not match the paired manifest, an npm lock, a lock in a subdirectory, or a doc
+      whose name merely contains the words.
+    result:
+      "MATCH apps/backend-rag/requirements.lock.txt | MATCH apps/backend-rag/requirements-prod.lock.txt
+      | no apps/backend-rag/requirements.txt | no package-lock.json | no
+      apps/backend-rag/nested/requirements.lock.txt | no docs/how-we-compile-the-lock.txt.md"
+    cmd: bash - p='^apps/backend-rag/[^/]*\.lock\.txt$'; for f in ...; do [[ "$f" =~ $p ]]; done
+    exit: 0
+    ts: "2026-09-02T00:31:18Z"
+    seat: claude-opus-5 (author session, worktree)
+    note:
+      "run with bash's own =~ operator, which is the SAME matcher the workflow step uses on the
+      same array — not a Python re-implementation of it. The two locks were listed from disk in
+      the same turn (ls -la apps/backend-rag/*.lock.txt), not recalled."
+  - claim: The new guard test suite passes clean against the real, shipped workflow file.
+    result: 12 passed in 2.02s
+    cmd: /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_auto_merge_protects_compiled_locks.py -q
+    exit: 0
+    ts: "2026-09-02T00:32:41Z"
+    seat: claude-opus-5 (author session, worktree)
+  - claim:
+      The suite proves GUILT, not just innocence — removing the single added line from the
+      PROTECTED array turns it red, and restoring the file makes it byte-identical again.
+    result:
+      "WITH the line: 12 passed. WITHOUT it: 4 failed, 8 passed. Restored file sha256
+      4811677f58b2c56c... identical to the original."
+    cmd: mutation run - delete the one PROTECTED entry, rerun pytest, restore, re-hash
+    exit: 0
+    ts: "2026-09-01T23:58:00Z"
+    seat: claude-opus-5 (author session, worktree)
+    note:
+      "8 of the 12 tests still pass without the line because they are the over-match /
+      innocence half — they SHOULD stay green when the pattern is absent. A mutation that turns
+      every test red would mean the suite tests one thing twelve times."
+  - claim:
+      This control actually fires for the shape the mandate names — a Dependabot pip PR reaches
+      the path check at all, i.e. its branch is inside the whitelisted namespace.
+    result:
+      "Every pip PR in the repo's history lands on dependabot/pip/apps/backend-rag/... and
+      matches ^dependabot/(pip|npm_and_yarn)/. The ONLY dependabot branches outside that
+      namespace are the 15 distinct dependabot/github_actions/... ones, which by construction
+      edit .github/workflows/ — already the FIRST entry of the same PROTECTED array. So there is
+      no dependabot branch class that both escapes the namespace and could touch a Python lock."
+    cmd:
+      gh pr list --repo Bali-Zero/Teman2 --author app/dependabot --state all --limit 100
+      --json headRefName --jq '.[].headRefName' | grep -vE '^dependabot/(pip|npm_and_yarn)/' | sort -u
+    exit: 0
+    ts: "2026-09-02T00:31:02Z"
+    seat: claude-opus-5 (author session, worktree)
+    note:
+      "this is the receipt for the single question the brief tells the grader decides whether
+      the PR is worth merging. It was measured against 100 real PRs, not reasoned from the
+      regex."
+  - claim: The revoke gap codex raised is INHERITED by the mechanism, not introduced by this diff.
+    result:
+      "grep -rn -- '--disable-auto' .github/ returns NOTHING — no workflow has ever revoked
+      arming; the only callers are scripts/mq.sh (operator-run local tool) and its test. The
+      PROTECTED array itself dates from 0adc9945dd (2026-05-25, #851) and now holds 31 entries,
+      of which the compiled-lock pattern is the 31st."
+    cmd:
+      grep -rn -- "--disable-auto" .github/ scripts/ ; git log -1 -S"PROTECTED=(" --
+      .github/workflows/auto-merge-whitelist.yml
+    exit: 0
+    ts: "2026-09-02T00:29:44Z"
+    seat: claude-opus-5 (author session, worktree)
+  - claim: actionlint reports no NEW warning against the two edited workflow files.
+    result: "32 normalised warnings before, 32 after — identical sets, zero new"
+    cmd:
+      actionlint on origin/main tree vs branch tree, both piped through sed -E 's/[0-9]+/N/g'
+      before comm, because line numbers shift on insertion and made 4 unchanged warnings look new
+    exit: 0
+    ts: "2026-09-02T00:15:00Z"
+    seat: claude-opus-5 (author session, worktree)
+  - claim:
+      The 26 red tests in the SIBLING file this suite borrows its harness from are INHERITED,
+      not caused by this branch.
+    result:
+      "On a clean `git archive origin/main` tree, untouched by this branch:
+      scripts/tests/test_auto_merge_whitelist.py reports 26 failed, 49 passed — every failure in
+      test_every_tier1_codeowners_path_blocks_auto_merge[...]. The same 26 fail identically on
+      this branch. The new file's own 12 pass on both."
+    cmd: git archive origin/main | tar -x -C <tmp>; pytest scripts/tests/test_auto_merge_whitelist.py -q
+    exit: 1
+    ts: "2026-09-02T00:05:00Z"
+    seat: claude-opus-5 (author session, worktree)
+    note:
+      "measured precisely because the honest alternative — shipping a green new file next to a
+      red neighbour and saying nothing — is how an inherited red becomes attributed to whoever
+      touched the area last. It is on the ledger with owner session[ci], not absorbed here."
+  - claim: The new test file is actually EXECUTED by CI, which the sibling it borrows from is not.
+    result:
+      "Added to both hook points of the `antidotes` job in .github/workflows/immune-enforcement.yml
+      — the `case` path list and the pytest invocation list. That job runs on: pull_request with
+      no paths filter and is REQUIRED, and checks out with fetch-depth: 0."
+    cmd: read .github/workflows/immune-enforcement.yml on disk; grep -rn
+      "test_auto_merge_whitelist" .github/ (returns nothing — the sibling's own condition)
+    exit: 0
+    ts: "2026-09-02T00:10:00Z"
+    seat: claude-opus-5 (author session, worktree)
+    note:
+      ".github/workflows/asyncpg-lint.yml:49 states the repo rule that makes this step
+      load-bearing: a file under scripts/tests/ executes only if a workflow names it. A guard
+      test nobody names is superscar #2 applied to a guard's own proof."
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "ROUND 1, on the FIRST design (a required CI check that failed bot-authored lock-only PRs).
+      Verbatim: 'filename co-presence is trivially spoofable while legitimate lock-only changes
+      on bot-authored PRs are rejected.' Two defects in one sentence: the gate's whole predicate
+      was 'did the paired manifest change too', which any unrelated whitespace edit satisfies;
+      and its refusal direction hit exactly the legitimate case."
+    status: CONFIRMED
+    evidence:
+      "Both halves were true of the code as written (scripts/ci/dependabot_lock_pairing_gate.py,
+      150 lines plus 172 lines of tests, 25 tests, 3 mutants verified red, real receipts refusing
+      #5452 and accepting #5453). Nothing in that design distinguished a real recompile from a
+      cosmetic manifest touch."
+    resolution:
+      "Answered by DELETION, not by argument. The design was removed from the branch entirely —
+      those files do not exist here — and the branch was rebuilt from a clean origin/main. Both
+      halves dissolve in the replacement rather than being mitigated: there is no manifest
+      co-presence condition left to spoof, because the control keys on the lock path ALONE; and
+      nothing is rejected, because the control withdraws auto-merge eligibility instead of
+      failing a check."
+  - seat: tp1-qwen3.8-max
+    objection:
+      "ROUND 1, same first design. Verbatim: 'It blocks legitimate lock-only transitive/grouped
+      security updates and can be bypassed by unrelated manifest edits/renames.' Independently
+      reached, and it names the worse of the two diseases: a REQUIRED check going red on
+      legitimate transitive security updates would be permanently red."
+    status: CONFIRMED
+    evidence:
+      "A transitive or grouped security update legitimately touches only the lock, so the gate
+      would have refused it every time. This repo's own scar record (superscar #2) is that a
+      permanently red check stops being read — the design would have manufactured the disease it
+      was written to prevent."
+    resolution:
+      "Same deletion. This is the objection that decided discard-over-patch: a control whose
+      refusal direction is systematically wrong cannot be tuned into correctness. The replacement
+      cannot go red at all, so the failure mode it names is unreachable by construction."
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "ROUND 2, on THIS design, on a ground neither seat raised in round 1. Verbatim: 'il workflow
+      nega un nuovo armamento ma non revoca un auto-merge gia esistente quando il diff diventa
+      protetto.' On a later synchronize path_check correctly writes match=false, which only skips
+      the Enable auto-merge step — an autoMergeRequest armed earlier survives, because GitHub
+      auto-disables auto-merge only when the pushing actor lacks write permission."
+    status: CONFIRMED
+    evidence:
+      "Verified independently this session rather than taken on the seat's word: grep -rn for
+      '--disable-auto' under .github/ returns NOTHING — no workflow in this repo has ever revoked
+      arming (the only callers are scripts/mq.sh, an operator-run local tool, and its test). The
+      PROTECTED array dates from 0adc9945dd (2026-05-25, #851) and now holds 31 entries, so the
+      gap is a property of the MECHANISM shared identically by .github/workflows/,
+      migrations_v2/, services/auth/ and services/pricing/ — the compiled-lock pattern is merely
+      the 31st to inherit it, not its cause."
+    resolution:
+      "ACCEPTED AS TRUE AND DELIBERATELY LEFT OPEN; the grader should weigh this and is free to
+      overrule the choice. Rule 8 (cure what the diff INTRODUCES, spec what it INHERITS) puts it
+      on the ledger with owner session[ci] and a concrete two-part proof-of-armed, not in this
+      PR: a revoke step changes behaviour for 30 pre-existing protected paths, which is a
+      different concern with a different blast radius, and shipping it unreviewed as a reflex to
+      a graded objection is precisely the fix-of-a-fix shape rule 8 forbids. Two narrowing facts,
+      stated so the grader can discount them: (a) the exposure needs a PR ARMED on an earlier push
+      that did NOT carry the lock and that GAINS one later, while every pip PR measured here
+      carries its full diff from the first event; (b) the out-of-band paths codex also names (a
+      write-permission human, gh pr merge --admin) are not closable by any path pattern and are
+      outside what this control claims."
+  - seat: tp1-qwen3.8-max
+    objection:
+      "ROUND 2, on THIS design. The seat returned OK — 'it removes the unattended merge path for
+      compiled backend-rag locks without creating permanent failures' — but opened by limiting
+      its own verdict, verbatim: 'I can judge the regex and control from the excerpt; I cannot
+      verify full workflow syntax, test assertions, antidotes wiring, or absence of other
+      auto-merge paths.' Recorded as dissent rather than as a clean pass because that limitation
+      is a real hole in the evidence, not a formality."
+    status: PLAUSIBLE
+    evidence:
+      "The seat received a deliberately trimmed 3930-byte context (the added regex with five lines
+      of array context, the match=true/false bash, and a prose note on the new test file) because
+      it returns a non-judgement above roughly 4KB — measured three times in round 1. So its OK is
+      an opinion on the regex and the control shape, NOT on the workflow as shipped. It also
+      flagged, unprompted and identically to codex, the subdirectory/other-app under-match and the
+      residual human/admin merge paths."
+    resolution:
+      "Not treated as cancelling codex's BLOCKING: an OK from a partial view is weaker evidence
+      than a BLOCKING from a full one, and the two are recorded as a genuine disagreement rather
+      than averaged into a pass. The specific things tp1 said it could not see — workflow syntax,
+      test assertions, antidotes wiring — are each covered by a receipt above (actionlint 32=32,
+      12/12 pytest, the immune-enforcement hook points), which is the compensating evidence, not
+      a claim that the seat verified them."
+residual_risks:
+  - risk:
+      UNDER-MATCH BY DESIGN — '^apps/backend-rag/[^/]*\.lock\.txt$' deliberately does not reach a
+      compiled lock in a subdirectory, in another app, or under any other name.
+    why_accepted:
+      "Both seats named this independently and both called it acceptable-but-track. The two
+      locks that exist today are both root-level under apps/backend-rag and are matched
+      (measured, receipt 1); a third root-level one would be matched automatically. Widening to
+      '**/*.lock.txt' would also swallow package-lock.json and every npm lock in the monorepo,
+      which is a much larger auto-merge policy change than this PR's concern. The test
+      test_the_locks_this_guard_protects_actually_exist goes RED if either current lock is moved
+      or renamed, so the day the assumption stops holding is a red test, not a silent gap."
+  - risk:
+      SILENT FAILURE DIRECTION — when the pattern does NOT match, nothing goes red and no line is
+      written on the PR; auto-merge simply arms.
+    why_accepted:
+      "This is inherent to hosting the control in the eligibility workflow rather than in a
+      required check, and hosting it there is what makes both round-1 BLOCKING verdicts
+      dissolve. The compensating instrument is the test suite: 7 of the 12 tests are the
+      over-match half and 4 the guilt half, and the file is named by a REQUIRED job so it
+      actually runs (receipt 8) — unlike the sibling suite it borrows from."
+  - risk: THE REVOKE GAP — an auto-merge armed before the lock appeared is not disarmed when it does.
+    why_accepted:
+      "Inherited by all 31 PROTECTED entries since 2026-05-25, verified this session; see the
+      round-2 dissent above and the PENDING-ARMS row with owner session[ci]. Named here so it is
+      impossible to read this pack as claiming the control is complete."
+  - risk:
+      THE SIBLING SUITE test_auto_merge_whitelist.py IS ORPHANED AND 26/75 RED ON MAIN, and this
+      PR's new file imports its harness.
+    why_accepted:
+      "The redness is inherited and measured on a clean origin/main tree (receipt 7). Fixing it
+      means either widening PROTECTED to cover the Tier-1 CODEOWNERS paths it expects or
+      amending the expectation — a decision about the auto-merge PERIMETER, which is a different
+      concern from adding one lockfile pattern. On the ledger, owner session[ci], with a
+      two-part proof-of-armed: named by a workflow that can go red AND a clean run at 0 failed."
