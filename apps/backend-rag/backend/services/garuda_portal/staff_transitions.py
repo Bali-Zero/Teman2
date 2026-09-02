@@ -21,6 +21,7 @@ layer here would just be an extra hop for no isolation actually gained.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -70,6 +71,19 @@ _REASON_PATTERN = "garuda_voa.practice."
 _ACTION_PATTERN = "garuda_voa.action."
 _EVIDENCE_KIND: dict[str, str] = {"submit": "filing", "approve": "approval", "reject": "rejection"}
 
+#: Same character class as `garuda_practice_evidence`'s `evidence_id` CHECK
+#: constraint (`305_garuda_practices_assignment.sql:148`) -- cross-family
+#: refuter MAJOR finding #1 (Codex): a value that passed this function's
+#: previous length-only check (16-128 chars, any character) but failed the
+#: DB's character class reached `apply_transition`'s INSERT and crashed with
+#: an unhandled `asyncpg.CheckViolationError` (HTTP 500 INTERNAL_ERROR)
+#: instead of this contract's 422 INVALID_REQUEST. Reused verbatim for
+#: `artifact_id` and `resolved_block_id` too: neither has its own DB CHECK
+#: (they live on `garuda_practices` directly, not the evidence table), but
+#: they are staff-supplied opaque identifiers of the identical shape and
+#: deserve the identical guard, not a laxer one by omission.
+_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{16,128}$")
+
 
 def visible_or_403(row: asyncpg.Record, actor: dict[str, Any]) -> None:
     if actor["is_admin"]:
@@ -108,7 +122,7 @@ def validate_transition_body(transition_id: str, body: dict) -> dict[str, Any]:
         return {"customer_reason_key": reason, "required_action_key": action, "private_staff_note": note}
     if spec.kind in ("submit", "approve"):
         evidence_id = body.get("evidence_id")
-        if not isinstance(evidence_id, str) or not (16 <= len(evidence_id) <= 128):
+        if not isinstance(evidence_id, str) or not _ID_PATTERN.match(evidence_id):
             _fail()
         return {"evidence_id": evidence_id}
     if spec.kind == "reject":
@@ -116,7 +130,7 @@ def validate_transition_body(transition_id: str, body: dict) -> dict[str, Any]:
         reason = body.get("customer_reason_key")
         if (
             not isinstance(evidence_id, str)
-            or not (16 <= len(evidence_id) <= 128)
+            or not _ID_PATTERN.match(evidence_id)
             or not isinstance(reason, str)
             or not reason.startswith(_REASON_PATTERN)
         ):
@@ -127,7 +141,7 @@ def validate_transition_body(transition_id: str, body: dict) -> dict[str, Any]:
         return {"evidence_id": evidence_id, "customer_reason_key": reason, "private_staff_note": note}
     if spec.kind == "resume":
         resolved_block_id = body.get("resolved_block_id")
-        if not isinstance(resolved_block_id, str) or not (16 <= len(resolved_block_id) <= 128):
+        if not isinstance(resolved_block_id, str) or not _ID_PATTERN.match(resolved_block_id):
             _fail()
         return {"resolved_block_id": resolved_block_id}
     if spec.kind == "deliver":
@@ -135,7 +149,7 @@ def validate_transition_body(transition_id: str, body: dict) -> dict[str, Any]:
         artifact_digest = body.get("artifact_digest")
         if (
             not isinstance(artifact_id, str)
-            or not (16 <= len(artifact_id) <= 128)
+            or not _ID_PATTERN.match(artifact_id)
             or not isinstance(artifact_digest, str)
             or len(artifact_digest) != 64
         ):
