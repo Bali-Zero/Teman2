@@ -44,7 +44,10 @@ from fastapi.routing import APIRoute
 from backend.app.utils.logging_utils import sanitize_for_log
 from backend.services.garuda_orders import idempotency
 from backend.services.garuda_orders.idempotency import IdempotencyConflict
-from backend.services.garuda_portal.staff_auth import require_garuda_staff
+from backend.services.garuda_portal.staff_auth import (
+    is_valid_garuda_assignment_target,
+    require_garuda_staff,
+)
 from backend.services.garuda_portal.staff_transitions import (
     TRANSITIONS,
     apply_transition,
@@ -370,6 +373,12 @@ async def assign_practice(
         raise HTTPException(status_code=403, detail={"code": "ACCESS_DENIED", "retryable": False})
     key = _idempotency_key(idempotency_key)
 
+    # Cross-family refuter (Gemini) MAJOR finding #2: `body.get("assigned_to")`
+    # cannot tell an OMITTED key from an explicit `{"assigned_to": null}` --
+    # both evaluate to `None`. The contract's `PracticeAssignmentRequest`
+    # requires the key; only an explicit null means "unassign".
+    if "assigned_to" not in body:
+        raise HTTPException(status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False})
     assigned_to_raw = body.get("assigned_to")
     if assigned_to_raw is not None and not isinstance(assigned_to_raw, str):
         raise HTTPException(status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False})
@@ -389,6 +398,14 @@ async def assign_practice(
     )
 
     async with pool.acquire() as conn:
+        # Round-4 disposition item 2 (Codex finding #2): the ASSIGNMENT
+        # TARGET must itself be a real GARUDA operator (admin OR an active
+        # team_members row with a staff role) -- checked BEFORE reserving
+        # the idempotency key, so an invalid target never burns a key slot.
+        if assigned_to is not None and not await is_valid_garuda_assignment_target(
+            conn, assigned_to
+        ):
+            raise HTTPException(status_code=422, detail={"code": "INVALID_REQUEST", "retryable": False})
         try:
             outcome = await idempotency.reserve(
                 conn, key_sha256=key_digest, payload_sha256=payload_digest

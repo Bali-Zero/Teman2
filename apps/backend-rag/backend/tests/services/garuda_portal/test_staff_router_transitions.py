@@ -248,6 +248,23 @@ async def _practice_id_for(pool, order_id: str) -> str:
     )
 
 
+async def _seed_team_member(pool, email: str, *, role: str = "Team Leader") -> None:
+    """`assignPractice`'s target-operator check (round-4 disposition item 2,
+    Codex finding #2) queries `team_members` directly -- the same table
+    `services/crm/assignment.py::assign_lead` already queries for
+    department-based routing -- so a target the test wants to be a valid
+    assignee must be a real, active row there."""
+    await pool.execute(
+        "INSERT INTO team_members (id, name, email, pin_hash, role, active) "
+        "VALUES ($1, $2, $3, 'test-pin-hash', $4, TRUE) "
+        "ON CONFLICT (email) DO UPDATE SET active = TRUE, role = $4",
+        uuid.uuid4().hex[:32],  # team_members.id is VARCHAR(36) -- a full email is too long
+        email,
+        email,
+        role,
+    )
+
+
 @pytest.mark.asyncio
 class TestStaffAuthGuiltAndInnocence:
     async def test_no_credential_is_401_session_required(self, pool) -> None:
@@ -601,9 +618,127 @@ class TestAssignmentAndListVisibility:
         assert resp.status_code == 403
         assert resp.json()["code"] == "ACCESS_DENIED"
 
+    async def test_assign_to_unknown_email_is_422(self, pool, order_repository) -> None:
+        """Round-4 disposition item 2 (Codex finding #2): the ASSIGNMENT
+        TARGET must satisfy the same operator registry check as a staff
+        caller -- an arbitrary string (typo, client email, ex-employee) must
+        never silently succeed."""
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-assign-4220000000", provider_event_id="evt-assign-422"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        app = _make_app(pool)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                f"/api/visa/voa/staff/practices/{practice_id}/assignment",
+                headers={
+                    "Authorization": _bearer(_ADMIN, "admin"),
+                    "Idempotency-Key": "assign-422-key-00000000001",
+                },
+                json={"assigned_to": "not-a-real-staff-member@balizero.com"},
+            )
+        assert resp.status_code == 422
+        assert resp.json()["code"] == "INVALID_REQUEST"
+
+    async def test_assign_to_inactive_team_member_is_422(
+        self, pool, order_repository
+    ) -> None:
+        """A `team_members` row with `active = FALSE` (departed staff) must
+        never become a valid GARUDA assignment target -- guilt+innocence
+        pair for `test_assign_to_unknown_email_is_422` (a row that exists
+        but is inactive, not merely absent)."""
+        inactive_email = "departed-staff@balizero.com"
+        await pool.execute(
+            "INSERT INTO team_members (id, name, email, pin_hash, role, active) "
+            "VALUES ($1, $2, $3, 'test-pin-hash', 'Team Leader', FALSE) "
+            "ON CONFLICT (email) DO UPDATE SET active = FALSE",
+            uuid.uuid4().hex[:32],
+            inactive_email,
+            inactive_email,
+        )
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-assign-inact0000", provider_event_id="evt-assign-inact"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        app = _make_app(pool)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                f"/api/visa/voa/staff/practices/{practice_id}/assignment",
+                headers={
+                    "Authorization": _bearer(_ADMIN, "admin"),
+                    "Idempotency-Key": "assign-inact-key-000000001",
+                },
+                json={"assigned_to": inactive_email},
+            )
+        assert resp.status_code == 422
+        assert resp.json()["code"] == "INVALID_REQUEST"
+
+    async def test_assigned_to_key_absent_is_422_not_unassign(
+        self, pool, order_repository
+    ) -> None:
+        """Cross-family refuter (Gemini) MAJOR finding #2: `body.get(
+        "assigned_to")` treats a completely OMITTED key identically to an
+        explicit `{"assigned_to": null}` -- both evaluate to `None`. The
+        contract's `PracticeAssignmentRequest` declares `assigned_to`
+        `required`, so an omitted key must 422, never silently unassign."""
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-assign-omit0000", provider_event_id="evt-assign-omit"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        app = _make_app(pool)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post(
+                f"/api/visa/voa/staff/practices/{practice_id}/assignment",
+                headers={
+                    "Authorization": _bearer(_ADMIN, "admin"),
+                    "Idempotency-Key": "assign-omit-key-0000000001",
+                },
+                json={},
+            )
+        assert resp.status_code == 422
+        assert resp.json()["code"] == "INVALID_REQUEST"
+
+    async def test_assigned_to_explicit_null_still_unassigns(
+        self, pool, order_repository
+    ) -> None:
+        """Guilt+innocence pair for the previous test: an EXPLICIT
+        `{"assigned_to": null}` is the real unassign command and must still
+        succeed with 200 -- only the OMITTED key is a 422."""
+        await _seed_team_member(pool, _TEAM_A)
+        order_id = await _create_and_pay_order(
+            order_repository, result_id="result-assign-null0000", provider_event_id="evt-assign-null"
+        )
+        practice_id = await _practice_id_for(pool, order_id)
+        app = _make_app(pool)
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            first = await client.post(
+                f"/api/visa/voa/staff/practices/{practice_id}/assignment",
+                headers={
+                    "Authorization": _bearer(_ADMIN, "admin"),
+                    "Idempotency-Key": "assign-null-key-0000000001",
+                },
+                json={"assigned_to": _TEAM_A},
+            )
+            assert first.status_code == 200, first.text
+            resp = await client.post(
+                f"/api/visa/voa/staff/practices/{practice_id}/assignment",
+                headers={
+                    "Authorization": _bearer(_ADMIN, "admin"),
+                    "Idempotency-Key": "assign-null-key-0000000002",
+                },
+                json={"assigned_to": None},
+            )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["assigned_to"] is None
+
     async def test_admin_assigns_then_assignee_can_see_it_others_cannot(
         self, pool, order_repository
     ) -> None:
+        await _seed_team_member(pool, _TEAM_B)
         order_id = await _create_and_pay_order(
             order_repository, result_id="result-assign-ok-0000000", provider_event_id="evt-assign-ok"
         )

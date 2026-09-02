@@ -69,6 +69,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import asyncpg
 from fastapi import Request
 from jose import JWTError, jwt
 
@@ -82,6 +83,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "can_manage_garuda_practices",
+    "is_valid_garuda_assignment_target",
     "require_garuda_staff",
     "verify_staff_session",
 ]
@@ -148,6 +150,35 @@ def can_manage_garuda_practices(user: dict[str, Any] | None) -> bool:
     if email in _garuda_practice_admin_emails():
         return True
     return _is_staff_role(user.get("role"))
+
+
+async def is_valid_garuda_assignment_target(conn: asyncpg.Connection, email: str) -> bool:
+    """True iff `email` may be the TARGET of `assignPractice` -- an operator
+    registry check, not the caller's own eligibility (cross-family refuter
+    disposition item 2: "validate assignment targets against an explicit
+    operator registry"). An admin target always qualifies (same set
+    `can_manage_garuda_practices` uses); a non-admin target must be an
+    ACTIVE `team_members` row whose role is a real staff role (reuses the
+    CRM's own team-member table -- `services/crm/assignment.py::assign_lead`
+    already queries this exact table for department-based routing -- rather
+    than inventing a second roster). Without this check, `assignPractice`
+    previously accepted ANY string as `assigned_to`: a typo'd email, a
+    client's own address, or a former employee's email would silently
+    "succeed" and the practice would become invisible to every real staff
+    member (a non-admin's own visibility is `assigned_to = actor['email']`).
+    """
+    email = (email or "").strip().lower()
+    if not email:
+        return False
+    if email in _garuda_practice_admin_emails():
+        return True
+    row = await conn.fetchrow(
+        "SELECT role FROM team_members WHERE LOWER(email) = $1 AND active = TRUE",
+        email,
+    )
+    if row is None:
+        return False
+    return _is_staff_role(row["role"])
 
 
 def _staff_principal_from_role(email: str, role: str | None) -> dict[str, Any] | None:
