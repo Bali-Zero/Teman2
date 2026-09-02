@@ -60,12 +60,14 @@ const RECEIVED_PRACTICE: StaffPracticeView = {
   artifact_available: false,
   private_staff_note: null,
   resume_target: null,
+  active_block_id: null,
 };
 
 const BLOCKED_PRACTICE: StaffPracticeView = {
   ...RECEIVED_PRACTICE,
   state: "Blocked",
   resume_target: "In review",
+  active_block_id: "block_abc123",
 };
 
 describe("GarudaVoaStaffDetailPage", () => {
@@ -102,6 +104,45 @@ describe("GarudaVoaStaffDetailPage", () => {
     );
     // resume_target is "In review" -> PR-09 only, never PR-10.
     expect(screen.queryByTestId("transition-PR-10")).toBeNull();
+  });
+
+  it("prefills resolved_block_id read-only from active_block_id and sends it verbatim on resume", async () => {
+    mocks.isAdmin.mockReturnValue(false);
+    mocks.getStaffPractice.mockResolvedValue(BLOCKED_PRACTICE);
+    mocks.transitionPractice.mockResolvedValue({
+      practice: {
+        practice_id: "practice_1",
+        state: "In review",
+        artifact_available: false,
+      },
+      replayed: false,
+    });
+
+    render(<GarudaVoaStaffDetailPage />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("transition-PR-09")).toBeTruthy(),
+    );
+    fireEvent.click(screen.getByTestId("transition-PR-09"));
+
+    const blockIdField = screen.getByLabelText(
+      "Resolved block id",
+    ) as HTMLInputElement;
+    expect(blockIdField.value).toBe("block_abc123");
+    expect(blockIdField.readOnly).toBe(true);
+
+    fireEvent.click(screen.getByText("Apply"));
+
+    await waitFor(() =>
+      expect(mocks.transitionPractice).toHaveBeenCalledWith(
+        expect.objectContaining({
+          request: {
+            transition_id: "PR-09",
+            resolved_block_id: "block_abc123",
+          },
+        }),
+      ),
+    );
   });
 
   it("shows the assignment select only for admins", async () => {

@@ -43,7 +43,6 @@ interface TransitionFormState {
   requiredActionKey: string;
   privateStaffNote: string;
   evidenceId: string;
-  resolvedBlockId: string;
   artifactId: string;
   artifactDigest: string;
 }
@@ -54,13 +53,17 @@ const EMPTY_FORM: TransitionFormState = {
   requiredActionKey: "",
   privateStaffNote: "",
   evidenceId: "",
-  resolvedBlockId: "",
   artifactId: "",
   artifactDigest: "",
 };
 
+/** `activeBlockId` is the practice's server-reported `active_block_id` — the
+ * ONLY source for `resolved_block_id` on PR-09/PR-10 (cross-family review
+ * binding: this is prefilled read-only, never a field a staffer types). If
+ * it is missing, the resume command cannot be built at all. */
 function buildTransitionRequest(
   form: TransitionFormState,
+  activeBlockId: string | null,
 ): PracticeTransitionRequest | null {
   switch (form.transitionId) {
     case "PR-02":
@@ -89,10 +92,10 @@ function buildTransitionRequest(
       };
     case "PR-09":
     case "PR-10":
-      if (!form.resolvedBlockId) return null;
+      if (!activeBlockId) return null;
       return {
         transition_id: form.transitionId,
-        resolved_block_id: form.resolvedBlockId,
+        resolved_block_id: activeBlockId,
       };
     case "PR-11":
       if (!form.artifactId || !form.artifactDigest) return null;
@@ -178,7 +181,10 @@ export default function GarudaVoaStaffDetailPage() {
 
   const submitTransition = async () => {
     if (!practiceId) return;
-    const request = buildTransitionRequest(form);
+    const request = buildTransitionRequest(
+      form,
+      practice?.active_block_id ?? null,
+    );
     if (!request) {
       toast.error("Missing fields", "Fill in every required field first.");
       return;
@@ -471,17 +477,29 @@ export default function GarudaVoaStaffDetailPage() {
             {(form.transitionId === "PR-09" ||
               form.transitionId === "PR-10") && (
               <div>
-                <label className="block text-sm text-[var(--bz-text-2)] mb-1">
+                <label
+                  htmlFor="garuda-voa-resolved-block-id"
+                  className="block text-sm text-[var(--bz-text-2)] mb-1"
+                >
                   Resolved block id
                 </label>
+                {/* Prefilled read-only from the practice's own
+                    `active_block_id` — never a free-text field a staffer
+                    types (cross-family review binding). */}
                 <input
+                  id="garuda-voa-resolved-block-id"
                   type="text"
-                  value={form.resolvedBlockId}
-                  onChange={(e) =>
-                    handleFieldChange("resolvedBlockId", e.target.value)
-                  }
-                  className="w-full border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] rounded-lg px-3 py-2 text-sm font-mono"
+                  value={practice.active_block_id ?? ""}
+                  readOnly
+                  disabled
+                  className="w-full border border-[var(--bz-border)] bg-[var(--surface-raised)] text-[var(--bz-text-2)] rounded-lg px-3 py-2 text-sm font-mono cursor-not-allowed"
                 />
+                {!practice.active_block_id && (
+                  <p className="mt-1 text-xs text-[var(--state-danger)]">
+                    No active block id on record — this transition cannot be
+                    applied yet.
+                  </p>
+                )}
               </div>
             )}
             {form.transitionId === "PR-11" && (

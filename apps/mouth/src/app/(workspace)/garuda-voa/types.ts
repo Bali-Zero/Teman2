@@ -40,10 +40,17 @@ export interface StaffPracticeListResponse {
 
 /** Staff-only detail view — distinct schema from the customer-facing
  * `PracticeView` (orders/types.ts). Never reuse one for the other: the
- * customer shape must never carry `private_staff_note`/`resume_target`. */
+ * customer shape must never carry `private_staff_note`/`resume_target`.
+ *
+ * `active_block_id` (added post cross-family review, binding): the opaque id
+ * of the CURRENTLY open block on this practice, when `state === "Blocked"`.
+ * The resume transitions (PR-09/PR-10) MUST send this exact value as
+ * `resolved_block_id` — the UI prefills it read-only, it is never a
+ * free-text field a staffer types (see [practiceId]/page.tsx). */
 export interface StaffPracticeView extends StaffPracticeListRow {
   private_staff_note: string | null;
   resume_target: PracticeState | null;
+  active_block_id: string | null;
 }
 
 export interface AssignPracticeRequest {
