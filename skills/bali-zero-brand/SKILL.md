@@ -60,13 +60,15 @@ Bali Zero is the Indonesian-business-services agency for expat founders, investo
 
 | Role                  | Token                 | Hex       |
 | --------------------- | --------------------- | --------- |
-| Background primary    | `color.bg.antracite`  | `#373D42` |
+| Background primary    | `color.bg.antracite`  | `#363A3E` |
 | Background secondary  | `color.bg.black`      | `#000000` |
 | Body text             | `color.text.white`    | `#FFFFFF` |
 | Accent data           | `color.accent.yellow` | `#F4C430` |
 | Status critico / logo | `color.status.red`    | `#C8102E` |
 
 NEVER green, blue, purple, pastel, beige.
+
+**Owner lock (2026-09-02):** `#363A3E` is the only official flat anthracite for Bali Zero editorial backgrounds and UI surfaces. Do not substitute a bluer blue-grey approximation. Hero-photo zones retain their natural cinematic grading under Article 2.3.
 
 ## Quick typography (full version in tokens.json)
 
