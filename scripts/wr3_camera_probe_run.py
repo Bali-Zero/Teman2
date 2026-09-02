@@ -104,6 +104,7 @@ class RunConfig:
     accounted_credits: int
     measured_clip_cost: int
     timeout_s: int = DEFAULT_TIMEOUT_S
+    project_binding: Path | None = None
     existing_project_id: str | None = None
     existing_video_id: str | None = None
     scene_start_media_id: str | None = None
@@ -1185,6 +1186,25 @@ def validate_run(config: RunConfig) -> ValidatedRun:
         global_probe_id=shot["global_probe_id"],
     )
 
+    if config.project_binding is not None:
+        binding_path = config.project_binding.expanduser().resolve()
+        if binding_path.exists():
+            try:
+                fk.load_episode_project_binding(
+                    binding_path,
+                    episode_id=episode_id,
+                    endpoint=config.endpoint,
+                    paygate=config.paygate,
+                    expected_project_id=(
+                        scene_start.project_id if scene_start is not None else None
+                    ),
+                    expected_video_id=(
+                        scene_start.video_id if scene_start is not None else None
+                    ),
+                )
+            except fk.FlowkitProjectBindingError as exc:
+                raise ProbeValidationError(str(exc)) from exc
+
     episode_dir = config.episode_dir.expanduser().resolve()
     receipt_path = episode_dir / RECEIPT_NAME
     context_path = episode_dir / CONTEXT_NAME
@@ -1433,24 +1453,38 @@ async def _run_one_locked(config: RunConfig) -> dict[str, Any]:
     shot = validated.shot
 
     if validated.scene_start is None:
-        ctx = await fk.setup_episode_context(
-            name=validated.pack["episode_id"],
-            endpoint=config.endpoint,
-            paygate=config.paygate,
-            timeout_s=30,
-        )
+        setup_kwargs: dict[str, Any] = {
+            "name": validated.pack["episode_id"],
+            "endpoint": config.endpoint,
+            "paygate": config.paygate,
+            "timeout_s": 30,
+        }
+        if config.project_binding is not None:
+            setup_kwargs["project_binding_path"] = config.project_binding
+        ctx = await fk.setup_episode_context(**setup_kwargs)
         ctx.anchor_image_path = str(validated.anchor_path)
     else:
         # Reuse the exact project/video that owns the generated start frame.
         # Deliberately leave anchor_image_path/media_id unset so no branch can
         # upload or substitute raw A007 as the I2V start image.
-        ctx = fk.EpisodeContext(
-            project_id=validated.scene_start.project_id,
-            video_id=validated.scene_start.video_id,
-            project_name=validated.pack["episode_id"],
-            endpoint=config.endpoint,
-            paygate=config.paygate,
-        )
+        if config.project_binding is None:
+            ctx = fk.EpisodeContext(
+                project_id=validated.scene_start.project_id,
+                video_id=validated.scene_start.video_id,
+                project_name=validated.pack["episode_id"],
+                endpoint=config.endpoint,
+                paygate=config.paygate,
+            )
+        else:
+            ctx = await fk.setup_episode_context(
+                name=validated.pack["episode_id"],
+                endpoint=config.endpoint,
+                paygate=config.paygate,
+                timeout_s=30,
+                project_binding_path=config.project_binding,
+                expected_project_id=validated.scene_start.project_id,
+                expected_video_id=validated.scene_start.video_id,
+            )
     receipt["flow"]["project_id"] = ctx.project_id
     receipt["flow"]["video_id"] = ctx.video_id
 
@@ -1593,6 +1627,15 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--accounted-credits", type=int, required=True)
     parser.add_argument("--measured-clip-cost", type=int, required=True)
     parser.add_argument("--timeout-s", type=int, default=DEFAULT_TIMEOUT_S)
+    parser.add_argument(
+        "--project-binding",
+        type=Path,
+        required=True,
+        help=(
+            "Shared immutable one-project-per-episode binding. Every scene and "
+            "character/outfit test for the episode must use the same file."
+        ),
+    )
     parser.add_argument("--existing-project-id", default=None)
     parser.add_argument("--existing-video-id", default=None)
     parser.add_argument("--scene-start-media-id", default=None)
@@ -1614,6 +1657,7 @@ async def _async_main(argv: Sequence[str] | None = None) -> int:
         accounted_credits=args.accounted_credits,
         measured_clip_cost=args.measured_clip_cost,
         timeout_s=args.timeout_s,
+        project_binding=args.project_binding,
         existing_project_id=args.existing_project_id,
         existing_video_id=args.existing_video_id,
         scene_start_media_id=args.scene_start_media_id,

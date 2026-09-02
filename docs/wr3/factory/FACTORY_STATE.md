@@ -1,6 +1,6 @@
 # Zantara Video Factory — Current State
 
-- updated_at_utc: `2026-09-02T04:20:58Z`
+- updated_at_utc: `2026-09-02T04:28:26Z`
 - machine: `Air-M5`; Flow dispatch, ArcFace, media QA, and eventual ffmpeg work route to Pro.
 - branch: `agent/air-m5/wr3/zantara-video-factory-v3`
 - worktree: `/Users/balizero/nuzantara/.worktrees/wr3-zantara-video-factory-v3`
@@ -31,6 +31,17 @@
 - grammar: apparent oner through motivated occlusion and match-on-action; motion → compression → stasis; warm certainty → mixed ambiguity → neutral clarity; dry footstep/click/latch sound motifs with J/L bridges.
 - banned shortcuts: airports, passport/stamp imagery, literal labelled doors, floating documents, generated text, technical overlays, tourist-postcard Bali filler, and silent reuse of an old hero or start frame.
 - factual boundary: camera probes contain no implementation-specific legal claim. Legal grounding and final scripting remain downstream gates.
+
+## Single Flow Project Lock
+
+- Policy: `one_project_per_episode`. Character creation, outfit selection, identity/motion tests, keyframes, and every scene for S01E13 must stay inside one Flow project and one video shell.
+- Canonical project: `45198d2f-832d-416e-a583-886e439dcd60`.
+- Canonical video shell: `8a3b10d2-1fda-4086-a27d-32c0dbf0f7a7`.
+- Canonical project URL: `https://labs.google/fx/tools/flow/project/45198d2f-832d-416e-a583-886e439dcd60`.
+- Binding SSOT: `docs/wr3/factory/episodes/s01e13-residency-permit/flow-project-binding.json`.
+- The camera-probe CLI now requires the shared binding file. The FlowKit client atomically creates or imports the first project/video pair, reuses it for later work, and rejects divergent project or video IDs before any Flow request.
+- Historical f01/M01-M04 projects remain evidence only. They are closed and ineligible for new scenes, tests, character assets, or retries.
+- A replacement project is allowed only as an explicit owner-authorized whole-episode reset. A failed individual scene never authorizes a new project.
 
 ## f01 Original Four-Variant Sweep — Closed Without Winner
 

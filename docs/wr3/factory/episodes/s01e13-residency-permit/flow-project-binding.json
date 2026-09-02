@@ -1,0 +1,18 @@
+{
+  "schema_version": "wr3.flow-project-binding.v1",
+  "policy": "one_project_per_episode",
+  "episode_id": "s01e13-residency-permit",
+  "project_id": "45198d2f-832d-416e-a583-886e439dcd60",
+  "video_id": "8a3b10d2-1fda-4086-a27d-32c0dbf0f7a7",
+  "endpoint": "http://127.0.0.1:8100",
+  "paygate": "PAYGATE_TIER_TIER1P5",
+  "project_url": "https://labs.google/fx/tools/flow/project/45198d2f-832d-416e-a583-886e439dcd60",
+  "asset_scope": [
+    "Zantara character",
+    "approved outfit",
+    "identity and motion tests",
+    "keyframes",
+    "all episode scenes"
+  ],
+  "replacement_rule": "A different project or video shell requires an explicit whole-episode owner reset; scene-level project creation is forbidden."
+}

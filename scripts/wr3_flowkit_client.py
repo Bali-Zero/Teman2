@@ -88,6 +88,8 @@ FLOW_MEDIA_MAX_BYTES = 128 * 1024 * 1024
 FLOW_MEDIA_MIME_TYPES = frozenset({"video/mp4", "application/mp4"})
 SHOT_RECEIPT_SCHEMA = "wr3.flowkit-shot-receipt.v1"
 RENDER_RECEIPT_SCHEMA = "wr3.flowkit-render-receipt.v1"
+PROJECT_BINDING_SCHEMA = "wr3.flow-project-binding.v1"
+PROJECT_BINDING_POLICY = "one_project_per_episode"
 
 # Backwards-compat alias — older callers passed plan="pro".
 DEFAULT_PLAN = DEFAULT_PAYGATE
@@ -177,6 +179,10 @@ class FlowkitTimeoutError(FlowkitError):
 
 class FlowkitQuotaError(FlowkitError):
     """Flow Pro plan quota exceeded. Episode parked, Telegram P0 fires."""
+
+
+class FlowkitProjectBindingError(FlowkitError):
+    """The episode's immutable one-project binding is absent or inconsistent."""
 
 
 class FlowkitNoResubmitError(FlowkitError):
@@ -688,18 +694,116 @@ def _check_quota(resp_body: str | dict, *, where: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-async def setup_episode_context(
+def _required_binding_string(payload: dict[str, Any], key: str) -> str:
+    value = payload.get(key)
+    if not isinstance(value, str) or not value.strip() or value != value.strip():
+        raise FlowkitProjectBindingError(
+            f"Flow project binding field {key!r} must be a non-blank exact string"
+        )
+    return value
+
+
+def load_episode_project_binding(
+    path: Path,
+    *,
+    episode_id: str,
+    endpoint: str,
+    paygate: str,
+    expected_project_id: str | None = None,
+    expected_video_id: str | None = None,
+) -> EpisodeContext:
+    """Load and validate the immutable project/video selected for one episode.
+
+    This is intentionally local and side-effect free.  Callers can use it as a
+    preflight before health, credit, or generation requests.
+    """
+    if (expected_project_id is None) != (expected_video_id is None):
+        raise FlowkitProjectBindingError(
+            "expected_project_id and expected_video_id must be supplied together"
+        )
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise FlowkitProjectBindingError(
+            f"Flow project binding is unreadable: {path}: {exc}"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise FlowkitProjectBindingError("Flow project binding must be a JSON object")
+    if payload.get("schema_version") != PROJECT_BINDING_SCHEMA:
+        raise FlowkitProjectBindingError(
+            f"Flow project binding schema must be {PROJECT_BINDING_SCHEMA!r}"
+        )
+    if payload.get("policy") != PROJECT_BINDING_POLICY:
+        raise FlowkitProjectBindingError(
+            f"Flow project binding policy must be {PROJECT_BINDING_POLICY!r}"
+        )
+
+    bound_episode_id = _required_binding_string(payload, "episode_id")
+    project_id = _required_binding_string(payload, "project_id")
+    video_id = _required_binding_string(payload, "video_id")
+    bound_endpoint = _required_binding_string(payload, "endpoint")
+    bound_paygate = _required_binding_string(payload, "paygate")
+    canonical_endpoint = _validate_flowkit_endpoint(endpoint)
+
+    if bound_episode_id != episode_id:
+        raise FlowkitProjectBindingError(
+            "Flow project binding belongs to a different episode: "
+            f"expected={episode_id!r} actual={bound_episode_id!r}"
+        )
+    if _validate_flowkit_endpoint(bound_endpoint) != canonical_endpoint:
+        raise FlowkitProjectBindingError(
+            "Flow project binding endpoint does not match the current gateway"
+        )
+    if bound_paygate != paygate:
+        raise FlowkitProjectBindingError(
+            "Flow project binding paygate does not match the current run"
+        )
+    if expected_project_id is not None and project_id != expected_project_id:
+        raise FlowkitProjectBindingError(
+            "Flow project binding rejects a second project for this episode: "
+            f"canonical={project_id} requested={expected_project_id}"
+        )
+    if expected_video_id is not None and video_id != expected_video_id:
+        raise FlowkitProjectBindingError(
+            "Flow project binding rejects a second video shell for this episode: "
+            f"canonical={video_id} requested={expected_video_id}"
+        )
+
+    return EpisodeContext(
+        project_id=project_id,
+        video_id=video_id,
+        project_name=episode_id,
+        endpoint=canonical_endpoint,
+        paygate=paygate,
+    )
+
+
+def _persist_episode_project_binding(path: Path, context: EpisodeContext) -> None:
+    _persist_json_atomic(
+        path,
+        {
+            "schema_version": PROJECT_BINDING_SCHEMA,
+            "policy": PROJECT_BINDING_POLICY,
+            "episode_id": context.project_name,
+            "project_id": context.project_id,
+            "video_id": context.video_id,
+            "endpoint": context.endpoint,
+            "paygate": context.paygate,
+            "project_url": (
+                f"https://labs.google/fx/tools/flow/project/{context.project_id}"
+            ),
+        },
+    )
+
+
+async def _create_episode_context_remote(
     name: str,
     *,
-    endpoint: str = DEFAULT_ENDPOINT,
-    paygate: str = DEFAULT_PAYGATE,
-    timeout_s: int = 30,
+    endpoint: str,
+    paygate: str,
+    timeout_s: int,
 ) -> EpisodeContext:
-    """Create the FlowKit project + video shell for ONE episode.
-
-    Returns EpisodeContext to thread through every subsequent submit_clip call.
-    """
-    endpoint = _validate_flowkit_endpoint(endpoint)
+    """Create one remote project/video pair; caller owns serialization."""
     # 1a. Create project — minimal body. Empirical 2026-05-20: passing
     # tool_name / material / allow_* causes upstream Google Flow API to return
     # 502 "Failed to parse Flow response: 'result'". Defaults applied server-side.
@@ -743,6 +847,81 @@ async def setup_episode_context(
         endpoint=endpoint,
         paygate=paygate,
     )
+
+
+async def setup_episode_context(
+    name: str,
+    *,
+    endpoint: str = DEFAULT_ENDPOINT,
+    paygate: str = DEFAULT_PAYGATE,
+    timeout_s: int = 30,
+    project_binding_path: Path | None = None,
+    expected_project_id: str | None = None,
+    expected_video_id: str | None = None,
+) -> EpisodeContext:
+    """Select exactly one Flow project + video shell for an episode.
+
+    Without ``project_binding_path`` this preserves the legacy create-once
+    behavior for programmatic callers.  Production/factory callers pass one
+    shared binding path for every character, outfit, test, keyframe, and scene.
+    The first caller either imports an explicitly expected existing pair or
+    creates one pair and persists it atomically.  Every later caller reuses the
+    pair; a divergent ID fails before any Flow request.
+    """
+    endpoint = _validate_flowkit_endpoint(endpoint)
+    if (expected_project_id is None) != (expected_video_id is None):
+        raise FlowkitProjectBindingError(
+            "expected_project_id and expected_video_id must be supplied together"
+        )
+
+    if project_binding_path is None:
+        if expected_project_id is not None and expected_video_id is not None:
+            return EpisodeContext(
+                project_id=expected_project_id,
+                video_id=expected_video_id,
+                project_name=name,
+                endpoint=endpoint,
+                paygate=paygate,
+            )
+        return await _create_episode_context_remote(
+            name,
+            endpoint=endpoint,
+            paygate=paygate,
+            timeout_s=timeout_s,
+        )
+
+    binding_path = project_binding_path.expanduser().resolve()
+    lock_path = binding_path.with_name(f".{binding_path.name}.lock")
+    with _exclusive_flowkit_lock(
+        lock_path, label=f"Flow project binding {binding_path}"
+    ):
+        if binding_path.exists():
+            return load_episode_project_binding(
+                binding_path,
+                episode_id=name,
+                endpoint=endpoint,
+                paygate=paygate,
+                expected_project_id=expected_project_id,
+                expected_video_id=expected_video_id,
+            )
+
+        if expected_project_id is not None and expected_video_id is not None:
+            context = EpisodeContext(
+                project_id=expected_project_id,
+                video_id=expected_video_id,
+                project_name=name,
+                endpoint=endpoint,
+                paygate=paygate,
+            )
+        else:
+            context = await _create_episode_context_remote(
+                name,
+                endpoint=endpoint,
+                paygate=paygate,
+                timeout_s=timeout_s,
+            )
+        _persist_episode_project_binding(binding_path, context)
+        return context
 
 
 async def _create_scene(
