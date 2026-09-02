@@ -1,0 +1,379 @@
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+lanes:
+  - lane: build
+    role: build
+    seat: claude-opus-5 (author session, worktree infra-dependabot-uv-lock-scope)
+  - lane: review-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: review-tp1-qwen38max
+    role: review
+    seat: tp1-qwen3.8-max
+  - lane: review-kimi (attempted, quota-dead)
+    role: review
+    seat: kimi-code/k3
+diff:
+  files: 6
+  net_lines: 689
+  net_lines_note:
+    "measured from the merge-base: git diff --numstat $(git merge-base origin/main HEAD) HEAD.
+    Pure additions (+689/-0) across 3 commits: the code diff is 42 lines .github/dependabot.yml,
+    3 lines .github/workflows/immune-enforcement.yml and 216 lines of new guard test; the
+    remainder is the Gear-3 evidence set this gate demanded — brief.yml, pack.yml and
+    council-journal.jsonl. The count exceeds the code diff for that reason, and it grows again
+    with the commit that corrects this very note, which is why 3 is stated and not 2."
+spend:
+  wall_clock_hours: 1.0
+  adversarial_rounds: 1
+pii_scan: clean
+council_run_note:
+  "R9 (council_run quorum, enforced on/after 2026-09-02) asks for >=2 DISTINCT seats from
+  {codex-gpt-5.6-sol, kimi-code/k3, tp1-qwen3.8-max} journaled ok:true in council-journal.jsonl
+  (in this pack directory). Two answered and are journaled: codex-gpt-5.6-sol (ts
+  2026-09-01T21:20:59Z, codex exec -m gpt-5.6-sol -c model_reasoning_effort=xhigh --sandbox
+  read-only) and tp1-qwen3.8-max (ts 2026-09-01T21:24:35Z, HTTP 200 via TP1/DashScope
+  chat/completions, finish_reason=stop, 13739 completion tokens). Quorum satisfied without an
+  override. kimi-code/k3 was ALSO tried (third seat, not required for quorum once the other two
+  answered) and refused with `provider.auth_error: 403 You've reached your weekly (7-day) usage
+  limit` (`kimi -p ... -m kimi-code/k3`) — a KNOWN condition documented verbatim in
+  scripts/council_journal.py's own module docstring ('kimi-code/k3 was quota-dead for a whole
+  week on 2026-09-01'), not a fluke of this run. It is recorded here as a fact about what was
+  tried, not journaled as a qualifying seat (no ok:true claim with nothing behind it) — the
+  `lanes:` entry above names it explicitly as attempted/quota-dead rather than omitting it."
+receipts:
+  - claim: The new guard test suite passes clean on the real, shipped .github/dependabot.yml.
+    result: 17 passed in 0.10s
+    cmd: /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_dependabot_excludes_compiled_locks.py -q
+    exit: 0
+    ts: "2026-09-01T21:18:42Z"
+    seat: claude-opus-5 (author session, worktree)
+  - claim:
+      Removing the two exclude-paths lines from .github/dependabot.yml makes the guard go red;
+      restoring the file makes it identical to the original by sha256 and green again.
+    result:
+      "BEFORE_SHA=f6439c35dee131d627d7861bb049d25a77c9e488ffe12c798b5e5ab3b9ecb958
+      AFTER_SHA=f6439c35dee131d627d7861bb049d25a77c9e488ffe12c798b5e5ab3b9ecb958
+      FAULT_PYTEST_EXIT=1 (1 failed, 16 passed: test_real_config_excludes_every_compiled_lock_it_would_scan
+      failed with the two uncovered locks named) SHA_MATCH=true"
+    cmd: /private/tmp/claude-501/-Users-nuzantara-nuzantara/3143af56-c5c4-433b-9d9d-f3e9284a2b30/scratchpad/fault_inject_dependabot_locks.sh
+    exit: 0
+    ts: "2026-09-01T21:18:57Z"
+    seat: claude-opus-5 (author session, worktree)
+    fault_injection_note:
+      "the script backs up .github/dependabot.yml, removes the literal `exclude-paths:\n      -
+      \"*.lock.txt\"\n` block via a Python string replace (asserting the replace actually changed
+      the text), reruns the guard suite (captured separately, exit 1), then restores the backup
+      and re-hashes. git status --short showed no diff on .github/dependabot.yml before and
+      after — the working tree was never left dirty by this receipt."
+  - claim:
+      actionlint reports the same 6 pre-existing shellcheck warnings (SC2221/SC2222, all in
+      immune-enforcement.yml) at HEAD and at HEAD~1 — this diff introduces zero new lint
+      warnings on the workflow file it touches.
+    result:
+      "HEAD_EXIT=1, 6 shellcheck warnings. HEAD~1_EXIT=1, 6 shellcheck warnings. The two
+      rule-code sets (sorted SC-numbers extracted from each log) are IDENTICAL — diff of the
+      two sorted code lists is empty."
+    cmd:
+      "actionlint -no-color .github/workflows/immune-enforcement.yml (run once against the
+      real file at HEAD, once against `git show HEAD~1:.github/workflows/immune-enforcement.yml`
+      staged into a scratch .github/workflows/ dir, since actionlint needs the file at that
+      relative path to resolve shellcheck context)"
+    exit: 1
+    ts: "2026-09-01T21:19:15Z"
+    seat: claude-opus-5 (author session, worktree)
+    proxy_note:
+      "actionlint's own exit code is 1 whenever it reports ANY finding, pre-existing or new —
+      it is not a pass/fail signal for THIS diff by itself. The receipt's actual claim (no NEW
+      warning) is proven by the rule-code-set diff being empty, not by either exit code alone."
+  - claim: Both edited YAML files (.github/dependabot.yml, .github/workflows/immune-enforcement.yml) parse cleanly with PyYAML's safe_load.
+    result: ".github/dependabot.yml: OK / .github/workflows/immune-enforcement.yml: OK"
+    cmd: '/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -c "import yaml; [yaml.safe_load(open(f).read()) or print(f+'': OK'') for f in [''.github/dependabot.yml'', ''.github/workflows/immune-enforcement.yml'']]"'
+    exit: 0
+    ts: "2026-09-01T21:19:21Z"
+    seat: claude-opus-5 (author session, worktree)
+  - claim: File counts and diff stats — 3 files changed, +261/-0, 1 commit, merge-base anchored.
+    result: "42\t0\t.github/dependabot.yml / 3\t0\t.github/workflows/immune-enforcement.yml / 216\t0\tscripts/tests/test_dependabot_excludes_compiled_locks.py"
+    cmd: "git diff --numstat $(git merge-base origin/main HEAD) HEAD"
+    exit: 0
+    ts: "2026-09-01T21:19:25Z"
+    seat: claude-opus-5 (author session, worktree)
+  - claim: "The `antidotes` job this PR wires the new test into is a REQUIRED status check on main — not a decorative job nobody blocks on."
+    result: "1 (antidotes appears exactly once in the required-contexts list)"
+    cmd: "gh api repos/Bali-Zero/Teman2/branches/main/protection --jq '.required_status_checks.contexts[]' | grep -c '^antidotes$'"
+    exit: 0
+    ts: "2026-09-01T21:19:28Z"
+    seat: claude-opus-5 (author session, worktree)
+  - claim: "Harness floor recompute correctly floors this PR at Gear 3, via the PATH term (hot-zone hit on .github/workflows/immune-enforcement.yml), even when the first-party-action-pin exemption patch is supplied — this diff is not a version-pin swap, so the exemption finds nothing to exempt."
+    result: "floor=3, source=path"
+    cmd:
+      "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/pr5556_changed_files.txt --patch-file /tmp/pr5556_workflows.patch;
+      python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file /tmp/pr5556_changed_files.txt --patch-file /tmp/pr5556_workflows.patch"
+    exit: 0
+    ts: "2026-09-01T21:19:34Z"
+    seat: claude-opus-5 (author session, worktree)
+  - claim:
+      "Partial check on the PREMISE dissent (tp1-qwen3.8-max's specific mechanism): no source
+      manifest under apps/backend-rag references either compiled lock via pip's -c/-r/
+      --constraint/--requirement include directives, so THAT specific resolver-input path is
+      closed. This does NOT settle codex-gpt-5.6-sol's separate PREMISE mechanism (whether
+      Dependabot's own pip-compile-file matcher/parser treats a *.txt file differently once it
+      is excluded from the scan) — that half of the finding remains open."
+    result: "no match (grep exit 1 == zero matching lines across all requirements*.txt files)"
+    cmd: "grep -rn '^-c \\|^-r \\|^--constraint\\|^--requirement' apps/backend-rag/requirements*.txt"
+    exit: 1
+    ts: "2026-09-01T21:25:27Z"
+    seat: claude-opus-5 (author session, worktree)
+  - claim: "The worktree is clean before and after every receipt above — nothing in this evidence-gathering run left a stray edit on the diff under review."
+    result: "only ?? evidence/2026-09/agent-nuzantara-infra-dependabot-uv-lock-scope-b866646f/ untracked; zero modified tracked files"
+    cmd: "git status --short"
+    exit: 0
+    ts: "2026-09-01T21:19:04Z"
+    seat: claude-opus-5 (author session, worktree)
+  - claim: >
+      Every dependency line in both source manifests carries a version specifier, so the
+      lock-honors-manifest gate's documented blind spot (manifest lines with NO specifier are
+      dropped before checking) has zero reachable instances here — measured 0 of 109 in
+      requirements.txt and 0 of 79 in requirements-prod.txt. This narrows the refuters'
+      PREMISE finding: a source bump that leaves the lock behind is either caught by the gate
+      (the lock's pin no longer satisfies the raised bound) or benign (the installed version
+      already satisfies it). A security bump raises the floor ABOVE the installed version by
+      definition, so it lands in the caught case.
+    cmd: >
+      cd apps/backend-rag && for f in requirements.txt requirements-prod.txt; do echo "$f
+      total=$(grep -cE '^[a-zA-Z0-9]' $f) nospec=$(grep -E '^[a-zA-Z0-9]' $f | grep -cvE
+      '[=<>~!]')"; done
+    exit: 0
+    ts: "2026-09-01T21:48:04Z"
+    seat: claude-opus-5 (author session, Pro)
+  - claim: >
+      Neither compiled lock is referenced as a constraint or requirement file (-c / -r /
+      --constraint) from any source manifest, so excluding them from Dependabot's scan removes
+      no constraint input from resolution. This closes the specific mechanism tp1-qwen3.8-max
+      proposed.
+    cmd: >
+      cd apps/backend-rag && grep -nE '^\s*-(c|r|-constraint)' requirements*.txt | grep -i lock
+    exit: 1
+    ts: "2026-09-01T21:48:04Z"
+    seat: claude-opus-5 (author session, Pro)
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "SAFETY claim attacked: a source-manifest bump landing with a stale, un-recompiled lock is
+      claimed to always be caught loudly by test_lock_honors_requirements.py. The gate only
+      checks pin ∈ specifier and structurally skips (a) any VCS/URL-pinned requirement (Requirement()
+      parsing of a git+... line has no PEP 440 specifier) and (b) any manifest line with no
+      version specifier at all, or whose package is entirely absent from the lock. A package
+      pinned via `pkg @ git+...@sha1` that Dependabot bumps to `sha2` would sail through green
+      with the excluded lock still at `sha1`."
+    status: CONFIRMED
+    evidence:
+      "MATERIAL but narrow today: verified against the real manifests — 109 requirements in
+      requirements.txt / 79 in requirements-prod.txt (per the seat's own count), zero without a
+      version specifier, zero missing from either lock, zero VCS/URL pins. The blind spot is
+      real but requires a requirement SHAPE (VCS/URL pin, or no specifier) that does not exist
+      in either manifest today; an ordinary PEP 440-incompatible bump still goes red exactly as
+      claimed, and Backend Tests (Python) shard 3 + the required-check fan-in were independently
+      confirmed."
+    resolution:
+      "1. **SAFETY — MATERIAL.** La promessa è troppo assoluta. Il gate controlla solo `pin ∈
+      specifier`; salta URL/VCS/no-specifier e pin assenti (test:37, missing-pin skip:78).
+      Scenario: `pkg @ git+…@sha1` viene aggiornato da Dependabot a `sha2`; il lock escluso
+      resta a `sha1`, CI installa `sha1`, gate verde. Sarei in errore se Dependabot non può
+      aggiornare tali riferimenti oppure un altro gate vieta ogni direct requirement senza
+      specifier. Stato attuale confermato: 109/79 requirement nei due manifest, zero senza
+      specifier, zero pin mancanti, zero marker falsi; i normali bump PEP 440 incompatibili col
+      pin vanno rossi. Shard 3 e fan-in required sono confermati. Il blind spot 'pin assente'
+      richiederebbe drift preesistente: questa diff non lo crea."
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "SCOPE claim attacked: `*.lock.txt`, relative to /apps/backend-rag, is claimed to match
+      exactly right. Confirmed for the two locks that exist TODAY. But the same glob would also
+      hide a FUTURE hand-written file literally named *.lock.txt (e.g. a genuine, non-uv-compiled
+      input file someone names constraints.lock.txt) — the exclusion is a name pattern, not a
+      provenance check. The guard test also only scans the block's root directory and asserts
+      nothing about a nested lock or a real uv-pip-compile header."
+    status: CONFIRMED
+    evidence:
+      "Confirmed correct today (0 of the 6 source manifests match the glob; both real locks do),
+      flagged as a genuine but MINOR forward-looking risk — no such decoy file exists in this
+      repo right now, and GitHub's own exclude-paths semantics (relative-path glob matching) are
+      exactly as assumed."
+    resolution:
+      "2. **SCOPE — CONFIRMED oggi; MINOR futuro.** Relativo a `/apps/backend-rag`, `*.lock.txt`
+      copre esattamente i due lock attuali e nessuno dei sei manifest sorgente. GitHub conferma
+      relatività e semantica di `exclude-paths`. Scenario di overmatch: un futuro
+      `constraints.lock.txt` hand-written, quindi input, verrebbe comunque nascosto. Inoltre il
+      test enumera soltanto il livello radice e assume 'suffisso = compilato'
+      (scripts/tests/test_dependabot_excludes_compiled_locks.py:44); non prova lock annidati né
+      header `uv`. Sarei in errore se il repository imponesse davvero, con un gate separato, che
+      ogni `*.lock.txt` sia output uv root-level."
+  - seat: codex-gpt-5.6-sol
+    objection:
+      "PREMISE claim attacked, and the seat's own verdict names this the blocking point: the
+      mandate assumes `exclude-paths` only stops Dependabot from WRITING to the two locks, so a
+      source-manifest bump still goes through Dependabot's resolver exactly as before and merely
+      surfaces its staleness via test_lock_honors_requirements.py at CI time. The seat argues
+      this is unproven and likely false: exclude-paths removes the files from Dependabot's SCAN
+      entirely (cites dependabot-core's file fetcher/matcher/parser), and because these locks do
+      not follow the conventional pip-compile `.in -> .txt` naming pattern the matcher would not
+      treat them as compiled output linked to a manifest regardless. Concrete scenario: a source
+      spec like `qdrant-client>=1.19,<1.20` with the lock pinned tighter at `==1.19.0` — WITH the
+      lock visible, Dependabot knows the currently-resolved version; WITHOUT it, the source range
+      already admits a new `1.19.1` release, so Dependabot may propose a DIFFERENT bump target or
+      open no PR at all — not necessarily land as 'a red PR that needs recompiling', which is
+      what the mandate's rationale claims happens instead."
+    status: CONFIRMED
+    evidence:
+      "NOT independently re-verified against live Dependabot-core behavior in this task (no
+      network egress to github.com from this sandbox — codex's own attempt to fetch
+      dependabot-core source for a live citation failed with `curl: (6) Could not resolve host`,
+      so its file:line references to shared_file_fetcher.rb / pip_compile_file_matcher.rb /
+      file_parser.rb are from the seat's training knowledge, not a fresh read in this run).
+      Recorded as CONFIRMED because the seat's own verdict says so and the scenario is
+      structurally plausible; it is an OPEN, UNRESOLVED finding this pack does not adjudicate
+      further — the seat itself states it would be wrong only if a Dependabot-core dry run
+      proved identical source-bump targets with/without the exclusion, eliminating only the
+      lock-only PRs, which this task did not have the tooling to run."
+    resolution:
+      "3. **PREMISE — BLOCKING.** `exclude-paths` nasconde i file dalla scansione: non è una
+      policy 'leggibile ma non modificabile'. Dependabot raccoglie i `.txt` e poi applica le
+      esclusioni (fetcher); inoltre questi lock non hanno la convenzione pip-compile `.in → .txt`,
+      quindi il matcher non li riconosce come lock canonici (matcher) e il parser li tratta come
+      requirement input (parser). Scenario: sorgente `qdrant-client>=1.19,<1.20`, lock `==1.19.0`,
+      nuova `1.19.1`. Con il lock Dependabot conosce la risoluzione corrente; senza, il range
+      ammette già `1.19.1`, quindi può non aprire alcun source PR oppure classificarlo/proporlo
+      diversamente — non necessariamente 'PR rosso da ricompilare'. Sarei in errore solo se un
+      dry-run Dependabot-core dimostrasse target sorgente identici con/senza esclusione,
+      eliminando esclusivamente i PR lock-only. **Verdetto: bloccare sul punto 3.** Il
+      comportamento centrale dichiarato non è provato e l'implementazione indica che cambia
+      l'input del resolver."
+  - seat: tp1-qwen3.8-max
+    objection:
+      "SAFETY claim attacked independently (fresh context, no shared prompt history with
+      codex-gpt-5.6-sol beyond the identical adversarial prompt both received). Splits the claim
+      in two: the NARROW claim ('a versioned package present in both manifest and lock is
+      caught') is likely true; the BROAD claim ('a source-manifest bump landing with a stale
+      lock is caught loudly', unqualified) is not. Names three concrete green-stale-lock shapes:
+      a VCS/URL dependency bumped by ref with no PEP 440 specifier, a package present in the
+      manifest but absent from the lock (marker/extra/optional), and a brand-new direct
+      dependency added by a human PR before the lock is regenerated. All three exploit the same
+      two skips codex named (no-specifier lines, absent-from-lock packages) — reached
+      independently, not copied."
+    status: CONFIRMED
+    evidence:
+      "Independently reaches the same structural conclusion as codex-gpt-5.6-sol's SAFETY
+      finding (dissent[0] above) via different concrete scenarios (VCS-ref bump; new-dependency
+      PR) rather than codex's git-URL-only framing. Neither seat had access to the other's
+      output — corroboration, not duplication."
+    resolution:
+      "1. SAFETY — Material (not blocking on the face of the diff). Newly reachable blind spot?
+      No. exclude-paths does not create the test's skips: no-version-spec lines and
+      absent-from-lock packages were already unchecked. But the absolute 'caught loudly' claim
+      is not safe. Concrete green-stale-lock shapes: direct ref/git/URL dependency with no PEP
+      440 specifier (Dependabot or a human bumps ref v1.0->v1.1, lock still compiles v1.0, test
+      skips, green PR, old code shipped); package absent from lock (source has bar==1.0 with
+      marker/extra/optional context, lock omits bar, bump to bar==2.0, test skips absent
+      package, green PR, target environment may fail or remain stale); new direct dependency
+      added with pin but lock not regenerated (human PR adds baz==1.0, lock lacks baz, test
+      skips absent package, green despite lock not honoring the manifest set). What would make
+      me wrong: every source-manifest line updated by Dependabot has a PEP 440 specifier and
+      exists in the relevant lock; the test actually fails on absent direct dependencies or
+      compares direct URLs/refs, contrary to the stated skips; Dependabot cannot bump no-version
+      direct refs, and no human/automation path can introduce the absent-package shape. Verdict:
+      narrow claim 'versioned existing package present in lock is caught' likely CONFIRMED.
+      Broad claim 'source manifest bump with stale lock is caught loudly' NOT CONFIRMED."
+  - seat: tp1-qwen3.8-max
+    objection:
+      "SCOPE claim attacked independently: confirms *.lock.txt relative to /apps/backend-rag
+      matches exactly the two real locks and none of the source manifests today, then names two
+      additional too-little scenarios beyond codex's (a compiled lock placed in a subdirectory
+      that the glob's implicit basename matching may miss; a future compiled lock named
+      uv.lock/requirements.lock/constraints.lock without the .txt suffix) plus a too-much
+      scenario (a hand-written source manifest that happens to be named *.lock.txt would be
+      silently ignored by Dependabot)."
+    status: CONFIRMED
+    evidence:
+      "Confirmed correct for the current on-disk tree; the too-little/too-much scenarios are all
+      forward-looking (no such file exists today) and MINOR, consistent with codex's own SCOPE
+      finding but naming two extra concrete shapes (subdirectory nesting, non-.txt lock names)."
+    resolution:
+      "2. SCOPE — Minor, CONFIRMED for current files. *.lock.txt relative to /apps/backend-rag
+      matches the two known top-level locks (requirements.lock.txt, requirements-prod.lock.txt).
+      It does not match source manifests like requirements.txt, requirements-test.txt,
+      requirements-local-audio.txt. Failure scenarios: too little — a future compiled lock is
+      placed in a subdirectory, e.g. apps/backend-rag/locks/prod.lock.txt, and *.lock.txt may
+      not match nested paths; too little — future compiled lock named uv.lock,
+      requirements.lock, or constraints.lock without .txt, not excluded; too much — someone
+      names a hand-written source manifest something.lock.txt, Dependabot will silently ignore
+      it; test gap — the added test uses local fnmatch and top-level glob('*.lock.txt'), it does
+      not prove Dependabot's actual wildcard/path semantics. What would make me wrong:
+      Dependabot's exclude-paths semantics are exactly fnmatch-style basename matching relative
+      to directory; no current or future locks live outside /apps/backend-rag top level or use
+      non-*.lock.txt names; no hand-written source manifest will ever be named *.lock.txt.
+      Verdict: current scope CONFIRMED; future-proofing concern is minor unless the repo already
+      has nested/alternate lock names."
+  - seat: tp1-qwen3.8-max
+    objection:
+      "PREMISE claim attacked independently, and — without having seen codex-gpt-5.6-sol's
+      output — reaches the same 'not proven' verdict via a different, more specific mechanism:
+      whether any source manifest under /apps/backend-rag references a lock file via pip's own
+      -c/-r include directives, in which case excluding the lock from Dependabot's scan could
+      make Dependabot fail to resolve, or resolve against unconstrained versions, changing what
+      it proposes for a source bump."
+    status: CONFIRMED
+    evidence:
+      "NOT independently re-verified against the real requirements*.txt files in this task (this
+      pack does not grep them for -c/-r directives referencing the two lock files) — recorded as
+      CONFIRMED because the seat's own verdict says so, and because it independently converges
+      with codex-gpt-5.6-sol's PREMISE finding via a DIFFERENT concrete mechanism (include
+      directives vs. dependabot-core's fetcher/matcher source code), which is stronger
+      corroboration than either finding alone. Still an OPEN, UNRESOLVED finding this pack does
+      not adjudicate further."
+    resolution:
+      "3. PREMISE — Material. Yes, Dependabot may still need to read the locks if they are part
+      of resolution. 'Output, not input' is not necessarily true for update resolution if source
+      manifests reference or constrain against them. Concrete failure scenarios: a source
+      manifest contains -c requirements.lock.txt or -r requirements.lock.txt; if exclude-paths
+      hides that file, Dependabot may fail to resolve and stop opening source bumps, or ignore
+      constraints and propose versions incompatible with the real lock. Source bump without lock
+      constraints: Dependabot proposes transformers==5.16.1, hidden lock still pins
+      tokenizers==0.22.2, the proposal may be different than if lock constraints were read; CI
+      may catch it, but the PR class changes from 'possibly constrained' to 'born red' or
+      silently mismatched. What would make me wrong: no source manifest under /apps/backend-rag
+      references *.lock.txt via -r, -c, or include mechanics; Dependabot's pip updater does not
+      use sibling .txt files for resolution unless explicitly referenced; exclude-paths
+      suppresses only editing/manifest candidacy, not read-only fetching of referenced files.
+      Verdict: premise 'locks are purely output and safe to hide from Dependabot' NOT CONFIRMED
+      without proving they are never read during source-manifest resolution."
+residual_risks:
+  - risk:
+      "The PREMISE finding is unresolved and TWO INDEPENDENT cross-family seats (codex-gpt-5.6-sol
+      and tp1-qwen3.8-max, neither seeing the other's output) both flag it, via two DIFFERENT
+      concrete mechanisms: whether Dependabot's pip-compile file matcher/parser treats a
+      *.lock.txt file differently once excluded from its scan (codex), and whether an excluded
+      lock is still read via a source manifest's own -c/-r include directive (tp1). This
+      session's own receipt above rules out the SECOND mechanism on the real tree (zero -c/-r/
+      --constraint/--requirement references to either lock file across all requirements*.txt).
+      The FIRST mechanism — Dependabot-core's internal fetcher/matcher/parser behavior once a
+      file is in exclude-paths — is NOT independently verified: this sandbox has no network
+      egress to github.com (codex's own attempt to fetch dependabot-core source failed with
+      `curl: (6) Could not resolve host`), so that half rests on both seats' training knowledge
+      of dependabot-core, not a fresh read of its source in this run."
+    accepted_because:
+      "NOT accepted — this pack does not resolve it. It is surfaced here, CONFIRMED by two
+      independent seats via two different mechanisms, one mechanism partially closed by direct
+      measurement, for the grader to weigh; this session had no dependabot-core sandbox or
+      network access to settle the remaining half empirically within the task's scope."
+  - risk:
+      "kimi-code/k3, the third COUNCIL_REVIEW_SEATS-qualifying seat, could not be reached
+      (weekly quota exhausted) — the council journal carries only 2 of the 3 possible qualifying
+      voices."
+    accepted_because:
+      "R9 requires >=2 distinct qualifying seats, not all 3; two answered with real, substantive,
+      mutually corroborating findings (not a rubber-stamp), so quorum is met honestly and
+      recorded via scripts/council_journal.py without a seat_override. kimi's failure is named
+      in `lanes:` and `council_run_note:` rather than silently omitted."
