@@ -7,6 +7,7 @@ prove: (1) the REAL assembler manifest shape, after normalization, PASSES valida
 (2) the validator still REJECTS a genuinely-bad manifest (no claim_ids); (3) the
 PASS-WITH-NOTES verdict the live critic emits is now accepted.
 """
+
 from __future__ import annotations
 
 import json
@@ -34,16 +35,31 @@ REAL_SHAPE = {
     "episode_id": "content-creator-3-roads-2026-05-29",
     "slug": "content-creator-3-roads",
     "assembled_at": "2026-05-30T12:30:00+08:00",
-    "master_mp4": {"path": "/x/master.mp4", "sha256": "abc123", "size_bytes": 44019984,
-                   "has_video": True, "has_audio": True},
+    "master_mp4": {
+        "path": "/x/master.mp4",
+        "sha256": "abc123",
+        "size_bytes": 44019984,
+        "has_video": True,
+        "has_audio": True,
+    },
     "duration_s": 144.0,
-    "variants": {"tiktok": "/x/tiktok.mp4", "ig-reels": "/x/ig.mp4",
-                 "yt-shorts": "/x/yt.mp4", "fb": "/x/fb.mp4"},
-    "variants_detail": {}, "variants_failed": [],
-    "clips_count": 18, "vo_lufs": -13.8, "vo_path": "/x/vo.wav",
-    "music_path": "/x/music.mp3", "subtitles_ass": "/x/subs.ass",
-    "identity_gate": 0.79, "render_cost_cr": 360,
-    "degradation_flags": ["subtitle_loss"], "critic_verdict": "PASS-WITH-NOTES",
+    "variants": {
+        "tiktok": "/x/tiktok.mp4",
+        "ig-reels": "/x/ig.mp4",
+        "yt-shorts": "/x/yt.mp4",
+        "fb": "/x/fb.mp4",
+    },
+    "variants_detail": {},
+    "variants_failed": [],
+    "clips_count": 18,
+    "vo_lufs": -13.8,
+    "vo_path": "/x/vo.wav",
+    "music_path": "/x/music.mp3",
+    "subtitles_ass": "/x/subs.ass",
+    "identity_gate": 0.79,
+    "render_cost_cr": 360,
+    "degradation_flags": ["subtitle_loss"],
+    "critic_verdict": "PASS-WITH-NOTES",
 }
 
 BRIEF = {
@@ -67,7 +83,9 @@ def test_real_shape_fails_validation_raw():
 
 def test_normalized_real_shape_passes_validation():
     """The headline F20 cure: normalize the real shape -> all 18 fields present + valid."""
-    out = normalize_assembler_manifest(REAL_SHAPE, brief=BRIEF, identity_report=IDENTITY)
+    out = normalize_assembler_manifest(
+        REAL_SHAPE, brief=BRIEF, identity_report=IDENTITY
+    )
     # all 18 mandatory fields present
     assert set(MANDATORY_FIELDS).issubset(out.keys())
     # field mapping correct
@@ -87,7 +105,9 @@ def test_normalized_real_shape_passes_validation():
 
 def test_pass_with_notes_now_accepted():
     assert "PASS-WITH-NOTES" in ALLOWED_VERDICTS
-    out = normalize_assembler_manifest(REAL_SHAPE, brief=BRIEF, identity_report=IDENTITY)
+    out = normalize_assembler_manifest(
+        REAL_SHAPE, brief=BRIEF, identity_report=IDENTITY
+    )
     assert out["critic_verdict"] == "PASS-WITH-NOTES"
     validate_manifest(out)
 
@@ -106,7 +126,7 @@ def test_finalize_writes_normalized_sibling(tmp_path: Path):
     (ep / "episode_manifest.json").write_text(json.dumps(REAL_SHAPE))
     (ep / "brief.json").write_text(json.dumps(BRIEF))
     (ep / "identity-report.json").write_text(json.dumps(IDENTITY))
-    out = finalize_episode_manifest(ep)
+    finalize_episode_manifest(ep)
     normalized_path = ep / "episode_manifest.normalized.json"
     assert normalized_path.exists()
     # original NOT overwritten
@@ -118,21 +138,31 @@ def test_malformed_future_manifest_fails_loud():
     """Refuter CLAIM-1 hardening: a future/malformed assembler manifest must NOT slide
     through silently. A shape with no claims + no derivable verdict is REJECTED, not
     normalized into a fake-green pass."""
-    malformed = {"episode_id": "future-x", "slug": "future",
-                 "assembled_at": "2026-07-01T00:00:00+08:00",
-                 "duration_s": 60.0, "variants": {}, "critic_verdict": "WHATEVER-NEW-VERDICT"}
+    malformed = {
+        "episode_id": "future-x",
+        "slug": "future",
+        "assembled_at": "2026-07-01T00:00:00+08:00",
+        "duration_s": 60.0,
+        "variants": {},
+        "critic_verdict": "WHATEVER-NEW-VERDICT",
+    }
     out = normalize_assembler_manifest(malformed, brief={}, identity_report={})
     # unknown verdict not in the (deliberately) widened enum -> rejected
     with pytest.raises(ManifestValidationError):
         validate_manifest(out)
 
 
-REAL_EPISODE = Path("/Users/nuzantara/nuzantara/apps/war-room/output/episode/"
-                    "content-creator-3-roads-2026-05-29")
+REAL_EPISODE = Path(
+    "/Users/nuzantara/nuzantara/apps/war-room/output/episode/"
+    "content-creator-3-roads-2026-05-29"
+)
+REAL_MANIFEST = REAL_EPISODE / "episode_manifest.json"
 
 
-@pytest.mark.skipif(not REAL_EPISODE.exists(),
-                    reason="real episode dir not present (CI/clean checkout)")
+@pytest.mark.skipif(
+    not REAL_MANIFEST.is_file(),
+    reason="real episode manifest not present (CI/clean checkout)",
+)
 def test_against_the_actual_on_disk_manifest():
     """Strongest proof: the ACTUAL manifest on disk, normalized, passes — not a mock."""
     out = finalize_episode_manifest(REAL_EPISODE, write=False)
