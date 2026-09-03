@@ -55,7 +55,7 @@ export interface KBLIDisputedScaleRow {
   skala_usaha?: KBLIBusinessScale[];
   kategori_risiko?: string;
   perizinan?: string | string[];
-  kewenangan?: string;
+  kewenangan?: string | string[];
   jangka_waktu?: string;
   scope_uraian?: string;
   [key: string]: unknown;
