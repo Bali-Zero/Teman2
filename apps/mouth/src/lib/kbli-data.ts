@@ -494,7 +494,7 @@ function loadData(): void {
 // =============================================================================
 
 /**
- * Get all 1,563 KBLI codes as processed objects.
+ * Get all KBLI codes as processed objects.
  * Data is loaded and cached on first call.
  */
 export function getAllCodes(): KBLICode[] {
