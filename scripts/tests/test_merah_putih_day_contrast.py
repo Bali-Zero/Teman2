@@ -544,7 +544,14 @@ def _workflow_trigger_paths() -> list[str]:
     # list — vacuously green, which is worse than red.
     trigger = doc.get("on", doc.get(True))
     assert trigger, f"{WORKFLOW.name}: no trigger block parsed — check the YAML 1.1 `on:` key trap"
-    return list(trigger["pull_request"]["paths"])
+    # The list moved from `pull_request.paths` to `push.paths` on 2026-09-03,
+    # when this workflow took the shape a REQUIRED context must have. The
+    # trigger no longer filters PRs at all — the in-job sentinel reads THIS
+    # list and decides — so `push.paths` is now the single copy, and both the
+    # sentinel and this test read it from here.
+    paths = trigger["push"]["paths"]
+    assert paths, f"{WORKFLOW.name}: `push.paths` is empty — the guarded set cannot be nothing"
+    return list(paths)
 
 
 def test_the_workflow_trigger_covers_every_file_this_guard_reads() -> None:
@@ -579,4 +586,66 @@ def test_the_workflow_trigger_covers_every_file_this_guard_reads() -> None:
         "these files are READ by this guard but match no `paths:` pattern in "
         f"{WORKFLOW.name}, so changing one starts no check run:\n  "
         + "\n  ".join(uncovered)
+    )
+
+
+def test_the_workflow_has_the_shape_a_required_context_must_have() -> None:
+    """A path-filtered check cannot be REQUIRED, and finding that out from a
+    jammed merge queue is the expensive way.
+
+    GitHub does not synthesise a passing report for a workflow that did not
+    start: a required context whose `pull_request` trigger filters by path
+    simply never reports on the PRs it does not match, and both the PR and the
+    merge-queue entry wait for it forever. This repo has already paid that once
+    (2026-08-30). The two properties below are what the required workflows here
+    (`guard-conformance.yml`, `organ-conformance.yml`) have in common, and they
+    are asserted rather than described so that a later edit re-adding a
+    `paths:` filter to `pull_request` fails here instead of in the queue.
+
+    Both halves matter independently: without `merge_group` the context never
+    reports on the queue's own ref; with `pull_request.paths` it never reports
+    on two thirds of the PRs.
+    """
+    import yaml
+
+    doc = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    trigger = doc.get("on", doc.get(True))
+    assert trigger, f"{WORKFLOW.name}: no trigger block parsed"
+
+    assert "pull_request" in trigger, f"{WORKFLOW.name}: no pull_request trigger"
+    pr = trigger["pull_request"]
+    # A bare `pull_request:` parses as None — that is the shape we want.
+    assert pr is None or "paths" not in pr, (
+        f"{WORKFLOW.name}: `pull_request` carries a `paths:` filter again. A "
+        "required context must report on EVERY pull request; filter inside the "
+        "job with the sentinel, never at the trigger."
+    )
+    assert "merge_group" in trigger, (
+        f"{WORKFLOW.name}: no `merge_group:` trigger. A required context that "
+        "never runs on the merge queue's ref leaves every entry waiting."
+    )
+
+
+def test_the_sentinel_reads_the_trigger_list_instead_of_restating_it() -> None:
+    """The sentinel decides whether the guard runs. If it carried its own copy
+    of the guarded paths, the copy would rot exactly like the hand-kept list
+    this guard's docstring already warns about — and the failure is silent: the
+    sentinel reports "nothing changed" for a file that did, and the job is green
+    over a real regression.
+
+    So the sentinel must READ `push.paths` out of the workflow at run time.
+    This asserts the mechanism, not the wording: the sentinel step must parse
+    this workflow file and index `push`/`paths`.
+    """
+    text = WORKFLOW.read_text(encoding="utf-8")
+    sentinel = text.split("Did a guarded surface change?", 1)
+    assert len(sentinel) == 2, f"{WORKFLOW.name}: the sentinel step is gone"
+    body = sentinel[1].split("- name:", 1)[0]
+    assert "merah-putih-day-contrast.yml" in body, (
+        "the sentinel does not read this workflow file — it is deciding from "
+        "something other than the trigger's own list"
+    )
+    assert '["push"]["paths"]' in body, (
+        "the sentinel does not index `push.paths` — if it now keeps its own "
+        "pattern list, the trigger and the gate can disagree silently"
     )
