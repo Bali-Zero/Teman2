@@ -3,7 +3,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { KBLISection } from "@/lib/kbli-types";
 
 /**
- * In-panel navigation across the 22 sections.
+ * In-panel navigation across the 21 sections (A-U, measured 2026-09-03 from the
+ * prerendered route set).
  *
  * Every entry is a real `<Link>` to `/kbli/sectors/<id>`, so it is intercepted
  * exactly like the card that opened the panel: the section swaps inside the
