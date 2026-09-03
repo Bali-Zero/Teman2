@@ -43,6 +43,69 @@ one question, the options with their measured cost, and who executes once ruled.
 
 ## Filled in by lanes
 
-- Item 3 draft (Lane E): _pending_
+- Item 3 draft (Lane E): **ready — see §Item 3 below.**
 - Item 6 ruling sheet (Lane C4): _pending_
 - Item 8 one-liners (Lane G, per machine): _pending_
+
+---
+
+## Item 3 — the citation rule, replacement paragraph (drafted by Lane E, 2026-09-03)
+
+**Where it lives.** One paragraph, one file: `apps/backend-rag/backend/prompts/zantara_core.py`,
+inside `CITATION_RULES` (the `MANDATORY LAW CITATION` bullet, currently line 314). That constant is
+the SSOT for the whole prompt chain — `zantara_core_v4.py:517` and `zantara_core_v5.py:259` both
+interpolate it, and `wa_package_builder.py:41-45` imports it directly into the codex-leg persona.
+So changing this one bullet changes every prompt version **and** the live WhatsApp path, and no
+other file needs to move. Verified 2026-09-03 by grep: `MANDATORY LAW CITATION` appears in
+`zantara_core.py` only.
+
+**Why it needs an exit.** The rule says the model **MUST** cite the source law at the end of every
+response, and when the KB lacks the article it says to "cite the regulation name only". There is no
+licit path to cite _nothing_. A model that is forbidden to stay silent will produce the
+nearest-sounding statute. Two measured instances, cycle 359 (WhatsApp thread 30, 2026-09-01):
+
+- Asked _"posso pagare con bonifico?"_ — a question about how a client pays Bali Zero — the bot
+  closed with **PP 36/2021**, which is the regulation on **wages**. No statute governs our bank
+  details; the rule required one anyway.
+- Asked why it would not accept a passport photo in chat, the bot cited **immigration law** as the
+  basis. The reason is data protection and our own intake policy; immigration law says nothing
+  about the channel a document arrives on.
+
+Neither is a retrieval failure. Both are the rule working exactly as written.
+
+**Proposed replacement** (drop-in for the `MANDATORY LAW CITATION` bullet; the LEGAL/MONEY and CHAT
+bullets above it are unchanged):
+
+```
+  - **LAW CITATION — required when a law is the basis, forbidden when it is not.**
+    Cite a source law at the END of a response ONLY when the answer's substance rests on a
+    statute, regulation or official tariff that is present in the KB context you were given.
+    Format: "📜 Sumber: [Nama Peraturan], Pasal [X]" or "📜 Source: [Law Name], Article [X]".
+    Examples:
+    - "📜 Sumber: PP 48/2021 tentang Keimigrasian, Pasal 123"
+    - "📜 Sumber: UU PPh No. 36/2008, Pasal 26"
+    If the regulation is in the KB but the exact pasal is not, cite the regulation name alone:
+    "📜 Sumber: PP 48/2021 tentang Keimigrasian".
+    **Cite NOTHING — and add no source line at all — when:**
+    (a) the question is operational or commercial rather than legal: our prices, our payment
+        methods and bank details, our timelines, which documents WE need from a client, how to
+        send them, appointment or office logistics, the status of a file;
+    (b) the answer is a courtesy, a greeting, a clarifying question, or a hand-off to a
+        colleague;
+    (c) the KB context you were given contains no regulation that actually governs the answer.
+    In case (c) you may still answer from the context you have — you simply do not attach a
+    citation, and you never name a law you were not given.
+    **A citation is a claim about the source of the answer. Naming a statute that does not govern
+    the question is a fabrication, and it is worse than no citation** — an operational answer with
+    no source line is correct and complete.
+```
+
+**What changes, in one line:** `MUST cite` becomes `cite when a law is the basis, and never
+otherwise`; the "cite the regulation name only" fallback narrows to regulations actually present in
+the context; and the three no-citation cases are named so the model has somewhere licit to land.
+
+**Proof, once applied (Lane E runs it, not Zero).** Re-ask the two cycle-359 questions on the real
+thread and require: zero `📜` line on the bank-transfer answer and on the passport-photo refusal;
+`📜` still present on a substantive immigration or tax answer (the innocence half — the cure must
+not turn into a silent removal of citations). Both re-measured on real delivery, in the cycle-360
+battery table.
