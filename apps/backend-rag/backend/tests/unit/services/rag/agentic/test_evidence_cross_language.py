@@ -391,3 +391,39 @@ def test_a_three_letter_word_followed_by_punctuation_survives() -> None:
         None, ["Biaya sim baru adalah Rp 100.000 di Polres."], "sim?"
     )
     assert score >= 0.15
+
+
+# ---------------------------------------------------------------------------
+# The guard, swept over the WHOLE vocabulary rather than over hand-picked words
+#
+# The independent grader (backend-verifier, 2026-09-03) refused to sign off the
+# hand-built collision list, and was right to: it found a collision for only 7
+# of the 38 entries, failed to construct one for 19, and never attempted the
+# remaining 12 (`imk`, `b1`, `c1`, `c2`, `c7`, `d1`, `d2`, `e23`, `e28`, `e31`,
+# `e32`, `e33`) — zero data, which is not the same as safe. It also showed that
+# three of my own cases (`pt`, `rp`, `sk`) proved nothing about the guard: with
+# a query of `"PT?"` origin/main never extracts a two-letter identifier at all,
+# so that comparison could not exercise the substring path it was meant to test.
+#
+# Enumeration was the wrong instrument. The guard is structural — word
+# boundaries apply to every vocabulary entry — so it is swept structurally: for
+# each of the 38, present as a whole token must COUNT, and the same characters
+# buried inside a longer token must NOT. No entry can be forgotten, and a
+# future addition to the vocabulary is covered the day it is added.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("identifier", sorted(_SHORT_IDENTIFIERS))
+def test_every_identifier_counts_as_a_whole_token(identifier: str) -> None:
+    score = calculate_evidence_score(
+        None, [f"Dokumen {identifier} sudah diterbitkan kemarin."], identifier
+    )
+    assert score >= 0.15, f"{identifier!r} was not counted when present"
+
+
+@pytest.mark.parametrize("identifier", sorted(_SHORT_IDENTIFIERS))
+def test_no_identifier_counts_when_buried_in_a_longer_token(identifier: str) -> None:
+    score = calculate_evidence_score(
+        None, [f"Zxq{identifier}vkw plus some entirely unrelated filler prose."], identifier
+    )
+    assert score < 0.15, f"{identifier!r} matched inside a longer token"
