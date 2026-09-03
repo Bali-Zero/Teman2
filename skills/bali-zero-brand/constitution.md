@@ -2,7 +2,7 @@
 
 > Hard rules. Non-negotiable. The wr2-critic subagent enforces these. Violations = hard fail, route back to layout-composer.
 >
-> Last revision: 2026-05-08. Owner: Antonello Siano.
+> Last revision: 2026-09-02. Owner: Antonello Siano.
 
 ---
 
@@ -19,7 +19,7 @@
 
 | Token                 | Hex       | Role                                         |
 | --------------------- | --------- | -------------------------------------------- |
-| `color.bg.antracite`  | `#373D42` | Primary background                           |
+| `color.bg.antracite`  | `#363A3E` | Primary background                           |
 | `color.bg.black`      | `#000000` | Secondary background, hero overlay           |
 | `color.text.white`    | `#FFFFFF` | Body text, headlines                         |
 | `color.accent.yellow` | `#F4C430` | Data, sub-headlines, key numbers             |
@@ -27,6 +27,7 @@
 | `color.text.muted`    | `#9CA3AF` | Sources, captions, footer (rare use)         |
 
 2.2 **Banned colors in TEXT zones and UI elements**: green (any shade), blue (any shade), purple (any shade), pastels, beige, brown. Hard fail.
+2.2.1 **Owner-locked anthracite (amended 2026-09-02)**: the flat background represented by `color.bg.antracite` MUST resolve to exactly `#363A3E` (RGB 54, 58, 62). A bluer blue-grey approximation is not an acceptable alias. This lock applies to carousel text zones, flat editorial backgrounds and Bali Zero UI surfaces; it does not recolor natural hero-photo zones.
 2.3 **Region-aware pixel adherence**:
 
 - **TEXT zones** (heading, body, sub-headline, list items, captions, source footers, status badges): ≥95% of pixels in palette tokens (color.bg._ + color.text._ + color.accent._ + color.status._). Hard fail.
@@ -369,7 +370,7 @@ When `brief.primary_regulation_code` is non-empty, the cover slide MUST display 
 
 When `brief.primary_regulation_code` is empty, the cover MUST NOT display this badge (avoid false-authoritative signal).
 
-**Rationale**: FT, Kontan, Tempo signal "we are citing the primary source" before the body is read. Indonesian regulatory audience reads the code first. Yellow chosen 2026-05-13 after WCAG audit (research/wr2-design-sota/2026-05-13-best-bg-color-editorial-publisher.md) found red-as-text on the dark bg FAILS contrast; yellow passes. Recomputed 2026-07-08 on the corrected antracite `#373D42` (historic value `#373D42` read as blue-grey — palette fix by Zero): yellow `#F4C430` vs bg = 6.70:1 (AA, AAA for the large display text carousels use), white vs bg = 11.0:1 (AAA), muted `#9CA3AF` vs bg = 4.33:1 (large text/captions only), red `#C8102E` vs bg = 1.87:1 (never as text on bg — logo/badge fills only), black text on yellow = 12.79:1 (AAA inside).
+**Rationale**: FT, Kontan, Tempo signal "we are citing the primary source" before the body is read. Indonesian regulatory audience reads the code first. Yellow chosen 2026-05-13 after WCAG audit (research/wr2-design-sota/2026-05-13-best-bg-color-editorial-publisher.md) found red-as-text on the dark bg FAILS contrast; yellow passes. Recomputed 2026-09-02 on the owner-locked anthracite `#363A3E`: yellow `#F4C430` vs bg = 6.98:1 (AA, AAA for the large display text carousels use), white vs bg = 11.47:1 (AAA), muted `#9CA3AF` vs bg = 4.52:1 (AA), red `#C8102E` vs bg = 1.95:1 (never as text on bg — logo/badge fills only), black text on yellow = 12.79:1 (AAA inside).
 
 **Brand semantics (added 2026-05-13)**: yellow unifies regulation badge with Article 6.9 anchor highlights as the **family color for "verifiable facts"** — numbers, codes, regulations, dates. Red retained for: logo (3 ALI ZERO red glyph on black-circle bg, accessible by construction), red rule dividers (line not text, contrast n/a), and status critical alerts on white background only.
 

@@ -65,7 +65,7 @@ risks:
   - "The first live queue_unstick_cron.sh tick against a real resolved PR on Pro is the actual
     proof-of-armed for the retraction path — everything above is local simulation with a mocked
     _run(). No live dispatch was run as part of this PR (queue_unstick_cron.sh is a 10-min cron
-    already installed and armed on Pro per PENDING-ARMS; its next natural tick against a real
+    already installed and armed on Mini per PENDING-ARMS; its next natural tick against a real
     MERGED/CLOSED PR still in dirty_seen state is the receipt, observable via
     dirty_retracted=N in its own summary line and *.retracted-* files in the mailbox)."
   - "queue_stall_notify.py's broadcast surface is unmeasured for staleness (0 samples) — the TTL
