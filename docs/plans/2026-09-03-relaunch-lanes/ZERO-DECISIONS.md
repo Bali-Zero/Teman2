@@ -43,6 +43,24 @@ one question, the options with their measured cost, and who executes once ruled.
 
 ## Filled in by lanes
 
+- **Item 2 — the two options, priced (Lane D, measured 2026-09-03 on PROD + the canonical).** Nothing
+  else in the KBLI lane waits on this: Lot 0 (17 placeholder codes, 9 `KITAS` codes, 1 missing node)
+  and Phase 1a's 109 built codes proceed either way. 61 codes, 63 target nodes, both ways.
+  - **A — gate on F2 (Lane D recommends).** Client sees no change until F2 ships; then `REGULATED`
+    - the statute licence + **the procedure sentence naming the actual issuer** (OJK, the ministry,
+      the bupati). Cost: the F2 router increment (3 additive fields on `KBLILicense`, cache `v6`→`v7`,
+      2 mouth renderers, 2 test files) + a separate 1-line flip PR after Fly **and** Vercel prove-live
+    - 3 cure lots. Risk: delay only — the data is already there, `persyaratan` names the issuing
+      body on **61/61** codes.
+  - **B — relabel now.** Client sees `REGULATED` + `NIB` / `NIB dan Sertifikat Standar` / `NIB dan
+Izin` with no hint that OSS will not issue it. Cost: 3 cure lots, **zero** new router or mouth
+    lines. Risk: the client is sent to the wrong door on codes like `85510` (yoga/retreat) and
+    `64122` (OJK-licensed) — the licence name is right and the counter is wrong.
+  - Measured caveat that binds both: `kewenangan`, the field an `issuer` line would read, holds only
+    three generic role labels over these 61 codes (`Menteri/Kepala Badan` 608 rows,
+    `Bupati/Walikota` 72, `Gubernur` 16) and names **zero** institutions. `procedure` is the half
+    that answers the question; an F2 shipping `issuer` alone would print "issued by Menteri/Kepala
+    Badan". Detail: spec §9 of `docs/specs/2026-09-02-kbli-kg-licensing-class-cure-spec.md` (r4).
 - Item 3 draft (Lane E): _pending_
 - Item 6 ruling sheet (Lane C4): _pending_
 - Item 8 one-liners (Lane G, per machine): _pending_
