@@ -1,0 +1,23 @@
+task_id: lane-e-bot-wa-evidence-cross-language
+gear: 2
+l_level: L2
+gate_class: client-facing
+objective: >-
+  Stop the WhatsApp abstain gate being decided by the language the question is
+  written in. Measured live: the SAME question against the SAME catalogue entry
+  scored 0.08 with English context and 0.80 with Indonesian context, against a
+  0.15 threshold — and 0.08 is the "no semantic relevance" branch, not weak
+  overlap. This ships the vocabulary half of the spec and withdraws the
+  retrieval-primary half with its reason and its measurement.
+grader: codex-sol
+pii: none
+notes: >-
+  Headline measurement, same inputs on both trees: "Harga PT PMA berapa all in?"
+  against ENGLISH context scores 0.08 on origin/main and 0.60 on this branch.
+  Zero regressions: 1938 passed in the agentic suite and 1707 in services/rag.
+  The retrieval-primary inversion was built here and WITHDRAWN — it regressed 11
+  standing abstain tripwires, nine of which are pinned to cosines a real
+  embedding does not produce (measured 2026-09-03 on text-embedding-3-small:
+  "quantum physics theory" vs KBLI text = 0.038 where the fixture says 0.90).
+  Correcting nine safety tripwires is its own reviewable change. Two residuals
+  are pinned as strict xfails with their measurements, not left silent.
