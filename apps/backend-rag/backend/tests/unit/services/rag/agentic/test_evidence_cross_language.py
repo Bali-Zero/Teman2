@@ -313,3 +313,81 @@ def test_longer_keywords_still_match_as_substrings() -> None:
         RETRIEVAL, ["Proses pendiriannya memakan waktu 30 hari kerja."], "pendirian PT PMA"
     )
     assert score >= 0.15
+
+
+# ---------------------------------------------------------------------------
+# Adversarial review, 2026-09-03 (spalla-review, not the author): BLOCK, four
+# findings. All four are pinned here, with the numbers that were measured.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("query", "context", "collision"),
+    [
+        ("Apa itu OSS?", "Quarterly earnings show a net loss this quarter.", "oss/loss"),
+        ("Apa itu OSS", "The cross-border boss said it was possible.", "oss/cross"),
+        ("Apa itu hak milik?", "Please shake the bottle well before use.", "hak/shake"),
+        ("Apakah IMB sudah keluar?", "The instructor asked everyone to climb.", "imb/climb"),
+        ("Berapa tarif PKP?", "Please pick up the parcel at reception.", "pkp/pick-up"),
+    ],
+)
+def test_three_character_identifiers_do_not_match_inside_words(
+    query: str, context: str, collision: str
+) -> None:
+    """Finding 1 (BLOCKER): the collision is by VOCABULARY, not by length.
+
+    Drawing the word-boundary line at two characters was wrong and measured
+    wrong: with no sources at all, 'Apa itu OSS?' scored 0.600 against a
+    quarterly-earnings chunk. Note the punctuated forms score 0.600 on
+    origin/main too — the old length rule ran on the RAW token, so 'OSS?' is
+    four characters and passed it.
+    """
+    score = calculate_evidence_score(None, [context], query)
+    assert score < 0.15, f"{collision}: off-topic chunk scored {score}"
+
+
+@pytest.mark.parametrize(
+    ("query", "context"),
+    [
+        ("Apa itu OSS?", "OSS adalah sistem perizinan berusaha terintegrasi elektronik."),
+        ("Apakah IMB sudah keluar?", "IMB sudah diganti PBG sejak UU Cipta Kerja."),
+        ("Berapa tarif PKP?", "PKP wajib memungut PPN atas penyerahan barang kena pajak."),
+    ],
+)
+def test_three_character_identifiers_still_match_their_own_subject(
+    query: str, context: str
+) -> None:
+    """Innocence's other half: the guard must not cost the real hits."""
+    assert calculate_evidence_score(None, [context], query) >= 0.15
+
+
+RELEVANT_KITAS = ["The KITAS visa process typically takes 14 business days after submission."]
+
+
+@pytest.mark.parametrize(
+    "extra",
+    ["", " NIB OSS", " NIB OSS SPT PKP IMB HAK AJB", " NIB OSS SPT PKP IMB HAK AJB SHM HGB PBG SLF"],
+)
+def test_naming_more_identifiers_never_lowers_the_score(extra: str) -> None:
+    """Finding 3 (MEDIUM): dilution — and it crossed the gate.
+
+    The ratio is hits/keywords, so each token the vocabulary newly keeps also
+    enlarges the denominator. Before the clamp, on this same relevant chunk:
+    three keywords scored 0.600, five scored 0.400, and twelve scored **0.000
+    — below the gate, where the old rule scored 0.600**. Naming more of the
+    right things made the bot abstain.
+    """
+    score = calculate_evidence_score(None, RELEVANT_KITAS, "syarat visa KITAS" + extra)
+    assert score >= 0.15, f"appending {extra!r} pushed a relevant chunk to {score}"
+
+
+def test_a_three_letter_word_followed_by_punctuation_survives() -> None:
+    """Finding 4 (LOW): the walrus rewrite moved the length test onto the
+    STRIPPED token, so 'sim?' — kept by the old raw-token test at four
+    characters — was silently dropped. Measured: 0.600 on origin/main, 0.000
+    on this branch before the clamp restored the old token set.
+    """
+    score = calculate_evidence_score(
+        None, ["Biaya sim baru adalah Rp 100.000 di Polres."], "sim?"
+    )
+    assert score >= 0.15

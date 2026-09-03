@@ -456,24 +456,73 @@ def calculate_evidence_score(
 
     # ========== RELEVANCE SCORING ==========
     # Calculate keyword match ratio - how many query keywords appear in context
-    # Short identifiers are matched on WORD BOUNDARIES, longer keywords on
-    # substrings. The asymmetry is deliberate and it is what makes keeping the
-    # short vocabulary safe: `pt` as a substring hits `receipt`, `script`,
-    # `empty` and `accept`; `rp` hits `corporate` and `purpose`; `sk` hits
-    # `risk`, `task` and `desk`. Two such accidental hits are enough to lift
-    # keyword_match_ratio over 0.15, which turns semantic_relevance from 0.0
-    # into 0.2 and the final score from <=0.1 into up to 0.30 — an off-topic
-    # chunk clearing a 0.15 gate. Substring matching is kept for keywords of
-    # 3+ chars because it is load-bearing for Indonesian morphology
-    # (`pendirian` inside `pendiriannya`) and collides far less.
+    # EVERY identifier in the vocabulary is matched on WORD BOUNDARIES; only
+    # ordinary keywords keep substring matching.
+    #
+    # The split is by VOCABULARY, not by length, and that distinction is the
+    # whole finding. A first version of this guard drew the line at two
+    # characters, on the reasoning that only the shortest tokens collide. It
+    # is false, and measured: `oss` is inside `loss`, `cross`, `across`,
+    # `possible`; `hak` is inside `shake`; `imb` is inside `climb` and `limb`;
+    # `pt` is inside `receipt`, `script`, `empty`, `accept`; `rp` is inside
+    # `corporate`. Measured on this tree before the fix, with no sources at
+    # all: "Apa itu OSS?" against a chunk about quarterly earnings scored
+    # **0.600**, and "Apa itu hak milik?" against a chunk about shaking a
+    # bottle scored **0.600** — both far over the 0.15 ABSTAIN gate, on text
+    # with no topical relation whatever.
+    #
+    # Substring matching stays for ordinary keywords because Indonesian
+    # morphology depends on it (`pendirian` inside `pendiriannya`). An
+    # identifier does not inflect, so it loses nothing by being matched whole.
     context_tokens = set(re.findall(r"[a-z0-9]+", context_text))
-    keyword_hits = sum(
-        1
-        for kw in query_keywords
-        if (kw in context_tokens if len(kw) <= 2 else kw in context_text)
-    )
+
+    def _hits(kw: str) -> bool:
+        return kw in context_tokens if kw in _SHORT_IDENTIFIERS else kw in context_text
+
+    keyword_hits = sum(1 for kw in query_keywords if _hits(kw))
 
     keyword_match_ratio = keyword_hits / len(query_keywords) if query_keywords else 0.0
+
+    # ---- THE VOCABULARY MAY ONLY ADD EVIDENCE, NEVER SUBTRACT IT ----------
+    #
+    # The ratio is hits/keywords, so every token this change newly KEEPS also
+    # enlarges the denominator. On a chunk that answers part of a composite
+    # question, that reads as less evidence than before — the opposite of the
+    # intent. Measured on the same relevant KITAS chunk, before this clamp:
+    # "syarat visa KITAS" scored 0.600, "syarat visa KITAS NIB OSS" 0.400, and
+    # a twelve-identifier question **0.000 — below the gate, where the old
+    # rule scored 0.600**. Naming more of the right things made the bot
+    # abstain.
+    #
+    # Dilution is inherited (it is what hits/keywords means, and it applied to
+    # ordinary keywords long before this change); what this change controls is
+    # how many tokens enter the denominator. So the ratio is computed a second
+    # time over exactly the token set the OLD length rule would have produced,
+    # and the better of the two wins. The floor is therefore, by construction
+    # and not by testing, the score this function returned before the
+    # vocabulary existed: adding an identifier can raise a score and can never
+    # lower one.
+    #
+    # ONE DECLARED EXCEPTION, and it is deliberate: the legacy ratio reuses
+    # `_hits`, so it inherits the old TOKEN SET but not the old MATCHING. The
+    # old length rule was applied to the RAW token, so a three-letter
+    # identifier written with punctuation behind it — `OSS?` is four
+    # characters — passed it, and was then matched as a substring. Measured:
+    # "Apa itu OSS?" against a chunk about a quarterly net LOSS scores 0.600
+    # on origin/main and 0.000 here. That is the only direction in which this
+    # function may now return less than it used to, it is a precision gain on
+    # a safety gate, and it is pinned by a test rather than left to be
+    # rediscovered as a regression.
+    legacy_seen: set[str] = set()
+    legacy_keywords: list[str] = []
+    for w in query_lower.split():
+        if len(w) > 3 and (stripped := w.strip(".,!?;:()[]{}\"'")) not in stop_words:
+            if stripped not in legacy_seen and len(stripped) > 2:
+                legacy_seen.add(stripped)
+                legacy_keywords.append(stripped)
+    if legacy_keywords:
+        legacy_hits = sum(1 for kw in legacy_keywords if _hits(kw))
+        keyword_match_ratio = max(keyword_match_ratio, legacy_hits / len(legacy_keywords))
 
     # Check for specific entity type mismatches (e.g., KITAS query returning KBLI)
     # This catches cases where the topic is completely wrong
