@@ -38,6 +38,26 @@ CONTRACT
 - **No citation, no price, no client data.** Per ZERO-DECISIONS item 3 case
   (b), a courtesy turn carries no source line; prices come from PricingTool on
   the answering path, never from a canned string.
+
+WHY THE CALL SITE IS INSIDE THE CODEX LEG (refuter finding 3, adjudicated)
+--------------------------------------------------------------------------
+A greeting is not a generation, so gating it on ``WA_GENERATION_PROVIDER``
+looks wrong. It is not an exposure: when that switch is not ``codex`` the
+worker raises ``BotStandingCondition`` before the leg is ever entered and the
+product generates **nothing at all** — there is no state in which questions
+are answered and greetings are not. The alternative, hoisting the check into
+``wa_outbox_worker``, buys nothing and costs a second thread-context read plus
+a second owner of "what the query is" — the exact drift ``_load_thread_context``
+exists to prevent (W114). When a second generation route is added, this call
+moves to whatever becomes the common pre-generation point, and the two
+integration tests in ``test_wa_codex_leg.py`` move with it.
+
+The short-circuit also returns before ``epoch = thread["handling_version"]``
+is read, which the normal route uses for the broker's drift verdict. That
+verdict exists because a broker round-trip takes seconds to minutes and a human
+may take the thread over inside that window; a scripted constant takes
+microseconds. The worker's own fenced re-read of ``human_handling`` and the
+24h-window check still run before the send, unchanged.
 """
 
 from __future__ import annotations
@@ -84,8 +104,10 @@ _GREETING_TOKENS: dict[str, str] = {
     "вітаю": "uk",
 }
 
-# Multi-word greetings, matched against the WHOLE normalized message before
-# the token pass. Keys are already normalized.
+# Multi-word greetings. Keyed on the normalized token TUPLE, not on the whole
+# message, so "selamat pagi kak" and "good morning Zantara" are recognised —
+# a whole-message match missed both (refuter finding 2). Longest phrase first
+# is guaranteed by _MAX_PHRASE_TOKENS below.
 _GREETING_PHRASES: dict[str, str] = {
     "selamat pagi": "id",
     "selamat siang": "id",
@@ -104,39 +126,49 @@ _GREETING_PHRASES: dict[str, str] = {
     "доброе утро": "ru",
     "доброго дня": "uk",
     "добрий день": "uk",
+    # Apostrophes are stripped by _normalize, so the common transliteration
+    # "Assalamu'alaikum" arrives here as two tokens (refuter finding 2).
+    "assalamu alaikum": "id",
+    "assalamualaikum warahmatullahi": "id",
+    "salam sejahtera": "id",
 }
+
+_MAX_PHRASE_TOKENS = max(len(phrase.split()) for phrase in _GREETING_PHRASES)
 
 # Tokens allowed to keep a message a greeting when at least one real greeting
 # token is present: a vocative or an intensifier. "halo zantara" and "hi hi"
 # are greetings; "bali zero" alone is not (no greeting token → no match).
-_VOCATIVE_TOKENS: frozenset[str] = frozenset(
-    {
-        "zantara",
-        "bali",
-        "zero",
-        "balizero",
-        "admin",
-        "min",
-        "kak",
-        "pak",
-        "bu",
-        "ibu",
-        "bapak",
-        "mas",
-        "mbak",
-        "team",
-        "tim",
-        "there",
-        "everyone",
-        "all",
-    }
-)
+_VOCATIVE_TOKENS: dict[str, str | None] = {
+    # Neutral / brand — no language signal.
+    "zantara": None,
+    "bali": None,
+    "zero": None,
+    "balizero": None,
+    "there": None,
+    # Indonesian honorifics — these DO carry a language signal, used below to
+    # break the tie when the greeting token itself is English ("hi kak").
+    "kak": "id",
+    "pak": "id",
+    "bu": "id",
+    "ibu": "id",
+    "bapak": "id",
+    "mas": "id",
+    "mbak": "id",
+    "min": "id",
+}
+
+# DELIBERATELY NOT vocatives: "admin", "team", "tim", "everyone", "all".
+# Cross-family refuter (Codex GPT-5.6 Sol, 2026-09-03, BLOCK finding 1) on the
+# exact string "Halo admin?": those words are not politeness, they are a
+# request for a PERSON. Answering them with a capability list is the same
+# class of defect this module exists to cure, pointed the other way — so they
+# fall through to the normal route, which has the human-notification wiring.
 
 # A greeting is short. The cap is a second, independent brake on over-match:
 # whatever slips past the token rules, a long message is never answered from a
 # canned string.
-_MAX_GREETING_TOKENS = 4
-_MAX_GREETING_CHARS = 40
+_MAX_GREETING_TOKENS = 5
+_MAX_GREETING_CHARS = 48
 
 _PUNCT_RE = re.compile(r"[^\w\s]", flags=re.UNICODE)
 _WS_RE = re.compile(r"\s+", flags=re.UNICODE)
@@ -220,6 +252,13 @@ def match_greeting(text: str | None) -> GreetingTurn | None:
 
     Never raises, never performs I/O. `None` is the safe answer and means
     "not my business" — the caller runs the normal generation route.
+
+    The message is consumed left to right: a multi-word greeting phrase, then
+    a single-word greeting, then an allowed vocative. ANY token that is none
+    of those ends the match immediately, and at least one real greeting must
+    have been consumed. So "selamat pagi kak" is a greeting, "bali zero" is
+    not (no greeting token), and "halo, berapa harga PT PMA?" is not (the
+    remaining tokens are a question).
     """
     if not text:
         return None
@@ -230,22 +269,50 @@ def match_greeting(text: str | None) -> GreetingTurn | None:
     if not normalized:
         return None
 
-    language = _GREETING_PHRASES.get(normalized)
-    if language is None:
-        tokens = normalized.split()
-        if not tokens or len(tokens) > _MAX_GREETING_TOKENS:
-            return None
-        languages = [_GREETING_TOKENS.get(tok) for tok in tokens]
-        # Every token must be either a greeting or an allowed vocative, and at
-        # least one must be an actual greeting. A message carrying any other
-        # word carries a question, and questions are not answered from here.
-        for tok, lang in zip(tokens, languages, strict=True):
-            if lang is None and tok not in _VOCATIVE_TOKENS:
+    tokens = normalized.split()
+    if not tokens or len(tokens) > _MAX_GREETING_TOKENS:
+        return None
+
+    greeting_langs: list[str] = []
+    vocative_langs: list[str] = []
+    i = 0
+    while i < len(tokens):
+        # Longest phrase first, so "assalamu alaikum" is not consumed as an
+        # unknown single token.
+        for span in range(min(_MAX_PHRASE_TOKENS, len(tokens) - i), 1, -1):
+            phrase = " ".join(tokens[i : i + span])
+            phrase_lang = _GREETING_PHRASES.get(phrase)
+            if phrase_lang is not None:
+                greeting_langs.append(phrase_lang)
+                i += span
+                break
+        else:
+            token = tokens[i]
+            token_lang = _GREETING_TOKENS.get(token)
+            if token_lang is not None:
+                greeting_langs.append(token_lang)
+            elif token in _VOCATIVE_TOKENS:
+                vocative_lang = _VOCATIVE_TOKENS[token]
+                if vocative_lang is not None:
+                    vocative_langs.append(vocative_lang)
+            else:
+                # A word that is neither a greeting nor a vocative is content,
+                # and content is answered by the retrieval route.
                 return None
-        greeting_langs = [lang for lang in languages if lang is not None]
-        if not greeting_langs:
-            return None
-        language = greeting_langs[0]
+            i += 1
+
+    if not greeting_langs:
+        return None
+
+    language = greeting_langs[0]
+    if language == _FALLBACK_LANG and vocative_langs:
+        # "hi kak" (refuter finding 5). An Indonesian honorific beside an
+        # English greeting is stronger evidence of the client's language than
+        # the greeting is: "hi" is used in every language on this number,
+        # "kak" is not. The override is deliberately one-directional — a
+        # vocative may displace the FALLBACK language, never an explicit
+        # non-English one ("ciao kak" stays Italian).
+        language = vocative_langs[0]
 
     reply = _GREETING_REPLIES.get(language) or _GREETING_REPLIES[_FALLBACK_LANG]
     return GreetingTurn(language=language, text=reply)

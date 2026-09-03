@@ -55,6 +55,16 @@ class TestGuilt:
             ("добрый день", "ru"),
             ("привіт", "uk"),
             ("доброго дня", "uk"),
+            # Cross-family refuter (Codex GPT-5.6 Sol, 2026-09-03) finding 2:
+            # both of these were MISSED by the first draft and therefore still
+            # cost the full 7m45s. The apostrophe is stripped by _normalize, so
+            # the transliteration arrives as two tokens; and a multi-word
+            # greeting followed by an honorific was not matchable at all while
+            # phrases were keyed on the whole message.
+            ("Assalamu'alaikum", "id"),
+            ("Selamat pagi, Kak", "id"),
+            ("selamat malam pak", "id"),
+            ("good morning zantara", "en"),
         ],
     )
     def test_a_bare_greeting_is_answered_from_the_script(
@@ -71,6 +81,19 @@ class TestGuilt:
     )
     def test_a_greeting_with_a_vocative_is_still_a_greeting(self, message: str) -> None:
         assert match_greeting(message) is not None
+
+    def test_an_indonesian_honorific_outranks_an_english_greeting(self) -> None:
+        """Refuter finding 5: "Hi kak" answered in English.
+
+        "hi" is used on this number in every language; "kak" is not. The
+        override is one-directional — a vocative may displace the FALLBACK
+        language, never an explicit non-English one.
+        """
+        hi_kak = match_greeting("Hi kak")
+        assert hi_kak is not None and hi_kak.language == "id"
+
+        ciao_kak = match_greeting("ciao kak")
+        assert ciao_kak is not None and ciao_kak.language == "it"
 
     def test_the_answer_names_what_the_bot_can_do(self) -> None:
         """A greeting turn that only greets sends the client back to square one.
@@ -117,7 +140,17 @@ class TestInnocence:
             # A vocative with no greeting in it is not a greeting.
             "bali zero",
             "zantara",
+            # Refuter finding 1, the BLOCKING one. "admin"/"team" are not
+            # politeness — they are a request for a PERSON, and answering them
+            # with a capability list is this module's own defect pointed the
+            # other way. They must reach the normal route, which carries the
+            # human-notification wiring.
             "admin",
+            "Halo admin?",
+            "Hi, admin?",
+            "Ciao, admin?",
+            "halo team",
+            "hi everyone",
             # Nonsense must fall through, not be greeted.
             "xyzabc123",
             "?",

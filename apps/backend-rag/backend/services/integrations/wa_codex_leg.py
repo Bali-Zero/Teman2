@@ -427,6 +427,13 @@ class CodexLegResult:
     stand_down: bool = False
     fail: str = ""
     reason: str = ""
+    # Which path produced `text`. "codex" is the broker completion; the
+    # deterministic greeting turn sets "scripted_greeting" so the worker's
+    # log line does not claim a broker round-trip that never happened
+    # (cross-family refuter finding 4, 2026-09-03 — `generation_route` stays
+    # NULL on that row, so a log saying "codex leg served" was the only
+    # record of it and it was false).
+    served_by: str = "codex"
 
 
 async def attempt(
@@ -545,7 +552,7 @@ async def _attempt(
             outbox_id,
             greeting.language,
         )
-        return CodexLegResult(text=greeting.text)
+        return CodexLegResult(text=greeting.text, served_by="scripted_greeting")
 
     epoch = int(thread["handling_version"])
 
