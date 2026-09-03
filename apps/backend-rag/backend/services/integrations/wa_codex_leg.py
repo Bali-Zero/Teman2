@@ -119,6 +119,7 @@ from backend.services.integrations.wa_finalize import (
     FinalizeOutcome,
     finalize_wa_answer,
 )
+from backend.services.integrations.wa_greeting import match_greeting
 
 # Same-package deliberate reuse of the bot leg's lazy-singleton RAG client,
 # thread-context loader, notifier and kill switch: ONE persistent HTTP
@@ -510,6 +511,41 @@ async def _attempt(
         # — the worker turns it into SilentStandingCondition, same as
         # autoreply_disabled above.
         return CodexLegResult(reason="no_customer_message")
+
+    # Deterministic greeting turn — BEFORE the package build, which is the
+    # first step that can retrieve anything. A bare "halo" classifies as
+    # QueryDomain.GREETING, whose collection list is empty by design, so the
+    # builder refuses with PackageUnbuildable("greeting_domain") and (since
+    # the Gemini cut) the row takes the full five-attempt retry ladder to
+    # arrive at an English error stub ~7m45s later. Measured on the real
+    # thread, cycle 359. `match_greeting` is a pure function with no I/O and
+    # answers None for anything that is not a BARE greeting — "halo, berapa
+    # harga PT PMA?" still goes down the normal route untouched.
+    #
+    # Placed here rather than in the worker because this is where the query
+    # actually exists (one DB read, already done above), and here rather
+    # than in the package builder because a greeting is not an unbuildable
+    # package — it is a turn with a scripted answer.
+    #
+    # Deliberately does NOT run wa_finalize: that pipeline exists to police
+    # GENERATED text (abstain labels, monologue leaks, KG scaffold, pricing
+    # veto, secret egress). This text is a module constant — nothing in it
+    # came from a model, from retrieval, or from the client.
+    #
+    # Known gap, declared: `wa_outbox.generation_route` stays NULL on these
+    # rows, because that column is one half of the codex OFFER's CAS fence
+    # and this row is never offered. A scripted greeting is therefore not
+    # yet countable in SQL; the log line below is the only marker. Same
+    # ledger family as "an abstain leaves no record" — a column, and its own
+    # PR.
+    greeting = match_greeting(query)
+    if greeting is not None:
+        logger.info(
+            "wa_codex_leg: scripted greeting served outbox=%s lang=%s",
+            outbox_id,
+            greeting.language,
+        )
+        return CodexLegResult(text=greeting.text)
 
     epoch = int(thread["handling_version"])
 
