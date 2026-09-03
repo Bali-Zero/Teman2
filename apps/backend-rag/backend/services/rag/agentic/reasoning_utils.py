@@ -441,7 +441,13 @@ def calculate_evidence_score(
     seen = set()
     query_keywords = []
     for w in query_words:
-        if w not in seen and len(w) > 2:
+        # The vocabulary exemption has to be repeated here: this second filter
+        # is `len(w) > 2`, so without it every TWO-character identifier the
+        # extractor above just kept — `PT` above all, the one the spec names
+        # first — was silently dropped again one loop later. Measured
+        # 2026-09-03 on this branch before the fix: `pt`, `rp`, `sk`, `cv`,
+        # `b1`, `c1`, `c2`, `c7`, `d1`, `d2` never reached the matcher at all.
+        if w not in seen and (len(w) > 2 or w in _SHORT_IDENTIFIERS):
             seen.add(w)
             query_keywords.append(w)
 
@@ -450,7 +456,22 @@ def calculate_evidence_score(
 
     # ========== RELEVANCE SCORING ==========
     # Calculate keyword match ratio - how many query keywords appear in context
-    keyword_hits = sum(1 for kw in query_keywords if kw in context_text)
+    # Short identifiers are matched on WORD BOUNDARIES, longer keywords on
+    # substrings. The asymmetry is deliberate and it is what makes keeping the
+    # short vocabulary safe: `pt` as a substring hits `receipt`, `script`,
+    # `empty` and `accept`; `rp` hits `corporate` and `purpose`; `sk` hits
+    # `risk`, `task` and `desk`. Two such accidental hits are enough to lift
+    # keyword_match_ratio over 0.15, which turns semantic_relevance from 0.0
+    # into 0.2 and the final score from <=0.1 into up to 0.30 — an off-topic
+    # chunk clearing a 0.15 gate. Substring matching is kept for keywords of
+    # 3+ chars because it is load-bearing for Indonesian morphology
+    # (`pendirian` inside `pendiriannya`) and collides far less.
+    context_tokens = set(re.findall(r"[a-z0-9]+", context_text))
+    keyword_hits = sum(
+        1
+        for kw in query_keywords
+        if (kw in context_tokens if len(kw) <= 2 else kw in context_text)
+    )
 
     keyword_match_ratio = keyword_hits / len(query_keywords) if query_keywords else 0.0
 

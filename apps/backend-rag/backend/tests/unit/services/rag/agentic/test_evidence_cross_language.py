@@ -253,3 +253,63 @@ def test_one_generic_word_should_not_be_evidence() -> None:
         POOR_RETRIEVAL, ID_CONTEXT, "Berapa harga sewa motor di Canggu?"
     )
     assert score < 0.15
+
+
+# ---------------------------------------------------------------------------
+# The two-character identifiers, and why they need a boundary
+#
+# Found on this branch by its own author before merge, and it is the reason the
+# first version of this change under-delivered in silence: the extractor keeps
+# the vocabulary, and then a SECOND filter eight lines later — `len(w) > 2` in
+# the de-duplication loop — threw ten of them straight back out. `PT`, the
+# identifier the spec names first, never reached the matcher at all.
+#
+# Letting them through re-opens the risk that motivated the length rule in the
+# first place, so the two changes are a pair and neither is safe alone:
+# measured on the off-topic chunk below, substring matching scores **0.475**
+# (`pt` inside `receipt`/`script`/`empty`/`accept`, `rp` inside `corporate`)
+# against a 0.15 gate; word-boundary matching scores **0.060**.
+# ---------------------------------------------------------------------------
+
+COLLIDING_CONTEXT = [
+    "Our corporate risk policy: keep every receipt, the script is empty "
+    "until you accept the task."
+]
+
+
+@pytest.mark.parametrize(
+    "identifier",
+    ["pt", "rp", "sk", "cv", "b1", "c1", "c2", "c7", "d1", "d2"],
+)
+def test_two_character_identifiers_reach_the_matcher(identifier: str) -> None:
+    """Guilt: each of the ten survives BOTH filters and is counted as a hit."""
+    score = calculate_evidence_score(
+        RETRIEVAL, [f"The {identifier.upper()} document is issued by the agency."], identifier
+    )
+    assert score >= 0.15, f"{identifier!r} was dropped before matching"
+
+
+def test_short_identifiers_do_not_match_inside_ordinary_words() -> None:
+    """Innocence: the same tokens must not be found inside longer words."""
+    score = calculate_evidence_score(
+        RETRIEVAL, COLLIDING_CONTEXT, "Berapa harga PT PMA dan RP modal?"
+    )
+    assert score < 0.15, (
+        "an off-topic chunk cleared the gate on accidental substring hits "
+        f"(score {score})"
+    )
+
+
+def test_visa_codes_do_not_match_inside_ordinary_words() -> None:
+    score = calculate_evidence_score(
+        RETRIEVAL, COLLIDING_CONTEXT, "Berapa lama proses B1 dan C1?"
+    )
+    assert score < 0.15
+
+
+def test_longer_keywords_still_match_as_substrings() -> None:
+    """The asymmetry is deliberate: Indonesian morphology depends on it."""
+    score = calculate_evidence_score(
+        RETRIEVAL, ["Proses pendiriannya memakan waktu 30 hari kerja."], "pendirian PT PMA"
+    )
+    assert score >= 0.15
