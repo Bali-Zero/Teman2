@@ -33,7 +33,7 @@
 
 @page cover {
   margin: 0;
-  background: #2a2d35;
+  background: #363A3E;
 }
 
 * {
@@ -55,7 +55,7 @@ html, body {
 /* ========== COLOR TOKENS — bali-zero-brand constitution Article 2 ========== */
 :root {
   /* Brand-cortex official tokens */
-  --bz-bg-dark: #373D42;          /* color.bg.antracite */
+  --bz-bg-dark: #363A3E;          /* color.bg.antracite */
   --bz-bg-darker: #000000;        /* color.bg.black */
   --bz-text-light: #FFFFFF;       /* color.text.white */
   --bz-text-muted: #9CA3AF;       /* color.text.muted (sources, captions) */
@@ -522,7 +522,7 @@ table tbody tr:nth-child(even) td {
   font-weight: 600;
 }
 
-.tag.gold { background: var(--bz-gold); color: #2a2d35; }
+.tag.gold { background: var(--bz-gold); color: var(--bz-black); }
 .tag.red { background: var(--bz-red); color: #fff; }
 
 .divider {
