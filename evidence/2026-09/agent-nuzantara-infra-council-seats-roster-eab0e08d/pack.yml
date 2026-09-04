@@ -15,8 +15,12 @@ lanes:
       COUNCIL_REVIEW_SEATS into COUNCIL_REVIEW_SEATS_TITOLARI (3) and _FALLBACK (3), added the
       second-limb check inside check_council_run_gear3 (benched-seat detection via set
       intersection + isinstance/strip validation of seat_fallback_reason), and 192 lines of new
-      guilt/innocence tests in scripts/tests/test_evidence_pack_lint.py. MODEL_ROSTER.md's padding
-      shift is Prettier re-aligning table columns around longer cells; no row content changed.
+      guilt/innocence tests in scripts/tests/test_evidence_pack_lint.py. MODEL_ROSTER.md changes
+      CONTENT, not only alignment (corrected by the gate session 2026-09-04 — an earlier draft
+      called it "Prettier only", which `git diff -w` refutes at 27+/12-): the k3 row now reads
+      "among the 3 titolari", the deepseek-v4-pro and glm-5.2 rows flip to `quorum: YES`, and a
+      new paragraph records the titolari/reserve ruling verbatim. Prettier re-aligns the columns
+      around those longer cells on top.
   - lane: roster-review-codex
     role: review
     seat: >-
@@ -53,8 +57,8 @@ seat_diversity_note: >-
   that actually produced a judgement on this diff.
 
 diff:
-  files: 3
-  net_lines: 282
+  files: 6
+  net_lines: 615
   measured_at: >-
     `git diff --numstat $(git merge-base origin/main HEAD)...HEAD` (three-dot — a two-dot diff
     would accuse this branch of deleting main's later additions, scar W102) against merge-base
@@ -182,9 +186,11 @@ receipts:
   - claim: "Diff size measured on the real branch, not estimated"
     cmd: "git diff --numstat $(git merge-base origin/main HEAD)...HEAD"
     result: >-
-      MODEL_ROSTER.md 41/26, scripts/evidence_pack_lint.py 79/4,
-      scripts/tests/test_evidence_pack_lint.py 192/0 — 3 files, 312 insertions, 30 deletions, net
-      282.
+      Measured by the gate session at head ac4855e4 (2026-09-04): MODEL_ROSTER.md 41/26,
+      scripts/evidence_pack_lint.py 79/4, scripts/tests/test_evidence_pack_lint.py 192/0, plus
+      this pack's own brief.yml 108/0, journal.jsonl 5/0 and pack.yml 220/0 — six files, 645
+      insertions, 30 deletions. The evidence-correction commit after that head adds pack.yml lines
+      only; re-run the command at the tip for the live figure.
     exit: 0
     ts: 2026-09-02T07:15Z
     seat: session (Pro)
