@@ -37,6 +37,7 @@ from __future__ import annotations
 import logging
 import os
 from functools import wraps
+import sys
 from pathlib import Path
 from typing import Any, Awaitable, Callable, TypeVar
 
@@ -97,17 +98,47 @@ def _load_role_taxonomy() -> dict[str, list[str]]:
         logger.warning("roles.yaml not found at %s — taxonomy empty, per-tool auth fails closed", path)
         return {}
 
+    # roles.yaml decides which tools a role may call, so it is loaded STRICTLY.
+    # PyYAML's safe_load lets a duplicate top-level key win in silence, and `roles:`
+    # is a mapping keyed by role name: measured 2026-09-05 on a scratch copy of the
+    # shipped file, appending five lines that repeat an existing role with
+    # `tools: ["*"]` replaced that role's 11 named tools with a wildcard, and the
+    # diff read as an appended block. Loaded by PATH because scripts/lib is not an
+    # importable package — the same assumption about repo layout that
+    # _DEFAULT_ROLES_YAML above already makes by reaching into a sibling app tree.
+    # There is deliberately no fallback to yaml.safe_load: silently downgrading to
+    # the permissive loader when the strict one is absent would restore the defect.
     try:
-        import yaml  # deferred — keeps fastmcp import-safe on minimal deps
-    except ImportError:
-        logger.warning("PyYAML not installed — per-tool auth disabled (fails closed)")
+        import importlib.util
+
+        # ONE canonical module name, shared with the sibling reader in
+        # apps/team-agent/mcp-wrapper/permissions.py: loading the same file twice under
+        # two names produces two distinct StrictYAMLError CLASSES, so an `except` in one
+        # caller would not catch the error raised through the other.
+        strict_path = Path(__file__).resolve().parents[3] / "scripts" / "lib" / "yaml_strict.py"
+        yaml_strict = sys.modules.get("nuzantara_yaml_strict")
+        if yaml_strict is None:
+            spec = importlib.util.spec_from_file_location("nuzantara_yaml_strict", strict_path)
+            if spec is None or spec.loader is None:
+                raise ImportError(f"not loadable: {strict_path}")
+            yaml_strict = importlib.util.module_from_spec(spec)
+            sys.modules["nuzantara_yaml_strict"] = yaml_strict
+            spec.loader.exec_module(yaml_strict)
+    except Exception as exc:  # noqa: BLE001 — missing loader must not boot a permissive server
+        logger.warning(
+            "strict policy loader unavailable (%s) — taxonomy empty, per-tool auth fails closed",
+            exc,
+        )
         return {}
 
     try:
-        with path.open() as fh:
-            data: Any = yaml.safe_load(fh)
+        data: Any = yaml_strict.load_policy(path)
     except Exception as exc:  # noqa: BLE001 — we deliberately catch all parser errors
-        logger.warning("Failed to parse roles.yaml (%s) — taxonomy empty", exc)
+        # This branch now also fires on an AMBIGUOUS document, not only an unparseable
+        # one. Logged at WARNING with the loader's own message, which names the
+        # duplicate key and its line: an escalation attempt that fails closed and
+        # leaves no legible trace is only half a control.
+        logger.warning("Refused to load roles.yaml (%s) — taxonomy empty", exc)
         return {}
 
     roles = (data or {}).get("roles", {}) if isinstance(data, dict) else {}
