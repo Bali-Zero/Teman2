@@ -469,3 +469,115 @@ def test_the_detector_sees_a_family_that_contains_an_underscore():
         {"Pergub_Bali_9_2030"}, {"Pergub_9_2030": "Pergub_Bali 9/2030 — some instrument"}
     )
     assert found == {"Pergub_Bali_9_2030": "Pergub_9_2030"}
+
+
+# ---------------------------------------------------------------------------
+# The bare-`Permen` population, frozen
+#
+# Everything above compares the SCRIPT's ids against the KB's, pair by pair,
+# for instruments the script declares. That bounds a divergence; it does not
+# bound the DISEASE. The disease is the bare `Permen_<n>_<year>` spelling
+# itself: eight ministries number their regulations independently, so
+# `Permen_1_2026` names a Ministry of Finance instrument and a Ministry of
+# Immigration one with equal right.
+#
+# It is not a hypothetical. `kb/topics/tax.yaml`'s own entry for
+# `Permen_1_2026` records `identity_verdict: contradictory` and, verbatim:
+# "CONFIRMED LIVE DEFECT, 2026-08-25. Of the 544 points carrying a top-level
+# document_id=Permen_1_2026, 494 are genuinely PMK 1/2026 (tax ...) and 50 are
+# genuinely Permenimipas 1/2026 (immigration ...). A retrieval for either topic
+# risks surfacing the other ministry's text under a citation that reads as
+# correct." A further 962 points carry it under the legacy `metadata.`-nested
+# shape.
+#
+# And the collision is not only a labelling fault. A point's Qdrant id is
+# `uuid5(NAMESPACE_LEGAL, f"{document_id}_Pasal_{n}")`
+# (`backend/core/legal/hierarchical_indexer.py`), so two instruments sharing a
+# document_id derive the SAME point ids and overwrite each other's chunks. That
+# is why 494 of 544 survived.
+#
+# `ingest_2026_laws.py` has already chosen the cure for everything it writes:
+# every id in `LAWS_2026` is ministry-qualified (`PMK_`, `Permenkumham_`,
+# `PermenImipas_`, `Kepmen_MIP_`). The KB has not followed, and the production
+# points cannot follow without a delete-and-re-ingest — renaming the
+# document_id changes the derived point id, so it is a data migration, not a
+# payload patch, and it is not this test's to perform.
+#
+# What this test CAN do is stop the population from growing while that
+# migration is decided: sixteen bare ids exist today, they are named below, and
+# a seventeenth fails immediately. Compared by EQUALITY, never by containment —
+# so reconciling one to its ministry-qualified form without deleting its row
+# here fails too, and the exception cannot outlive the problem it names.
+# ---------------------------------------------------------------------------
+
+BARE_PERMEN_ID = re.compile(r"\bPermen_(\d+)_(\d{4})\b")
+
+# Frozen 2026-09-05. Every entry is an instrument whose KB id drops the
+# ministry qualifier and is therefore ambiguous across the eight ministries.
+BARE_PERMEN_IDS_IN_KB = frozenset(
+    {
+        "Permen_110_2023",
+        "Permen_11_2024",
+        "Permen_13_2025",
+        "Permen_167_2022",
+        "Permen_18_2021",
+        "Permen_1_2024",
+        "Permen_1_2026",  # the confirmed live collision — PMK 1/2026 vs PermenImipas 1/2026
+        "Permen_22_2023",
+        "Permen_27_2021",
+        "Permen_29_2021",
+        "Permen_2_2010",
+        "Permen_32_2022",
+        "Permen_35_2012",
+        "Permen_3_2014",
+        "Permen_5_2025",
+        "Permen_81_2024",
+    }
+)
+
+_KB_TEXT_SUFFIXES = frozenset({".yaml", ".yml", ".py", ".md", ".json"})
+
+
+def _bare_permen_ids_in_kb() -> set[str]:
+    """Every bare `Permen_<n>_<year>` id appearing anywhere under ``kb/``."""
+
+    kb_root = _find_repo_root() / "kb"
+    found: set[str] = set()
+    for path in kb_root.rglob("*"):
+        if not path.is_file() or path.suffix not in _KB_TEXT_SUFFIXES:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        found.update(match.group(0) for match in BARE_PERMEN_ID.finditer(text))
+    return found
+
+
+def test_no_seventeenth_bare_permen_id_enters_the_kb():
+    assert _bare_permen_ids_in_kb() == BARE_PERMEN_IDS_IN_KB, (
+        "The bare `Permen_<n>_<year>` population under kb/ changed. A NEW one means "
+        "an instrument was added under a spelling that eight ministries share — use "
+        "the ministry-qualified form the ingest script already uses (`PMK_`, "
+        "`Permenkumham_`, `PermenImipas_`, `Kepmen_MIP_`). One that DISAPPEARED means "
+        "it was reconciled: delete its row from BARE_PERMEN_IDS_IN_KB in this file."
+    )
+
+
+def test_innocence_a_ministry_qualified_id_is_not_counted_as_bare():
+    # Entity, never substring. `Permenkumham_22_2023` and `PermenImipas_1_2026`
+    # both CONTAIN "Permen" and both are exactly what the cure looks like — a
+    # detector that swept them in would report the fix as the disease and grow
+    # its own frozen set every time someone did the right thing.
+    for qualified in (
+        "Permenkumham_22_2023",
+        "Permenkumham_11_2024",
+        "PermenImipas_1_2026",
+        "PermenImipas_14_2025",
+        "Kepmen_MIP_19_2025",
+        "PMK_1_2026",
+    ):
+        assert BARE_PERMEN_ID.search(qualified) is None, (
+            f"{qualified} is ministry-qualified and must not count as a bare id"
+        )
+    assert BARE_PERMEN_ID.search("Permen_1_2026") is not None
