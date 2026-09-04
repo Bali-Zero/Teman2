@@ -226,6 +226,37 @@ manus.im/blog/Context-Engineering-for-AI-Agents-Lessons-from-Building-Manus.
 Search-only: sintesi terze del post di Boris Cherny; Cursor rules (redirect); misure community MCP.
 Interne: `2026-09-04-context-engineering-sota.md` (+3 lane); misure di questa sessione (§1).
 
+## Prove-live, livello A (2026-09-04 sera, M5) — i probe hanno risposto
+
+Metodo: token reali del primo turno letti dall'API (`claude -p "Reply with exactly: OK"
+--output-format json`, somma di `input` + `cache_creation` + `cache_read`), print mode senza
+Chrome, stesso cwd `~/nuzantara`. Il print mode non carica i tool solo-interattivi (Artifact,
+Workflow, ecc.), quindi parte più basso del pannello interattivo (101,9k); i delta per leva valgono.
+
+| Stato | Token reali 1° turno | `/context` stimato |
+|---|---|---|
+| Baseline pre-A | 79.308 | 68,7k (80,0k con `--chrome`) |
+| A1 `ENABLE_TOOL_SEARCH=true`, con `--chrome` | — | 44,9k: MCP 16,4k → "(deferred)", system tools 20,7k → 2k + 14,7k "(deferred)" |
+| A1+A2+A4a+A5 | 51.387 | 43,4k |
+| A/B senza i 21 `Agent(name)` deny | 53.753 | 43,4k (il pannello non lo vede) |
+| Livello A completo (+ corner → skill `team`) | **50.288** | 43,4k |
+
+Delta reale: **−29.020 token (−37%)**. Risposte ai probe di §5:
+
+- **P1-P3: sì.** `true` differisce tutte e tre le classi (server locale, connector claude.ai, Chrome)
+  E ~15k di tool built-in. Il pannello li elenca come "(deferred)", fuori dalla finestra.
+- **P4: moot.** I built-in candidati al deny sono già differiti da A1: A3 non è stato applicato.
+- **P5: non eseguito** (le built-in non pesano più abbastanza da meritare una sessione).
+- **`Agent(name)` deny: −2.366 token reali** (A/B), mentre `/context` continua a stimare 4,3k:
+  il pannello legge i file su disco, non il prompt. Misurare con l'API, non col pannello.
+- **Chrome**: con `--chrome` il system prompt sale di 1,5k (5,1k → 6,6k) oltre ai 9,9k di tool.
+- **document-skills off**: skills 7,8k → 6,6k. **Corner → skill unica**: 6,6k → 5,7k.
+
+Applicato su M5 (nessun backup pre-A: la copia fu bloccata da `host_boundary`; le scritture sotto
+`~/.claude` sono state fatte con `HOST_BOUNDARY_OFF=1`, la via che il hook stesso indica per lavoro
+operatore). Rollback esatto: `HOST_BOUNDARY_OFF=1 python3 ~/bin/diet_A_rollback.py`. Il numero
+interattivo lo dà solo `/context` in una sessione fresca di Zero: atteso ~50-55k contro 101,9k.
+
 ## Adversarial review
 
 Seat: Codex GPT-5 (`codex exec --sandbox read-only`, contesto fresco, prompt red-team "default a
