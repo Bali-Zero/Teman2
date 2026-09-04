@@ -217,6 +217,14 @@ PREFIX_RULES: tuple[tuple[str, frozenset[str]], ...] = (
     ("infra/", frozenset({"infra_workflows", "security_sensitive"})),
     ("config/", frozenset({"infra_workflows", "security_sensitive"})),
     ("data/", frozenset({"backend_python", "docs_content_data"})),
+    # kb/ is the knowledge-base corpus (inventories, topics, journeys, ops
+    # probes), added 2026-08-25 and never routed — every kb/-only PR fell into
+    # unknown_paths and tripped run_all. It takes data/'s pairing, and the
+    # backend_python half is load-bearing, not symmetry: nine suites under
+    # apps/backend-rag/backend/tests/unit/kb/ read kb/inventory/*.yaml
+    # directly, and _suggested_jobs() grants docs_content_data none of the six
+    # jobs — so routing kb/ to docs alone would silence the corpus's own guard.
+    ("kb/", frozenset({"backend_python", "docs_content_data"})),
     ("public/", frozenset({"mouth", "docs_content_data"})),
     # fleet_ops (2026-08-20): top-level scripts/ (outside scripts/ci/, already
     # mapped above) is NOT mapped as a whole — a per-file coupling census this
