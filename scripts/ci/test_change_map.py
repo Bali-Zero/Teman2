@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import unittest
@@ -619,8 +620,27 @@ class ChangeMapTests(unittest.TestCase):
         # extraction list, and it has no business there (it shells out to
         # `git grep` and writes files). --check re-derives SCRIPTS_COUPLING
         # live and exits 1 on drift (cicatrix #9).
-        repo_root = Path(__file__).resolve().parents[2]
-        census = repo_root / "scripts" / "ci" / "scripts_coupling_census.py"
+        # Locate the census in the CHECKOUT, never relative to __file__:
+        # tests.yml extracts this test FLAT into $RUNNER_TEMP/trusted-classifier/
+        # (no scripts/ci/ above it), where parents[2] resolved to /home/runner/work,
+        # the subprocess 404'd, this assertion failed, and the classify step fell
+        # to run_all=true (enumeration_failed) on EVERY PR from #5679 (2026-09-04)
+        # until this fix — the same disease #5676 cured for security_gate_flags.
+        rel = Path("scripts") / "ci" / "scripts_coupling_census.py"
+        workspace = os.environ.get("GITHUB_WORKSPACE")
+        file_root = Path(__file__).resolve()
+        candidates = [Path.cwd()]
+        if workspace:
+            candidates.append(Path(workspace))
+        if len(file_root.parents) > 2:
+            candidates.append(file_root.parents[2])
+        repo_root = next((c for c in candidates if (c / rel).is_file()), None)
+        if repo_root is None:
+            self.skipTest(
+                "scripts_coupling_census.py not reachable from cwd, GITHUB_WORKSPACE "
+                "or __file__ — staleness is asserted where the checkout is present"
+            )
+        census = repo_root / rel
         completed = subprocess.run(
             [sys.executable, str(census), "--check"],
             cwd=repo_root,
