@@ -27,6 +27,7 @@ from backend.app.routers.article_composer import (
     NextSteps,
     PublishRequest,
     TLDRSection,
+    _plain_text_snippet,
     build_enrichment_prompt,
     generate_mdx_content,
     generate_slug,
@@ -781,6 +782,101 @@ def test_generate_mdx_content_reading_time(sample_enriched_article):
     assert match
     reading_time = int(match.group(1))
     assert reading_time >= 3
+
+
+def test_plain_text_snippet_strips_heading_markdown():
+    """A '## Facts' heading and inline markdown must render as plain prose."""
+    raw = "## Facts\n\nIndonesia is **moving forward** with a [sweeping reform](https://x.io)."
+    snippet = _plain_text_snippet(raw, 280)
+
+    assert "#" not in snippet
+    assert "**" not in snippet
+    assert "[" not in snippet and "](" not in snippet
+    assert snippet.startswith("Indonesia is moving forward")
+
+
+def test_plain_text_snippet_truncates_at_word_boundary():
+    """Truncation never splits a word and only appends an ellipsis when cut."""
+    raw = "Indonesia is moving forward with a sweeping set of Usaha Menengah reforms today"
+    snippet = _plain_text_snippet(raw, 40)
+
+    assert len(snippet) <= 41  # 40 chars + the ellipsis character
+    assert snippet.endswith("…")
+    body = snippet[:-1].rstrip()
+    assert raw.startswith(body)
+    # The character right after the kept text in the source is a word
+    # boundary (space), proving no word was cut mid-way.
+    assert raw[len(body) : len(body) + 1] in (" ", "")
+
+
+def test_plain_text_snippet_no_ellipsis_when_untruncated():
+    """Short input is returned as-is — no trailing ellipsis added."""
+    snippet = _plain_text_snippet("Short headline", 70)
+    assert snippet == "Short headline"
+    assert not snippet.endswith("…")
+
+
+def test_generate_mdx_content_excerpt_and_seo_description_strip_markdown_fallback(
+    sample_enriched_article,
+):
+    """excerpt/seoDescription must be plain prose even when the only
+
+    available source is raw markdown content (e.g. the intel staging
+    conversion falling back to ``content[:280]`` when no '## Summary'
+    section exists — see backend/app/routers/intel_scraper.py
+    ``convert_staging_to_enriched_article``).
+    """
+    sample_enriched_article.ai_summary = (
+        "## Facts\n\nIndonesia is moving forward with a sweeping set of Usaha "
+        "Menengah reforms that will change how small and medium businesses "
+        "register for a KBLI code across the archipelago starting in Ma"
+    )
+    sample_enriched_article.seo_title = None
+    sample_enriched_article.seo_description = None
+
+    mdx = generate_mdx_content(sample_enriched_article, "seo-fallback-plain", None)
+
+    import yaml
+
+    frontmatter = yaml.safe_load(mdx.split("---", 2)[1])
+
+    expected_excerpt = _plain_text_snippet(sample_enriched_article.ai_summary, 280)
+    expected_seo_desc = _plain_text_snippet(sample_enriched_article.ai_summary, 155)
+    expected_seo_title = _plain_text_snippet(sample_enriched_article.headline, 70)
+
+    assert frontmatter["excerpt"] == expected_excerpt
+    assert frontmatter["seoDescription"] == expected_seo_desc
+    assert frontmatter["seoTitle"] == expected_seo_title
+
+    for field, value in (
+        ("excerpt", frontmatter["excerpt"]),
+        ("seoDescription", frontmatter["seoDescription"]),
+        ("seoTitle", frontmatter["seoTitle"]),
+    ):
+        assert "#" not in value, f"{field} still carries a markdown heading: {value!r}"
+        assert "\n" not in value
+        if value.endswith("…"):
+            # Whatever precedes the ellipsis must end at a real word — in
+            # the fully markdown-stripped source, the character right after
+            # the kept text is a space (or the kept text runs to the end),
+            # never mid-word.
+            body = value[:-1].rstrip()
+            plain_source = _plain_text_snippet(
+                sample_enriched_article.ai_summary, len(sample_enriched_article.ai_summary) + 10
+            )
+            assert plain_source[len(body) : len(body) + 1] in (" ", "")
+
+
+def test_generate_mdx_content_seo_title_prefers_short_headline_untruncated(
+    sample_enriched_article,
+):
+    """A headline at or under 70 chars is used verbatim — no ellipsis added."""
+    sample_enriched_article.headline = "Indonesia Tightens Visa Rules for Expats"
+    sample_enriched_article.seo_title = None
+
+    mdx = generate_mdx_content(sample_enriched_article, "seo-title-short", None)
+
+    assert 'seoTitle: "Indonesia Tightens Visa Rules for Expats"' in mdx
 
 
 def test_build_enrichment_prompt_truncates_content():
