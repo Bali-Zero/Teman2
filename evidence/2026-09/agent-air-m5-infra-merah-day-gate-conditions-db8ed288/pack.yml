@@ -29,18 +29,17 @@ lanes:
     role: review
     seat: kimi-code/k3
 diff:
-  files: 6 files, +1961/-11, 4 commits
+  files: 7 files, +2165/-11, 6 commits
   net_lines: >-
-    Measured with `git diff --no-renames --numstat` against the merge-base 60d0c4e856 at HEAD
-    b1c1c776ac, over the WHOLE branch and not one commit's diff. The count EXCLUDES this pack
-    file, which did not exist when the measurement was taken; every other pack in this directory
-    is measured the same way and the number is restated by CI's own --print-measured at lint time,
-    so the two cannot silently disagree. Read the shape before the total: one thousand five
-    hundred and twenty five of those added lines are the two raw council transcripts, pure
-    additions that ship as evidence and change no behaviour. The code is two files — the workflow
-    and its test corpus — and the four commits are the original two conditions (6434bfa6a4), the
-    innocence-fixture correction (bfb31e9e5d), the three council cures (2fca39e821), and the
-    correction of condition 1's stated reason (b1c1c776ac).
+    Measured with `git diff --no-renames --numstat` against the merge-base 60d0c4e856, over the
+    WHOLE branch and not a lone commit's diff, and INCLUDING this pack file — CI recomputes same
+    numbers at lint time from the same merge-base, so a count that quietly omits itself is a count
+    that fails. The shape matters more than the total: the two raw council transcripts are 1525 of
+    those added lines, pure evidence that changes no behaviour, and only two of the seven files
+    are code — the workflow and its test corpus. The history is the original pair of conditions
+    (6434bfa6a4), the innocence-fixture correction (bfb31e9e5d), the three council cures
+    (2fca39e821), the correction of condition 1's stated reason (b1c1c776ac), this pack
+    (54c3a51e97), and the commit that made these very numbers count themselves.
   behaviour_change: >-
     `.github/workflows/merah-putih-day-contrast.yml`: `cancel-in-progress` becomes conditional on
     the event instead of an unconditional true; the sentinel step gains a SHELL-level fail-closed
