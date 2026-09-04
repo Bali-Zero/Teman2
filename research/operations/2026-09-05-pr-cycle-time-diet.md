@@ -91,12 +91,23 @@ la sua ESECUZIONE non lo era:
 
 Il campione di 30 PR di questo report (08:21-15:35Z) è quindi interamente compreso nella
 finestra rotta. Cicatrice #2 (Esiste≠Armato): il meccanismo di path-gating esiste nel codice da
-prima di oggi, ma non era ARMATO per nessuna delle 30 PR misurate. Alle 09:05 di oggi (2026-09-05,
-quando questo report viene scritto) nessuna PR è stata ancora creata e fusa contro una base che
-porta #5692 — il repo non ha ancora prodotto un esempio dal vivo di "PR di documentazione con
-zero job pesanti". **Questa stessa PR (research-only, tocca solo `research/**` ed
-`evidence/**`) è il primo caso reale**: l'osservazione dal vivo del suo proprio run è nella
-sezione Bites del corpo della PR, non in questo file (il file è scritto prima che il run esista).
+prima di oggi, ma non era ARMATO per nessuna delle 30 PR misurate.
+
+**Aggiornamento a PR aperta (2026-09-04T16:40-16:42Z, PR #5696, questo stesso report).** Primo
+caso dal vivo contro una base che porta #5692. Risultato misurato sul run reale, non stimato:
+`Backend Tests (Python)`, `Backend Shard ${{ matrix.shard }}` (tutti e tre), `Backend Static
+(Python)`, `E2E Tests (Playwright)`, `MCP Server Tests`, `Shared Core Package Tests`, `Evaluator
+Critical Tests`, `Visa Oracle fullstack smoke` e `npm audit (advisory)` sono tutti
+`completed/skipped`; `CodeQL Analysis (python)`/`(javascript)` hanno girato in 24s (gate
+per-step, come atteso, §9 lane-file); `Snyk` ×3 skipped. **Ma `Frontend Tests (Next.js) (mouth,
+true)` e `(admin-dashboard, false)` sono girati per intero (`success`, non `skipped`)**, e
+`Detect Secrets` pure (`success`, 31s — non gated, mai lo è stato). Il classificatore quindi
+FUNZIONA per 8 dei 9 job/famiglie non-VOA/non-CodeQL previsti, ma NON per Frontend Tests: la
+leva L2 di §4 è confermata solo parzialmente, non del tutto come sperato — resta un secondo bug
+o una scelta deliberata da chiarire (`frontend-tests` potrebbe avere una propria condizione
+indipendente dal `run_all` di `change_map.py`, non letta in questo turno). Non corretto in
+questa PR (fuori scope, resta un `TEST_JOBS` nominale nel codice anche se il suo comportamento
+osservato lo contraddice).
 
 ## 3. Cosa fanno i migliori (fonti fetchate; le non-fetchate sono marcate search-only)
 
@@ -147,7 +158,7 @@ causa per causa in questa sessione — richiederebbe leggere i log di ciascuno).
 | # | Leva | Meccanismo | Risparmio atteso | Rischio se rotto | Gear | Decide |
 |---|---|---|---|---|---|---|
 | L1 | Blindare il classificatore | test unitario sul corpus estratto simulando l'estrazione flat (così non può morire in silenzio una terza volta); rimuovere la maschera `continue-on-error: true` sullo step di estrazione (deve essere un segnale rosso visibile, non silenzioso); correggere l'f-string con virgolette escapate in `tests.yml` righe 400-407 (verificato leggendo il file in questo turno: sintassi illegale su Python <3.12 dentro `{}` di un f-string) | protegge, non sottrae: impedisce la ricaduta a run_all=True su OGNI PR, cioè protegge tutto il risparmio delle leve sotto | ALTO se assente — è già successo due volte oggi | 3 (edita `.github/workflows/tests.yml`) | sessione |
-| L2 | Verificare dal vivo che `docs_content_data` salti i sei `TEST_JOBS` | nessuna modifica: osservare il run di QUESTA PR (§2) — se conferma, chiudere l'incertezza; se no, è un bug nuovo da aprire subito. Non copre Visa Oracle né gli scanner advisory, che non sono nel classificatore (§2) | conferma (o smentisce) i sei `TEST_JOBS` su ogni PR di sola documentazione — non tocca VOA/advisory (L5) | — | 0 (osservazione) | sessione |
+| L2 | Verificare dal vivo che `docs_content_data` salti i sei `TEST_JOBS` | **FATTO in questa PR** (§2, run 2026-09-04T16:40-16:42Z): 5 delle 6 famiglie skippate correttamente (backend×3+static, E2E, MCP, packages-core, evaluator, VOA, npm-audit) — `frontend-tests` NO, ha girato per intero nonostante sia nel diff solo-doc | conferma PARZIALE: 8/9 job/famiglie osservate si comportano come atteso, `frontend-tests` no — nuovo bug da aprire, non fatto in questa PR (fuori scope) | — | 0 (osservazione) | sessione |
 | L3 | Coda di merge: `ALLGREEN`→`HEADGREEN` | il testo dell'enum letto via GraphQL ("failing entries allowed to merge if with a passing entry") suggerisce che un fallimento non cancelli l'intero batch, ma il meccanismo esatto non è verificato oltre quel testo (§ lane-file §5) | 4 dei 6 outlier oltre i 60 min (5650, 5651, 5653, 5674) mostrano un `cancelled` prima del tentativo riuscito — plausibile bersaglio, non certo | cambia la semantica di "cosa può finire in coda con un vicino rosso" — la pagina doc dedicata ha risposto 404 in questa sessione, verificare dalla UI prima di girare l'interruttore | 0 (impostazione repo, non workflow) | **Zero** |
 | L4 | Coda di merge: `minimumEntriesToMerge` 4→1, `minimumEntriesToMergeWaitTime` 900s→60-120s | riduce l'attesa fissa di un PR che arriva con meno di 3 altri già in coda, da fino 15 min a 1-2 min | nessuno strutturale — solo più batch piccoli, più runner-minuti totali se il traffico è denso | 0 (impostazione repo) | **Zero** |
 | L5 | Path-gating esteso: security/lint advisory (Snyk×3, npm audit, SAST, Detect Secrets) + Visa Oracle seguono lo stesso classificatore dei sei `TEST_JOBS` | oggi girano SEMPRE indipendentemente dal diff (misurato: girano anche su #5680/#5658/#5672) — 6 job advisory: 414,1 CPU-min/30PR nel run-PR (npm audit 149,0 + Snyk Node 74,8 + Snyk Docker 68,2 + Snyk Python 15,2 + SAST 89,6 + Detect Secrets 17,2); VOA da sola 173,1 CPU-min/30PR | ~2-6 min/PR di wall time per un PR di sola-doc (il job advisory più lento residuo, non la somma — girano in parallelo) | i job sono advisory (non nei 12 contesti richiesti) tranne VOA che LO è — gating VOA su un PR non-app è una scelta di prodotto, non solo tecnica | 3 (edita `security.yml` + il workflow VOA) | sessione per gli advisory; **Zero** per VOA (è required) |
