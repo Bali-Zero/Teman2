@@ -507,6 +507,55 @@ async def test_publish_article_without_cover_image(
     assert call_args[1]["pull_request"] is True
     assert call_args[1]["must_not_exist_paths"] == [call_args[1]["files"][0]["path"]]
 
+    # The returned article_url uses the SERVED category ("visas"), not the
+    # content folder the MDX was written to ("immigration" — see
+    # category_map above). Regression guard for the folder-vs-served-category
+    # bug: see backend/services/article_routes.py.
+    assert call_args[1]["files"][0]["path"].startswith(
+        "apps/mouth/src/content/articles/immigration/"
+    )
+    assert data["article_url"].startswith("https://balizero.com/visas/")
+
+
+@pytest.mark.asyncio
+@patch("backend.services.integrations.github_publisher.github_publisher")
+async def test_publish_article_url_uses_served_category_not_content_folder(
+    mock_publisher,
+    test_client,
+    sample_enriched_article,
+):
+    """A ``business_regulations`` article is written to the
+    ``business_regulations`` content folder (unmapped in ``category_map`` so
+    it passes through as its own folder name) but MUST be served at
+    ``/business/`` — the site only routes served categories, not folder
+    names. Measured live 2026-09-05: the folder-named URL 404s.
+    """
+    mock_publisher.is_configured = True
+    mock_publisher.check_file_exists = AsyncMock(return_value=False)
+    mock_publisher.create_commit_with_files = AsyncMock(
+        return_value={
+            "success": True,
+            "commit_sha": "regcat1",
+            "files_count": 1,
+            "branch": "auto-publish/regcat1",
+            "pull_request_number": 91,
+            "auto_merge_enabled": True,
+        },
+    )
+
+    article = sample_enriched_article.model_copy(update={"category": "business_regulations"})
+    request = PublishRequest(article=article, position="normal", slug="new-kbli-rules")
+    response = test_client.post("/api/articles/publish", json=request.model_dump())
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+
+    call_args = mock_publisher.create_commit_with_files.call_args
+    mdx_path = call_args[1]["files"][0]["path"]
+    assert mdx_path == "apps/mouth/src/content/articles/business_regulations/new-kbli-rules.mdx"
+    assert data["article_url"] == "https://balizero.com/business/new-kbli-rules"
+
 
 @pytest.mark.asyncio
 @patch("backend.services.integrations.github_publisher.github_publisher")
