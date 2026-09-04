@@ -10,8 +10,17 @@
  * Auth: the CRM cookie session (`HybridAuthMiddleware`, see
  * `deps/auth.py::get_current_user`) the rest of the `(workspace)` surface
  * already relies on — same `fetch(..., { credentials: "same-origin" })`
- * pattern as `visa/voa/orders/api-client.ts`, no bearer token handling here.
- * `NEXT_PUBLIC_API_URL || "/api"` matches every other lane in this app.
+ * pattern used elsewhere. The base URL is deliberately hardcoded same-origin
+ * (`lib/api/index.ts`'s `API_BASE_URL = ""`, and the literal `/api/...` fetch
+ * in `(workspace)/review/page.tsx`, are the established convention for
+ * cookie-session-authenticated `(workspace)` calls): every request MUST go
+ * through the Next.js same-origin proxy (`app/api/[...path]/route.ts`),
+ * which is also the only place that promotes the `nz_csrf_token` cookie into
+ * the `X-CSRF-Token` header for mutating methods. `NEXT_PUBLIC_API_URL`
+ * points at the Fly backend host directly in production — using it here sent
+ * requests cross-origin, without the proxy's CSRF promotion and without the
+ * httpOnly session cookie (scoped to `.balizero.com`, never sent to
+ * `nuzantara-rag.fly.dev`), which 401'd every staff call live.
  */
 
 import type {
@@ -25,7 +34,7 @@ import type {
   StaffPracticeView,
 } from "./types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+const API_BASE_URL = "/api";
 
 export class GarudaStaffError extends Error {
   constructor(

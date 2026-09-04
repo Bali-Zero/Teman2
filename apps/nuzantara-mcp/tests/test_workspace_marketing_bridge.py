@@ -117,9 +117,38 @@ async def test_server_is_exact_fail_closed_allowlist() -> None:
 
 
 def test_workspace_server_instructions_route_news_room_and_flow_correctly() -> None:
-    assert "News Room covers use native ImageGen" in mcp.instructions
     assert "Confirmed Flow image and video generation remain available" in mcp.instructions
     assert "Flow is video-only" not in mcp.instructions
+
+
+def test_bridge_instructions_and_docstrings_make_publish_a_single_order() -> None:
+    text = mcp.instructions
+
+    assert "newsroom_list_pending" in text
+    assert "newsroom_publish" in text
+    assert "never preconditions" in text
+    assert "only after Damar explicitly requests it, the article is complete" not in text
+
+    tools, _ = _capture_tools(AsyncMock())
+
+    assert "Not required to publish" in tools["newsroom_update_article"].__doc__
+    assert "never blocks" in tools["newsroom_fact_gate"].__doc__
+    assert "His order is the decision" in tools["newsroom_publish"].__doc__
+
+
+def test_bridge_tells_the_agent_the_cover_size_the_chat_channel_can_carry() -> None:
+    # 2026-09-04: a PNG cover from native ImageGen was truncated by the chat
+    # channel and rejected; the retry as a 1200x630 JPEG (42 KB) went through.
+    text = mcp.instructions
+    tools, _ = _capture_tools(AsyncMock())
+    doc = tools["newsroom_attach_cover"].__doc__
+
+    assert "1200x630" in text
+    assert "300 KB" in text
+    assert "truncates" in text
+    assert "1200x630" in doc
+    assert "300 KB" in doc
+    assert "PNG covers must be converted" in doc
 
 
 def test_workspace_server_never_imports_full_server_or_admin_client() -> None:
@@ -471,6 +500,7 @@ async def test_newsroom_publish_requires_confirmation_and_is_replay_safe(
         "published_at": "2026-08-27T01:00:00+00:00",
         "message": "Published",
         "position": "",
+        "fact_gate": {"status": "PASS", "checked_claims": 0, "findings": []},
     }
     assert backend_call.await_count == 3
     backend_call.assert_any_await("/api/workspace-marketing/capabilities")
@@ -487,6 +517,99 @@ async def test_newsroom_publish_requires_confirmation_and_is_replay_safe(
             "publish-news-0001",
             "SETUJU",
         )
+
+
+@pytest.mark.asyncio
+async def test_newsroom_publish_needs_no_fact_gate_and_reports_a_block_as_advisory(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    article_payload = {
+        "item_id": "news_123",
+        "title": "A complete public article",
+        "category": "business",
+        "content": "Complete verified public editorial copy. " * 20,
+        "source_url": "https://example.go.id/article",
+    }
+    capabilities = {
+        "contract": marketing.NEWSROOM_CONTRACT,
+        "ready": True,
+        "capabilities": {
+            name: "ready" for name in marketing.REQUIRED_NEWSROOM_CAPABILITIES
+        },
+    }
+    publish_payload = {
+        "success": True,
+        "github_published": True,
+        "title": article_payload["title"],
+        "published_url": "https://balizero.com/business/complete-article",
+        "message": "Published",
+    }
+    backend_call = AsyncMock(
+        side_effect=[capabilities, article_payload, publish_payload]
+    )
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["newsroom_publish"](
+        "news_123", "publish-news-0002", "CONFIRM"
+    )
+
+    assert result["ok"] is True
+    backend_call.assert_any_await(
+        "/api/workspace-marketing/news/news_123/publish",
+        method="POST",
+        json={"confirmation": "DAMAR_CONFIRMED", "position": "latest"},
+    )
+    assert result["fact_gate"] == {"status": "not_run", "findings": []}
+
+    marketing._write_json_atomic(
+        marketing._fact_gate_path("news_123"),
+        {
+            "ok": False,
+            "checked_claims": 3,
+            "findings": ["FAIL — ministry name wrong"],
+            "fingerprint": marketing._article_fingerprint(
+                marketing._public_news_article(article_payload)
+            ),
+        },
+    )
+    backend_call = AsyncMock(
+        side_effect=[capabilities, article_payload, publish_payload]
+    )
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["newsroom_publish"](
+        "news_123", "publish-news-0003", "CONFIRM"
+    )
+
+    assert result["ok"] is True
+    backend_call.assert_any_await(
+        "/api/workspace-marketing/news/news_123/publish",
+        method="POST",
+        json={"confirmation": "DAMAR_CONFIRMED", "position": "latest"},
+    )
+    assert result["fact_gate"] == {
+        "status": "BLOCK",
+        "checked_claims": 3,
+        "findings": ["FAIL — ministry name wrong"],
+    }
+
+    marketing._write_json_atomic(
+        marketing._fact_gate_path("news_123"),
+        {"ok": True, "fingerprint": "stale-fp"},
+    )
+    backend_call = AsyncMock(
+        side_effect=[capabilities, article_payload, publish_payload]
+    )
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["newsroom_publish"](
+        "news_123", "publish-news-0004", "CONFIRM"
+    )
+
+    assert result["fact_gate"]["status"] == "stale"
 
 
 @pytest.mark.asyncio
@@ -1884,3 +2007,298 @@ def test_verification_env_still_withholds_app_secrets(
     assert "WA_MIRROR_DATABASE_URL" not in env
     assert "WORKSPACE_MARKETING_API_KEY" not in env
     assert not any("should-not-leak" in value for value in env.values())
+
+
+def test_identifier_guard_keeps_editorial_keyword_phrases_and_still_catches_numbers() -> None:
+    """Innocence AND guilt for the keyword+identifier guard (scar family #3).
+
+    The keyword followed by an ordinary word is editorial copy; the keyword
+    followed by a digit-bearing token is an identifier. Both lists are checked
+    through the same public-input gate the update tool uses.
+    """
+
+    innocent = (
+        "Passport holders from 97 countries can apply on arrival.",
+        "NPWP registration is now automatic for new NIK holders.",
+        "KTP elektronik replaces the paper card for tax ID purposes.",
+        "Tax ID numbers are issued within a week; ID number checks follow.",
+        "Nomor paspor harus sesuai dengan data imigrasi.",
+        "NIK-based verification starts in 2027.",
+    )
+    for text in innocent:
+        assert marketing._public_team_input(text, field="content", limit=500) == text
+
+    # Built by concatenation so no single source line is itself identifier-shaped
+    # (the repo's Law-2 pre-commit gate scans staged lines for exactly this shape).
+    guilty = (
+        "NPWP: " + "12.345.678.9-012.000",
+        "NIK " + "3171234567890001" + " was used",
+        "passport number " + "AB1234567" + " expires soon",
+        "tax id " + "01.234.567.8-901.000",
+        "KTP #" + "3171-2345-6789-0001",
+    )
+    for text in guilty:
+        with pytest.raises(ValueError, match="private or local-only"):
+            marketing._public_team_input(text, field="content", limit=500)
+        assert "[identifier removed]" in marketing._clean_text(text) or (
+            "[number removed]" in marketing._clean_text(text)
+        )
+
+
+def test_verification_env_reads_batch_seat_from_secrets_file_when_env_is_empty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The tunnel runtime starts the server from `env -i`; the isolated
+    CLAUDE_CONFIG_DIR has no login. The batch seat must come from the 0600
+    secrets file — and only that one key may leave the file."""
+
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / ".nuzantara-secrets.env").write_text(
+        "\n".join(
+            (
+                'export NUZANTARA_WORKSPACE_MARKETING_API_KEY="app-secret-should-not-leak"',
+                "export CLAUDE_CODE_OAUTH_TOKEN_1='seat-one-should-not-leak'",
+                'export CLAUDE_CODE_OAUTH_TOKEN_3="batch-seat-token"',
+                "CLAUDE_CODE_OAUTH_TOKEN_6=team-seat-should-not-leak",
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path / "state"))
+    for name in ("CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN_3"):
+        monkeypatch.delenv(name, raising=False)
+
+    env = marketing._verification_env("claude")
+
+    assert env["CLAUDE_CODE_OAUTH_TOKEN"] == "batch-seat-token"
+    assert env["CLAUDE_CONFIG_DIR"] == str(tmp_path / "state" / "verifier-config")
+    assert not any("should-not-leak" in value for value in env.values())
+
+    # An explicit env token still wins over the file.
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "explicit-token")
+    assert marketing._verification_env("claude")["CLAUDE_CODE_OAUTH_TOKEN"] == "explicit-token"
+
+    # A missing file is not an error: the verifier then fails loudly at run time.
+    assert marketing._secrets_file_value("CLAUDE_CODE_OAUTH_TOKEN_3", tmp_path / "nope") == ""
+
+
+async def test_failed_verifier_logs_redacted_output_tail(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """`claude --print` reports "Not logged in" on STDOUT with exit 1: the Pro
+    log must say so, while the editor-facing message stays constant."""
+
+    import sys as _sys
+
+    caplog.set_level("WARNING", logger="nuzantara_mcp.tools.workspace_marketing")
+    with pytest.raises(RuntimeError, match="provider is unavailable"):
+        await marketing._run_public_subprocess(
+            [
+                _sys.executable,
+                "-c",
+                "import sys; print('Not logged in - contact user@example.com'); "
+                "sys.stderr.write('token sk-abcdefghijklmnopqrstuvwxyz'); sys.exit(1)",
+            ],
+            timeout_seconds=20,
+            env={"PATH": "/usr/bin:/bin"},
+        )
+
+    record = "\n".join(rec.getMessage() for rec in caplog.records)
+    assert "exited 1" in record
+    assert "Not logged in" in record
+    assert "user@example.com" not in record
+    assert "sk-abcdefghijklmnopqrstuvwxyz" not in record
+
+
+async def test_refusals_reach_the_editor_unmasked_but_unexpected_errors_stay_masked(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """mask_error_details=True hides internals; this module's own constant
+    refusals are the editor's only feedback and must pass through."""
+
+    from fastmcp.exceptions import ToolError as ClientToolError
+
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    monkeypatch.delenv("WORKSPACE_MARKETING_WRITES_ENABLED", raising=False)
+
+    async with Client(mcp) as client:
+        with pytest.raises(ClientToolError) as disarmed:
+            await client.call_tool(
+                "newsroom_update_article",
+                {
+                    "item_id": "news_20260903_173431_b5405cf4",
+                    "title": "t",
+                    "content": "c",
+                    "category": "tax",
+                    "seo_title": "s",
+                    "seo_description": "d",
+                    "slug": "slug",
+                    "cover_image_alt": "alt",
+                },
+            )
+        assert "write actions are not armed" in str(disarmed.value)
+
+        with pytest.raises(ClientToolError) as bad_input:
+            await client.call_tool("newsroom_get_article", {"item_id": "../etc/passwd"})
+        assert "Invalid News Room item id" in str(bad_input.value)
+
+        def explode(item_id: str) -> str:
+            raise TypeError("internal detail must not leak")
+
+        monkeypatch.setattr(marketing, "_validated_item_id", explode)
+        with pytest.raises(ClientToolError) as masked:
+            await client.call_tool("newsroom_get_article", {"item_id": "x"})
+        assert "internal detail" not in str(masked.value)
+        assert "TypeError" not in str(masked.value)
+
+
+def test_editor_facing_errors_remain_value_and_runtime_errors() -> None:
+    """Callers (and the existing tests) keep catching the builtin classes."""
+
+    assert issubclass(marketing.EditorFacingValueError, ValueError)
+    assert issubclass(marketing.EditorFacingRuntimeError, RuntimeError)
+    tools, _ = _capture_tools(AsyncMock())
+    assert tools["newsroom_get_article"].__wrapped__.__name__ == "newsroom_get_article"
+
+
+def test_notebooklm_questions_stay_under_the_cli_limit_and_cover_the_article() -> None:
+    """`nlm query` refuses questions over ~5,000 characters (measured on Pro
+    2026-09-04). Every built question must fit the budget and the parts must
+    reassemble into the full body, in order."""
+
+    body = "\n\n".join(
+        f"Paragraph {n}: the KITAS holder must report within thirty days. " * 4
+        for n in range(60)
+    )
+    article = {"title": "Long visa update", "content": body, "source_url": "https://x.y/z"}
+    parts = marketing._split_article_for_notebooklm(article)
+
+    assert len(parts) > 1
+    assert "".join(parts) == body
+    for index, part in enumerate(parts, start=1):
+        question = marketing._notebooklm_question(article, part, index, len(parts))
+        assert len(question.encode("utf-8")) <= marketing._NOTEBOOKLM_QUESTION_BUDGET
+        assert f"part {index} of {len(parts)}" in question
+
+    short = {"title": "t", "content": "One short claim.", "source_url": ""}
+    assert marketing._split_article_for_notebooklm(short) == ["One short claim."]
+    assert "part 1 of 1" not in marketing._notebooklm_question(short, "x", 1, 1)
+
+
+def test_notebooklm_budget_is_measured_on_the_serialised_form() -> None:
+    """Quotes, backslashes and non-ASCII text grow when JSON-encoded; a budget
+    measured on the raw text would still overflow the CLI."""
+
+    body = ('"quoted" \\ back\\slash " ' * 300) + ("Peraturan Menteri — ‘kutipan’ " * 200)
+    article = {"title": "t", "content": body, "source_url": ""}
+    parts = marketing._split_article_for_notebooklm(article)
+    assert "".join(parts) == body
+    for index, part in enumerate(parts, start=1):
+        question = marketing._notebooklm_question(article, part, index, len(parts))
+        assert len(question.encode("utf-8")) <= marketing._NOTEBOOKLM_QUESTION_BUDGET
+
+
+async def test_query_notebooklm_queries_once_per_part_and_joins_the_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+
+    async def fake_subprocess(argv: list[str], **_: Any) -> str:
+        calls.append(argv)
+        return json.dumps({"answer": f"evidence {len(calls)}"})
+
+    monkeypatch.setattr(marketing, "_run_public_subprocess", fake_subprocess)
+    monkeypatch.setattr(marketing.shutil, "which", lambda *_a, **_k: "/usr/bin/nlm")
+
+    body = "Claim sentence number one about LKPM reporting. " * 400
+    evidence = await marketing._query_notebooklm(
+        {"title": "t", "content": body, "source_url": ""}, "nb-id"
+    )
+
+    assert len(calls) >= 3
+    assert all(argv[:4] == ["/usr/bin/nlm", "query", "notebook", "nb-id"] for argv in calls)
+    assert all(
+        len(argv[4].encode("utf-8")) <= marketing._NOTEBOOKLM_QUESTION_BUDGET for argv in calls
+    )
+    assert evidence.startswith("[part 1/")
+    assert f"evidence {len(calls)}" in evidence
+
+    # A single-part article keeps the plain evidence note.
+    calls.clear()
+    evidence = await marketing._query_notebooklm(
+        {"title": "t", "content": "short", "source_url": ""}, "nb-id"
+    )
+    assert calls and evidence == "evidence 1"
+
+
+async def test_query_notebooklm_refuses_an_article_beyond_the_part_cap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(marketing.shutil, "which", lambda *_a, **_k: "/usr/bin/nlm")
+    monkeypatch.setattr(
+        marketing, "_run_public_subprocess", AsyncMock(side_effect=AssertionError("no call"))
+    )
+    body = "x" * (marketing._NOTEBOOKLM_QUESTION_BUDGET * (marketing._NOTEBOOKLM_MAX_PARTS + 2))
+    with pytest.raises(RuntimeError, match="too long for NotebookLM"):
+        await marketing._query_notebooklm(
+            {"title": "t", "content": body, "source_url": ""}, "nb-id"
+        )
+
+
+async def test_notebooklm_parts_run_concurrently_under_a_real_answer_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A grounded NotebookLM answer took 121 s on Pro (2026-09-04); the old 75 s
+    cap killed every real query. Parts must carry a budget above that and run
+    concurrently so the gate waits for one answer, not one per part."""
+
+    in_flight = 0
+    peak = 0
+    budgets: list[tuple[str, int]] = []
+
+    async def fake_subprocess(argv: list[str], *, timeout_seconds: int, **_: Any) -> str:
+        nonlocal in_flight, peak
+        budgets.append((argv[argv.index("--timeout") + 1], timeout_seconds))
+        in_flight += 1
+        peak = max(peak, in_flight)
+        await asyncio.sleep(0.01)
+        in_flight -= 1
+        return json.dumps({"answer": "evidence"})
+
+    monkeypatch.setattr(marketing, "_run_public_subprocess", fake_subprocess)
+    monkeypatch.setattr(marketing.shutil, "which", lambda *_a, **_k: "/usr/bin/nlm")
+
+    body = "Claim sentence number one about LKPM reporting. " * 400
+    evidence = await marketing._query_notebooklm(
+        {"title": "t", "content": body, "source_url": ""}, "nb-id"
+    )
+
+    assert len(budgets) >= 3
+    assert peak > 1, "parts ran one after another"
+    assert peak <= marketing._NOTEBOOKLM_CONCURRENCY
+    for cli_timeout, outer_timeout in budgets:
+        assert int(cli_timeout) >= 200
+        assert outer_timeout > int(cli_timeout)
+    # Order is preserved even though the parts finish independently.
+    assert evidence.startswith("[part 1/")
+    assert evidence.index("[part 2/") > evidence.index("[part 1/")
+
+
+async def test_timed_out_verifier_names_the_provider_in_the_log(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    import sys as _sys
+
+    caplog.set_level("WARNING", logger="nuzantara_mcp.tools.workspace_marketing")
+    with pytest.raises(RuntimeError, match="timed out"):
+        await marketing._run_public_subprocess(
+            [_sys.executable, "-c", "import time; time.sleep(5)"],
+            timeout_seconds=1,
+            env={"PATH": "/usr/bin:/bin"},
+        )
+    record = "\n".join(rec.getMessage() for rec in caplog.records)
+    assert "timed out after 1s" in record
+    assert Path(_sys.executable).name in record

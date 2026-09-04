@@ -1,0 +1,34 @@
+task_id: context-engineering-sota-0904
+gear: 2
+l_level: L2
+gate_class: opus
+objective: |
+  Deep-research capture ordered by Zero on 2026-09-04: "verifica come i migliori al mondo
+  gestiscono questo contesto, controlla i repo migliori e i migliori dev come Karpathy, e così
+  studiamo il report". Trigger: the /context panel of an M5 session at 60% (297.6k/500k) with
+  ~137k of fixed per-session overhead, 52k of it memory files.
+
+  Three parallel research lanes (Karpathy/thought-leaders · official Anthropic guidance · SOTA
+  open-source agents) synthesized into research/operations/2026-09-04-context-engineering-sota.md,
+  with the three lane raw files landed beside it for audit. The report compares the SOTA consensus
+  against the measured Nuzantara panel and ranks recommendations R1-R7 (CLAUDE.md diet + CI-armed
+  byte budget being the dominant lever). STUDY-ONLY: no recommendation is executed in this PR;
+  Zero decides on R1-R6 (doctrine surface, Legge 5).
+
+  Gear 2 by SIZE: 4 new markdown files, +511 net lines, no code, no hot zone, no consumer surface.
+  The floor recompute reached 2 via the SIZE term alone; this brief declares it.
+constraints:
+  - "Docs-only diff: research/operations/*.md plus this evidence dir. No code, no config, no
+    doctrine file is touched — the report RECOMMENDS a CLAUDE.md diet, it does not perform one."
+  - "Anti-hallucination: every lane was instructed to report only what fetched pages actually say
+    and to flag unreachable sources; the flagged limits (X/Twitter HTTP 402, OpenAI/Google sections
+    aggregated-only, single-source compaction table) are carried verbatim into the report's
+    'Limiti' section rather than laundered."
+  - "Generator != grader: the synthesis author is the conducting Claude session; the adversarial
+    review seat is codex (GPT-5.6, cross-family), probed live (PONG ~39s) before dispatch."
+acceptance:
+  - "Report exists at research/operations/2026-09-04-context-engineering-sota.md with frontmatter
+    (date/domain/client_case/sources) per CLAUDE.md §15."
+  - "The three lane raw files sit beside it with the -lane-* suffix."
+  - "R1 gate satisfied: adversarial_review seat declared, ## Adversarial review section present
+    with the disposition of codex's findings."

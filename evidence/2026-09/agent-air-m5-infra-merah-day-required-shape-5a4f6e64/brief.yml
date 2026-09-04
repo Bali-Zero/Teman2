@@ -1,0 +1,94 @@
+task_id: merah-day-required-shape-0904
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Give the Merah Putih DAY contrast guard the shape a REQUIRED context needs, so it can be
+  promoted to branch protection without repeating the 2026-08-30 jam.
+
+  The guard is green, not red — measured on the 12 most recent runs, all `success`, across
+  `pull_request` and `push`. What keeps it from being safely required is its TRIGGER, not its
+  verdict: a `pull_request` block scoped with `paths:` never starts on a PR that does not touch
+  those paths, and a required context that never reports leaves both the PR and every merge-queue
+  entry behind it waiting forever — the exact failure that jammed the queue on 2026-08-30.
+
+  This PR reshapes `.github/workflows/merah-putih-day-contrast.yml` to the shape its two required
+  siblings already have (`guard-conformance.yml`, `organ-conformance.yml`): bare `pull_request:`
+  with no `paths:` (always reports), `merge_group:` added (reports on the queue's own synthetic
+  ref), and an in-job sentinel that reads `push.paths` out of the same file at run time to decide
+  whether the guarded work actually needs to run — so a queue entry touching nothing here costs a
+  checkout and a diff, not a full pytest run, and the trigger and the gate can never drift apart
+  the way a hand-kept second copy (`guard-conformance.yml`'s own pattern) can.
+
+  This PR is HALF the promotion, by design: it only lands the workflow shape on `main`. Adding
+  `Merah Putih DAY palette holds its contrast law` to branch protection is a separate, later,
+  operator step — after a real `merge_group` run of this workflow is observed to actually report.
+  `infra/required.d/contexts.json` is a generated mirror of live branch protection
+  (`scripts/ci/snapshot_required_contexts.py`) and is not touched here; hand-editing it would arm
+  nothing.
+
+  Gear 3 by PATH, deterministically: `.github/workflows/**` is hot-zone, so the floor is 3
+  regardless of the diff touching only a workflow file and its own test corpus — recomputed by CI
+  from the actual changed-file list, receipt in the pack.
+constraints:
+  - "Never touch branch protection or `infra/required.d/contexts.json` from this PR. Both are a
+    separate, operator-gated step that comes AFTER a real merge_group run is observed — doing it
+    here would arm a context before it has ever reported, reproducing the exact bootstrap-order
+    failure this PR exists to avoid."
+  - "The sentinel must READ `push.paths` out of this file at run time, never restate it as a
+    second hand-kept list. `guard-conformance.yml` carries that duplication by hand; a sentinel
+    that reports 'nothing changed' about a file that did is a green check over a real regression
+    (family #3, cicatrix-superscar.md — guard-over-match, in its under-match form)."
+  - "Adding `merge_group:` must not reintroduce the queue-cost problem the 2026-08-31 header
+    warned about. Answered with the sentinel, not by refusing the trigger: a queue entry that
+    touches nothing guarded pays for a checkout and a diff, not the full pytest corpus."
+  - "Judge every new assertion by mutation, not by being green. A test that has never been
+    watched to fail cannot be trusted to catch the regression it claims to guard."
+  - "Do not weaken any existing check to make this one pass. Do not disable or path-filter any
+    other required workflow to compensate."
+acceptance:
+  - text: >-
+      WHEN `pull_request` carries a `paths:` filter again OR `merge_group:` is removed, the
+      corpus SHALL fail on `test_the_workflow_has_the_shape_a_required_context_must_have`, WHILE
+      the unmutated tree SHALL pass the full corpus.
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_merah_putih_day_contrast.py -q  (run once per mutation, then on the
+      restored tree)
+  - text: >-
+      WHEN the sentinel step is rewritten to carry its own copy of the guarded-path list instead
+      of indexing `push.paths` from this file, the corpus SHALL fail on
+      `test_the_sentinel_reads_the_trigger_list_instead_of_restating_it`.
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_merah_putih_day_contrast.py::test_the_sentinel_reads_the_trigger_list_instead_of_restating_it
+      -q
+  - text: "WHEN the workflow file changes, actionlint SHALL report no findings."
+    probe: "actionlint .github/workflows/merah-putih-day-contrast.yml"
+  - text: >-
+      WHERE the deterministic floor is recomputed from this PR's own changed-file list, it SHALL
+      read 3, sourced from the hot-zone path term (`.github/workflows/**`), independent of the
+      diff's small size.
+    probe: >-
+      python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      <this PR's changed-files list>
+consumer_map:
+  - "GitHub Actions on any PR or `merge_group` touching the Merah Putih DAY surfaces or this
+    workflow file itself — the only consumer; nothing imports this file."
+  - "The merge queue, once (and only once, per a later operator step) this context is added to
+    branch protection — not yet, by this PR's own constraint above."
+  - "No runtime consumer: this diff ships no code into any deployed artifact, so there is no Fly
+    or Vercel surface to prove live."
+risks:
+  - "A `merge_group` run that has never actually been observed could still surprise once real
+    queue traffic hits it — the pack's residual_risks names this explicitly and the PR body
+    states the required follow-up (observe a real run before promoting to branch protection)."
+  - "The sentinel's `fnmatch` reading of `push.paths` is a superset of GitHub's own glob semantics
+    (no `**`, but a bare `*` already crosses `/`) — it can only ever run the guard MORE eagerly
+    than the trigger would, never miss a case the trigger itself would have caught."
+grader: |
+  Independent seat, generator != grader: this file's author wrote the workflow and its test
+  corpus and therefore cannot gate it. The grader must re-run at least the two shape mutations
+  (re-add `pull_request.paths`, remove `merge_group`) itself rather than accept the pack's table,
+  and must confirm no line in this diff touches `infra/required.d/contexts.json` or branch
+  protection — the PR's own constraint is that promotion is a separate, later, operator step.
