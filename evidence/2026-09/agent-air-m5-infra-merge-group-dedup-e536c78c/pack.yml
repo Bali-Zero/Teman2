@@ -174,8 +174,9 @@ dissent:
     disposition: >-
       PARTIALLY cured, not fully accepted as stated. snyk-docker: fully reverted (the cited
       incident is direct, first-party evidence, verified by this pack's own author reading the
-      file — see receipts). snyk-python, snyk-node, detect-secrets: comments rewritten to drop the
-      false byte-identical claim and state the real, narrower argument (advisory-only status;
+      file — see receipts). snyk-python, snyk-node, and detect-secrets had their comments
+      rewritten to drop the false byte-identical claim and state the real, narrower argument
+      (advisory-only status;
       any external change is caught by ITS OWN origin PR's scan) instead of reverting — judged a
       structurally different risk class (compositional Docker-build interaction vs. per-item
       CVE/pattern lookup) than snyk-docker, and NOT accepted as-recommended without independent
