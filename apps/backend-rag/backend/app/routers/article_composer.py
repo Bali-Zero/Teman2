@@ -1016,8 +1016,13 @@ async def publish_article_internal(request: PublishRequest) -> PublishResponse:
             json_object_updates=layout_updates,
         )
 
-        # Build article URL
-        article_url = f"https://balizero.com/{category_folder}/{slug}"
+        # Build article URL. The MDX lives under the CONTENT FOLDER
+        # (`category_folder`, e.g. "business_regulations"), but the site
+        # only routes the SERVED category (e.g. "business") — see
+        # backend/services/article_routes.py.
+        from backend.services.article_routes import served_category
+
+        article_url = f"https://balizero.com/{served_category(category_folder)}/{slug}"
 
         pr_number = result.get("pull_request_number")
         if pr_number:
