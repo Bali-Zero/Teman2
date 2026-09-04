@@ -14,10 +14,10 @@ seat_diversity_note: >-
   not gain from cross-family breadth — the probe is the arbiter, not a seat's opinion.
 diff:
   net_lines: >-
-    3 files, +570/-0 measured by `git diff --stat origin/main...HEAD`. All three are new .sql
-    files under `apps/backend-rag/backend/db/migrations_v2/`. Zero Python, zero workflow, zero
-    frontend. The renaming from 281/282/283 is not visible in this diff because the old names
-    never reached main — they existed only on the unlanded feature branch.
+    5 files, +988/-0 measured by `git diff --numstat` against the merge-base with origin/main.
+    Three are new .sql files under `apps/backend-rag/backend/db/migrations_v2/`; the other two
+    are this task's own evidence-pack files (`brief.yml`, `pack.yml`). Zero Python, zero workflow.
+    The renaming from 281/282/283 is not visible in this diff — those names never reached main.
   behaviour_change: >-
     Three new tables plus two functions and four triggers are created. One pre-existing production
     table is altered, in its catalog only: `visa_oracle_sessions.expires_at`'s DEFAULT moves from
