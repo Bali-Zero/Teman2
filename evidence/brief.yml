@@ -1,15 +1,17 @@
 task_id: bites-b-cut-0904
-gear: 1
+gear: 3
 l_level: L2
 gate_class: opus
-# Measured, not guessed: `evidence_pack_lint.py --print-floor` over this PR's actual
-# changed-file list (the 5 bites surfaces only) returns 1. An earlier draft of this
-# PR also touched two .github/workflows/*.yml files to close an unrelated wiring gap
-# (guard-conformance.yml/immune-enforcement.yml never watched the two bites YAML
-# files) and that alone raises the floor to 3 - which would need a second council
-# seat this lane does not have (codex is banned on this lane; no tp1-qwen3.8-max
-# available). Split out: the workflow-wiring fix is deferred to a follow-up PR,
-# named in this PR's body instead of silently dropped. See dissent/receipts below.
+# CORRECTED 2026-09-05: an earlier draft of this brief declared gear 1, computed
+# by measuring `evidence_pack_lint.py --print-floor` against the diff of THIS
+# PR's contribution on top of #5673's tip (9b4be2bf24) rather than against the
+# actual PR base (main). Against main - what CI's harness-floor.yml actually
+# diffs, merge-base anchored - this branch's diff carries #5673's own
+# `.github/workflows/immune-enforcement.yml` change too (test wiring for the
+# antidotes job, kept: a test nothing runs is scar #5625), which is a hot-zone
+# path regardless of size. Floor is 3. tp1-qwen3.8-max was dispatched as the
+# second council seat (kimi-code/k3 already served as refuter) to satisfy the
+# Gear-3 two-seat requirement honestly instead of narrowing scope to dodge it.
 objective: >-
   Answer the line-count question PR #5673 left open. That PR cut bites_parse.py from
   1,462 to 1,127 lines and reported "target not met — 1,127 is not a few hundred",

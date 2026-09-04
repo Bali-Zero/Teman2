@@ -111,6 +111,17 @@ def test_shell_composition_innocence_braces_in_the_sha_placeholder_pass():
     ) == []
 
 
+def test_shell_composition_guilt_bracket_glob_defeats_the_marker_check():
+    """tp1-qwen3.8-max, second refuter on this cut, reproduced here: a shell's
+    pathname expansion treats `[a]` as a bracket expression matching a single
+    character, so `python3 scripts/[a].py` can run `scripts/a.py` instead - a
+    file this parser's marker check never inspected. The counterexample to the
+    original `[` decline (2026-09-04 b) is that a PR is exactly the place an
+    attacker controls both files at once, so 'needs a pre-existing match' is no
+    barrier when the file arrives in the same diff."""
+    assert bp._guard_shell_composition("python3 scripts/ci/[evil].py")
+
+
 # ------------------------------------------------- _guard_command_allowlist
 
 

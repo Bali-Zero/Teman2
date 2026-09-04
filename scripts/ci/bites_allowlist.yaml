@@ -89,13 +89,42 @@ remote_shell_tokens: [ssh, scp, sftp, rsync, nc, netcat, telnet]
 # python3 ever sees it: `{evil,evil}.py` becomes two arguments, `evil.py` and
 # `evil.py`, and python3 executes the FIRST one - a file that never carried the
 # marker and was never checked at all. Reproduced against this module before being
-# applied. `*`/`?`/`[` (glob) were considered and declined: they only expand
-# against a file that already exists, which is a weaker and less controllable
-# primitive than brace expansion's guaranteed substitution, and `?` collides with
-# an innocent URL query string this module already accepts (superscar #3's
-# over-match, the cost side of the same ledger).
+# applied. `*`/`?`/`[` (glob) were considered and declined at the time: they only
+# expand against a file that already exists, reasoned to be a weaker and less
+# controllable primitive than brace expansion's guaranteed substitution.
+# `[`/`]` REVERSED 2026-09-05: tp1-qwen3.8-max, second refuter on this same cut,
+# named the counterexample that sinks that reasoning - a PR is exactly the place
+# an attacker controls BOTH files at once, so "needs a pre-existing matching file"
+# is no barrier at all when the file can arrive in the same diff. `python3
+# scripts/[a].py` passes every guard once a literal file named `scripts/[a].py`
+# carries the marker, but a shell's pathname expansion treats `[a]` as a bracket
+# expression matching the single character `a`; if `scripts/a.py` ALSO exists (in
+# the same PR), the shell rewrites the argv to `scripts/a.py` before python3 ever
+# sees it - a file the guard never inspected. Reproduced against this module
+# before being applied. `*`/`?` stay declined: `*` needs no matching file to
+# change behaviour in the SAME way (its failure mode is passing the literal string
+# through unexpanded when nothing matches, `nullglob` notwithstanding, which is
+# not this class of bug), and `?` still collides with the URL query string
+# innocence fixture (superscar #3's over-match, unchanged).
 shell_metachars:
-  ["|", ";", "&", "$", "`", "(", ")", "<", ">", "{", "}", "\n", "\r", "\\"]
+  [
+    "|",
+    ";",
+    "&",
+    "$",
+    "`",
+    "(",
+    ")",
+    "<",
+    ">",
+    "{",
+    "}",
+    "[",
+    "]",
+    "\n",
+    "\r",
+    "\\",
+  ]
 
 # A value containing one of these reads identically to a value without it, so the human
 # reviewer and the parser can be shown two different contracts. Written as escapes on

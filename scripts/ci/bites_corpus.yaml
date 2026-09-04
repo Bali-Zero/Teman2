@@ -556,3 +556,18 @@
   # grep alone would have called this data file executable.
   observe: python3 scripts/ci/bites_allowlist.yaml
   class: malformed
+
+# tp1-qwen3.8-max, second refuter on the two-shape cut (2026-09-05), reproduced
+# before applying: a shell's pathname (glob) expansion treats `[a]` as a bracket
+# expression, so `python3 scripts/[a].py` can execute a DIFFERENT file
+# (`scripts/a.py`) than the one this parser's marker check inspected, the same
+# escape class as brace expansion but via `[`/`]` instead of `{`/`}`.
+- label: guilt-bracket-glob-defeats-the-observable-marker
+  observe: python3 scripts/ci/[evil].py
+  class: malformed
+- label: ok-brackets-outside-an-observe-path-are-not-an-escape
+  # A `[`/`]` pair appearing in the pack's OTHER keys (not the observe string
+  # itself) is not this guard's concern - it only inspects `observe:`.
+  observe: python3 scripts/ci/bites_parse.py --selftest
+  class: executable
+  expect: "regex:[0-9]+/[0-9]+ pass"
