@@ -990,3 +990,25 @@ def test_poller_targets_the_bali_zero_org_not_the_old_user_path() -> None:
     # create-ref / contents call fails; a whole SEO + layout batch was lost.
     assert ppp.GITHUB_OWNER == "Bali-Zero"
     assert ppp.GITHUB_REPO == "Teman2"
+
+
+def test_commit_to_branch_looks_up_the_existing_sha_with_an_explicit_get() -> None:
+    # 2026-09-04: `gh api … -f ref=<branch>` without --method GET is a POST,
+    # answers Not Found, and the PUT of an existing file then carries no sha
+    # ("gh: Invalid request" on SEO, layout and 2/4 translations).
+    calls: list[list[str]] = []
+    inputs: list[str] = []
+
+    def fake_run(cmd, **kwargs):  # noqa: ANN001
+        calls.append(list(cmd))
+        inputs.append(kwargs.get("input") or "")
+        return subprocess.CompletedProcess(cmd, 0, stdout="abc123\n", stderr="")
+
+    with patch.object(ppp.subprocess, "run", side_effect=fake_run):
+        assert ppp._commit_to_branch("apps/x.mdx", "Zm9v", "msg", "bot/b") is True
+
+    lookup, put = calls[0], calls[1]
+    assert lookup[:4] == ["gh", "api", "--method", "GET"]
+    assert "ref=bot/b" in lookup
+    assert "PUT" in put
+    assert json.loads(inputs[1])["sha"] == "abc123"
