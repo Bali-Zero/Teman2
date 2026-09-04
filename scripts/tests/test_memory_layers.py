@@ -108,3 +108,86 @@ def test_recall_scoring_monotonic_in_importance(tmp_path):
     decision_entry = next(e for p, e in index.items() if p.split(os.sep)[-1].startswith("decision_"))
     fact_entry = next(e for p, e in index.items() if p.split(os.sep)[-1].startswith("fact_"))
     assert mos.importance_score(decision_entry) > mos.importance_score(fact_entry)
+
+
+# --- scar-section indexing (2026-09-04): cicatrix-scars.md is now recalled by pertinence,
+# not injected wholesale via cicatrix-superscar.md — see mos_recall_sessionstart.py's
+# build_scar_index()/resolve_scars_dir().
+
+FIXTURE_SCARS_MD = """### 🐛 W501 (P1 STRUCTURAL): a plist KeepAlive=true wrapped a one-shot nohup script and every exit was read as death, causing a restart storm (2026-06-01)
+
+The launchd daemon relaunched the wrapper every few seconds because KeepAlive=true
+treats a clean exit from a one-shot nohup child as a crash. Antidote: a real blocking
+loop or StartInterval without KeepAlive.
+
+### 🐛 W502 (P2 STRUCTURAL): a substring guard trapped innocent commands because it decided on `if "keyword" in text` instead of entity/intent (2026-06-02)
+
+The worktree-isolation hook matched on a bare substring and produced false BLOCK
+verdicts on unrelated commands that merely contained the trigger word.
+
+### ✅ RESOLVED: an unrelated cleanup with no W-number attached (2026-06-03)
+
+This entry has no W-number in its heading and must not be indexed by build_scar_index.
+"""
+
+
+def _write_scars_fixture(scars_dir):
+    scars_dir.mkdir(parents=True, exist_ok=True)
+    (scars_dir / "cicatrix-scars.md").write_text(FIXTURE_SCARS_MD, encoding="utf-8")
+
+
+def test_scar_entries_are_immune_to_recency_decay():
+    """A months-old scar must not be outranked purely on age — see
+    recency_score()'s scar branch: a disease pattern from April is exactly
+    as valid a warning today as one filed last week."""
+    now_ts = time.mktime(time.strptime("2026-09-04", "%Y-%m-%d"))
+    old_scar = {"type": "scar", "date_key": "2026-04-01", "mtime": 0}
+    recent_discovery = {"type": "discovery", "date_key": "2026-09-01", "mtime": 0}
+    assert mos.recency_score(old_scar, now_ts) == 1.0
+    assert mos.recency_score(recent_discovery, now_ts) < 1.0
+
+
+def test_build_scar_index_only_indexes_w_numbered_headings(tmp_path):
+    scars_dir = tmp_path / "scars_index_only"
+    _write_scars_fixture(scars_dir)
+    index = mos.build_scar_index(str(scars_dir))
+    wnums = {e["wnum"] for e in index.values()}
+    assert wnums == {"W501", "W502"}
+    assert all(e["type"] == "scar" for e in index.values())
+
+
+def test_a_scar_query_naming_the_family_signal_ranks_that_section_first(tmp_path):
+    memdir = tmp_path / "memdir_scar_query"
+    memdir.mkdir()
+    scars_dir = tmp_path / "scars_query"
+    _write_scars_fixture(scars_dir)
+
+    results, _stats = mos.recall(
+        str(memdir), str(tmp_path / "cache_scars.json"),
+        query="plist KeepAlive nohup restart storm",
+        topk=5, threshold=0.0, scars_dir=str(scars_dir),
+    )
+    assert results, "expected at least one scar candidate"
+    assert results[0]["wnum"] == "W501"
+    assert results[0]["filename"].startswith("cicatrix-scars.md#")
+
+    out = mos.format_output(results)
+    assert "[W501]" in out
+    assert "W502" not in out or "[W502]" not in out.split("[W501]")[0]
+
+
+def test_a_different_family_signal_ranks_the_other_section_first(tmp_path):
+    memdir = tmp_path / "memdir_scar_query2"
+    memdir.mkdir()
+    scars_dir = tmp_path / "scars_query2"
+    _write_scars_fixture(scars_dir)
+
+    results, _stats = mos.recall(
+        str(memdir), str(tmp_path / "cache_scars2.json"),
+        query='guard substring keyword in text false BLOCK entity intent',
+        topk=5, threshold=0.0, scars_dir=str(scars_dir),
+    )
+    assert results
+    assert results[0]["wnum"] == "W502"
+    out = mos.format_output(results)
+    assert "[W502]" in out
