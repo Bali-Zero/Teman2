@@ -127,6 +127,13 @@ jobs:
               scripts/tests/test_agent_defs_model_pins.py|\
               scripts/tests/test_lint_home_fork.py|\
               scripts/lib/yaml_strict.py|\
+              scripts/lib/cve_exceptions.py|\
+              scripts/filter_snyk_findings.py|\
+              scripts/filter_safety_findings.py|\
+              scripts/check_cve_exceptions.py|\
+              .security/exceptions.yaml|\
+              scripts/tests/test_cve_exception_package_scope.py|\
+              scripts/tests/test_check_cve_exceptions.py|\
               scripts/_redact_pii.py|\
               agent-library/config/redaction-rules.yaml|\
               scripts/tests/test_yaml_strict_policy_loader.py|\
@@ -494,6 +501,8 @@ jobs:
           fail=0
           for t in \
             scripts/tests/test_yaml_strict_policy_loader.py \
+            scripts/tests/test_cve_exception_package_scope.py \
+            scripts/tests/test_check_cve_exceptions.py \
             scripts/tests/test_injected_surface_budget.py \
             scripts/tests/test_injected_surface_attest.py \
             scripts/tests/test_agent_start.py \
