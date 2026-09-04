@@ -94,6 +94,8 @@ jobs:
               docs/scars/*|\
               .prettierignore|\
               scripts/tests/test_superscar_budget.py|\
+              scripts/home_surface_suite.sh|\
+              scripts/tests/test_home_surface_suite.py|\
               scripts/lint_home_fork.py|\
               scripts/proprioception.py|\
               scripts/agent_start.py|\
@@ -622,6 +624,16 @@ jobs:
         # W-number in the bridge resolves to a real heading in cicatrix-scars.md or its archive)
         # and the `.prettierignore` coverage assertion ride along in the same file.
         run: python -m pytest scripts/tests/test_superscar_budget.py -q
+
+      - name: HOME-surface suite guilt+innocence (the machine-local ~/.claude has a test)
+        if: steps.paths.outputs.relevant == 'true'
+        # Born 2026-09-04. The context diet was applied to Pro and Mini as HOME edits
+        # (settings.json, agents, global CLAUDE.md) with a before/after measure and no
+        # test — family #2, exists != armed. `scripts/home_surface_suite.sh` is the test
+        # the machines now run; this step proves the suite itself still FAILS on a broken
+        # fixture (tool search not deferred, agent without frontmatter, budget over
+        # ceiling) and PASSES on a clean one, so a green run on a machine means something.
+        run: python -m pytest scripts/tests/test_home_surface_suite.py -q
 
       - name: PII gate merge-scope guilt+innocence (.husky/pre-commit)
         if: steps.paths.outputs.relevant == 'true'
