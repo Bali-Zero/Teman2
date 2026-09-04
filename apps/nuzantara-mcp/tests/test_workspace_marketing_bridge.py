@@ -1886,6 +1886,42 @@ def test_verification_env_still_withholds_app_secrets(
     assert not any("should-not-leak" in value for value in env.values())
 
 
+def test_identifier_guard_keeps_editorial_keyword_phrases_and_still_catches_numbers() -> None:
+    """Innocence AND guilt for the keyword+identifier guard (scar family #3).
+
+    The keyword followed by an ordinary word is editorial copy; the keyword
+    followed by a digit-bearing token is an identifier. Both lists are checked
+    through the same public-input gate the update tool uses.
+    """
+
+    innocent = (
+        "Passport holders from 97 countries can apply on arrival.",
+        "NPWP registration is now automatic for new NIK holders.",
+        "KTP elektronik replaces the paper card for tax ID purposes.",
+        "Tax ID numbers are issued within a week; ID number checks follow.",
+        "Nomor paspor harus sesuai dengan data imigrasi.",
+        "NIK-based verification starts in 2027.",
+    )
+    for text in innocent:
+        assert marketing._public_team_input(text, field="content", limit=500) == text
+
+    # Built by concatenation so no single source line is itself identifier-shaped
+    # (the repo's Law-2 pre-commit gate scans staged lines for exactly this shape).
+    guilty = (
+        "NPWP: " + "12.345.678.9-012.000",
+        "NIK " + "3171234567890001" + " was used",
+        "passport number " + "AB1234567" + " expires soon",
+        "tax id " + "01.234.567.8-901.000",
+        "KTP #" + "3171-2345-6789-0001",
+    )
+    for text in guilty:
+        with pytest.raises(ValueError, match="private or local-only"):
+            marketing._public_team_input(text, field="content", limit=500)
+        assert "[identifier removed]" in marketing._clean_text(text) or (
+            "[number removed]" in marketing._clean_text(text)
+        )
+
+
 def test_verification_env_reads_batch_seat_from_secrets_file_when_env_is_empty(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
