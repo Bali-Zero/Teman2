@@ -58,10 +58,10 @@ GRUNT_AGENTS = [
     "docs-sync",
 ]
 
-MODEL_PIN_HAIKU_RE = re.compile(r"^model\s*:\s*haiku\s*$", re.MULTILINE)
-ANY_MODEL_PIN_RE = re.compile(r"^model\s*:\s*\S", re.MULTILINE)
-DESCRIPTION_GRUNT_RE = re.compile(r"^description\s*:\s*GRUNT \(Haiku\):", re.MULTILINE)
-TOOLS_LINE_RE = re.compile(r"^tools\s*:\s*(.+)$", re.MULTILINE)
+MODEL_PIN_HAIKU_RE = re.compile(r"^model[ \t]*:[ \t]*haiku[ \t]*$", re.MULTILINE)
+ANY_MODEL_PIN_RE = re.compile(r"^model[ \t]*:[ \t]*\S", re.MULTILINE)
+DESCRIPTION_GRUNT_RE = re.compile(r"^description[ \t]*:[ \t]*GRUNT \(Haiku\):", re.MULTILINE)
+TOOLS_LINE_RE = re.compile(r"^tools[ \t]*:[ \t]*(.+)$", re.MULTILINE)
 
 MAX_GRUNT_TOOLS = 4
 # A grunt lane must not spawn its own subagents — that would be an
@@ -260,32 +260,139 @@ def test_guilt_gate_denies_a_subagent_type_with_no_def_on_disk():
 #     which is precisely what model_routing_gate.py Rule 1 exists to prevent.
 #   - `tools:` — a def with no tools line inherits the harness default (all of
 #     them), the broadest possible surface arriving by omission.
+#   - `description:` — the dispatcher matches a mandate against it, so a def
+#     without one is invisible to routing rather than merely untidy.
 #   - `name:` matching the filename — the dispatcher resolves a def by
-#     filename, so a mismatched `name:` yields a def that loads under a
+#     filename, so a mismatched `name:` yields a def that loads under an
 #     identifier nobody dispatches. This is the specific error a bulk promotion
 #     of HOME agent files into this directory would introduce.
+#
+# "Carries a value" is the load-bearing phrase and it took three adversarial
+# rounds to get right. A key satisfying `\S` is NOT a value: `model: ~`,
+# `model: null` and `model: ""` are YAML's ways of writing nothing; `tools: #
+# none` declares a key and supplies a comment; an empty `tools:` followed by
+# `model: sonnet` used to BORROW the next line through a `\s*` that crossed the
+# newline (W119). And a key declared TWICE is refused outright rather than
+# resolved, because a line scanner takes the first while a YAML parser takes
+# the last — so `name: on-disk-name` … `name: something-else` would pass a
+# filename check and load as the other identifier.
 # ---------------------------------------------------------------------------
 
 
 def _agent_def_paths() -> list[Path]:
+    # NON-RECURSIVE ON PURPOSE, and the sentinel in immune-enforcement.yml
+    # deliberately is not: a shell `case` glob matches across `/`, so an edit
+    # anywhere under `.claude/agents/` triggers the battery (broad is the safe
+    # direction for a trigger). Recursing HERE would be the wrong half of the
+    # symmetry — `.claude/agents/wr2-design-architect-resources/` holds 4 `.md`
+    # RESOURCE files that are not agent definitions and would redden at once.
     return sorted(p for p in AGENTS_DIR.glob("*.md") if p.name != "README.md")
 
 
-def _assert_agent_def_floor(fm: str, stem: str, label: str) -> None:
-    assert re.search(r"^name\s*:\s*\S", fm, re.MULTILINE), f"{label} has no `name:` line"
-    assert re.search(r"^description\s*:\s*\S", fm, re.MULTILINE), f"{label} has no `description:` line"
-    assert TOOLS_LINE_RE.search(fm), (
-        f"{label} has no `tools:` line — it would inherit the harness default (every tool)"
+#: The floor below reads every key through ONE reader (`_scalar`) rather than a
+#: per-key regex. Three per-key patterns lived here during the adversarial
+#: rounds and were deleted once `_scalar` subsumed them: an unused module-level
+#: regex reads to the next maintainer as a contract, which is the same defect
+#: as an assert that cannot fail.
+#:
+#: All the frontmatter regexes in this file spell their inter-token gap `[ \t]*`
+#: and
+#: NOT `\s*`. Measured 2026-09-04 before narrowing them, on the pre-existing
+#: `^tools\s*:\s*(.+)$`: given
+#:
+#:     tools:
+#:     model: sonnet
+#:
+#: `\s*` consumed the NEWLINE and `(.+)` then matched the following line, so
+#: `TOOLS_LINE_RE` reported a tools value of 'model: sonnet' for a def whose
+#: `tools:` key is empty. Cicatrix W119 (`\s` attraversa il newline), family #3.
+#:
+#: NOTE ON THE PARSER THIS FILE DELIBERATELY DOES *NOT* USE. The obvious cure
+#: for the same class is "stop regexing and parse the frontmatter as YAML".
+#: Measured, and it is WRONG here: 7 of the 20 defs on disk — every one of the
+#: grunt defs — are NOT valid YAML, because their description carries a second
+#: unquoted colon (`description: GRUNT (Haiku): reads a bounded ...`), which
+#: `yaml.safe_load` rejects with a ScannerError. Those 7 defs are nonetheless
+#: LOADED AND DISPATCHABLE by the harness, with their descriptions rendered
+#: intact — so the real consumer is line-based, not a strict YAML parser, and a
+#: guard that demanded YAML-parseability would be STRICTER THAN THE CONSUMER
+#: and would redden 7 working files. The corpus-level question (should those
+#: descriptions be quoted anyway?) is real and belongs to the PR that edits agent
+#: defs; it is not this guard's to force.
+#: A value consisting only of a comment (`tools: # none`) is rejected below for
+#: the same reason it is rejected by eye: it declares a key and supplies nothing.
+COMMENT_ONLY_VALUE_RE = re.compile(r"^#")
+
+#: Spellings that LOOK like a value and carry none. `~`, `null` and the empty
+#: quoted scalars are YAML's own ways of writing nothing; a bare `""` pin is
+#: the same surface as no pin at all. All of them satisfy `\S`, which is why
+#: the presence regexes alone could not reject them.
+NULLISH_VALUES = frozenset({"~", "null", "Null", "NULL", "~ ", '""', "''"})
+
+#: A trailing ` # comment` is legal after a short YAML scalar. Stripping it is
+#: the OVER-MATCH cure (a `name: my-agent # dispatcher name` must not be read as
+#: the six-word string), and it is applied ONLY to the short routing scalars —
+#: never to `description`, whose prose may legitimately contain a `#`.
+TRAILING_COMMENT_RE = re.compile(r"[ \t]+#.*$")
+
+#: Every key is read with `findall`, never `search`, because a regex reading the
+#: FIRST occurrence and a loader reading the LAST is a silent disagreement about
+#: what the def IS: `name: on-disk-name` … `name: something-else` would pass a
+#: filename check and then load under the other identifier. A duplicated key is
+#: therefore refused outright rather than resolved in either direction — this
+#: guard has no standing to decide which one the harness meant.
+def _value_re(key: str) -> re.Pattern[str]:
+    return re.compile(rf"^{key}[ \t]*:[ \t]*(.*?)[ \t]*$", re.MULTILINE)
+
+
+def _scalar(fm: str, key: str, label: str, *, strip_comment: bool) -> str | None:
+    """The one declared value of `key`, normalized; None when the key is absent
+    or carries nothing. Raises AssertionError when the key is declared twice."""
+    found = _value_re(key).findall(fm)
+    assert len(found) <= 1, (
+        f"{label} declares `{key}:` {len(found)} times ({found!r}) — a line-scanning reader "
+        "takes the FIRST and a YAML parser takes the LAST, so the two disagree about what this "
+        "def is; a duplicated key is refused rather than resolved"
     )
-    assert ANY_MODEL_PIN_RE.search(fm), (
+    if not found:
+        return None
+    value = found[0].strip()
+    if strip_comment:
+        value = TRAILING_COMMENT_RE.sub("", value).strip()
+    if COMMENT_ONLY_VALUE_RE.match(value):
+        return None
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+        value = value[1:-1].strip()
+    if value in NULLISH_VALUES or not value:
+        return None
+    return value
+
+
+def _assert_agent_def_floor(fm: str, stem: str, label: str) -> None:
+    # `description` keeps its own reader: its prose may contain a `#` and is
+    # not a routing scalar, so only presence and comment-only are checked.
+    assert _scalar(fm, "description", label, strip_comment=False), (
+        f"{label} has no `description:` value — the dispatcher matches a mandate against the "
+        "description, so a def without one is invisible to routing"
+    )
+    assert _scalar(fm, "tools", label, strip_comment=True), (
+        f"{label} has no `tools:` value — it would inherit the harness default (every tool), "
+        "the broadest possible surface arriving by omission"
+    )
+    assert _scalar(fm, "model", label, strip_comment=True), (
         f"{label} has no `model:` pin — it would silently inherit the dispatching "
         "orchestrator's model instead of its own tier"
     )
-    declared = re.search(r"^name\s*:\s*(\S+)", fm, re.MULTILINE)
-    assert declared and declared.group(1) == stem, (
-        f"{label} declares name={declared.group(1) if declared else None!r} but its filename "
-        f"says {stem!r} — the dispatcher resolves by FILENAME, so this def would load under "
-        "an identifier nothing dispatches"
+    declared = _scalar(fm, "name", label, strip_comment=True)
+    # This single assert also covers "no `name:` line at all" (declared is
+    # None). A separate presence assert used to sit above it and was measured
+    # DEAD by mutation — deleting it reddened nothing, because this one fires
+    # first on a nameless def. One assert that a guilt test can actually
+    # discriminate beats two where one is decorative.
+    assert declared == stem, (
+        f"{label} declares name={declared!r} but its filename says {stem!r} — the dispatcher "
+        "resolves by FILENAME, so this def would load under an identifier nothing dispatches "
+        "(a missing or empty `name:` reads as None here)"
     )
 
 
@@ -325,3 +432,105 @@ def test_guilt_a_def_whose_name_does_not_match_its_filename_fails_the_floor(tmp_
     )
     with pytest.raises(AssertionError):
         _assert_agent_def_floor(_frontmatter(bad.read_text(encoding="utf-8")), bad.stem, str(bad))
+
+
+def test_guilt_a_def_with_no_name_line_at_all_fails_the_floor(tmp_path):
+    bad = tmp_path / "nameless.md"
+    bad.write_text(
+        "---\ndescription: no name line\ntools: Read\nmodel: sonnet\n---\n\n# nameless\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(AssertionError):
+        _assert_agent_def_floor(_frontmatter(bad.read_text(encoding="utf-8")), bad.stem, str(bad))
+
+
+def test_guilt_a_def_with_no_description_fails_the_floor(tmp_path):
+    # Without this the `description:` assert is unreachable by any test: every
+    # real def carries one, so mutating it away reddened nothing (measured
+    # 2026-09-04). The description is what the dispatcher matches a mandate
+    # against — a def with none is invisible to routing, not merely untidy.
+    bad = tmp_path / "mute.md"
+    bad.write_text(
+        "---\nname: mute\ntools: Read\nmodel: sonnet\n---\n\n# mute\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(AssertionError):
+        _assert_agent_def_floor(_frontmatter(bad.read_text(encoding="utf-8")), bad.stem, str(bad))
+
+
+def test_guilt_an_empty_tools_key_does_not_borrow_the_next_line_as_its_value(tmp_path):
+    # W119, measured on the pre-existing `^tools\s*:\s*(.+)$`: `\s*` crossed the
+    # newline, so this def reported a tools value of 'model: sonnet' and passed.
+    # Reverting the regex to `\s*` reddens exactly this test.
+    bad = tmp_path / "borrowed.md"
+    bad.write_text(
+        "---\nname: borrowed\ndescription: empty tools key\ntools:\nmodel: sonnet\n---\n\n# x\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(AssertionError):
+        _assert_agent_def_floor(_frontmatter(bad.read_text(encoding="utf-8")), bad.stem, str(bad))
+
+
+def test_guilt_a_key_whose_value_is_only_a_comment_fails_the_floor(tmp_path):
+    for key in ("tools", "model", "description"):
+        lines = {"name": "commented", "description": "d", "tools": "Read", "model": "sonnet"}
+        lines[key] = "# nothing here"
+        body = "".join(f"{k}: {v}\n" for k, v in lines.items())
+        bad = tmp_path / "commented.md"
+        bad.write_text(f"---\n{body}---\n\n# x\n", encoding="utf-8")
+        with pytest.raises(AssertionError):
+            _assert_agent_def_floor(_frontmatter(bad.read_text(encoding="utf-8")), bad.stem, str(bad))
+
+
+def test_guilt_a_nullish_routing_value_fails_the_floor(tmp_path):
+    # `~`, `null` and empty quoted scalars all satisfy `\S`, so the presence
+    # regexes alone accepted them while the def carries no pin and no toolset.
+    for key in ("tools", "model", "name"):
+        for spelling in ("~", "null", '""', "''"):
+            lines = {"name": "nullish", "description": "d", "tools": "Read", "model": "sonnet"}
+            lines[key] = spelling
+            body = "".join(f"{k}: {v}\n" for k, v in lines.items())
+            bad = tmp_path / "nullish.md"
+            bad.write_text(f"---\n{body}---\n\n# x\n", encoding="utf-8")
+            with pytest.raises(AssertionError):
+                _assert_agent_def_floor(
+                    _frontmatter(bad.read_text(encoding="utf-8")), bad.stem, str(bad)
+                )
+
+
+def test_guilt_a_duplicated_key_is_refused_rather_than_resolved(tmp_path):
+    # A line scanner takes the first `name:`, a YAML parser takes the last. The
+    # first matches the filename and the second does not, so whichever reader
+    # the harness uses, one of them loads a def this floor said was fine.
+    bad = tmp_path / "twofaced.md"
+    bad.write_text(
+        "---\nname: twofaced\ndescription: d\ntools: Read\nmodel: sonnet\nname: something-else\n"
+        "---\n\n# x\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(AssertionError, match="declares `name:` 2 times"):
+        _assert_agent_def_floor(_frontmatter(bad.read_text(encoding="utf-8")), bad.stem, str(bad))
+
+
+def test_innocence_a_trailing_yaml_comment_on_a_routing_scalar_passes_the_floor(tmp_path):
+    # The over-match twin of the quoted-name cure: ` # comment` after a short
+    # scalar is legal YAML and must not become part of the value.
+    ok = tmp_path / "annotated.md"
+    ok.write_text(
+        "---\nname: annotated # the dispatcher name\ndescription: prose may contain a # here\n"
+        "tools: Read # read-only lane\nmodel: sonnet # implementer tier\n---\n\n# x\n",
+        encoding="utf-8",
+    )
+    _assert_agent_def_floor(_frontmatter(ok.read_text(encoding="utf-8")), ok.stem, str(ok))
+
+
+def test_innocence_a_quoted_name_matching_the_filename_passes_the_floor(tmp_path):
+    # The over-match this cured: `name: "foo"` is legal YAML and names `foo`.
+    # A bare `(\S+)` capture compared '"foo"' against 'foo' and rejected it.
+    for spelling in ('name: "quoted"', "name: 'quoted'", "name: quoted   "):
+        ok = tmp_path / "quoted.md"
+        ok.write_text(
+            f"---\n{spelling}\ndescription: legal yaml\ntools: Read\nmodel: sonnet\n---\n\n# quoted\n",
+            encoding="utf-8",
+        )
+        _assert_agent_def_floor(_frontmatter(ok.read_text(encoding="utf-8")), ok.stem, str(ok))
