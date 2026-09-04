@@ -21,6 +21,7 @@ For marketing team to create articles manually with:
 import json
 import logging
 import os
+import re
 import time
 import uuid
 from datetime import datetime, timezone
@@ -607,10 +608,48 @@ def generate_slug(headline: str) -> str:
     return slug[:120]  # Limit slug length
 
 
+# Article headings here (## Facts, ## Summary, ## Bali Zero Take, ...) are
+# generic structural section labels, never prose worth keeping in a
+# preview/SEO snippet, so the whole heading LINE is dropped — not just the
+# leading "#" marks.
+_MD_HEADING_RE = re.compile(r"(?m)^\s{0,3}#{1,6}[^\n]*\n?")
+_MD_LINK_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+_MD_EMPHASIS_RE = re.compile(r"(\*\*\*|\*\*|\*|___|__|_)(.+?)\1")
+_MD_INLINE_CODE_RE = re.compile(r"`([^`]*)`")
+_MD_LIST_BULLET_RE = re.compile(r"(?m)^\s{0,3}(?:[-*+]|\d+[.)])\s+")
+_WHITESPACE_RE = re.compile(r"\s+")
+
+
+def _plain_text_snippet(text: str, limit: int) -> str:
+    """Render markdown as plain prose and truncate to a word boundary.
+
+    Drops whole heading lines (``## Facts``), bold/italic markers,
+    ``[text](url)`` links (kept as ``text``), inline code, and list
+    bullets, then collapses whitespace. The result is truncated to at
+    most ``limit`` characters, cutting only at a space so no word is
+    split, and an ellipsis (``…``) is appended only when truncation
+    actually occurred.
+    """
+    plain = str(text)
+    plain = _MD_HEADING_RE.sub("", plain)
+    plain = _MD_LINK_RE.sub(r"\1", plain)
+    plain = _MD_EMPHASIS_RE.sub(r"\2", plain)
+    plain = _MD_INLINE_CODE_RE.sub(r"\1", plain)
+    plain = _MD_LIST_BULLET_RE.sub("", plain)
+    plain = _WHITESPACE_RE.sub(" ", plain).strip()
+
+    if len(plain) <= limit:
+        return plain
+
+    truncated = plain[:limit]
+    if " " in truncated:
+        truncated = truncated.rsplit(" ", 1)[0]
+    return truncated.rstrip(" .,;:!?-") + "…"
+
+
 def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: str | None) -> str:
     """Generate MDX file content from enriched article"""
     import json as json_module
-    import re
 
     # Map category to URL-friendly format
     category_map = {
@@ -721,9 +760,18 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
         return s
 
     safe_headline = yaml_safe(article.headline, 200)
-    safe_excerpt = yaml_safe(article.ai_summary, 280)
-    safe_seo_desc = yaml_safe(article.seo_description or article.ai_summary, 155)
-    safe_seo_title = yaml_safe(article.seo_title or article.headline, 60)
+    # excerpt/seoDescription/seoTitle can fall back to raw markdown content
+    # (e.g. a "## Facts" heading) when no dedicated summary/SEO field was
+    # generated — render as plain prose, word-boundary truncated, before the
+    # YAML quote-escaping pass below (generous max_len so yaml_safe's own
+    # truncation never re-fires on an already-bounded string).
+    safe_excerpt = yaml_safe(_plain_text_snippet(article.ai_summary, 280), 320)
+    safe_seo_desc = yaml_safe(
+        _plain_text_snippet(article.seo_description or article.ai_summary, 155), 190
+    )
+    safe_seo_title = yaml_safe(
+        _plain_text_snippet(article.seo_title or article.headline, 70), 100
+    )
     safe_cover_alt = yaml_safe(article.cover_image_alt or article.headline, 160)
     safe_answer = yaml_safe(answer_snippet, 300)
     safe_question = yaml_safe(primary_question, 150)
