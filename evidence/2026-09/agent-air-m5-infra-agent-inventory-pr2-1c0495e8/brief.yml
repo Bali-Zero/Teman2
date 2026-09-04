@@ -13,13 +13,26 @@ objective: |
   per machine — measured, Pro's copies still name `~/Desktop/nuzantara`, a path this repo
   left on 2026-07-16, while M5's carry the 2026-09-04 context-diet description trim.
 
-  Vendoring them alone would have been theater, and that is the load-bearing part of this
-  PR. `.claude/agents/` (project) outranks `~/.claude/agents/` (machine-local) ONLY when
-  the process cwd is inside the repo. launchd starts both jobs with cwd=/ and
-  `~/scripts/claude-cascade.sh` never `cd`s and passes no directory flag (measured: no
-  `cd`, no `--add-dir`, no `--cwd` anywhere in it). So a vendored copy would sit in the
-  repo, tracked and gated, and NEVER be the copy that loads. Each wrapper therefore also
-  resolves `$NUZ_ROOT` and `cd`s into it before dispatching.
+  Vendoring alone would have left the repo copy decorative, and the shape of the fix is the
+  load-bearing decision here. `.claude/agents/` (project) outranks `~/.claude/agents/`
+  (machine-local) ONLY when the process cwd is inside the repo. Measured, not assumed:
+  `~/scripts/claude-cascade.sh` contains no `cd`, no `--add-dir` and no `--cwd`, and a
+  throwaway LaunchAgent bootstrapped on Pro with no `WorkingDirectory` key printed `pwd` =
+  `/`. So the harness will keep loading the HOME copy.
+
+  ROUND 1 answered that with `cd "$NUZ_ROOT"`. Two cross-family review seats independently
+  refused it, and the PR follows them: cd'ing a headless print-mode cron into the repo pulls
+  in the project `CLAUDE.md`, the project `.claude/settings.json` hooks, and git visibility
+  of the main checkout -- which makes autonomous `git commit` against main possible again in
+  a job whose prompt carries no no-git prohibition. That failure is closed three times in
+  this repo's own ledger.
+
+  ROUND 2, what ships: each wrapper resolves ONE `SPEC_PATH`, preferring the tracked repo
+  definition and falling back to the machine-local copy, and LOGS which one it chose. The
+  operative spec -- the 8KB and 11KB of operating instructions the model actually follows --
+  becomes the tracked, reviewed, gated file. The harness-level `--agent` frontmatter still
+  resolves from HOME; making THAT the repo copy needs cwd=repo and is left to its own PR
+  with its own measurement.
 
   Third measured obstacle, and the actual root cause of why these were never tracked:
   `.gitignore:549` ignores `.claude/agents/*` behind an explicit `!`-allowlist. Without two
@@ -56,26 +69,25 @@ acceptance:
       `.gitignore:549:.claude/agents/*`; after the two `!` lines, `git status --short` shows
       both files as `A`
   - text: >
-      WHEN either cron wrapper runs from a repo checkout, the process cwd SHALL be the repo
-      root, so that `--agent <name>` resolves the project-level definition rather than the
-      machine-local one.
+      WHEN the repo definition is present, the wrapper SHALL name it as the spec; WHERE it is
+      absent it SHALL fall back to the machine-local copy AND emit a WARN; and in EVERY case
+      it SHALL log which path it chose, so no run is silently spec-less.
     status: verified
     probe: >-
-      `zsh -n` on both scripts; the inserted block is `cd "$NUZ_ROOT"` guarded by a test that
-      the vendored def exists at that root
+      the block extracted into a scratch script and run over four states — repo present, repo
+      absent, BOTH absent, and an externally-emptied NUZ_ROOT: chose REPO/HOME/none/HOME with
+      warn=0/1/1/1 and the `spec:` log line present in all four
   - text: >
-      IF the repo is absent at $NUZ_ROOT, the wrapper SHALL log a WARN and continue with the
-      HOME copy rather than abort — the pre-existing behaviour, not a new failure mode.
+      This diff SHALL NOT change the process cwd of either cron.
     status: verified
-    probe: >-
-      read the else-branch: it writes to "$LOG" and does not exit; `cd` is only reached inside
-      the positive branch
+    probe: "git diff origin/main -- '*.sh' | grep -c '^+.*\\bcd ' -> 0"
   - text: >
-      WHILE this diff changes cwd, it SHALL NOT break any relative path in either script.
+      Neither script SHALL break under `set -u` when NUZ_ROOT is unset OR set to the empty
+      string.
     status: verified
     probe: >-
-      grep for non-absolute path operands in both files after excluding `$HOME`/`$NUZ_ROOT`
-      forms — zero hits
+      case D of the same scratch run, plus `${NUZ_ROOT:-…}` collapsing unset and empty alike
+      (independently confirmed as a FAILED attack by both review seats)
   - text: >
       The vendored definitions SHALL pass the agent-def floor armed by PR #5625.
     status: verified
@@ -88,12 +100,12 @@ acceptance:
       files (the first, cruder token-set probe gave a FALSE 'unchanged' on two empty files
       because `set -- $p` did not split under zsh; it was rerun explicitly)
 risks:
-  - "THE CD CHANGES WHAT THE SPAWNED `claude` CONSIDERS ITS PROJECT. Running inside the repo
-    means the project `CLAUDE.md`, `.claude/settings.json` and any project hooks now load for
-    these two cron runs, where before they did not. That is the INTENDED effect for agent
-    resolution and an unrequested side effect for everything else. It is not believed to break
-    them — the write paths are unchanged and already point inside the main checkout — but it is
-    a real behavioural change and it is stated rather than hidden."
+  - "THE HARNESS DEFINITION IS STILL THE HOME COPY, AND THIS PR DOES NOT CHANGE THAT. What
+    `--agent <name>` resolves — the frontmatter tool grant, the model pin, the system prompt —
+    still comes from `~/.claude/agents/`. What this PR moves into the repo is the OPERATIVE
+    SPEC the prompt tells the model to read and follow. The two can diverge; the vendored
+    copies carry a `CANON:` marker naming the repo as authoritative, which is the same
+    convention the 2026-08-08 wr2 vendoring used and PROVED live with a tool_uses:0 probe."
   - "`nb-curator.daily` IS ALREADY RED AND THIS PR DOES NOT FIX IT. Measured on Pro before the
     change: last exit 2, `ARTIFACT GATE FAILED (rc=3) despite brain exit=0`, because the
     agent-worktree-isolation hook refused its report write into the main checkout. That hook
