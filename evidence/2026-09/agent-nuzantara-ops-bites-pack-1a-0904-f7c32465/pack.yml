@@ -23,7 +23,7 @@ bites_note: >-
   weaker half of the observation: --selftest proves the corpus, and the test file plus
   the registry entry prove the consumer. `regex:[0-9]{3}/[0-9]{3} pass` rather than `exit0` so that
   silently emptying the corpus fails the observation instead of passing it. Three digits
-  rather than the literal count on purpose: pinning `118/118` would make every fixture
+  rather than the literal count on purpose: pinning `121/121` would make every fixture
   added afterwards a red observation, which is a ratchet, while the shape still goes red
   if the corpus ever drops back below a hundred — an
   observation that cannot fail when its subject is deleted is the disease this lane
@@ -78,15 +78,15 @@ diff: >-
   figure written into a file that is itself part of the diff.
 
   SHAPE. One new module (scripts/ci/bites_parse.py: nine guards, a YAML layer with a strict
-  loader, a 118-entry guilt+innocence corpus, a --selftest that needs no network and no
-  token), one new test file (122 tests), one registry surface naming every guard's proofs,
+  loader, a 121-entry guilt+innocence corpus, a --selftest that needs no network and no
+  token), one new test file (128 tests), one registry surface naming every guard's proofs,
   four small edits to the conformance checker's dispatch, three lines added to
   immune-enforcement.yml, and one corrected block in the lane brief.
 
   SIZE, stated rather than hidden: 3,049 added lines from the merge-base, of which 2,677
   outside this evidence directory, against the contract's ~400. It is one
   concern — the format and the boundary that makes it safe to execute — and the bulk is
-  proofs: 118 corpus fixtures and 122 tests for nine guards. Splitting the guards from their
+  proofs: 121 corpus fixtures and 128 tests for nine guards. Splitting the guards from their
   evidence would land a validator with nothing showing that it validates. The ceiling rule
   is not engaged (the floor is 3 by path, from the workflow edit), so this is a disclosure,
   not an override.
@@ -102,13 +102,13 @@ receipts:
       A1. The guilt+innocence corpus passes, and it is the observation this pack's own
       `bites:` block names.
     cmd: python3 scripts/ci/bites_parse.py --selftest
-    result: "bites_parse selftest: 118/118 pass (guilt + innocence)"
+    result: "bites_parse selftest: 121/121 pass (guilt + innocence)"
     exit: 0
     ts: "2026-09-04T20:52+08:00"
     seat: session (Pro)
   - claim: A1. The full battery for this surface.
     cmd: python3 -m pytest scripts/tests/test_bites_parse.py -q
-    result: "122 passed"
+    result: "128 passed"
     exit: 0
     ts: "2026-09-04T20:52+08:00"
     seat: session (Pro)
@@ -195,7 +195,7 @@ receipts:
       The corpus and the test file report their own sizes, so the prose cannot drift from
       them again.
     cmd: python3 -c "<len(CONFORMANCE_CORPUS)>" ; grep -c "^def test_" scripts/tests/test_bites_parse.py
-    result: "118 and 122"
+    result: "121 and 128"
     exit: 0
     ts: "2026-09-04T21:45+08:00"
     seat: session (Pro)

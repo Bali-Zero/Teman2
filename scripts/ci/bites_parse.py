@@ -96,6 +96,68 @@ SHA_PLACEHOLDER = "{sha}"
 #: test still reads the same identifiers.
 SPEC_PATH = Path(__file__).with_name("bites_allowlist.yaml")
 
+#: The spec's key set is CLOSED. Kimi K3, refuting the cut on 2026-09-04, made the
+#: point that the move itself introduced this class: when the rules were Python
+#: literals a duplicate section was a syntax error, and in YAML the last one silently
+#: wins - appending `shell_metachars: []` to the file re-admits `git log --format=%h`
+#: followed by a shell pipe, and it reviews as one added line at the end of a
+#: 200-line data file. The spec is therefore read by _StrictLoader, exactly like a
+#: pack: no aliases, no merge keys, no duplicate keys.
+SPEC_KEYS = {
+    "commands", "fly", "curl", "pytest", "gh", "git", "observable_marker",
+    "remote_shell_tokens", "shell_metachars", "invisible_chars", "key",
+    "required_keys", "where_scopes",
+}
+
+
+class _StrictLoader(yaml.SafeLoader):
+    """SafeLoader minus the two features that let one file mean two things.
+
+    ALIASES. `observe: *evil` puts the value somewhere other than where the
+    contract is read, and a merge key (`<<: *base`) does it for a whole block.
+    A reviewer reading the `bites:` block would have to go find the anchor to
+    know what runs. Refused outright - no pack on main uses one (checked
+    2026-09-04 across all 148).
+
+    DUPLICATE KEYS. `yaml.safe_load` keeps the LAST of two identical keys and
+    says nothing: a pack with two `bites:` blocks, or two `observe:` lines,
+    shows a reader the first and hands the parser the second. This is the file
+    form of the "two blocks is ambiguous" case the body parser had to handle,
+    and here it is a two-line fix instead of a CommonMark reader.
+    """
+
+    def compose_node(self, parent, index):  # noqa: D102 - see class docstring
+        if self.check_event(yaml.events.AliasEvent):
+            event = self.peek_event()
+            raise yaml.constructor.ConstructorError(
+                None, None,
+                "YAML aliases and merge keys are not accepted in a pack: the value a "
+                "reader sees at the anchor and the value the parser uses here are two "
+                "different places, and a contract must be readable where it is written",
+                event.start_mark,
+            )
+        return super().compose_node(parent, index)
+
+    def construct_mapping(self, node, deep=False):  # noqa: D102 - see class docstring
+        seen: set[Any] = set()
+        for key_node, _value_node in node.value:
+            try:
+                key = self.construct_object(key_node, deep=deep)
+                if key in seen:
+                    raise yaml.constructor.ConstructorError(
+                        "while constructing a mapping", node.start_mark,
+                        f"duplicate key {key!r} - PyYAML keeps the last, a reader keeps "
+                        f"the first; with two readings available there is no honest way "
+                        f"to pick one",
+                        key_node.start_mark,
+                    )
+                seen.add(key)
+            except TypeError:
+                # An unhashable key. Not our error to report: SafeLoader raises its own.
+                continue
+        return super().construct_mapping(node, deep=deep)
+
+
 
 def _load_spec(path: Path) -> dict[str, Any]:
     """Read the allow-list. Unreadable or empty is fatal, never an empty allow-list.
@@ -105,11 +167,26 @@ def _load_spec(path: Path) -> dict[str, Any]:
     breached one. Neither is a state this file may reach silently (superscar #2).
     """
     try:
-        spec = yaml.safe_load(path.read_text(encoding="utf-8"))
+        spec = yaml.load(path.read_text(encoding="utf-8"), Loader=_StrictLoader)
     except OSError as exc:
         raise SystemExit(f"bites_parse: allow-list unreadable at {path}: {exc}") from exc
+    except Exception as exc:                       # yaml errors, and anything else
+        raise SystemExit(
+            f"bites_parse: allow-list at {path} is not readable as strict YAML: "
+            f"{type(exc).__name__}. A parser whose caller maps EXIT CODES to verdicts "
+            f"must not answer with a traceback - that is the fourth outcome this module "
+            f"refuses for packs, and it refuses it for its own rules too."
+        ) from exc
     if not isinstance(spec, dict) or not spec.get("commands"):
         raise SystemExit(f"bites_parse: allow-list at {path} is empty or malformed")
+    unknown = sorted(set(map(str, spec)) - SPEC_KEYS)
+    if unknown:
+        raise SystemExit(
+            f"bites_parse: allow-list at {path} carries unknown top-level key(s) "
+            f"{', '.join(unknown)}. The key set is closed: a section this module never "
+            f"reads is either a typo silently disarming the real one, or a rule nobody "
+            f"applies."
+        )
     return spec
 
 
@@ -389,7 +466,14 @@ def _check_git(head: str, rest: list[str]) -> list[str]:
                 f"`-c` runs a program the argument names and `--paginate` starts $PAGER. "
                 f"Put the subcommand first. {_see('git')}"]
     for flag in rest[sub_at + 1:]:
-        if flag.split("=", 1)[0] in ("--format", "--pretty") and "%G" in flag:
+        base = flag.split("=", 1)[0]
+        if base in ("--format", "--pretty") and "=" not in flag:
+            return [f"observe: write `git {base}=<value>`. Checking the placeholder only "
+                    f"in the FLAG token reads `--format=%GS` and misses `--format '%GS'`, "
+                    f"which git accepts identically - the same separate-value blindness "
+                    f"pytest's `-k` rule already closes. Requiring the glued form closes "
+                    f"the class instead of the spelling."]
+        if base in ("--format", "--pretty") and "%G" in flag:
             return ["observe: a `%G` pretty-format placeholder asks git to VERIFY a "
                     "signature, which runs `gpg.program` - a program a config value names"]
     bad = _flag_violation(rest[sub_at + 1:], GIT_SUB_ALLOWED_FLAGS, numeric=True)
@@ -447,6 +531,15 @@ _COMMAND_CHECKS = {
     "python3": _check_python3, "gh": _check_gh, "git": _check_git,
     "curl": _check_curl, "fly": _check_fly, "flyctl": _check_fly,
 }
+
+
+_missing_checks = sorted(set(ALLOWED_COMMANDS) - set(_COMMAND_CHECKS))
+if _missing_checks:
+    raise SystemExit(
+        f"bites_parse: allow-list names command(s) with no narrowing check: "
+        f"{', '.join(_missing_checks)}. Reaching parse time and raising KeyError there "
+        f"would make a spec typo look like a crash instead of a refusal."
+    )
 
 
 def _guard_command_allowlist(command: str) -> list[str]:
@@ -737,54 +830,6 @@ _COMMAND_GUARDS = (
 )
 
 # ----------------------------------------------------------------- pack layer
-
-
-class _StrictLoader(yaml.SafeLoader):
-    """SafeLoader minus the two features that let one file mean two things.
-
-    ALIASES. `observe: *evil` puts the value somewhere other than where the
-    contract is read, and a merge key (`<<: *base`) does it for a whole block.
-    A reviewer reading the `bites:` block would have to go find the anchor to
-    know what runs. Refused outright - no pack on main uses one (checked
-    2026-09-04 across all 148).
-
-    DUPLICATE KEYS. `yaml.safe_load` keeps the LAST of two identical keys and
-    says nothing: a pack with two `bites:` blocks, or two `observe:` lines,
-    shows a reader the first and hands the parser the second. This is the file
-    form of the "two blocks is ambiguous" case the body parser had to handle,
-    and here it is a two-line fix instead of a CommonMark reader.
-    """
-
-    def compose_node(self, parent, index):  # noqa: D102 - see class docstring
-        if self.check_event(yaml.events.AliasEvent):
-            event = self.peek_event()
-            raise yaml.constructor.ConstructorError(
-                None, None,
-                "YAML aliases and merge keys are not accepted in a pack: the value a "
-                "reader sees at the anchor and the value the parser uses here are two "
-                "different places, and a contract must be readable where it is written",
-                event.start_mark,
-            )
-        return super().compose_node(parent, index)
-
-    def construct_mapping(self, node, deep=False):  # noqa: D102 - see class docstring
-        seen: set[Any] = set()
-        for key_node, _value_node in node.value:
-            try:
-                key = self.construct_object(key_node, deep=deep)
-                if key in seen:
-                    raise yaml.constructor.ConstructorError(
-                        "while constructing a mapping", node.start_mark,
-                        f"duplicate key {key!r} - PyYAML keeps the last, a reader keeps "
-                        f"the first; with two readings available there is no honest way "
-                        f"to pick one",
-                        key_node.start_mark,
-                    )
-                seen.add(key)
-            except TypeError:
-                # An unhashable key. Not our error to report: SafeLoader raises its own.
-                continue
-        return super().construct_mapping(node, deep=deep)
 
 
 def _one_line(exc: Exception) -> str:

@@ -30,6 +30,7 @@ attack; only the source line differs.
 from __future__ import annotations
 
 import importlib.util
+import pytest
 import json
 import subprocess
 from pathlib import Path
@@ -1075,3 +1076,61 @@ def test_command_allowlist_guilt_gh_template_is_refused_with_jq():
     """Narrow the surface, not the spelling: two holes in two reviews over one option set."""
     assert bp._guard_command_allowlist("gh pr view 1 --template '{{.state}}'")
     assert bp._guard_command_allowlist("gh pr view 1 -t '{{.state}}'")
+
+
+def test_command_allowlist_guilt_git_format_placeholder_in_a_SEPARATE_value():
+    """Checking the placeholder only in the flag token guards a spelling, not a class.
+
+    Kimi K3, refuting the cut on 2026-09-04: git accepts `--format '%GS'` exactly as it
+    accepts `--format=%GS`, and only the second was refused. The cure is not another
+    substring check on the next token — it is requiring the glued form, the same rule
+    pytest's `-k` already carries, which closes every placeholder rather than `%G`.
+    """
+    assert bp._guard_command_allowlist("git log --format '%GS' HEAD")
+    assert bp._guard_command_allowlist("git show --pretty '%G?' HEAD")
+    assert bp._guard_command_allowlist("git log --format %H")
+
+
+def test_command_allowlist_innocence_the_glued_format_shapes_still_pass():
+    for command in ("git log --format=%H", "git log --pretty=%h", "git log --oneline -1"):
+        assert bp._guard_command_allowlist(command) == [], command
+
+
+def _spec_variant(tmp_path, extra):
+    target = tmp_path / "spec.yaml"
+    target.write_text(bp.SPEC_PATH.read_text(encoding="utf-8") + extra, encoding="utf-8")
+    return target
+
+
+def test_load_spec_guilt_a_duplicate_section_silently_winning_is_refused(tmp_path):
+    """The ambiguity class the CUT introduced, and the reason the spec is read strictly.
+
+    When the rules were Python literals a duplicate section was a SyntaxError. In YAML
+    the last one wins in silence: appending `shell_metachars: []` to a 200-line data
+    file re-admits a shell pipe and reviews as one added line at the end.
+    """
+    with pytest.raises(SystemExit):
+        bp._load_spec(_spec_variant(tmp_path, "\nshell_metachars: []\n"))
+    with pytest.raises(SystemExit):
+        bp._load_spec(_spec_variant(tmp_path, "\ncommands: [gh, python3, bash]\n"))
+
+
+def test_load_spec_guilt_an_unknown_top_level_key_is_refused(tmp_path):
+    """A section this module never reads is a typo disarming the real one."""
+    with pytest.raises(SystemExit):
+        bp._load_spec(_spec_variant(tmp_path, "\nsurprise: yes\n"))
+
+
+def test_load_spec_guilt_malformed_yaml_exits_instead_of_raising(tmp_path):
+    """A parser whose caller maps EXIT CODES to verdicts must not answer with a traceback."""
+    target = tmp_path / "bad.yaml"
+    target.write_text("commands: [gh\n  bad: [\n", encoding="utf-8")
+    with pytest.raises(SystemExit):
+        bp._load_spec(target)
+
+
+def test_load_spec_innocence_the_real_allow_list_loads_and_is_the_live_one():
+    """The over-match direction: strictness must not refuse the file actually shipped."""
+    spec = bp._load_spec(bp.SPEC_PATH)
+    assert tuple(spec["commands"]) == bp.ALLOWED_COMMANDS
+    assert set(bp.ALLOWED_COMMANDS) <= set(bp._COMMAND_CHECKS)

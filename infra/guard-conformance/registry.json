@@ -4,6 +4,10 @@
   "surfaces": {
     "bites_parse_observe_allowlist": {
       "parse_layer_proofs": [
+        "test_load_spec_guilt_a_duplicate_section_silently_winning_is_refused",
+        "test_load_spec_guilt_an_unknown_top_level_key_is_refused",
+        "test_load_spec_guilt_malformed_yaml_exits_instead_of_raising",
+        "test_load_spec_innocence_the_real_allow_list_loads_and_is_the_live_one",
         "test_two_bites_blocks_in_one_pack_are_refused_not_last_wins",
         "test_two_observe_keys_in_one_block_are_refused",
         "test_an_alias_cannot_put_the_command_somewhere_else",
@@ -66,6 +70,7 @@
             "test_command_allowlist_guilt_gh_api_absolute_url_leaves_github",
             "test_command_allowlist_guilt_gh_template_is_refused_with_jq",
             "test_command_allowlist_guilt_fly_logs_crosses_the_output_boundary",
+            "test_command_allowlist_guilt_git_format_placeholder_in_a_SEPARATE_value",
             "test_command_allowlist_guilt_curl_credential_files_are_rejected",
             "test_command_allowlist_guilt_curl_variable_expands_the_environment",
             "test_command_allowlist_guilt_curl_write_out_is_rejected",
@@ -80,6 +85,7 @@
             "test_command_allowlist_innocence_git_grep_count_flag_passes",
             "test_command_allowlist_innocence_the_gh_shape_that_survives_jq_removal",
             "test_command_allowlist_innocence_a_gh_api_rest_path_still_passes",
+            "test_command_allowlist_innocence_the_glued_format_shapes_still_pass",
             "test_command_allowlist_innocence_fly_version_and_flagged_reads_pass",
             "test_command_allowlist_innocence_the_curl_shapes_an_observation_needs_pass",
             "test_command_allowlist_innocence_the_git_shapes_an_observation_needs_pass",

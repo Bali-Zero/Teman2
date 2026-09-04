@@ -419,3 +419,12 @@
 - label: ok-gh-api-rest-path-is-the-shape-that-survives
   observe: gh api repos/o/r --json url
   class: executable
+- label: guilt-git-format-placeholder-in-a-separate-value
+  observe: git log --format '%GS' HEAD
+  class: malformed
+- label: guilt-git-pretty-placeholder-in-a-separate-value
+  observe: git show --pretty '%G?' HEAD
+  class: malformed
+- label: ok-git-format-glued-is-the-shape-that-survives
+  observe: git log --format=%H
+  class: executable
