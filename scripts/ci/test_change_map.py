@@ -43,6 +43,61 @@ def _locate_repo_root(rel: Path) -> Path | None:
     return next((c for c in candidates if (c / rel).is_file()), None)
 
 
+def _is_flat_extraction_copy(repo_root: Path, *, this_file: Path | None = None) -> bool:
+    """True when the file actually EXECUTING this test is a flat-extracted
+    copy of itself (tests.yml's trusted-classifier corpus dumps this exact
+    file into ``$RUNNER_TEMP/trusted-classifier/`` with no ``scripts/ci/``
+    ancestry — see this module's other flat-layout note above), rather than
+    the real nested ``scripts/ci/test_change_map.py`` the checkout carries
+    under ``repo_root``.
+
+    Distinct from ``_locate_repo_root``'s own concern: the checkout can be
+    FOUND (via cwd/GITHUB_WORKSPACE) even while THIS FILE is executing from a
+    flat copy dumped elsewhere by the extraction step — reachability of the
+    census and the identity of the currently-running test file are two
+    different questions, and #5679→#5692 only ever fixed the first one.
+
+    ``this_file`` is injectable (defaults to the real ``__file__``) purely so
+    the guilt/innocence tests below can exercise both branches deterministically
+    without needing to actually BECOME a flat copy mid-process.
+    """
+    this_file = this_file if this_file is not None else Path(__file__)
+    canonical = (repo_root / "scripts" / "ci" / "test_change_map.py").resolve()
+    return this_file.resolve() != canonical
+
+
+def _staleness_verdict(
+    completed: subprocess.CompletedProcess[str], *, is_flat: bool
+) -> tuple[bool, str]:
+    """Pure decision logic for a completed ``scripts_coupling_census.py
+    --check`` run: (should_pass, message_to_print_or_fail_with).
+
+    A stale FLEET-WIDE census (drifted because some OTHER merged PR touched
+    scripts/**, unrelated to whatever diff THIS run is judging) must never
+    force every PR's trusted-classifier corpus to distrust itself and fall
+    back to run_all=true — diagnosed 2026-09-05, the fleet-wide outage from
+    18:46Z the same day #5679/#5692 already fixed a DIFFERENT flat-layout
+    trap for. So a stale census WARNS (still passes) inside the flat
+    extraction, and still FAILS in the real repo layout (local dev, the
+    nightly scripts/tests/ sweep, scripts/tests/test_scripts_coupling_fresh.py)
+    where staleness is exactly the fact those tools exist to catch.
+    """
+    if completed.returncode == 0:
+        return True, ""
+    message = (
+        "SCRIPTS_COUPLING is stale or the census failed — run "
+        "`python3 scripts/ci/scripts_coupling_census.py --write`.\n"
+        f"stdout: {completed.stdout}\nstderr: {completed.stderr}"
+    )
+    if is_flat:
+        return True, (
+            "WARNING: SCRIPTS_COUPLING stale on this base — classification "
+            "may under-match new scripts until regenerated (run "
+            "scripts_coupling_census.py --write)"
+        )
+    return False, message
+
+
 class ChangeMapTests(unittest.TestCase):
     def test_guilt_backend_change_runs_backend_and_e2e(self) -> None:
         result = cm.classify(["apps/backend-rag/backend/app/main.py"])
@@ -673,13 +728,12 @@ class ChangeMapTests(unittest.TestCase):
             self.skipTest(
                 f"git unavailable in this sandbox: {completed.stderr.strip()[-200:]}"
             )
-        self.assertEqual(
-            completed.returncode,
-            0,
-            "SCRIPTS_COUPLING is stale or the census failed — run "
-            "`python3 scripts/ci/scripts_coupling_census.py --write`.\n"
-            f"stdout: {completed.stdout}\nstderr: {completed.stderr}",
+        should_pass, message = _staleness_verdict(
+            completed, is_flat=_is_flat_extraction_copy(repo_root)
         )
+        if message.startswith("WARNING"):
+            print(message)
+        self.assertTrue(should_pass, message)
 
     def test_guilt_fleet_ops_combined_with_backend_change_still_runs_backend(
         self,
@@ -1093,6 +1147,107 @@ class CensusCheckDiagnosticTests(unittest.TestCase):
         paths = {f"scripts/pack_{i}.py" for i in range(12)}
         block = census._render_block(paths)
         self.assertEqual(census._block_paths(block), paths)
+
+
+class StalenessVerdictTests(unittest.TestCase):
+    """Guilt + innocence for _staleness_verdict, added 2026-09-05: a stale
+    SCRIPTS_COUPLING must WARN+PASS in the flat trusted-classifier layout and
+    still FAIL in the real repo layout. Pure-logic, hermetic — no subprocess,
+    no real census invocation; a synthetic CompletedProcess stands in for a
+    deliberately stale (or fresh) census run, matching this repo's
+    established mocked-subprocess pattern for GH-Actions-adjacent decision
+    functions (see scripts/ci/test_codeql_merge_group_carryover.py)."""
+
+    @staticmethod
+    def _completed(returncode: int) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            args=[], returncode=returncode, stdout="", stderr="stale" if returncode else ""
+        )
+
+    def test_innocence_fresh_always_passes_silently_either_layout(self) -> None:
+        for is_flat in (True, False):
+            with self.subTest(is_flat=is_flat):
+                should_pass, message = _staleness_verdict(self._completed(0), is_flat=is_flat)
+                self.assertTrue(should_pass)
+                self.assertEqual(message, "")
+
+    def test_guilt_stale_in_the_repo_layout_fails(self) -> None:
+        should_pass, message = _staleness_verdict(self._completed(1), is_flat=False)
+        self.assertFalse(should_pass)
+        self.assertIn("SCRIPTS_COUPLING is stale or the census failed", message)
+
+    def test_innocence_stale_in_the_flat_layout_warns_and_passes(self) -> None:
+        should_pass, message = _staleness_verdict(self._completed(1), is_flat=True)
+        self.assertTrue(should_pass)
+        self.assertTrue(message.startswith("WARNING: SCRIPTS_COUPLING stale on this base"))
+
+
+class FlatExtractionDetectionTests(unittest.TestCase):
+    """Guilt + innocence for _is_flat_extraction_copy against the REAL
+    tests.yml extraction shape (not a hand-picked path), reusing
+    test_trusted_extraction_layout.py's own flat-copy helper — the same
+    corpus list, the same copy mechanics tests.yml's "Extract trusted
+    classifier (base ref)" step actually runs.
+
+    Both tests below construct the ``this_file`` value explicitly rather
+    than trusting the ambient ``__file__`` of whatever process is currently
+    executing this class. That is NOT paranoia: test_trusted_extraction_
+    layout.py's own innocence test flat-copies this entire file (this class
+    included) and re-runs it as a subprocess, so these tests routinely
+    execute AS the flat copy too — asserting against the real, ambient
+    execution context would make the innocence case fail exactly when
+    that sibling's own exercise sweeps this file up, and the guilt case
+    would need test_trusted_extraction_layout itself importable, which is
+    not guaranteed inside a flat copy that never includes it."""
+
+    def setUp(self) -> None:
+        rel = Path("scripts") / "ci" / "test_change_map.py"
+        repo_root = _locate_repo_root(rel)
+        if repo_root is None:
+            self.skipTest(
+                "checkout not reachable via cwd/GITHUB_WORKSPACE/__file__ — "
+                "see _locate_repo_root's docstring"
+            )
+        self.repo_root = repo_root
+
+    def test_innocence_the_canonical_nested_path_is_not_flat(self) -> None:
+        canonical = self.repo_root / "scripts" / "ci" / "test_change_map.py"
+        self.assertFalse(_is_flat_extraction_copy(self.repo_root, this_file=canonical))
+
+    def test_guilt_a_real_flat_copy_of_this_file_is_detected(self) -> None:
+        # importlib, not a static `import test_trusted_extraction_layout`
+        # statement: this repo's own scripts/tests/test_classifier_extraction_
+        # closure.py walks the AST of every trusted-corpus file for exactly
+        # that shape and fails the corpus closed if a sibling it names is not
+        # ALSO in tests.yml's/security.yml's extraction list (the #5070
+        # class of bug this PR's whole mandate traces back to) —
+        # test_trusted_extraction_layout.py is deliberately NOT in that list
+        # (it is not part of the trusted-classifier corpus itself), and this
+        # dependency is genuinely optional here (see the except clause
+        # below), not a hard requirement a static import would declare it as.
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        try:
+            tel = importlib.import_module("test_trusted_extraction_layout")
+        except ImportError:
+            self.skipTest(
+                "test_trusted_extraction_layout.py not importable from this "
+                "file's own directory — this test is itself executing from a "
+                "flat-extracted copy (a sibling's own flat-copy exercise "
+                "reached this file too), where that helper module is not "
+                "part of the corpus. The guilt case runs wherever the real "
+                "nested checkout executes this test instead."
+            )
+        files = tel._tests_yml_extraction_list()
+        with tempfile.TemporaryDirectory(prefix="staleness-gating-flat-") as tmp:
+            dest = Path(tmp)
+            tel._extract_flat(files, dest)
+            flat_copy = dest / "test_change_map.py"
+            self.assertTrue(
+                flat_copy.is_file(),
+                "tests.yml's extraction list no longer carries test_change_map.py — "
+                "update the corpus this guilt fixture depends on.",
+            )
+            self.assertTrue(_is_flat_extraction_copy(self.repo_root, this_file=flat_copy))
 
 
 if __name__ == "__main__":

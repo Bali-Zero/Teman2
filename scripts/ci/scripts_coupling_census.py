@@ -25,10 +25,14 @@ Hits under a subtree ``change_map.py`` already routes via ``PREFIX_RULES``
 from the generated constant to save PR churn.
 
 USAGE
-  python3 scripts/ci/scripts_coupling_census.py            # print counts
-  python3 scripts/ci/scripts_coupling_census.py --write     # rewrite the
-                                                              marker block
-  python3 scripts/ci/scripts_coupling_census.py --check     # exit 1 if stale
+  python3 scripts/ci/scripts_coupling_census.py                # print counts
+  python3 scripts/ci/scripts_coupling_census.py --write         # rewrite the marker block
+  python3 scripts/ci/scripts_coupling_census.py --check         # exit 1 if stale
+  python3 scripts/ci/scripts_coupling_census.py --check --warn-only
+      # --warn-only: never exit nonzero; print a WARNING verdict instead of
+      # STALE. Added 2026-09-05 for a caller that must observe staleness as a
+      # fleet-wide data-freshness fact WITHOUT treating it as this specific
+      # run's own failure (tests.yml's flat trusted-classifier corpus).
 """
 
 from __future__ import annotations
@@ -228,26 +232,28 @@ def _write(embedded: set[str]) -> None:
     print(f"scripts_coupling_census: wrote {len(embedded)} paths to {CHANGE_MAP_PATH}")
 
 
-def _check(embedded: set[str]) -> int:
+def _check(embedded: set[str], *, warn_only: bool = False) -> int:
     text = CHANGE_MAP_PATH.read_text(encoding="utf-8")
     existing = _existing_block(text)
     fresh = _render_block(embedded)
+    ok_exit, stale_exit = 0, (0 if warn_only else 1)
     if existing is None:
         print(
             f"scripts_coupling_census: no marker block found in {CHANGE_MAP_PATH} "
             "— run --write.",
             file=sys.stderr,
         )
-        return 1
+        return stale_exit
     if existing.strip() == fresh.strip():
         print("scripts_coupling_census: SCRIPTS_COUPLING is up to date.")
-        return 0
+        return ok_exit
     existing_paths = _block_paths(existing)
     fresh_paths = _block_paths(fresh)
     added = sorted(fresh_paths - existing_paths)
     removed = sorted(existing_paths - fresh_paths)
+    verdict = "WARNING" if warn_only else "STALE"
     print(
-        "scripts_coupling_census: SCRIPTS_COUPLING is STALE — run "
+        f"scripts_coupling_census: SCRIPTS_COUPLING is {verdict} — run "
         "`python3 scripts/ci/scripts_coupling_census.py --write`.",
         file=sys.stderr,
     )
@@ -268,7 +274,7 @@ def _check(embedded: set[str]) -> int:
             shown = ", ".join(paths[:10])
             more = f" … (+{len(paths) - 10} more)" if len(paths) > 10 else ""
             print(f"  {label} ({len(paths)}): {shown}{more}", file=sys.stderr)
-    return 1
+    return stale_exit
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -276,7 +282,14 @@ def main(argv: list[str] | None = None) -> int:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--write", action="store_true", help="rewrite the marker block")
     mode.add_argument("--check", action="store_true", help="exit 1 if the block is stale")
+    parser.add_argument(
+        "--warn-only",
+        action="store_true",
+        help="with --check: never exit nonzero, print a WARNING verdict instead of STALE",
+    )
     args = parser.parse_args(argv)
+    if args.warn_only and not args.check:
+        parser.error("--warn-only requires --check")
 
     coupled, unresolved, embedded = _census()
 
@@ -284,7 +297,7 @@ def main(argv: list[str] | None = None) -> int:
         _write(embedded)
         return 0
     if args.check:
-        return _check(embedded)
+        return _check(embedded, warn_only=args.warn_only)
 
     per_dir: dict[str, int] = {}
     for path in coupled:
