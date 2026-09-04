@@ -7,8 +7,13 @@
  *  - `GET  /api/visa/voa/orders/{order_id}` (getOrderAndPractice)
  *
  * Auth is the contract's `MagicSession` — the same `garuda_session` Secure, HttpOnly
- * cookie `upload/api-client.ts` documents. `fetch` sends same-origin cookies by default,
- * so no token handling belongs here; same `NEXT_PUBLIC_API_URL || "/api"` convention.
+ * cookie `upload/api-client.ts` documents, `Domain` set by the backend's
+ * `get_cookie_domain()` (`.balizero.com` in production, `garuda_portal_auth.py`'s
+ * `_set_account_session_cookie`) — never sent to a request that goes directly to
+ * `nuzantara-rag.fly.dev`. `fetch` sends same-origin cookies by default, so no token
+ * handling belongs here, but the base URL MUST stay same-origin `/api` (2026-09-03:
+ * `NEXT_PUBLIC_API_URL` pointing at the Fly host directly 401'd the sibling staff
+ * lane's cookie-session calls the same way — see `(workspace)/garuda-voa/api-client.ts`).
  */
 
 import type {
@@ -20,7 +25,7 @@ import type {
   OrderView,
 } from "./types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+const API_BASE_URL = "/api";
 
 export class GarudaOrderError extends Error {
   constructor(

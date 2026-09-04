@@ -34,6 +34,7 @@ export default async function KBLIHomePage({
   const initialQuery = q ? decodeURIComponent(q) : "";
   const sections = getSections().filter((s) => s.codeCount > 0);
   const allCodes = getAllCodes();
+  const codeCount = allCodes.length.toLocaleString("en-US");
   const baliBlockedPct = Math.round(
     (allCodes.filter((c) => c.baliL4?.blocked).length / allCodes.length) * 100,
   );
@@ -122,8 +123,8 @@ export default async function KBLIHomePage({
 
               {/* Inline stats */}
               <p className="mt-3 text-sm text-zinc-500 tracking-wide">
-                1,559 codes&ensp;&middot;&ensp;22 sectors&ensp;&middot;&ensp;PMA
-                rules
+                {codeCount} codes&ensp;&middot;&ensp;22
+                sectors&ensp;&middot;&ensp;PMA rules
               </p>
 
               {/* CTA — glassmorphism button */}
@@ -202,7 +203,7 @@ export default async function KBLIHomePage({
         {/* ── TRUST BAR ── */}
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 -mt-4">
           {[
-            { num: "1,559", label: "KBLI Codes" },
+            { num: codeCount, label: "KBLI Codes" },
             { num: "22", label: "Industry Sectors" },
             {
               num: `~${baliBlockedPct}%`,
