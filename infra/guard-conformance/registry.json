@@ -2,6 +2,141 @@
   "_doc": "Guard Conformance Registry (superscar #3 — over/under-match). Maps EVERY live textual guard to its GUILT proof (the guard fires on the historical bad case) and INNOCENCE proof (the guard does NOT fire on the adjacent legitimate case). Enforced by infra/guard-conformance/check_guard_conformance.py: a censused guard missing from here, a phantom test reference, or a test no CI workflow runs = FAIL. The mandate rule this executes: 'nessuna guardia mergiata senza un test di innocenza E di colpevolezza' (cicatrix-superscar.md #3). To add a guard: write both tests first, then register it here.",
   "version": 1,
   "surfaces": {
+    "bites_parse_observe_allowlist": {
+      "parse_layer_proofs": [
+        "test_two_bites_blocks_in_one_pack_are_refused_not_last_wins",
+        "test_two_observe_keys_in_one_block_are_refused",
+        "test_an_alias_cannot_put_the_command_somewhere_else",
+        "test_a_merge_key_cannot_import_a_block",
+        "test_innocence_an_ordinary_pack_with_other_keys_still_parses",
+        "test_a_yaml_typed_scalar_is_refused_rather_than_coerced",
+        "test_a_pack_that_is_not_yaml_is_malformed_not_absent",
+        "test_leading_words_stops_at_the_first_flag",
+        "test_subcommand_sentinels_mean_two_different_things",
+        "test_gh_api_still_takes_its_endpoint_positional",
+        "test_flag_matcher_handles_all_three_spellings",
+        "test_this_test_file_is_listed_in_the_immune_enforcement_battery"
+      ],
+      "source": "scripts/ci/bites_parse.py",
+      "census": {
+        "method": "ast-def-prefix",
+        "prefix": "_guard_"
+      },
+      "test_file": "scripts/tests/test_bites_parse.py",
+      "note": "The allow-list that stands between a pull-request-controlled file and a command a CI job will execute. RULED 2026-09-04 (Zero, Legge 5): the contract lives in the evidence pack's pack.yml under a top-level `bites:` mapping, not in the PR body, so a real YAML parser reads it and the question of which Markdown region a human SAW does not arise. Every guard here is load-bearing for that boundary, so both proofs matter in the usual way and one shape matters especially: _guard_no_remote_shell's guilt case asserts that _guard_command_allowlist ALSO passes the same input. That is deliberate. `git clone ssh://host/repo` is waved through by an allow-list keyed on argv[0], which is exactly superscar #3's under-match twin -- a guard that inspects only the head of a command guards a spelling. The pair is what proves the two guards are not redundant. The same under-match recurred a third time on `fly version upgrade`, which downloads and installs a new flyctl, so every entry in a subcommand table is now a full pair carrying NO_SUBCOMMAND or ANY_POSITIONAL rather than a bare None. Round 4 (the Gear-3 verdict gate, 2026-09-04) added the positional split of git's options: git's GLOBAL -c is code execution and must precede the subcommand, while `git grep -c` is grep's count flag and is innocent. Scanning one flat list over the whole command line refuses the innocent one — the OVER-match mirror of the two under-matches this same surface was already cured of, which is why test_command_allowlist_innocence_git_grep_count_flag_passes is registered as innocence rather than left implicit.",
+      "guards": {
+        "_guard_shell_composition": {
+          "scar": ["superscar-3-guard-over-match"],
+          "guilt": [
+            "test_shell_composition_guilt_pipe_to_shell_is_rejected",
+            "test_shell_composition_guilt_command_substitution_is_rejected",
+            "test_shell_composition_guilt_bare_variable_is_rejected"
+          ],
+          "innocence": [
+            "test_shell_composition_innocence_plain_command_passes",
+            "test_shell_composition_innocence_sha_placeholder_is_not_expansion"
+          ]
+        },
+        "_guard_command_allowlist": {
+          "scar": ["superscar-3-guard-over-match"],
+          "guilt": [
+            "test_command_allowlist_guilt_arbitrary_interpreter_is_rejected",
+            "test_command_allowlist_guilt_fly_write_subcommand_is_rejected",
+            "test_command_allowlist_guilt_python_dash_m_anything_is_rejected",
+            "test_command_allowlist_guilt_python_outside_scripts_is_rejected",
+            "test_command_allowlist_guilt_curl_writing_a_file_is_rejected",
+            "test_command_allowlist_guilt_curl_plain_http_is_rejected",
+            "test_command_allowlist_guilt_git_dash_c_runs_a_program",
+            "test_command_allowlist_guilt_git_network_subcommand_is_rejected",
+            "test_command_allowlist_guilt_gh_write_subcommand_is_rejected",
+            "test_command_allowlist_guilt_gh_api_non_get_is_rejected",
+            "test_command_allowlist_guilt_curl_sending_a_body_is_rejected",
+            "test_command_allowlist_guilt_pytest_plugin_flag_is_rejected",
+            "test_command_allowlist_guilt_fly_machine_run_is_rejected",
+            "test_command_allowlist_guilt_fly_machine_destroy_is_rejected",
+            "test_command_allowlist_guilt_git_tag_creates_a_ref",
+            "test_command_allowlist_guilt_git_output_writes_a_file",
+            "test_command_allowlist_guilt_curl_reading_a_local_file_is_rejected",
+            "test_command_allowlist_guilt_curl_schemeless_host_is_rejected",
+            "test_command_allowlist_guilt_gh_pointing_at_another_repo_is_rejected",
+            "test_command_allowlist_guilt_git_grep_pager_command_is_rejected",
+            "test_command_allowlist_guilt_git_global_flags_that_retarget_are_rejected",
+            "test_command_allowlist_guilt_pytest_override_ini_is_rejected",
+            "test_command_allowlist_guilt_curl_credential_files_are_rejected",
+            "test_command_allowlist_guilt_curl_variable_expands_the_environment",
+            "test_command_allowlist_guilt_curl_write_out_is_rejected",
+            "test_command_allowlist_guilt_fly_version_upgrade_replaces_the_binary"
+          ],
+          "innocence": [
+            "test_command_allowlist_innocence_every_real_shape_passes",
+            "test_command_allowlist_innocence_fly_read_pairs_pass",
+            "test_command_allowlist_innocence_git_grep_count_flag_passes",
+            "test_command_allowlist_innocence_fly_version_and_flagged_reads_pass"
+          ]
+        },
+        "_guard_no_remote_shell": {
+          "scar": ["superscar-3-guard-over-match", "W82"],
+          "guilt": [
+            "test_no_remote_shell_guilt_reach_hidden_in_an_argument_is_rejected",
+            "test_no_remote_shell_guilt_bare_token_is_rejected"
+          ],
+          "innocence": ["test_no_remote_shell_innocence_https_url_passes"]
+        },
+        "_guard_path_containment": {
+          "scar": ["superscar-3-guard-over-match"],
+          "guilt": [
+            "test_path_containment_guilt_parent_escape_is_rejected",
+            "test_path_containment_guilt_absolute_path_is_rejected",
+            "test_path_containment_guilt_a_flag_can_carry_a_path"
+          ],
+          "innocence": [
+            "test_path_containment_innocence_repo_relative_paths_pass",
+            "test_path_containment_innocence_url_path_is_not_a_filesystem_path",
+            "test_path_containment_innocence_ordinary_flag_values_pass"
+          ]
+        },
+        "_guard_observable_script": {
+          "scar": ["superscar-3-guard-over-match", "W109"],
+          "note": "Added after the 2026-09-04 red-team pass, which showed that allow-listing the path prefix `scripts/` allow-lists roughly nine hundred scripts -- among them scripts/usage/cswap.py, whose `run` subcommand reaches os.execvpe, and scripts taking --psql-bin, --git-bin or --dsn. Reachability is therefore a property a script declares in its own source (the `bites-observable` marker), never one its location confers: an exemption keyed to where a file sits rather than what it is, is itself a scar (W109). Fail-closed on a missing marker, a missing file, an unreadable file and a path that escapes the checkout.",
+          "guilt": [
+            "test_observable_script_guilt_undeclared_script_is_rejected",
+            "test_observable_script_guilt_a_real_execvpe_script_is_rejected",
+            "test_observable_script_guilt_missing_file_is_rejected",
+            "test_observable_script_guilt_pytest_target_outside_tests_is_rejected"
+          ],
+          "innocence": [
+            "test_observable_script_innocence_declared_script_passes",
+            "test_observable_script_innocence_this_module_declares_itself",
+            "test_observable_script_innocence_pytest_under_tests_passes"
+          ]
+        },
+        "_guard_expect_form": {
+          "scar": ["superscar-2-esiste-non-armato"],
+          "guilt": [
+            "test_expect_form_guilt_unknown_form_is_rejected",
+            "test_expect_form_guilt_uncompilable_regex_is_rejected",
+            "test_expect_form_guilt_empty_needle_is_rejected"
+          ],
+          "innocence": [
+            "test_expect_form_innocence_three_documented_forms_pass"
+          ]
+        },
+        "_guard_no_invisible": {
+          "scar": ["superscar-3-guard-over-match"],
+          "guilt": [
+            "test_a_zero_width_character_in_a_value_is_refused_not_guessed"
+          ],
+          "innocence": [
+            "test_innocence_a_zero_width_character_elsewhere_in_the_pack_is_not_penalised"
+          ]
+        },
+        "_guard_where_scope": {
+          "scar": ["superscar-2-esiste-non-armato"],
+          "guilt": ["test_where_scope_guilt_unknown_scope_is_rejected"],
+          "innocence": ["test_where_scope_innocence_four_declared_scopes_pass"]
+        }
+      }
+    },
     "bridge_reply_guards": {
       "source": "scripts/openclaw_whatsapp_bridge.py",
       "census": {
