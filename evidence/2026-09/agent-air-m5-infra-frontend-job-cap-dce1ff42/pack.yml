@@ -1,0 +1,69 @@
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+lanes:
+  - lane: build
+    role: build
+    seat: claude (author session, M5, worktree infra-frontend-job-cap)
+  - lane: review-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: review-kimi
+    role: review
+    seat: kimi-code/k3
+diff:
+  files: 1
+  net_lines: 6
+  net_lines_note: "measured from the merge-base: git diff --numstat origin/main...HEAD → 7 added, 1 removed on .github/workflows/tests.yml (six comment lines + the value)"
+spend:
+  wall_clock_hours: 0.5
+  adversarial_rounds: 1
+appetite_exceeded: none
+pii_scan: clean
+council_run_note: |
+  R9 quorum (>=2 distinct seats from {codex-gpt-5.6-sol, kimi-code/k3, tp1-qwen3.8-max}) met with
+  codex-gpt-5.6-sol and kimi-code/k3, both on the full diff, both OK, both naming the same
+  follow-up (npm cache/registry regression). No seat_override.
+receipts:
+  - claim: "The frontend job's healthy path already took 9m13s under a 10-minute cap."
+    cmd: "gh run view 33825884926 --json jobs (Frontend Tests (Next.js) (mouth, true): Set up job 01:30:05Z → Complete job 01:39:21Z)"
+    result: "9m16s wall; Install dependencies 1m07s; Run tests (with coverage) 4m52s; wa-mirror bridge suite 2m14s"
+    exit: 0
+    ts: "2026-09-04T02:20:00Z"
+    seat: claude (author session)
+  - claim: "On the same commit, npm ci slowed to 4m20s and the job was cancelled at the cap on PR and merge_group runs alike."
+    cmd: "gh api repos/Bali-Zero/Teman2/actions/jobs/100883114772 --jq '.steps[]' ; gh run list --workflow tests.yml --limit 8"
+    result: "Install dependencies 01:54:27Z → 01:58:39Z (4m12s), job cancelled 02:04:02Z at 10m; rerun on #5627: install 02:18:31Z → 02:22:51Z (4m20s), cancelled 02:27:58Z; gh-readonly-queue/main/pr-5569 and pr-5614 runs: cancelled"
+    exit: 0
+    ts: "2026-09-04T02:22:00Z"
+    seat: claude (author session)
+  - claim: "Main did not move in the window, so the slowdown is environmental, not a code change."
+    cmd: "git log origin/main --format='%h %cd %s' --since=2026-09-04T00:00Z"
+    result: "(empty)"
+    exit: 0
+    ts: "2026-09-04T02:20:00Z"
+    seat: claude (author session)
+  - claim: "The diff changes one value and adds a comment; the required context, matrix and gates are untouched."
+    cmd: "git diff --numstat origin/main...HEAD"
+    result: "7 1 .github/workflows/tests.yml"
+    exit: 0
+    ts: "2026-09-04T02:41:32Z"
+    seat: claude (author session)
+  - claim: "Both council seats returned OK on the full diff."
+    cmd: "codex exec -m gpt-5.6-sol -c model_reasoning_effort=high --sandbox read-only …; kimi -p … -m kimi-code/k3"
+    result: "codex_rc=0 VERDICT: OK; kimi_rc=0 VERDICT: OK"
+    exit: 0
+    ts: "2026-09-04T02:41:00Z"
+    seat: claude (author session)
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "A raised cap can hide a genuine hang for six more minutes, and 16 leaves only ~3m34s headroom against the degraded path; the durable cure is the registry/cache degradation, with an optional step-level timeout/retry around npm ci."
+    status: CONFIRMED
+    disposition: "Accepted as stated: the cap stays bounded (16, not unbounded) and the cache/registry investigation is a separate follow-up with its own PR; this PR's scope is deliberately the one value."
+  - seat: kimi-code/k3
+    objection: "The margin is one-sided: if npm ci degrades further the cap bites again within days; check the actions/cache hit rate and restore-keys on 'Cache dependencies' (line ~1678) or the registry path."
+    status: CONFIRMED
+    disposition: "Same follow-up as codex; recorded in brief.yml risks. Not folded into this PR (one concern)."
+residual_risks:
+  - risk: "Registry/cache degradation continues past the new headroom and the cap bites again."
+    mitigation: "Follow-up PR on the 'Cache dependencies' hit rate / npm ci step timeout, named by both seats."
