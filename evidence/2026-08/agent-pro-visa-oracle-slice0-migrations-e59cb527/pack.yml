@@ -1,4 +1,5 @@
 brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
 plan_ref: "PR #5037 (agent/pro/visa-oracle/slice0-migrations) — slice 0 of 4 for the visa-oracle landing, 2026-08-26. Governing mandate: docs/plans/2026-08-24-visa-oracle-live/MANDATE.md."
 lanes:
   - lane: visa-oracle-slice0
@@ -7,17 +8,37 @@ lanes:
   - lane: visa-oracle-slice0-refute
     role: review
     seat: "claude-sonnet-5 (adversarial subagent, dispatched WITHOUT this brief; told to find reasons the migrations are unsafe, not to bless them)"
-seat_diversity: not_applicable
+  - lane: visa-oracle-slice0-council-sol
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (titolare per COUNCIL_REVIEW_SEATS), dispatched read-only
+      (`codex exec -m gpt-5.6-sol -c model_reasoning_effort="high" --sandbox read-only
+      --skip-git-repo-check`) with a fresh-context defeating-input task covering the three
+      migration files only (no brief, no this pack). Returned a judgement (not a non-judgement);
+      verdict FAIL, recorded verbatim in council-journal.jsonl and summarized in dissent below.
+  - lane: visa-oracle-slice0-council-qwen
+    role: review
+    seat: >-
+      tp1-qwen3.8-max (titolare per COUNCIL_REVIEW_SEATS, DashScope/TP1 via
+      scripts/tp1_call.py, effort medium), dispatched with the identical fresh-context task as
+      the sol lane, independently and without sight of sol's answer. Returned a judgement;
+      verdict FINDING (not PASS), recorded verbatim in council-journal.jsonl and summarized in
+      dissent below.
+seat_diversity: satisfied
 seat_diversity_note: >-
-  Both lanes are Anthropic seats. Declared rather than left to read as satisfied: a 3-file DDL
-  diff whose safety question is settled by an actual apply/rollback against a real schema does
-  not gain from cross-family breadth — the probe is the arbiter, not a seat's opinion.
+  The build lane and the claude-sonnet-5 refute lane are both Anthropic seats — declared rather
+  than left to read as satisfied, per the original note's own reasoning: a 3-file DDL diff whose
+  safety question is settled by an actual apply/rollback against a real schema does not gain from
+  cross-family breadth on BUILD. Cross-family pressure sits on the two council REVIEW lanes added
+  for the R9 Gear-3 quorum instead: codex-gpt-5.6-sol (OpenAI family) and tp1-qwen3.8-max
+  (Alibaba/DashScope family) are both non-Anthropic, dispatched independently, fresh-context, and
+  both returned a real judgement rather than a non-judgement.
 diff:
   net_lines: >-
-    5 files, +988/-0 measured by `git diff --numstat` against the merge-base with origin/main.
-    Three are new .sql files under `apps/backend-rag/backend/db/migrations_v2/`; the other two
-    are this task's own evidence-pack files (`brief.yml`, `pack.yml`). Zero Python, zero workflow.
-    The renaming from 281/282/283 is not visible in this diff — those names never reached main.
+    6 files, +1071/-0 measured by `git diff --numstat` against the merge-base with origin/main.
+    Three are new .sql files under `apps/backend-rag/backend/db/migrations_v2/`; the other three
+    are this task's own evidence-pack files (`brief.yml`, `pack.yml`, `council-journal.jsonl`).
+    Zero Python, zero workflow. Renumbering from 281/282/283 is invisible — names never landed.
   behaviour_change: >-
     Three new tables plus two functions and four triggers are created. One pre-existing production
     table is altered, in its catalog only: `visa_oracle_sessions.expires_at`'s DEFAULT moves from
@@ -221,6 +242,66 @@ dissent:
       existence; re-proven on a CI-shaped database with the table's absence asserted first. This
       is the pack's own retracted-dissent discipline applied to the strongest claim it made: the
       first probe was believed because it was green, and green only meant probe and object agreed.
+  - seat: "codex-gpt-5.6-sol (R9 council, review lane visa-oracle-slice0-council-sol)"
+    objection: >-
+      Verdict FAIL, not PASS. (1) 294's purge/retention-evidence join is not policy-unique: a
+      single request whose `requested_at` and `created_at` fall under two different-anchor
+      retention policies can match BOTH — the shared `EXCLUDE (effective_period WITH &&)`
+      constraint on the policy table does not prevent this because each policy compares a
+      different anchor column. Consequence: `retention_evidence()` can double-count one request as
+      two `expired_rows`, and the purge's `DELETE ... RETURNING candidates.policy_id` attributes
+      the deletion to a non-deterministic policy when both match; the duplicate row also consumes
+      `p_limit`. (2) 295's rollback does not restore the pre-forward state on a fresh database:
+      it recreates `visa_oracle_sessions` plus its two indexes on forward-apply, but the rollback
+      section only restores the 90-day `DEFAULT`, leaving the table and indexes in place; if 294
+      created the `btree_gist` extension, rollback does not drop it either — the PR's "each
+      rollback is symmetric with its forward half" claim does not hold for every initial state the
+      forward halves support. (3) 295's `CREATE INDEX IF NOT EXISTS` / `ALTER TABLE ... SET
+      DEFAULT` acquire their locks BEFORE checking whether the object already exists — "rewrites
+      no rows" does not imply "takes no long lock"; under concurrent DML on the live
+      `visa_oracle_sessions` table both statements can block and then fail on `lock_timeout=5s`.
+      (4) `REVOKE ALL ... FROM PUBLIC` on the purge function does not stop the table/function
+      OWNER (or a role with inherited EXECUTE via `ALTER DEFAULT PRIVILEGES`) from calling it —
+      the PR's "application role cannot reach it by accident" claim depends on an owner/role
+      separation the diff itself does not establish. (5) `requested_at`/`created_at` =
+      `'infinity'::timestamptz` satisfies 293's constraints and, under either retention anchor,
+      never becomes a purge candidate — a row can be made permanently retention-exempt.
+    status: PLAUSIBLE
+    note: >-
+      Not independently reproduced by this session against a live Postgres — per the ship
+      lifecycle, verifying/curing this is the gate's call, not something the council-journal task
+      is authorized to fix. Recorded as PLAUSIBLE rather than CONFIRMED because this session did
+      not itself run the migrations to observe the described failures; it is not a bare opinion
+      either — finding (2) above converges, independently and without shared context, with
+      tp1-qwen3.8-max's dissent entry below, and finding (3) converges with that same entry's
+      secondary point, which is the strongest signal this session has that both are real rather
+      than one seat's hallucination.
+  - seat: "tp1-qwen3.8-max (R9 council, review lane visa-oracle-slice0-council-qwen)"
+    objection: >-
+      Verdict FINDING, not PASS. Primary (converges with codex-gpt-5.6-sol's objection (2) above,
+      reached independently, no shared context): 295's rollback is asymmetric with its forward
+      half on any database where 295 itself creates `visa_oracle_sessions` (a fresh CI database, a
+      new environment, a DR replay) — the forward `CREATE TABLE IF NOT EXISTS` plus its two
+      `CREATE INDEX IF NOT EXISTS` are never dropped by the rollback section, which only restores
+      the 90-day `DEFAULT`; the table and both indexes are left behind. This directly contradicts
+      the PR body's "Each rollback is symmetric with its forward half" gate for that path.
+      Secondary (converges with codex-gpt-5.6-sol's objection (3) above): on production, where the
+      table already exists, 295's `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS`
+      still acquire catalog/table locks BEFORE checking existence, so the migration's own claim
+      that these statements are inert "no-ops" on production is true in effect but not in locking
+      — under concurrent write load to the live `visa_oracle_sessions` table the "no-op" can still
+      fail on `lock_timeout=5s`. Tertiary, lower-confidence notes: a legacy-named-index
+      environment (one built from the old migration_080a rather than from production) would get a
+      second, duplicate index rather than a no-op, because `IF NOT EXISTS` matches by name, not by
+      definition; no independent REVOKE on the two guard/trigger functions (flagged as
+      low-severity, since they only RAISE).
+    status: PLAUSIBLE
+    note: >-
+      Same caveat as the codex-gpt-5.6-sol entry above: not independently reproduced by this
+      session against a live Postgres. Recorded PLAUSIBLE, not CONFIRMED. Both of this entry's
+      main points converge with codex-gpt-5.6-sol's own dissent items (2) and (3) above — two
+      independent, no-shared-context seats naming the same two defects from each seat's own read
+      of the diff.
 tests:
   - "No pytest in this slice — it is three .sql files. The three test modules that exercise these
     tables (test_consultant_request_retention.py, test_consultant_assignment_router.py,
