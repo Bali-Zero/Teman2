@@ -117,9 +117,38 @@ async def test_server_is_exact_fail_closed_allowlist() -> None:
 
 
 def test_workspace_server_instructions_route_news_room_and_flow_correctly() -> None:
-    assert "News Room covers use native ImageGen" in mcp.instructions
     assert "Confirmed Flow image and video generation remain available" in mcp.instructions
     assert "Flow is video-only" not in mcp.instructions
+
+
+def test_bridge_instructions_and_docstrings_make_publish_a_single_order() -> None:
+    text = mcp.instructions
+
+    assert "newsroom_list_pending" in text
+    assert "newsroom_publish" in text
+    assert "never preconditions" in text
+    assert "only after Damar explicitly requests it, the article is complete" not in text
+
+    tools, _ = _capture_tools(AsyncMock())
+
+    assert "Not required to publish" in tools["newsroom_update_article"].__doc__
+    assert "never blocks" in tools["newsroom_fact_gate"].__doc__
+    assert "His order is the decision" in tools["newsroom_publish"].__doc__
+
+
+def test_bridge_tells_the_agent_the_cover_size_the_chat_channel_can_carry() -> None:
+    # 2026-09-04: a PNG cover from native ImageGen was truncated by the chat
+    # channel and rejected; the retry as a 1200x630 JPEG (42 KB) went through.
+    text = mcp.instructions
+    tools, _ = _capture_tools(AsyncMock())
+    doc = tools["newsroom_attach_cover"].__doc__
+
+    assert "1200x630" in text
+    assert "300 KB" in text
+    assert "truncates" in text
+    assert "1200x630" in doc
+    assert "300 KB" in doc
+    assert "PNG covers must be converted" in doc
 
 
 def test_workspace_server_never_imports_full_server_or_admin_client() -> None:
@@ -471,6 +500,7 @@ async def test_newsroom_publish_requires_confirmation_and_is_replay_safe(
         "published_at": "2026-08-27T01:00:00+00:00",
         "message": "Published",
         "position": "",
+        "fact_gate": {"status": "PASS", "checked_claims": 0, "findings": []},
     }
     assert backend_call.await_count == 3
     backend_call.assert_any_await("/api/workspace-marketing/capabilities")
@@ -487,6 +517,99 @@ async def test_newsroom_publish_requires_confirmation_and_is_replay_safe(
             "publish-news-0001",
             "SETUJU",
         )
+
+
+@pytest.mark.asyncio
+async def test_newsroom_publish_needs_no_fact_gate_and_reports_a_block_as_advisory(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    article_payload = {
+        "item_id": "news_123",
+        "title": "A complete public article",
+        "category": "business",
+        "content": "Complete verified public editorial copy. " * 20,
+        "source_url": "https://example.go.id/article",
+    }
+    capabilities = {
+        "contract": marketing.NEWSROOM_CONTRACT,
+        "ready": True,
+        "capabilities": {
+            name: "ready" for name in marketing.REQUIRED_NEWSROOM_CAPABILITIES
+        },
+    }
+    publish_payload = {
+        "success": True,
+        "github_published": True,
+        "title": article_payload["title"],
+        "published_url": "https://balizero.com/business/complete-article",
+        "message": "Published",
+    }
+    backend_call = AsyncMock(
+        side_effect=[capabilities, article_payload, publish_payload]
+    )
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["newsroom_publish"](
+        "news_123", "publish-news-0002", "CONFIRM"
+    )
+
+    assert result["ok"] is True
+    backend_call.assert_any_await(
+        "/api/workspace-marketing/news/news_123/publish",
+        method="POST",
+        json={"confirmation": "DAMAR_CONFIRMED", "position": "latest"},
+    )
+    assert result["fact_gate"] == {"status": "not_run", "findings": []}
+
+    marketing._write_json_atomic(
+        marketing._fact_gate_path("news_123"),
+        {
+            "ok": False,
+            "checked_claims": 3,
+            "findings": ["FAIL — ministry name wrong"],
+            "fingerprint": marketing._article_fingerprint(
+                marketing._public_news_article(article_payload)
+            ),
+        },
+    )
+    backend_call = AsyncMock(
+        side_effect=[capabilities, article_payload, publish_payload]
+    )
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["newsroom_publish"](
+        "news_123", "publish-news-0003", "CONFIRM"
+    )
+
+    assert result["ok"] is True
+    backend_call.assert_any_await(
+        "/api/workspace-marketing/news/news_123/publish",
+        method="POST",
+        json={"confirmation": "DAMAR_CONFIRMED", "position": "latest"},
+    )
+    assert result["fact_gate"] == {
+        "status": "BLOCK",
+        "checked_claims": 3,
+        "findings": ["FAIL — ministry name wrong"],
+    }
+
+    marketing._write_json_atomic(
+        marketing._fact_gate_path("news_123"),
+        {"ok": True, "fingerprint": "stale-fp"},
+    )
+    backend_call = AsyncMock(
+        side_effect=[capabilities, article_payload, publish_payload]
+    )
+    tools, _ = _capture_tools(backend_call)
+
+    result = await tools["newsroom_publish"](
+        "news_123", "publish-news-0004", "CONFIRM"
+    )
+
+    assert result["fact_gate"]["status"] == "stale"
 
 
 @pytest.mark.asyncio

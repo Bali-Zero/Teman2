@@ -62,75 +62,42 @@ work, and a Claude session verifies it. Generator is never grader, in either dir
 
 ---
 
----
-
 # Part A — Agent Directives
 
 ## 1. Machine & Reachability
 
-| Machine | User | Hostname | Role | RAM |
-|---|---|---|---|---|
-| **Air-M5** | `balizero` | `Air-M5` | Dev workstation PRINCIPALE interattiva, leggera — no daemon/cron/Ollama H24 | 24GB M5 |
-| **Pro** | `nuzantara` | `Nuzantara` | Dev primario, interactive Claude Code; workhorse H24 (176 daemon, modelli 32B) | 48GB M4 Pro |
-| **Mini-Pro2** | `nuzantara` | `Mini-Pro2` | Server H24, Ollama dedicato, cron pesanti | 24GB M4 Pro |
+Machine table (M5/Pro/Mini) → `~/.claude/CLAUDE.md` (global). Prefix `[Pro]`/`[Mini]`/`[Air]` per `hostname` (`whoami=nuzantara` Pro/Mini, `balizero` M5 — path-aware scripts). SSH `ssh pro`/`mini`/`air`. Air decommissioned 2026-05-05, code refs = archaeology.
 
-- `whoami=nuzantara` su Pro/Mini, `balizero` su M5 (home `/Users/balizero/` — path-aware scripts mandatory); distinguish via `hostname`. SSH alias `ssh pro` / `ssh mini` / `ssh air` (Tailscale `100.93.236.6` for Mini, `100.107.22.111` for Pro from Mini).
-- First-response prefix: `[Pro]`, `[Mini]`, or `[Air]`.
-- **Air decommissioned 2026-05-05** — handed off to Ari/Bali Zero. Historical references in code/scripts are archaeology, NOT active.
+## Agent Worktree Discipline
 
-## Agent Worktree Discipline (2026-05-24)
-
-OGNI agent session (subagent dispatch / cron-spawned claude / parallel Claude Code window) DEVE girare sotto `.worktrees/<lane>-<task-id>/` creato via `scripts/agent_start.py`. Il main checkout `~/nuzantara` resta read-only per agent — riservato a operator interactive + cicatrix hotfix.
-
-Quick start: `python scripts/agent_start.py --lane <X> --task-id <Y>` → cd output path → spawn agent. Kill switch `AGENT_BROKER_ENABLED=false`. Runbook: `docs/runbooks/agent-worktree-broker.md`. SOTA panel reference: `research/operations/2026-05-24-sota-multi-agent-repo-architecture-synthesis.md`.
-
-**Escalations**: check `shared/escalations_pro.jsonl` + `~/.agent/decisions/claude_tasks/` at session start. HIGH first.
+Agent sessions MUST run under `.worktrees/<lane>-<task-id>/` via `scripts/agent_start.py` — `~/nuzantara` read-only (operator/cicatrix hotfix). Kill switch `AGENT_BROKER_ENABLED=false`; runbook `docs/runbooks/agent-worktree-broker.md`. Escalations `shared/escalations_pro.jsonl`+`~/.agent/decisions/claude_tasks/`, HIGH first.
 
 ## INDICE — dove sta cosa
 
-> Contenuto specialistico spostato (mai cancellato) fuori dalla radice — caricato da Claude
-> Code in modo nativo/lazy quando si lavora nella cartella pertinente, o su richiesta.
+> Spostato, non cancellato — lazy dal file target.
 
-| Contenuto (era) | Stato vigente | Dove |
-|---|---|---|
-| Agent PR Contract (Merge-OS v2 Wave 0) | 8 regole PR agent-produced, vigenti | `docs/rules/operations.md` |
-| §2 Behavior & Autonomous Ops | no-phantom-operator, ship-lifecycle esteso, master loop modus, product assembly line, federation orchestrator, preflight SDD | `docs/rules/operations.md` |
-| §5 Agent/LLM Routing & Bans | routing Claude 5, i 3 RULED 07-25/08-19/08-20, roster, Fable contingency (moot), Kimi seat, fleet order, DeepSeek due porte, Antigravity, SDK ban, MCP servers, off-limits files (dettaglio), Codex sandbox | `docs/rules/RULINGS.md` |
-| §6 Anti-Hallucination (corpo intero) | 4-LLM panel + workflow generator≠grader | `docs/rules/operations.md` |
-| §7/§7bis Hooks + Repomap/Branch-cleanup | hook attivi, repomap cron, branch cleanup weekly | `docs/rules/operations.md` |
-| §8 Code Golden Rules · §9 Data Invariants · §10 Postgres MCP · §11 Deploy Lifecycle · §12 Operational Channels | golden rules backend-rag, embedding/KBLI/thresholds frozen, deploy Fly.io, 4 canali live | `apps/backend-rag/CLAUDE.md` |
-| §13 Critical Operational Rules · §14 Escalations & Continuity | email/RBAC/team-perimeter/OCR/Drive-OAuth/GitHub-secrets · PII/OSINT output boundary (Legge 2) | `docs/rules/operations.md` |
-| §15 Research Capture Convention | soglia ≥400 parole+3 fonti, frontmatter, mai auto-promote a kb/ | `research/CLAUDE.md` |
+- `docs/rules/operations.md` ← Agent PR Contract, §2 Behavior & Autonomous Ops, §6 Anti-Hallucination, §7/§7bis Hooks + Repomap/Branch-cleanup, §13-§14 Critical Operational Rules & Escalations
+- `docs/rules/RULINGS.md` ← §5 Agent/LLM Routing & Bans
+- `apps/backend-rag/CLAUDE.md` ← §8-§12 Code Golden Rules, Data Invariants, Postgres MCP, Deploy Lifecycle, Operational Channels
+- `research/CLAUDE.md` ← §15 Research Capture Convention
 
 ## Regole sempre-applicabili
 
-- **Ship-lifecycle**: la sessione fa tutto — review → merge → arm → deploy → prove-live. Il codeowner non merga, non review, non deploya. Storia e dettaglio (RULED 2026-07-16 + eccezione editorial-delegation 2026-09-01): `docs/rules/operations.md`.
-- **Anti-hallucination**: mai citare output di un tool senza averlo eseguito in QUESTO turn. 4-LLM panel + workflow generator≠grader: `docs/rules/operations.md`.
-- **Off-limits files** (top-level hard boundary): `zantara_core.py`, `fly.toml`, `.env*`, `apps/bali-intel-scraper/backend/db/migrations/env.py`. Correzione 2026-08-21 (il vecchio `alembic/env.py` non esiste in questo repo) + dettaglio: `docs/rules/RULINGS.md`.
+- Ship-lifecycle: sessione fa tutto, review→merge→arm→deploy→prove-live; codeowner non merga/review/deploya (RULED 2026-07-16, eccezione 2026-09-01): `docs/rules/operations.md`.
+- Anti-hallucination: mai citare output tool non eseguito in QUESTO turn; 4-LLM panel + generator≠grader: `docs/rules/operations.md`.
+- Off-limits: `zantara_core.py`, `fly.toml`, `.env*`, `apps/bali-intel-scraper/backend/db/migrations/env.py` (non `alembic/env.py`, non esiste qui, 2026-08-21): `docs/rules/RULINGS.md`.
 
-## 3. Memory (MOS — Memory Operating System)
+## Strumenti
 
-SessionStart hook auto-loads last 5 memories (importance ≥7). Manual CLI `~/.claude/scripts/mem`:
+MCP: `.mcp.json` untracked (per macchina); tool MCP differiti (`ENABLE_TOOL_SEARCH=true`, settings globale), ~0 tok finché non usati. Prezzi/KBLI/visa/legal: `curl https://nuzantara-rag.fly.dev/...` (`apps/nuzantara-mcp/nuzantara_mcp/server_knowledge.py`). GitHub/Fly/PG: `gh`/`fly`/`scripts/pg.sh`. Browser: `claude --chrome`. Drive: connector claude.ai (`operator[gui]`).
 
-| Cmd | Use |
-|---|---|
-| `mem recent` | Ultimi entry importanti |
-| `mem query "txt"` | FTS5 search |
-| `mem save <type> "txt" <importance>` | Save (types: decision/discovery/fact/unresolved) |
-| `mem entities "name"` | Cerca entità |
-| `mem sessions` / `mem stats` | History/metrics |
+## 3. Memory (MOS)
 
-**Regola**: `mem` PRIMA di `notebook_query`. NLM solo per dominio o cross-query.
-
-**Salvataggio proattivo (OBBLIGATORIO)** — `mem save` IMMEDIATAMENTE quando: decision (importance 8-10) · discovery/fact (7-8) · unresolved (5-6). **NON chiedere all'utente. Salva e basta.**
+SessionStart: hook `memory_recall_sessionstart.sh` inietta le top-6 memorie pertinenti (≤1,5KB, muto se nulla); catalogo `MEMORY_INDEX.md` in memdir; `mem query` a richiesta. CLI `~/.claude/scripts/mem`: `recent`/`query "txt"`(FTS5)/`save <type> "txt" <importance>`(decision/discovery/fact/unresolved)/`entities "name"`/`sessions`/`stats`. `mem` prima di `notebook_query` (NLM solo dominio/cross-query). Salvataggio proattivo OBBLIGATORIO — `mem save` subito: decision(8-10), discovery/fact(7-8), unresolved(5-6); non chiedere, salva e basta.
 
 ## 4. Language Protocol
 
-User writes **colloquial Italian** — translate to precise technical action internally, respond in Italian. Never ask "what do you mean?" — infer from codebase. Ambiguous? Pick most likely + state assumption in 1 line.
-
-**Owner**: Zero (codename). Real name PRIVATE. Italian with owner, client's language otherwise.
-
-**Email language to team**: Bahasa Indonesia for all `@balizero.com` except `zero@`/`antonellosiano@`. Subhi: bahasa default, italiano OK fallback.
+User writes colloquial Italian — translate internally, reply Italian. Never ask "what do you mean?", infer from codebase; ambiguous → pick likely + 1-line assumption. Owner: Zero (codename, name PRIVATE); Italian with owner, else client language. Email team: Bahasa Indonesia for `@balizero.com` except `zero@`/`antonellosiano@`; Subhi bahasa default, italiano OK.
 
 ---
 

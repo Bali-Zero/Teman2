@@ -353,6 +353,7 @@
         "scripts/hooks/proprioception_sessionstart.sh": "SessionStart injector, never blocks",
         "scripts/hooks/w59_branch_hijack_guard.sh": "git-hook guard tested via broker-hygiene suite (scripts/tests/test_agent_start.py)",
         "scripts/hooks/organism_digest_sessionstart.sh": "SessionStart injector, never blocks",
+        "scripts/hooks/memory_recall_sessionstart.sh": "SessionStart injector (memory recall), never blocks",
         "infra/claude-hooks/mailbox_inject.py": "PostToolUse/Stop context-injection hook (cross-machine fleet mailbox reader) — never blocks a command, no block/allow contract to test. Guilt/innocence behaviour (delivered-once, kill-switch, path-safety, truncation, per-fire cap) is instead pinned by infra/claude-hooks/test_mailbox_inject.py, runnable standalone (python3 infra/claude-hooks/test_mailbox_inject.py) or under pytest — not yet wired into a CI workflow step (same as this hook itself, which is not in the hook-innocence-gate.yml explicit test list either); left for the ship PR to decide, since editing .github/workflows/ is a separate hot-zone surface."
       }
     },

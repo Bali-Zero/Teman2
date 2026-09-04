@@ -530,6 +530,36 @@ def _load_fact_gate(item_id: str) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
+def _fact_gate_summary(item_id: str, article: dict[str, Any]) -> dict[str, Any]:
+    """Advisory view of the last fact gate run on this exact article copy.
+
+    Never a precondition: publication follows Damar's order. ``status`` is
+    ``not_run`` when no gate exists, ``stale`` when the copy changed since,
+    otherwise the gate's own ``PASS``/``BLOCK`` with its findings.
+    """
+
+    gate = _load_fact_gate(item_id)
+    if not isinstance(gate, dict):
+        return {"status": "not_run", "findings": []}
+    if gate.get("fingerprint") != _article_fingerprint(article):
+        return {"status": "stale", "findings": []}
+    raw_findings = gate.get("findings")
+    findings = (
+        [
+            _clean_text(finding, limit=500)
+            for finding in raw_findings[:12]
+            if isinstance(finding, str) and finding.strip()
+        ]
+        if isinstance(raw_findings, list)
+        else []
+    )
+    return {
+        "status": "PASS" if gate.get("ok") is True else "BLOCK",
+        "checked_claims": _public_nonnegative_int(gate.get("checked_claims")),
+        "findings": findings,
+    }
+
+
 def _intel_pipeline_dir() -> Path:
     configured = os.getenv("INTEL_PIPELINE_DIR", "").strip()
     if configured:
@@ -1738,7 +1768,11 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         }
     )
     async def newsroom_fact_gate(item_id: str) -> dict[str, Any]:
-        """Run NotebookLM grounding plus an independent SOL publication review."""
+        """Optional advisory check: NotebookLM grounding plus an independent review.
+
+        Run only when Damar or Zero asks for a fact check. It never blocks
+        publication; it takes 2-5 minutes and returns findings to consider.
+        """
 
         safe_id = _validated_item_id(item_id)
         payload = await backend_call(
@@ -1822,7 +1856,11 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         slug: str,
         cover_image_alt: str,
     ) -> dict[str, Any]:
-        """Save Damar's final article copy and complete SEO package."""
+        """Optional: save edited copy and SEO fields. Not required to publish.
+
+        Use only when Damar asks to change the text or SEO. Publication works
+        on the article as it is.
+        """
 
         _require_writes_armed()
         safe_id = _validated_item_id(item_id)
@@ -1861,7 +1899,14 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         cover_image_base64: str,
         filename: str,
     ) -> dict[str, Any]:
-        """Attach the approved native-ImageGen cover before publication."""
+        """Attach the approved native-ImageGen cover before publication.
+
+        Send a JPEG of 1200x630 pixels and at most 300 KB (base64 under
+        ~400 KB). The chat channel truncates larger payloads and the upload
+        is then rejected as an invalid image; PNG covers must be converted
+        and compressed first. The backend republishes the cover as a
+        slug-named JPEG plus a 16:10 card at publish time.
+        """
 
         _require_writes_armed()
         safe_id = _validated_item_id(item_id)
@@ -1894,7 +1939,14 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         confirmation: str,
         position: str = "latest",
     ) -> dict[str, Any]:
-        """Publish one ready News Room article after Damar explicitly confirms."""
+        """Publish the News Room article Damar named. His order is the decision.
+
+        Flow: find the article in newsroom_list_pending by the title Damar
+        cited, attach a cover with newsroom_attach_cover if none is attached,
+        then call this with confirmation CONFIRM/CONFERMO/SETUJU. No SEO edit
+        and no fact gate is required first; the last fact gate run on this
+        copy, if any, is returned as advisory information only.
+        """
 
         _require_write_confirmation(confirmation)
         safe_id = _validated_item_id(item_id)
@@ -1947,15 +1999,13 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         if not isinstance(article_payload, dict):
             raise RuntimeError("News Room returned an unsupported article shape")
         article = _public_news_article(article_payload)
-        fact_gate = _load_fact_gate(safe_id)
-        if not (
-            isinstance(fact_gate, dict)
-            and fact_gate.get("ok") is True
-            and fact_gate.get("fingerprint") == _article_fingerprint(article)
-        ):
-            raise RuntimeError(
-                "Article must pass the current NotebookLM and independent fact gate"
-            )
+        # RULED Zero 2026-09-04 (Legge 5): Damar's publish order IS the decision.
+        # The fact gate no longer stands between the order and the site — it is
+        # advisory, reported here when it was run on this exact copy. Until this
+        # date every one of the 32 drafts that reached the gate came back BLOCK
+        # (fresh news is by definition "not in NotebookLM"), so the gate had
+        # become a veto over an editorial delegation it was never given.
+        fact_gate_summary = _fact_gate_summary(safe_id, article)
         operation_path, operation, _created = _claim_operation(
             "newsroom-publish",
             safe_request_key,
@@ -2022,6 +2072,7 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
             "published_at": _clean_text(payload.get("published_at"), limit=80),
             "message": _clean_text(payload.get("message"), limit=500),
             "position": _clean_text(payload.get("position"), limit=40),
+            "fact_gate": fact_gate_summary,
         }
         operation.update(
             {

@@ -10,9 +10,13 @@ Covers:
 - ingest_intel_to_qdrant (helper)
 """
 
+import base64
+from io import BytesIO
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from PIL import Image
 
 # ---------------------------------------------------------------------------
 # Helper: convert_staging_to_enriched_article
@@ -80,6 +84,44 @@ class TestConvertStagingToEnrichedArticle:
         result = convert_staging_to_enriched_article(data)
         assert result["ai_summary"]
         assert result["facts"]
+
+    def test_fallback_summary_uses_complete_sentences(self) -> None:
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        content = (
+            "## Facts\n\n"
+            "Indonesia is moving forward with a sweeping reclassification of its official "
+            "business activity codes — the Klasifikasi Baku Lapangan Usaha Indonesia "
+            "(KBLI) — updating the system to its 2025 edition. To manage the changeover, "
+            "the government has produced a Joint Circular Letter that sets out the rules.\n\n"
+            "Second paragraph."
+        )
+
+        result = convert_staging_to_enriched_article({"content": content})
+
+        assert "#" not in result["ai_summary"]
+        assert result["ai_summary"].endswith(".")
+        assert result["ai_summary"].count("(") == result["ai_summary"].count(")")
+        assert len(result["ai_summary"]) <= 300
+        assert result["ai_summary"] == content.split("\n\n")[1].split(" To manage")[0]
+
+    def test_fallback_summary_truncates_long_first_sentence_at_word_boundary(self) -> None:
+        from backend.app.routers.intel_scraper import _summary_from_content
+
+        content = "word " * 79 + "word."
+
+        result = _summary_from_content(content)
+
+        assert result.endswith("…")
+        assert len(result) <= 301
+        assert result[-2] != " "
+
+    def test_fallback_summary_with_only_headings_is_empty(self) -> None:
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        result = convert_staging_to_enriched_article({"content": "## Facts\n\n### Details"})
+
+        assert result["ai_summary"] == ""
 
     def test_with_timeline_keywords(self) -> None:
         from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
@@ -694,6 +736,147 @@ class TestSubmitFromScraper:
 
 
 class TestPublishStagingItem:
+    @staticmethod
+    def _fake_pool() -> tuple[MagicMock, MagicMock]:
+        connection = MagicMock()
+        connection.execute = AsyncMock()
+        acquired = MagicMock()
+        acquired.__aenter__ = AsyncMock(return_value=connection)
+        acquired.__aexit__ = AsyncMock(return_value=False)
+        pool = MagicMock()
+        pool.acquire.return_value = acquired
+        return pool, connection
+
+    @pytest.mark.asyncio
+    async def test_workspace_cover_is_slug_named_jpeg_before_publish(self, tmp_path) -> None:
+        """A workspace PNG reaches the composer as the canonical slug-named JPEG."""
+        from backend.app.routers.article_composer import generate_slug
+        from backend.app.routers.intel_scraper import publish_staging_item_internal
+
+        title = "Indonesia Activates Global 15% Minimum Tax — Can DJP Deliver?"
+        item_id = "news_20260903_173409_3446a476"
+        cover_dir = tmp_path / "covers"
+        cover_dir.mkdir()
+        cover_path = cover_dir / f"{item_id}.png"
+        image_output = BytesIO()
+        Image.new("RGB", (2100, 900), color="navy").save(image_output, format="PNG")
+        cover_path.write_bytes(image_output.getvalue())
+
+        staging_data = {
+            "title": title,
+            "content": "## Summary\nTax update.\n## Facts\nDetails.\n## Bali Zero Take\nImpact.\n## Next Steps\nAct.",
+            "category": "tax",
+            "relevance_score": 80,
+            "cover_image": f"covers/{item_id}.png",
+        }
+        publish_response = SimpleNamespace(
+            success=True,
+            article_url="https://balizero.com/tax-legal/example",
+            commit_sha="abc123",
+            mdx_path="apps/mouth/src/content/articles/tax-legal/example.mdx",
+            pull_request_number=1,
+            auto_merge_enabled=True,
+            image_path=f"/static/news/{generate_slug(title)}.jpg",
+        )
+        pool, connection = self._fake_pool()
+
+        with (
+            patch("backend.app.routers.intel_scraper.staging_service") as mock_staging,
+            patch("backend.app.routers.intel_scraper.intel_user_actions_total") as mock_metric,
+            patch(
+                "backend.app.routers.intel_scraper.ingest_intel_to_qdrant",
+                new=AsyncMock(return_value=True),
+            ),
+            patch("backend.app.routers.intel_scraper.invalidate_cache", new=AsyncMock()),
+            patch(
+                "backend.app.routers.article_composer.publish_article_internal",
+                new=AsyncMock(return_value=publish_response),
+            ) as mock_publish,
+        ):
+            mock_staging.load_staging_item.return_value = staging_data
+            mock_staging.get_staging_dir.return_value = tmp_path
+            mock_metric.labels.return_value.inc = MagicMock()
+
+            result = await publish_staging_item_internal(
+                "news", item_id, actor="test", allow_generated_cover=False, pool=pool
+            )
+
+        assert result["success"] is True
+        request = mock_publish.await_args.args[0]
+        assert request.cover_image_filename == f"{generate_slug(title)}.jpg"
+        assert base64.b64decode(request.cover_image_base64).startswith(b"\xff\xd8")
+        calls_by_statement = {
+            call.args[0]: call.args for call in connection.execute.await_args_list
+        }
+        news_args = next(
+            args for statement, args in calls_by_statement.items() if "INSERT INTO news_items" in statement
+        )
+        queue_args = next(
+            args
+            for statement, args in calls_by_statement.items()
+            if "INSERT INTO post_publish_queue" in statement
+        )
+        assert news_args[2] == "example"
+        assert news_args[9] == "/static/news/example.jpg"
+        assert queue_args[1] == "example"
+        # news_items.slug carries no unique constraint on prod: ON CONFLICT (slug)
+        # raises InvalidColumnReferenceError there, so the insert must be guarded
+        # by existence instead (measured 2026-09-04).
+        assert "ON CONFLICT" not in news_args[0]
+        assert "WHERE NOT EXISTS (SELECT 1 FROM news_items WHERE slug = $2)" in news_args[0]
+
+    @pytest.mark.asyncio
+    async def test_internal_publish_without_pool_keeps_returning_successfully(self, tmp_path) -> None:
+        from backend.app.routers.intel_scraper import publish_staging_item_internal
+
+        _unused_pool, connection = self._fake_pool()
+        item_id = "news-without-pool"
+        cover_dir = tmp_path / "covers"
+        cover_dir.mkdir()
+        image_output = BytesIO()
+        Image.new("RGB", (1200, 630), color="navy").save(image_output, format="PNG")
+        (cover_dir / f"{item_id}.png").write_bytes(image_output.getvalue())
+        staging_data = {
+            "title": "Article without a database pool",
+            "content": "Content for the published article.",
+            "category": "business",
+            "relevance_score": 80,
+            "cover_image": f"covers/{item_id}.png",
+        }
+        publish_response = SimpleNamespace(
+            success=True,
+            article_url="https://balizero.com/business/no-pool",
+            commit_sha="abc123",
+            mdx_path="apps/mouth/src/content/articles/business/no-pool.mdx",
+            pull_request_number=1,
+            auto_merge_enabled=True,
+            image_path=None,
+        )
+
+        with (
+            patch("backend.app.routers.intel_scraper.staging_service") as mock_staging,
+            patch("backend.app.routers.intel_scraper.intel_user_actions_total") as mock_metric,
+            patch(
+                "backend.app.routers.intel_scraper.ingest_intel_to_qdrant",
+                new=AsyncMock(return_value=True),
+            ),
+            patch("backend.app.routers.intel_scraper.invalidate_cache", new=AsyncMock()),
+            patch(
+                "backend.app.routers.article_composer.publish_article_internal",
+                new=AsyncMock(return_value=publish_response),
+            ),
+        ):
+            mock_staging.load_staging_item.return_value = staging_data
+            mock_staging.get_staging_dir.return_value = tmp_path
+            mock_metric.labels.return_value.inc = MagicMock()
+
+            result = await publish_staging_item_internal(
+                "news", item_id, actor="test", allow_generated_cover=False, pool=None
+            )
+
+        assert result["success"] is True
+        connection.execute.assert_not_awaited()
+
     @pytest.mark.asyncio
     async def test_not_found(self) -> None:
         from fastapi import HTTPException
@@ -735,6 +918,92 @@ class TestPublishStagingItem:
             with pytest.raises(HTTPException) as exc_info:
                 await publish_staging_item_internal("news", "item-1", actor="test")
             assert exc_info.value.status_code == 500
+
+    @pytest.mark.asyncio
+    async def test_github_publish_failure_appends_cause(self, monkeypatch) -> None:
+        """A 301 owner-redirect surfaced as publish_result.error must reach the
+        News Room message, not just the backend log (2026-08-28, 2026-09-04)."""
+        from backend.app.routers.article_composer import PublishResponse
+        from backend.app.routers.intel_scraper import publish_staging_item_internal
+
+        monkeypatch.delenv("FIREWORKS_API_KEY", raising=False)
+
+        failed_result = PublishResponse(
+            success=False,
+            message="GitHub publish failed",
+            error="Failed to look up publication pull request: 301",
+        )
+
+        with (
+            patch("backend.app.routers.intel_scraper.staging_service") as mock_stg,
+            patch("backend.app.routers.intel_scraper.intel_user_actions_total") as mock_metric,
+            patch(
+                "backend.app.routers.intel_scraper.ingest_intel_to_qdrant",
+                new=AsyncMock(return_value=True),
+            ),
+            patch(
+                "backend.app.routers.article_composer.publish_article_internal",
+                new=AsyncMock(return_value=failed_result),
+            ),
+        ):
+            mock_stg.load_staging_item.return_value = {
+                "title": "New Visa Rule",
+                "content": "## Summary\nNew rule.\n## Facts\nEffective Jan 2026.",
+                "category": "visa",
+                "relevance_score": 80,
+                "source_url": "https://example.com",
+            }
+            mock_stg.save_staging_item.return_value = None
+            mock_metric.labels.return_value.inc = MagicMock()
+
+            result = await publish_staging_item_internal(
+                "news", "item-1", actor="test"
+            )
+
+            assert result["success"] is False
+            assert result["github_published"] is False
+            assert (
+                "Cause: Failed to look up publication pull request: 301" in result["message"]
+            )
+
+    @pytest.mark.asyncio
+    async def test_github_publish_exception_appends_cause(self, monkeypatch) -> None:
+        """Regression guard: the except-branch used to build ``github_error``
+        with ``type(e).__name__``, but ``type`` is this function's route
+        parameter (shadows the builtin) and would raise TypeError instead of
+        recording the cause."""
+        from backend.app.routers.intel_scraper import publish_staging_item_internal
+
+        monkeypatch.delenv("FIREWORKS_API_KEY", raising=False)
+
+        with (
+            patch("backend.app.routers.intel_scraper.staging_service") as mock_stg,
+            patch("backend.app.routers.intel_scraper.intel_user_actions_total") as mock_metric,
+            patch(
+                "backend.app.routers.intel_scraper.ingest_intel_to_qdrant",
+                new=AsyncMock(return_value=True),
+            ),
+            patch(
+                "backend.app.routers.article_composer.publish_article_internal",
+                new=AsyncMock(side_effect=RuntimeError("boom")),
+            ),
+        ):
+            mock_stg.load_staging_item.return_value = {
+                "title": "New Visa Rule",
+                "content": "## Summary\nNew rule.\n## Facts\nEffective Jan 2026.",
+                "category": "visa",
+                "relevance_score": 80,
+                "source_url": "https://example.com",
+            }
+            mock_stg.save_staging_item.return_value = None
+            mock_metric.labels.return_value.inc = MagicMock()
+
+            result = await publish_staging_item_internal(
+                "news", "item-1", actor="test"
+            )
+
+            assert result["success"] is False
+            assert "Cause: RuntimeError: boom" in result["message"]
 
 
 # ---------------------------------------------------------------------------
