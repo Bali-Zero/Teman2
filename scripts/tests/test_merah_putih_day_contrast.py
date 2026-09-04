@@ -744,11 +744,117 @@ def test_a_pr_that_narrows_its_own_list_cannot_disarm_the_sentinel(tmp_path) -> 
 
 
 def test_the_sentinel_reads_the_base_copy_via_git_show() -> None:
+    """The static half of the base-copy guarantee; the executable half is
+    `test_a_pr_that_narrows_its_own_list_cannot_disarm_the_sentinel`.
+
+    This used to assert the literal `"git", "show"`, which pinned the SPELLING
+    rather than the mechanism: wrapping the same call in a `_git(*args)` helper
+    — as the fail-closed cure did — broke it while the sentinel still read the
+    base copy exactly as before. Rewritten to name the two things that actually
+    have to be true (a `show` of the base ref's own copy of this workflow, at
+    `BASE_SHA`), so a helper rename passes and REMOVING the base read fails.
+    """
     body = (
         WORKFLOW.read_text(encoding="utf-8")
         .split("Did a guarded surface change?", 1)[1]
         .split("- name:", 1)[0]
     )
-    assert '"git", "show"' in body and 'BASE_SHA' in body, (
+    assert '"show"' in body and "BASE_SHA" in body, (
         "the sentinel no longer reads the base ref's copy of its pattern list"
+    )
+    assert "base_sha}:{WORKFLOW}" in body, (
+        "the sentinel no longer addresses the BASE ref's copy of THIS workflow — "
+        "if it now shows some other path or ref, the PR-controlled head copy is "
+        "the only list in play"
+    )
+
+
+# ---------------------------------------------------------------------------
+# The two conditions the Gear-3 gate attached to #5614's PASS-WITH-CONDITIONS.
+# Both were prose in that PR's body and prose is not in force, so each is
+# asserted here — and the sentinel one is EXECUTED rather than grepped, because
+# a fail-closed path that is only described is exactly the shape that fails open
+# the first time anyone reads it.
+# ---------------------------------------------------------------------------
+
+
+def test_the_concurrency_group_never_cancels_a_merge_group_run() -> None:
+    """Condition 1. `github.ref` on a merge_group event is the QUEUE's ref, not
+    this PR's — so a bare `cancel-in-progress: true` lets the queue's next entry
+    cancel the entry ahead of it. A cancelled required context does not report a
+    failure, it reports nothing, and the entry is torn out of the queue rather
+    than merely delayed. Cancelling is right on `pull_request`, where the ref is
+    the PR's own and the superseded run is genuinely dead work.
+    """
+    import yaml
+
+    doc = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    concurrency = doc.get("concurrency")
+    assert concurrency, f"{WORKFLOW.name}: the concurrency block is gone"
+
+    cancel = str(concurrency.get("cancel-in-progress", "")).strip()
+    assert cancel not in {"True", "true"}, (
+        f"{WORKFLOW.name}: `cancel-in-progress` is unconditionally true again. On "
+        "a merge_group event the group key is the queue's own ref, so this "
+        "cancels the entry ahead of this one and a cancelled required context "
+        "never reports."
+    )
+    assert "github.event_name" in cancel and "merge_group" in cancel, (
+        f"{WORKFLOW.name}: `cancel-in-progress` is {cancel!r} — it must be an "
+        "expression that turns cancelling OFF for merge_group specifically, not "
+        "a blanket value."
+    )
+
+
+def test_the_sentinel_runs_the_guard_when_the_base_ref_cannot_be_read(tmp_path) -> None:
+    """Condition 2, guilt. An unreachable base sha (shallow checkout, unfetched
+    ref) means the trust boundary — reading the pattern list from the copy the PR
+    cannot edit — could not be applied. The sentinel must then run the WHOLE
+    guard, not fall back to the head-only list it just declined to trust.
+
+    Guilt, not innocence: the change below touches nothing guarded, so the
+    head-only reading would print `false` and skip the corpus. Fail-closed is
+    the only way `true` comes out of this.
+    """
+    res = _run_sentinel(
+        tmp_path,
+        ["README.md"],
+        BASE_SHA="0000000000000000000000000000000000000000",
+    )
+    assert res.returncode == 0, res.stderr
+    assert res.stdout == "true\n", (
+        "the sentinel could not read the base ref and still declared a no-op — "
+        "it failed OPEN. An unreadable base means the PR-controlled head copy is "
+        f"the only list available, which is precisely what must not be trusted. "
+        f"stdout={res.stdout!r} stderr={res.stderr!r}"
+    )
+
+
+def test_a_pr_that_introduces_this_workflow_is_not_forced_through_the_guard(tmp_path) -> None:
+    """Condition 2, innocence. "The base has no copy of this file" is NOT the
+    same event as "the base cannot be read", and conflating them would make the
+    fail-closed path fire on every PR that adds a workflow — the guard would run
+    its full corpus on unrelated changes forever.
+
+    Here the base ref IS reachable (HEAD) but the workflow is read from a path
+    that does not exist in it, so only the head list applies and an unguarded
+    change must still come back `false`.
+    """
+    import subprocess
+
+    empty_base = subprocess.run(
+        ["git", "commit-tree", "-m", "empty", subprocess.run(
+            ["git", "hash-object", "-t", "tree", "/dev/null"],
+            capture_output=True, text=True, cwd=REPO, check=True,
+        ).stdout.strip()],
+        capture_output=True, text=True, cwd=REPO, check=True,
+    ).stdout.strip()
+
+    res = _run_sentinel(tmp_path, ["README.md"], BASE_SHA=empty_base)
+    assert res.returncode == 0, res.stderr
+    assert res.stdout == "false\n", (
+        "a reachable base that simply does not contain this workflow was treated "
+        "as an unreadable base — the fail-closed path is over-matching, and every "
+        "PR introducing a workflow now runs the full corpus. "
+        f"stdout={res.stdout!r} stderr={res.stderr!r}"
     )

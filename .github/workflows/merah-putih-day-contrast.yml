@@ -125,8 +125,17 @@ permissions:
   contents: read
 
 concurrency:
+  # `cancel-in-progress` is CONDITIONAL on the event, and the condition is the
+  # whole point: on a merge_group event `github.ref` is the QUEUE's own ref, so a
+  # second entry landing while this one is mid-flight would cancel the first —
+  # and a cancelled required context does not report, which does not delay the
+  # queue, it tears the entry out of it. On a pull_request the ref is the PR's
+  # own, where cancelling a superseded push is exactly the saving we want.
+  # Promotion condition 1 of 2 from the Gear-3 gate's PASS-WITH-CONDITIONS on
+  # #5614; `test_the_concurrency_group_never_cancels_a_merge_group_run` is what
+  # keeps this from silently reverting to a bare `true`.
   group: merah-putih-day-contrast-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 jobs:
   contrast-guard:
@@ -168,7 +177,7 @@ jobs:
           # one this promotion exists to make green, went red instead (found by
           # the Gear-3 council, 2026-09-04). The snippet prints exactly one word.
           RUN="$(BASE_SHA="$BASE_SHA" CHANGED_FILE=/tmp/changed.txt python3 - <<'PY'
-          import fnmatch, os, pathlib, subprocess, yaml
+          import fnmatch, os, pathlib, subprocess, sys, yaml
 
           WORKFLOW = ".github/workflows/merah-putih-day-contrast.yml"
 
@@ -185,14 +194,41 @@ jobs:
           # list, skip the corpus, and skip the very test that catches a
           # shrinking list (Gear-3 council finding, 2026-09-04). The base copy is
           # the one the PR cannot edit.
+          #
+          # And when the base copy cannot be read, the sentinel FAILS CLOSED —
+          # it runs the whole guard rather than quietly falling back to the
+          # head-only list the paragraph above just called a trust boundary the
+          # PR controls. `if base.returncode == 0` alone treated "the base ref is
+          # unreachable" and "the base genuinely has no such file" as the same
+          # event and skipped the protection in both (promotion condition 2 of 2
+          # from the Gear-3 gate's PASS-WITH-CONDITIONS on #5614). Those two are
+          # separated below, because they are not the same fact: a shallow
+          # checkout or an unfetched base sha is a broken measurement and must
+          # not be believed, while a PR that INTRODUCES this workflow has no base
+          # copy by construction and head-only is the correct reading for it.
+          # `git cat-file -e` is the probe for both — `git rev-parse <sha>:<path>`
+          # would answer with a hash-shaped non-answer either way.
+          def _git(*args):
+              return subprocess.run(["git", *args], capture_output=True, text=True)
+
+          def _run_everything(why: str):
+              print("true")
+              sys.stderr.write(f"sentinel failing closed: {why}\n")
+              sys.exit(0)
+
           head_copy = pathlib.Path(os.environ.get("HEAD_WORKFLOW", WORKFLOW)).read_text()
           patterns = set(guarded_paths(head_copy))
-          base = subprocess.run(
-              ["git", "show", f"{os.environ['BASE_SHA']}:{WORKFLOW}"],
-              capture_output=True, text=True,
-          )
-          if base.returncode == 0:
-              patterns |= set(guarded_paths(base.stdout))
+          base_sha = os.environ["BASE_SHA"]
+          if _git("cat-file", "-e", f"{base_sha}^{{commit}}").returncode != 0:
+              _run_everything(f"base ref {base_sha} is not reachable in this checkout")
+          if _git("cat-file", "-e", f"{base_sha}:{WORKFLOW}").returncode == 0:
+              base = _git("show", f"{base_sha}:{WORKFLOW}")
+              if base.returncode != 0:
+                  _run_everything("the base copy of this workflow could not be read")
+              try:
+                  patterns |= set(guarded_paths(base.stdout))
+              except Exception as exc:  # noqa: BLE001 — any parse failure is unreadable base
+                  _run_everything(f"the base copy of this workflow did not parse: {exc}")
           assert patterns, "no guarded paths parsed — refusing to declare a no-op"
           changed = [l for l in pathlib.Path(os.environ["CHANGED_FILE"]).read_text().splitlines() if l]
           # fnmatch has no `**`; `*` already crosses `/` in it, which makes it a
