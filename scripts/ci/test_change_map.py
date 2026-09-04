@@ -3,11 +3,15 @@
 
 from __future__ import annotations
 
+import contextlib
+import importlib.util
+import io
 import json
 import os
 import re
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -973,6 +977,122 @@ class ChangeMapTests(unittest.TestCase):
         parsed = json.loads(completed.stdout)
         self.assertEqual(parsed["mode"], "enforcing")
         self.assertFalse(parsed["run_all"])
+
+
+class CensusCheckDiagnosticTests(unittest.TestCase):
+    """The census's --check diagnostic must name what actually moved.
+
+    It did not. ``_render_block`` packs many paths per line, and ``_check``
+    read one path per LINE, so every line collapsed into a single bogus
+    token with ``", "`` inside it — identical on both sides. On 2026-09-05 a
+    genuine one-path delta printed ~100 items "newly coupled" AND ~100 "no
+    longer coupled", and an earlier session read that as a total reshuffle.
+    A diagnostic that lies is worse than none: this is what the red on
+    `Classifier corpus trust (visibility only)` shows a human.
+    """
+
+    def _census_module(self):
+        rel = Path("scripts") / "ci" / "scripts_coupling_census.py"
+        repo_root = _locate_repo_root(rel)
+        if repo_root is None:
+            self.skipTest(
+                "scripts_coupling_census.py not reachable from cwd, GITHUB_WORKSPACE "
+                "or __file__ — the diagnostic is asserted where the checkout is present"
+            )
+        # Load by path, never by name: tests.yml's trusted extraction copies
+        # a FIXED six-file list flat, and the census is deliberately not in
+        # it (it shells out to `git grep` and writes files). Its own
+        # `import change_map` resolves from sys.modules, already imported
+        # at the top of this file.
+        spec = importlib.util.spec_from_file_location(
+            "scripts_coupling_census_under_test", repo_root / rel
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def _run_check(self, census, on_disk_block: str, embedded: set[str]):
+        """Point the census at a synthetic block and return (rc, stderr)."""
+
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "change_map.py"
+            target.write_text(
+                "# header\n" + on_disk_block + "\n# trailer\n", encoding="utf-8"
+            )
+            original = census.CHANGE_MAP_PATH
+            census.CHANGE_MAP_PATH = target
+            err = io.StringIO()
+            try:
+                with contextlib.redirect_stderr(err), contextlib.redirect_stdout(
+                    io.StringIO()
+                ):
+                    rc = census._check(embedded)
+            finally:
+                census.CHANGE_MAP_PATH = original
+        return rc, err.getvalue()
+
+    def test_guilt_one_added_path_is_named_and_nothing_else_is(self) -> None:
+        census = self._census_module()
+        base = {"scripts/a.py", "scripts/b.py", "scripts/c.py"}
+        rc, stderr = self._run_check(
+            census, census._render_block(base), base | {"scripts/zz_new.py"}
+        )
+        self.assertEqual(rc, 1)
+        self.assertIn("+ newly coupled (1): scripts/zz_new.py", stderr)
+        self.assertNotIn("- no longer coupled", stderr)
+        # The signature of the old line-per-path reading: a "path" carrying
+        # the separator of the packed line it was cut from.
+        self.assertNotIn('", "', stderr)
+
+    def test_guilt_one_removed_path_is_named_and_nothing_else_is(self) -> None:
+        census = self._census_module()
+        base = {"scripts/a.py", "scripts/b.py", "scripts/c.py"}
+        rc, stderr = self._run_check(
+            census, census._render_block(base | {"scripts/zz_gone.py"}), base
+        )
+        self.assertEqual(rc, 1)
+        self.assertIn("- no longer coupled (1): scripts/zz_gone.py", stderr)
+        self.assertNotIn("+ newly coupled", stderr)
+        self.assertNotIn('", "', stderr)
+
+    def test_guilt_a_rewrapped_block_says_the_set_is_identical(self) -> None:
+        # Same paths, one per line instead of packed. The verdict stays
+        # STALE — the block must be byte-identical to what --write emits —
+        # but the old code answered that with an EMPTY diagnostic or with
+        # garbage, which reads like "everything changed".
+        census = self._census_module()
+        paths = {"scripts/a.py", "scripts/b.py", "scripts/c.py"}
+        rewrapped = "\n".join(
+            [
+                census.BEGIN_MARKER,
+                "SCRIPTS_COUPLING: frozenset[str] = frozenset(",
+                "    (",
+                *[f'        "{p}",' for p in sorted(paths)],
+                "    )",
+                ")",
+                census.END_MARKER,
+            ]
+        )
+        rc, stderr = self._run_check(census, rewrapped, paths)
+        self.assertEqual(rc, 1)
+        self.assertIn("the coupled SET is identical (3 paths)", stderr)
+        self.assertNotIn("+ newly coupled", stderr)
+        self.assertNotIn("- no longer coupled", stderr)
+
+    def test_innocence_an_up_to_date_block_exits_zero_and_says_nothing(self) -> None:
+        census = self._census_module()
+        paths = {"scripts/a.py", "scripts/b.py", "scripts/c.py"}
+        rc, stderr = self._run_check(census, census._render_block(paths), paths)
+        self.assertEqual(rc, 0)
+        self.assertEqual(stderr, "")
+
+    def test_innocence_block_paths_reads_a_packed_line_as_many_paths(self) -> None:
+        # The unit fact the three guilt cases rest on: one rendered line
+        # carries several paths, and every one of them must come back.
+        census = self._census_module()
+        paths = {f"scripts/pack_{i}.py" for i in range(12)}
+        block = census._render_block(paths)
+        self.assertEqual(census._block_paths(block), paths)
 
 
 if __name__ == "__main__":
