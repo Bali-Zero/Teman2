@@ -111,8 +111,26 @@ def load_policy_text(text: str, *, source: str = "<text>") -> dict[str, Any]:
         document = yaml.load(text, Loader=StrictLoader)
     except StrictYAMLError:
         raise
+    except RecursionError as exc:
+        # Measured 2026-09-04: a mapping nested ~1000 deep exhausts Python's recursion
+        # limit inside PyYAML's constructor. RecursionError is NOT a yaml.YAMLError, so
+        # catching only that let it escape as a TRACEBACK rather than as a verdict — and
+        # a caller that maps exceptions to "refuse" would instead see its process die.
+        # Found by tp1-qwen3.8-max, a text-only seat that could not run a line of this.
+        raise StrictYAMLError(
+            f"{source}: nested too deeply to parse safely (RecursionError). A policy "
+            f"document nested past Python's recursion limit is not a document anyone "
+            f"reviewed."
+        ) from exc
     except yaml.YAMLError as exc:
         raise StrictYAMLError(f"{source}: not parseable as YAML ({type(exc).__name__})") from exc
+    except Exception as exc:
+        # The docstring promises callers ONE error type; anything else escaping makes that
+        # a lie. A YAML complex key (`? [a, b]`) reaches construct_object and raises
+        # TypeError: unhashable type — not a yaml.YAMLError, so it went straight through.
+        raise StrictYAMLError(
+            f"{source}: refused while constructing ({type(exc).__name__}: {exc})"
+        ) from exc
     if not isinstance(document, dict) or not document:
         raise StrictYAMLError(
             f"{source}: a policy document must be a non-empty mapping, got "

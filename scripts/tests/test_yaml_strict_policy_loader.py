@@ -93,6 +93,21 @@ def test_guilt_an_unreadable_path_is_refused_not_defaulted(tmp_path):
         ys.load_policy(tmp_path / "does-not-exist.yaml")
 
 
+
+def test_guilt_a_document_nested_past_the_recursion_limit_is_refused_not_a_traceback():
+    """`RecursionError` is not a `yaml.YAMLError`, so it used to escape the handler.
+
+    Measured 2026-09-04: at depth 300 the document parses; at 1000 (Python's default
+    recursion limit) PyYAML's constructor raises RecursionError, which a caller catching
+    only StrictYAMLError would not see — the process dies instead of refusing. Found by
+    tp1-qwen3.8-max, a text-only seat with no shell, which could not run a single line of
+    this and named the vector anyway.
+    """
+    deep = "".join("  " * i + "a:\n" for i in range(2000)) + "  " * 2000 + "x: 1\n"
+    with pytest.raises(ys.StrictYAMLError) as exc:
+        ys.load_policy_text(deep, source="deep")
+    assert "nested too deeply" in str(exc.value)
+
 # ----------------------------------------------------------------- loader, innocence
 
 
@@ -180,3 +195,79 @@ def test_this_test_file_is_listed_in_the_immune_enforcement_battery():
         encoding="utf-8"
     )
     assert "scripts/tests/test_yaml_strict_policy_loader.py" in workflow
+
+
+# ------------------------------------------- the same defect, one level DOWN (kimi K3)
+
+
+def _rules_doc():
+    import yaml as _yaml
+    return _yaml.safe_load(RULES.read_text(encoding="utf-8"))
+
+
+def _write(tmp_path: Path, doc) -> Path:
+    import yaml as _yaml
+    target = tmp_path / "redaction-rules.yaml"
+    target.write_text(_yaml.safe_dump(doc), encoding="utf-8")
+    return target
+
+
+def test_guilt_a_duplicate_RULE_ID_shadows_a_real_rule_with_no_duplicate_yaml_key(tmp_path):
+    """The cure had stopped one level too high, and this is the proof it had.
+
+    `Redactor.__init__` compiles into a table keyed by each rule's `id`. Appending one
+    LIST ITEM to pass1 that reuses a real rule's id with a never-matching pattern contains
+    no duplicate YAML KEY at all — the strict loader accepts it happily — and the
+    attacker's pattern replaces the real one. Measured before the fix: the NPWP leaked
+    while `redact()` returned normally. "Last one wins in silence" is a property of any
+    keyed collection built without a collision check, not of YAML.
+    """
+    doc = _rules_doc()
+    doc["pass1"].append(dict(doc["pass1"][0]) | {"pattern": "zzz_never_matches"})
+    with pytest.raises(RedactionError) as exc:
+        load_config(_write(tmp_path, doc))
+    assert "duplicate rule id" in str(exc.value)
+
+
+def test_guilt_a_rule_without_an_id_is_refused(tmp_path):
+    """Rules are keyed by id downstream; an unnamed one cannot be audited."""
+    doc = _rules_doc()
+    doc["pass1"].append({"pattern": "zzz", "placeholder": "[X]"})
+    with pytest.raises(RedactionError):
+        load_config(_write(tmp_path, doc))
+
+
+def test_guilt_a_placeholder_only_pass1_passes_non_emptiness_and_redacts_nothing(tmp_path):
+    """A rule with no `pattern` compiles to None and is skipped in SILENCE.
+
+    That shape is legitimate in pass4. In pass1 it is a rule that matches nothing while
+    still counting toward "pass1 is non-empty", so the emptiness check alone was not
+    enough: measured before the fix, a placeholder-only pass1 built a working-looking
+    redactor and leaked the NPWP.
+    """
+    doc = _rules_doc()
+    doc["pass1"] = [{"id": "ph1", "placeholder_id": "X"}, {"id": "ph2", "placeholder_id": "Y"}]
+    with pytest.raises(RedactionError) as exc:
+        load_config(_write(tmp_path, doc))
+    assert "compiles to nothing" in str(exc.value)
+
+
+def test_guilt_no_exception_other_than_StrictYAMLError_escapes_the_loader():
+    """The docstring promises callers ONE error type; anything else makes that a lie.
+
+    A YAML complex key (`? [a, b]`) reaches `construct_object` and raises
+    `TypeError: unhashable type: 'list'`, which is not a `yaml.YAMLError` and used to go
+    straight through the handler.
+    """
+    with pytest.raises(ys.StrictYAMLError):
+        ys.load_policy_text("? [a, b]\n: 1\n", source="complex-key")
+
+
+def test_innocence_the_shipped_rules_have_unique_ids_and_real_patterns():
+    """The over-match direction for all three checks above, on the file actually shipped."""
+    config = load_config()
+    for pass_list in (config.pass1, config.pass2_team_first, config.pass3_generic):
+        ids = [r["id"] for r in pass_list]
+        assert len(ids) == len(set(ids)), "the shipped rules must not collide with themselves"
+        assert all("pattern" in r for r in pass_list)
+

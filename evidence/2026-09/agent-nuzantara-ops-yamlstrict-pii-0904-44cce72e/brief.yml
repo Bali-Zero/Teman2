@@ -1,0 +1,50 @@
+task: >-
+  Load the PII redaction rules strictly. An appended duplicate top-level key silently
+  disarmed them: pass1 went from 18 patterns to 0 while later passes kept running, so the
+  redactor emitted normal-looking output that redacted nothing. PR-A of the duplicate-key
+  class ledgered in #5680.
+lane: ops/yamlstrict-pii
+machine: Pro
+date: 2026-09-04
+
+gear: 3
+gear_reason: >-
+  NOT chosen for blast radius — chosen by the floor. The deterministic floor for this
+  file set is 3, source `path`: `.github/workflows/*` is a HOTZONE pattern in
+  evidence_pack_lint.py's compute_floor(), and a hot-zone hit floors at 3 regardless of
+  size. The diff is 365 net lines over 4 files and would otherwise be Gear 2. The
+  workflow touch is not removable: in this repo every test is armed by an EXPLICIT
+  listing in a workflow — there is no job that collects scripts/tests/ wholesale — so
+  arming the new guard REQUIRES editing immune-enforcement.yml. The alternative is
+  shipping an unarmed test, which is superscar #2 and is exactly what the new test
+  asserts against. Ceremony follows the floor; the floor never yields to the ceiling.
+
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
+
+acceptance:
+  A1: >-
+    The exact two-line append that used to win is refused, and the redactor fails CLOSED
+    rather than redacting nothing.
+    probe: pytest scripts/tests/test_yaml_strict_policy_loader.py::test_guilt_the_redactor_fails_CLOSED_on_poisoned_rules
+  A2: >-
+    The shipped rules still load with all 18 pass1 rules and still redact — a loader that
+    refused the real file would be safe and useless.
+    probe: pytest scripts/tests/test_yaml_strict_policy_loader.py::test_innocence_the_shipped_rules_still_build_a_working_redactor
+  A3: >-
+    The new guard is ARMED in CI, not merely present: the battery membership is asserted
+    by a test, because immune-enforcement's loop prints `::notice::skip (absent)` and
+    stays green for a test that is not there.
+    probe: pytest scripts/tests/test_yaml_strict_policy_loader.py::test_this_test_file_is_listed_in_the_immune_enforcement_battery
+  A4: >-
+    No pre-existing PII behaviour regressed.
+    probe: pytest scripts/tests/test_husky_pii_pass_overmatch.py scripts/tests/test_wa_attention_pii_envelope.py -q
+
+out_of_scope: >-
+  The other five policy documents in the class (roles.yaml with its two readers,
+  verify_the_verifiers_gates.yaml, .security/exceptions.yaml with its three consumers,
+  and the WR3 per-agent allowed_tools). They are PR-B/C/D. Also out of scope: the other
+  ~70 YAML call sites in this repo — a CI config or a test fixture with a duplicate key
+  is a mistake to fix, not an attack to refuse, and failing them would be superscar #3's
+  over-match twin.
