@@ -976,6 +976,10 @@ def test_the_step_itself_runs_the_guard_when_the_base_ref_is_unreachable(tmp_pat
         "an unreachable base did not make the step run the whole guard: "
         f"$GITHUB_OUTPUT={out!r} stdout={res.stdout!r} stderr={res.stderr!r}"
     )
+    assert "not reachable" in res.stdout, (
+        "the step failed closed for a reason other than the unreachable base — "
+        f"this branch may be dead while another covers for it. stdout={res.stdout!r}"
+    )
 
 
 def _shell_runs_a_heredoc_inside_a_substitution() -> bool:
@@ -1160,6 +1164,19 @@ def test_the_step_fails_closed_when_the_base_is_reachable_but_undiffable(tmp_pat
         "a base that could not be diffed did not make the step run the whole "
         f"guard: {parsed!r} stderr={res.stderr!r}"
     )
+    # WHICH branch fired, not merely that one did (codex, round 3: "a
+    # regression making the first fail_closed fire incorrectly masks a dead
+    # second branch"). The two branches print different reasons, so the reason
+    # is the witness.
+    assert "could not be taken" in res.stdout, (
+        "the step failed closed for the WRONG reason — this fixture is meant to "
+        "reach the diff guard, and a reachability failure here would mean the "
+        f"second branch is dead and unmeasured. stdout={res.stdout!r}"
+    )
+    assert "not reachable" not in res.stdout, (
+        "the reachability probe rejected a base this fixture built as reachable "
+        f"— the case under test is not being exercised. stdout={res.stdout!r}"
+    )
 
 
 def test_the_sentinel_fails_closed_when_the_base_tree_cannot_be_listed(tmp_path) -> None:
@@ -1211,4 +1228,13 @@ def test_the_sentinel_fails_closed_when_the_base_tree_cannot_be_listed(tmp_path)
         "the sentinel could not list the base tree and still declared a no-op — "
         "an unreadable base took the head-only branch the block exists to "
         f"refuse. stdout={res.stdout!r} stderr={res.stderr!r}"
+    )
+    # EXECUTION WITNESS (codex, round 3: "the test never records/asserts that
+    # its ls-tree arm ran; any earlier fail-closed producing `true` satisfies
+    # it"). The snippet names its reason on stderr, and only this branch says
+    # "could not be listed".
+    assert "could not be listed" in res.stderr, (
+        "the sentinel printed `true` for some reason OTHER than the failed "
+        "ls-tree — the shim proved nothing about the branch it was built to "
+        f"reach. stderr={res.stderr!r}"
     )
