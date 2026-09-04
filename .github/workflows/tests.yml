@@ -173,8 +173,15 @@ jobs:
       # nobody asked for the manual override. Fail-open toward 'false'
       # (untrusted) on any unset/unexpected value — the unsafe direction here
       # is silently claiming trust, not silently doubting it.
-      classifier_trusted: ${{ steps.classify.outputs.classifier_trusted || 'false' }}
-      override_active: ${{ steps.override.outputs.active || 'false' }}
+      # `== 'true' && 'true' || 'false'`, not a bare `|| 'false'` (codex-gpt-5.6-sol
+      # review, 2026-09-05): `||` only substitutes on an EMPTY left side, so a
+      # bare fallback would pass through any unexpected non-empty value (e.g.
+      # a future typo emitting "True"/"1") unnormalized, silently widening the
+      # output's contract beyond the two literal strings its only consumers
+      # (this job's own steps) actually write today. Explicit normalization
+      # closes that for any FUTURE consumer, not just today's.
+      classifier_trusted: ${{ steps.classify.outputs.classifier_trusted == 'true' && 'true' || 'false' }}
+      override_active: ${{ steps.override.outputs.active == 'true' && 'true' || 'false' }}
 
     steps:
       - name: Checkout code
@@ -470,7 +477,7 @@ jobs:
           CLASSIFIER_TEST_OUTCOME: ${{ steps.classifier-tests.outcome }}
           CLASSIFY_OUTCOME: ${{ steps.classify.outcome }}
           OVERRIDE_ACTIVE: ${{ steps.override.outputs.active }}
-          CLASSIFIER_TRUSTED: ${{ steps.classify.outputs.classifier_trusted || 'false' }}
+          CLASSIFIER_TRUSTED: ${{ steps.classify.outputs.classifier_trusted == 'true' && 'true' || 'false' }}
         run: |
           python3 - <<'PY'
           import json
@@ -593,6 +600,18 @@ jobs:
     timeout-minutes: 2
     permissions:
       contents: read
+    # continue-on-error (codex-gpt-5.6-sol review, 2026-09-05): "not in
+    # infra/required.d/contexts.json" only defends against classic
+    # required-status-checks matching this job's exact name — it says nothing
+    # about a repository/organization RULESET that requires every check-run on
+    # a PR to succeed, or merge automation that inspects the raw checks list
+    # rather than the named-required subset. `continue-on-error: true` closes
+    # that regardless of which policy shape is live: the JOB's own check-run
+    # conclusion can still report `failure` (the red signal this job exists
+    # for), but that failure no longer fails the WORKFLOW RUN itself — the
+    # exact split the `npm-audit` job's own "Two-layer advisory design"
+    # comment below already documents and this job now matches.
+    continue-on-error: true
     steps:
       - name: Classifier corpus FAILED in the trusted extraction layout
         run: |
