@@ -89,7 +89,7 @@ Agent sessions MUST run under `.worktrees/<lane>-<task-id>/` via `scripts/agent_
 
 ## Strumenti
 
-MCP `nuzantara-knowledge` OFF (~−5k tok/sess, via CLI); `.mcp.json` vuoto (backup `.mcp.json.bak-diet-20260904`). Prezzi/KBLI/visa/legal: `curl https://nuzantara-rag.fly.dev/...` (`apps/nuzantara-mcp/nuzantara_mcp/server_knowledge.py`). Docs: WebFetch/WebSearch. GitHub/Fly/PG: `gh`/`fly`/`scripts/pg.sh`. Browser: `claude-in-chrome`. Drive: connector claude.ai (`operator[gui]`).
+MCP: `.mcp.json` untracked (per macchina); tool MCP differiti (`ENABLE_TOOL_SEARCH=true`, settings globale), ~0 tok finché non usati. Prezzi/KBLI/visa/legal: `curl https://nuzantara-rag.fly.dev/...` (`apps/nuzantara-mcp/nuzantara_mcp/server_knowledge.py`). GitHub/Fly/PG: `gh`/`fly`/`scripts/pg.sh`. Browser: `claude --chrome`. Drive: connector claude.ai (`operator[gui]`).
 
 ## 3. Memory (MOS)
 
