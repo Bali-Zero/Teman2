@@ -836,21 +836,36 @@ def test_a_pr_that_introduces_this_workflow_is_not_forced_through_the_guard(tmp_
     fail-closed path fire on every PR that adds a workflow — the guard would run
     its full corpus on unrelated changes forever.
 
-    Here the base ref IS reachable (HEAD) but the workflow is read from a path
-    that does not exist in it, so only the head list applies and an unguarded
-    change must still come back `false`.
+    The base ref used here is a REAL commit from this repo's history: the parent
+    of the commit that introduced this workflow, which by construction does not
+    contain it. The first draft fabricated an empty commit with `git commit-tree`
+    instead, and that exits 128 on a CI runner with no committer identity
+    configured — a test that depends on git plumbing the environment need not
+    provide. History is already there and needs no identity to read.
     """
     import subprocess
 
-    empty_base = subprocess.run(
-        ["git", "commit-tree", "-m", "empty", subprocess.run(
-            ["git", "hash-object", "-t", "tree", "/dev/null"],
-            capture_output=True, text=True, cwd=REPO, check=True,
-        ).stdout.strip()],
-        capture_output=True, text=True, cwd=REPO, check=True,
-    ).stdout.strip()
+    def _git(*args):
+        return subprocess.run(["git", *args], capture_output=True, text=True, cwd=REPO)
 
-    res = _run_sentinel(tmp_path, ["README.md"], BASE_SHA=empty_base)
+    introducing = _git("rev-list", "--max-parents=1", "HEAD", "--", str(WORKFLOW.relative_to(REPO)))
+    revs = [r for r in introducing.stdout.split() if r]
+    if not revs:
+        pytest.skip("no single-parent commit touches this workflow — cannot locate a base without it")
+    before = _git("rev-parse", f"{revs[-1]}^")
+    if before.returncode != 0:
+        pytest.skip("the introducing commit is a root commit — no parent to use as a base")
+    base = before.stdout.strip()
+
+    # The precondition this test rests on, asserted rather than assumed: that
+    # base really must NOT contain the workflow, or the case under test is not
+    # the case being exercised and a green result would mean nothing.
+    assert _git("cat-file", "-e", f"{base}:{WORKFLOW.relative_to(REPO)}").returncode != 0, (
+        f"expected {base[:12]} to predate this workflow, but it contains it — "
+        "the innocence case is not being exercised"
+    )
+
+    res = _run_sentinel(tmp_path, ["README.md"], BASE_SHA=base)
     assert res.returncode == 0, res.stderr
     assert res.stdout == "false\n", (
         "a reachable base that simply does not contain this workflow was treated "
