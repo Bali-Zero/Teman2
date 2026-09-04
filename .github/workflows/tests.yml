@@ -105,6 +105,14 @@ concurrency:
   # dropping: lateness is visible, an absent check-run is not.
   group: tests-${{ github.event_name == 'schedule' && 'schedule-main' || github.ref }}
   cancel-in-progress: ${{ (github.event_name == 'schedule' || github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
+  # CHECKED, NOT CHANGED (2026-09-05 audit): for a `pull_request` event,
+  # `github.ref` is `refs/pull/<n>/merge` — never `refs/heads/main` — so the
+  # expression above is already `true` for every PR push (a newer push
+  # supersedes an in-flight run of the same PR). `cancel-in-progress` is only
+  # ever `false` for the two cases the long comment block above this key
+  # explains it must be: a `merge_group` entry and a direct run against
+  # `refs/heads/main`. No PR-triggered idempotent run in this workflow lacks
+  # cancellation.
 
 # S11: the coverage-collection decision lives HERE, once, and nowhere else.
 # It used to be a per-shard step that wrote its answer to a file the fan-in read
@@ -153,6 +161,20 @@ jobs:
       # this lever existed.
       impact_run_all: ${{ steps.impact.outputs.run_all || 'true' }}
       impact_selected_tests: ${{ steps.impact.outputs.selected_tests }}
+      # VISIBILITY (2026-09-05, closes the "corpus dies silently" mask that
+      # let #5070 and #5679 run every job on every PR for 9 and 9 days
+      # respectively, both green throughout): a failure of the extraction or
+      # the corpus is ALREADY fail-open (run_all above) — that was never the
+      # gap. The gap was that fail-open path being indistinguishable from a
+      # genuine "nothing here" recommendation. classifier_trusted is 'true'
+      # ONLY when extraction succeeded AND the corpus itself exited 0 in the
+      # trusted layout; the classifier-corpus-visibility job below turns red
+      # (non-required — it can never block a PR) whenever this is 'false' and
+      # nobody asked for the manual override. Fail-open toward 'false'
+      # (untrusted) on any unset/unexpected value — the unsafe direction here
+      # is silently claiming trust, not silently doubting it.
+      classifier_trusted: ${{ steps.classify.outputs.classifier_trusted || 'false' }}
+      override_active: ${{ steps.override.outputs.active || 'false' }}
 
     steps:
       - name: Checkout code
@@ -317,6 +339,18 @@ jobs:
           echo "map=$MAP_JSON" >> "$GITHUB_OUTPUT"
           echo "run_all=$RUN_ALL" >> "$GITHUB_OUTPUT"
 
+          # classifier_trusted: the SAME condition this step already used above
+          # to decide whether to trust hotzone_changed_files.sh's enumeration —
+          # re-published as its own explicit output instead of left implicit in
+          # a warning line, so a consumer (the visibility job below, or a human
+          # reading the step summary) never has to re-derive it from two other
+          # steps' outcomes.
+          if [ "$EXTRACT_OK" = "true" ] && [ "$CLASSIFIER_TEST_OUTCOME" = "success" ]; then
+            echo "classifier_trusted=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "classifier_trusted=false" >> "$GITHUB_OUTPUT"
+          fi
+
           # Per-job explicit booleans (superscar #3 "guard-over-match"): a
           # `contains(map_json, 'job-name')` substring check on the raw JSON
           # would be one classifier bug away from "frontend-tests" silently
@@ -397,14 +431,36 @@ jobs:
           # can run into the hundreds of paths (see the module docstring's
           # app-factory hub example) and belongs in $GITHUB_OUTPUT, not a
           # GitHub Actions annotation.
-          SUMMARY="$(IMPACT_JSON="$IMPACT_JSON" python3 -c '
-          import json, os
+          #
+          # HEREDOC, not `python3 -c '...'` (2026-09-05 fix): the one-liner
+          # version quoted dict keys with `\"run_all\"` INSIDE an f-string
+          # expression — a backslash-escaped quote inside `{...}` is a
+          # SyntaxError on Python < 3.12 ("f-string expression part cannot
+          # include a backslash", lifted by PEP 701). This job has no
+          # `actions/setup-python` step, so it runs on whatever `python3` the
+          # `ubuntu-24.04` image (confirmed live, run 33896943526's "Set up
+          # job" log) ships as default — 3.12, which is why this has not
+          # actually broken a live run yet. It is NOT safe by convention: the
+          # rest of this repo's Python CI surface pins 3.11 explicitly (e.g.
+          # scripts-tests-sweep.yml's `actions/setup-python` with
+          # `python-version: "3.11"`), and anyone reproducing this exact step
+          # against that pin — or against a contributor's local 3.11/3.10 —
+          # hits the SyntaxError immediately. A `python3 - <<'PY'` heredoc
+          # (same pattern already used two steps down, "Publish change-map
+          # decision") passes the script over stdin with no shell-quoting
+          # interaction, so the f-strings need no escaping at all and the bug
+          # class cannot recur here.
+          SUMMARY="$(IMPACT_JSON="$IMPACT_JSON" python3 - <<'PY'
+          import json
+          import os
+
           d = json.loads(os.environ["IMPACT_JSON"])
           print(
-              f"run_all={d[\"run_all\"]} reason={d[\"reason\"]} "
-              f"selected={d.get(\"selected_test_count\", \"-\")}/{d.get(\"total_test_count\", \"-\")}"
+              f"run_all={d['run_all']} reason={d['reason']} "
+              f"selected={d.get('selected_test_count', '-')}/{d.get('total_test_count', '-')}"
           )
-          ')"
+          PY
+          )"
           echo "::notice::test-impact-map: $SUMMARY"
 
       - name: Publish change-map decision
@@ -414,6 +470,7 @@ jobs:
           CLASSIFIER_TEST_OUTCOME: ${{ steps.classifier-tests.outcome }}
           CLASSIFY_OUTCOME: ${{ steps.classify.outcome }}
           OVERRIDE_ACTIVE: ${{ steps.override.outputs.active }}
+          CLASSIFIER_TRUSTED: ${{ steps.classify.outputs.classifier_trusted || 'false' }}
         run: |
           python3 - <<'PY'
           import json
@@ -459,16 +516,30 @@ jobs:
 
           skipped = result["would_skip"]
 
+          classifier_trusted = os.environ.get("CLASSIFIER_TRUSTED", "false")
+
           lines = [
               "## Change map — enforcing",
               "",
               f"- Classifier corpus: `{os.environ['CLASSIFIER_TEST_OUTCOME']}`",
               f"- Classification step: `{os.environ['CLASSIFY_OUTCOME']}`",
+              f"- Classifier trusted (extraction + corpus both clean): `{classifier_trusted}`",
               f"- Conservative fallback (run everything): `{str(result['run_all']).lower()}`",
               f"- Reason: `{result['reason']}`",
               f"- Ran: `{', '.join(result['suggested_jobs']) or 'none'}`",
               f"- Skipped: `{', '.join(skipped) or 'none'}`",
           ]
+          if classifier_trusted != "true" and os.environ.get("OVERRIDE_ACTIVE") != "true":
+              lines.extend(
+                  [
+                      "",
+                      "**The trusted-classifier corpus did not pass in the flat extraction "
+                      "layout this run** — see the `Classifier corpus trust (visibility "
+                      "only)` job (non-required, exists only when this is true) for the red "
+                      "signal. The fallback above is safe (run_all), but the recommendation "
+                      "for THIS PR was degraded and did not reflect its actual diff.",
+                  ]
+              )
           if result.get("unknown_paths"):
               lines.extend(
                   ["", "Unclassified paths (therefore all jobs):", ""]
@@ -495,6 +566,39 @@ jobs:
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
               summary.write("\n".join(lines) + "\n")
           PY
+
+  # VISIBILITY-ONLY red signal for the corpus mask (2026-09-05). #5070
+  # (2026-08-26) and #5679 (2026-09-04) each killed the trusted-classifier
+  # corpus silently: the fail-open contract correctly forced run_all=true on
+  # every PR for 9 and then 9 more days, and `changes` stayed green
+  # throughout because `classifier-tests`/`classify` are BOTH
+  # `continue-on-error: true` (load-bearing — a hard failure there must never
+  # block a PR whose diff never touched the classifier). Nobody noticed
+  # either incident from CI's own signal; both were found by a human reading
+  # `run_all: true` on an unrelated diff and asking why.
+  #
+  # This job exists ONLY to be seen, never to gate: it fires exclusively when
+  # `changes` itself concluded success (so this is additive information, not
+  # a duplicate of a real `changes` failure, which is already visible) AND
+  # the classifier was genuinely untrusted (extraction or corpus failed) AND
+  # nobody asked for the manual override (which intentionally never consults
+  # the classifier — that is not a defect). It is NOT added to
+  # infra/required.d/contexts.json or branch protection — a red run here can
+  # never block a merge queue entry, only tell a human to go look.
+  classifier-corpus-visibility:
+    name: Classifier corpus trust (visibility only)
+    needs: [changes]
+    if: needs.changes.outputs.override_active != 'true' && needs.changes.outputs.classifier_trusted != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: read
+    steps:
+      - name: Classifier corpus FAILED in the trusted extraction layout
+        run: |
+          echo "::error::classifier corpus FAILED in the trusted layout — recommendation degraded to run-all"
+          echo "See the 'Change map' job's 'Verify change-map guilt and innocence corpus' / 'Extract trusted classifier (base ref)' steps for which one failed, and scripts/ci/test_trusted_extraction_layout.py to reproduce it locally."
+          exit 1
 
   # ── S11 backend-test sharding (2026-08-23) ──────────────────────────────────
   # `Backend Tests (Python)` used to be ONE job, and every code PR paid it twice
@@ -1604,6 +1708,26 @@ jobs:
     # here: a false job-level condition would again erase the matrix contexts.
     # The first step below keeps the normal path filter and fails open to RUN
     # when `changes` is non-successful or its output is missing.
+    #
+    # DIAGNOSED, NOT A DEFECT (2026-09-05, re: PR #5696 checks showing
+    # "Frontend Tests (Next.js) (mouth, true)"/"(admin-dashboard, false)" as
+    # `pass` in 4-5s on a docs-only diff where the Change map listed
+    # `frontend-tests` in `would_skip`): verified against that PR's actual
+    # job logs (run 33896943526, jobs 101103158988/101103158947). Both legs
+    # spin up a runner and execute exactly ONE step — "Decide whether to
+    # run" below — which read `RUN_FRONTEND_TESTS: false` and correctly set
+    # `run=false`; every subsequent step (checkout, npm install, vitest) was
+    # skipped, matching its own `if: steps.decide.outputs.run == 'true'`
+    # guard. No test ran. The visible difference from the other five heavy
+    # jobs — which report GitHub's `skipping` conclusion at effectively zero
+    # cost — is COSMETIC, not functional: those five use a job-level `if:`
+    # keyed on the classifier, which is exactly the shape the LOAD-BEARING
+    # comment above documents as unsafe FOR THIS JOB (a job-level `if:` that
+    # can evaluate false erases the matrix's required-context names when
+    # `changes` doesn't succeed cleanly — #4706's actual failure mode).
+    # Moving frontend-tests to that shape to buy the cheaper "skipping" badge
+    # would reopen #4706. Left unchanged; the ~5s/leg "Set up job" + decide
+    # cost is the accepted price of keeping the required contexts stable.
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     env:
