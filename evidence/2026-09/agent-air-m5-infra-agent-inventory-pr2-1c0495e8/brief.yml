@@ -1,0 +1,127 @@
+task_id: agent-inventory-pr2-0904
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  PR-2 of the "bonifica inventario subagent" mandate. Two agent definitions that a LIVE
+  LaunchAgent dispatches existed ONLY as untracked files in `~/.claude/agents/`:
+
+    - `competitor-monitor` — `com.balizero.competitor-monitor.monthly`, loaded on Pro.
+    - `nb-curator`         — `com.balizero.nb-curator.daily`, loaded on Pro.
+
+  Untracked means: one `rm` from gone, never reviewed, never gated, and already divergent
+  per machine — measured, Pro's copies still name `~/Desktop/nuzantara`, a path this repo
+  left on 2026-07-16, while M5's carry the 2026-09-04 context-diet description trim.
+
+  Vendoring them alone would have been theater, and that is the load-bearing part of this
+  PR. `.claude/agents/` (project) outranks `~/.claude/agents/` (machine-local) ONLY when
+  the process cwd is inside the repo. launchd starts both jobs with cwd=/ and
+  `~/scripts/claude-cascade.sh` never `cd`s and passes no directory flag (measured: no
+  `cd`, no `--add-dir`, no `--cwd` anywhere in it). So a vendored copy would sit in the
+  repo, tracked and gated, and NEVER be the copy that loads. Each wrapper therefore also
+  resolves `$NUZ_ROOT` and `cd`s into it before dispatching.
+
+  Third measured obstacle, and the actual root cause of why these were never tracked:
+  `.gitignore:549` ignores `.claude/agents/*` behind an explicit `!`-allowlist. Without two
+  new `!` lines, `git add -A` skips the files IN SILENCE — the block's own 2026-08-08
+  comment says exactly this about the previous vendoring.
+constraints:
+  - "THE MANDATE'S PREMISE WAS WRONG ON ONE OF ITS THREE AGENTS AND THIS PR FOLLOWS THE
+    MEASUREMENT, NOT THE BRIEF. `yield-optimizer` was handed over as the third live agent.
+    It is RETIRED: its plist sits in `~/Library/LaunchAgents/_retired/
+    com.balizero.yield-optimizer.weekly.plist.retired-20260820`, and the job that runs in
+    its place, `s7-yield-run.sh`, uses no `--agent` at all. It is not vendored here and its
+    now-dead repo wrapper is left for the archive PR rather than deleted in this one."
+  - "THE VENDORED BODIES ARE THE M5 COPIES, NOT PRO'S, AND THAT IS A CHOICE. Pro's carry the
+    dead `~/Desktop/nuzantara` path and the pre-diet long descriptions; M5's match the repo
+    convention set by PR #5634. The bodies below the frontmatter are byte-identical between
+    the two machines (measured by sha over `tail -n +4`), so the choice is confined to the
+    description line."
+  - "CURE WHAT THE DIFF INTRODUCES (regola 8). The two files carried 2 dead
+    `~/Desktop/nuzantara` references each. A file this PR introduces carrying a dead path is
+    a defect this PR introduces, so they are corrected here. Everything the files INHERIT and
+    that is not made worse by moving them — their prose, their tool grants, their model pins —
+    is left exactly as it was."
+  - "NO AGENT IS ARCHIVED, DELETED, OR PROMOTED BEYOND THESE TWO. The 12 `wr3-*` defs and the
+    10 genuinely-dormant HOME-only defs are a separate concern and a separate PR: `wr3-*` are
+    still consumed by `scripts/wr3_supervisor.py` through `wr3_dispatch_v2.py`, whose default
+    agents dir is `~/.claude/agents`, and one WR3 plist is still ENABLED."
+acceptance:
+  - text: >
+      WHEN a PR adds a file under .claude/agents/, `git add -A` SHALL actually stage it —
+      which it did NOT before this diff, silently.
+    status: verified
+    probe: >-
+      before: `git check-ignore -v .claude/agents/competitor-monitor.md` returned
+      `.gitignore:549:.claude/agents/*`; after the two `!` lines, `git status --short` shows
+      both files as `A`
+  - text: >
+      WHEN either cron wrapper runs from a repo checkout, the process cwd SHALL be the repo
+      root, so that `--agent <name>` resolves the project-level definition rather than the
+      machine-local one.
+    status: verified
+    probe: >-
+      `zsh -n` on both scripts; the inserted block is `cd "$NUZ_ROOT"` guarded by a test that
+      the vendored def exists at that root
+  - text: >
+      IF the repo is absent at $NUZ_ROOT, the wrapper SHALL log a WARN and continue with the
+      HOME copy rather than abort — the pre-existing behaviour, not a new failure mode.
+    status: verified
+    probe: >-
+      read the else-branch: it writes to "$LOG" and does not exit; `cd` is only reached inside
+      the positive branch
+  - text: >
+      WHILE this diff changes cwd, it SHALL NOT break any relative path in either script.
+    status: verified
+    probe: >-
+      grep for non-absolute path operands in both files after excluding `$HOME`/`$NUZ_ROOT`
+      forms — zero hits
+  - text: >
+      The vendored definitions SHALL pass the agent-def floor armed by PR #5625.
+    status: verified
+    probe: "python3 -m pytest scripts/tests/test_agent_defs_model_pins.py -q -> 21 passed"
+  - text: >
+      Prettier SHALL have changed only formatting in the vendored bodies, never substance.
+    status: verified
+    probe: >-
+      sha over `tr -d '[:space:]' | sed 's/---*/-/g'` before and after --write, equal on both
+      files (the first, cruder token-set probe gave a FALSE 'unchanged' on two empty files
+      because `set -- $p` did not split under zsh; it was rerun explicitly)
+risks:
+  - "THE CD CHANGES WHAT THE SPAWNED `claude` CONSIDERS ITS PROJECT. Running inside the repo
+    means the project `CLAUDE.md`, `.claude/settings.json` and any project hooks now load for
+    these two cron runs, where before they did not. That is the INTENDED effect for agent
+    resolution and an unrequested side effect for everything else. It is not believed to break
+    them — the write paths are unchanged and already point inside the main checkout — but it is
+    a real behavioural change and it is stated rather than hidden."
+  - "`nb-curator.daily` IS ALREADY RED AND THIS PR DOES NOT FIX IT. Measured on Pro before the
+    change: last exit 2, `ARTIFACT GATE FAILED (rc=3) despite brain exit=0`, because the
+    agent-worktree-isolation hook refused its report write into the main checkout. That hook
+    keys on the TARGET PATH, not on cwd, so this diff neither causes nor cures it. Baselined
+    here so the next reader does not credit or blame this PR for it."
+  - "AFTER MERGE, THE COMPETITOR WRAPPER IS NOT YET LIVE. What launchd runs on Pro is
+    `~/scripts/competitor-monitor-run.sh`, a DECLARED home-fork pair that is byte-identical to
+    the repo copy today. Merging makes the pair DIVERGE, and the repo edit takes effect only
+    when the HOME copy is resynced. `~/scripts/` is outside `~/.claude/`, so `host_boundary`
+    does not block it and the session does this itself — it is not an operator hand-off. Stated
+    as the PROVE-LIVE step, not as a caveat."
+  - "SCOPE LIMIT, NOT A SOLUTION: the 7 shadow pairs under `~/.claude/agents/` (regulatory-watcher
+    plus six wr2 defs) stay stale. `host_boundary.py` refuses every write under `~/.claude/`, and
+    `agents/` is not in its carve-out — so no session can resync them. That is a chronic ledger
+    row with owner `operator[control-plane]` and this PR deliberately does not widen a security
+    guard to close it."
+instruction_to_the_grader: |
+  READ THE TWO SCRIPTS, NOT THIS BRIEF'S SUMMARY OF THEM.
+
+  The load-bearing claim here is a NEGATIVE one and it is the thing to attack: that without the
+  `cd`, vendoring the definition accomplishes nothing. It rests on (a) project-level defs being
+  resolved relative to cwd, (b) launchd giving cwd=/, and (c) `claude-cascade.sh` never changing
+  it. If any of the three is false, the `cd` is unnecessary complexity in a hot-zone file and the
+  PR should shrink. (c) was measured directly on the M5 copy of the script; (a) is the precedence
+  order documented in `.claude/agents/README.md` and PROVEN live on 2026-08-08 by a tool_uses:0
+  `CANON:`-marker probe recorded in the ledger; (b) is not measured on Pro and is the weakest leg.
+
+  Second: the fallback branch. It WARNs and continues rather than aborting. Argue the other side
+  if you can — a run that silently loads the stale HOME definition may be worse than no run.
+
+pii: none

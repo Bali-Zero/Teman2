@@ -291,7 +291,9 @@ Body:
 
 ### Step 5 — Telegram digest
 
-Brief Telegram (chat_id `1125336968`) with totals:
+Brief Telegram with totals (send through the notification gateway, which resolves the
+destination itself -- do NOT hardcode a chat_id: `1125336968` belonged to an account this
+org no longer controls and is a mailbox nobody can open):
 `NB-INTEL curation: <N> dedup clusters, <M> summarization bundles,
 <K> stale. Report: <path>.`
 
