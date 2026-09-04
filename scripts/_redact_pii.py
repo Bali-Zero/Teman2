@@ -39,6 +39,7 @@ agent-library/proposals/.known-limitations-v1.md)
 
 from __future__ import annotations
 
+import importlib.util
 import logging
 import os
 import re
@@ -91,6 +92,31 @@ class RedactionConfig:
     gate: GateConfig
 
 
+_YAML_STRICT_LIB = Path(__file__).resolve().parent / "lib" / "yaml_strict.py"
+_yaml_strict_module: Any = None
+
+
+def _yaml_strict() -> Any:
+    """Load `scripts/lib/yaml_strict.py` by path, memoised.
+
+    `scripts/lib` is not importable as a package and this module is imported both as
+    `scripts._redact_pii` and run as a script, so the by-path form is the one that works
+    in every caller — the same reasoning `scripts/wr3_reflexion_synthesis.py` records for
+    `scripts/lib/reflexion.py`.
+    """
+    global _yaml_strict_module
+    if _yaml_strict_module is None:
+        spec = importlib.util.spec_from_file_location(
+            "nuzantara_yaml_strict", str(_YAML_STRICT_LIB)
+        )
+        if spec is None or spec.loader is None:  # pragma: no cover - packaging accident
+            raise RedactionError(f"cannot load the strict YAML loader at {_YAML_STRICT_LIB}")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _yaml_strict_module = module
+    return _yaml_strict_module
+
+
 def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> RedactionConfig:
     """Parse the YAML config into a typed RedactionConfig."""
     path = Path(path)
@@ -100,8 +126,19 @@ def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> RedactionConfig:
             f"Phase 1 redactor cannot run without rules."
         )
 
-    with path.open() as f:
-        raw = yaml.safe_load(f)
+    # Loaded STRICTLY, not with yaml.safe_load. PyYAML lets a duplicate top-level key
+    # win in silence, so appending `pass1: []` at the end of this file used to reduce
+    # 18 NPWP/KTP/passport/bank/OSINT patterns to zero while passes 2-4 kept running —
+    # the redactor produced output that looked entirely normal and redacted nothing.
+    # Measured 2026-09-04. This is the Legge 2 / UU PDP output boundary, so it fails
+    # CLOSED: an ambiguous rules file raises and no text leaves.
+    try:
+        raw = _yaml_strict().load_policy(path)
+    except Exception as exc:  # StrictYAMLError, and anything the loader itself raises
+        raise RedactionError(
+            f"redaction rules at {path} are ambiguous or unreadable: {exc} — refusing to "
+            f"redact rather than redacting with rules nobody can be sure of."
+        ) from exc
 
     gate_raw = raw.get("gate", {}) or {}
     gate = GateConfig(
@@ -109,6 +146,14 @@ def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> RedactionConfig:
         fail_on_error=bool(gate_raw.get("fail_on_error", True)),
         idempotent=bool(gate_raw.get("idempotent", True)),
     )
+
+    if not (raw.get("pass1") or []):
+        raise RedactionError(
+            f"redaction rules at {path} declare no pass1 rules. pass1 carries the NPWP, "
+            f"KTP, passport, bank-account and OSINT patterns; with it empty the later "
+            f"passes still run and the output looks normal while nothing is redacted. "
+            f"An empty rule set is a disarmed control, not a permissive one."
+        )
 
     return RedactionConfig(
         pass1=raw.get("pass1", []) or [],

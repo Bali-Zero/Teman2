@@ -126,6 +126,10 @@ jobs:
               .claude/agents/*.md|\
               scripts/tests/test_agent_defs_model_pins.py|\
               scripts/tests/test_lint_home_fork.py|\
+              scripts/lib/yaml_strict.py|\
+              scripts/_redact_pii.py|\
+              agent-library/config/redaction-rules.yaml|\
+              scripts/tests/test_yaml_strict_policy_loader.py|\
               scripts/tests/test_home_fork_stale_side_attribution.py|\
               scripts/tests/test_home_fork_bak_shadows.py|\
               scripts/tests/test_home_fork_skipped_visibility.py|\
@@ -487,6 +491,7 @@ jobs:
           python -m pip install --quiet pytest PyYAML==6.0.3
           fail=0
           for t in \
+            scripts/tests/test_yaml_strict_policy_loader.py \
             scripts/tests/test_injected_surface_budget.py \
             scripts/tests/test_injected_surface_attest.py \
             scripts/tests/test_agent_start.py \
