@@ -1,0 +1,50 @@
+task_id: ci-classifier-corpus
+gear: 3
+verdict: PASS
+spend:
+  adversarial_rounds: 2
+evidence:
+  - claim: "tests.yml's classifier has been dead since 2026-08-26, running every job on every PR"
+    probe: "gh run view <run> --job <job> --log on PR #5662's Change map job"
+    result: |
+      ModuleNotFoundError: No module named 'security_gate_flags'
+      ##[notice]change-map: {"changed_file_count":0,"reason":"enumeration_failed",
+        "run_all":true,"would_skip":[],"suggested_jobs":[all six]}
+      Five PRs sampled (#5642 #5648 #5657 #5662 #5667), five identical.
+  - claim: "the new test bites on main and absolves the innocent workflow"
+    probe: "python3 -m pytest scripts/tests/test_classifier_extraction_closure.py against main's list"
+    result: "1 failed, 4 passed — names tests.yml, security.yml passes"
+  - claim: "the cure restores the corpus end to end"
+    probe: "rebuild the runner temp dir with only the listed files, run the corpus from it"
+    result: "main's five files -> ERROR during collection; cured six -> 36 passed, 40 subtests"
+  - claim: "the extraction regex is not a ReDoS (CodeQL HIGH on the first draft)"
+    probe: "re.search of the cured pattern against 'for f in ' + 'scripts/ci/a'*3000"
+    result: "36,009-char non-match in 0.0005s — linear"
+  - claim: "council convened, two seats, two families, both findings cured not waved"
+    probe: "codex exec --sandbox read-only and kimi -m kimi-code/k3 over the branch diff"
+    result: |
+      codex BLOCK — the test was armed by no workflow at all. Verified by grep
+      over every workflow: zero occurrences; scripts-tests-sweep.yml is
+      schedule-only + continue-on-error by its own design. A guard against
+      family #2 that is itself unarmed. CURED: armed in immune-enforcement.yml,
+      job `antidotes`, one of the 12 required contexts.
+      kimi PASS-WITH-CONDITIONS — (a) audit the routing table before re-arming
+      it after 9 days of fail-open, (b) reject a mixed extraction list loudly
+      instead of filtering it. Both cured, see below.
+  - claim: "re-arming the classifier does not UNDER-select (kimi's condition)"
+    probe: "classify the real file list of the 14 most recently merged PRs and compare against a path-derived expectation"
+    result: |
+      0/14 under-select. The table errs conservative: 6 of 14 fall to
+      run_all=true on unmapped paths (scripts/, .claude/,
+      apps/bali-intel-scraper/) rather than selecting too little.
+  - claim: "the recovered saving is partial, and measured rather than assumed"
+    probe: "same 14-PR sample"
+    result: |
+      8 of 14 PRs (57%) get real path-scoping after this fix; the other 6 stay
+      run_all because their paths are unrouted. scripts/ is deliberately
+      unmapped (change_map.py's own comment documents a per-file coupling
+      census that found no detectable pattern), so this is a known ceiling,
+      not a defect introduced here.
+  - claim: "a mixed extraction list now fails loudly (kimi's second condition)"
+    probe: "python3 -m pytest scripts/tests/test_classifier_extraction_closure.py"
+    result: "7 passed — including test_a_recognised_list_is_entirely_scripts_ci_and_never_partly_filtered"

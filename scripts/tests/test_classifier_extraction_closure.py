@@ -36,16 +36,30 @@ WORKFLOWS = REPO / ".github" / "workflows"
 CI_DIR = REPO / "scripts" / "ci"
 
 # The extraction loop is a shell `for f in <paths>; do`, not YAML structure, so
-# it is read with a regex anchored to that loop. Anchoring on `scripts/ci/`
-# rather than on a step name means a renamed step still gets checked.
-EXTRACT_RE = re.compile(r"for f in ((?:scripts/ci/\S+\s*)+);\s*do")
+# it is read with a regex anchored to that loop. Anchoring on the loop rather
+# than on a step name means a renamed step still gets checked.
+#
+# ONE quantifier, and deliberately so. The first version was
+# `((?:scripts/ci/\S+\s*)+)`, which CodeQL flagged HIGH as an inefficient
+# regular expression — correctly: `\S+` can swallow the next iteration's own
+# `scripts/ci/` prefix, so one input has exponentially many ways to be split
+# between the repetitions, and any text reaching `for f in ` without a closing
+# `; do` backtracks through all of them. `[^;\n]+` cannot partition
+# ambiguously — a single greedy run bounded by characters the body cannot
+# contain — so matching is linear. Picking out the `scripts/ci/` tokens moves
+# into Python, where it costs a `startswith`.
+EXTRACT_RE = re.compile(r"for f in ([^;\n]+);\s*do")
+CI_PREFIX = "scripts/ci/"
 
 
 def _extraction_lists() -> list[tuple[pathlib.Path, tuple[str, ...]]]:
     found = []
     for wf in sorted(WORKFLOWS.glob("*.yml")):
         for m in EXTRACT_RE.finditer(wf.read_text(encoding="utf-8")):
-            found.append((wf, tuple(m.group(1).split())))
+            tokens = m.group(1).split()
+            files = tuple(tok for tok in tokens if tok.startswith(CI_PREFIX))
+            if files:
+                found.append((wf, files, tokens))
     return found
 
 
@@ -59,14 +73,16 @@ def test_the_extraction_lists_are_still_discoverable() -> None:
         "shell `for f in scripts/ci/...` shape changed, or a workflow lost its "
         "extraction step. Fix this probe before trusting the checks below."
     )
-    names = {wf.name for wf, _ in lists}
+    names = {entry[0].name for entry in lists}
     assert {"tests.yml", "security.yml"} <= names, (
         f"expected tests.yml and security.yml to carry extraction lists, got {sorted(names)}"
     )
 
 
-@pytest.mark.parametrize("workflow,files", _extraction_lists(), ids=lambda v: getattr(v, "name", ""))
-def test_every_extracted_file_exists(workflow: pathlib.Path, files: tuple[str, ...]) -> None:
+@pytest.mark.parametrize("workflow,files,tokens", _extraction_lists(), ids=lambda v: getattr(v, "name", ""))
+def test_every_extracted_file_exists(
+    workflow: pathlib.Path, files: tuple[str, ...], tokens: list[str]
+) -> None:
     for rel in files:
         assert (REPO / rel).is_file(), (
             f"{workflow.name} extracts {rel}, which does not exist. The extraction "
@@ -75,9 +91,9 @@ def test_every_extracted_file_exists(workflow: pathlib.Path, files: tuple[str, .
         )
 
 
-@pytest.mark.parametrize("workflow,files", _extraction_lists(), ids=lambda v: getattr(v, "name", ""))
+@pytest.mark.parametrize("workflow,files,tokens", _extraction_lists(), ids=lambda v: getattr(v, "name", ""))
 def test_the_extraction_list_is_closed_under_its_own_imports(
-    workflow: pathlib.Path, files: tuple[str, ...]
+    workflow: pathlib.Path, files: tuple[str, ...], tokens: list[str]
 ) -> None:
     """The load-bearing assertion. The extracted files run from an isolated temp
     dir containing ONLY themselves — so any sibling `scripts/ci/` module one of
@@ -111,4 +127,34 @@ def test_the_extraction_list_is_closed_under_its_own_imports(
         f"{workflow.name}. Left unfixed, the corpus step dies on ModuleNotFoundError, "
         "the classifier is marked untrusted, and the fail-open runs EVERY job on "
         "EVERY pull request — green, silent, and permanent (measured: 9 days, #5070)."
+    )
+
+
+@pytest.mark.parametrize("workflow,files,tokens", _extraction_lists(), ids=lambda v: getattr(v, "name", ""))
+def test_a_recognised_list_is_entirely_scripts_ci_and_never_partly_filtered(
+    workflow: pathlib.Path, files: tuple[str, ...], tokens: list[str]
+) -> None:
+    """Reject a MIXED list loudly instead of quietly keeping the part we
+    understand (Gear-3 council condition, kimi-code/k3, 2026-09-04).
+
+    `_extraction_lists()` keeps only the `scripts/ci/` tokens of a match. That
+    is right for a loop which is not an extraction list at all — e.g.
+    `for f in $(git diff --name-only ...); do` elsewhere in
+    immune-enforcement.yml, which yields no such token and is correctly
+    dropped. It is WRONG for a list that carries some: silently discarding a
+    `$VAR` or a sibling path would let a real extraction list shrink past this
+    guard, which is the exact silent-narrowing shape the whole file exists to
+    prevent.
+
+    So the rule is: contain one, contain only. A list built from a variable
+    yields zero and is out of scope here; a list mixing both is a defect
+    someone must look at, not something to quietly trim.
+    """
+    assert tuple(tokens) == files, (
+        f"{workflow.name}: a trusted-classifier extraction list mixes "
+        f"`{CI_PREFIX}` paths with tokens this guard cannot check: "
+        f"{[t for t in tokens if not t.startswith(CI_PREFIX)]}. "
+        "Import-closure is only meaningful over a list whose every entry is a "
+        "known file — a variable-built or mixed list must be made explicit, "
+        "not silently filtered down to the part that happens to be readable."
     )
