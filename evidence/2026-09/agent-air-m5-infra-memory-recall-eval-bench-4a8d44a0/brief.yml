@@ -1,0 +1,51 @@
+task_id: memory-recall-eval-bench-0905
+gear: 2
+l_level: L2
+gate_class: opus
+grader: codex-gpt-5.6-xhigh-readonly
+pii: none
+objective: |
+  `scripts/memory/mos_recall_sessionstart.py:43` justifies a constant that runs at every session
+  start — `DEFAULT_RELEVANCE_THRESHOLD = 0.35  # BM25-like score, tuned against the 12-scenario
+  eval set` — and that eval set was never in the repo. It lived in
+  `agent/air-m5/infra/memory-layers-testbench` (one commit, no PR, ever), so the threshold's
+  stated tuning basis could not be inspected, re-run or falsified by anyone reading the line.
+
+  It also ROTTED while it sat outside, which is the argument for landing it rather than leaving
+  it: the module replaced `MEMDIR_DEFAULT` with a `resolve_memdir()` resolver (necessary — the
+  hook must fall back to the MAIN worktree's memdir when it fires inside an agent worktree) and
+  the bench kept referencing the constant, dying at argparse-construction time. Nothing went red,
+  because nothing ran it.
+
+  Gear 2 by SIZE alone: two NEW files, 577 net lines, no hot-zone path, no workflow edit. The
+  floor recompute reaches 2 through the size term only; this brief declares it.
+
+  Same worktree, deliberately NOT landed: `memory_core_build.py`. It selects top-level sections
+  by English heading text ("Machines + lingua", "Sensitive", "Projects") while the live MEMORY.md
+  has "Macchine + lingua", "Segreti e dati", "Mandati attivi" — it would drop nearly everything it
+  was written to keep. Archiving a prototype that cannot run is a different call from landing a
+  bench that does.
+constraints:
+  - "OPERATOR INSTRUMENT, declared as such (Zero, 2026-09-05): `scripts-tests-sweep.yml:29` is
+    `schedule:` + `workflow_dispatch:` by its own stated design, with pytest `continue-on-error`,
+    so nothing under `scripts/tests/` has a PR-triggered gate. Wiring one means editing a
+    workflow — hot zone, floor 3 — and is a separate PR. The PR body must say this, not imply
+    the opposite; its first version implied the opposite and was corrected."
+  - "READ-ONLY on MEMDIR, enforced not merely claimed: `mos.recall(..., use_cache=True)` writes an
+    UNREDACTED cache (memory name, description, body preview), so `--out` and `--cache-path` are
+    refused when they resolve inside `--memdir`."
+  - "No memory CONTENT, no PII, no operator home path in any committed file. PII findings fail the
+    run (exit 2) rather than being reported and ignored."
+  - "Generator != grader: implementer subagent wrote the diff under a fixed spec; codex GPT-5.6
+    xhigh red-teamed it read-only; the conducting Opus 5 session re-ran every claim on disk and
+    performed the mutations itself."
+acceptance:
+  - "`pytest scripts/tests/test_recall_eval_bench.py` passes, and a DEAD bench fails it: stubbing
+    `run_prototype()` to return empty must turn the end-to-end test RED."
+  - "The path-separation guard fires: `--cache-path` inside `--memdir` exits non-zero and writes
+    nothing there; removing the guard must turn its test RED."
+  - "The bench runs against the live memory dir using main's module and reports
+    `missing_expected_files: []`, hit@3 100%, `pii_findings: []`."
+  - "Bites: the observation is the live run above, made before reporting the work done — not a
+    future job. The absence of a PR-triggered gate is stated in the PR body as a known limit,
+    not papered over."
