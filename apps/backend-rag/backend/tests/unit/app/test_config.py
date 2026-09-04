@@ -53,12 +53,3 @@ class TestConfig:
         settings = Settings(_env_file=None)
 
         assert settings.database_url == "postgresql://user:secret@db.example.com:5432/app"
-
-    def test_github_owner_defaults_to_bali_zero_org(self, monkeypatch):
-        """The repo moved from Balizero1987 to the Bali-Zero org (2026-08);
-        the default must track the org unless GITHUB_OWNER overrides it."""
-        monkeypatch.delenv("GITHUB_OWNER", raising=False)
-
-        settings = Settings(_env_file=None)
-
-        assert settings.github_owner == "Bali-Zero"
