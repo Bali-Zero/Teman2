@@ -85,6 +85,44 @@ class TestConvertStagingToEnrichedArticle:
         assert result["ai_summary"]
         assert result["facts"]
 
+    def test_fallback_summary_uses_complete_sentences(self) -> None:
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        content = (
+            "## Facts\n\n"
+            "Indonesia is moving forward with a sweeping reclassification of its official "
+            "business activity codes — the Klasifikasi Baku Lapangan Usaha Indonesia "
+            "(KBLI) — updating the system to its 2025 edition. To manage the changeover, "
+            "the government has produced a Joint Circular Letter that sets out the rules.\n\n"
+            "Second paragraph."
+        )
+
+        result = convert_staging_to_enriched_article({"content": content})
+
+        assert "#" not in result["ai_summary"]
+        assert result["ai_summary"].endswith(".")
+        assert result["ai_summary"].count("(") == result["ai_summary"].count(")")
+        assert len(result["ai_summary"]) <= 300
+        assert result["ai_summary"] == content.split("\n\n")[1].split(" To manage")[0]
+
+    def test_fallback_summary_truncates_long_first_sentence_at_word_boundary(self) -> None:
+        from backend.app.routers.intel_scraper import _summary_from_content
+
+        content = "word " * 79 + "word."
+
+        result = _summary_from_content(content)
+
+        assert result.endswith("…")
+        assert len(result) <= 301
+        assert result[-2] != " "
+
+    def test_fallback_summary_with_only_headings_is_empty(self) -> None:
+        from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
+
+        result = convert_staging_to_enriched_article({"content": "## Facts\n\n### Details"})
+
+        assert result["ai_summary"] == ""
+
     def test_with_timeline_keywords(self) -> None:
         from backend.app.routers.intel_scraper import convert_staging_to_enriched_article
 

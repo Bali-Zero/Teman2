@@ -61,6 +61,52 @@ def _require_publish_admin(user: dict[str, Any]) -> None:
 # --- CONVERSION FUNCTIONS ---
 
 
+def _summary_from_content(content: str, limit: int = 300) -> str:
+    """Extract a complete-sentence summary from the first prose paragraph."""
+    paragraph_lines: list[str] = []
+    for line in content.splitlines():
+        stripped_line = line.strip()
+        if not stripped_line:
+            if paragraph_lines:
+                break
+            continue
+        if re.match(r"^#{1,6}\s", stripped_line):
+            continue
+        paragraph_lines.append(stripped_line)
+
+    paragraph = " ".join(paragraph_lines)
+    paragraph = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", paragraph)
+    paragraph = re.sub(r"[*_`]", "", paragraph).strip()
+    if not paragraph:
+        return ""
+
+    sentences = re.split(r"(?<=[.!?])\s+", paragraph)
+    summary_sentences: list[str] = []
+    summary_length = 0
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        separator_length = 1 if summary_sentences else 0
+        if summary_length + separator_length + len(sentence) > limit:
+            break
+        summary_sentences.append(sentence)
+        summary_length += separator_length + len(sentence)
+
+    if summary_sentences:
+        return " ".join(summary_sentences).rstrip(" (—-,;:")
+
+    words = paragraph.split()
+    truncated_words: list[str] = []
+    for word in words:
+        candidate = " ".join([*truncated_words, word])
+        if len(candidate) + 1 > limit:
+            break
+        truncated_words.append(word)
+
+    return " ".join(truncated_words).rstrip(" (—-,;:") + "…"
+
+
 def convert_staging_to_enriched_article(staging_data: dict) -> dict:
     """
     Convert staging item (markdown simple) to EnrichedArticle format.
@@ -90,7 +136,9 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
         content,
         re.DOTALL | re.IGNORECASE,
     )
-    ai_summary = summary_match.group(1).strip() if summary_match else content[:280]
+    ai_summary = (
+        summary_match.group(1).strip()[:280] if summary_match else _summary_from_content(content)
+    )
 
     # Extract Facts section
     facts_match = re.search(r"## Facts\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE)
@@ -254,7 +302,7 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
         "category": category,
         "priority": priority,
         "relevance_score": relevance_score,
-        "ai_summary": ai_summary[:280],  # Limit to 280 chars
+        "ai_summary": ai_summary,
         "ai_tags": ai_tags[:5],  # Limit to 5 tags
         "suggested_components": suggested_components[:3],  # Limit to 3 components
         "cover_image": None,  # Will be set from staging_data if available
