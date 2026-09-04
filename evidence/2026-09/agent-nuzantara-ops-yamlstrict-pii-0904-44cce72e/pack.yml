@@ -19,13 +19,21 @@ bites_note:
   the workflow line while ALSO deleting the test file leaves nothing red, which no self-referential
   guard can close."
 diff:
-  files: 4
-  net_lines: 365 added, 2 removed
+  files: 7
+  net_lines: "code and CI: 513 added, 2 removed. The evidence pack itself adds the rest."
   shape:
-    "one new shared module (scripts/lib/yaml_strict.py, 131 lines), one call site moved onto
-    it (_redact_pii.py, +47/-2), one new guilt+innocence battery (182 lines), and 5 lines of CI wiring.
-    The 5 CI lines are what makes this Gear 3: `.github/workflows/*` is a hot-zone path and floors
-    the diff at 3 regardless of size."
+    "One new shared module (scripts/lib/yaml_strict.py, 149 lines), one call site moved onto it
+    (scripts/_redact_pii.py, 86 added and 2 removed), one guilt+innocence battery (273 lines),
+    and 5 lines of CI wiring. Those 5 lines are what makes this Gear 3: `.github/workflows/*` is
+    a hot-zone path and floors the diff at 3 regardless of size.
+    This block first narrated four changed files and a smaller line count, written against an
+    early draft and never re-measured while the kimi findings roughly doubled the code half. The
+    countable-claims rule caught the one narrated diffstat and took the PR red; the file count and
+    the line total were equally wrong and nothing would have caught either. Recorded rather than
+    tidied away — a lane whose subject is prose claims that no machine executes should not quietly
+    fix its own. The numbers here are now per-file and for the code half only, which does not move
+    when the pack itself grows; the whole-diff total is the linter's to compute, not the pack's to
+    narrate."
 receipts:
   - claim: the new battery and the pre-existing PII tests are all green
     cmd:
