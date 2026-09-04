@@ -37,28 +37,26 @@ executable block, so no downstream caller can forget to check. The list itself, 
 scar record for every entry, is DATA in `bites_allowlist.yaml`; each `_guard_*` function
 below documents what it refuses and why.
 
+RULED 2026-09-04 b (Zero, Legge 5) answered the line-count question PR #5673 left open as
+a COVERAGE decision, not a formatting one: `observe:` admits exactly TWO shapes now -
+`python3 scripts/<path>.py [literal args]` (in-tree, no `..`, no symlink escape, marked
+`bites-observable` in its own source) and `fly <read-only subcommand> [args]` (`status`,
+`releases`, `image show`, `machine list` only). Every other first token - `gh`, `curl`,
+`git`, `python3 -m pytest` included - is malformed, cured by wrapping the check in a
+script under `scripts/ci/` and observing THAT: code in the diff, reviewed and tested,
+never shell typed into YAML. `gh` leaked the runner's token through gojq's `env` builtin
+and an enterprise-host fallthrough; `curl` is exfiltration to any host by construction
+once it may reach the network at all; `git` was redundant since the reconciler that
+executes these already holds the checkout tree it would have read.
+
 WHAT THIS MODULE DELIBERATELY DOES NOT DO: decide whether a command may run. Trust
 (author_association, fork-ness) is the EXECUTOR's question - a Dependabot pack parses
 exactly like anyone else's and is simply never executed.
 
-TWO CONSTRAINTS THE EXECUTOR INHERITS, because neither is decidable from a command
-string. Neither is a note: PR-2 ships tests for both or it ships a hole.
-
-(1) A SANITISED ENVIRONMENT. Half of git's dangerous behaviour is reached through CONFIG
-rather than argv, where no allow-list over a command line can see it: `diff` runs an
-external diff or textconv filter, `status` starts `core.fsmonitor`, `cat-file`
-lazy-fetches in a partial clone, a `%G` format runs `gpg.program`, a pager starts on a
-TTY. The executor therefore runs every observation with `GIT_CONFIG_GLOBAL=/dev/null`,
-`GIT_CONFIG_SYSTEM=/dev/null`, `GIT_ATTR_NOSYSTEM=1`, `GIT_PAGER=cat`,
-`GIT_TERMINAL_PROMPT=0`, `GIT_OPTIONAL_LOCKS=0`, and curl with `-q` prepended (curl reads
-`~/.curlrc` on every invocation, and that file can carry `output=`). One rule against a
-whole class, where argv-level rules would be a list of the config keys somebody remembered.
-
-(2) POST-MERGE ONLY. A pull request can add a script and its `bites-observable` marker in
-the same diff, so the marker is exactly as strong as the review of the diff that
-introduces it - no more. Post-merge, the marked script is reviewed, merged code. Against
-an unmerged PR checkout there is no boundary here at all, and the same holds for
-`python3 -m pytest`, which imports whatever `conftest.py` the branch happens to carry.
+POST-MERGE ONLY. A pull request can add a script and its `bites-observable` marker in the
+same diff, so the marker is exactly as strong as the review of the diff that introduces
+it - no more. Post-merge, the marked script is reviewed, merged code; against an unmerged
+PR checkout there is no boundary here at all.
 """
 
 # bites-observable — this script is reachable from an `observe:` line. It qualifies
@@ -104,7 +102,7 @@ SPEC_PATH = Path(__file__).with_name("bites_allowlist.yaml")
 #: 200-line data file. The spec is therefore read by _StrictLoader, exactly like a
 #: pack: no aliases, no merge keys, no duplicate keys.
 SPEC_KEYS = {
-    "commands", "fly", "curl", "pytest", "gh", "git", "observable_marker",
+    "commands", "fly", "observable_marker",
     "remote_shell_tokens", "shell_metachars", "invisible_chars", "key",
     "required_keys", "where_scopes",
 }
@@ -199,17 +197,20 @@ def _flat(rows: list[Any] | None) -> tuple[str, ...]:
 
 
 def _pairs(rows: list[Any]) -> tuple[tuple[str, str], ...]:
-    """Subcommand PAIRS, with the two sentinels resolved."""
-    return tuple((a, {"NO_SUBCOMMAND": NO_SUBCOMMAND,
-                      "ANY_POSITIONAL": ANY_POSITIONAL}.get(b, b)) for a, b in rows)
+    """Subcommand PAIRS, with the one sentinel resolved."""
+    return tuple((a, NO_SUBCOMMAND if b == "NO_SUBCOMMAND" else b) for a, b in rows)
 
 
-#: What may follow an allow-listed subcommand word. The first draft spelled both of these
-#: `None`, which read as "anything may follow" and was two rules wearing one name:
-#: `gh api <path>` is followed by DATA, `fly version` by nothing - and `fly version
-#: upgrade` REPLACES THE BINARY. See the file for the full record.
+#: What may follow an allow-listed subcommand word. The first draft spelled this `None`,
+#: which read as "anything may follow" and hid a REPLACES-THE-BINARY case: `fly version`
+#: was meant to admit nothing further, but `fly version upgrade` downloads and installs
+#: a new flyctl. RULED 2026-09-04 b removed `version` from the table entirely (fewer
+#: binaries), but the sentinel this scar produced stays - `status` and `releases` are
+#: still NO_SUBCOMMAND, and the table would silently re-admit the same hole if a future
+#: entry spelled its second word `None` again. `ANY_POSITIONAL` existed only for `gh api
+#: <path>`, whose DATA-not-verb second word had no equivalent need in the surviving
+#: `fly` surface; it left with `gh`.
 NO_SUBCOMMAND = "\x00no-subcommand"    # nothing but flags may follow
-ANY_POSITIONAL = "\x00any-positional"  # a data argument follows, never a verb
 
 _SPEC = _load_spec(SPEC_PATH)
 
@@ -220,18 +221,6 @@ ALLOWED_COMMANDS = tuple(_SPEC["commands"])
 
 FLY_READONLY_SUBCOMMANDS = _pairs(_SPEC["fly"]["subcommands"])
 FLY_ALLOWED_FLAGS = _flat(_SPEC["fly"]["flags"])
-CURL_ALLOWED_FLAGS = _flat(_SPEC["curl"]["flags"])
-CURL_ALLOWED_SHORT_BUNDLE = _SPEC["curl"]["short_bundle"]
-CURL_VALUE_TAKING_FLAGS = _flat(_SPEC["curl"]["value_taking"])
-PYTEST_ALLOWED_FLAGS = _flat(_SPEC["pytest"]["flags"])
-PYTEST_VALUE_TAKING_FLAGS = _flat(_SPEC["pytest"]["value_taking"])
-GH_READONLY_SUBCOMMANDS = _pairs(_SPEC["gh"]["subcommands"])
-GH_ALLOWED_FLAGS = _flat(_SPEC["gh"]["flags"])
-GH_API_FORBIDDEN_FLAGS = _flat(_SPEC["gh"]["api_forbidden"])
-GIT_READONLY_SUBCOMMANDS = _flat(_SPEC["git"]["subcommands"])
-GIT_GLOBAL_ALLOWED_FLAGS = _flat(_SPEC["git"]["global_flags"])
-GIT_SUB_ALLOWED_FLAGS = _flat(_SPEC["git"]["flags"])
-GIT_NUMERIC_FLAG_PREFIXES = _flat(_SPEC["git"]["numeric_prefixes"])
 OBSERVABLE_MARKER = _SPEC["observable_marker"]
 REMOTE_SHELL_TOKENS = _flat(_SPEC["remote_shell_tokens"])
 _SHELL_METACHARS = tuple(_SPEC["shell_metachars"])
@@ -241,32 +230,18 @@ _INVISIBLE_CHARS = tuple(_SPEC["invisible_chars"])
 # --------------------------------------------------------------------- guards
 
 
-def _flag_is(token: str, forbidden: str) -> bool:
-    """Does `token` invoke the option `forbidden`, in any of its three spellings?
-
-    `--flag`, `--flag=value`, and — for a SHORT option — `-Ovalue` with the value glued
-    on. The last one is why this helper exists: the first draft compared
-    `token.split("=", 1)[0]`, so `git grep -Oevil` never matched the entry `-O`. The
-    verdict gate of 2026-09-04 found it on a real option that runs a pager command.
-    """
-    if forbidden.endswith("-"):          # a family, e.g. "--expand-" for every --expand-*
-        return token.startswith(forbidden)
-    if token == forbidden or token.startswith(forbidden + "="):
-        return True
-    return len(forbidden) == 2 and forbidden[1] != "-" and token.startswith(forbidden)
-
-
-def _any_flag_is(token: str, forbidden: tuple[str, ...]) -> str | None:
-    return next((f for f in forbidden if _flag_is(token, f)), None)
-
-
 def _guard_args_from_file(command: str) -> list[str]:
     """No argument may begin with `@`.
 
-    Three separate tools read a FILE when an argument starts with `@`: pytest expands
-    `@args.txt` into more arguments (including options this allow-list refuses), curl's
-    `-d`/`--json`/`-H` read the named file into the request, and `curl -w@<path>` prints
-    it. Each was found separately, in three different reviews; the shape is one rule.
+    A relic of `pytest`/`curl`/`gh`, each of which read a FILE when an argument
+    started with `@` - `@args.txt` expanded into more arguments, `-H @file` and
+    `--json=@path` read the named file into a request, `-w@<path>` printed it.
+    None of those binaries survives RULED 2026-09-04 b, but the rule stays: it
+    costs nothing against the two surviving shapes (neither `python3
+    scripts/<path>.py` nor `fly <subcommand>` has a legitimate `@`-prefixed
+    argument), and a script wrapped under `scripts/ci/` per the cure this file
+    now names could itself be handed a `@file`-shaped argument if this guard
+    were gone.
     """
     try:
         argv = shlex.split(command)
@@ -282,8 +257,8 @@ def _guard_args_from_file(command: str) -> list[str]:
         )                                             # `-w@path`, the glued short form
         if opens_a_file:
             return [
-                f"observe: `{arg}` begins its value with `@`, which makes pytest, curl and "
-                f"gh read the named FILE — an observation reads its own output, not the disk"
+                f"observe: `{arg}` begins its value with `@`, which a shell-adjacent tool "
+                f"reads as a FILE to open — an observation reads its own output, not the disk"
             ]
     return []
 
@@ -307,16 +282,6 @@ def _guard_shell_composition(command: str) -> list[str]:
     ]
 
 
-def _is_count_flag(token: str) -> bool:
-    """`git log -1`, `git diff -U0` — numeric options no allow-list can enumerate."""
-    if len(token) > 1 and token[0] == "-" and token[1:].isdigit():
-        return True
-    return any(
-        token.startswith(prefix) and token[len(prefix):].isdigit() and token[len(prefix):]
-        for prefix in GIT_NUMERIC_FLAG_PREFIXES
-    )
-
-
 def _leading_words(rest: list[str]) -> list[str]:
     """The subcommand path: the bare words BEFORE the first flag.
 
@@ -336,56 +301,56 @@ def _leading_words(rest: list[str]) -> list[str]:
 
 
 def _subcommand_permitted(words: list[str], table: tuple[tuple[str, str], ...]) -> bool:
-    """Match a leading-word run against a table of full pairs.
+    """Match a leading-word run against a table of full pairs, EXACT length.
 
-    NO_SUBCOMMAND means nothing but flags may follow (`fly version` yes,
-    `fly version upgrade` no — that one REPLACES THE BINARY). ANY_POSITIONAL
-    means the next word is data rather than a verb (`gh api <endpoint>`).
-    Spelling both as `None` is what let `fly version upgrade` through.
+    NO_SUBCOMMAND means nothing but flags may follow (`fly status` yes,
+    `fly status upgrade` no). Spelling it as `None` is what let
+    `fly version upgrade` through when `version` was still in the table.
+
+    The length check is load-bearing, not decoration: comparing only
+    `words[0]`/`words[1]` and ignoring anything past index 1 let a THIRD
+    leading word ride through unexamined - `fly image show <ref>` matched the
+    `(image, show)` pair while `<ref>` was never looked at. kimi-code/k3,
+    refuting the two-shape cut's final bytes on 2026-09-04, found it live:
+    flyctl's `image show` does not reject the extra argv, it proceeds to the
+    API call. `len(words)` now has to equal exactly what the matched shape
+    admits - one word for NO_SUBCOMMAND, two for a fixed pair.
     """
     first = words[0] if words else ""
     second = words[1] if len(words) > 1 else None
     for want_first, want_second in table:
         if first != want_first:
             continue
-        if want_second is ANY_POSITIONAL:
-            return True
         if want_second is NO_SUBCOMMAND:
-            if second is None:
+            if len(words) == 1:
                 return True
             continue
-        if second == want_second:
+        if second == want_second and len(words) == 2:
             return True
     return False
 
 
 def _render_table(table: tuple[tuple[str, str], ...], prefix: str) -> str:
     return ", ".join(
-        f"{prefix}{first}"
-        if second is NO_SUBCOMMAND or second is ANY_POSITIONAL
-        else f"{prefix}{first} {second}"
+        f"{prefix}{first}" if second is NO_SUBCOMMAND else f"{prefix}{first} {second}"
         for first, second in table
     )
 
 
-def _flag_violation(tokens: list[str], allowed: tuple[str, ...], *,
-                    numeric: bool = False) -> str | None:
-    """The first flag not on the allow-list, or None. One loop for five commands.
+def _flag_violation(tokens: list[str], allowed: tuple[str, ...]) -> str | None:
+    """The first flag not on the allow-list, or None.
 
-    It was written out five times before 2026-09-04. The copies had NOT drifted - a
-    differential over 1,501 invocations across all six commands reports zero verdict
-    changes from the merge - so this is a size cut, not a bug fix, and it is recorded
-    as one. The only asymmetry the five copies carried is pytest's `-o<name>=<value>`
-    normalisation, kept here: `-O` (git grep's pager option) is a different, uppercase
-    flag and is still refused.
+    Shared with `_check_git`/`_check_gh`/`_check_curl`/pytest's checks until RULED
+    2026-09-04 b removed all four; `fly`'s is the one call left. The differential
+    over 1,501 invocations across all six commands that proved the five copies had
+    not drifted, before the merge that made this the one copy, is the record for
+    why this stayed a shared function instead of being inlined into `_check_fly`.
     """
     for token in tokens:
         if not token.startswith("-"):
             continue
         base = token.split("=", 1)[0]
-        if base.startswith("-o") and base != "-o":   # pytest's `-o<name>=<value>`
-            base = "-o"
-        if base in allowed or (numeric and _is_count_flag(base)):
+        if base in allowed:
             continue
         return base
     return None
@@ -397,25 +362,19 @@ def _see(section: str) -> str:
 
 
 def _check_python3(head: str, rest: list[str]) -> list[str]:
-    if rest[:1] != ["-m"]:
-        if not (rest and rest[0].startswith("scripts/")):
-            return ["observe: `python3` must run `scripts/...` from the checkout, or "
-                    "`python3 -m pytest`"]
-        return []
-    if rest[1:2] != ["pytest"]:
-        return ["observe: `python3 -m` is permitted only for `pytest`"]
-    for flag in rest[2:]:
-        if flag.split("=", 1)[0] in PYTEST_VALUE_TAKING_FLAGS and "=" not in flag:
-            return [f"observe: write `pytest {flag}=<value>`. With a separate value there "
-                    f"is no way to tell an option's value from a test path - `pytest -k "
-                    f"tests` reads as the target `tests`, which exists, and pytest then "
-                    f"discovers every test from the working directory."]
-    bad = _flag_violation(rest[2:], PYTEST_ALLOWED_FLAGS)
-    if bad:
-        return [f"observe: `pytest {bad}` is not an allow-listed option - {_see('pytest')}"]
-    if not [a for a in rest[2:] if not a.startswith("-")]:
-        return ["observe: `pytest` with no target discovers every test from the working "
-                "directory. Name the test path the observation is about."]
+    """`python3` admits exactly one shape: a repo script, literal args only.
+
+    RULED 2026-09-04 b removed `python3 -m pytest`, and with it the whole `-m`
+    surface rather than only the pytest branch: `-m` names ANY importable module
+    (`python3 -m http.server` was already refused for the same reason, before
+    pytest had its own carve-out). A test run is now the same shape as every
+    other thing this rule refuses - wrap it in a script under `scripts/ci/`
+    that shells out to pytest internally, mark that script `bites-observable`,
+    and observe THAT.
+    """
+    if not (rest and rest[0].startswith("scripts/")):
+        return ["observe: `python3` must run `scripts/<path>.py` from the checkout - "
+                "wrap it in a script under scripts/ci/ and observe that"]
     return []
 
 
@@ -428,108 +387,31 @@ def _check_fly(head: str, rest: list[str]) -> list[str]:
     if bad:
         return [f"observe: `{head} {bad}` is not an allow-listed option - `-c`/`--config` "
                 f"READS the file its argument names. {_see('fly')}"]
-    return []
-
-
-def _check_gh(head: str, rest: list[str]) -> list[str]:
-    words = _leading_words(rest)
-    if not _subcommand_permitted(words, GH_READONLY_SUBCOMMANDS):
-        return [f"observe: `gh {' '.join(words[:2]) or '<none>'}` is not a read-only "
-                f"subcommand - permitted: " + _render_table(GH_READONLY_SUBCOMMANDS, "gh ")]
-    bad = _flag_violation(rest, GH_ALLOWED_FLAGS)
-    if bad:
-        return [f"observe: `gh {bad}` is not an allow-listed option - `--cache` writes a "
-                f"response cache and `--web` opens a browser. {_see('gh')}"]
-    if words[:1] == ["api"]:
-        for flag in rest:
-            base = _any_flag_is(flag, GH_API_FORBIDDEN_FLAGS)
-            if base:
-                return [f"observe: `gh api {base}` sends a request body or a method other "
-                        f"than GET - an observation reads"]
-        for token in rest:
-            if not token.startswith("-") and "://" in token:
-                return [f"observe: `gh api {token}` names an absolute URL. gh uses an "
-                        f"endpoint containing `://` VERBATIM as the request URL, so the "
-                        f"host comes from the argument rather than from GitHub; and for a "
-                        f"non-GitHub host gh falls through to $GH_ENTERPRISE_TOKEN / "
-                        f"$GITHUB_ENTERPRISE_TOKEN unconditionally, sending it as an "
-                        f"Authorization header to whatever host the argument named. "
-                        f"An observation names a REST path: `repos/<owner>/<repo>`."]
-    return []
-
-
-def _check_git(head: str, rest: list[str]) -> list[str]:
-    sub_at = next((i for i, a in enumerate(rest) if not a.startswith("-")), len(rest))
-    bad = _flag_violation(rest[:sub_at], GIT_GLOBAL_ALLOWED_FLAGS)
-    if bad:
-        return [f"observe: `git {bad}` is a GLOBAL git option, and none are permitted - "
-                f"`-c` runs a program the argument names and `--paginate` starts $PAGER. "
-                f"Put the subcommand first. {_see('git')}"]
-    for flag in rest[sub_at + 1:]:
-        base = flag.split("=", 1)[0]
-        if base in ("--format", "--pretty") and "=" not in flag:
-            return [f"observe: write `git {base}=<value>`. Checking the placeholder only "
-                    f"in the FLAG token reads `--format=%GS` and misses `--format '%GS'`, "
-                    f"which git accepts identically - the same separate-value blindness "
-                    f"pytest's `-k` rule already closes. Requiring the glued form closes "
-                    f"the class instead of the spelling."]
-        if base in ("--format", "--pretty") and "%G" in flag:
-            return ["observe: a `%G` pretty-format placeholder asks git to VERIFY a "
-                    "signature, which runs `gpg.program` - a program a config value names"]
-    bad = _flag_violation(rest[sub_at + 1:], GIT_SUB_ALLOWED_FLAGS, numeric=True)
-    if bad:
-        return [f"observe: `git {bad}` is not an allow-listed option - the deny-list this "
-                f"replaced lost `--output`, `-O` and `--no-index` one at a time. "
-                f"{_see('git')}"]
-    sub = rest[sub_at] if sub_at < len(rest) else ""
-    if sub not in GIT_READONLY_SUBCOMMANDS:
-        return [f"observe: `git {sub or '<none>'}` is not a local read-only subcommand - "
-                f"permitted: {', '.join(GIT_READONLY_SUBCOMMANDS)}"]
-    return []
-
-
-def _check_curl(head: str, rest: list[str]) -> list[str]:
-    for flag in rest:
-        if not flag.startswith("-"):
+    # kimi-code/k3's other live finding on the same refutation: a flag's own VALUE
+    # ends the leading-word run, so a positional planted AFTER it (`fly status -a
+    # app anyword`) was never inspected by either check above - `_leading_words`
+    # had already stopped at `-a`, and `_flag_violation` only looks at tokens
+    # starting with `-`. `-a`/`--app` are the only allowed flags and both take
+    # exactly one value (glued with `=` or as the next token), so anything past
+    # the subcommand that is neither a flag nor a flag's value is argv nobody
+    # reviewed.
+    extra = rest[len(words):]
+    skip_value = False
+    for token in extra:
+        if skip_value:
+            skip_value = False
             continue
-        base, _, value = flag.partition("=")
-        if value.startswith("@") or (base not in CURL_ALLOWED_FLAGS and "@" in flag):
-            return ["observe: a curl option whose value begins with `@` makes curl READ A "
-                    "LOCAL FILE into the request - an observation reads the network, not "
-                    "the disk"]
-        if base in CURL_ALLOWED_FLAGS:
+        if token.startswith("-"):
+            skip_value = "=" not in token
             continue
-        if not base.startswith("--") and len(base) > 1 and all(
-                c in CURL_ALLOWED_SHORT_BUNDLE for c in base[1:]):
-            continue  # a bundle of valueless short options, e.g. -sS
-        return [f"observe: `curl {base}` is not an allow-listed option - the deny-list it "
-                f"replaced lost `-b`, `-w@`, `--netrc-file`, `--variable`, `--json=@`, "
-                f"`--libcurl` and `--etag-save` one at a time. {_see('curl')}"]
-    # The first draft only checked args that LOOKED like URLs, so `curl evil.test/x` sailed
-    # through and curl defaulted it to plain http. The rule is positive: exactly one
-    # non-flag argument, https. Consuming a value-taking option's value by ARITY rather
-    # than by "does it start with -" is what admits `curl -m 5 <url>` and
-    # `-w '%{http_code}' <url>` without admitting a second URL.
-    words: list[str] = []
-    skip_next = False
-    for token in rest:
-        if skip_next:
-            skip_next = False
-        elif token in CURL_VALUE_TAKING_FLAGS:
-            skip_next = True
-        elif not token.startswith("-"):
-            words.append(token)
-    if len(words) != 1:
-        return [f"observe: `curl` must take exactly one non-flag argument (the https URL); "
-                f"found {len(words)}. Write value-taking flags as `--flag=value`."]
-    if not words[0].startswith("https://"):
-        return [f"observe: `curl` target `{words[0]}` is not an https:// URL"]
+        return [f"observe: `{head}` carries an unreviewed positional `{token}` after its "
+                f"subcommand - " + _render_table(FLY_READONLY_SUBCOMMANDS, "") +
+                " take no further argument"]
     return []
 
 
 _COMMAND_CHECKS = {
-    "python3": _check_python3, "gh": _check_gh, "git": _check_git,
-    "curl": _check_curl, "fly": _check_fly, "flyctl": _check_fly,
+    "python3": _check_python3, "fly": _check_fly, "flyctl": _check_fly,
 }
 
 
@@ -552,8 +434,9 @@ def _guard_command_allowlist(command: str) -> list[str]:
         return ["observe: empty command"]
     head, rest = argv[0], argv[1:]
     if head not in ALLOWED_COMMANDS:
-        return [f"observe: `{head}` is not allow-listed - permitted first tokens are "
-                f"{', '.join(ALLOWED_COMMANDS)}"]
+        return [f"observe: `{head}` is not allow-listed - `observe:` admits only `python3 "
+                f"scripts/<path>.py` or `fly <read-only subcommand>` (RULED 2026-09-04 b); "
+                f"wrap it in a script under scripts/ci/ and observe that"]
     return _COMMAND_CHECKS[head](head, rest)
 
 
@@ -579,29 +462,10 @@ def _guard_observable_script(command: str, repo_root: Path | None = None) -> lis
     if not argv or argv[0] != "python3":
         return []
     rest = argv[1:]
-    if rest[:1] == ["-m"]:
-        # pytest collects PATHS, and every path must live under a tests directory: a
-        # module named anywhere else runs its import-time code just as happily.
-        # A target must EXIST and must RESOLVE inside a tests directory in this checkout.
-        # Checking the written path for the segment `tests` was two holes at once: `-k
-        # tests` put the value of an option where a target was expected and satisfied the
-        # segment check with a word, and `scripts/tests/link/x.py` satisfies it while
-        # `link` is a symlink pointing anywhere at all. Resolution answers both.
-        targets = [a for a in rest[2:] if not a.startswith("-")]
-        for target in targets:
-            resolved = (root / target).resolve()
-            try:
-                relative = resolved.relative_to(root.resolve())
-            except ValueError:
-                return [f"observe: `pytest` target `{target}` resolves outside the checkout"]
-            if not resolved.exists():
-                return [f"observe: `pytest` target `{target}` does not exist in the checkout"]
-            if "tests" not in relative.parts:
-                return [
-                    f"observe: `pytest` target `{target}` does not resolve under a `tests/` "
-                    f"directory — pytest runs a module's import-time code wherever it sits"
-                ]
-        return []
+    # `python3 -m ...` (pytest included) left with RULED 2026-09-04 b: `_check_python3`
+    # already refuses every `-m` invocation, so this guard no longer needs a branch for
+    # it - falling through to the plain path check below reports `-m` as a target that
+    # "does not exist in the checkout", which is redundant but not wrong.
     if not rest:
         return []
     target = rest[0]
@@ -610,6 +474,16 @@ def _guard_observable_script(command: str, repo_root: Path | None = None) -> lis
         path.relative_to(root.resolve())
     except ValueError:
         return [f"observe: `{target}` resolves outside the checkout"]
+    if path.suffix != ".py":
+        # kimi-code/k3, refuting the two-shape cut's final bytes on 2026-09-04: the
+        # marker check below is a byte-substring grep over ANY file `python3` is
+        # pointed at, extension included - `python3 scripts/ci/bites_allowlist.yaml`
+        # parsed as executable, because that YAML file's own comments mention the
+        # marker string. `python3` on a non-Python file mostly just crashes today,
+        # but the guard's own invariant is "a SCRIPT declares itself observable",
+        # and a data/doc file is not a script regardless of what its bytes contain.
+        return [f"observe: `{target}` is not a `.py` file - `python3` runs Python source, "
+                f"not a marker string that happens to appear in a data or doc file"]
     if not path.is_file():
         return [f"observe: `{target}` does not exist in the checkout"]
     try:
