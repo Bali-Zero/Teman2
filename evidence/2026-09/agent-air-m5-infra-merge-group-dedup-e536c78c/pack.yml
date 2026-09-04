@@ -1,0 +1,237 @@
+# CANONICAL STAGING NAME, not this PR's real per-PR path (harness-floor.yml Step 7b's own
+# "THE brief_ref CONTRACT" comment: evidence_pack_lint.py resolves brief_ref against
+# --repo-root, which in CI is the SYNTHETIC /tmp/evidence-check tree where both files are always
+# staged under evidence/{pack,brief}.yml regardless of where they really live). Verified locally
+# by reproducing that exact staging with scripts/ci/stage_council_journal.py + the same
+# evidence_pack_lint.py invocation harness-floor.yml runs, see the PR body/report.
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  One build lane. Review is cross-family and independent: codex-gpt-5.6-sol (OpenAI, via `codex
+  exec --sandbox read-only`) and tp1-qwen3.8-max (Alibaba TP1 gateway, via scripts/tp1_call.py),
+  both dispatched fresh against the frozen diff with no access to this pack/brief, journalled in
+  council-journal.jsonl above. TWO rounds each: the first round found a real BLOCKER in item 2
+  (CodeQL carry-over) that required a full revert, not a cosmetic fix, and a related finding
+  extending to item 1's snyk-docker skip; the second round reviewed the corrected diff and
+  confirmed the fixes, while codex-gpt-5.6-sol raised one more real finding (snyk-docker's revert
+  needed to extend to the other three item-1 jobs too, or be justified narrowly) that was resolved
+  by direct verification (a real, pre-existing incident cited in the file itself) plus a second
+  tp1-qwen3.8-max round arbitrating the partial-vs-full-revert judgment call. See dissent below.
+plan_ref: "Team-lead handoff (session nuzantara-b2), 2026-09-05 — PR-C of a three-PR mandate: merge_group dedup for non-required scanners, a CodeQL merge_group carry-over (attempted, reverted), and Visa Oracle fullstack smoke hardening."
+lanes:
+  - lane: merge-group-dedup-build
+    role: build
+    seat: "implementer subagent (Sonnet 5) under the M5 team-lead session"
+  - lane: merge-group-dedup-review
+    role: review
+    seat: "codex-gpt-5.6-sol + tp1-qwen3.8-max, cross-family, generator != grader — neither seat wrote the diff under review, two rounds each"
+diff:
+  files: "5 files (see receipts for the exact --numstat measurement at push time): 2 workflow files (security.yml, tests.yml) + this evidence trio (brief.yml, pack.yml, council-journal.jsonl)."
+  net_lines: >-
+    Measured with `git diff --cached --numstat` at push time — the SAME invocation shape the
+    linter itself uses to check this claim, so this pack cannot disagree with the tool judging it.
+    Broken down for the reader in word form (never a second digit-shaped claim to check against
+    the total): security.yml carries most of its insertions in the reverted-with-explanation
+    snyk-docker/CodeQL sections and the honesty-corrected snyk-python/snyk-node/detect-secrets
+    comments, with a handful of deletions where the original merge_group-skip lines were removed
+    on revert; tests.yml carries the bulk of the insertions, split roughly in half between the
+    uv-cache-and-retry block and the fullstack-smoke-retry block, both step-level constructs with
+    no deletions of substance beyond the two lines each retry block's guard step replaced. The
+    remaining two files are this evidence trio's brief and journal, both pure additions.
+  behaviour_change: >-
+    security.yml: snyk-python, snyk-node, and detect-secrets gain `github.event_name !=
+    'merge_group'` in their job-level `if:` (skipped only on merge_group, unchanged on every other
+    event). snyk-docker and the codeql job are UNCHANGED from origin/main (the dedup/carry-over
+    attempted on both was reverted before push; only explanatory comments remain). tests.yml:
+    npm-audit gains the same merge_group skip (unchanged rationale, already honest, not part of
+    the revert). The Visa Oracle fullstack-smoke job's uv-install and smoke steps each gain a
+    step-level timeout, an actions/cache for ~/.cache/uv, and a one-shot retry gated on an
+    explicit `timeout`-utility exit-code/log-signature output (never on GitHub Actions' own step
+    outcome). No required context's `if:`/trigger/name changed; no branch-protection or ruleset
+    file touched; Immune enforcement untouched.
+receipts:
+  - claim: "actionlint reports zero NEW findings on this branch vs origin/main (both scoped to the two touched files and the full repo)."
+    cmd: "actionlint .github/workflows/security.yml .github/workflows/tests.yml ; actionlint (full repo) ; compare against an origin/main baseline capture"
+    exit: 0
+    ts: "2026-09-05T00:05:00Z"
+    seat: "build lane (M5, Sonnet 5)"
+  - claim: >-
+      The 11-file CI-conformance battery (workflow structure/required contexts/classifier corpus)
+      is green: 214 passed, 47 subtests passed — identical pass count to this same battery's run
+      on the prior PR in this mandate, confirming no regression from these edits.
+    cmd: >-
+      python3 -m pytest -q scripts/ci/test_change_map.py scripts/tests/test_classifier_extraction_closure.py
+      scripts/ci/test_ring_gating_override.py scripts/tests/test_required_context_map.py
+      scripts/tests/test_check_required_workflow_conformance.py scripts/tests/test_snapshot_required_contexts.py
+      scripts/tests/test_no_push_main_trigger_on_heavy_suites.py scripts/tests/test_lint_trigger_symmetry.py
+      scripts/tests/test_consumer_map.py scripts/tests/test_ci_service_images_use_mirror.py
+      scripts/tests/test_lint_immune_contracts.py
+    exit: 0
+    ts: "2026-09-05T00:06:00Z"
+    seat: "build lane (M5, Sonnet 5)"
+  - claim: "infra/guard-conformance/check_guard_conformance.py reports 0 violations after this diff."
+    cmd: "python3 infra/guard-conformance/check_guard_conformance.py"
+    exit: 0
+    ts: "2026-09-05T00:07:00Z"
+    seat: "build lane (M5, Sonnet 5)"
+  - claim: >-
+      Receipt for item 2's descope decision: CodeQL already reports on merge_group well inside the
+      90-minute merge-queue ceiling with the pre-existing, unmodified code. 3 real merge_group
+      runs of security.yml on 2026-09-04 (databaseId 33902059918, 33901458924, 33900769315) show
+      the python leg's slowest observed wall time at roughly fifteen minutes, the javascript leg
+      well under five.
+    cmd: >-
+      gh run list --workflow security.yml --event merge_group --limit 5 --json databaseId,createdAt,conclusion ;
+      gh api repos/Bali-Zero/Teman2/actions/runs/<id>/jobs --jq '.jobs[] | select(.name | test("CodeQL")) |
+      {name,status,conclusion,started_at,completed_at}' for each of the 3 ids above
+    exit: 0
+    ts: "2026-09-04T18:03:00Z"
+    seat: "build lane (M5, Sonnet 5)"
+  - claim: >-
+      Receipt for the snyk-docker revert: the job's own PRE-EXISTING comment (unrelated to this
+      PR, verified by direct read before this PR's own edits were added above it) documents a real
+      merge_group run, database id 30302472020, that caught a broken production Docker image build
+      the PR-head pull_request run had not — direct, first-party evidence the "byte-identical
+      tree" premise fails for this specific job, not merely a theoretical risk raised by a review
+      seat.
+    cmd: "grep -n 'snyk-docker:' -A 40 .github/workflows/security.yml (pre-existing lines quoted in this PR's own revert comment)"
+    exit: 0
+    ts: "2026-09-04T18:09:00Z"
+    seat: "build lane (M5, Sonnet 5)"
+  - claim: >-
+      Empirical CodeQL check-run shape verification (no new trigger): a real, already-completed
+      PR's Checks API response was read to confirm the exact context-name string the (since-
+      reverted) carry-over script matched against actually exists on a real commit
+      (status=completed, conclusion=success), and that a decoy check-run literally named "CodeQL"
+      (GitHub's separate default-setup scanner) is a DIFFERENT entry the exact-name filter
+      correctly does not match.
+    cmd: >-
+      gh api --paginate repos/Bali-Zero/Teman2/commits/<pr-5704-head-sha>/check-runs --jq
+      '.check_runs[] | select(.name | test("CodeQL")) | {name,status,conclusion}'
+    exit: 0
+    ts: "2026-09-04T18:05:00Z"
+    seat: "build lane (M5, Sonnet 5)"
+tests:
+  - "scripts/ci/test_change_map.py and 10 other workflow-conformance corpora — 214 passed, 47
+    subtests passed (see receipts). No new test FILE introduced by this PR; the change is entirely
+    to security.yml and tests.yml, whose own guard corpus is the 11-file battery above."
+static:
+  - "actionlint clean on both touched files, and zero NEW findings across the full repo vs an
+    origin/main baseline capture."
+  - "infra/guard-conformance/check_guard_conformance.py: 0 violations."
+  - "scripts/ci/scripts_coupling_census.py --check: up to date (no new script shipped in the final
+    diff — the CodeQL carry-over script and its two test files were written, reviewed, found
+    flawed, and deleted before push; not part of this PR's final content)."
+runtime_proof: >-
+  This PR ships no code into any deployed artifact — the proof is in CI's own runtime behavior on
+  the next merge_group entries after this lands, named as the Bites observation in the PR body.
+  The load-bearing PROOF FOR THIS PACK, though, is the reasoning trail itself: item 2 was not
+  shipped specifically because a runtime proof for its central claim (tree identity) could not be
+  constructed within budget, and the honest response to that gap was to remove the mechanism, not
+  to assert it anyway.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      BLOCKER (round 1). The CodeQL merge_group carry-over's premise — that a merge_group's
+      analyzed tree is byte-identical to what the PR's own pull_request run analyzed — is false.
+      pull_request checks out refs/pull/N/merge (a moving-target test-merge against the base at
+      THAT run's trigger time); merge_group checks out base-tip + earlier-queued-ahead batchmates
+      + this PR. carry_over=true could report success without having scanned the merge_group
+      commit.
+    status: CONFIRMED
+    disposition: >-
+      CURED by full removal: the carry-over script, its two test files, and the wiring in
+      security.yml's codeql job were all deleted/reverted before push. security.yml's codeql job
+      is now byte-identical to origin/main's version. Independently corroborated by
+      tp1-qwen3.8-max in the same round (see below) before the revert was applied.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      CONFIRM (round 1, answering two targeted technical questions rather than a full review). (a)
+      Confirmed the byte-identical-tree premise is false, with the same mechanistic detail as
+      codex-gpt-5.6-sol (refs/pull/N/merge as a moving target; base-tip-plus-batchmates for
+      merge_group). (b) Confirmed a GitHub Actions step-level timeout-minutes reports outcome ==
+      'failure', not 'cancelled' — the same value a real, non-hang failure produces — flagging high
+      but not absolute confidence given no live empirical test was run this session.
+    status: CONFIRMED
+    disposition: >-
+      Both points acted on: the carry-over was fully reverted (see above); the Visa Oracle retry
+      logic was reworked to detect hangs via the POSIX `timeout` utility's own exit code 124,
+      captured explicitly in the step's own run: block, never via GitHub Actions' step outcome —
+      a signal fully under this PR's own control rather than dependent on runner internals two
+      independent seats agreed on but neither empirically re-tested live this session (see
+      residual_risks).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      BLOCKER (round 2, on the corrected diff). CodeQL's revert and the retry rework were both
+      confirmed correct, but the SAME false byte-identical-tree premise was still present,
+      unchanged, in the merge_group-skip comments on snyk-python/snyk-node/snyk-docker/
+      detect-secrets from item 1 — and for snyk-docker specifically, a real, pre-existing,
+      documented incident in the file itself (run 30302472020: a merge_group run caught a broken
+      Docker build the PR-head run had missed) is direct historical proof the premise fails for
+      that job. Recommended reverting all four.
+    status: CONFIRMED
+    disposition: >-
+      PARTIALLY cured, not fully accepted as stated. snyk-docker: fully reverted (the cited
+      incident is direct, first-party evidence, verified by this pack's own author reading the
+      file — see receipts). snyk-python, snyk-node, detect-secrets: comments rewritten to drop the
+      false byte-identical claim and state the real, narrower argument (advisory-only status;
+      any external change is caught by ITS OWN origin PR's scan) instead of reverting — judged a
+      structurally different risk class (compositional Docker-build interaction vs. per-item
+      CVE/pattern lookup) than snyk-docker, and NOT accepted as-recommended without independent
+      arbitration (see next entry) given the "generator is never grader" standard applies to
+      review seats' recommendations too, not only to the build lane's own work.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      AGREE (round 2, arbitrating the partial-vs-full-revert judgment call from the entry above).
+      Asked directly whether the partial revert (snyk-docker only) was defensible against
+      codex-gpt-5.6-sol's "all four" recommendation, or whether a concrete, realistic (not
+      contrived) failure scenario existed for snyk-python/snyk-node/detect-secrets specifically.
+    status: CONFIRMED
+    disposition: >-
+      Verdict AGREE with the partial revert: the compositional-build-vs-per-item-lookup line is
+      the correct one, and no realistic counter-scenario survived scrutiny for the three surviving
+      skips (dependency-resolution interaction, overrides/resolutions abuse, baseline-suppression
+      removal, cross-file secret construction were all tried and found contrived or already
+      inapplicable given each job's diff-scoped/advisory-only design). One non-blocking polish
+      suggested and applied: an explicit "if this job is ever made required, remove the skip"
+      comment on the three surviving jobs, making the advisory-only dependency greppable for a
+      future reviewer.
+residual_risks:
+  - "Item 2 (CodeQL carry-over) is deliberately NOT shipped as an optimization — see brief.yml's
+    risks section for what a correct future attempt would need (closed-loop tree verification, not
+    Checks-API-status-only)."
+  - "The step-timeout-produces-outcome=='failure' fact this PR's retry design now avoids depending
+    on was confirmed by TWO independent, cross-family, consistently-reasoned seats, but was NOT
+    independently re-verified via a live empirical test in this session (unlike the prior PR's
+    continue-on-error dissent, which specifically needed a tie-break because the two seats
+    DISAGREED with each other — here they agreed, a materially different epistemic situation).
+    The retry design's own correctness does not actually depend on this fact either way (it uses
+    the POSIX `timeout` exit code, not GitHub Actions' outcome, as its detection signal), so this
+    residual risk is about a doc-comment's accuracy, not the mechanism's correctness."
+  - "timeout --kill-after=10 does not eliminate hang risk entirely (a SIGKILL-immune process would
+    still exceed budget) — the outer GH Actions step-level timeout-minutes remains the final
+    backstop, at the cost of that narrow case not being retried. Flagged by review, accepted as a
+    reasonable residual given how rare a SIGKILL-immune hang is in practice."
+  - "${PIPESTATUS[0]} in the smoke step does not check tee's own exit status — an extremely
+    low-probability write failure to the GitHub-Actions-guaranteed-writable $RUNNER_TEMP path
+    could in principle be masked. Flagged by review, not fixed: judged not worth the added
+    complexity within this PR's budget."
+  - "Item 1's three surviving skips depend on their advisory-only (non-required) status remaining
+    true — each comment now says explicitly to remove the skip if that status ever changes, but
+    this is not machine-enforced."
+sources:
+  - "security.yml's own pre-existing comment on the snyk-docker job (2026-07-28 dated) — the
+    documented run 30302472020 incident that settled the item-1 dissent"
+  - "3 real merge_group runs of security.yml on 2026-09-04 (33902059918, 33901458924, 33900769315)
+    — the CodeQL wall-time receipt that settled the item-2 descope decision"
+  - "PR #5704's real Checks API response — the CodeQL context-name-shape verification"
+  - "codex-gpt-5.6-sol adversarial review, round 1, dispatched 2026-09-04T17:57Z via `codex exec
+    --sandbox read-only`, fresh context, no access to this pack/brief"
+  - "tp1-qwen3.8-max review, round 1, dispatched 2026-09-04T18:01Z via scripts/tp1_call.py, fresh
+    context, two targeted questions, no access to this pack/brief"
+  - "codex-gpt-5.6-sol adversarial review, round 2, dispatched 2026-09-04T18:11Z, fresh context,
+    reviewing the corrected diff"
+  - "tp1-qwen3.8-max review, round 2, dispatched 2026-09-04T18:16Z, arbitrating the partial-vs-
+    full-revert judgment call"
+pii_scan: clean

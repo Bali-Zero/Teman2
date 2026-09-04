@@ -1841,8 +1841,20 @@ jobs:
     # here is real and worth seeing; it is never grounds to eject a queue
     # entry or block a PR whose diff never touched a dependency.
     needs: [changes]
+    # MERGE-GROUP DEDUP (2026-09-05): unlike Snyk (a static manifest diff),
+    # `npm audit` genuinely CAN find something new on merge_group that wasn't
+    # there on the PR-head run — the advisory database moves independently of
+    # this repo's tree (see the W118 story above). But that extra visibility
+    # is not worth a second full `npm install` + advisory query per queue
+    # entry: this job's own two-layer design (below) already guarantees a
+    # finding NEVER blocks anything, on either event — so the only thing a
+    # merge_group run could add is an earlier sighting of an advisory the
+    # next scheduled/PR run will surface anyway. `github.event_name !=
+    # 'merge_group'` below trades that marginal earlier-sighting for one
+    # fewer redundant job per queue entry.
     if: >-
       !cancelled() &&
+      github.event_name != 'merge_group' &&
       (
         (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
         needs.changes.result != 'success' ||
@@ -2348,7 +2360,15 @@ jobs:
         needs.changes.outputs.run_e2e_tests != 'false'
       )
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 15 (original, no-retry budget — sized against the steady-state run, not
+    # either hang) + up to 5 (one uv-install retry) + up to 10 (one smoke
+    # retry) = 30. Both retries are scoped to a NAMED hang signature only
+    # (see the two guard steps below, and the uv-install step's own comment
+    # on why detection uses the POSIX `timeout` exit code rather than
+    # GitHub Actions' step outcome) — a real dependency conflict or a real
+    # Playwright assertion failure never retries, so the common-case wall
+    # time is unchanged and this ceiling only matters on the rare hang path.
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -2379,12 +2399,77 @@ jobs:
         with:
           python-version: "3.11"
 
+      # Keyed on the real lock file this repo uses for this install
+      # (`requirements.lock.txt`) — there is no `uv.lock` anywhere in this
+      # repo (checked: `find . -iname uv.lock` is empty), so a key on that
+      # filename would never hit.
+      - name: Cache uv package cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('apps/backend-rag/requirements.lock.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      # continue-on-error is required so the job reaches the retry/guard
+      # steps below at all. It is NOT how the timeout is detected: a GitHub
+      # Actions step-level `timeout-minutes` firing sets `outcome: failure`
+      # here, the SAME value a real `uv`/`pip` resolution error produces —
+      # confirmed independently by two adversarial review seats
+      # (codex-gpt-5.6-sol citing actions/runner's StepsRunner.cs task-result
+      # path; tp1-qwen3.8-max citing the same SIGINT/SIGKILL-then-Failed
+      # behaviour), after this PR's first draft wrongly assumed a timeout
+      # would report `cancelled` (that value is reserved for job/workflow-
+      # level cancellation, e.g. a `concurrency` group's cancel-in-progress —
+      # never a step's own timeout). So detection here uses the POSIX
+      # `timeout` utility's own well-documented exit code 124 instead,
+      # captured explicitly — a signal under this step's own control, not
+      # dependent on GitHub Actions runner internals. `set +e` overrides the
+      # `-e` GitHub Actions' default bash invocation already applies, so the
+      # nonzero exit from a real failure doesn't abort the script before the
+      # classification below runs.
       - name: Install backend dependencies (uv, lock-pinned)
+        id: uv_install
+        continue-on-error: true
+        timeout-minutes: 5
         run: |
           cd apps/backend-rag
-          pip install --upgrade pip uv
-          uv pip install --system -r requirements.lock.txt
-          uv pip install --system -e ../../packages/cell-core
+          set +e
+          timeout --kill-after=10 240 bash -c '
+            set -e
+            pip install --upgrade pip uv
+            uv pip install --system -r requirements.lock.txt
+            uv pip install --system -e ../../packages/cell-core
+          '
+          rc=$?
+          if [ "$rc" -eq 124 ]; then
+            echo "timed_out=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "timed_out=false" >> "$GITHUB_OUTPUT"
+          fi
+          exit "$rc"
+
+      - name: Retry uv install once (timeout only, never a real resolution failure)
+        id: uv_install_retry
+        if: steps.uv_install.outputs.timed_out == 'true'
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          cd apps/backend-rag
+          timeout --kill-after=10 240 bash -c '
+            set -e
+            pip install --upgrade pip uv
+            uv pip install --system -r requirements.lock.txt
+            uv pip install --system -e ../../packages/cell-core
+          '
+
+      - name: Guard — fail the job if uv install (or its one timeout-only retry) did not succeed
+        if: >-
+          steps.uv_install.outcome != 'success' &&
+          steps.uv_install_retry.outcome != 'success'
+        run: |
+          echo "::error::uv install did not succeed (outcome=${{ steps.uv_install.outcome }}, timed_out=${{ steps.uv_install.outputs.timed_out }}, retry=${{ steps.uv_install_retry.outcome }})."
+          exit 1
 
       - name: Install postgresql-client (bounded, fail-closed — scripts/ci/apt_install.sh)
         run: bash scripts/ci/apt_install.sh psql postgresql-client
@@ -2408,7 +2493,25 @@ jobs:
         # actions/cache never persists on a fresh runner VM).
         run: timeout 600 npx playwright install --with-deps chromium
 
+      # 9 = 3 (backend/frontend readiness — fullstack_smoke.py's own internal
+      # _wait_for_http() caps these at 60s/180s, well inside 3min) + 6 (the
+      # smoke itself). The script has no separable GH-Actions-step phase for
+      # "readiness" vs "smoke" — both run inside the same `python -m`
+      # invocation — so this is ONE combined step-level budget, not two; see
+      # the PR body for that judgment call. Hang classification (is_hang)
+      # never trusts GitHub Actions' own step outcome for the reason
+      # documented on the uv-install step above (a step timeout reports
+      # `failure`, indistinguishable there from a real error) — it uses the
+      # POSIX `timeout` utility's exit code 124 for the outer-budget case,
+      # OR the exact string fullstack_smoke.py's internal TimeoutError
+      # raises ("did not become ready") for the inner-readiness-timeout
+      # case, `tee`'d to a log file so it can be grepped after the process
+      # exits. A real Playwright assertion failure produces neither signal,
+      # so it is never classified as a hang and never retried.
       - name: Run the disposable-DB fullstack smoke
+        id: smoke
+        continue-on-error: true
+        timeout-minutes: 10
         env:
           VISA_ORACLE_FULLSTACK: "1"
           VISA_ORACLE_SMOKE_ADMIN_DSN: postgresql://test:test@127.0.0.1:5432/postgres
@@ -2423,7 +2526,40 @@ jobs:
           API_KEYS: test_api_key_1,test_api_key_2
         run: |
           cd apps/backend-rag
-          PYTHONPATH=. python -m backend.scripts.visa_engine.fullstack_smoke
+          set +e
+          timeout --kill-after=10 540 python -u -m backend.scripts.visa_engine.fullstack_smoke 2>&1 | tee "$RUNNER_TEMP/visa-oracle-smoke.log"
+          rc=${PIPESTATUS[0]}
+          if [ "$rc" -eq 124 ]; then
+            echo "is_hang=true" >> "$GITHUB_OUTPUT"
+          elif grep -q "did not become ready" "$RUNNER_TEMP/visa-oracle-smoke.log"; then
+            echo "is_hang=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_hang=false" >> "$GITHUB_OUTPUT"
+          fi
+          exit "$rc"
+
+      - name: Retry the fullstack smoke once (known hang signature only, never a real assertion failure)
+        id: smoke_retry
+        if: steps.smoke.outputs.is_hang == 'true'
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          VISA_ORACLE_FULLSTACK: "1"
+          VISA_ORACLE_SMOKE_ADMIN_DSN: postgresql://test:test@127.0.0.1:5432/postgres
+          PYTHONDONTWRITEBYTECODE: "1"
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
+          API_KEYS: test_api_key_1,test_api_key_2
+        run: |
+          cd apps/backend-rag
+          timeout --kill-after=10 540 python -u -m backend.scripts.visa_engine.fullstack_smoke
+
+      - name: Guard — fail the job if the smoke (or its one hang-only retry) did not succeed
+        if: >-
+          steps.smoke.outcome != 'success' &&
+          steps.smoke_retry.outcome != 'success'
+        run: |
+          echo "::error::Visa Oracle fullstack smoke did not succeed (outcome=${{ steps.smoke.outcome }}, hang=${{ steps.smoke.outputs.is_hang }}, retry=${{ steps.smoke_retry.outcome }})."
+          exit 1
 
   test-summary:
     name: Test Summary
