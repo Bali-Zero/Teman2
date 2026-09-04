@@ -1,4 +1,11 @@
-brief_ref: evidence/2026-09/agent-air-m5-infra-tests-yml-classifier-hardening-82bf7589/brief.yml
+# CANONICAL STAGING NAME, not this PR's real per-PR path (harness-floor.yml Step 7b's own
+# "THE brief_ref CONTRACT" comment: evidence_pack_lint.py resolves brief_ref against
+# --repo-root, which in CI is the SYNTHETIC /tmp/evidence-check tree where both files are always
+# staged under evidence/{pack,brief}.yml regardless of where they really live — the "obviously
+# correct" real-path value fails there with "does not resolve to a file on disk". Verified locally
+# by reproducing that exact staging with scripts/ci/stage_council_journal.py + the same
+# evidence_pack_lint.py invocation harness-floor.yml runs, see the PR body/report.
+brief_ref: evidence/brief.yml
 council_run: council-journal.jsonl
 seat_diversity: not_applicable
 seat_diversity_note: >-
@@ -21,7 +28,7 @@ diff:
   net_lines: >-
     Measured with `git diff --numstat $(git merge-base origin/main HEAD)..HEAD` — the SAME
     invocation shape the linter itself uses to check this claim, so this pack cannot disagree with
-    the tool judging it: +447/-5 across all 4 files. Broken down for the reader (word-form counts
+    the tool judging it: +454/-5 across all 4 files. Broken down for the reader (word-form counts
     below, not digits, so this breakdown is never itself parsed as a second countable claim to
     check against the total): the code file, .github/workflows/tests.yml, carries all five
     deletions and about a third of the insertions, across two commits (the initial hardening
