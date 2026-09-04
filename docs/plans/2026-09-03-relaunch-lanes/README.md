@@ -17,6 +17,7 @@
 | E | `LANE-E-bot-wa.md` | **Pro** | The WA runtime lives on Pro (outbox, codex daemon); real-thread batteries with Damar |
 | F | `LANE-F-ci-truth.md` | **Mini** | GitHub-side only, no local build; keeps M5/Pro seats free |
 | G | `LANE-G-fleet-align.md` | **each machine** | Live copies are per-machine; the hook refreshes are `operator[control-plane]` |
+| H | `LANE-H-bites-reconciler.md` | **Pro** | GitHub-side CI + ledger surfaces; the reconciler's own proof is read from `origin/main`, no local build |
 | — | `ZERO-DECISIONS.md` | Zero | Nine Legge-5 / operator items that no session may decide |
 
 Order inside a machine: **M5** A then B (B has no dependency on A; run B first if Zero has not
