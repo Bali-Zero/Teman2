@@ -206,3 +206,95 @@ def test_is_slash_or_bang(prompt, expected):
 ])
 def test_has_enough_informative_terms(prompt, expected):
     assert mup.has_enough_informative_terms(prompt) == expected
+
+
+# --- 2026-09-04 follow-up: harness-envelope prompts and long pasted logs -----
+# Live observation, minutes after the first merge: the hook fired on a
+# background-task notification (not a human prompt) and emitted 3 weak hits
+# for ~350B — a staff activity log, an unrelated keychain note, W102. Cures:
+# an envelope-shape gate, a query-length cap, and a min_overlap floor.
+
+NOTIFICATION_SHAPED_PROMPT = (
+    "[SYSTEM NOTIFICATION - NOT USER INPUT] a background task has completed.\n"
+    "<task-notification>\n"
+    "  <task-id>keepalive-restart-storm-triage</task-id>\n"
+    "  <status>completed</status>\n"
+    "  <summary>plist KeepAlive nohup restart storm review finished, W501 W502"
+    " staff activity log keychain note reviewed, no action needed</summary>\n"
+    "</task-notification>"
+)
+
+
+@pytest.mark.parametrize("prefix", [
+    "[SYSTEM NOTIFICATION - NOT USER INPUT] task finished",
+    "<task-notification><status>done</status></task-notification>",
+    '<teammate-message teammate_id="team-lead" summary="status update">hello</teammate-message>',
+    '<cross-session-message from="worker">build finished</cross-session-message>',
+    "<system-reminder>background context injected here</system-reminder>",
+])
+def test_is_harness_envelope_true_for_every_wrapper_shape(prefix):
+    assert mup.is_harness_envelope(prefix)
+
+
+@pytest.mark.parametrize("prompt", [
+    "normal question about the merge queue and the cancelled check",
+    "il plist ha KeepAlive true e il servizio riparte in loop",
+])
+def test_is_harness_envelope_false_for_ordinary_prompts(prompt):
+    assert not mup.is_harness_envelope(prompt)
+
+
+def test_notification_shaped_prompt_is_silent_even_with_a_strong_lexical_match(tmp_path, monkeypatch, capsys):
+    """The notification text itself contains "plist KeepAlive nohup restart
+    storm" and the W501/W502 scar numbers verbatim — a relevance-only gate
+    would fire hard. The envelope gate must block it BEFORE scoring."""
+    memdir = tmp_path / "memdir_notif"
+    memdir.mkdir()
+    scars_dir = tmp_path / "scars_notif"
+    _write_scars_fixture(scars_dir)
+    rc, out = _run_main(monkeypatch, capsys, json.dumps({"prompt": NOTIFICATION_SHAPED_PROMPT}),
+                         memdir=memdir, scars_dir=scars_dir)
+    assert rc == 0 and out == ""
+
+
+def test_long_pasted_log_with_one_incidental_keepalive_is_silent(tmp_path, monkeypatch, capsys):
+    memdir = tmp_path / "memdir_log"
+    memdir.mkdir()
+    scars_dir = tmp_path / "scars_log"
+    _write_scars_fixture(scars_dir)
+    noise = " ".join(f"line{i} token{i} value{i}" for i in range(1, 400))  # ~5000 chars, no overlap
+    prompt = noise + " one incidental KeepAlive mention buried in the middle of this log " + noise
+    rc, out = _run_main(monkeypatch, capsys, json.dumps({"prompt": prompt}), memdir=memdir, scars_dir=scars_dir)
+    assert rc == 0 and out == ""
+
+
+def test_query_is_truncated_to_max_query_chars(monkeypatch, tmp_path):
+    memdir = tmp_path / "memdir_trunc"
+    memdir.mkdir()
+    captured = {}
+
+    def _spy_recall(memdir_, cache_path, query, **kwargs):
+        captured["query"] = query
+        return [], {}
+
+    monkeypatch.setattr(mup.mos, "resolve_memdir", lambda cwd=None, home=None: str(memdir))
+    monkeypatch.setattr(mup.mos, "resolve_scars_dir", lambda cwd=None: None)
+    monkeypatch.setattr(mup.mos, "recall", _spy_recall)
+    long_prompt = "x" * 5000
+    mup.build_recall_output(long_prompt, str(tmp_path))
+    assert len(captured["query"]) == mup.MAX_QUERY_CHARS
+
+
+def test_keepalive_scar_prompt_still_fires_after_the_follow_up_gates(tmp_path, monkeypatch, capsys):
+    """Regression pin: the original scar-shaped-prompt case (test 1 above)
+    must still clear every new gate (envelope shape, truncation, overlap)."""
+    memdir = tmp_path / "memdir_regress"
+    memdir.mkdir()
+    scars_dir = tmp_path / "scars_regress"
+    _write_scars_fixture(scars_dir)
+    prompt = "il plist ha KeepAlive true e il servizio riparte in loop"
+    rc, out = _run_main(monkeypatch, capsys, json.dumps({"prompt": prompt}), memdir=memdir, scars_dir=scars_dir)
+    assert rc == 0
+    assert out != ""
+    assert len(out.encode("utf-8")) <= mup.DEFAULT_MAX_BYTES
+    assert "W501" in out

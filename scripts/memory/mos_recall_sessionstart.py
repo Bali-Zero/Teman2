@@ -281,7 +281,7 @@ def build_context_query(cwd: str) -> str:
 
 def recall(memdir: str, cache_path: str, query: str, topk: int = DEFAULT_TOPK,
            threshold: float = DEFAULT_RELEVANCE_THRESHOLD, use_cache: bool = True,
-           scars_dir: str | None = None) -> tuple[list[dict], dict]:
+           scars_dir: str | None = None, min_overlap: int = 0) -> tuple[list[dict], dict]:
     index, idx_stats = build_or_refresh_index(memdir, cache_path, use_cache=use_cache)
     scar_count = 0
     if scars_dir:
@@ -293,15 +293,21 @@ def recall(memdir: str, cache_path: str, query: str, topk: int = DEFAULT_TOPK,
     scored = []
     for path, entry in index.items():
         rel = bm25_relevance(q_tokens, doc_tokens[path], df, n_docs, avgdl)
-        scored.append((recency_score(entry, now_ts) * importance_score(entry) * rel, rel, entry))
+        scored.append((recency_score(entry, now_ts) * importance_score(entry) * rel, rel, path, entry))
     scored.sort(key=lambda t: t[0], reverse=True)
     best_rel = scored[0][1] if scored else 0.0
+    # min_overlap (2026-09-04, per-prompt caller only — default 0 leaves every other
+    # caller unaffected): a long pasted-log query can clear the relevance floor on a
+    # single rare token's IDF alone, so also require the WINNING candidate to share at
+    # least this many distinct query terms with the caller's own text.
+    best_overlap = len(set(q_tokens) & set(doc_tokens[scored[0][2]])) if scored else 0
     stats = {**idx_stats, "scar_count": scar_count, "best_relevance": round(best_rel, 4),
-              "threshold": threshold, "query": query}
-    if best_rel < threshold:
+              "threshold": threshold, "query": query, "best_overlap": best_overlap,
+              "min_overlap": min_overlap}
+    if best_rel < threshold or best_overlap < min_overlap:
         return [], stats
     results = []
-    for _, _, e in scored[:topk]:
+    for _, _, _, e in scored[:topk]:
         r = {"filename": e["filename"], "description": e["description"]}
         if e.get("wnum"):
             r["wnum"] = e["wnum"]
