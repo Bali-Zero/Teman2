@@ -342,6 +342,70 @@ PYEOF
 }
 
 # ---------------------------------------------------------------------------
+# 3c. scripts-coupling — SCRIPTS_COUPLING staleness, caught while it is free
+#
+# Added 2026-09-05 after the SAME breakage landed on main three times inside
+# 24h (#5707 -> cured by #5711 -> re-broken by #5709 -> cured by #5724).
+# `scripts/ci/scripts_coupling_census.py --check` exiting 1 fails
+# `scripts/ci/test_change_map.py::test_scripts_coupling_census_is_not_stale`
+# inside the trusted FLAT extraction; the `changes` job then treats the
+# classifier as untrustworthy and degrades to `run_all=true`, so EVERY
+# subsequent PR re-buys all six heavy suites until someone runs `--write`.
+#
+# WHY HERE and not as a required CI check. The signal is not missing — it
+# already exists at every layer: `Classifier corpus trust (visibility only)`
+# goes red on the PR that causes it, and a scheduled tests.yml run on main
+# plus main-push-failure-watch.yml alerts afterwards. What failed three
+# times was READING it, not detecting it. Arming the existing job as a
+# REQUIRED context was considered and REJECTED: that job also fires when
+# the trusted extraction itself breaks, which is exactly what #5679 did on
+# every PR until #5692 — requiring it converts a cost degradation into a
+# repo-wide outage. So the fix belongs at the only moment the cure is free:
+# the push that introduces the coupling, in the PR that owns it.
+#
+# WHY the census is NOT narrowed to ignore comments. A mention inside a
+# COMMENT couples exactly like an import here (#5709's case). Narrowing it
+# moves toward the UNDER-match direction — superscar #3, the one that SKIPS
+# a suite that should have run — and it would not have prevented #5707,
+# whose coupling was a genuine runtime `exec_module`. Over-match costs CI
+# minutes on edits to one script; under-match costs a missed regression.
+#
+# UNCONDITIONAL, like skills-canon above: the census reads the whole TREES
+# corpus, so a diff that touches nothing under apps/ can still be the one
+# that goes stale via a lockfile-ish indirect path, and the run is ~2s.
+# ---------------------------------------------------------------------------
+run_scripts_coupling_census_check() {
+    if [ ! -f scripts/ci/scripts_coupling_census.py ]; then
+        echo "   [scripts-coupling] scripts/ci/scripts_coupling_census.py not on this branch yet — skipping."
+        return 0
+    fi
+    local py=""
+    if command -v python3 >/dev/null 2>&1; then
+        py="$(command -v python3)"
+    else
+        echo "   [scripts-coupling] python3 not found — skipping."
+        return 0
+    fi
+
+    local out rc
+    out="$("$py" scripts/ci/scripts_coupling_census.py --check 2>&1)"
+    rc=$?
+    if [ "$rc" -eq 0 ]; then
+        echo "   [scripts-coupling] SCRIPTS_COUPLING is up to date."
+        return 0
+    fi
+
+    printf '%s\n' "$out" | sed 's/^/            /'
+    echo "   [scripts-coupling] STALE (rc=$rc) — fix: python3 scripts/ci/scripts_coupling_census.py --write"
+    echo "                      then commit scripts/ci/change_map.py in THIS PR."
+    echo "                      A mention of a repo-root scripts/ path anywhere under apps/,"
+    echo "                      packages/core or tests.yml counts — a COMMENT counts too."
+    echo "                      Landed unfixed, every later PR re-buys all six heavy suites."
+    echo "                      (advisory — the real gate is the changes job's corpus step)"
+    return 0
+}
+
+# ---------------------------------------------------------------------------
 # 4. R1 — literal '## Adversarial review' heading on the branch's open PR
 # ---------------------------------------------------------------------------
 run_r1_check() {
@@ -404,6 +468,7 @@ main() {
     run_prettier_changed "$changed_existing"
     run_actionlint_if_touched "$changed_all"
     run_skills_canonical_check
+    run_scripts_coupling_census_check
     run_r1_check
 
     echo "🩺 quickcheck done (advisory — see .husky/pre-push for the real gates)."
