@@ -16,9 +16,7 @@
         "test_a_yaml_typed_scalar_is_refused_rather_than_coerced",
         "test_a_pack_that_is_not_yaml_is_malformed_not_absent",
         "test_leading_words_stops_at_the_first_flag",
-        "test_subcommand_sentinels_mean_two_different_things",
-        "test_gh_api_still_takes_its_endpoint_positional",
-        "test_flag_matcher_handles_all_three_spellings",
+        "test_subcommand_sentinel_means_nothing_but_flags_may_follow",
         "test_this_test_file_is_listed_in_the_immune_enforcement_battery"
       ],
       "source": "scripts/ci/bites_parse.py",
@@ -34,11 +32,13 @@
           "guilt": [
             "test_shell_composition_guilt_pipe_to_shell_is_rejected",
             "test_shell_composition_guilt_command_substitution_is_rejected",
-            "test_shell_composition_guilt_bare_variable_is_rejected"
+            "test_shell_composition_guilt_bare_variable_is_rejected",
+            "test_shell_composition_guilt_brace_expansion_defeats_the_marker_check"
           ],
           "innocence": [
             "test_shell_composition_innocence_plain_command_passes",
-            "test_shell_composition_innocence_sha_placeholder_is_not_expansion"
+            "test_shell_composition_innocence_sha_placeholder_is_not_expansion",
+            "test_shell_composition_innocence_braces_in_the_sha_placeholder_pass"
           ]
         },
         "_guard_command_allowlist": {
@@ -57,6 +57,8 @@
             "test_command_allowlist_guilt_curl_sending_a_body_is_rejected",
             "test_command_allowlist_guilt_pytest_plugin_flag_is_rejected",
             "test_command_allowlist_guilt_fly_machine_run_is_rejected",
+            "test_command_allowlist_guilt_fly_image_show_extra_positional_is_rejected",
+            "test_command_allowlist_guilt_fly_extra_positional_after_a_flag_value_is_rejected",
             "test_command_allowlist_guilt_fly_machine_destroy_is_rejected",
             "test_command_allowlist_guilt_git_tag_creates_a_ref",
             "test_command_allowlist_guilt_git_output_writes_a_file",
@@ -77,20 +79,17 @@
             "test_command_allowlist_guilt_fly_version_upgrade_replaces_the_binary",
             "test_command_allowlist_guilt_curl_options_that_touch_the_disk_are_rejected",
             "test_command_allowlist_guilt_git_no_index_leaves_the_repository",
-            "test_command_allowlist_guilt_pytest_options_that_write_are_rejected"
+            "test_command_allowlist_guilt_pytest_options_that_write_are_rejected",
+            "test_command_allowlist_guilt_the_glued_format_shapes_are_now_refused_too",
+            "test_command_allowlist_guilt_the_curl_shapes_an_observation_once_needed_are_now_refused",
+            "test_command_allowlist_guilt_the_git_shapes_an_observation_once_needed_are_now_refused",
+            "test_command_allowlist_guilt_the_pytest_shapes_an_observation_once_needed_are_now_refused",
+            "test_command_allowlist_guilt_the_repo_own_idioms_are_now_refused_too"
           ],
           "innocence": [
             "test_command_allowlist_innocence_every_real_shape_passes",
             "test_command_allowlist_innocence_fly_read_pairs_pass",
-            "test_command_allowlist_innocence_git_grep_count_flag_passes",
-            "test_command_allowlist_innocence_the_gh_shape_that_survives_jq_removal",
-            "test_command_allowlist_innocence_a_gh_api_rest_path_still_passes",
-            "test_command_allowlist_innocence_the_glued_format_shapes_still_pass",
-            "test_command_allowlist_innocence_fly_version_and_flagged_reads_pass",
-            "test_command_allowlist_innocence_the_curl_shapes_an_observation_needs_pass",
-            "test_command_allowlist_innocence_the_git_shapes_an_observation_needs_pass",
-            "test_command_allowlist_innocence_the_pytest_shapes_an_observation_needs_pass",
-            "test_command_allowlist_innocence_the_repo_own_idioms_survived_the_inversion"
+            "test_command_allowlist_innocence_the_four_surviving_fly_pairs_pass"
           ]
         },
         "_guard_no_remote_shell": {
@@ -124,12 +123,12 @@
             "test_observable_script_guilt_undeclared_script_is_rejected",
             "test_observable_script_guilt_a_real_execvpe_script_is_rejected",
             "test_observable_script_guilt_missing_file_is_rejected",
-            "test_observable_script_guilt_pytest_target_outside_tests_is_rejected"
+            "test_observable_script_guilt_pytest_target_outside_tests_is_rejected",
+            "test_observable_script_guilt_marker_string_in_a_non_py_file_is_rejected"
           ],
           "innocence": [
             "test_observable_script_innocence_declared_script_passes",
-            "test_observable_script_innocence_this_module_declares_itself",
-            "test_observable_script_innocence_pytest_under_tests_passes"
+            "test_observable_script_innocence_this_module_declares_itself"
           ]
         },
         "_guard_expect_form": {

