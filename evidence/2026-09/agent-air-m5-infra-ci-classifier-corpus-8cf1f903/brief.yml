@@ -1,0 +1,48 @@
+task_id: ci-classifier-corpus
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  `tests.yml`'s "Change map" job has not classified anything since 2026-08-26.
+  Its trusted-classifier extraction step copies five `scripts/ci/` files out of
+  the BASE ref into an isolated temp dir before running the classifier's own
+  guilt/innocence corpus — the trust boundary that stops a PR editing the logic
+  deciding which jobs its own diff requires. On 2026-08-26 PR #5070
+  (c94389bb4b) added `import security_gate_flags as sgf` to
+  scripts/ci/test_change_map.py without adding the module to that list.
+
+  Every run since dies on ModuleNotFoundError, `CLASSIFIER_TEST_OUTCOME` goes
+  to `failure`, and the workflow's own fail-open — correct in itself, "an
+  untrusted classifier recommends ALL jobs" — absorbs it. Nine days in which
+  every pull request ran the full six-job suite (Backend Shards 1/2/3, Frontend
+  Tests, E2E, MCP, Evaluator, Shared Core) regardless of its diff, while the
+  job reported success. Measured on PR #5662 (one YAML file): Frontend Tests
+  14m44s, change map reporting `changed_file_count: 0`.
+
+  Add the missing module, and assert the STRUCTURAL property that made the bug
+  possible so it cannot recur silently: an extraction list must be CLOSED under
+  the imports of the files in it.
+constraints:
+  - "The fail-open itself is NOT touched. It is correct — an untrusted
+    classifier must run everything rather than silently skip. The defect is
+    that nothing ever asked whether it was permanently tripped."
+  - "The fix is not the missing filename alone. A test asserting 'the corpus
+    passes' would not have caught this, because the corpus never ran, so the
+    new test asserts import-closure statically instead — no runner needed."
+  - "The new test finds extraction lists by their shell `for f in` loop rather
+    than by step name (a renamed step stays covered), checks BOTH tests.yml and
+    security.yml, and carries its own innocence test so it cannot pass
+    vacuously if that shape ever changes."
+  - "security.yml is NOT modified: its own list already carries the module, and
+    the new test confirms it by passing on that workflow while failing on
+    tests.yml."
+acceptance:
+  - "test_classifier_extraction_closure.py FAILS against main's five-file list,
+    naming tests.yml and absolving security.yml in the same run."
+  - "It passes after the module is added (5 passed)."
+  - "End-to-end: rebuilding the runner's temp dir by copying only the listed
+    files and running the corpus from it gives ERROR-during-collection on
+    main's five, and 36 passed / 40 subtests on the cured six."
+  - "The extraction regex is linear, not exponentially backtracking (CodeQL
+    HIGH on the first draft): a 36,009-character adversarial non-match
+    completes in 0.5 ms."
