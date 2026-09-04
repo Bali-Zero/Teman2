@@ -160,25 +160,52 @@ jobs:
             echo "::notice::non-PR event (${{ github.event_name }}) — running the full guard"
             exit 0
           fi
-          git diff --name-only "${{ github.event.pull_request.base.sha }}"...HEAD > /tmp/changed.txt
-          python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import fnmatch, pathlib, yaml
-          doc = yaml.safe_load(
-              pathlib.Path(".github/workflows/merah-putih-day-contrast.yml").read_text()
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          git diff --name-only "$BASE_SHA"...HEAD > /tmp/changed.txt
+          # Only the `run=` line may reach $GITHUB_OUTPUT. The first cut piped the
+          # whole heredoc there, notice included, and the runner rejects any line
+          # that is not NAME=VALUE — so the "nothing guarded changed" path, the
+          # one this promotion exists to make green, went red instead (found by
+          # the Gear-3 council, 2026-09-04). The snippet prints exactly one word.
+          RUN="$(BASE_SHA="$BASE_SHA" CHANGED_FILE=/tmp/changed.txt python3 - <<'PY'
+          import fnmatch, os, pathlib, subprocess, yaml
+
+          WORKFLOW = ".github/workflows/merah-putih-day-contrast.yml"
+
+          def guarded_paths(text: str) -> list[str]:
+              doc = yaml.safe_load(text)
+              # PyYAML is YAML 1.1: a bare `on:` key parses as the boolean True.
+              trigger = doc.get("on", doc.get(True))
+              return list(trigger["push"]["paths"])
+
+          # The list is read from the BASE ref's copy of this file AND the PR's
+          # own copy, unioned. Reading only the PR's copy is a trust boundary the
+          # PR itself controls: one diff that narrows `push.paths` and regresses a
+          # guarded file would have the sentinel judge itself by its own shortened
+          # list, skip the corpus, and skip the very test that catches a
+          # shrinking list (Gear-3 council finding, 2026-09-04). The base copy is
+          # the one the PR cannot edit.
+          head_copy = pathlib.Path(os.environ.get("HEAD_WORKFLOW", WORKFLOW)).read_text()
+          patterns = set(guarded_paths(head_copy))
+          base = subprocess.run(
+              ["git", "show", f"{os.environ['BASE_SHA']}:{WORKFLOW}"],
+              capture_output=True, text=True,
           )
-          # PyYAML is YAML 1.1: a bare `on:` key parses as the boolean True.
-          trigger = doc.get("on", doc.get(True))
-          patterns = trigger["push"]["paths"]
+          if base.returncode == 0:
+              patterns |= set(guarded_paths(base.stdout))
           assert patterns, "no guarded paths parsed — refusing to declare a no-op"
-          changed = [l for l in pathlib.Path("/tmp/changed.txt").read_text().splitlines() if l]
+          changed = [l for l in pathlib.Path(os.environ["CHANGED_FILE"]).read_text().splitlines() if l]
           # fnmatch has no `**`; `*` already crosses `/` in it, which makes it a
           # SUPERSET of GitHub's glob here — the sentinel can only ever be more
           # eager than the trigger, never blinder than it.
           hit = any(fnmatch.fnmatch(f, p) for f in changed for p in patterns)
-          print(f"run={'true' if hit else 'false'}")
-          if not hit:
-              print("::notice::no guarded surface changed — sentinel success")
+          print("true" if hit else "false")
           PY
+          )"
+          echo "run=$RUN" >> "$GITHUB_OUTPUT"
+          if [[ "$RUN" == "false" ]]; then
+            echo "::notice::no guarded surface changed — sentinel success"
+          fi
 
       - name: The guard's own corpus is green
         if: steps.relevant.outputs.run == 'true'

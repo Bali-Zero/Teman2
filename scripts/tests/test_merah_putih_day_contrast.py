@@ -649,3 +649,106 @@ def test_the_sentinel_reads_the_trigger_list_instead_of_restating_it() -> None:
         "the sentinel does not index `push.paths` — if it now keeps its own "
         "pattern list, the trigger and the gate can disagree silently"
     )
+
+
+# ---------------------------------------------------------------------------
+# The sentinel is executed here, not just grepped. Two defects found by the
+# Gear-3 council on 2026-09-04 were both invisible to the static assertions
+# above: (1) the whole heredoc was piped into $GITHUB_OUTPUT, notice line
+# included, so the "nothing guarded changed" path — the one this promotion
+# exists to make green — went red on an invalid env-file line; (2) the pattern
+# list was read from the PR's OWN copy of this file, so a PR that narrowed
+# `push.paths` judged itself by its own shortened list.
+# ---------------------------------------------------------------------------
+
+
+def _sentinel_snippet() -> str:
+    """The python between `<<'PY'` and `PY` inside the sentinel step, dedented."""
+    import textwrap
+
+    text = WORKFLOW.read_text(encoding="utf-8")
+    body = text.split("Did a guarded surface change?", 1)[1].split("- name:", 1)[0]
+    start = body.index("<<'PY'\n") + len("<<'PY'\n")
+    end = body.index("\n          PY\n", start)
+    return textwrap.dedent(body[start:end])
+
+
+def _run_sentinel(tmp_path, changed: list[str], **env_extra: str) -> "subprocess.CompletedProcess[str]":
+    import os
+    import subprocess
+    import sys
+
+    changed_file = tmp_path / "changed.txt"
+    changed_file.write_text("\n".join(changed) + "\n", encoding="utf-8")
+    env = {**os.environ, "BASE_SHA": "HEAD", "CHANGED_FILE": str(changed_file), **env_extra}
+    return subprocess.run(
+        [sys.executable, "-"],
+        input=_sentinel_snippet(),
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+        env=env,
+        check=False,
+    )
+
+
+def test_the_sentinel_prints_exactly_one_word_for_github_output(tmp_path) -> None:
+    """Innocence for defect (1): on an unguarded change the snippet's stdout is
+    the single word `false` — nothing else may reach `$GITHUB_OUTPUT`."""
+    res = _run_sentinel(tmp_path, ["README.md"])
+    assert res.returncode == 0, res.stderr
+    assert res.stdout == "false\n", (
+        "the sentinel wrote more than `false` to stdout — anything but the "
+        f"verdict word becomes an invalid $GITHUB_OUTPUT line: {res.stdout!r}"
+    )
+    res = _run_sentinel(tmp_path, ["apps/mouth/src/lib/theme/merahPutihDayVars.ts"])
+    assert res.returncode == 0, res.stderr
+    assert res.stdout == "true\n"
+
+
+def test_only_the_verdict_line_is_appended_to_github_output() -> None:
+    """Guilt for defect (1), at the shell layer: the heredoc must not be
+    redirected into `$GITHUB_OUTPUT`; only an `echo "run=…"` may write there."""
+    text = WORKFLOW.read_text(encoding="utf-8")
+    body = text.split("Did a guarded surface change?", 1)[1].split("- name:", 1)[0]
+    assert '<<\'PY\' >> "$GITHUB_OUTPUT"' not in body, (
+        "the sentinel pipes its whole heredoc into $GITHUB_OUTPUT again — the "
+        "::notice:: line is not NAME=VALUE and the runner fails the step"
+    )
+    writers = [
+        l.strip()
+        for l in body.splitlines()
+        if "$GITHUB_OUTPUT" in l and not l.strip().startswith("#")
+    ]
+    assert writers and all(l.startswith('echo "run=') for l in writers), writers
+
+
+def test_a_pr_that_narrows_its_own_list_cannot_disarm_the_sentinel(tmp_path) -> None:
+    """Guilt for defect (2): the PR's copy of this workflow drops every guarded
+    path but one unrelated file. The sentinel must still say `true` for a
+    token-file change, because it also reads the BASE copy the PR cannot edit."""
+    narrowed = tmp_path / "narrowed.yml"
+    narrowed.write_text(
+        "on:\n  push:\n    paths:\n      - \"docs/never-touched.md\"\n", encoding="utf-8"
+    )
+    res = _run_sentinel(
+        tmp_path,
+        ["apps/mouth/src/lib/theme/merahPutihDayVars.ts"],
+        HEAD_WORKFLOW=str(narrowed),
+    )
+    assert res.returncode == 0, res.stderr
+    assert res.stdout == "true\n", (
+        "the sentinel judged itself by the PR's own narrowed list — a PR can "
+        "shrink `push.paths` and skip the corpus that would catch it"
+    )
+
+
+def test_the_sentinel_reads_the_base_copy_via_git_show() -> None:
+    body = (
+        WORKFLOW.read_text(encoding="utf-8")
+        .split("Did a guarded surface change?", 1)[1]
+        .split("- name:", 1)[0]
+    )
+    assert '"git", "show"' in body and 'BASE_SHA' in body, (
+        "the sentinel no longer reads the base ref's copy of its pattern list"
+    )
