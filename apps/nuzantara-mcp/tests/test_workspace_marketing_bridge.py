@@ -2123,3 +2123,59 @@ async def test_query_notebooklm_refuses_an_article_beyond_the_part_cap(
         await marketing._query_notebooklm(
             {"title": "t", "content": body, "source_url": ""}, "nb-id"
         )
+
+
+async def test_notebooklm_parts_run_concurrently_under_a_real_answer_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A grounded NotebookLM answer took 121 s on Pro (2026-09-04); the old 75 s
+    cap killed every real query. Parts must carry a budget above that and run
+    concurrently so the gate waits for one answer, not one per part."""
+
+    in_flight = 0
+    peak = 0
+    budgets: list[tuple[str, int]] = []
+
+    async def fake_subprocess(argv: list[str], *, timeout_seconds: int, **_: Any) -> str:
+        nonlocal in_flight, peak
+        budgets.append((argv[argv.index("--timeout") + 1], timeout_seconds))
+        in_flight += 1
+        peak = max(peak, in_flight)
+        await asyncio.sleep(0.01)
+        in_flight -= 1
+        return json.dumps({"answer": "evidence"})
+
+    monkeypatch.setattr(marketing, "_run_public_subprocess", fake_subprocess)
+    monkeypatch.setattr(marketing.shutil, "which", lambda *_a, **_k: "/usr/bin/nlm")
+
+    body = "Claim sentence number one about LKPM reporting. " * 400
+    evidence = await marketing._query_notebooklm(
+        {"title": "t", "content": body, "source_url": ""}, "nb-id"
+    )
+
+    assert len(budgets) >= 3
+    assert peak > 1, "parts ran one after another"
+    assert peak <= marketing._NOTEBOOKLM_CONCURRENCY
+    for cli_timeout, outer_timeout in budgets:
+        assert int(cli_timeout) >= 200
+        assert outer_timeout > int(cli_timeout)
+    # Order is preserved even though the parts finish independently.
+    assert evidence.startswith("[part 1/")
+    assert evidence.index("[part 2/") > evidence.index("[part 1/")
+
+
+async def test_timed_out_verifier_names_the_provider_in_the_log(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    import sys as _sys
+
+    caplog.set_level("WARNING", logger="nuzantara_mcp.tools.workspace_marketing")
+    with pytest.raises(RuntimeError, match="timed out"):
+        await marketing._run_public_subprocess(
+            [_sys.executable, "-c", "import time; time.sleep(5)"],
+            timeout_seconds=1,
+            env={"PATH": "/usr/bin:/bin"},
+        )
+    record = "\n".join(rec.getMessage() for rec in caplog.records)
+    assert "timed out after 1s" in record
+    assert Path(_sys.executable).name in record
