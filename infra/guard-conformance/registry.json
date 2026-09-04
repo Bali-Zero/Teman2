@@ -15,7 +15,10 @@
         "test_the_lint_step_and_its_edited_trigger_are_wired_into_the_required_job",
         "test_flag_matcher_handles_all_three_spellings",
         "test_a_comment_delimiter_inside_a_code_span_is_literal_text",
-        "test_a_real_comment_after_a_code_span_on_the_same_line_still_hides"
+        "test_a_real_comment_after_a_code_span_on_the_same_line_still_hides",
+        "test_every_construct_github_renders_verbatim_hides_the_block",
+        "test_an_indented_inline_bites_line_is_an_example_too",
+        "test_list_marker_keys_still_parse"
       ],
       "source": "scripts/ci/bites_parse.py",
       "census": {
@@ -63,7 +66,8 @@
             "test_command_allowlist_guilt_git_global_flags_that_retarget_are_rejected",
             "test_command_allowlist_guilt_pytest_override_ini_is_rejected",
             "test_command_allowlist_guilt_curl_credential_files_are_rejected",
-            "test_command_allowlist_guilt_curl_variable_expands_the_environment"
+            "test_command_allowlist_guilt_curl_variable_expands_the_environment",
+            "test_command_allowlist_guilt_curl_write_out_is_rejected"
           ],
           "innocence": [
             "test_command_allowlist_innocence_every_real_shape_passes",
@@ -83,11 +87,13 @@
           "scar": ["superscar-3-guard-over-match"],
           "guilt": [
             "test_path_containment_guilt_parent_escape_is_rejected",
-            "test_path_containment_guilt_absolute_path_is_rejected"
+            "test_path_containment_guilt_absolute_path_is_rejected",
+            "test_path_containment_guilt_a_flag_can_carry_a_path"
           ],
           "innocence": [
             "test_path_containment_innocence_repo_relative_paths_pass",
-            "test_path_containment_innocence_url_path_is_not_a_filesystem_path"
+            "test_path_containment_innocence_url_path_is_not_a_filesystem_path",
+            "test_path_containment_innocence_ordinary_flag_values_pass"
           ]
         },
         "_guard_observable_script": {

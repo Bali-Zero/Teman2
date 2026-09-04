@@ -105,8 +105,16 @@ and only to a script whose arguments cannot name a program to run, a file to wri
 database to reach. Location grants nothing — an exemption keyed to where a file sits
 rather than what it is, is itself a scar (W109).
 
-**The block must also be the one a reviewer saw.** Before any guard runs, the parser
-blanks out what GitHub renders inert — fenced code blocks and HTML comments — so a
+**The block must also be the one a reviewer saw**, and this is stated as a RULE over a
+SET rather than as a list of cases, because it was patched three times before it was
+specified. The contract lives at the document's TOP LEVEL, in the parts GitHub renders as
+prose. Before any guard runs the parser blanks every construct GitHub renders verbatim —
+fenced code blocks, HTML comments, indented code blocks, and raw-HTML blocks
+(`<pre>`, `<script>`, `<style>`, `<textarea>`) — and key lines may carry at most three
+leading spaces, because four begins an indented code block. A new such construct belongs
+in that set, never in a fourth special case.
+
+The older half of the rule: so a
 `## Bites` hidden in a comment is not a contract and the format shown as an example in a
 fence is not one either. Both passes follow the rendering rules rather than approximating
 them: comments are consumed by a scanner, so a line carrying a closed pair AND an opener

