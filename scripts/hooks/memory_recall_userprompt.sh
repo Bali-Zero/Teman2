@@ -6,4 +6,4 @@
 # and fails open (exit 0, silent) on any error. Kill switch:
 # CLAUDE_RECALL_PROMPT_DISABLED=1.
 set -u
-exec python3 "${CLAUDE_PROJECT_DIR:-$PWD}/scripts/memory/mos_recall_userprompt.py" 2>/dev/null || exit 0
+python3 "${CLAUDE_PROJECT_DIR:-$PWD}/scripts/memory/mos_recall_userprompt.py" 2>/dev/null || exit 0
