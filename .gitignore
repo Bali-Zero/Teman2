@@ -592,6 +592,13 @@ openclaw
 !.claude/agents/log-triage.md
 !.claude/agents/catalog-meta.md
 !.claude/agents/docs-sync.md
+# 2026-09-04: the two agent definitions that a LIVE cron actually loads and that still
+# lived ONLY in ~/.claude/agents/ (family #1). competitor-monitor is dispatched by
+# com.balizero.competitor-monitor.monthly; nb-curator by com.balizero.nb-curator.daily.
+# Same deliberate-allowlist act as the 2026-08-08 wr2 block above: without these two
+# lines `git add -A` skips the files in silence and the vendoring is a no-op.
+!.claude/agents/competitor-monitor.md
+!.claude/agents/nb-curator.md
 # 2026-07-17: slash commands hold PER-PERSON team corners (subhi/ari/... with
 # probation dates, RBAC perimeters) that live ONLY in ~/.claude/commands and must
 # NEVER reach this PUBLIC repo (UU PDP / SYMBIOSIS Law 2). !.claude/commands/ nudo
