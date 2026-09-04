@@ -61,24 +61,6 @@ done
 mkdir -p "$HOME/nuzantara/research/regulatory" "$HOME/logs"
 
 LOG="$HOME/logs/regulatory-watcher.log"
-
-# The OPERATIVE SPEC is the git-tracked `.claude/agents/regulatory-watcher.md`: reviewed, gated,
-# identical on every checkout. Named here by absolute path rather than reached by cd -- making the
-# repo copy the one the HARNESS loads would need cwd=repo, which drags the project CLAUDE.md,
-# .claude/settings.json hooks and git visibility into a headless cron (refused on PR #5638 by two
-# cross-family seats: it re-opens autonomous `git commit` against the main checkout).
-# This is also what retires a chronic PENDING-ARMS row: `~/.claude/agents/regulatory-watcher.md`
-# is a DECLARED home-fork pair that no session can resync, because `host_boundary.py` refuses every
-# write under `~/.claude/` and `agents/` is not in its carve-out. Naming the repo copy here makes
-# that shadow harmless instead of uncurable -- the same cure #5638 applied to the other two crons.
-# WHERE the checkout is absent, fall back to the machine-local copy and say so in the log.
-NUZ_ROOT="${NUZ_ROOT:-$HOME/nuzantara}"
-SPEC_PATH="$NUZ_ROOT/.claude/agents/regulatory-watcher.md"
-if [ ! -f "$SPEC_PATH" ]; then
-  SPEC_PATH="$HOME/.claude/agents/regulatory-watcher.md"
-  echo "[$(date)] WARN: $NUZ_ROOT/.claude/agents/regulatory-watcher.md absent -- using the machine-local spec $SPEC_PATH instead" >> "$LOG"
-fi
-echo "[$(date)] spec: $SPEC_PATH" >> "$LOG"
 DATE=$(TZ=Asia/Makassar date +%Y-%m-%d)
 DELTA_JSON="$HOME/nuzantara/research/regulatory/${DATE}-delta.json"
 DELTA_BASENAME="${DATE}-delta.json"
@@ -182,7 +164,7 @@ echo "[$(date)] regulatory-watcher run starting for $DATE" >> "$LOG"
 # instance names its own parent while it is still alive in the log line.
 echo "[$(date)] launch-context: pid=$$ ppid=$PPID parent=$(ps -o comm= -p $PPID 2>/dev/null || echo dead) lang=${LANG:-unset} ssh=${SSH_CONNECTION:-none} trampolined=${REGWATCH_TRAMPOLINED:-0}" >> "$LOG"
 
-PROMPT_CLAUDE="Run the regulatory-watcher agent for today ($DATE). Execute all 6 workflow steps autonomously. Read $SPEC_PATH for full spec. Today is $DATE WITA. Yesterday's delta file (if any) is in ~/nuzantara/research/regulatory/. Emit JSON to today's file and Telegram alert only if new_today_count > 0. IMPORTANT: do ALL the work INLINE in this session — never spawn background tasks or background agents: this is a one-shot print-mode run and backgrounded work is terminated at exit, leaving no file on disk (incident 2026-07-05)."
+PROMPT_CLAUDE="Run the regulatory-watcher agent for today ($DATE). Execute all 6 workflow steps autonomously. Read ~/.claude/agents/regulatory-watcher.md for full spec. Today is $DATE WITA. Yesterday's delta file (if any) is in ~/nuzantara/research/regulatory/. Emit JSON to today's file and Telegram alert only if new_today_count > 0. IMPORTANT: do ALL the work INLINE in this session — never spawn background tasks or background agents: this is a one-shot print-mode run and backgrounded work is terminated at exit, leaving no file on disk (incident 2026-07-05)."
 
 # Generic prompt re-usable across LLMs (no Claude-specific syntax)
 PROMPT_GENERIC="You are the regulatory-watcher for Bali Zero (Indonesian business services agency). Today is $DATE WITA. Task: detect new Indonesian regulations published in last 48h that affect Bali Zero service lines (visa/immigration, tax, property, regulatory/HR, health). Sources to query (use whichever you can reach): Hukumonline, Ortax, DDTC, MUC, IKPI (news at ikpi.or.id/berita/ — NOT /news/, which 404s), JDIH Kemenkumham/Kemenkeu/Kemnaker, peraturan.go.id (with Mozilla User-Agent), pajak.go.id. Filter to reg-types: Permenkumham, PMK, PP, Perpres, UU, Permenaker, Permenkes, Peraturan BKPM. Emit JSON to ~/nuzantara/research/regulatory/${DATE}-delta.json with schema: {run_at, today, new_today_count, partial:bool, unreachable_sources:[{url,reason,note?}] (default [], reason one of http_403|http_404|timeout|ssl_error|empty_shell — genuine fetch failures ONLY), sources_checked_no_delta:[{url,reason,note?}] (default [], reason one of checked_no_new|outside_window — a source you DID read successfully and found nothing new in; never put these in unreachable_sources), nb_query_errors:[] (default [], always present even when empty), deltas:[{citation,title_id,title_en,service_line,summary,source,verbatim_excerpt}], seen_citations}. Each source you attempt goes in exactly one of unreachable_sources or sources_checked_no_delta — never free-text prose, never omitted keys. Retry a dead source at most once, then record it and move on — never loop on a source. If new_today_count>0, send Telegram via curl to api.telegram.org/bot\$TELEGRAM_BOT_TOKEN/sendMessage chat_id=\$TELEGRAM_OWNER_CHAT_ID. Cite verbatim. No paraphrasing. No emoji in JSON."
