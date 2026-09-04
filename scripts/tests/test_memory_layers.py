@@ -30,7 +30,7 @@ def _write(memdir, filename, name, desc, typ, topic):
 
 @pytest.mark.parametrize("project_dir, slug", [
     ("/Users/balizero/nuzantara", "-Users-balizero-nuzantara"),
-    ("/Users/nuzantara/Desktop/nuzantara", "-Users-nuzantara-Desktop-nuzantara"),
+    ("/Users/nuzantara/nuzantara", "-Users-nuzantara-nuzantara"),
 ])
 def test_slug_derivation_matches_home_claude_projects_shape(tmp_path, project_dir, slug):
     fake_home = tmp_path / "home"
