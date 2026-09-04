@@ -70,8 +70,11 @@ API_KEY = os.environ.get("SCRAPER_API_KEY", "internal-scraper-key")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
 
-GITHUB_OWNER = "Balizero1987"
-GITHUB_REPO = "Teman2"
+# The repository lives under the Bali-Zero org; on the old user path GitHub
+# answers 307 and every `gh api` create-ref/contents call fails (2026-09-04:
+# SEO and layout batches lost after a successful run). Env overrides for tests.
+GITHUB_OWNER = os.environ.get("POST_PUBLISH_GITHUB_OWNER", "Bali-Zero")
+GITHUB_REPO = os.environ.get("POST_PUBLISH_GITHUB_REPO", "Teman2")
 IMAGE_GH_DIR = "apps/mouth/public/static/news"
 
 # ── Codex $imagegen cover engine ─────────────────────────────────────────────
@@ -435,8 +438,13 @@ def _commit_to_branch(gh_path: str, content_b64: str, message: str, branch: str)
     """PUT one file to `branch` (create or update — resolves existing sha on that branch)."""
     existing_sha = ""
     try:
+        # `gh api` switches to POST as soon as a `-f` field is given; without
+        # an explicit GET the lookup answers Not Found, the PUT goes out with
+        # no `sha`, and GitHub rejects every update of an existing file with
+        # "Invalid request" (2026-09-04: SEO, layout and 2/4 translations).
         check = subprocess.run(
-            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{gh_path}",
+            ["gh", "api", "--method", "GET",
+             f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{gh_path}",
              "-f", f"ref={branch}", "--jq", ".sha"],
             capture_output=True, text=True, timeout=15,
         )
@@ -596,6 +604,25 @@ def _image_exists_on_github(gh_path: str) -> bool:
         return False
 
 
+def _download_github_file(gh_path: str) -> bytes | None:
+    """Return a GitHub Contents API file's decoded bytes, if it is readable."""
+    try:
+        result = subprocess.run(
+            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{gh_path}"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            _log_gh_failure(f"download {gh_path}", result)
+            return None
+        return base64.b64decode(json.loads(result.stdout)["content"])
+    except (KeyError, ValueError, TypeError) as e:
+        log(f"  ⚠ GitHub download decode error ({gh_path}): {e}")
+        return None
+    except Exception as e:
+        log(f"  ⚠ GitHub download error ({gh_path}): {e}")
+        return None
+
+
 def log(msg: str):
     line = f"[{datetime.now().strftime('%H:%M:%S')}] {msg}"
     print(line, flush=True)
@@ -706,6 +733,53 @@ def wait_for_ollama_free(max_wait: int = 60 * 15) -> bool:
 
 # ─── SEO/GEO ──────────────────────────────────────────────────────────────────
 
+SEO_PLACEHOLDER_STRINGS = (
+    "Check article for specific dates",
+    "mean for expats in Bali?",
+)
+
+
+def _frontmatter_field_value(frontmatter: str, key: str) -> str:
+    """Extract a simple one-line frontmatter value, without its quote wrapper."""
+    match = re.search(
+        rf"^{re.escape(key)}:\s*(?:[\"'](.*?)[\"']|(.*?))\s*$",
+        frontmatter,
+        re.MULTILINE,
+    )
+    if not match:
+        return ""
+    return (match.group(1) if match.group(1) is not None else match.group(2)).strip()
+
+
+def _seo_field_is_empty_or_placeholder(frontmatter: str, key: str) -> bool:
+    value = _frontmatter_field_value(frontmatter, key)
+    return not value or any(placeholder in value for placeholder in SEO_PLACEHOLDER_STRINGS)
+
+
+def _set_frontmatter_field(frontmatter: str, key: str, value: str) -> str:
+    value_escaped = value.replace('"', '\\"')
+    pattern = rf"^{re.escape(key)}:.*$"
+    replacement = f'{key}: "{value_escaped}"'
+    updated = re.sub(pattern, replacement, frontmatter, flags=re.MULTILINE)
+    if updated == frontmatter:
+        updated = frontmatter + f'\n{key}: "{value_escaped}"'
+    return updated
+
+
+def _set_ai_optimization_field(frontmatter: str, key: str, value: str) -> str:
+    """Set or add one scalar beneath the aiOptimization frontmatter mapping."""
+    value_escaped = value.replace('"', '\\"')
+    pattern = rf"^(\s*{re.escape(key)}:\s*).*?$"
+    if re.search(pattern, frontmatter, re.MULTILINE):
+        return re.sub(pattern, rf'\1"{value_escaped}"', frontmatter, flags=re.MULTILINE)
+
+    ai_optimization = re.search(r"^aiOptimization:\s*$", frontmatter, re.MULTILINE)
+    field = f'  {key}: "{value_escaped}"'
+    if ai_optimization:
+        insert_at = ai_optimization.end()
+        return f"{frontmatter[:insert_at]}\n{field}{frontmatter[insert_at:]}"
+    return f"{frontmatter}\naiOptimization:\n{field}"
+
 def run_seo(slug: str, category: str) -> bool:
     """Optimize SEO/GEO metadata of published MDX via agy (fallback: codex).
 
@@ -741,7 +815,7 @@ def run_seo(slug: str, category: str) -> bool:
     body = match.group(2)
 
     # Already optimized?
-    if "answerSnippet" in fm_raw and "Check article for specific dates" not in fm_raw and "mean for expats in Bali?" not in fm_raw:
+    if "answerSnippet" in fm_raw and not any(placeholder in fm_raw for placeholder in SEO_PLACEHOLDER_STRINGS):
             log("  ⏭ SEO already optimized")
             return True
 
@@ -778,25 +852,20 @@ Return this exact JSON structure:
         log(f"  ⚠ SEO: no JSON in {tool_used} response")
         return False
 
-    def set_fm_field(fm: str, key: str, value: str) -> str:
-        value_escaped = value.replace('"', '\\"')
-        pattern = rf'^{re.escape(key)}:.*$'
-        replacement = f'{key}: "{value_escaped}"'
-        new_fm = re.sub(pattern, replacement, fm, flags=re.MULTILINE)
-        if new_fm == fm:
-            new_fm = fm + f'\n{key}: "{value_escaped}"'
-        return new_fm
-
     ai_opt = seo.get("aiOptimization", {})
-    fm_raw = set_fm_field(fm_raw, "seoTitle", seo.get("seoTitle", ""))
-    fm_raw = set_fm_field(fm_raw, "seoDescription", seo.get("seoDescription", ""))
+    preserved_fields: list[str] = []
+    for key in ("seoTitle", "seoDescription"):
+        if _seo_field_is_empty_or_placeholder(fm_raw, key):
+            fm_raw = _set_frontmatter_field(fm_raw, key, seo.get(key, ""))
+        else:
+            preserved_fields.append(key)
+    if preserved_fields:
+        log(f"  ↳ Preserved authored SEO fields: {', '.join(preserved_fields)}")
 
     if ai_opt.get("answerSnippet"):
-        answer = ai_opt["answerSnippet"].replace('"', '\\"')
-        fm_raw = re.sub(r'(answerSnippet:\s*)["\']?.*?["\']?\s*$', f'\\1"{answer}"', fm_raw, flags=re.MULTILINE)
+        fm_raw = _set_ai_optimization_field(fm_raw, "answerSnippet", ai_opt["answerSnippet"])
     if ai_opt.get("primaryQuestion"):
-        question = ai_opt["primaryQuestion"].replace('"', '\\"')
-        fm_raw = re.sub(r'(primaryQuestion:\s*)["\']?.*?["\']?\s*$', f'\\1"{question}"', fm_raw, flags=re.MULTILINE)
+        fm_raw = _set_ai_optimization_field(fm_raw, "primaryQuestion", ai_opt["primaryQuestion"])
 
     new_content = f"---\n{fm_raw}\n---\n{body}"
 
@@ -907,6 +976,32 @@ def _fetch_mdx_meta(slug: str, category: str) -> tuple[str | None, str | None]:
     return title, summary
 
 
+def _derive_card_from_hero(hero_bytes: bytes) -> bytes | None:
+    """Centre-crop hero bytes to 16:10 and return an optimized JPEG card."""
+    try:
+        from io import BytesIO
+        from PIL import Image
+
+        with Image.open(BytesIO(hero_bytes)) as hero:
+            width, height = hero.size
+            target_ratio = 16 / 10
+            if width / height > target_ratio:
+                crop_width = round(height * target_ratio)
+                left = (width - crop_width) // 2
+                crop_box = (left, 0, left + crop_width, height)
+            else:
+                crop_height = round(width / target_ratio)
+                top = (height - crop_height) // 2
+                crop_box = (0, top, width, top + crop_height)
+            card = hero.crop(crop_box).convert("RGB")
+            output = BytesIO()
+            card.save(output, format="JPEG", quality=90)
+            return output.getvalue()
+    except Exception as e:
+        log(f"  ⚠ Card derivation failed: {e}")
+        return None
+
+
 def run_image(slug: str, category: str, title: str | None = None, article_id: str | None = None) -> bool:
     """Generate TWO cover images via Codex $imagegen (gpt-image-2), stage for GitHub.
 
@@ -929,6 +1024,20 @@ def run_image(slug: str, category: str, title: str | None = None, article_id: st
     card_done = _image_exists_on_github(card_gh_path)
     if hero_done and card_done:
         log("  ⏭ Both covers already on GitHub")
+        if article_id:
+            _update_news_image_url(article_id, f"/static/news/{slug}.jpg")
+        return True
+
+    if hero_done and not card_done:
+        hero_bytes = _download_github_file(hero_gh_path)
+        if hero_bytes is None:
+            return False
+        card_bytes = _derive_card_from_hero(hero_bytes)
+        if card_bytes is None:
+            return False
+        _stage_commit("image", card_gh_path, card_bytes,
+                      f"feat(image): derive card cover for '{slug[:50]}'")
+        log("  ▶ Card derived from existing hero")
         if article_id:
             _update_news_image_url(article_id, f"/static/news/{slug}.jpg")
         return True

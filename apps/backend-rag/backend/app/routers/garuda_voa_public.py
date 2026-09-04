@@ -302,6 +302,18 @@ _NO_VALIDATION_ERROR_OPERATIONS = frozenset(
         "deleteEligibilityResult",
         "getOrderAndPractice",
         "listIntakeDocuments",
+        # `listStaffPractices`/`getStaffPractice` (step 8,
+        # `garuda_staff_router.py`) joined the same way: `practice_id` is a
+        # bare path capture (existence/visibility checked by hand against
+        # the actor, never a Pydantic path constraint) and every
+        # `listStaffPractices` query param is a plain `str | None` with no
+        # constrained schema — neither route has any body/path/query shape
+        # a real request can fail Pydantic validation against, so the
+        # frozen contract's 5/6-code sets (no 422 at all) would otherwise
+        # be permanently unmatchable by any live schema, same as the four
+        # operations above.
+        "listStaffPractices",
+        "getStaffPractice",
     }
 )
 

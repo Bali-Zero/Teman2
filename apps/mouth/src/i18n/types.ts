@@ -18,11 +18,18 @@ export const LOCALES: Locale[] = ["en", "id", "it", "ru", "fr"];
  * decision, and the only list to touch when adding/removing a language from
  * the UI; every consumer that shows a switcher reads THIS, never LOCALES.
  *
- * `ru`/`fr` are supported but not offered (2026-07-29, owner decision): their
- * translations are complete but drift against the English source until the
- * translator re-runs, so we stopped advertising them while keeping every
- * existing `?lang=ru` / `?lang=fr` URL and saved preference working. Putting
- * them back is this one array.
+ * `ru`/`fr` are supported but not offered (2026-07-29, owner decision): they
+ * drifted against the English source between translator runs, so we stopped
+ * advertising them while keeping every existing `?lang=ru` / `?lang=fr` URL
+ * and saved preference working. Putting them back is this one array — and it
+ * is an OWNER decision, not a consequence of the drift closing.
+ *
+ * "Complete" is no longer a claim made here on faith: as of 2026-09-03 the
+ * key-set gap against `en.json` is EMPTY for all four non-English locales and
+ * `locale-key-parity.test.ts` fails in both directions (a new gap, and a
+ * closed gap left pinned). This comment previously called the fr/ru
+ * translations complete while the whole `portal` section — 12 leaf keys —
+ * was absent from both files.
  */
 export const OFFERED_LOCALES: Locale[] = ["en", "id", "it"];
 

@@ -41,28 +41,21 @@ const DICTIONARIES: Record<Locale, unknown> = {
 };
 
 /**
- * Measured on 2026-08-31, the day `secondHome` was added to fr/ru. Every entry
- * is a key present in `en.json` and absent from that locale — a real gap where
- * the page falls back to English, not a design choice.
+ * Measured on 2026-08-31, the day `secondHome` was added to fr/ru, and
+ * emptied on 2026-09-03 when `portal` landed in both. Every entry is a key
+ * present in `en.json` and absent from that locale — a real gap where the
+ * page falls back to English, not a design choice.
  *
- * `portal.*` is elided to the section name because the whole section is
- * absent. It is the client-portal login and password-recovery flow
- * (`/portal/login-upgraded`, `/portal/forgot-password`) — measured: 6
- * consumers, none of them reachable from any `/visa/*` route — so it is a
- * genuinely separate surface with its own owner, not part of this one.
+ * The list is EMPTY, and that is the state to defend: the ratchet's second
+ * direction (a closed gap left listed here is also a failure) is what forced
+ * it to shrink twice rather than outlive the translations. `common.consent.*`
+ * closed 2026-08-31; `portal.*` closed 2026-09-03 — 12 leaf keys, the client
+ * portal's login errors and password-recovery copy, which `types.ts` had been
+ * describing as "complete" in fr/ru while the whole section was absent.
  *
- * The five `common.consent.*` keys were the other half and are now CLOSED
- * (same day): that banner mounts on `/visa/second-home` and
- * `/visa/second-home/studio`, so it was rendering English to exactly the
- * French and Russian visitors those dictionaries had just been written for.
- * The ratchet is what forced the list to shrink here rather than outlive the
- * translation — it went red on `expected ['portal'] to deeply equal [...6]`
- * the moment the keys landed.
+ * Keep it empty by translating, never by re-adding a line here.
  */
-const KNOWN_GAPS: Partial<Record<Locale, string[]>> = {
-  fr: ["portal"],
-  ru: ["portal"],
-};
+const KNOWN_GAPS: Partial<Record<Locale, string[]>> = {};
 
 /** Every string leaf's dotted path. Arrays keep their index, so a shortened
  *  list in one locale is a missing key rather than a silent truncation. */
@@ -145,6 +138,48 @@ describe("locale key-set parity", () => {
       });
     }
   });
+
+  it("portal is present in EVERY locale, with the same keys as English", () => {
+    // Same strictness as `secondHome` above, and for the same reason: this
+    // section was a KNOWN_GAP in fr/ru for three days and the ratchet alone
+    // would let it become one again — a section can be deleted wholesale and
+    // reappear in KNOWN_GAPS with a plausible note. This assertion cannot be
+    // satisfied that way: a missing section fails on `hasPortal`, and a
+    // half-copied one fails on `missing`.
+    const en = leafPaths((enMessages as { portal: unknown }).portal);
+    expect(en.size).toBe(12);
+    for (const locale of LOCALES) {
+      const section = (DICTIONARIES[locale] as { portal?: unknown }).portal;
+      expect({ locale, hasPortal: Boolean(section) }).toEqual({
+        locale,
+        hasPortal: true,
+      });
+      const mine = leafPaths(section);
+      expect({ locale, missing: [...en].filter((p) => !mine.has(p)) }).toEqual({
+        locale,
+        missing: [],
+      });
+      expect({ locale, orphans: [...mine].filter((p) => !en.has(p)) }).toEqual({
+        locale,
+        orphans: [],
+      });
+    }
+  });
+
+  // The `{{seconds}}` interpolation is the one token that must survive
+  // translation verbatim — a locale that localizes the placeholder itself
+  // renders the literal braces to the visitor instead of a number, and key
+  // parity above cannot see it.
+  for (const locale of LOCALES) {
+    it(`${locale}: portal rate_limited keeps the {{seconds}} placeholder`, () => {
+      const copy = (DICTIONARIES[locale] as Record<string, any>).portal.login
+        .errors.rate_limited as string;
+      expect({ locale, hasPlaceholder: copy.includes("{{seconds}}") }).toEqual({
+        locale,
+        hasPlaceholder: true,
+      });
+    });
+  }
 
   for (const locale of ["it", "id", "fr", "ru"] as const) {
     it(`${locale}: the gap against English is exactly the pinned set`, () => {

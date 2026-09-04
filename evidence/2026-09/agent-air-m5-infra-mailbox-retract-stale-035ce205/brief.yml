@@ -1,0 +1,95 @@
+task_id: mailbox-retract-stale-0902
+gear: 2
+l_level: L1
+gate_class: sonnet
+objective: |
+  Team-lead follow-up to the mailbox_deliver_once mandate: even at deliver-once-per-session
+  (already correct, PR #5051), is a fresh session's fleet-mailbox broadcast backlog real signal
+  or stale noise? Measured 2026-09-02: sampled every live queue_unstick:<PR#> broadcast on Pro
+  (34) against `gh pr view --json state,mergeStateStatus`. 33/34 (97%) were stale — the PR was
+  already MERGED/CLOSED or no longer DIRTY, yet the page (48h TTL) was still live and delivered
+  fresh into every new session's early context. Decision rule (team-lead): ship a fix only if
+  >=50% stale. Measured 97%, well above threshold.
+
+  Root cause: scripts/queue_unstick.py's send_dirty_signal broadcasts a page whenever a PR goes
+  DIRTY, with no symmetric "take it back" step once the PR resolves — a page lives until its
+  full TTL expires, sender-blind to the resolution.
+constraints:
+  - "One PR, one concern: sender-side retraction + shortened TTL for stale queue_unstick pages.
+    Not touching infra/claude-hooks/mailbox_inject.py (the reader half) — verified correct
+    already in the prior mandate (25/25 tests green, hash-identical to Pro's live deployed copy)."
+  - "queue_stall_notify.py gets the TTL shortening only, not retraction — 0 queue_stall:* live
+    broadcasts existed in the sampled evidence, so that surface is unmeasured; extending
+    retraction there would be speculative, out of scope per 'cure what the diff introduces, spec
+    what it inherits'."
+  - "retract must be best-effort and fail-open: a failed retraction (host unreachable,
+    fleet_mail.sh missing) must never redden queue_unstick_cron.sh's tick — the shortened TTL is
+    the backstop that bounds a failed retraction's worst case."
+  - "Keep the new fleet_mail.sh subcommand and its sole consumer in ONE PR rather than splitting
+    by file: an unconsumed retract command shipped alone is scar family #2 (esiste != armato)
+    until a second PR lands it."
+acceptance:
+  - text: >
+      WHEN a PR previously signalled DIRTY by queue_unstick.py is later MERGED, CLOSED, or
+      otherwise no longer DIRTY, the next tick SHALL retract its mailbox broadcast (rename to
+      .retracted-<ts>, matching mailbox_inject.py's own self-cleaning tag pattern) and drop it
+      from the local dirty_seen state.
+    status: verified
+    probe: "local: python3 -m pytest scripts/tests/test_queue_unstick.py -k retract -> 3 main()-level integration tests green (absent-from-open-set case, present-but-not-DIRTY case, still-dirty-unchanged-fingerprint innocence case)"
+  - text: >
+      WHEN the retraction call fails (network, missing fleet_mail.sh), the tick SHALL still exit
+      0, report the failure in its own summary line (dirty_retract_failed=N), and still drop the
+      PR from state rather than retry forever.
+    status: verified
+    probe: "local: test_main_retract_failure_never_reddens_the_tick_but_still_drops_state -> rc==0, dirty_retract_failed=1, state empty afterward"
+  - text: >
+      WHEN a queue_unstick or queue_stall_notify broadcast is sent, its TTL SHALL be 12h
+      (env-overridable), not the fleet-wide 48h default.
+    status: verified
+    probe: "local: test_send_dirty_signal_production_argv_includes_ttl + test_real_stall_row_produces_exactly_one_send (existing, unbroken) -> argv contains --ttl 12"
+  - text: >
+      fleet_mail.sh's new `retract --key <k>` subcommand SHALL touch only broadcast messages
+      whose key: front matter matches exactly, SHALL be idempotent, and SHALL never follow a
+      symlinked message file.
+    status: verified
+    probe: "local: python3 -m pytest scripts/tests/test_fleet_mail_retract.py -> 9/9 green (guilt+innocence key match, idempotency, missing-key/missing-dir, symlink containment, key sanitization, remote-argv shape)"
+risks:
+  - "A real production-state-corruption bug was found and fixed along the way, NOT the original
+    target of this PR: queue_unstick.py's main() called load_dirty_seen()/save_dirty_seen(...)
+    bare, relying on a default-parameter snapshot of DIRTY_SEEN_FILE taken at function-definition
+    (import) time. A test monkeypatching the module attribute afterward is silently ignored and
+    the function reads/writes the REAL on-disk state file instead. Caught it live: this PR's own
+    main()-level tests clobbered ~/.agent/decisions/state/queue_unstick_dirty_seen.json on M5 (a
+    machine that never runs this cron) before the fix. Both call sites now pass DIRTY_SEEN_FILE
+    explicitly. Verified fixed: the real file's mtime is now unchanged across a full test run."
+  - "The first live queue_unstick_cron.sh tick against a real resolved PR on Pro is the actual
+    proof-of-armed for the retraction path — everything above is local simulation with a mocked
+    _run(). No live dispatch was run as part of this PR (queue_unstick_cron.sh is a 10-min cron
+    already installed and armed on Mini per PENDING-ARMS; its next natural tick against a real
+    MERGED/CLOSED PR still in dirty_seen state is the receipt, observable via
+    dirty_retracted=N in its own summary line and *.retracted-* files in the mailbox)."
+  - "queue_stall_notify.py's broadcast surface is unmeasured for staleness (0 samples) — the TTL
+    shortening there is a low-risk precaution matching queue_unstick.py's fix, not a measured
+    cure of a demonstrated problem on that specific surface."
+  - "A pre-existing, unrelated test-quality gap was found in test_fleet_mail_hosts.py while
+    writing this PR's own remote-routing test: its own routing-stub assertions pass partly by
+    accident (a stub that echoes on the ssh <host> true PROBE call pollutes $SSH_HOST via command
+    substitution, and the resulting die() failure message happens to still contain the substring
+    the test checks for). NOT fixed here — out of scope, unrelated file, would grow this PR's
+    single concern. Documented in test_fleet_mail_retract.py's own _routing_stub docstring and
+    flagged in the PR body for a follow-up."
+instruction_to_the_grader: |
+  This is a Gear-2 mechanical fix (sender-side cleanup wired into an existing cron script) with a
+  genuine incidental bugfix (the frozen-default-argument issue) discovered and fixed in the same
+  diff — grade whether that bugfix is itself correct and complete (both call sites fixed, not
+  just one; the fix is a call-time global lookup, not another frozen default) as carefully as the
+  retraction feature itself. The productive attack surface: (1) does resolved_dirty_prs correctly
+  distinguish "absent from the open set" (merged/closed) from "present but no longer DIRTY" from
+  "still DIRTY, do not touch" — three states, only two test paths obviously suggest themselves;
+  (2) is retract_dirty_signal's failure truly non-fatal to the tick's exit code (verify against
+  the actual `return 0 if not update_failed and not signal_failed else 1` line, not just the
+  docstring's claim); (3) does fleet_mail.sh's new retract subcommand's key-matching read ONLY
+  the first ~10 front-matter lines (bounded, same discipline as mailbox_inject.py's own
+  MAX_FRONT_MATTER_LINES) or could a crafted message body forge a key match; (4) is the
+  DIRTY_SEEN_FILE default-argument fix actually necessary and correct, or could `main()`'s bare
+  calls have worked some other way this session missed.

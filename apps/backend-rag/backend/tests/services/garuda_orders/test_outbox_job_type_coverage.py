@@ -222,6 +222,33 @@ def test_the_checker_actually_sees_the_variable_call_site() -> None:
     assert "practice_release" in types
 
 
+def test_the_checker_sees_the_if_elif_chain_shape() -> None:
+    """Pin the SECOND shape production uses — an if/elif chain of plain
+    `job_type = "literal"` assignments (`staff_transitions.py::
+    apply_transition`), not the two-branch `IfExp` `late_refund_
+    confirmation_email` already pins above. Both are real shapes the AST
+    walker must resolve; this test would go silently blind to a regression
+    in the multi-branch-Assign path specifically, which the IfExp pin above
+    cannot detect."""
+
+    types, unresolved = _collect()
+    assert not unresolved
+    for job_type in (
+        "practice_in_review_email",
+        "practice_blocked_email",
+        "practice_submitted_email",
+        "practice_approved_email",
+        "practice_rejected_email",
+        "practice_resumed_email",
+        "practice_delivered_email",
+    ):
+        assert job_type in types, (
+            f"{job_type} missing from the AST walker's resolved set — the "
+            "if/elif-chain shape in staff_transitions.py::apply_transition "
+            "has regressed"
+        )
+
+
 @pytest.mark.parametrize(
     "source",
     [

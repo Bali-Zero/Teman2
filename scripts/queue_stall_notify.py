@@ -79,6 +79,8 @@ Env overrides:
                                          alarm itself does not become fleet-mailbox noise.
   QUEUE_STALL_NOTIFY_STATE_DIR          default ~/.agent/decisions/state (local repeat-page
                                          state; tests may override it)
+  QUEUE_STALL_NOTIFY_TTL_HOURS           default 12 (`--ttl` passed to fleet_mail.sh for these
+                                         broadcasts — see TTL_HOURS's own comment)
 
 Exit codes: 0 = ran clean (the classifier ran clean AND every attempted send succeeded, whether
 or not any PR was actually stalled); 1 = the classifier itself failed (non-zero rc — propagated
@@ -116,6 +118,14 @@ CAP = int(os.environ.get("QUEUE_STALL_NOTIFY_CAP", "5"))
 FLEET_MAIL_HOST = os.environ.get("QUEUE_STALL_NOTIFY_FLEET_MAIL_HOST", "pro")
 CLASSIFIER_TIMEOUT = int(os.environ.get("QUEUE_STALL_NOTIFY_CLASSIFIER_TIMEOUT", "180"))
 REPAGE_SECONDS = 60 * 60 * int(os.environ.get("QUEUE_STALL_NOTIFY_REPAGE_HOURS", "6"))
+# Mailbox-side TTL for these broadcasts (2026-09-02, same audit that added
+# queue_unstick.py's DIRTY_SIGNAL_TTL_HOURS — see
+# research/operations/2026-09-02-mailbox-broadcast-staleness-audit.md): a
+# stall notice loses its "act now" value long before the fleet-wide 48h
+# default expires it, and REPAGE_SECONDS (default 6h) already re-sends
+# sooner than that if the stall persists — so 12h is generous slack, not a
+# tight bound.
+TTL_HOURS = int(os.environ.get("QUEUE_STALL_NOTIFY_TTL_HOURS", "12"))
 STATE_DIR = Path(os.environ.get("QUEUE_STALL_NOTIFY_STATE_DIR", os.path.expanduser("~/.agent/decisions/state")))
 SEEN_FILE = STATE_DIR / "queue_stall_notify_seen.json"
 
@@ -419,14 +429,17 @@ def send_notification(
     if dry_run:
         return True, (
             f"[dry-run] would signal PR #{number} ({item['cause']}) via fleet_mail.sh "
-            f"{FLEET_MAIL_HOST} broadcast --key {item['key']}: {msg}"
+            f"{FLEET_MAIL_HOST} broadcast --key {item['key']} --ttl {TTL_HOURS}: {msg}"
         )
 
     fleet_mail = repo_root / "scripts" / "fleet_mail.sh"
     if not fleet_mail.is_file():
         return False, f"signal FAILED PR #{number}: fleet_mail.sh not found at {fleet_mail}"
     rc, out, err = _run(
-        ["bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast", "--key", item["key"], msg],
+        [
+            "bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast",
+            "--key", item["key"], "--ttl", str(TTL_HOURS), msg,
+        ],
         timeout=30,
     )
     if rc != 0:

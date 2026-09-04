@@ -675,6 +675,7 @@ def _workspace_publish_blockers(item: dict[str, Any]) -> list[str]:
 async def workspace_marketing_publish_news(
     item_id: str,
     body: WorkspaceNewsPublishRequest,
+    request: Request = None,  # type: ignore
 ) -> dict[str, Any]:
     """Publish one ready News Room item after Damar explicitly confirms."""
 
@@ -765,12 +766,14 @@ async def workspace_marketing_publish_news(
     from backend.app.routers.intel_scraper import publish_staging_item_internal
 
     try:
+        # Internal publishing has no request context, so preserve the route pool explicitly.
         result = await publish_staging_item_internal(
             "news",
             item_id,
             actor="workspace-agent:damar",
             allow_generated_cover=False,
             position=body.position,
+            pool=getattr(request.app.state, "db_pool", None) if request else None,
         )
     except Exception:
         staging_service.compare_and_set_status(

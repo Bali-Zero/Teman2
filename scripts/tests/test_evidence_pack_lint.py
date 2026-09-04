@@ -73,6 +73,19 @@ GOOD_RECEIPT = {
     "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5",
 }
 
+#: R9 quorum fixture — 2 DISTINCT COUNCIL_REVIEW_SEATS, role:review, ok:true,
+#: ts present. Used by end-to-end Gear-3 fixtures below that test something
+#: OTHER than R9 itself (net-lines ceiling override, CLI flags) and need a
+#: real council_run journal, not `seat_override` — none of them carries a
+#: genuine "we skipped the council, here's why" human call, so a real
+#: journal is the honest cure post-2026-09-02 R9_R11_ENFORCEMENT_DATE flip.
+GOOD_COUNCIL_QUORUM = [
+    {"seat": "codex-gpt-5.6-sol", "role": "review", "ok": True,
+     "ts": "2026-09-01T00:00:00Z"},
+    {"seat": "kimi-code/k3", "role": "review", "ok": True,
+     "ts": "2026-09-01T00:00:00Z"},
+]
+
 
 @pytest.fixture()
 def tmp_repo(tmp_path):
@@ -535,10 +548,12 @@ def test_lint_end_to_end_measured_net_lines_overrides_pack_lie(tmp_repo):
     measured_net_lines parameter — no false ceiling."""
     root, write_brief, write_pack = tmp_repo
     write_brief(gear=3)
+    _write_journal(root / "evidence", "council.jsonl", GOOD_COUNCIL_QUORUM)
     pack_path = write_pack(
         dissent=[{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
         council=True,
         net_lines=10,
+        council_run="council.jsonl",
     )
     diff = ["apps/backend-rag/backend/services/a.py", "apps/backend-rag/backend/services/b.py"]
     rc, violations = lint(pack_path, root, diff, measured_net_lines=400)
@@ -1000,10 +1015,12 @@ def test_lint_end_to_end_innocence_ceiling_override_reports_not_fails(tmp_repo):
     to violations, so the pack passes clean."""
     root, write_brief, write_pack = tmp_repo
     write_brief(gear=3)
+    _write_journal(root / "evidence", "council.jsonl", GOOD_COUNCIL_QUORUM)
     pack_path = write_pack(
         dissent=[{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
         council=True,
         gear_override="verified live, one-off",
+        council_run="council.jsonl",
     )
     rc, violations = lint(pack_path, root, ["docs/notes.md"])
     assert rc == 0
@@ -1139,8 +1156,10 @@ def test_net_lines_cli_flag_overrides_pack_lie_end_to_end(tmp_path):
     """--net-lines, given a diff shaped like predicate (b), wins over the
     pack's own (lying) net_lines field — reaching compute_ceiling() through
     the full CLI entry point, not just lint() called in-process."""
+    _write_journal(tmp_path / "evidence", "council.jsonl", GOOD_COUNCIL_QUORUM)
     pack_path = _write_full_tree(
-        tmp_path, gear=3, pack_overrides={"council": True, "net_lines": 10}
+        tmp_path, gear=3,
+        pack_overrides={"council": True, "net_lines": 10, "council_run": "council.jsonl"},
     )
     changed = tmp_path / "changed.txt"
     changed.write_text(
