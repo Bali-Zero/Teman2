@@ -38,23 +38,6 @@ TG_NOTIFY="$SCRIPT_DIR/tg_notify.py"
 # 04:00 cron on Pro (W96: tests must never touch production state).
 LOCK_FILE="${NB_CURATOR_LOCK_FILE:-/tmp/nb-curator.lock}"
 LOG="$HOME/logs/nb-curator.log"
-
-# The OPERATIVE SPEC is the git-tracked `.claude/agents/<name>.md`: reviewed, gated by
-# scripts/tests/test_agent_defs_model_pins.py, and identical on every checkout. It is named
-# by absolute path below rather than reached by cd: making the repo copy the one the HARNESS
-# loads would require the process cwd to be the repo, which drags the project CLAUDE.md,
-# .claude/settings.json hooks and git visibility into a headless cron -- two cross-family
-# reviewers independently showed that re-opens autonomous `git commit` against the main
-# checkout (the failure this repo already closed three times). Left to its own PR.
-# WHERE the checkout is absent (not yet pulled), fall back to the machine-local copy -- the
-# only spec that exists today -- and say so in the log, so a run is never silently spec-less.
-NUZ_ROOT="${NUZ_ROOT:-$HOME/nuzantara}"
-SPEC_PATH="$NUZ_ROOT/.claude/agents/nb-curator.md"
-if [ ! -f "$SPEC_PATH" ]; then
-  SPEC_PATH="$HOME/.claude/agents/nb-curator.md"
-  echo "[$(date)] WARN: $NUZ_ROOT/.claude/agents/nb-curator.md absent -- using the machine-local spec $SPEC_PATH instead" >> "$LOG"
-fi
-echo "[$(date)] spec: $SPEC_PATH" >> "$LOG"
 # G2_heartbeat — proof of life at ~/.organism/last_seen/<id>.json, which is what
 # organs_registry.yaml (bridge_source.path) and the stale-detector actually read.
 # The library is INVOKED under `bash`, never sourced: this wrapper is zsh, and
@@ -82,6 +65,23 @@ DAY=$(TZ=Asia/Makassar date +%-d)  # day-of-month
 # left behind here would read like a knob and change nothing when turned.)
 
 mkdir -p "$HOME/logs" "$OUTPUT_DIR"
+
+# The OPERATIVE SPEC is the git-tracked `.claude/agents/<name>.md`: reviewed, gated by
+# scripts/tests/test_agent_defs_model_pins.py, and identical on every checkout. It is named
+# by absolute path below rather than reached by cd: making the repo copy the one the HARNESS
+# loads would require the process cwd to be the repo, which drags the project CLAUDE.md,
+# .claude/settings.json hooks and git visibility into a headless cron -- two cross-family
+# reviewers independently showed that re-opens autonomous `git commit` against the main
+# checkout (the failure this repo already closed three times). Left to its own PR.
+# WHERE the checkout is absent (not yet pulled), fall back to the machine-local copy -- the
+# only spec that exists today -- and say so in the log, so a run is never silently spec-less.
+NUZ_ROOT="${NUZ_ROOT:-$HOME/nuzantara}"
+SPEC_PATH="$NUZ_ROOT/.claude/agents/nb-curator.md"
+if [ ! -f "$SPEC_PATH" ]; then
+  SPEC_PATH="$HOME/.claude/agents/nb-curator.md"
+  echo "[$(date)] WARN: $NUZ_ROOT/.claude/agents/nb-curator.md absent -- using the machine-local spec $SPEC_PATH instead" >> "$LOG"
+fi
+echo "[$(date)] spec: $SPEC_PATH" >> "$LOG"
 
 # The sidecar must carry the REAL outcome and must be written on EVERY exit
 # path. One unconditional write at the end would say "alive" for a run that
