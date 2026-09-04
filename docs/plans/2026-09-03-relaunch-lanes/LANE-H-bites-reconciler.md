@@ -177,3 +177,72 @@ Three reds for the same cause → SUSPEND with one PENDING-ARMS row, cut from fr
 - Bootstrapping the PR-4 plist on Pro/Mini.
 - Any decision to make the executable `Bites` form MANDATORY (red on absent) — propose with the A5
   numbers, Zero decides (Legge 5).
+
+---
+
+## LIVE STATE — 2026-09-04, Pro session 1
+
+**PR-0 — MERGED (#5658).** This brief and its row in the README allocation table are on
+`origin/main`. Observation made after merge: 179 lines, one index reference,
+`prettier --check` conformant. Deviation from verbatim disclosed in that PR's body — three
+inline code spans that escaped a backtick inside a backtick span were rewritten in
+double-backtick form, because Prettier does not merely reformat that construct, it mangles
+it, and Prettier is armed on this path in `.husky/pre-commit`.
+
+**PR-1 — SUSPENDED (#5661), branch alive, auto-merge disarmed, gate verdict posted.**
+Head `b6a7860741f19fadbf63b1391beb59c405eac95b`, `harness/fable-gate=failure REWORK-DESIGN`.
+
+What is SOUND in it and should survive whatever comes next:
+
+- The seven guards and their allow-list. Three verdict-gate rounds mutation-tested every
+  guard body and found no vacuous guilt test. Ten holes were found by refutation and
+  closed: `python3 scripts/...` admitting ~900 scripts (cured by an in-source
+  `bites-observable` marker, content-keyed not location-keyed), `fly machine run`,
+  `git tag`/`branch`, `git diff --output`, `git grep -O<cmd>`, `gh pr merge`,
+  `gh --repo=`, `pytest --override-ini`, `curl -b`/`--netrc-file`/`-w@`, and a schemeless
+  `curl host/x` defaulting to http.
+- The positional split of git's options (global before the subcommand, subcommand-level
+  after), which was needed because collapsing them refuses the innocent `git grep -c`.
+- `_flag_is` matching all three option spellings, including a glued short value.
+- Path containment judging the value a flag carries after `=` or `@`, rather than skipping
+  every token that starts with a dash.
+- The lint step's shape: the PR body reaches it through `env:` and never through a
+  `${{ }}` expansion inside `run:`, and `types: [... edited]` closes the fail-open where a
+  body edited after the last push was never re-judged.
+- 65-fixture corpus, 84 tests, guard-conformance surface `bites_parse_observe_allowlist`
+  with guilt and innocence named per guard, evidence pack lint clean.
+
+What is BROKEN, and why it is a design question rather than a fix:
+
+Deciding which block a human actually saw, by hand-rolling CommonMark, did not converge.
+Five spellings across three rounds — HTML comments, fences, indented code blocks, raw
+`<pre>`, then `<details>`/`<div>`/`<table>` — plus one axis no construct rule reaches:
+Python's `str.splitlines()` splits on characters GitHub does not, so a form feed hides a
+block from every reader and from no parser. CodeQL's `py/bad-tag-filter` names the pattern
+independently. Rule 8 applies; the fourth patch was not written.
+
+**The decision Zero owns (Legge 5), stated with its cost:**
+
+1. Render the body with GitHub's own engine (`gh api /markdown`) and read the contract out
+   of the HTML. Correct by construction; costs a network call and a token inside a
+   required check.
+2. Vendor a real CommonMark parser. Correct; a new dependency inside a required check.
+3. **Move the contract out of the PR body into a file in the diff** (`.bites.yml` or the
+   evidence pack). A file has no rendering layer, so hidden regions, HTML blocks and line
+   splitting all cease to exist rather than being guarded against. The body keeps its prose
+   `Bites` line for humans. This dissolves the class instead of defending against it, and
+   it is the only option that makes the parse layer smaller rather than larger — but it
+   changes the format this brief specified, which is why it is not a session's call.
+
+**Zero's order received 2026-09-04 via the Pro audit session:** split #5661 into PR-1a
+(parser + tests + registry) and PR-1b (lint step + docs + brief). The split is right on
+size and is not in tension with the verdict — but 1a as it stands still contains the parse
+layer the gate rejected, so the split should follow the design decision above, not precede
+it. CodeQL alert #8974 (`py/bad-tag-filter`, the newline-blind comment regex) was CURED,
+not dismissed, by the scanner rewrite in `9c1eec49`; the flagged regex no longer exists in
+the tree.
+
+**Next session starts here:** read this block, then the two PENDING-ARMS rows opened
+2026-09-04 for this lane. Do not push to `agent/nuzantara/ops/bites-parse-0904` — cut from
+fresh `origin/main`. PR-2, PR-3 and PR-4 of this brief are untouched and unblocked in
+design, but they consume the parser, so they wait on the decision above.
