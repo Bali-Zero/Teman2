@@ -34,6 +34,7 @@ USAGE
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -179,6 +180,28 @@ def _render_block(paths: set[str]) -> str:
     return "\n".join(lines) + "\n"
 
 
+_QUOTED_TOKEN = re.compile(r'"([^"]+)"')
+
+
+def _block_paths(block: str) -> set[str]:
+    """Every ``scripts/`` path quoted inside a rendered marker block.
+
+    ``_render_block`` PACKS as many paths per line as fit in
+    ``MAX_LINE_WIDTH``, so reading one path per line is wrong: it yields a
+    single bogus token per line with ``", "`` embedded in it, identical on
+    both sides of the comparison. That is what made a one-path delta render
+    as ~100 items churning in both directions, and it is why the whole
+    diagnostic was unreadable at the moment it was needed.
+    """
+
+    return {
+        token
+        for line in block.splitlines()
+        for token in _QUOTED_TOKEN.findall(line)
+        if token.startswith("scripts/")
+    }
+
+
 def _existing_block(text: str) -> str | None:
     try:
         start = text.index(BEGIN_MARKER)
@@ -219,16 +242,8 @@ def _check(embedded: set[str]) -> int:
     if existing.strip() == fresh.strip():
         print("scripts_coupling_census: SCRIPTS_COUPLING is up to date.")
         return 0
-    existing_paths = {
-        line.strip().strip('",')
-        for line in existing.splitlines()
-        if line.strip().startswith('"')
-    }
-    fresh_paths = {
-        line.strip().strip('",')
-        for line in fresh.splitlines()
-        if line.strip().startswith('"')
-    }
+    existing_paths = _block_paths(existing)
+    fresh_paths = _block_paths(fresh)
     added = sorted(fresh_paths - existing_paths)
     removed = sorted(existing_paths - fresh_paths)
     print(
@@ -236,9 +251,23 @@ def _check(embedded: set[str]) -> int:
         "`python3 scripts/ci/scripts_coupling_census.py --write`.",
         file=sys.stderr,
     )
+    if not added and not removed:
+        # The verdict above stays TEXT-based on purpose: the block is a
+        # generated artifact and must be byte-identical to what --write
+        # emits. But "stale with an identical set" is a different fact from
+        # "stale because a path moved", and saying nothing at all here made
+        # the two indistinguishable.
+        print(
+            f"  the coupled SET is identical ({len(fresh_paths)} paths) — only the "
+            "line layout of the generated block differs (rewrap at "
+            f"MAX_LINE_WIDTH={MAX_LINE_WIDTH}). Run --write.",
+            file=sys.stderr,
+        )
     for label, paths in (("+ newly coupled", added), ("- no longer coupled", removed)):
         if paths:
-            print(f"  {label} ({len(paths)}): {paths[:10]}{' …' if len(paths) > 10 else ''}", file=sys.stderr)
+            shown = ", ".join(paths[:10])
+            more = f" … (+{len(paths) - 10} more)" if len(paths) > 10 else ""
+            print(f"  {label} ({len(paths)}): {shown}{more}", file=sys.stderr)
     return 1
 
 
