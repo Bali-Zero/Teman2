@@ -736,6 +736,92 @@ class TestPublishStagingItem:
                 await publish_staging_item_internal("news", "item-1", actor="test")
             assert exc_info.value.status_code == 500
 
+    @pytest.mark.asyncio
+    async def test_github_publish_failure_appends_cause(self, monkeypatch) -> None:
+        """A 301 owner-redirect surfaced as publish_result.error must reach the
+        News Room message, not just the backend log (2026-08-28, 2026-09-04)."""
+        from backend.app.routers.article_composer import PublishResponse
+        from backend.app.routers.intel_scraper import publish_staging_item_internal
+
+        monkeypatch.delenv("FIREWORKS_API_KEY", raising=False)
+
+        failed_result = PublishResponse(
+            success=False,
+            message="GitHub publish failed",
+            error="Failed to look up publication pull request: 301",
+        )
+
+        with (
+            patch("backend.app.routers.intel_scraper.staging_service") as mock_stg,
+            patch("backend.app.routers.intel_scraper.intel_user_actions_total") as mock_metric,
+            patch(
+                "backend.app.routers.intel_scraper.ingest_intel_to_qdrant",
+                new=AsyncMock(return_value=True),
+            ),
+            patch(
+                "backend.app.routers.article_composer.publish_article_internal",
+                new=AsyncMock(return_value=failed_result),
+            ),
+        ):
+            mock_stg.load_staging_item.return_value = {
+                "title": "New Visa Rule",
+                "content": "## Summary\nNew rule.\n## Facts\nEffective Jan 2026.",
+                "category": "visa",
+                "relevance_score": 80,
+                "source_url": "https://example.com",
+            }
+            mock_stg.save_staging_item.return_value = None
+            mock_metric.labels.return_value.inc = MagicMock()
+
+            result = await publish_staging_item_internal(
+                "news", "item-1", actor="test"
+            )
+
+            assert result["success"] is False
+            assert result["github_published"] is False
+            assert (
+                "Cause: Failed to look up publication pull request: 301" in result["message"]
+            )
+
+    @pytest.mark.asyncio
+    async def test_github_publish_exception_appends_cause(self, monkeypatch) -> None:
+        """Regression guard: the except-branch used to build ``github_error``
+        with ``type(e).__name__``, but ``type`` is this function's route
+        parameter (shadows the builtin) and would raise TypeError instead of
+        recording the cause."""
+        from backend.app.routers.intel_scraper import publish_staging_item_internal
+
+        monkeypatch.delenv("FIREWORKS_API_KEY", raising=False)
+
+        with (
+            patch("backend.app.routers.intel_scraper.staging_service") as mock_stg,
+            patch("backend.app.routers.intel_scraper.intel_user_actions_total") as mock_metric,
+            patch(
+                "backend.app.routers.intel_scraper.ingest_intel_to_qdrant",
+                new=AsyncMock(return_value=True),
+            ),
+            patch(
+                "backend.app.routers.article_composer.publish_article_internal",
+                new=AsyncMock(side_effect=RuntimeError("boom")),
+            ),
+        ):
+            mock_stg.load_staging_item.return_value = {
+                "title": "New Visa Rule",
+                "content": "## Summary\nNew rule.\n## Facts\nEffective Jan 2026.",
+                "category": "visa",
+                "relevance_score": 80,
+                "source_url": "https://example.com",
+            }
+            mock_stg.save_staging_item.return_value = None
+            mock_metric.labels.return_value.inc = MagicMock()
+
+            result = await publish_staging_item_internal(
+                "news", "item-1", actor="test"
+            )
+
+            assert result["success"] is False
+            assert "Cause: RuntimeError: boom" in result["message"]
+
 
 # ---------------------------------------------------------------------------
 # Module constants

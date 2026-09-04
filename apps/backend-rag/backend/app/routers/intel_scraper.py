@@ -790,6 +790,7 @@ async def _publish_staging_item(
         mdx_path = None
         article_slug = item_id  # fallback: use item_id if GitHub publish fails
         publish_result = None
+        github_error: str | None = None
 
         try:
             from backend.app.routers.article_composer import (
@@ -1037,6 +1038,7 @@ async def _publish_staging_item(
                 )
 
             else:
+                github_error = publish_result.error or publish_result.message
                 logger.error(
                     f"⚠️ Failed to publish to GitHub/Vercel: {publish_result.error}",
                     extra={"type": type, "item_id": item_id, "title": title},
@@ -1053,6 +1055,9 @@ async def _publish_staging_item(
                 extra={"type": type, "item_id": item_id},
             )
         except Exception as e:
+            # NOTE: `type` is the route parameter (str) in this function scope,
+            # not the builtin — use e.__class__.__name__ instead of type(e).
+            github_error = f"{e.__class__.__name__}: {e}"
             logger.error(
                 "⚠️ Failed to publish to GitHub/Vercel: %s",
                 e,
@@ -1223,6 +1228,8 @@ async def _publish_staging_item(
                 "Article saved to search index but NOT published to the website "
                 "(GitHub publish failed). Check backend logs and retry."
             )
+            if github_error:
+                message = f"{message} Cause: {github_error[:300]}"
 
         await invalidate_cache("zantara:intel_scraper:*")
         return {
