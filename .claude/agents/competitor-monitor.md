@@ -68,9 +68,21 @@ Save screenshots to `/tmp/competitor-<name>-ig-<date>.png`.
 
 Pre-filter via local Ollama vision model (qwen2.5vl:7b, already pinned warm per memory `project_nlm_strategy_2026_05_04.md`):
 
+The screenshot PATH goes INSIDE the prompt string -- that is how `ollama run` attaches an image.
+Without it the model answers anyway, confidently and about nothing. MEASURED on Mini-Pro2
+2026-09-04 against a 64x64 image whose left half is red and right half is blue, asked to name the
+two colours: with the path inline it answered "Red and Blue"; with the path omitted -- the form
+this file carried until today -- it answered "Blue and white", rc=0, no error, no warning. One
+call per screenshot:
+
 ```bash
-ollama run qwen2.5vl:7b "Look at this Instagram post screenshot. Classify: is this (a) educational/informational content, (b) promotional/CTA, (c) lifestyle/aesthetic, (d) news/regulatory, (e) other? Respond with one letter and one sentence rationale."
+for SHOT in /tmp/competitor-*-ig-<date>.png; do
+  ollama run qwen2.5vl:7b "Classify this Instagram post screenshot: is it (a) educational/informational content, (b) promotional/CTA, (c) lifestyle/aesthetic, (d) news/regulatory, (e) other? Respond with one letter and one sentence rationale. $SHOT"
+done
 ```
+
+If a run returns a letter for a `$SHOT` that does not exist on disk, DISCARD it: the model has
+classified nothing. Check the file first.
 
 Drop posts classified (c) lifestyle/aesthetic — Bali Zero positioning is anti-hospitality, lifestyle posts are not the competitive surface that matters for us.
 
@@ -107,7 +119,11 @@ Write to `~/nuzantara/research/competitive/<YYYY-MM>-digest.md`:
 - Pricing page: PROPERTY package now 3 tiers (Basic 8jt / Standard 18jt / Premium 35jt). Was 2 tiers (Basic 7jt / Premium 28jt) last month. Entry +14%, premium +25%.
 - New service page: "PT PMA fast-track" (deliverable 14 days). Bali Zero current PT PMA timeline: 21-28 days.
 
-### IG content (kept 8 of 24 posts after filter)
+### IG content (kept 8 of 24 posts after local vision pre-filter)
+
+<!-- WHERE the pre-filter did not run, this heading MUST instead read:
+     "### IG content (24 posts, NOT pre-filtered -- ollama unavailable on this host)"
+     A count "after filter" is a claim about work that was done. Do not make it otherwise. -->
 
 - Post 2026-04-22: "5 KITAS mistakes to avoid" — practical FAQ angle. Bali Zero hasn't covered this list-format on IG. Possible content gap.
 - Post 2026-04-30: claim "Permit B is now 3 weeks faster" — questionable. NB-1 check shows no recent process change. Flag.
@@ -157,7 +173,13 @@ Respect 200-line MEMORY.md hard limit.
 ## Hard rules
 
 1. **No factual paraphrase**: when a competitor makes a regulatory claim, quote them verbatim AND cross-check with NB. Don't restate their claim as fact.
-2. **Local vision pre-filter mandatory**: do NOT send all IG screenshots to Sonnet. qwen2.5vl filters first. Saves Sonnet quota AND reduces noise.
+2. **Local vision pre-filter first WHERE IT EXISTS, and the digest always says which path ran**: do
+   NOT send all IG screenshots to Sonnet while `ollama` can filter them. But `ollama` is NOT installed
+   on every host -- measured 2026-09-04: present on Mini-Pro2 with `qwen2.5vl:7b`, ABSENT on Pro, which
+   is the host `com.balizero.competitor-monitor.monthly` actually runs on. So the unfiltered branch
+   below is not a rare fallback, it is today's normal path. "Mandatory" was a lie the digest then
+   repeated as a filter count. Run `command -v ollama` and check `ollama list` for the model BEFORE
+   claiming a filter happened, and record the answer in the digest.
 3. **No competitive-bashing voice**: factual comparison only. "They charge X" not "they overcharge". "They claim Y; NB-1 disagrees" not "they're lying".
 4. **Cost**: Sonnet 4.6 OAuth (this agent) + qwen2.5vl local (free). Web fetch free. Total ~$0/run on Anthropic. NEVER ANTHROPIC_API_KEY.
 5. **Anti-cliché**: same forbidden-phrases list as bali-zero-brand. Especially "ecosystem", "landscape", "synergy".
@@ -172,5 +194,7 @@ Respect 200-line MEMORY.md hard limit.
 
 - 1 of 3 competitors unreachable: digest with `unreachable: [name]` flag, continue with other 2.
 - All 3 unreachable: write stub digest with note, no MEMORY.md append, send Telegram alert.
-- qwen2.5vl unavailable: skip pre-filter, send all screenshots to Sonnet (uses more quota; acceptable monthly).
+- qwen2.5vl unavailable (no `ollama` binary, or the model not in `ollama list`): skip the pre-filter and
+  send all screenshots to Sonnet (more quota; acceptable monthly) -- and write the IG heading in the
+  UNFILTERED form below. Never emit a "kept N of M after pre-filter" count for a filter that did not run.
 - Last month's snapshot missing: cold start, no diff possible, mark digest `cold_start: true`.
