@@ -66,6 +66,14 @@ EXACT_RULES: dict[str, set[str] | frozenset[str]] = {
     | {"infra_workflows", "security_sensitive"},
     "scripts/ci/change_map.py": {"infra_workflows", "security_sensitive"},
     "scripts/ci/test_change_map.py": {"infra_workflows", "security_sensitive"},
+    # Harness config, not app code — the six tests.yml jobs never read
+    # .claude/settings*.json, and it is verified by immune-enforcement.yml
+    # and the hook tests under scripts/tests/, not by tests.yml's jobs.
+    # Before this entry both fell into unknown_paths (run_all=True) — every
+    # hook/settings PR paid the full suite for a file none of the six jobs
+    # touch.
+    ".claude/settings.json": {"fleet_ops"},
+    ".claude/settings.local.json": {"fleet_ops"},
     "package.json": {
         "mouth",
         "admin_dashboard",
@@ -235,6 +243,13 @@ PREFIX_RULES: tuple[tuple[str, frozenset[str]], ...] = (
     (".husky/", frozenset({"infra_workflows", "security_sensitive"})),
     (".security/", frozenset({"infra_workflows", "security_sensitive"})),
     ("scripts/ci/", frozenset({"infra_workflows", "security_sensitive"})),
+    # More specific than the "infra/" catch-all below, so it must stay ahead
+    # of it in this tuple (first match wins). guard-conformance corpora are
+    # verified by guard-conformance.yml's own guilt+innocence run (cicatrix
+    # #3's own ESEGUIBILE), not by tests.yml's six product suites — before
+    # this entry, infra/guard-conformance/registry.json inherited the
+    # broad "infra/" rule and forced every one of the six jobs regardless.
+    ("infra/guard-conformance/", frozenset({"fleet_ops"})),
     ("infra/", frozenset({"infra_workflows", "security_sensitive"})),
     ("config/", frozenset({"infra_workflows", "security_sensitive"})),
     ("data/", frozenset({"backend_python", "docs_content_data"})),
@@ -277,6 +292,10 @@ PREFIX_RULES: tuple[tuple[str, frozenset[str]], ...] = (
     ("scripts/pro/", frozenset({"fleet_ops"})),
     ("scripts/review_routes/", frozenset({"fleet_ops"})),
     ("scripts/ruslana-node/", frozenset({"fleet_ops"})),
+    # Hook scripts, not app code — verified by their own corpus under
+    # scripts/tests/ (e.g. test_precommit_print_gate.sh) and by
+    # immune-enforcement.yml, never by the six tests.yml jobs.
+    (".claude/hooks/", frozenset({"fleet_ops"})),
 )
 
 DOC_PREFIXES = (
