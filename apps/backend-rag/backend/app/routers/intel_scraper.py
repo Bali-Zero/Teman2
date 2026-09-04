@@ -715,6 +715,8 @@ async def publish_staging_item_internal(
     actor: str,
     allow_generated_cover: bool = True,
     position: str = "latest",
+    *,
+    pool: Any | None = None,
 ) -> dict[str, Any]:
     """Publish path for internal callers that carry their own authorization.
 
@@ -730,7 +732,15 @@ async def publish_staging_item_internal(
         request=None,
         actor=actor,
         allow_generated_cover=allow_generated_cover,
+        pool=pool,
     )
+
+
+def _resolve_publish_pool(pool: Any | None, request: Request | None) -> Any | None:
+    """Prefer an explicitly supplied pool for internal publish callers."""
+    if pool is not None:
+        return pool
+    return getattr(request.app.state, "db_pool", None) if request else None
 
 
 async def _publish_staging_item(
@@ -740,6 +750,8 @@ async def _publish_staging_item(
     request: Request | None,
     actor: str,
     allow_generated_cover: bool = True,
+    *,
+    pool: Any | None = None,
 ) -> dict[str, Any]:
     """Publish implementation. Callers are responsible for authorization."""
     # Single funnel-in for both callers (the admin HTTP endpoint and the Telegram
@@ -1115,9 +1127,9 @@ async def _publish_staging_item(
 
         # Step 4: Write to news_items table (serves /api/news for balizero.com frontend)
         try:
-            pool = getattr(request.app.state, "db_pool", None) if request else None
-            if pool:
-                slug = item_id  # item_id is already a slug-friendly identifier
+            publish_pool = _resolve_publish_pool(pool, request)
+            if publish_pool:
+                slug = article_slug or item_id
                 summary = (data.get("content") or "")[:500]
                 content_full = data.get("content") or ""
                 ai_summary = (
@@ -1126,7 +1138,17 @@ async def _publish_staging_item(
                     else ""
                 )
                 ai_tags = data.get("tags") or []
-                image_url = data.get("image_url") or data.get("cover_image")
+                if (
+                    (
+                        publish_result is not None
+                        and publish_result.success
+                        and publish_result.image_path
+                    )
+                    or data.get("published_cover_path")
+                ):
+                    image_url = f"/static/news/{slug}.jpg"
+                else:
+                    image_url = data.get("image_url") or data.get("cover_image")
                 priority_val = data.get("priority", "medium")
                 if priority_val not in ("high", "medium", "low"):
                     priority_val = "medium"
@@ -1143,7 +1165,9 @@ async def _publish_staging_item(
                 }
                 news_category = category if category in valid_categories else "business"
 
-                async with pool.acquire() as conn:
+                # news_items.slug has no unique constraint on prod (only a plain
+                # index), so ON CONFLICT (slug) raises; guard by existence instead.
+                async with publish_pool.acquire() as conn:
                     await conn.execute(
                         """
                         INSERT INTO news_items (
@@ -1151,8 +1175,8 @@ async def _publish_staging_item(
                             category, priority, status, image_url, published_at,
                             ai_summary, ai_tags, external_id
                         )
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'approved', $9, NOW(), $10, $11, $12)
-                        ON CONFLICT (slug) DO NOTHING
+                        SELECT $1, $2, $3, $4, $5, $6, $7, $8, 'approved', $9, NOW(), $10, $11, $12
+                        WHERE NOT EXISTS (SELECT 1 FROM news_items WHERE slug = $2)
                         """,
                         title,
                         slug,
@@ -1181,11 +1205,10 @@ async def _publish_staging_item(
 
         # Step 4b: Enqueue for post-processing (translate + image + SEO) — DB-backed
         try:
-            if not pool:
-                pool = getattr(request.app.state, "db_pool", None) if request else None
-            if not pool:
+            publish_pool = _resolve_publish_pool(pool, request)
+            if not publish_pool:
                 raise RuntimeError("No DB pool available")
-            async with pool.acquire() as conn:
+            async with publish_pool.acquire() as conn:
                 await conn.execute(
                     """
                     INSERT INTO post_publish_queue (slug, category, source)
