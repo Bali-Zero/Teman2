@@ -438,8 +438,13 @@ def _commit_to_branch(gh_path: str, content_b64: str, message: str, branch: str)
     """PUT one file to `branch` (create or update — resolves existing sha on that branch)."""
     existing_sha = ""
     try:
+        # `gh api` switches to POST as soon as a `-f` field is given; without
+        # an explicit GET the lookup answers Not Found, the PUT goes out with
+        # no `sha`, and GitHub rejects every update of an existing file with
+        # "Invalid request" (2026-09-04: SEO, layout and 2/4 translations).
         check = subprocess.run(
-            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{gh_path}",
+            ["gh", "api", "--method", "GET",
+             f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{gh_path}",
              "-f", f"ref={branch}", "--jq", ".sha"],
             capture_output=True, text=True, timeout=15,
         )
