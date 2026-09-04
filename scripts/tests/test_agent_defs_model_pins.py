@@ -241,3 +241,87 @@ def test_guilt_gate_denies_a_subagent_type_with_no_def_on_disk():
     if not hasattr(gate, "agent_def_pins_model"):
         pytest.skip("model_routing_gate.py no longer exposes agent_def_pins_model(subagent_type, cwd)")
     assert gate.agent_def_pins_model("definitely-not-a-real-grunt-agent-xyz", str(REPO_ROOT)) is False
+
+
+# ---------------------------------------------------------------------------
+# Fleet-wide floor (2026-09-04): the checks above cover the 7 grunt defs only.
+# Everything else under `.claude/agents/` was unguarded — no workflow ran this
+# file at all until the same PR wired it into immune-enforcement.yml, and no
+# test looked at the other 13 defs' frontmatter.
+#
+# The floor asserts SHAPE, never a current value: `maxTurns`, `disallowedTools`
+# and `memory` are deliberately NOT required here, because only 11/6/9 of the
+# 20 defs carry them today and a guard pinned to the state it should be judging
+# forbids the very normalization it exists to protect. What IS required is the
+# set every def already satisfies, so this lands green and only a REGRESSION
+# turns it red:
+#
+#   - `model:` — a def with no pin silently inherits the orchestrator's model,
+#     which is precisely what model_routing_gate.py Rule 1 exists to prevent.
+#   - `tools:` — a def with no tools line inherits the harness default (all of
+#     them), the broadest possible surface arriving by omission.
+#   - `name:` matching the filename — the dispatcher resolves a def by
+#     filename, so a mismatched `name:` yields a def that loads under a
+#     identifier nobody dispatches. This is the specific error a bulk promotion
+#     of HOME agent files into this directory would introduce.
+# ---------------------------------------------------------------------------
+
+
+def _agent_def_paths() -> list[Path]:
+    return sorted(p for p in AGENTS_DIR.glob("*.md") if p.name != "README.md")
+
+
+def _assert_agent_def_floor(fm: str, stem: str, label: str) -> None:
+    assert re.search(r"^name\s*:\s*\S", fm, re.MULTILINE), f"{label} has no `name:` line"
+    assert re.search(r"^description\s*:\s*\S", fm, re.MULTILINE), f"{label} has no `description:` line"
+    assert TOOLS_LINE_RE.search(fm), (
+        f"{label} has no `tools:` line — it would inherit the harness default (every tool)"
+    )
+    assert ANY_MODEL_PIN_RE.search(fm), (
+        f"{label} has no `model:` pin — it would silently inherit the dispatching "
+        "orchestrator's model instead of its own tier"
+    )
+    declared = re.search(r"^name\s*:\s*(\S+)", fm, re.MULTILINE)
+    assert declared and declared.group(1) == stem, (
+        f"{label} declares name={declared.group(1) if declared else None!r} but its filename "
+        f"says {stem!r} — the dispatcher resolves by FILENAME, so this def would load under "
+        "an identifier nothing dispatches"
+    )
+
+
+def test_every_agent_def_meets_the_floor():
+    paths = _agent_def_paths()
+    assert paths, f"{AGENTS_DIR} contains no agent defs — the glob or the directory moved"
+    for path in paths:
+        fm = _frontmatter(path.read_text(encoding="utf-8"))
+        _assert_agent_def_floor(fm, path.stem, str(path))
+
+
+def test_guilt_a_def_with_no_model_pin_fails_the_floor(tmp_path):
+    bad = tmp_path / "unpinned.md"
+    bad.write_text(
+        "---\nname: unpinned\ndescription: no model pin\ntools: Read\n---\n\n# unpinned\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(AssertionError):
+        _assert_agent_def_floor(_frontmatter(bad.read_text(encoding="utf-8")), bad.stem, str(bad))
+
+
+def test_guilt_a_def_with_no_tools_line_fails_the_floor(tmp_path):
+    bad = tmp_path / "toolless.md"
+    bad.write_text(
+        "---\nname: toolless\ndescription: inherits every tool\nmodel: sonnet\n---\n\n# toolless\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(AssertionError):
+        _assert_agent_def_floor(_frontmatter(bad.read_text(encoding="utf-8")), bad.stem, str(bad))
+
+
+def test_guilt_a_def_whose_name_does_not_match_its_filename_fails_the_floor(tmp_path):
+    bad = tmp_path / "on-disk-name.md"
+    bad.write_text(
+        "---\nname: some-other-name\ndescription: promoted with a stale name\ntools: Read\nmodel: sonnet\n---\n\n# x\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(AssertionError):
+        _assert_agent_def_floor(_frontmatter(bad.read_text(encoding="utf-8")), bad.stem, str(bad))
