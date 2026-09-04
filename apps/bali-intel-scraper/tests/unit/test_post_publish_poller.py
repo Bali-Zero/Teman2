@@ -983,3 +983,10 @@ class TestAgyGenerateText:
         assert "--print" in cmd and "some prompt" in cmd
         # PATH must include agy's install dir even if the cron PATH lacks it
         assert ppp.AGY_BIN_DIR in captured["env"]["PATH"].split(":")
+
+
+def test_poller_targets_the_bali_zero_org_not_the_old_user_path() -> None:
+    # 2026-09-04: on Balizero1987/Teman2 GitHub answers 307 and every gh api
+    # create-ref / contents call fails; a whole SEO + layout batch was lost.
+    assert ppp.GITHUB_OWNER == "Bali-Zero"
+    assert ppp.GITHUB_REPO == "Teman2"
