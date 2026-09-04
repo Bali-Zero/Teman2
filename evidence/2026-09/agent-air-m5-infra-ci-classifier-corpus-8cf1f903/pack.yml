@@ -1,8 +1,124 @@
 task_id: ci-classifier-corpus
 gear: 3
 verdict: PASS
+brief_ref: evidence/2026-09/agent-air-m5-infra-ci-classifier-corpus-8cf1f903/brief.yml
+pii_scan: clean
+council_run: council-journal.jsonl
+lanes:
+  - lane: ci-classifier-corpus-build
+    role: build
+    seat: "conductor (M5, build lane) — implementer session that wrote the
+      extraction-closure test and the fix, and ran every receipt below"
+  - lane: ci-classifier-corpus-review-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: ci-classifier-corpus-review-kimi
+    role: review
+    seat: kimi-code/k3
+dissent:
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      BLOCK. The test shipped to cure a family #2 defect ("exists != armed") was
+      itself armed by no workflow — zero occurrences across every workflow file;
+      it would only ever have run in scripts-tests-sweep.yml, which is
+      `schedule:`-only and `continue-on-error: true` by its own design. The PR
+      body also named a consumer that did not exist.
+    disposition: >-
+      ACCEPTED and cured. Armed in immune-enforcement.yml's `antidotes` job, one
+      of the 12 required contexts — the same file that already documents two
+      earlier lints merged without ever being wired in. This was the third.
+  - seat: codex-gpt-5.6-sol
+    status: PLAUSIBLE
+    objection: >-
+      Demanded negative fixtures for every shell and import form the discovery
+      regex could miss: line continuations, arrays, quoted lists, variable-built
+      lists, importlib/__import__/star-imports.
+    disposition: >-
+      REFUSED, deliberately. None of those forms exists in this repo's two
+      extraction lists today, and a fixture corpus for hypothetical shapes would
+      assert a specification nobody has written. The guard covers the forms in
+      use and now fails loudly on a MIXED list; a third workflow inventing a
+      variable-built extraction list would still pass unnoticed. Recorded as a
+      known hole rather than closed by pretending.
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection: >-
+      PASS-WITH-CONDITIONS, and it raised arming not at all. Its objection was to
+      consequence: re-arming a routing table that has had zero live validation
+      through nine days of fail-open could now UNDER-select, shipping a
+      regression green. Asked for a routing audit before merge.
+    disposition: >-
+      ACCEPTED and measured. Classified the real file list of the 14 most
+      recently merged PRs: 0 under-select. The table errs conservative — 6 of 14
+      fall to run_all on unmapped paths rather than selecting too little. The
+      same audit corrected this PR's own saving estimate downward, to 57%.
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection: >-
+      A matched list mixing scripts/ci/ paths with tokens the guard cannot check
+      was silently filtered to the readable part — the exact silent-narrowing
+      shape the file exists to prevent.
+    disposition: >-
+      ACCEPTED and cured. A list containing one such token must contain only
+      those; a loop with none (e.g. `for f in $(git diff --name-only ...)`) stays
+      correctly out of scope.
+  - seat: team-lead (Opus 5, final on-disk gate)
+    status: CONFIRMED
+    objection: >-
+      Neither seat found the other's defect. Recorded because it is the argument
+      for the cross-family panel itself: a single reviewer, or two of the same
+      family, would have shipped one of the two.
+    disposition: NOTED — no action; both defects cured above.
+plan_ref: "M5 conductor session 2026-09-04 — CI waste investigation: four read-only audits (required contexts, timings, sentinels, merge queue) found tests.yml's classifier corpus dead since #5070."
 spend:
   adversarial_rounds: 2
+receipts:
+  - claim: "tests.yml's classifier has been dead since 2026-08-26, running every job on every PR"
+    cmd: "gh run view <run> --job <job> --log on PR #5662's Change map job (5 PRs sampled: #5642 #5648 #5657 #5662 #5667)"
+    exit: 0
+    ts: "2026-09-04T13:50:00Z"
+    seat: "conductor (M5, build lane)"
+  - claim: "the new test bites on main and absolves the innocent workflow"
+    cmd: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_classifier_extraction_closure.py -q against main's extraction list"
+    exit: 1
+    ts: "2026-09-04T14:05:00Z"
+    seat: "conductor (M5, build lane) — result: 1 failed, 4 passed, failure names tests.yml, security.yml passes"
+  - claim: "main's extraction list breaks the corpus end to end"
+    cmd: "rebuild the runner's temp dir copying only main's five listed files, run scripts/tests/ from it"
+    exit: 2
+    ts: "2026-09-04T14:10:00Z"
+    seat: "conductor (M5, build lane) — result: ERROR during collection (ModuleNotFoundError)"
+  - claim: "the cure restores the corpus end to end"
+    cmd: "rebuild the runner's temp dir copying only the cured six listed files, run scripts/tests/ from it"
+    exit: 0
+    ts: "2026-09-04T14:12:00Z"
+    seat: "conductor (M5, build lane) — result: 36 passed, 40 subtests"
+  - claim: "the extraction regex is not a ReDoS (CodeQL HIGH on the first draft)"
+    cmd: 'python3 -c "import re,time; t=time.time(); re.search(PATTERN, ''for f in '' + ''scripts/ci/a''*3000); print(time.time()-t)"'
+    exit: 0
+    ts: "2026-09-04T14:15:00Z"
+    seat: "conductor (M5, build lane) — result: 36,009-char non-match in 0.0005s, linear"
+  - claim: "codex-gpt-5.6-sol reviewed the branch diff fresh, no access to this pack"
+    cmd: "codex exec --sandbox read-only over the branch diff"
+    exit: 0
+    ts: "2026-09-04T14:35:00Z"
+    seat: "codex-gpt-5.6-sol — result: BLOCK, test armed by no workflow (see dissent below)"
+  - claim: "kimi-code/k3 reviewed the branch diff fresh, no access to this pack"
+    cmd: "kimi -m kimi-code/k3 over the branch diff"
+    exit: 0
+    ts: "2026-09-04T14:41:00Z"
+    seat: "kimi-code/k3 — result: PASS-WITH-CONDITIONS, routing audit + mixed-list rejection demanded (see dissent below)"
+  - claim: "re-arming the classifier does not UNDER-select (kimi's condition), and the recovered saving is 57%, measured"
+    cmd: "classify the real file list of the 14 most recently merged PRs and compare against a path-derived expectation"
+    exit: 0
+    ts: "2026-09-04T14:50:00Z"
+    seat: "conductor (M5, build lane) — result: 0/14 under-select; 8/14 (57%) get real path-scoping, 6/14 stay run_all on unmapped paths"
+  - claim: "a mixed extraction list now fails loudly (kimi's second condition)"
+    cmd: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_classifier_extraction_closure.py -q"
+    exit: 0
+    ts: "2026-09-04T14:58:00Z"
+    seat: "conductor (M5, build lane) — result: 7 passed"
 evidence:
   - claim: "tests.yml's classifier has been dead since 2026-08-26, running every job on every PR"
     probe: "gh run view <run> --job <job> --log on PR #5662's Change map job"
