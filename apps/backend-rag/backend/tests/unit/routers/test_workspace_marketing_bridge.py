@@ -278,9 +278,15 @@ async def test_workspace_publish_uses_named_actor_and_existing_cover_only(
     )
     monkeypatch.setattr(intel_scraper, "publish_staging_item_internal", publish)
 
+    app = FastAPI()
+    pool = object()
+    app.state.db_pool = pool
+    request = _request()
+    request.scope["app"] = app
     result = await intel.workspace_marketing_publish_news(
         "news_1",
         intel.WorkspaceNewsPublishRequest(confirmation="DAMAR_CONFIRMED"),
+        request=request,
     )
 
     assert result["success"] is True
@@ -291,6 +297,7 @@ async def test_workspace_publish_uses_named_actor_and_existing_cover_only(
         actor="workspace-agent:damar",
         allow_generated_cover=False,
         position="latest",
+        pool=pool,
     )
 
 

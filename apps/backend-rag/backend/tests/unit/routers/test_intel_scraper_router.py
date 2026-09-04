@@ -736,6 +736,17 @@ class TestSubmitFromScraper:
 
 
 class TestPublishStagingItem:
+    @staticmethod
+    def _fake_pool() -> tuple[MagicMock, MagicMock]:
+        connection = MagicMock()
+        connection.execute = AsyncMock()
+        acquired = MagicMock()
+        acquired.__aenter__ = AsyncMock(return_value=connection)
+        acquired.__aexit__ = AsyncMock(return_value=False)
+        pool = MagicMock()
+        pool.acquire.return_value = acquired
+        return pool, connection
+
     @pytest.mark.asyncio
     async def test_workspace_cover_is_slug_named_jpeg_before_publish(self, tmp_path) -> None:
         """A workspace PNG reaches the composer as the canonical slug-named JPEG."""
@@ -767,6 +778,7 @@ class TestPublishStagingItem:
             auto_merge_enabled=True,
             image_path=f"/static/news/{generate_slug(title)}.jpg",
         )
+        pool, connection = self._fake_pool()
 
         with (
             patch("backend.app.routers.intel_scraper.staging_service") as mock_staging,
@@ -786,13 +798,84 @@ class TestPublishStagingItem:
             mock_metric.labels.return_value.inc = MagicMock()
 
             result = await publish_staging_item_internal(
-                "news", item_id, actor="test", allow_generated_cover=False
+                "news", item_id, actor="test", allow_generated_cover=False, pool=pool
             )
 
         assert result["success"] is True
         request = mock_publish.await_args.args[0]
         assert request.cover_image_filename == f"{generate_slug(title)}.jpg"
         assert base64.b64decode(request.cover_image_base64).startswith(b"\xff\xd8")
+        calls_by_statement = {
+            call.args[0]: call.args for call in connection.execute.await_args_list
+        }
+        news_args = next(
+            args for statement, args in calls_by_statement.items() if "INSERT INTO news_items" in statement
+        )
+        queue_args = next(
+            args
+            for statement, args in calls_by_statement.items()
+            if "INSERT INTO post_publish_queue" in statement
+        )
+        assert news_args[2] == "example"
+        assert news_args[9] == "/static/news/example.jpg"
+        assert queue_args[1] == "example"
+        # news_items.slug carries no unique constraint on prod: ON CONFLICT (slug)
+        # raises InvalidColumnReferenceError there, so the insert must be guarded
+        # by existence instead (measured 2026-09-04).
+        assert "ON CONFLICT" not in news_args[0]
+        assert "WHERE NOT EXISTS (SELECT 1 FROM news_items WHERE slug = $2)" in news_args[0]
+
+    @pytest.mark.asyncio
+    async def test_internal_publish_without_pool_keeps_returning_successfully(self, tmp_path) -> None:
+        from backend.app.routers.intel_scraper import publish_staging_item_internal
+
+        _unused_pool, connection = self._fake_pool()
+        item_id = "news-without-pool"
+        cover_dir = tmp_path / "covers"
+        cover_dir.mkdir()
+        image_output = BytesIO()
+        Image.new("RGB", (1200, 630), color="navy").save(image_output, format="PNG")
+        (cover_dir / f"{item_id}.png").write_bytes(image_output.getvalue())
+        staging_data = {
+            "title": "Article without a database pool",
+            "content": "Content for the published article.",
+            "category": "business",
+            "relevance_score": 80,
+            "cover_image": f"covers/{item_id}.png",
+        }
+        publish_response = SimpleNamespace(
+            success=True,
+            article_url="https://balizero.com/business/no-pool",
+            commit_sha="abc123",
+            mdx_path="apps/mouth/src/content/articles/business/no-pool.mdx",
+            pull_request_number=1,
+            auto_merge_enabled=True,
+            image_path=None,
+        )
+
+        with (
+            patch("backend.app.routers.intel_scraper.staging_service") as mock_staging,
+            patch("backend.app.routers.intel_scraper.intel_user_actions_total") as mock_metric,
+            patch(
+                "backend.app.routers.intel_scraper.ingest_intel_to_qdrant",
+                new=AsyncMock(return_value=True),
+            ),
+            patch("backend.app.routers.intel_scraper.invalidate_cache", new=AsyncMock()),
+            patch(
+                "backend.app.routers.article_composer.publish_article_internal",
+                new=AsyncMock(return_value=publish_response),
+            ),
+        ):
+            mock_staging.load_staging_item.return_value = staging_data
+            mock_staging.get_staging_dir.return_value = tmp_path
+            mock_metric.labels.return_value.inc = MagicMock()
+
+            result = await publish_staging_item_internal(
+                "news", item_id, actor="test", allow_generated_cover=False, pool=None
+            )
+
+        assert result["success"] is True
+        connection.execute.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_not_found(self) -> None:
