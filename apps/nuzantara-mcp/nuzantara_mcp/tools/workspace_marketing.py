@@ -793,6 +793,14 @@ async def _run_public_subprocess(
     except TimeoutError:
         process.kill()
         await process.wait()
+        # The public message stays constant; the Pro log says WHICH provider and
+        # what budget it blew (a 121 s NotebookLM answer hid behind a 75 s cap on
+        # 2026-09-04 with nothing in the log to say so).
+        logger.warning(
+            "Editorial verification provider %s timed out after %ss",
+            Path(argv[0]).name,
+            timeout_seconds,
+        )
         raise RuntimeError("Editorial verification timed out") from None
     if process.returncode != 0:
         # The exit code alone hid a "Not logged in" for two days (2026-09-01..02).
@@ -876,6 +884,8 @@ def _secrets_file_value(name: str, path: Path | None = None) -> str:
 # The question is therefore built per PART, each under this byte budget.
 _NOTEBOOKLM_QUESTION_BUDGET = 4_000
 _NOTEBOOKLM_MAX_PARTS = 8
+_NOTEBOOKLM_QUERY_TIMEOUT_SECONDS = 240
+_NOTEBOOKLM_CONCURRENCY = 4
 _NOTEBOOKLM_QUESTION_PREAMBLE = (
     "Verify the material legal, regulatory, tax, immigration, company or property "
     "claims in this public-intended Bali Zero article. Identify unsupported, outdated, "
@@ -967,14 +977,30 @@ async def _query_notebooklm(article: dict[str, Any], notebook_id: str) -> str:
             f"{_NOTEBOOKLM_MAX_PARTS} parts of about {_NOTEBOOKLM_QUESTION_BUDGET} "
             "characters"
         )
-    notes: list[str] = []
-    for index, part_text in enumerate(parts, start=1):
+    # A grounded answer from a 250-source notebook took 121 s on Pro (2026-09-04);
+    # the old 75 s cap killed every real query while a 5 s "ping" passed. Parts
+    # run concurrently so the gate's wall time is one answer, not one per part.
+    # `--timeout` is nlm's own per-request budget; it did not stop the 121 s
+    # answer, so the outer cap is what actually bounds the call.
+    env = _verification_env("notebooklm")
+    limiter = asyncio.Semaphore(_NOTEBOOKLM_CONCURRENCY)
+
+    async def query_part(index: int, part_text: str) -> str:
         question = _notebooklm_question(article, part_text, index, len(parts))
-        output = await _run_public_subprocess(
-            [binary, "query", "notebook", notebook_id, question, "--timeout", "60"],
-            timeout_seconds=75,
-            env=_verification_env("notebooklm"),
-        )
+        async with limiter:
+            output = await _run_public_subprocess(
+                [
+                    binary,
+                    "query",
+                    "notebook",
+                    notebook_id,
+                    question,
+                    "--timeout",
+                    str(_NOTEBOOKLM_QUERY_TIMEOUT_SECONDS),
+                ],
+                timeout_seconds=_NOTEBOOKLM_QUERY_TIMEOUT_SECONDS + 30,
+                env=env,
+            )
         try:
             payload = json.loads(output)
         except json.JSONDecodeError:
@@ -984,9 +1010,11 @@ async def _query_notebooklm(article: dict[str, Any], notebook_id: str) -> str:
         cleaned = _clean_text(answer, limit=8_000)
         if not cleaned:
             raise RuntimeError("NotebookLM verifier returned no usable evidence")
-        notes.append(
-            cleaned if len(parts) == 1 else f"[part {index}/{len(parts)}] {cleaned}"
-        )
+        return cleaned if len(parts) == 1 else f"[part {index}/{len(parts)}] {cleaned}"
+
+    notes = await asyncio.gather(
+        *(query_part(index, part_text) for index, part_text in enumerate(parts, start=1))
+    )
     return "\n\n".join(notes)
 
 
