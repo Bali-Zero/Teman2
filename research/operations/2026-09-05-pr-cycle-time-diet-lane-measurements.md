@@ -2,7 +2,7 @@
 date: 2026-09-05
 domain: operations
 client_case: none — internal PR-cycle-time study, raw measurement lane (sibling of 2026-09-05-pr-cycle-time-diet.md)
-adversarial_review: none (raw data lane; the review sits on the main file)
+adversarial_review: codex  # same seat as the main file — its 10 findings were dispositioned against these tables
 sources: gh api (repos/Bali-Zero/Teman2), GraphQL mergeQueue introspection — all fetched live in this session, 2026-09-04/05
 ---
 
