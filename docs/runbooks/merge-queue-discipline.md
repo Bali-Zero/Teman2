@@ -439,7 +439,35 @@ gh api /repos/Bali-Zero/Teman2/rulesets/19779175 \
   --jq '.rules[]|select(.type=="merge_queue")|.parameters'
 ```
 
-### DO NOT flip `ALLGREEN` → `HEADGREEN`
+### `ALLGREEN` → `HEADGREEN`: banned 2026-07-27, OVERRIDDEN by Zero 2026-09-05 — and LIVE
+
+> **Read this box before acting on the section below it.** The ban that follows was a real
+> ruling and its reasoning still holds; it is no longer the standing order. Zero applied
+> `HEADGREEN` on **2026-09-05** as lever L3 of `research/operations/2026-09-05-pr-cycle-time-diet.md`,
+> together with `min_entries_to_merge` 4→1 and `min_entries_to_merge_wait_minutes` 15→2 — the
+> waiting, not the grouping, was the measured cost: a PR arriving with fewer than 3 others sat
+> up to 15 minutes for the batch to fill.
+>
+> **It was applied KNOWING the mechanism is unverified.** GitHub's dedicated page for the
+> setting 404s; only the enum text quoted below is documented. So this is a watched
+> experiment, not a settled ruling, and it carries an explicit exit condition:
+>
+> - **Signal to watch for:** an entry whose REQUIRED checks are RED entering `main` by riding
+>   a green entry in the same group.
+> - **If seen → roll back**, do not debate: `PUT` the pre-change parameters
+>   (`ALLGREEN`, `min_entries_to_merge: 4`, `min_entries_to_merge_wait_minutes: 15`).
+> - **Verify the live value from the RULESET**, never from branch protection — the queue
+>   config lives in ruleset `19779175`, and confirm through the independent GraphQL
+>   `mergeQueue.configuration` view rather than trusting a `PUT` response.
+>
+> Surveillance to date (2026-09-05, this repo's Actions history): **5 queue groups built since
+> the change — PRs #5713–#5717, 2026-09-04 19:57Z–20:02Z — zero non-success conclusions.** No
+> instance of the pathology yet, and a five-entry sample is far too small to close the watch.
+>
+> A session that reads only the heading below will roll back a decision the owner made
+> deliberately, with a rationale, two days later. That is why this box exists.
+
+### The ban, and why it was right in July
 
 It reads like a throughput knob and it is not. In GitHub's own words, `HEADGREEN` is the
 **"Only merge non-failing pull requests" setting DISABLED**: _"pull requests that have failed
