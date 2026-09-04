@@ -73,6 +73,14 @@ dissent:
 plan_ref: "M5 conductor session 2026-09-04 — CI waste investigation: four read-only audits (required contexts, timings, sentinels, merge queue) found tests.yml's classifier corpus dead since #5070."
 spend:
   adversarial_rounds: 2
+receipts_ts_precision: >-
+  The `ts` on each receipt records EXECUTION ORDER within this session, rounded
+  to the minute — it is not a measured wall-clock stamp captured at run time.
+  The two council receipts (14:35Z, 14:41Z) match council-journal.jsonl, which
+  was itself written by hand after reading each seat's output. Stated because a
+  receipt that looks stamped invites the reader to trust a precision nobody
+  recorded, and this pack exists to document a defect that hid behind exactly
+  that kind of unexamined green.
 receipts:
   - claim: "tests.yml's classifier has been dead since 2026-08-26, running every job on every PR"
     cmd: "gh run view <run> --job <job> --log on PR #5662's Change map job (5 PRs sampled: #5642 #5648 #5657 #5662 #5667)"
@@ -80,7 +88,7 @@ receipts:
     ts: "2026-09-04T13:50:00Z"
     seat: "conductor (M5, build lane)"
   - claim: "the new test bites on main and absolves the innocent workflow"
-    cmd: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_classifier_extraction_closure.py -q against main's extraction list"
+    cmd: "python3 -m pytest scripts/tests/test_classifier_extraction_closure.py -q against main's extraction list"
     exit: 1
     ts: "2026-09-04T14:05:00Z"
     seat: "conductor (M5, build lane) — result: 1 failed, 4 passed, failure names tests.yml, security.yml passes"
@@ -115,7 +123,7 @@ receipts:
     ts: "2026-09-04T14:50:00Z"
     seat: "conductor (M5, build lane) — result: 0/14 under-select; 8/14 (57%) get real path-scoping, 6/14 stay run_all on unmapped paths"
   - claim: "a mixed extraction list now fails loudly (kimi's second condition)"
-    cmd: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_classifier_extraction_closure.py -q"
+    cmd: "python3 -m pytest scripts/tests/test_classifier_extraction_closure.py -q"
     exit: 0
     ts: "2026-09-04T14:58:00Z"
     seat: "conductor (M5, build lane) — result: 7 passed"
