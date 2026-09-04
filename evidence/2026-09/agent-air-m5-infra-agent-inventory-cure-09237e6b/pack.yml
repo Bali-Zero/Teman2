@@ -1,0 +1,418 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: >-
+  Handoff mandate from Zero, 2026-09-04: "bonifica completa" of the subagent inventory, opened by
+  the question whether subagents are still coherent in this system after `/agents` reported its
+  wizard removed. The audit's worst finding was not any of the visible ones (HOME-fork shadows,
+  stale DeepSeek routing, 26 HOME-only defs): it was that CI did not look at `.claude/agents/` at
+  all. This PR is the FIRST of three and deliberately the safe half — it arms the guard and
+  changes no agent definition. One concern.
+
+lanes:
+  - lane: agents-ground
+    role: read
+    seat: >-
+      claude-opus-5 (conducting session, M5). Established both premises by measurement on
+      `origin/main` rather than from the mandate text: `git grep -l test_agent_defs_model_pins
+      .github/workflows/` returned nothing, and the sentinel path list carried no
+      `.claude/agents/` entry. Also measured the frontmatter field census across the 20 defs
+      (11 `maxTurns`, 6 `disallowedTools`, 9 `memory`) — the number that decided what the floor
+      is allowed to require.
+  - lane: agents-build
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session, M5). Wrote the two workflow entries and the fleet-wide
+      floor. Mutation-tested every assert in `_assert_agent_def_floor` by replacing it with
+      `assert True` one at a time; found TWO survivors in the first draft and resolved both
+      rather than leaving them (see dissent, self-caught). Restored from a `cp` backup each time,
+      never `git checkout --`, which would have wiped the uncommitted cure.
+  - lane: agents-refute-codex
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol, `codex exec --sandbox read-only -c model_reasoning_effort=xhigh`,
+      cross-family, on fresh context, instructed to CONSTRUCT defeating inputs rather than read
+      and agree. Verdict recorded in journal.jsonl; a timeout or an exit-0 carrying an error is
+      logged as NON-JUDGEMENT and does not count as a review seat.
+  - lane: agents-refute-qwen
+    role: review
+    seat: >-
+      tp1-qwen3.8-max at effort xhigh, cross-family, read-only (cannot execute — asked to reason
+      from the diff text and name a defeating input, a file:line and a consequence). OUTCOME:
+      NON-JUDGEMENT, measured — ZERO bytes on stdout AND stderr, then death on its own wall-clock
+      budget (`tp1_call: timed out`, rc=1, 0 bytes, ~55 minutes). Recorded in council-journal.jsonl
+      with ok:false and NOT counted toward quorum: an empty answer is not a clean one. Second
+      occurrence of this exact shape on this seat with a full-diff prompt — the 2026-09-01
+      floor-workflow-pin pack recorded it at ~20 minutes. Quorum is carried by the two seats that
+      returned findings.
+  - lane: agents-refute-kimi
+    role: review
+    seat: >-
+      kimi-code/k3, cross-family, dispatched against the POST-cure text (the other two seats read
+      the pre-cure diff) so at least one seat grades the bytes that actually ship.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  ONE build lane, so the non-Anthropic BUILD-seat requirement does not bind by its own terms
+  (">= 2 build lanes"); no second build lane was invented to satisfy a rule that does not apply.
+  The cross-family pressure is placed on REVIEW, where it is load-bearing for this change: this
+  PR arms a GUARD, and a guard's failure mode is passing vacuously — which is exactly what a
+  same-family reviewer, sharing the author's idea of what to assert, is worst at catching.
+  Three review seats from three different families were dispatched for that reason.
+
+diff:
+  files: 5
+  net_lines: 278
+  measured_at: >-
+    `git diff --numstat $(git merge-base origin/main HEAD)` in the worktree immediately before the
+    commit — merge-base form, because a two-dot diff would accuse this branch of deleting main's
+    later additions (W102). 3 added / 0 deleted in
+    `.github/workflows/immune-enforcement.yml`; 279 added / 4 deleted in
+    `scripts/tests/test_agent_defs_model_pins.py`. The three evidence files are counted in
+    `files` and carry no code. The test file grew from 144 to 279 added lines across three
+    adversarial rounds — every added line after the first round is a cure or its guilt twin, and
+    each one is named in `dissent` below with the seat that forced it.
+
+residual_risks:
+  - >-
+    THE HEADLINE FINDING OF THIS PR IS ABOUT THE CORPUS, NOT THE GUARD, AND IT IS NOT CURED HERE.
+    7 of the 20 agent definitions — every one of the grunt defs added by PR #5042 — are NOT valid
+    YAML: their description carries a second unquoted colon (`description: GRUNT (Haiku): reads a
+    bounded ...`) and `yaml.safe_load` rejects the whole frontmatter with a ScannerError. They are
+    nonetheless loaded and dispatchable, descriptions rendered intact, which is what proves the
+    harness's reader is line-based rather than a strict YAML parser. Two consequences, both
+    load-bearing for anyone who touches this directory next: (a) a guard that demanded
+    YAML-parseability would be STRICTER THAN THE CONSUMER and would redden 7 working files, so
+    this floor deliberately does not; (b) any future tool that DOES parse these defs as YAML —
+    a doc generator, a registry, a migration script — will silently see 13 defs where there are
+    20. Recorded as a corpus defect for the PR that edits agent defs; forcing it from a test that
+    is not allowed to edit them would be a guard blocking its own cure.
+  - >-
+    THE `\s*`-CROSSES-NEWLINE NARROWING IS PARTLY UNTESTED, and the measurement says so. Every
+    frontmatter regex in the file was narrowed from `\s*` to `[ \t]*` (W119). `_scalar`'s own gap
+    IS covered — reverting it to `\s*` reddens the empty-`tools:` guilt test. `TOOLS_LINE_RE`'s
+    and `ANY_MODEL_PIN_RE`'s narrowing is NOT: reverting `TOOLS_LINE_RE` alone leaves all 21 tests
+    green, because the floor no longer reads through it and the grunt helper that does is reached
+    only after the floor has already rejected an empty `tools:`. The narrowing is kept as
+    defence-in-depth on a latent trap and is explicitly NOT claimed as covered.
+  - >-
+    THE FLOOR IS DELIBERATELY WEAKER THAN THE DOCTRINE IT GUARDS. It does not check that `model:`
+    names a model on the canonical roster, that a def's toolset matches its declared tier, or
+    that `disallowedTools` is present where a def's own description implies it should be. Every
+    one of those fails TODAY on real defs — so shipping them would be a guard that blocks the
+    normalization instead of guarding it (the 2026-09-01 "a guard pinned to the current value
+    forbids the change it should check" shape). This is a scope limit stated as one, not a thing
+    the PR solves. The consequence if it is never followed up: the directory has a floor and no
+    ceiling, and a def pinned to a model that no longer exists still passes.
+  - >-
+    THE TWO SURFACES THIS PR ARMS DISAGREE ABOUT NESTING, and BOTH cross-family seats named it
+    independently. The sentinel is a shell `case` pattern and shell case globs match ACROSS `/`:
+    `.claude/agents/sub/x.md` evaluates RELEVANT=true (verified by running the workflow's own
+    extracted case block on that exact string). The test's `AGENTS_DIR.glob("*.md")` does not
+    recurse. The kimi seat proposed curing it by recursing the test glob; MEASURED, that is
+    exactly wrong — `.claude/agents/wr2-design-architect-resources/` really exists and holds 4
+    `.md` RESOURCE files (`find .claude/agents -mindepth 2 -name '*.md'`), which are not agent
+    definitions and would redden immediately under `rglob`. The two globs answer different
+    questions on purpose: the sentinel asks "did anything under this directory move" (broad is the
+    safe direction) and the floor asks "is every DEF well-formed". The residual is a future def
+    placed in a subdirectory, which the harness — reading the directory flat, as its own agent
+    listing shows — would not dispatch either. Left uncured with the measurement attached, rather
+    than cured in the direction that breaks 4 real files.
+  - >-
+    `assert paths` in `test_every_agent_def_meets_the_floor` is a MUTATION SURVIVOR: removing it
+    reddens nothing, because the real directory is non-empty. It is retained as a guard against a
+    future state where the directory moves or empties, and is explicitly NOT claimed as tested.
+    Recorded rather than deleted because the empty-glob-passes-vacuously shape is the specific way
+    this kind of test dies, and recorded rather than claimed because a survivor presented as
+    coverage is worse than no line at all.
+  - >-
+    THE DANGEROUS HALF OF THE MANDATE IS NOT IN THIS PR. Three agent definitions that exist ONLY
+    in `~/.claude/agents/` are LIVE and are read BY PATH — `competitor-monitor` from
+    `infra/launchagents/wrappers/competitor-monitor-run.sh:24`, `yield-optimizer` from
+    `infra/launchagents/wrappers/yield-optimizer-run.sh:26`, `nb-curator` from
+    `scripts/nb-curator-daily.sh:209`. Promoting them into `.claude/agents/` and deleting the HOME
+    copy breaks the cron; promoting without deleting leaves the cron on the stale copy — scar
+    family #1 exactly. Wrapper and promotion must move in the SAME commit. That is PR-2 and this
+    PR neither performs nor guards against it.
+  - >-
+    Two of the three review seats graded the PRE-CURE diff, because they were dispatched before
+    the author's own mutation pass found the over-match. Their findings are recorded as they came;
+    where a finding was already cured by the time it arrived, that is stated rather than presented
+    as a clean bill. Only the kimi seat read the bytes that ship.
+
+  - >-
+    THE WIRING THIS PR ADDS CAN BE UNDONE BY DELETING THE TEST FILE, AND CI STAYS GREEN. Both
+    cross-family seats found this independently. The step's loop is
+    `if [ -f "$t" ]; then pytest ...; else echo "::notice::skip (absent) $t"; fi` and `fail` stays
+    0 — so a PR that deletes or renames `test_agent_defs_model_pins.py` trips the sentinel, runs
+    the step, skips the missing file and passes. It is INHERITED, not introduced: the same skip
+    covers all ~60 tests in that list and is deliberate ("expected only in the window before its
+    lane's PR merges"). Curing it for one entry means special-casing; curing it for all 60 means
+    breaking the documented merge-window behaviour, which is a different concern and a different
+    PR. Named here and carried as a PENDING-ARMS line rather than smuggled into this diff.
+  - >-
+    THE FLOOR PINS SHAPE, NOT INVENTORY — `git rm .claude/agents/wr2-*.md` passes. `assert paths`
+    only guards the fully-empty case (and is itself a mutation survivor). Both seats raised it;
+    it is a deliberate scope limit, because the alternative — enumerating the 13 non-grunt defs by
+    name, or pinning a count — is a guard pinned to the current value, which forbids the
+    legitimate deletion it cannot distinguish from the illegitimate one. The 7 grunt defs ARE
+    enumerated by name, by the pre-existing tests, because their names are load-bearing on
+    `model_routing_gate.py`. Deleting a def is a visible diff; malforming one was not, and that
+    is the gap this PR closes.
+  - >-
+    `_frontmatter()` IS LAX AND IS NOT TOUCHED HERE. It does `text.split("---", 2)` rather than
+    matching line-anchored delimiters, so (a) a def whose frontmatter value contains a literal
+    `---` truncates mid-frontmatter and reddens a legal file, and (b) a file with no closing
+    delimiter whose BODY contains `---` passes the length check, letting a column-0 `model:` line
+    in the body satisfy the pin. Inherited: the helper predates this PR and the pre-existing grunt
+    tests read through it too. Named, not cured — changing the shared parser is a wider blast
+    radius than this PR's one concern.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      7 of the 20 agent defs are not valid YAML, and the harness loads them anyway — the
+      measurement that decided this floor stays regex-based instead of parsing
+    cmd: >-
+      for each .claude/agents/*.md (excluding README): `_frontmatter(...)` then
+      `yaml.safe_load(...)`, reporting the exception type and the parsed key shape
+    result: >-
+      7 ScannerError ("mapping values are not allowed here"), all 7 the grunt defs, all from the
+      second unquoted colon in `description: GRUNT (Haiku): ...`. 13 parse to a mapping with all
+      four keys as strings. The 7 are simultaneously present and correct in this session's own
+      dispatchable-agent listing, descriptions intact — so a YAML-parsing floor would be stricter
+      than the real consumer and would redden 7 working files.
+    exit: 0
+    ts: 2026-09-04T04:10Z
+    seat: session (M5), on the codex seat's "parse it as YAML" premise
+  - claim: >-
+      The codex seat's HIGH #2 — name/tools/model buried inside a multi-line quoted description —
+      is REAL AGAINST THE REGEXES and REFUTED AS A CONSEQUENCE
+    cmd: >-
+      feed `description: "text\nname: foo\ntools: Read\nmodel: sonnet\nend"` to the floor, then to
+      yaml.safe_load
+    result: >-
+      the floor PASSED it and PyYAML saw a single `description` key — so the finding is correct
+      that regex and YAML disagree. Its stated consequence ("the real loader would reject the def
+      or apply the defaults the guard should prevent") does not follow: the 7 non-YAML defs prove
+      the loader is not a YAML parser, so the loader sees the same four keys the regexes do. The
+      attack describes a divergence from a parser this system does not use.
+    exit: 0
+    ts: 2026-09-04T04:12Z
+    seat: session (M5), refuting a cross-family HIGH
+  - claim: >-
+      The two W119-class holes the codex seat named are real, and both were reproduced before
+      being cured
+    cmd: >-
+      `TOOLS_LINE_RE.search("...tools:\nmodel: sonnet\n")` and the floor against
+      `tools: # no tools` / `model: # no model`
+    result: >-
+      the first captured 'model: sonnet' as the tools VALUE — `\s*` consumed the newline and
+      `(.+)` took the next line. The second PASSED the floor entirely. Cured: every gap narrowed
+      to `[ \t]*`, and a comment-only value now reads as absent. Reverting `_scalar`'s gap to
+      `\s*` reddens exactly the empty-`tools:` guilt test.
+    exit: 0
+    ts: 2026-09-04T04:05Z
+    seat: session (M5), on the codex seat's findings
+  - claim: >-
+      The three holes the kimi seat named are real, reproduced, and cured — nullish scalars,
+      duplicated keys, and a trailing YAML comment
+    cmd: >-
+      floor against `model: ~` / `null` / `""` / `''` for each of name/tools/model; then a
+      frontmatter declaring `name:` twice; then `name: my-agent # dispatcher name`
+    result: >-
+      all the nullish spellings PASSED before the cure (they satisfy `\S`). The duplicated key
+      PASSED, returning the FIRST value while a YAML parser returns the LAST — so the def would
+      have loaded under the other identifier. The trailing comment FAILED before the cure, a false
+      red on legal YAML. After: nullish and duplicate are refused, the comment is stripped from
+      the short routing scalars only (never from `description`, whose prose may contain a `#`), and
+      each has its own guilt or innocence test.
+    exit: 0
+    ts: 2026-09-04T04:30Z
+    seat: session (M5), on the kimi seat's findings
+  - claim: >-
+      Recursing the test glob to match the sentinel — the kimi seat's proposed cure for the
+      nesting asymmetry — would break 4 real files, so the asymmetry is kept deliberately
+    cmd: "find .claude/agents -mindepth 2 -name '*.md' ; ls .claude/agents/*.md | grep -vc README"
+    result: >-
+      `.claude/agents/wr2-design-architect-resources/` holds 4 `.md` RESOURCE files (not defs);
+      20 top-level non-README defs (the kimi seat's count of 19 is wrong). `rglob` would apply the
+      def floor to the 4 resources and redden them.
+    exit: 0
+    ts: 2026-09-04T04:35Z
+    seat: session (M5), refuting a cross-family remedy
+  - claim: >-
+      Both premises are real on origin/main and not a reading of the mandate — the test was
+      invoked by no workflow, and the directory was in no sentinel list
+    cmd: >-
+      git grep -l test_agent_defs_model_pins origin/main -- .github/workflows/ ;
+      git show origin/main:.github/workflows/immune-enforcement.yml | grep -c '\.claude/agents'
+    result: "no workflow named the test; the sentinel grep returned 0."
+    exit: 1
+    ts: 2026-09-04T01:30Z
+    seat: session (M5)
+  - claim: >-
+      EVERY assert in the shipped floor is independently load-bearing — measured by breaking each
+      one in the SOURCE and re-running, not by reading the tests and agreeing with them
+    cmd: >-
+      for each assert: replace it with `assert True` in
+      scripts/tests/test_agent_defs_model_pins.py, then
+      `python3 -m pytest scripts/tests/test_agent_defs_model_pins.py -q`; restore from a `cp`
+      backup after each
+    result: >-
+      baseline 16 passed. description assert -> 1 failed / tools assert -> 1 failed / model-pin
+      assert -> 1 failed / name==filename assert -> 2 failed / the quote-strip -> 1 failed.
+      Restored: 16 passed. NONE of the five reddens the whole suite, which is the discriminating
+      signature — a control where every assertion goes red is indistinguishable from a broken
+      test.
+    exit: 1
+    ts: 2026-09-04T03:05Z
+    seat: session (M5)
+  - claim: >-
+      The FIRST draft of this floor contained two asserts that could not fail, and the mutation
+      pass is what found them — this is the receipt for the cure, not for the original
+    cmd: "same mutation loop, run against the pre-cure file"
+    result: >-
+      `name:`-presence assert -> 13 passed (SURVIVOR: the name==filename assert fires first on a
+      nameless def, so the presence line was decorative). `description:` assert -> 13 passed
+      (SURVIVOR: every real def carries one and no guilt test existed). Both resolved: the
+      presence assert deleted as subsumed and its case folded into the equality message; the
+      description assert given `test_guilt_a_def_with_no_description_fails_the_floor`. Re-measured
+      after: both now redden exactly one test.
+    exit: 0
+    ts: 2026-09-04T02:55Z
+    seat: session (M5)
+  - claim: >-
+      The `name:`/filename check OVER-MATCHED legal YAML before the cure, and the cure
+      discriminates in both directions
+    cmd: >-
+      python3 -c on the pre-cure regex against `name: "foo"` / `name: 'foo'` / `name: foo   ` ;
+      then pytest -k quoted_name after the cure ; then mutate the quote-strip away and re-run
+    result: >-
+      before: `name: "foo"` captured '\"foo\"' and compared False against stem 'foo' — a legal
+      scalar rejected (superscar #3). After: all three spellings pass, and removing the
+      quote-strip reddens exactly `test_innocence_a_quoted_name_matching_the_filename_passes_the_floor`
+      while leaving the three guilt twins green.
+    exit: 0
+    ts: 2026-09-04T03:05Z
+    seat: session (M5)
+  - claim: >-
+      The sentinel entry actually matches, and it matches BECAUSE of the new line and not because
+      the filter says true to everything — proved by executing the workflow's OWN case block, not
+      by reading the pattern
+    cmd: >-
+      extract `case "$f" in` .. `esac` out of .github/workflows/immune-enforcement.yml into a
+      shell script, run it on real path strings
+    result: >-
+      `.claude/agents/log-triage.md` -> RELEVANT=true · `.claude/agents/README.md` -> true ·
+      `scripts/tests/test_agent_defs_model_pins.py` -> true · `.claude/agents/nested/deep.md` ->
+      true (shell case globs cross `/` — see residual_risks) · `apps/mouth/src/x.ts` ->
+      RELEVANT=false · `.claude/agents/foo.txt` -> RELEVANT=false. The two false results are the
+      control.
+    exit: 0
+    ts: 2026-09-04T03:20Z
+    seat: session (M5)
+  - claim: >-
+      The guard goes red on a REAL violation in a REAL def, not only on a tmp_path fixture
+    cmd: >-
+      remove the `model: haiku` line from .claude/agents/log-triage.md, run the suite, restore
+      from a `cp` backup (NOT `git checkout --`, which would have wiped the uncommitted cure)
+    result: "3 tests FAILED including test_every_agent_def_meets_the_floor; after restore, all green."
+    exit: 1
+    ts: 2026-09-04T01:44Z
+    seat: session (M5)
+  - claim: >-
+      This PR introduces no new actionlint finding on the workflow it edits — measured against the
+      origin/main text of the same file, not against a memory of it
+    cmd: >-
+      actionlint on the HEAD file, then on `git show origin/main:.github/workflows/immune-enforcement.yml`
+      written to a scratch tree, counting `^path:line:col:` lines in each
+    result: "HEAD 6, origin/main 6. Identical count; none introduced."
+    exit: 0
+    ts: 2026-09-04T03:35Z
+    seat: session (M5)
+
+dissent:
+  - seat: codex-gpt-5.6-sol (cross-family, read-only sandbox, xhigh)
+    status: CONFIRMED
+    objection: >-
+      "`\s*` attraversa il newline": given `tools:` followed by `model: sonnet`, the pre-existing
+      `^tools\s*:\s*(.+)$` consumed the newline and captured 'model: sonnet' as the TOOLS value —
+      so a def with an empty toolset key, which inherits the entire harness toolset, landed green
+      on the exact assert written to prevent that. Reproduced verbatim before curing. Same seat,
+      same class: `tools: # no tools` satisfied every presence regex while supplying nothing.
+      CURED — every gap narrowed to `[ \t]*`, comment-only values read as absent, with a guilt
+      test for each. This is cicatrix W119, family #3, found by a seat that had never seen the
+      scar file.
+  - seat: codex-gpt-5.6-sol (cross-family, read-only sandbox, xhigh)
+    status: RETRACTED
+    objection: >-
+      Its HIGH #2: name/tools/model buried inside a multi-line quoted `description` pass every
+      regex while YAML sees a single key, "so the real loader may reject the definition or apply
+      the defaults the guard should prevent". The DIVERGENCE is real and reproduced. The
+      CONSEQUENCE is not: measured the same turn, 7 of the 20 defs are not valid YAML at all and
+      are loaded and dispatchable anyway, which means the consumer is line-based and sees exactly
+      what the regexes see. Retracted on the evidence, and the evidence is recorded in the source
+      as the reason this file does NOT switch to `yaml.safe_load` — a future reader will have the
+      same idea and deserves the measurement rather than the conclusion.
+  - seat: kimi-code/k3 (cross-family, on the post-first-cure text)
+    status: CONFIRMED
+    objection: >-
+      Three holes the same-family author and the first cross-family seat both missed. (1) NULLISH
+      values: `model: ~`, `model: null`, `model: ""` and `model: ''` all satisfy `\S`, so the pin
+      assert passed on a def carrying no pin — and `tools: ~` likewise, which is the broadest
+      possible surface. (2) DUPLICATED KEY: a line scanner takes the FIRST `name:` and a YAML
+      parser the LAST, so `name: on-disk-name` … `name: something-else` matched the filename and
+      would load as the other identifier — precisely the failure the floor claims to catch. (3)
+      TRAILING COMMENT: `name: my-agent # dispatcher name` was read as the whole six-word string
+      and reddened a legal file — the over-match twin of the quoted-name cure, one YAML feature
+      further out. All three cured with guilt or innocence tests; the duplicate key is REFUSED
+      rather than resolved, because this guard has no standing to decide which occurrence the
+      harness meant.
+  - seat: kimi-code/k3 (cross-family)
+    status: RETRACTED
+    objection: >-
+      Proposed cure for the sentinel/test nesting asymmetry: "recurse the test glob to match the
+      sentinel's reach". Measured and rejected — `.claude/agents/wr2-design-architect-resources/`
+      holds 4 real `.md` RESOURCE files that are not agent definitions, so `rglob` would apply the
+      def floor to them and redden four working files. The asymmetry is kept, with the measurement
+      recorded, because the two globs are answering different questions. Same seat's def count
+      (19) is also wrong: 20 top-level non-README defs, counted.
+  - seat: session (M5), self-caught during BUILD
+    status: CONFIRMED
+    objection: >-
+      The first draft asserted `name:` PRESENCE on a line of its own, above the `name`/filename
+      equality assert. Mutation proved it dead: deleting it reddened nothing, because
+      `assert declared and declared.group(1) == stem` already fails on a nameless def. A
+      decorative assert is not harmless — it reads to the next maintainer as a covered property,
+      so a later refactor that removes the equality check looks safe. Resolved by DELETING the
+      presence line and folding its case into the equality assert's message ("a missing `name:`
+      line reads as None here"), then adding
+      `test_guilt_a_def_with_no_name_line_at_all_fails_the_floor` so the merged behaviour has its
+      own guilt twin.
+  - seat: session (M5), self-caught during BUILD
+    status: CONFIRMED
+    objection: >-
+      The `description:` assert was the second mutation survivor: every one of the 20 real defs
+      carries a description, so removing the assert reddened nothing and no guilt test reached it.
+      Cured with a guilt fixture rather than by deleting the assert, because the property is real
+      — the dispatcher matches a mandate against the description, so a def without one is
+      invisible to routing rather than merely untidy.
+  - seat: session (M5), on the shape of the check
+    status: CONFIRMED
+    objection: >-
+      `name: "foo"` is legal YAML naming `foo`, and the draft's `(\S+)` capture compared '"foo"'
+      against 'foo' and REJECTED it — a false BLOCK on a shape a future def is entitled to use
+      (cicatrix-superscar #3, guard-over-match). Cured by capturing the whole value and stripping
+      one layer of matching quotes, with an innocence test over all three spellings. Deliberately
+      only ONE layer and only matching quotes: a looser strip would start accepting values that
+      are not the name.
+  - seat: session (M5), on scope
+    status: RETRACTED
+    objection: >-
+      The obvious stronger floor is to require `maxTurns`, `disallowedTools` and `memory` on every
+      def — which is what the fleet's routing doctrine actually wants. Rejected after measuring
+      the census: 11, 6 and 9 of 20 carry them. Requiring them lands the PR red on files it does
+      not touch and, worse, makes the guard an obstacle to the very normalization it exists to
+      protect. The safe direction here is a floor that only a REGRESSION can trip, with the
+      ceiling left to a follow-up that also does the normalizing.
