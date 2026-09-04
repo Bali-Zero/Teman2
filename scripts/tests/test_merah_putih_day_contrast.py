@@ -744,11 +744,497 @@ def test_a_pr_that_narrows_its_own_list_cannot_disarm_the_sentinel(tmp_path) -> 
 
 
 def test_the_sentinel_reads_the_base_copy_via_git_show() -> None:
+    """The static half of the base-copy guarantee; the executable half is
+    `test_a_pr_that_narrows_its_own_list_cannot_disarm_the_sentinel`.
+
+    This used to assert the literal `"git", "show"`, which pinned the SPELLING
+    rather than the mechanism: wrapping the same call in a `_git(*args)` helper
+    — as the fail-closed cure did — broke it while the sentinel still read the
+    base copy exactly as before. Rewritten to name the two things that actually
+    have to be true (a `show` of the base ref's own copy of this workflow, at
+    `BASE_SHA`), so a helper rename passes and REMOVING the base read fails.
+    """
     body = (
         WORKFLOW.read_text(encoding="utf-8")
         .split("Did a guarded surface change?", 1)[1]
         .split("- name:", 1)[0]
     )
-    assert '"git", "show"' in body and 'BASE_SHA' in body, (
+    assert '"show"' in body and "BASE_SHA" in body, (
         "the sentinel no longer reads the base ref's copy of its pattern list"
+    )
+    assert "base_sha}:{WORKFLOW}" in body, (
+        "the sentinel no longer addresses the BASE ref's copy of THIS workflow — "
+        "if it now shows some other path or ref, the PR-controlled head copy is "
+        "the only list in play"
+    )
+
+
+# ---------------------------------------------------------------------------
+# The two conditions the Gear-3 gate attached to #5614's PASS-WITH-CONDITIONS.
+# Both were prose in that PR's body and prose is not in force, so each is
+# asserted here — and the sentinel one is EXECUTED rather than grepped, because
+# a fail-closed path that is only described is exactly the shape that fails open
+# the first time anyone reads it.
+# ---------------------------------------------------------------------------
+
+
+def test_the_concurrency_group_never_cancels_a_merge_group_run() -> None:
+    """Condition 1, and its stated reason is FALSE — recorded here instead of
+    repeated. Measured 2026-09-04: merge-queue refs are
+    `gh-readonly-queue/main/pr-<N>-<sha>`, unique per entry, so with `github.ref`
+    in the group key no two entries share a group and the queue's next entry
+    cannot cancel the one ahead. Both council seats confirmed the measurement
+    independently; `security.yml` had already refuted the same collision on
+    2026-07-27.
+
+    What this test pins is therefore DEFENCE IN DEPTH, and it is worth pinning:
+    a cancelled required context reports nothing at all, so if the group key
+    ever loses `github.ref` or GitHub re-dispatches a merge_group ref, a bare
+    `true` would tear the entry out of the queue rather than delay it.
+    Cancelling stays right on `pull_request`, where the ref is the PR's own and
+    a superseded run is genuinely dead work.
+    """
+    import yaml
+
+    doc = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    concurrency = doc.get("concurrency")
+    assert concurrency, f"{WORKFLOW.name}: the concurrency block is gone"
+
+    cancel = str(concurrency.get("cancel-in-progress", "")).strip()
+    assert cancel not in {"True", "true"}, (
+        f"{WORKFLOW.name}: `cancel-in-progress` is unconditionally true again. On "
+        "a merge_group event the group key is the queue's own ref, so this "
+        "cancels the entry ahead of this one and a cancelled required context "
+        "never reports."
+    )
+    assert "github.event_name" in cancel and "merge_group" in cancel, (
+        f"{WORKFLOW.name}: `cancel-in-progress` is {cancel!r} — it must be an "
+        "expression that turns cancelling OFF for merge_group specifically, not "
+        "a blanket value."
+    )
+
+
+def test_the_sentinel_runs_the_guard_when_the_base_ref_cannot_be_read(tmp_path) -> None:
+    """Condition 2, guilt. An unreachable base sha (shallow checkout, unfetched
+    ref) means the trust boundary — reading the pattern list from the copy the PR
+    cannot edit — could not be applied. The sentinel must then run the WHOLE
+    guard, not fall back to the head-only list it just declined to trust.
+
+    Guilt, not innocence: the change below touches nothing guarded, so the
+    head-only reading would print `false` and skip the corpus. Fail-closed is
+    the only way `true` comes out of this.
+    """
+    res = _run_sentinel(
+        tmp_path,
+        ["README.md"],
+        BASE_SHA="0000000000000000000000000000000000000000",
+    )
+    assert res.returncode == 0, res.stderr
+    assert res.stdout == "true\n", (
+        "the sentinel could not read the base ref and still declared a no-op — "
+        "it failed OPEN. An unreadable base means the PR-controlled head copy is "
+        f"the only list available, which is precisely what must not be trusted. "
+        f"stdout={res.stdout!r} stderr={res.stderr!r}"
+    )
+
+
+def test_a_pr_that_introduces_this_workflow_is_not_forced_through_the_guard(tmp_path) -> None:
+    """Condition 2, innocence. "The base has no copy of this file" is NOT the
+    same event as "the base cannot be read", and conflating them would make the
+    fail-closed path fire on every PR that adds a workflow — the guard would run
+    its full corpus on unrelated changes forever.
+
+    The base ref used here is a REAL commit from this repo's history: the parent
+    of the commit that introduced this workflow, which by construction does not
+    contain it. The first draft fabricated an empty commit with `git commit-tree`
+    instead, and that exits 128 on a CI runner with no committer identity
+    configured — a test that depends on git plumbing the environment need not
+    provide. History is already there and needs no identity to read.
+    """
+    import subprocess
+
+    def _git(*args):
+        return subprocess.run(["git", *args], capture_output=True, text=True, cwd=REPO)
+
+    introducing = _git("rev-list", "--max-parents=1", "HEAD", "--", str(WORKFLOW.relative_to(REPO)))
+    revs = [r for r in introducing.stdout.split() if r]
+    if not revs:
+        pytest.skip("no single-parent commit touches this workflow — cannot locate a base without it")
+    before = _git("rev-parse", f"{revs[-1]}^")
+    if before.returncode != 0:
+        pytest.skip("the introducing commit is a root commit — no parent to use as a base")
+    base = before.stdout.strip()
+
+    # The precondition this test rests on, asserted rather than assumed: that
+    # base really must NOT contain the workflow, or the case under test is not
+    # the case being exercised and a green result would mean nothing.
+    assert _git("cat-file", "-e", f"{base}:{WORKFLOW.relative_to(REPO)}").returncode != 0, (
+        f"expected {base[:12]} to predate this workflow, but it contains it — "
+        "the innocence case is not being exercised"
+    )
+
+    res = _run_sentinel(tmp_path, ["README.md"], BASE_SHA=base)
+    assert res.returncode == 0, res.stderr
+    assert res.stdout == "false\n", (
+        "a reachable base that simply does not contain this workflow was treated "
+        "as an unreadable base — the fail-closed path is over-matching, and every "
+        "PR introducing a workflow now runs the full corpus. "
+        f"stdout={res.stdout!r} stderr={res.stderr!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# THE SHELL STEP, EXECUTED. Everything above runs the PYTHON SNIPPET the step
+# invokes; nothing above ran the step. That gap hid a real defect through a
+# whole Gear-3 round: the snippet's fail-closed branch was correct and could
+# not be reached, because the step's own `set -euo pipefail` plus a bare
+# `git diff "$BASE_SHA"...HEAD` killed the step first, on exactly the
+# unreachable base the branch exists for (codex-gpt-5.6-sol, BLOCK finding #1,
+# 2026-09-04). A fail-closed path is worth precisely as much as the layer that
+# touches the untrusted input FIRST, so these tests drive that layer.
+# ---------------------------------------------------------------------------
+
+
+def _sentinel_step_script(event_name: str, base_sha: str) -> str:
+    """The step's `run:` body, dedented, with the two `${{ }}` expressions the
+    runner would have substituted already substituted. Nothing else is
+    rewritten — the point is to execute the shell that actually ships."""
+    import textwrap
+
+    text = WORKFLOW.read_text(encoding="utf-8")
+    body = text.split("Did a guarded surface change?", 1)[1].split("\n      - name:", 1)[0]
+    script = body.split("run: |\n", 1)[1]
+    script = textwrap.dedent(script)
+    script = script.replace("${{ github.event_name }}", event_name)
+    return script.replace("${{ github.event.pull_request.base.sha }}", base_sha)
+
+
+def _run_sentinel_step(tmp_path, *, base_sha: str, changed: list[str], event_name: str = "pull_request"):
+    """Executes the step in a throwaway git repo carrying a copy of this
+    workflow, and returns (CompletedProcess, parsed $GITHUB_OUTPUT dict).
+
+    A temp repo rather than REPO: the step writes to $GITHUB_OUTPUT and diffs
+    two refs it must be able to construct, and a test that needs commits of its
+    own must never make them in the checkout it is running from. Identity is
+    passed with `-c` for the same reason the innocence test above refuses
+    `commit-tree`: a CI runner has no committer configured and a test may not
+    require one.
+    """
+    import os
+    import subprocess
+
+    repo = tmp_path / "repo"
+    (repo / ".github/workflows").mkdir(parents=True)
+    (repo / ".github/workflows/merah-putih-day-contrast.yml").write_text(
+        WORKFLOW.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+
+    def git(*args, **kw):
+        return subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
+            capture_output=True, text=True, cwd=repo, check=True, **kw
+        )
+
+    git("init", "-q", "-b", "main")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    head_base = git("rev-parse", "HEAD").stdout.strip()
+    for name in changed:
+        p = repo / name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("changed\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "head")
+
+    out_file = tmp_path / "gh_output"
+    out_file.write_text("", encoding="utf-8")
+    res = subprocess.run(
+        ["bash", "-c", _sentinel_step_script(event_name, base_sha or head_base)],
+        capture_output=True, text=True, cwd=repo, check=False,
+        env={**os.environ, "GITHUB_OUTPUT": str(out_file)},
+    )
+    parsed = dict(
+        line.split("=", 1) for line in out_file.read_text(encoding="utf-8").splitlines() if "=" in line
+    )
+    return res, parsed
+
+
+def test_the_step_itself_runs_the_guard_when_the_base_ref_is_unreachable(tmp_path) -> None:
+    """Guilt, at the layer that fails first. With `set -euo pipefail` and an
+    unguarded change, the ONLY way `run=true` reaches $GITHUB_OUTPUT is the
+    step's own fail-closed branch firing before `git diff` can kill it."""
+    res, out = _run_sentinel_step(
+        tmp_path,
+        base_sha="0" * 40,
+        changed=["README.md"],
+    )
+    assert res.returncode == 0, (
+        "the step died on an unreachable base instead of failing closed — the "
+        f"snippet's fail-closed branch is unreachable. stderr={res.stderr!r}"
+    )
+    assert out.get("run") == "true", (
+        "an unreachable base did not make the step run the whole guard: "
+        f"$GITHUB_OUTPUT={out!r} stdout={res.stdout!r} stderr={res.stderr!r}"
+    )
+    assert "not reachable" in res.stdout, (
+        "the step failed closed for a reason other than the unreachable base — "
+        f"this branch may be dead while another covers for it. stdout={res.stdout!r}"
+    )
+
+
+def _shell_runs_a_heredoc_inside_a_substitution() -> bool:
+    """CAPABILITY, probed by doing the dangerous thing — not a version number,
+    and not `bash -n`.
+
+    The step nests a `<<'PY'` heredoc inside `$( )`. bash 3.2, still
+    /bin/bash on macOS, does NOT skip the heredoc body while scanning for the
+    closing `)`: an apostrophe in that body opens a quote, the substitution
+    swallows the rest of the script, and the python is executed as shell.
+    Measured here, and the measurement corrected this probe twice —
+    `bash -n` exits 0 on the real step (so a syntax check reports the shell
+    fit and is wrong), and a canary WITHOUT an apostrophe runs clean on 3.2
+    (so the shape alone is not the hazard). The canary below therefore carries
+    the hazard: a heredoc inside `$( )` whose body holds an apostrophe, which
+    is what every comment in the sentinel snippet holds.
+
+    Both council seats rejected the `bash --version` check this replaces — one
+    because `bash --version` reads whatever PATH resolves first, so the same
+    checkout proved innocence on a Mac with Homebrew bash and skipped on one
+    without ("a guard property that evaporates based on PATH order is not
+    pinned; it is weather"), the other because the stated parse limitation is
+    not what `bash -n` reports.
+    """
+    import subprocess
+
+    canary = (
+        "V=\"$(python3 - <<'PY'\n"
+        "# a comment with the PR's apostrophe in it\n"
+        'print("ok")\n'
+        "PY\n"
+        ")\"\n"
+        'printf %s "$V"\n'
+    )
+    res = subprocess.run(["bash", "-c", canary], capture_output=True, text=True)
+    return res.returncode == 0 and res.stdout == "ok"
+
+
+def test_the_step_still_declares_a_no_op_when_the_base_is_readable(tmp_path) -> None:
+    """Innocence for the same branch: a base the step CAN read, and a change
+    touching nothing guarded, must still produce `run=false`. Without this the
+    cure above would be indistinguishable from hardcoding `true`.
+
+    Skipped only where the shell cannot run the shape the step ships — probed
+    directly (see `_shell_runs_a_heredoc_inside_a_substitution`), never inferred
+    from `bash --version`. The guilt tests need no such guard: their fail-closed
+    branches exit before the heredoc line is reached, which is the whole reason
+    they are the branches under test.
+    """
+    if not _shell_runs_a_heredoc_inside_a_substitution():
+        pytest.skip(
+            "this shell mangles a heredoc nested inside $( ) at run time, which "
+            "is the exact shape the step ships — probed, not assumed from a "
+            "version string. CI's ubuntu runner passes the probe and runs this."
+        )
+    res, out = _run_sentinel_step(tmp_path, base_sha="", changed=["README.md"])
+    assert res.returncode == 0, res.stderr
+    assert out.get("run") == "false", (
+        f"a readable base and an unguarded change did not yield a no-op: {out!r} "
+        f"stderr={res.stderr!r}"
+    )
+
+
+def _run_case_fragment(run_value: str):
+    """Executes the step's REAL `case "$RUN" ... esac` fragment with `$RUN`
+    preset and `fail_closed` stubbed, and reports whether it fired.
+
+    The previous version of this test was substring surgery — it searched the
+    step body for `case "$RUN"` and `fail_closed` and never made the rejection
+    path run. Both council seats named the same hole from opposite sides: codex
+    ("it passes if the valid arm becomes `true|false|*`, because it merely
+    searches for the literal"), kimi ("a `# case \"$RUN\"` comment above a
+    validation-free step satisfies len(guard) == 2"). Lifting the fragment out
+    and DRIVING it closes both: a widened arm accepts the garbage below and the
+    test goes red, and a commented-out case never matches the extraction.
+
+    Portable to bash 3.2 on purpose — the fragment carries no heredoc, so this
+    test runs everywhere rather than skipping where the full step cannot.
+    """
+    import subprocess
+
+    script = _sentinel_step_script("pull_request", "deadbeef")
+    fragment = 'case "$RUN"' + script.split('case "$RUN"', 1)[1].split("esac", 1)[0] + "esac"
+    harness = (
+        "fail_closed() { echo FAIL_CLOSED_FIRED; exit 0; }\n"
+        f"RUN={run_value!r}\n" .replace("'", '"')
+        + fragment
+        + '\necho ACCEPTED\n'
+    )
+    return subprocess.run(["bash", "-c", harness], capture_output=True, text=True)
+
+
+@pytest.mark.parametrize("verdict", ["true", "false"])
+def test_the_verdict_gate_lets_the_two_real_verdicts_through(verdict: str) -> None:
+    """Innocence, executed: the words the sentinel legitimately prints must not
+    trip the fail-closed arm, or the guard runs its full corpus on every PR."""
+    res = _run_case_fragment(verdict)
+    assert "ACCEPTED" in res.stdout and "FAIL_CLOSED_FIRED" not in res.stdout, (
+        f"the verdict gate rejected the legitimate word {verdict!r}: {res.stdout!r} {res.stderr!r}"
+    )
+
+
+@pytest.mark.parametrize("garbage", ["", "maybe", "true false", "TRUE", " true"])
+def test_the_verdict_gate_fails_closed_on_anything_that_is_not_a_verdict(garbage: str) -> None:
+    """Guilt, executed. The empty string is the one that mattered: an exit-0
+    with no stdout writes the line `run=` and both downstream steps, comparing
+    it against 'true', skip — a disarmed guard with no red anywhere."""
+    res = _run_case_fragment(garbage)
+    assert "FAIL_CLOSED_FIRED" in res.stdout, (
+        f"the verdict gate accepted {garbage!r} as a verdict — it would reach "
+        f"$GITHUB_OUTPUT verbatim: {res.stdout!r} {res.stderr!r}"
+    )
+
+
+def test_the_verdict_is_validated_before_it_is_published() -> None:
+    """Ordering, which no amount of driving the fragment can show: a validation
+    that runs AFTER the write cannot stop what is already published. Structural
+    by necessity and only about position, never about wording."""
+    script = _sentinel_step_script("pull_request", "deadbeef")
+    assert 'case "$RUN"' in script, "the step no longer validates the verdict word at all"
+    before_gate = script.split('case "$RUN"', 1)[0]
+    assert 'echo "run=$RUN"' not in before_gate, (
+        "the verdict reaches $GITHUB_OUTPUT before the gate that judges it"
+    )
+
+
+def test_the_step_fails_closed_when_the_base_is_reachable_but_undiffable(tmp_path) -> None:
+    """The SECOND shell fail-closed branch, which the unreachable-base test
+    cannot reach (codex, round 2: "only the first shell failure branch is
+    pinned ... the second `fail_closed` call can regress independently without
+    detection").
+
+    Two disconnected root commits: the base sha IS reachable, so the first
+    probe passes, and `git diff BASE...HEAD` then fails for want of a merge
+    base. Nothing guarded changed, so head-only reasoning would say `false`;
+    only the diff guard produces `true`.
+    """
+    import os
+    import subprocess
+
+    repo = tmp_path / "split"
+    (repo / ".github/workflows").mkdir(parents=True)
+    (repo / ".github/workflows/merah-putih-day-contrast.yml").write_text(
+        WORKFLOW.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+
+    def git(*args):
+        return subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
+            capture_output=True, text=True, cwd=repo, check=True,
+        )
+
+    git("init", "-q", "-b", "main")
+    git("add", "-A")
+    git("commit", "-qm", "head-line")
+    git("checkout", "-q", "--orphan", "other")
+    (repo / "README.md").write_text("unrelated\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "orphan-line")
+    orphan = git("rev-parse", "HEAD").stdout.strip()
+    git("checkout", "-q", "main")
+
+    # The precondition, asserted rather than assumed: these two really have no
+    # merge base, so the diff really must fail.
+    probe = subprocess.run(["git", "merge-base", orphan, "HEAD"], capture_output=True, text=True, cwd=repo)
+    assert probe.returncode != 0, "the two histories share a merge base — the case under test is not being exercised"
+
+    out_file = tmp_path / "gh_output_split"
+    out_file.write_text("", encoding="utf-8")
+    res = subprocess.run(
+        ["bash", "-c", _sentinel_step_script("pull_request", orphan)],
+        capture_output=True, text=True, cwd=repo, check=False,
+        env={**os.environ, "GITHUB_OUTPUT": str(out_file)},
+    )
+    parsed = dict(
+        line.split("=", 1) for line in out_file.read_text(encoding="utf-8").splitlines() if "=" in line
+    )
+    assert res.returncode == 0, (
+        f"the step died on an undiffable base instead of failing closed: {res.stderr!r}"
+    )
+    assert parsed.get("run") == "true", (
+        "a base that could not be diffed did not make the step run the whole "
+        f"guard: {parsed!r} stderr={res.stderr!r}"
+    )
+    # WHICH branch fired, not merely that one did (codex, round 3: "a
+    # regression making the first fail_closed fire incorrectly masks a dead
+    # second branch"). The two branches print different reasons, so the reason
+    # is the witness.
+    assert "could not be taken" in res.stdout, (
+        "the step failed closed for the WRONG reason — this fixture is meant to "
+        "reach the diff guard, and a reachability failure here would mean the "
+        f"second branch is dead and unmeasured. stdout={res.stdout!r}"
+    )
+    assert "not reachable" not in res.stdout, (
+        "the reachability probe rejected a base this fixture built as reachable "
+        f"— the case under test is not being exercised. stdout={res.stdout!r}"
+    )
+
+
+def test_the_sentinel_fails_closed_when_the_base_tree_cannot_be_listed(tmp_path) -> None:
+    """The third outcome of the ls-tree probe, and the only one no ordinary
+    repository can produce: `ls-tree` itself failing. Forced with a `git` shim
+    early on PATH that fails ONLY `ls-tree` and delegates everything else to
+    the real binary — so the reachability probe still passes and this test
+    isolates one branch rather than the whole block.
+
+    What it does NOT pin, and the pack records as an open finding: that under
+    `filter: blob:none` a real promisor-fetch failure surfaces on `cat-file`
+    and not on `ls-tree`. Reproducing that needs a server that honours the
+    filter — `git clone --filter=blob:none file://...` answers "filtering not
+    recognized by server, ignoring" and hands over every blob (measured), so a
+    test built on it would assert nothing while looking rigorous.
+    """
+    import os
+    import subprocess
+
+    real_git = subprocess.run(["which", "git"], capture_output=True, text=True).stdout.strip()
+    shim_dir = tmp_path / "bin"
+    shim_dir.mkdir()
+    shim = shim_dir / "git"
+    shim.write_text(
+        "#!/bin/sh\n"
+        'for a in "$@"; do [ "$a" = "ls-tree" ] && exit 1; done\n'
+        f'exec {real_git} "$@"\n',
+        encoding="utf-8",
+    )
+    shim.chmod(0o755)
+
+    changed_file = tmp_path / "changed.txt"
+    changed_file.write_text("README.md\n", encoding="utf-8")
+    env = {
+        **os.environ,
+        "PATH": f"{shim_dir}:{os.environ['PATH']}",
+        "BASE_SHA": "HEAD",
+        "CHANGED_FILE": str(changed_file),
+    }
+    import sys as _sys
+
+    res = subprocess.run(
+        [_sys.executable, "-"],
+        input=_sentinel_snippet(),
+        capture_output=True, text=True, cwd=REPO, env=env, check=False,
+    )
+    assert res.returncode == 0, res.stderr
+    assert res.stdout == "true\n", (
+        "the sentinel could not list the base tree and still declared a no-op — "
+        "an unreadable base took the head-only branch the block exists to "
+        f"refuse. stdout={res.stdout!r} stderr={res.stderr!r}"
+    )
+    # EXECUTION WITNESS (codex, round 3: "the test never records/asserts that
+    # its ls-tree arm ran; any earlier fail-closed producing `true` satisfies
+    # it"). The snippet names its reason on stderr, and only this branch says
+    # "could not be listed".
+    assert "could not be listed" in res.stderr, (
+        "the sentinel printed `true` for some reason OTHER than the failed "
+        "ls-tree — the shim proved nothing about the branch it was built to "
+        f"reach. stderr={res.stderr!r}"
     )
