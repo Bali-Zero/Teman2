@@ -17,8 +17,10 @@ from __future__ import annotations
 
 import asyncio
 import fcntl
+import functools
 import hashlib
 import json
+import logging
 import os
 import re
 import shutil
@@ -33,10 +35,63 @@ from typing import Any, Awaitable, Callable, Iterator
 from urllib.parse import quote, urljoin, urlsplit, urlunsplit
 
 import httpx
+from fastmcp.exceptions import ToolError
 
 from nuzantara_mcp.workspace_flowkit import run as _run_flowkit_cli
 
+logger = logging.getLogger(__name__)
+
 BackendCall = Callable[..., Awaitable[dict[str, Any]]]
+
+
+class EditorFacingValueError(ToolError, ValueError):
+    """A validation refusal whose message is safe to show the editor."""
+
+
+class EditorFacingRuntimeError(ToolError, RuntimeError):
+    """An operational refusal whose message is safe to show the editor."""
+
+
+def _editor_facing(function: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
+    """Let this module's own refusal messages reach the ChatGPT editor.
+
+    The workspace server runs with ``mask_error_details=True`` so that an
+    unexpected exception never leaks internals. FastMCP forwards only
+    ``ToolError`` unmasked. Every ``ValueError``/``RuntimeError`` raised in
+    this module is a deliberate, constant, public-safe refusal ("seo_title
+    exceeds the allowed length", "Editorial verification provider is
+    unavailable") — masking them left Damar with a bare INVALID_ARGUMENT
+    and no way to know which field to fix (measured 2026-09-01..02: three
+    articles stuck). Anything else stays masked.
+    """
+
+    @functools.wraps(function)
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return await function(*args, **kwargs)
+        except ToolError:
+            raise
+        except ValueError as exc:
+            raise EditorFacingValueError(_clean_text(str(exc), limit=300)) from exc
+        except RuntimeError as exc:
+            raise EditorFacingRuntimeError(_clean_text(str(exc), limit=300)) from exc
+
+    return wrapper
+
+
+class _EditorFacingRegistrar:
+    """Wrap every registered tool with :func:`_editor_facing`."""
+
+    def __init__(self, mcp: Any) -> None:
+        self._mcp = mcp
+
+    def tool(self, **kwargs: Any) -> Callable[[Callable[..., Any]], Any]:
+        decorator = self._mcp.tool(**kwargs)
+
+        def register_tool(function: Callable[..., Any]) -> Any:
+            return decorator(_editor_facing(function))
+
+        return register_tool
 
 MAX_LIST_ITEMS = 500
 MAX_PUBLIC_TEXT = 12_000
@@ -735,6 +790,22 @@ async def _run_public_subprocess(
         await process.wait()
         raise RuntimeError("Editorial verification timed out") from None
     if process.returncode != 0:
+        # The exit code alone hid a "Not logged in" for two days (2026-09-01..02).
+        # The claude CLI prints that refusal on STDOUT, so log a redacted tail of
+        # both streams: the public message stays constant, the Pro log says WHY.
+        output_tail = _clean_text(
+            stdout.decode("utf-8", errors="replace")[-600:], limit=300
+        )
+        stderr_tail = _clean_text(
+            _stderr.decode("utf-8", errors="replace")[-600:], limit=300
+        )
+        logger.warning(
+            "Editorial verification provider %s exited %s: stdout=%r stderr=%r",
+            Path(argv[0]).name,
+            process.returncode,
+            output_tail,
+            stderr_tail,
+        )
         raise RuntimeError("Editorial verification provider is unavailable")
     return stdout.decode("utf-8", errors="replace")
 
@@ -757,10 +828,40 @@ def _verification_env(provider: str) -> dict[str, str]:
     if provider == "claude":
         env["CLAUDE_CONFIG_DIR"] = str(_verifier_config_dir())
     if provider == "claude" and not env.get("CLAUDE_CODE_OAUTH_TOKEN"):
-        batch_oauth_token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN_3", "").strip()
+        # The isolated CLAUDE_CONFIG_DIR has no login of its own, and the tunnel
+        # runtime starts this server from `env -i` — so neither the machine's
+        # Keychain profile nor CLAUDE_CODE_OAUTH_TOKEN_3 is in os.environ. Read
+        # the batch seat from the 0600 secrets file, the way the workspace API
+        # key already is. Without it the reviewer answers "Not logged in" and
+        # exits 1 (measured on Pro 2026-09-04) and every fact gate fails.
+        batch_oauth_token = (
+            os.environ.get("CLAUDE_CODE_OAUTH_TOKEN_3", "").strip()
+            or _secrets_file_value("CLAUDE_CODE_OAUTH_TOKEN_3")
+        )
         if batch_oauth_token:
             env["CLAUDE_CODE_OAUTH_TOKEN"] = batch_oauth_token
     return env
+
+
+def _secrets_file_value(name: str, path: Path | None = None) -> str:
+    """Return one value from the Pro-only ``~/.nuzantara-secrets.env`` file.
+
+    Mirrors ``workspace_backend._workspace_key``: the file is the only
+    credential source that survives the tunnel runtime's empty environment.
+    Only the requested key is read; nothing else leaves the file.
+    """
+
+    env_file = path if path is not None else Path.home() / ".nuzantara-secrets.env"
+    try:
+        for raw_line in env_file.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if line.startswith("export "):
+                line = line[len("export ") :].lstrip()
+            if line.startswith(f"{name}="):
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
+    except OSError:
+        return ""
+    return ""
 
 
 async def _query_notebooklm(article: dict[str, Any], notebook_id: str) -> str:
@@ -1323,6 +1424,8 @@ def _safe_flow_result(payload: dict[str, Any]) -> dict[str, Any]:
 
 def register(mcp: Any, backend_call: BackendCall) -> None:
     """Register the exact ChatGPT Business marketing allowlist."""
+
+    mcp = _EditorFacingRegistrar(mcp)
 
     @mcp.tool(
         annotations={

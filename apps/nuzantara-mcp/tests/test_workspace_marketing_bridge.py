@@ -1884,3 +1884,122 @@ def test_verification_env_still_withholds_app_secrets(
     assert "WA_MIRROR_DATABASE_URL" not in env
     assert "WORKSPACE_MARKETING_API_KEY" not in env
     assert not any("should-not-leak" in value for value in env.values())
+
+
+def test_verification_env_reads_batch_seat_from_secrets_file_when_env_is_empty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The tunnel runtime starts the server from `env -i`; the isolated
+    CLAUDE_CONFIG_DIR has no login. The batch seat must come from the 0600
+    secrets file — and only that one key may leave the file."""
+
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / ".nuzantara-secrets.env").write_text(
+        "\n".join(
+            (
+                'export NUZANTARA_WORKSPACE_MARKETING_API_KEY="app-secret-should-not-leak"',
+                "export CLAUDE_CODE_OAUTH_TOKEN_1='seat-one-should-not-leak'",
+                'export CLAUDE_CODE_OAUTH_TOKEN_3="batch-seat-token"',
+                "CLAUDE_CODE_OAUTH_TOKEN_6=team-seat-should-not-leak",
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path / "state"))
+    for name in ("CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN_3"):
+        monkeypatch.delenv(name, raising=False)
+
+    env = marketing._verification_env("claude")
+
+    assert env["CLAUDE_CODE_OAUTH_TOKEN"] == "batch-seat-token"
+    assert env["CLAUDE_CONFIG_DIR"] == str(tmp_path / "state" / "verifier-config")
+    assert not any("should-not-leak" in value for value in env.values())
+
+    # An explicit env token still wins over the file.
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "explicit-token")
+    assert marketing._verification_env("claude")["CLAUDE_CODE_OAUTH_TOKEN"] == "explicit-token"
+
+    # A missing file is not an error: the verifier then fails loudly at run time.
+    assert marketing._secrets_file_value("CLAUDE_CODE_OAUTH_TOKEN_3", tmp_path / "nope") == ""
+
+
+async def test_failed_verifier_logs_redacted_output_tail(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """`claude --print` reports "Not logged in" on STDOUT with exit 1: the Pro
+    log must say so, while the editor-facing message stays constant."""
+
+    import sys as _sys
+
+    caplog.set_level("WARNING", logger="nuzantara_mcp.tools.workspace_marketing")
+    with pytest.raises(RuntimeError, match="provider is unavailable"):
+        await marketing._run_public_subprocess(
+            [
+                _sys.executable,
+                "-c",
+                "import sys; print('Not logged in - contact user@example.com'); "
+                "sys.stderr.write('token sk-abcdefghijklmnopqrstuvwxyz'); sys.exit(1)",
+            ],
+            timeout_seconds=20,
+            env={"PATH": "/usr/bin:/bin"},
+        )
+
+    record = "\n".join(rec.getMessage() for rec in caplog.records)
+    assert "exited 1" in record
+    assert "Not logged in" in record
+    assert "user@example.com" not in record
+    assert "sk-abcdefghijklmnopqrstuvwxyz" not in record
+
+
+async def test_refusals_reach_the_editor_unmasked_but_unexpected_errors_stay_masked(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """mask_error_details=True hides internals; this module's own constant
+    refusals are the editor's only feedback and must pass through."""
+
+    from fastmcp.exceptions import ToolError as ClientToolError
+
+    monkeypatch.setenv("WORKSPACE_MARKETING_STATE_DIR", str(tmp_path))
+    monkeypatch.delenv("WORKSPACE_MARKETING_WRITES_ENABLED", raising=False)
+
+    async with Client(mcp) as client:
+        with pytest.raises(ClientToolError) as disarmed:
+            await client.call_tool(
+                "newsroom_update_article",
+                {
+                    "item_id": "news_20260903_173431_b5405cf4",
+                    "title": "t",
+                    "content": "c",
+                    "category": "tax",
+                    "seo_title": "s",
+                    "seo_description": "d",
+                    "slug": "slug",
+                    "cover_image_alt": "alt",
+                },
+            )
+        assert "write actions are not armed" in str(disarmed.value)
+
+        with pytest.raises(ClientToolError) as bad_input:
+            await client.call_tool("newsroom_get_article", {"item_id": "../etc/passwd"})
+        assert "Invalid News Room item id" in str(bad_input.value)
+
+        def explode(item_id: str) -> str:
+            raise TypeError("internal detail must not leak")
+
+        monkeypatch.setattr(marketing, "_validated_item_id", explode)
+        with pytest.raises(ClientToolError) as masked:
+            await client.call_tool("newsroom_get_article", {"item_id": "x"})
+        assert "internal detail" not in str(masked.value)
+        assert "TypeError" not in str(masked.value)
+
+
+def test_editor_facing_errors_remain_value_and_runtime_errors() -> None:
+    """Callers (and the existing tests) keep catching the builtin classes."""
+
+    assert issubclass(marketing.EditorFacingValueError, ValueError)
+    assert issubclass(marketing.EditorFacingRuntimeError, RuntimeError)
+    tools, _ = _capture_tools(AsyncMock())
+    assert tools["newsroom_get_article"].__wrapped__.__name__ == "newsroom_get_article"
