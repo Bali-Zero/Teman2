@@ -467,10 +467,23 @@ def test_guilt_the_alive_signal_is_never_ok_for_a_run_that_checked_nothing(
 ) -> None:
     """The dead-man's switch is the consumer that made this dangerous.
 
-    The launchd job runs every 600s and writes this file; a watcher that only
-    checks staleness would see a fresh payload saying `status: "ok"` with
-    `gates_total: 0`. `write_alive_signal` derives status from `report.ok`, so
-    curing the property cures the signal — pinned here rather than assumed.
+    CORRECTED after an independent read of the consumers (2026-09-05): NOTHING
+    PARSES THIS PAYLOAD. `scripts/cost_breaker_deadman.sh:50` and
+    `infra/launchagents/install_fase0_governance.sh:199` are the only two readers
+    and both `stat` the mtime and nothing else, so `status` and `gates_total` are
+    decorative to every consumer that exists today. An earlier draft of this
+    docstring said a staleness watcher "would see" the payload; it would not. The
+    deception was carried by the MTIME — the launchd job rewrote the file every
+    600s, the deadman read FRESH, and it stayed silent forever.
+
+    So the field is pinned here on its own merits, not on a consumer's: it is the
+    only place the run's own verdict is written down, and `write_alive_signal`
+    derives it from `report.ok`, so a property that lies makes the record lie too.
+    The cure that actually reaches a consumer is in `main()`, which refuses BEFORE
+    this file is written: the mtime then freezes, and after 1800s the deadman
+    fires "GOVERNANCE MUTA" over Telegram
+    (`scripts/cost_breaker_deadman.sh:54,227`). That trades silent-green for
+    delayed-but-alarmed, which is the trade this change is actually making.
     """
     state = tmp_path / "state" / "verify_the_verifiers.json"
     monkeypatch.setattr(VTV, "STATE_FILE", state)
