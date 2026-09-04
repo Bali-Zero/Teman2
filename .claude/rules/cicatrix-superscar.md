@@ -1,144 +1,133 @@
 # cicatrix-superscar.md — le 10 famiglie (PONTE)
 
 > **PONTE, non enciclopedia.** ~99 cicatrici in 10 famiglie + orfane. Per famiglia: **malattia**,
-> **segnale-precoce**, **antidoto**, **membri** (3-8 parole — il corpo vive in
-> `cicatrix-scars.md`/`-archive.md`, mai qui; unica eccezione le righe **PR-1 landing**, senza
-> W-number, col corpo in `PENDING-ARMS.md`, che il gate di completezza non sa risolvere). Dettaglio →
-> grep il W-number, o `scar query "<tema>"`/`--list`/`--family N`. ⚠️ **Anche questo file può esserti
-> arrivato STALE**: dove il main checkout è tenuto indietro di proposito (M5) la copia iniettata E
-> quella letta da `scar` sono entrambe vecchie — il riferimento è `git show origin/main:<path>`.
+> **segnale-precoce**, **antidoto**, **membri** (1-3 parole — corpo in `cicatrix-scars.md`/
+> `-archive.md`, mai qui). Dettaglio → grep il W-number, o `scar query "<tema>"`/`--list`/
+> `--family N`. ⚠️ **Può arrivarti STALE** (M5, checkout indietro apposta) — riferimento: `git show
+> origin/main:<path>`.
 >
-> **Budget ≤14KB**, armato da `scripts/tests/test_superscar_budget.py` (byte + completezza: ogni W-number qui deve avere un
-> corpo reale). Iniettato
-> a OGNI sessione e OGNI subagent: ciò che aggiungi lo paga tutta la flotta, per sempre. Tre nomi
-> disambiguano collisioni: `W81-armamento-sospeso`, `W81b-dlq-blind-heal-loop`, `W84-tcc-dead`.
-> Storia: `research/operations/2026-08-21-token-ceremony-ci-system-audit.md`.
+> **Budget ≤8KB**, armato da `scripts/tests/test_superscar_budget.py` (byte + completezza: ogni
+> W-number qui ha un corpo reale). Iniettato a OGNI sessione e subagent. Tre nomi disambiguano
+> collisioni: `W81-armamento-sospeso`, `W81b-dlq-blind-heal-loop`, `W84-tcc-dead`. Storia:
+> `research/operations/2026-08-21-token-ceremony-ci-system-audit.md`.
 >
-> **Dominanza:** #1 HOME-fork, #2 Esiste≠Armato, #5 Sibling-race, #4 Secret-clear coprono 65-75%.
+> **Dominanza:** #1 HOME-fork, #2 Esiste≠Armato, #5 Sibling-race, #4 Secret-clear = 65-75%.
 
 ---
 
 ## #1 — HOME-fork drift (deploy-path desync)
 
-**MALATTIA:** il runtime esegue una copia in `$HOME` (path hardcodato) che diverge dal repo. Il fix
-entra nel repo, la copia viva non lo vede.
+**MALATTIA:** il runtime esegue una copia in `$HOME` divergente dal repo; il fix nel repo non la
+raggiunge.
 
-**SEGNALE-PRECOCE:** plist/cron che invoca `~/scripts/` o `~/.openclaw/bin/` invece del repo; path
-con username; "due copie byte-identical".
+**SEGNALE-PRECOCE:** plist/cron che invoca `~/scripts/`; path con username; "due copie
+byte-identical".
 
-**ANTIDOTO:** lint CI `cmp -s` live vs git, contro `origin/main` mai contro il checkout locale — un
-checkout indietro accusa la copia viva (W106b, #9).
-**→ ESEGUIBILE:** `scripts/lint_home_fork.py` — sha256 sulle coppie dichiarate, `--discover`, exit 1|2|4.
+**ANTIDOTO:** lint CI `cmp -s` live vs git, contro `origin/main` mai il checkout locale.
+**→ ESEGUIBILE:** `scripts/lint_home_fork.py` — sha256 sulle coppie, `--discover`.
 
-**MEMBRI:** W50/W51/W52 (madre: wrapper/plist/script) · W68/W72/W73 (bridge openclaw) · W70 (path-drift Air) · W76 (repomap su checkout stale) · M5-dev-env (venv+marketplace) · TAC wa-mirror (fork non promossa) · W81-armamento-sospeso (deploy worktree sparito).
-**→ dettaglio:** archive (W50/W51/W52/W68/W76/M5-dev-env) + cicatrix-scars.md (W70/W81-armamento-sospeso)
-
-> _Cross-famiglia:_ **W84-tcc-dead** (#2) — wrapper sotto `~/Desktop` TCC-protetto.
+**MEMBRI:** W50/W51/W52 (wrapper/plist) · W68/W72/W73 (bridge openclaw) · W70 (path-drift) · W76
+(repomap stale) · M5-dev-env (venv) · TAC wa-mirror (fork orfana) · W81-armamento-sospeso
+(worktree sparito).
 
 ---
 
 ## #2 — Esiste ≠ Armato (cron theater / blind autopilot)
 
-**MALATTIA:** demoni/cron "verdi" (exit 0, KeepAlive attivo) mascherano worker morti, eccezioni
-ingoiate, output vuoti.
+**MALATTIA:** demoni/cron "verdi" mascherano worker morti, eccezioni ingoiate, output vuoti.
 
-**SEGNALE-PRECOCE:** `/health` che guarda il web non i worker; cron verde a output vuoto;
-`except` permissivi; log-tail senza diagnostica.
+**SEGNALE-PRECOCE:** `/health` guarda il web non i worker; cron verde a output vuoto.
 
-**ANTIDOTO:** monitora l'esito/heartbeat, non PID né exit-code («green ≠ working, leggi l'OUTPUT»).
-W81: anche lo STATO DI ATTIVAZIONE — costruito≠attivato è sospeso, non vivo. W120: la sonda deve
-leggere la STESSA chiave che il reporter emette, o l'allarme si azzera muto.
-**→ ESEGUIBILE:** `scripts/pending_arms_report.py` — allarma righe `PENDING-ARMS.md` aperte >48h.
+**ANTIDOTO:** monitora l'esito/heartbeat, non PID né exit-code (green≠working). W81: lo STATO DI
+ATTIVAZIONE conta.
+**→ ESEGUIBILE:** `scripts/pending_arms_report.py` — allarma `PENDING-ARMS.md` aperte >48h.
 
-**MEMBRI:** W74 (reflexion cron-theater) · W69 (required-checks disarmati) · W64/W34 (asyncpg silent-death) · W71 (mcp_integrity gira e mente) · W32 (pg-bridge muto) · 503-RAG (health=200, worker giù) · W70 (log_tail cieco) · W81-armamento-sospeso (~20 cron exit 127/78) · W81b-dlq-blind-heal-loop (14 DLQ mai puliti) · W84-tcc-dead (launchd perde TCC) · W84-tccutil-recidiva (`reset All` creduto read-only) · W87 (dev identity su proxy PROD) · W97 (display-cap letto come completo) · W98 (dependabot bypassa `!=`) · W101 (fail-closed decapitato da `sh -e`) · W101-recidiva-fly-backup (Fase 2 non parte) · W104 (`redis-cli` esce 0 con NOAUTH) · W107 (1 wrapper su 5) · W108 (19/20 cron muti) · W110 (heartbeat sull'organo errato) · W116 (allarme su esito giusto, cura morta) · W118 (11h fermo, nessun rosso) · W120 (sentinella di famiglia disarmata) · W121 (mutation su bytecode avvelenato) · W122 (rosso mente: lavoro fatto, SIGINT→130) · W123 (`success` ≠ armato) · W124 (PR DIRTY: `completed` su un sottoinsieme) · W126 (draft non espelle dalla coda).
-**→ dettaglio:** cicatrix-scars.md (resto) + archive (W34/W32/W64/W69/W71/W74/503)
+**MEMBRI:** W74 (cron-theater) · W69 (checks disarmati) · W64/W34 (asyncpg death) · W71
+(mcp_integrity mente) · W32 (pg-bridge muto) · 503-RAG (worker giù) · W70 (log_tail cieco) ·
+W81-armamento-sospeso (cron exit 127/78) · W81b-dlq-blind-heal-loop (DLQ mai puliti) ·
+W84-tcc-dead (launchd perde TCC) · W84-tccutil-recidiva (`reset All`) · W87 (identity su PROD) ·
+W97 (display-cap) · W101 (fail-closed decapitato) · W101-recidiva-fly-backup (Fase 2) · W104
+(`redis-cli` NOAUTH) · W108 (19/20 cron muti) · W110 (heartbeat errato) · W116 (cura morta) · W118
+(11h fermo) · W120 (sentinella disarmata) · W122 (SIGINT→130) · W123 (`success`≠armato) · W126
+(draft in coda).
 
 ---
 
 ## #3 — Guard-over-match (substring trapping) — gemello UNDER-match (W82)
 
-**MALATTIA:** la guardia decide su substring, non entità/intento. OVER-match = clobbera risposte
-corrette. UNDER-match = sorveglia una frase letterale, il fatto marcio riformulato sfugge e resta
-verde.
+**MALATTIA:** la guardia decide su substring, non entità/intento. OVER clobbera; UNDER lascia
+passare il fatto riformulato.
 
-**SEGNALE-PRECOCE:** `if "keyword" in testo`; escape-clause su UNA frase; trigger corti
-(`lease`/`429`) dentro token più lunghi; scope che salta una superficie.
+**SEGNALE-PRECOCE:** `if "keyword" in testo`; escape-clause su UNA frase.
 
-**ANTIDOTO:** nessuna guardia senza test di innocenza E colpevolezza, su entità/intento mai su
-substring. **→ ESEGUIBILE:** `infra/guard-conformance/` — censita senza guilt+innocence = FAIL CI.
+**ANTIDOTO:** nessuna guardia senza test di innocenza E colpevolezza, su entità mai su substring.
+**→ ESEGUIBILE:** `infra/guard-conformance/` — senza guilt+innocence = FAIL CI.
 
-**MEMBRI:** W68 (villa-leasehold zoning) · W72 (B211/KITAS deflesso) · W73 (5 over-match insieme) · W77 (asse linguistico) · W68b (variante) · W82 (cieco alle traduzioni) · W83 (3 falsi BLOCK) · W84 (char-class matcha newline, fonde comandi) · W85 (`stash` blocca `list`) · W91 (flag in un commento apre l'eccezione) · W92 (path relativo vs cwd) · W94 (esenzione whole-command) · W95 (blocca una fixture, cieco ad `async def`) · W99 (self-closing salta font-inject) · W105 (troncatura primo segmento) · W109 (esenzione per collocazione) · W112 (Prettier riscrive le cicatrici) · W115
-(veto post-selezione) · W117 (payload svuotato pre-esenzione) · W119 (`\s` attraversa il newline) · W127 (`levelname` reso, non `levelno`).
-**→ dettaglio:** cicatrix-scars.md (resto) + archive (W68/W72)
-**PR-1 landing** (corpo in `PENDING-ARMS.md`): `git branch -D` da worktree è repo-wide, la guardia giudica il cwd.
+**MEMBRI:** W68 (villa zoning) · W72 (B211/KITAS) · W73 (5 insieme) · W77 (asse linguistico) ·
+W68b (variante) · W82 (traduzioni) · W83 (3 falsi BLOCK) · W84 (char-class) · W85 (`stash`/`list`)
+· W92 (path vs cwd) · W94 (whole-command) · W95 (`async def`) · W99 (self-closing) · W109
+(collocazione) · W112 (Prettier) · W115 (post-selezione) · W119 (`\s` newline) · W127
+(`levelname`/`levelno`).
 
 ---
 
 ## #4 — Secret in the clear (world-readable credentials)
 
-**MALATTIA:** segreti prod esposti sul filesystem con permessi larghi, bypassando Fly secrets. Il
-`.bak` eredita l'esposizione.
+**MALATTIA:** segreti prod esposti sul filesystem, bypassando Fly secrets. `.bak` eredita
+l'esposizione.
 
-**SEGNALE-PRECOCE:** `cat`/`echo` di file-chiave su ssh; `.bak` senza chmod; secret sullo stdin che
-`bash -s` consuma.
+**SEGNALE-PRECOCE:** `cat`/`echo` di file-chiave su ssh; `.bak` senza chmod.
 
-**ANTIDOTO:** `chmod 0600` su dotfiles (live + `.bak*`); mai `cat` di un secret in diagnosi; ruota
-se è stato world-readable.
-**→ ESEGUIBILE:** `scripts/secrets_permissions_audit.py` — `--fix` chmod 0600, blind-scan guard exit 2.
+**ANTIDOTO:** `chmod 0600` (live + `.bak*`); mai `cat` di un secret; ruota se world-readable.
+**→ ESEGUIBILE:** `scripts/secrets_permissions_audit.py` — `--fix` chmod 0600.
 
-**MEMBRI:** P0 2026-06-03 (`apps/cell/.env` readable) · W65 (`.bak` 64-hex key) · W75 (fly-ssh leak
-su pipe) · P0 2026-05-21 (pw in 32 file) · 2026-04-29 (plist world-readable).
-**→ dettaglio:** cicatrix-scars.md (P0-cell.env) + archive (2026-05-21/04-29/W65/W75)
+**MEMBRI:** P0 2026-06-03 (`.env` readable) · W65 (`.bak` key) · W75 (fly-ssh leak) · P0 2026-05-21
+(pw in 32 file) · 2026-04-29 (plist world-readable).
 
 ---
 
 ## #5 — Sibling-race / shared-worktree chaos
 
-**MALATTIA:** agenti/cron paralleli sullo stesso checkout → collisioni stash, distruzione silente di
-modifiche altrui, reap mentre ci si lavora.
+**MALATTIA:** agenti/cron paralleli sullo stesso checkout → collisioni stash, distruzione
+silente.
 
-**SEGNALE-PRECOCE:** `git checkout` nella cartella globale; worktree pulito-ma-scaduto reapabile
-mentre è vivo; untracked non tuoi.
+**SEGNALE-PRECOCE:** `git checkout` nella cartella globale; worktree scaduto reapabile mentre è
+vivo.
 
-**ANTIDOTO:** ogni agent in un worktree dedicato (`agent_start.py`); reap solo a 2-AND (nessun
-processo vivo AND già su origin/main); leave-dirty sul lavoro sibling.
+**ANTIDOTO:** ogni agent in worktree dedicato (`agent_start.py`); reap solo a 2-AND.
 
-**MEMBRI:** W62 (6 worktree, TTL violato) · W63 (nested worktree) · W80 (reap con commit non-mergiati)
-· agent-library-evolver (REPO_ROOT condiviso) · W59 (madre) · 2026-04-29 (untracked persi).
-
-**→ dettaglio:** cicatrix-scars.md (W80/W59) + archive (W62/W63/evolver)
+**MEMBRI:** W62 (TTL violato) · W63 (nested worktree) · W80 (reap non-mergiati) ·
+agent-library-evolver (REPO_ROOT) · W59 (madre) · 2026-04-29 (untracked persi).
 
 ---
 
 ## #6 — Anti-hallucination blindness (phantom citations)
 
-**MALATTIA:** un LLM immagina file/righe/conclusioni plausibili; chi sta a valle le prende per vere.
+**MALATTIA:** un LLM immagina file/righe/conclusioni plausibili; chi sta a valle le prende per
+vere.
 
-**SEGNALE-PRECOCE:** piano su un report LLM senza audit fisico; `file:line` mai ri-eseguito;
-refuter che boccia senza ri-grepare.
+**SEGNALE-PRECOCE:** piano su report LLM senza audit fisico; `file:line` mai ri-eseguito.
 
 **ANTIDOTO:** mai costruire su un path citato senza `find`/`ls`/`cat` in QUESTO turno. Anche il
 refuter allucina (W65).
 
-**MEMBRI:** META 2026-06-05 (3 file:line falsi) · W74 (phantom scorer.py) · W65 (refuter
-falso-refuta) · W78 (cicatrice-sbagliata-propagata) · W100 (blind agreement, 7/8 false-clean) · W90 (ground-truth stantio) · W113 (la correzione mente). Linea: W65→W90→W100→W113.
-**→ dettaglio:** cicatrix-scars.md (W78/resto) + archive (META-autopsy/W65/W74)
+**MEMBRI:** META 2026-06-05 (3 falsi) · W74 (phantom scorer.py) · W65 (refuter falso-refuta) · W78
+(cicatrice sbagliata) · W100 (7/8 false-clean) · W90 (ground-truth stantio) · W113 (correzione
+mente). Linea: W65→W90→W100→W113.
 
 ---
 
 ## #7 — Daemon-vs-cron KeepAlive misconfig
 
-**MALATTIA:** `KeepAlive=true` su uno script one-shot → ogni exit letto come morte → restart storm;
-figli `nohup` SIGTERM-killati ogni ciclo.
+**MALATTIA:** `KeepAlive=true` su script one-shot → ogni exit letto come morte → restart storm.
 
-**SEGNALE-PRECOCE:** `KeepAlive=true` + `exec <one-shot>` o `nohup … &`; contatore `runs` che cresce.
+**SEGNALE-PRECOCE:** `KeepAlive=true` + `nohup … &`; contatore `runs` cresce.
 
-**ANTIDOTO:** loop bloccante reale (`while true; do …; sleep N; done`) o `StartInterval` senza
-KeepAlive. **→ ESEGUIBILE:** `scripts/lint_plist_keepalive.py` — `nohup &`=FAIL.
+**ANTIDOTO:** loop bloccante reale o `StartInterval` senza KeepAlive.
+**→ ESEGUIBILE:** `scripts/lint_plist_keepalive.py` — `nohup &`=FAIL.
 
-**MEMBRI:** W67/W67b (wa-mirror reconnect storm) · W60 (Fly api flapping) · 2026-04-29 (53 plist, 13%
+**MEMBRI:** W67/W67b (wa-mirror storm) · W60 (Fly api flapping) · 2026-04-29 (53 plist, 13%
 corretti).
-**→ dettaglio:** archive (W60/04-29/W67/W67b)
 
 ---
 
@@ -146,14 +135,12 @@ corretti).
 
 **MALATTIA:** componenti long-running crashano sui flap di rete (proxy/WG/pg-proxy).
 
-**SEGNALE-PRECOCE:** chiamata singola senza retry; log pieni di `TimeoutError`; alerter
-single-attempt.
+**SEGNALE-PRECOCE:** chiamata singola senza retry; log pieni di `TimeoutError`.
 
-**ANTIDOTO:** socket persistenti keep-alive; retry con backoff; cattura `InterfaceError` oltre
-`PostgresError`.
+**ANTIDOTO:** socket persistenti keep-alive; retry con backoff; cattura `InterfaceError`.
 
-**MEMBRI:** W49 (98 timeout) · W55 (Telegram one-shot) · W32 (InterfaceError ignorato) · W47 (solo numero, nessun dettaglio).
-**→ dettaglio:** archive (W49/W55/W32) + cicatrix-scars.md (W47)
+**MEMBRI:** W49 (98 timeout) · W55 (Telegram one-shot) · W32 (InterfaceError) · W47 (solo
+numero).
 
 ---
 
@@ -161,53 +148,43 @@ single-attempt.
 
 **MALATTIA:** uno step cambia il formato di un payload/file-stato; i lettori a valle si rompono.
 
-**SEGNALE-PRECOCE:** modifica ai dati intermedi (DLQ, redis, `*.last.json`) senza scope end-to-end;
-uno stato letto da un proxy (SHA/timestamp) e non dal CONTENUTO.
+**SEGNALE-PRECOCE:** modifica ai dati intermedi (DLQ, redis) senza scope end-to-end.
 
-**ANTIDOTO:** deploy unificato sui contratti condivisi. W88: "già su main" si verifica per CONTENUTO
-(diff vuoto/subset), mai per patch-equivalenza, SHA-ancestor o timestamp.
+**ANTIDOTO:** deploy unificato sui contratti condivisi. W88: "già su main" per CONTENUTO, mai per
+SHA-ancestor o timestamp.
 **→ ESEGUIBILE:** `scripts/branch_graveyard_cleanup.sh::content_on_main()`.
 
-**MEMBRI:** W54 (timestamp rompe staleness) · W53 (DLQ TERMINAL mancante) · W61 (attempts droppati) · W86 (DOCSYNC stale boccia innocenti) · W88 (cherry mente post-squash) · W102 (two-dot accusa la PR dei file di main) · W106 (proxy congelato sceglie credenziale morta) · W106b (checkout come proxy) · W109b (2 PR si bloccano) · W111 (`gh run rerun` su merge-ref stantio) · W114 (fake e codice
-condividono l'immaginazione) · W118 (3 proxy merge-queue mentono) · W125 (fusione pulita, la resa a mano la tiene) · W131 (un nome, due ruoli).
-**→ dettaglio:** cicatrix-scars.md (resto) + archive (W53/W54/W61)
-**PR-1 landing** (corpo in `PENDING-ARMS.md`): mergeability GitHub non onora `merge=union`;
-`autoMergeRequest` NULL non prova armata/disarmata — leggi `mergeQueueEntry`; dopo conflitto/espulsione RIARMA (idempotente).
+**MEMBRI:** W54 (timestamp) · W53 (DLQ TERMINAL) · W61 (attempts) · W86 (DOCSYNC stale) · W88
+(cherry post-squash) · W102 (two-dot) · W106 (proxy congelato) · W106b (checkout proxy) ·
+W109b (2 PR bloccate) · W111 (`rerun` stantio) · W114 (fake e codice) · W118 (3 proxy
+mentono) · W125 (resa a mano) · W131 (un nome, due ruoli).
 
 ---
 
 ## #10 — Active-active split-brain
 
-**MALATTIA:** un singleton gira su host diversi, ognuno credendosi unico → carico duplicato, alert
-spettrali.
+**MALATTIA:** un singleton gira su host diversi, ognuno credendosi unico → carico duplicato.
 
-**SEGNALE-PRECOCE:** `localhost` come hostname fleet-wide; nessuna master-election; alert da una
-macchina "che non dovrebbe".
+**SEGNALE-PRECOCE:** `localhost` come hostname fleet-wide; nessuna master-election.
 
-**ANTIDOTO:** SSOT nel DB (`expected_status`/`assigned_node`); graceful-exit se `node≠hostname`;
-bootout+disable dell'istanza legacy.
+**ANTIDOTO:** SSOT nel DB (`expected_status`/`assigned_node`); graceful-exit se `node≠hostname`.
 
-**MEMBRI:** W67c (spam dal Mini) · 2026-05-07 (12+1 mata_garuda) · NLM feeder split-brain.
-**→ dettaglio:** archive (mata_garuda/NLM-feeder/W67c)
+**MEMBRI:** W67c (spam dal Mini) · 2026-05-07 (mata_garuda) · NLM feeder split-brain.
 
 ---
 
 ## Orfane (uniche per natura, non forzate in un cluster)
 
-- **W38** — `backend_rag_v2` NOSUPERUSER (hardening, non bug)
-- **P3 FLAKY** (CURATA) + **W129** — test e produttore non condividono «adesso»: là un tick non
-  congelato, qui un orologio congelato che il codice sotto test non legge.
-- **W33** — kill-switch su auto-remediation · **W39** — Dependabot bump (routine)
-- **W40** — collisione numerazione migrazioni · **W128** — collisione numero cicatrice (sibling W40,
-  antidoto `lint_scar_number_collision.py`)
-- **Atlas migrate-lint paywall** — costo terze-parti · **Deploy crash / Dockerfile cell-core** —
-  ordering promozione monorepo CI
-- **W96** — test non isolati scrivono STATO DI PRODUZIONE (`Path.home()` di default)
+- **W38** NOSUPERUSER (hardening) · **P3 FLAKY**+**W129** «adesso» non condiviso
+- **W33** kill-switch auto-remediation · **W39** Dependabot bump (routine)
+- **W40**/**W128** collisione numerazione/numero cicatrice (`lint_scar_number_collision.py`)
+- Atlas migrate-lint paywall · Deploy crash cell-core (ordering CI)
+- **W96** test scrivono STATO PRODUZIONE (`Path.home()`)
 
-**→ dettaglio:** grep il W-number in `cicatrix-scars.md` / `cicatrix-scars-archive.md`.
+**→ dettaglio:** grep il W-number in `cicatrix-scars.md`/`-archive.md`.
 
 ---
 
-> **Manutenzione:** scar nuova → 1 riga in MEMBRI (3-8 parole + numero), corpo in `cicatrix-scars.md`.
-> Più di 1-2 frasi qui È un corpo: sta nel file sbagliato. Non rientra in nessuna delle 10 →
-> orfana, o serve un'11ª famiglia. Metodo: skill `modus` Gear 3.
+> **Manutenzione:** scar nuova → 1 riga in MEMBRI, corpo in `cicatrix-scars.md`. Più di 1-2 frasi
+> qui È un corpo: sta nel file sbagliato. Non rientra in nessuna delle 10 → orfana, o serve
+> un'11ª famiglia. Metodo: skill `modus` Gear 3.
