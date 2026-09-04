@@ -27,9 +27,11 @@ diff: >-
 
   AGAINST #5673's branch tip (9b4be2bf24, this PR's own contribution — what
   changed on top of the PR it supersedes): `git diff --numstat 9b4be2bf24 --
-  scripts/ci scripts/tests infra` -> this PR's own edits to the five bites
-  surfaces (bites_parse.py/bites_allowlist.yaml/bites_corpus.yaml/
-  test_bites_parse.py/registry.json), zero workflow files of its own.
+  scripts/ci scripts/tests infra .github/workflows` -> 519 added, 544 removed
+  (net -25) across the five bites surfaces (bites_parse.py/
+  bites_allowlist.yaml/bites_corpus.yaml/test_bites_parse.py/registry.json),
+  zero workflow files of its own (the immune-enforcement.yml +3 predates this
+  PR — see GEAR below).
 
   GEAR, corrected: the FLOOR that matters is computed against main (merge-base
   anchored, same as harness-floor.yml) — not against #5673's tip. This branch's
@@ -44,10 +46,11 @@ diff: >-
   still real and live on main today.
 
   AGAINST origin/main (what merging THIS PR actually lands, since #5673 has not
-  merged): 3,131 lines outside evidence/ across 8 files, because it necessarily
-  carries #5673's own diff too. This is a disclosure, not a target: the PR being
-  answered is "cut the module Zero already reviewed", not "restate its whole diff
-  smaller".
+  merged): `git diff --numstat $(git merge-base origin/main HEAD)..HEAD` ->
+  3,644 added, 80 removed across 11 files, because it necessarily carries
+  #5673's own diff too, plus this branch's own evidence pack and brief.yml.
+  This is a disclosure, not a target: the PR being answered is "cut the
+  module Zero already reviewed", not "restate its whole diff smaller".
 
 per_component:
   probe: >-
@@ -260,7 +263,7 @@ receipts:
     cmd: >-
       git diff --cached --numstat 9b4be2bf24 -- scripts/ci scripts/tests infra
       .github/workflows | awk '{a+=$1;d+=$2} END {print a,d}'
-    result: "458 543 (net -85)"
+    result: "519 544 (net -25)"
     exit: 0
     ts: "2026-09-04T23:46+08:00"
     seat: session (Pro)
