@@ -2,34 +2,21 @@
 """LAYER 2b — mos_recall_userprompt.py (UserPromptSubmit recall hook).
 
 Companion to mos_recall_sessionstart.py's Layer-2 recall (SessionStart-only,
-top-6, <=1500B): this fires on EVERY user prompt, not just session start, so
-a pertinent memory or scar surfaces mid-session instead of only at the door
-(cicatrix family #2, exists != armed — a peer session observed on 2026-09-04
-that "the things that bite most are the ones you don't know you should ask
-for", and the 441KB MEMORY_INDEX.md catalog it named is armed by nothing
-mid-session). Reuses mos_recall_sessionstart's index build, BM25 scoring,
-scar index and redaction WHOLESALE (imported, not duplicated) and layers a
-separate, STRICTER quiet-gate on top — because a UserPromptSubmit hook's
-stdout is appended to context on every single turn, not once per session:
-top-3 (not top-6), <=600B (not <=1500B), a relevance floor of 0.45 (not
-0.35), plus prompt-shape gates (too short, too few informative terms, a
-slash/bang command) that have no SessionStart analogue.
+top-6, <=1500B): this fires on EVERY prompt, so a pertinent memory/scar
+surfaces mid-session too (cicatrix family #2, exists != armed — the 441KB
+MEMORY_INDEX.md catalog is armed by nothing mid-session; Zero's order
+2026-09-04). Reuses the sibling's index build/BM25/scar-index/redaction via
+direct Python import (not subprocess — the query is arbitrary user text and
+would be a quoting hazard as a CLI argv) with a STRICTER budget: top-3,
+<=600B, 0.45 relevance floor (vs top-6/1500B/0.35), plus prompt-shape gates
+(too short, too few informative terms, slash/bang) with no SessionStart
+analogue.
 
-Imported directly rather than shelled out to as a subprocess: the query is
-arbitrary user text (may contain quotes/newlines/shell metacharacters), so
-passing it as a CLI argv string would be a quoting hazard for no benefit —
-mos_recall_sessionstart.py's functions are already a clean Python API
-(recall/format_output/resolve_memdir/resolve_scars_dir), and importing them
-skips a second process spawn on every turn.
+Kill switch: CLAUDE_RECALL_PROMPT_DISABLED=1. Tunables (env):
+RECALL_PROMPT_MAX_BYTES, RECALL_PROMPT_MIN_RELEVANCE, RECALL_PROMPT_TOPK.
 
-Kill switch: CLAUDE_RECALL_PROMPT_DISABLED=1 (silent, exit 0).
-Tunables (env): RECALL_PROMPT_MAX_BYTES, RECALL_PROMPT_MIN_RELEVANCE,
-RECALL_PROMPT_TOPK.
-
-Fail-open contract, same as the sibling: any error, any missing engine, any
-malformed stdin -> silent exit 0. Nothing on stdout unless a hit clears
-every gate; nothing on stderr ever (would surface as hook noise the harness
-might act on).
+Fail-open, same as the sibling: any error/malformed stdin -> silent exit 0;
+nothing on stderr ever (would surface as hook noise).
 """
 from __future__ import annotations
 

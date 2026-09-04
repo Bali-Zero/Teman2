@@ -18,16 +18,12 @@ the SAME project root as MEMDIR, which is repo-relative and therefore
 identical on every machine (unlike MEMDIR's `~/.claude/projects/<slug>`
 mapping, which can differ across hosts).
 
-Sibling (2026-09-04): `mos_recall_userprompt.py` in this same directory
-imports `recall()`/`format_output()`/`resolve_memdir()`/`resolve_scars_dir()`
-from this module directly (not via subprocess) to run the SAME recall on
-every UserPromptSubmit turn, not just SessionStart — tighter budget (top-3,
-<=600B, 0.45 relevance floor vs this file's top-6/1500B/0.35) and its own
-prompt-shape quiet-gate. `format_output()`'s `header`/`claim_max_chars`
-params and this CLI's `--max-bytes`/`--header`/`--claim-max-chars`/
-`--no-memory-warning` flags exist for that sibling and for manual
-debugging; SessionStart's own call path never sets them, so its behaviour
-is unchanged.
+Sibling (2026-09-04): `mos_recall_userprompt.py` imports this module's
+functions directly to run the SAME recall on every UserPromptSubmit turn
+with a tighter budget (top-3/<=600B/0.45 vs this file's top-6/1500B/0.35).
+`format_output()`'s `header`/`claim_max_chars` params and this CLI's
+`--max-bytes`/`--header`/`--claim-max-chars`/`--no-memory-warning` flags
+exist for that sibling; SessionStart's own call path never sets them.
 """
 from __future__ import annotations
 
