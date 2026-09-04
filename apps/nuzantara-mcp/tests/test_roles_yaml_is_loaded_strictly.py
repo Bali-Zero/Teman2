@@ -218,3 +218,84 @@ def test_this_battery_is_collected_by_the_MCP_test_job():
         encoding="utf-8"
     )
     assert script.rstrip().endswith("tests"), "the job must still collect tests/ wholesale"
+
+
+# ------------------------------------------- the wrapper is deployed by COPY, not pip
+
+
+def _onboarded_tree(tmp_path: Path, *, stage_loader: bool) -> Path:
+    """Reproduce what apps/team-agent/onboarding/mac-bootstrap.sh puts on a Mac.
+
+    `cp -r .../mcp-wrapper/* $HOME/.nuzantara/mcp-wrapper/` — this subtree and NOT the
+    repo's top-level scripts/. The `stage_loader` switch is the one line the bootstrap
+    adds.
+    """
+    import shutil
+
+    root = tmp_path / "home" / ".nuzantara"
+    dest = root / "mcp-wrapper"
+    shutil.copytree(WRAPPER, dest, ignore=shutil.ignore_patterns("__pycache__"))
+    if stage_loader:
+        (dest / "lib").mkdir(exist_ok=True)
+        shutil.copy(REPO_ROOT / "scripts" / "lib" / "yaml_strict.py", dest / "lib" / "yaml_strict.py")
+    return dest
+
+
+def _checker_cls_from(tree: Path, name: str):
+    """Import the COPIED permissions.py, not the repo one, under its own module name."""
+    spec = importlib.util.spec_from_file_location(name, tree / "permissions.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module.PermissionChecker
+
+
+def test_guilt_the_onboarded_wrapper_refuses_LOUDLY_when_the_loader_was_not_staged(
+    tmp_path, monkeypatch
+):
+    """Measured 2026-09-05: a repo-relative-only lookup made this tree unstartable.
+
+    server.py:45 builds the PermissionChecker at MODULE IMPORT, so a missing loader is
+    not a degraded wrapper — it is no wrapper. That is still the correct posture (the
+    alternative, falling back to yaml.safe_load, restores the escalation), but it must
+    say so instead of raising a bare FileNotFoundError about a path in a repo the
+    machine does not have.
+    """
+    # The loader is cached under a canonical name; a repo-side import earlier in this
+    # session would otherwise satisfy the lookup and hide the very case under test.
+    monkeypatch.delitem(sys.modules, "nuzantara_yaml_strict", raising=False)
+    tree = _onboarded_tree(tmp_path, stage_loader=False)
+    checker_cls = _checker_cls_from(tree, "permissions_onboarded_bare")
+    with pytest.raises(RuntimeError, match="strict policy loader not found"):
+        checker_cls(str(tree / "config" / "roles.yaml"))
+
+
+def test_innocence_the_onboarded_wrapper_works_when_the_loader_IS_staged(tmp_path, monkeypatch):
+    monkeypatch.delitem(sys.modules, "nuzantara_yaml_strict", raising=False)
+    tree = _onboarded_tree(tmp_path, stage_loader=True)
+    checker = _checker_cls_from(tree, "permissions_onboarded_staged")(
+        str(tree / "config" / "roles.yaml")
+    )
+    assert checker.is_allowed("visa_specialist", "get_visa_details") is True
+    assert checker.is_allowed("tax_consultant", "anything_at_all") is False
+
+
+def test_guilt_the_onboarded_wrapper_still_refuses_the_poison(tmp_path, monkeypatch):
+    """The cure must survive the deployment, not only the checkout."""
+    monkeypatch.delitem(sys.modules, "nuzantara_yaml_strict", raising=False)
+    tree = _onboarded_tree(tmp_path, stage_loader=True)
+    poisoned = tree / "config" / "poisoned.yaml"
+    poisoned.write_text(ROLES.read_text(encoding="utf-8") + POISON, encoding="utf-8")
+    checker_cls = _checker_cls_from(tree, "permissions_onboarded_poison")
+    with pytest.raises(Exception, match="duplicate key"):
+        checker_cls(str(poisoned))
+
+
+def test_the_onboarding_script_actually_stages_the_loader():
+    """Superscar #2 in its deployment form: the code needs a file the copy must ship."""
+    script = (
+        REPO_ROOT / "apps" / "team-agent" / "onboarding" / "mac-bootstrap.sh"
+    ).read_text(encoding="utf-8")
+    assert "scripts/lib/yaml_strict.py" in script
+    assert '"$WRAPPER_DIR/lib/yaml_strict.py"' in script

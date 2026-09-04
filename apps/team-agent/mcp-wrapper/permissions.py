@@ -16,12 +16,25 @@ from typing import Any
 # is in REVIEW rather than in the file's permissions.
 #
 # The loader is loaded by PATH rather than imported: scripts/lib is not an importable
-# package, and this file already assumes the repo layout (see the sibling reader in
-# apps/nuzantara-mcp/nuzantara_mcp/auth.py, which reaches across app trees for the very
-# roles.yaml this class reads). There is deliberately NO fallback to yaml.safe_load: a
-# permission checker that quietly downgrades to the permissive loader when the strict
-# one is missing would be the whole defect with an extra step.
-_YAML_STRICT = Path(__file__).resolve().parents[3] / "scripts" / "lib" / "yaml_strict.py"
+# package. There is deliberately NO fallback to yaml.safe_load — a permission checker
+# that quietly downgrades to the permissive loader when the strict one is missing would
+# be the whole defect with an extra step.
+#
+# TWO CANDIDATE LOCATIONS, because this file is deployed by COPY and not by package.
+# apps/team-agent/onboarding/mac-bootstrap.sh:90-93 does
+# `cp -r .../mcp-wrapper/* $HOME/.nuzantara/mcp-wrapper/`, which ships this subtree and
+# NOT the repo's top-level scripts/. Measured 2026-09-05 by reproducing that layout: a
+# repo-relative-only lookup raised FileNotFoundError, and because server.py:45 builds
+# the checker at MODULE IMPORT, the wrapper would not start at all on a team member's
+# Mac. "Fail closed" is the right posture for an ambiguous policy file; it is the wrong
+# posture for a loader that is merely somewhere else, because it converts a possible
+# review-defeating edit into a certain outage. So: the repo path when running from the
+# checkout, and a copy staged beside this file when running from the onboarded tree —
+# one source of truth in the repo, deliberately shipped, never a second edited copy.
+_YAML_STRICT_CANDIDATES = (
+    Path(__file__).resolve().parents[3] / "scripts" / "lib" / "yaml_strict.py",
+    Path(__file__).resolve().parent / "lib" / "yaml_strict.py",
+)
 
 
 _YAML_STRICT_MODULE = "nuzantara_yaml_strict"
@@ -39,9 +52,19 @@ def _load_yaml_strict():
     cached = sys.modules.get(_YAML_STRICT_MODULE)
     if cached is not None:
         return cached
-    spec = importlib.util.spec_from_file_location(_YAML_STRICT_MODULE, _YAML_STRICT)
+    for candidate in _YAML_STRICT_CANDIDATES:
+        if candidate.is_file():
+            break
+    else:
+        raise RuntimeError(
+            "strict policy loader not found — looked in "
+            + ", ".join(str(c) for c in _YAML_STRICT_CANDIDATES)
+            + ". This wrapper will not start without it, by design: falling back to "
+            "yaml.safe_load would silently restore the duplicate-key escalation."
+        )
+    spec = importlib.util.spec_from_file_location(_YAML_STRICT_MODULE, candidate)
     if spec is None or spec.loader is None:  # pragma: no cover - unreachable if the file exists
-        raise RuntimeError(f"strict policy loader not importable at {_YAML_STRICT}")
+        raise RuntimeError(f"strict policy loader not importable at {candidate}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[_YAML_STRICT_MODULE] = module
     spec.loader.exec_module(module)
