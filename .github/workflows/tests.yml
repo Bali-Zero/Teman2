@@ -225,7 +225,7 @@ jobs:
           CLASSIFIER_DIR="$RUNNER_TEMP/trusted-classifier"
           mkdir -p "$CLASSIFIER_DIR"
           OK=true
-          for f in scripts/ci/change_map.py scripts/ci/test_change_map.py scripts/ci/hotzone_changed_files.sh scripts/ci/impact_map.py scripts/ci/test_impact_map.py; do
+          for f in scripts/ci/change_map.py scripts/ci/test_change_map.py scripts/ci/security_gate_flags.py scripts/ci/hotzone_changed_files.sh scripts/ci/impact_map.py scripts/ci/test_impact_map.py; do
             if ! git show "${BASE_SHA}:${f}" > "$CLASSIFIER_DIR/$(basename "$f")" 2>/dev/null; then
               echo "::warning::could not extract $f from base ref $BASE_SHA — treating classifier as untrusted for this run"
               OK=false
