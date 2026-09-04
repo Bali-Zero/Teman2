@@ -170,7 +170,27 @@ jobs:
             exit 0
           fi
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
-          git diff --name-only "$BASE_SHA"...HEAD > /tmp/changed.txt
+          # FAIL-CLOSED, AND IT LIVES IN THE SHELL — the Python snippet below
+          # carries the same branch, but `set -e` made it unreachable: `git diff`
+          # against an unreachable base exits non-zero and kills this step before
+          # python is ever started, so the branch that "runs the whole guard"
+          # could not run in the one case it exists for (Gear-3 council,
+          # codex-gpt-5.6-sol, BLOCK finding #1, 2026-09-04 — the cure for the
+          # gate's condition 2 was itself only half-applied). The probe belongs to
+          # whichever layer touches the base FIRST, and that layer is this one.
+          # The snippet keeps its copy because the tests execute the snippet
+          # directly and because a fail-closed path is cheap to state twice.
+          fail_closed() {
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::sentinel failing closed: $1 — running the full guard"
+            exit 0
+          }
+          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            fail_closed "base ref ${BASE_SHA} is not reachable in this checkout"
+          fi
+          if ! git diff --name-only "$BASE_SHA"...HEAD > /tmp/changed.txt; then
+            fail_closed "the diff against base ref ${BASE_SHA} could not be taken"
+          fi
           # Only the `run=` line may reach $GITHUB_OUTPUT. The first cut piped the
           # whole heredoc there, notice included, and the runner rejects any line
           # that is not NAME=VALUE — so the "nothing guarded changed" path, the
@@ -221,7 +241,20 @@ jobs:
           base_sha = os.environ["BASE_SHA"]
           if _git("cat-file", "-e", f"{base_sha}^{{commit}}").returncode != 0:
               _run_everything(f"base ref {base_sha} is not reachable in this checkout")
-          if _git("cat-file", "-e", f"{base_sha}:{WORKFLOW}").returncode == 0:
+          # EXISTENCE is asked of the TREE, not of the blob. This checkout is
+          # `filter: blob:none` (see the checkout step), so `cat-file -e
+          # <sha>:<path>` reaches for the file CONTENT and can trigger a lazy
+          # fetch — which collapses "the base genuinely has no such file" and
+          # "the promisor fetch failed" into the same non-zero, and the second
+          # one would then take the head-only branch this whole block exists to
+          # refuse (Gear-3 council, codex-gpt-5.6-sol, finding #3, 2026-09-04).
+          # `ls-tree` answers from the tree object, which a blob:none clone
+          # already has: empty stdout means absent, non-zero means the base tree
+          # could not be listed at all, and only the first is innocent.
+          listing = _git("ls-tree", "--name-only", base_sha, "--", WORKFLOW)
+          if listing.returncode != 0:
+              _run_everything(f"the base tree at {base_sha} could not be listed")
+          if listing.stdout.strip():
               base = _git("show", f"{base_sha}:{WORKFLOW}")
               if base.returncode != 0:
                   _run_everything("the base copy of this workflow could not be read")
@@ -237,7 +270,16 @@ jobs:
           hit = any(fnmatch.fnmatch(f, p) for f in changed for p in patterns)
           print("true" if hit else "false")
           PY
-          )"
+          )" || fail_closed "the sentinel snippet exited non-zero"
+          # A verdict word or nothing at all: an exit-0 with empty stdout would
+          # write the literal line `run=` and BOTH downstream steps would then
+          # compare it against 'true' and skip — a silently disarmed guard with
+          # no red anywhere (same council, finding #2). Anything that is not one
+          # of the two words is a broken measurement, not a "no".
+          case "$RUN" in
+            true|false) ;;
+            *) fail_closed "the sentinel printed '${RUN}', which is not a verdict word" ;;
+          esac
           echo "run=$RUN" >> "$GITHUB_OUTPUT"
           if [[ "$RUN" == "false" ]]; then
             echo "::notice::no guarded surface changed — sentinel success"

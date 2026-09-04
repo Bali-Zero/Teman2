@@ -873,3 +873,159 @@ def test_a_pr_that_introduces_this_workflow_is_not_forced_through_the_guard(tmp_
         "PR introducing a workflow now runs the full corpus. "
         f"stdout={res.stdout!r} stderr={res.stderr!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# THE SHELL STEP, EXECUTED. Everything above runs the PYTHON SNIPPET the step
+# invokes; nothing above ran the step. That gap hid a real defect through a
+# whole Gear-3 round: the snippet's fail-closed branch was correct and could
+# not be reached, because the step's own `set -euo pipefail` plus a bare
+# `git diff "$BASE_SHA"...HEAD` killed the step first, on exactly the
+# unreachable base the branch exists for (codex-gpt-5.6-sol, BLOCK finding #1,
+# 2026-09-04). A fail-closed path is worth precisely as much as the layer that
+# touches the untrusted input FIRST, so these tests drive that layer.
+# ---------------------------------------------------------------------------
+
+
+def _sentinel_step_script(event_name: str, base_sha: str) -> str:
+    """The step's `run:` body, dedented, with the two `${{ }}` expressions the
+    runner would have substituted already substituted. Nothing else is
+    rewritten — the point is to execute the shell that actually ships."""
+    import textwrap
+
+    text = WORKFLOW.read_text(encoding="utf-8")
+    body = text.split("Did a guarded surface change?", 1)[1].split("\n      - name:", 1)[0]
+    script = body.split("run: |\n", 1)[1]
+    script = textwrap.dedent(script)
+    script = script.replace("${{ github.event_name }}", event_name)
+    return script.replace("${{ github.event.pull_request.base.sha }}", base_sha)
+
+
+def _run_sentinel_step(tmp_path, *, base_sha: str, changed: list[str], event_name: str = "pull_request"):
+    """Executes the step in a throwaway git repo carrying a copy of this
+    workflow, and returns (CompletedProcess, parsed $GITHUB_OUTPUT dict).
+
+    A temp repo rather than REPO: the step writes to $GITHUB_OUTPUT and diffs
+    two refs it must be able to construct, and a test that needs commits of its
+    own must never make them in the checkout it is running from. Identity is
+    passed with `-c` for the same reason the innocence test above refuses
+    `commit-tree`: a CI runner has no committer configured and a test may not
+    require one.
+    """
+    import os
+    import subprocess
+
+    repo = tmp_path / "repo"
+    (repo / ".github/workflows").mkdir(parents=True)
+    (repo / ".github/workflows/merah-putih-day-contrast.yml").write_text(
+        WORKFLOW.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+
+    def git(*args, **kw):
+        return subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
+            capture_output=True, text=True, cwd=repo, check=True, **kw
+        )
+
+    git("init", "-q", "-b", "main")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    head_base = git("rev-parse", "HEAD").stdout.strip()
+    for name in changed:
+        p = repo / name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("changed\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "head")
+
+    out_file = tmp_path / "gh_output"
+    out_file.write_text("", encoding="utf-8")
+    res = subprocess.run(
+        ["bash", "-c", _sentinel_step_script(event_name, base_sha or head_base)],
+        capture_output=True, text=True, cwd=repo, check=False,
+        env={**os.environ, "GITHUB_OUTPUT": str(out_file)},
+    )
+    parsed = dict(
+        line.split("=", 1) for line in out_file.read_text(encoding="utf-8").splitlines() if "=" in line
+    )
+    return res, parsed
+
+
+def test_the_step_itself_runs_the_guard_when_the_base_ref_is_unreachable(tmp_path) -> None:
+    """Guilt, at the layer that fails first. With `set -euo pipefail` and an
+    unguarded change, the ONLY way `run=true` reaches $GITHUB_OUTPUT is the
+    step's own fail-closed branch firing before `git diff` can kill it."""
+    res, out = _run_sentinel_step(
+        tmp_path,
+        base_sha="0" * 40,
+        changed=["README.md"],
+    )
+    assert res.returncode == 0, (
+        "the step died on an unreachable base instead of failing closed — the "
+        f"snippet's fail-closed branch is unreachable. stderr={res.stderr!r}"
+    )
+    assert out.get("run") == "true", (
+        "an unreachable base did not make the step run the whole guard: "
+        f"$GITHUB_OUTPUT={out!r} stdout={res.stdout!r} stderr={res.stderr!r}"
+    )
+
+
+def _bash_major() -> int:
+    import re
+    import subprocess
+
+    out = subprocess.run(["bash", "--version"], capture_output=True, text=True).stdout
+    m = re.search(r"version (\d+)", out)
+    return int(m.group(1)) if m else 0
+
+
+def test_the_step_still_declares_a_no_op_when_the_base_is_readable(tmp_path) -> None:
+    """Innocence for the same branch: a base the step CAN read, and a change
+    touching nothing guarded, must still produce `run=false`. Without this the
+    cure above would be indistinguishable from hardcoding `true`.
+
+    Needs bash >= 4. The step nests a `<<'PY'` heredoc inside `$( )`, which
+    bash 3.2 — still the /bin/bash macOS ships — cannot parse; the runner is
+    ubuntu-latest (bash 5), so this executes where the workflow actually runs
+    and skips on a developer's Mac rather than pretending to pass there. The
+    guilt test above needs no such guard: its fail-closed branch exits before
+    that line is ever reached, which is the whole reason it is the branch under
+    test.
+    """
+    if _bash_major() < 4:
+        pytest.skip(
+            f"bash {_bash_major()} cannot parse a heredoc inside $( ) — this "
+            "test executes the full step and needs bash >= 4 (CI's ubuntu runner)"
+        )
+    res, out = _run_sentinel_step(tmp_path, base_sha="", changed=["README.md"])
+    assert res.returncode == 0, res.stderr
+    assert out.get("run") == "false", (
+        f"a readable base and an unguarded change did not yield a no-op: {out!r} "
+        f"stderr={res.stderr!r}"
+    )
+
+
+def test_the_step_refuses_a_verdict_that_is_not_a_verdict_word() -> None:
+    """Council finding #2, asserted STRUCTURALLY and said so plainly: an exit-0
+    with empty stdout would write the line `run=` and both downstream steps,
+    comparing it against 'true', would skip — a disarmed guard with no red
+    anywhere. Structural because forging that stdout means rewriting the
+    heredoc the other tests exist to execute unmodified; what is checked is
+    that the validation stands BETWEEN the snippet and $GITHUB_OUTPUT, not that
+    some particular wording appears somewhere in the step."""
+    script = _sentinel_step_script("pull_request", "deadbeef")
+    guard = script.split('case "$RUN"', 1)
+    assert len(guard) == 2, (
+        "the step no longer validates the sentinel's verdict word — an empty or "
+        "malformed stdout would be written to $GITHUB_OUTPUT as-is"
+    )
+    before_write, after_case = guard[0], guard[1]
+    assert 'echo "run=$RUN"' not in before_write, (
+        "the verdict is written to $GITHUB_OUTPUT before it is validated — the "
+        "validation cannot stop what has already been published"
+    )
+    branch = after_case.split("esac", 1)[0]
+    assert "true|false" in branch and "fail_closed" in branch, (
+        "the verdict-word case no longer accepts exactly the two words and fails "
+        f"closed on everything else: {branch!r}"
+    )
