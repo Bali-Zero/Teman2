@@ -291,7 +291,14 @@ def test_evaluate_repo_scope_skips_local_hooks(tmp_path: Path) -> None:
     ]}
     rep = VTV.evaluate(registry, only_scope="repo")
     assert rep.skipped[0].gate_id == "stop_verify"
-    assert rep.ok is True  # SKIPPED never fails the build
+    assert rep.disarmed == []  # SKIPPED never fails the build
+    # This line used to read `assert rep.ok is True`. "SKIPPED never fails the build"
+    # was frozen here as "a report of nothing but SKIPPED gates is GREEN", and those
+    # are not the same claim: the second one made a run that verified nothing
+    # indistinguishable from a healthy one. The rule is now "SKIPPED never fails a run
+    # that checked something", pinned in both directions at the end of this file. What
+    # this test is actually about — a local hook under --scope repo is SKIPPED and not
+    # DISARMED — is asserted above, and directly.
 
 
 def test_evaluate_all_scope_checks_local_hooks(tmp_path: Path) -> None:
@@ -308,15 +315,40 @@ def test_evaluate_all_scope_checks_local_hooks(tmp_path: Path) -> None:
 
 def test_main_ci_env_auto_scopes_repo(tmp_path: Path, monkeypatch) -> None:
     # With CI=1 and a missing local hook, main must auto-scope to repo → green.
+    #
+    # The registry carries a SECOND, repo-scope gate that is genuinely armed. It was
+    # added when `Report.ok` stopped counting an all-SKIPPED run as green: without it
+    # this test passed for the wrong reason — exit 0 meant "verified nothing" rather
+    # than "the local hook was skipped, not disarmed", and the two were indistinguishable
+    # in the exit code, which is precisely the defect the change cures. The original
+    # assertion is preserved and now pinned by verdict as well as by exit code.
+    lint = tmp_path / "lint_present.py"
+    lint.write_text("# lint\n")
+    consumer = tmp_path / "consumer.yml"
+    consumer.write_text(f"python {lint}\n")
     reg = tmp_path / "gates.yaml"
     reg.write_text(
         "version: 1\ngates:\n"
         f"  - id: stop_verify\n    kind: claude_hook\n    target: {tmp_path / 'absent.py'}\n"
         f"    registered_in: {tmp_path / 'nope.json'}\n    event: Stop\n    disarm_substring: null\n"
+        f"  - id: lint_present\n    kind: lint_script\n    target: {lint}\n    consumer: {consumer}\n"
     )
     monkeypatch.setenv("CI", "1")
     code = VTV.main(["--registry", str(reg), "--no-signal", "--json"])
     assert code == 0  # local hook SKIPPED under CI auto-scope, not DISARMED
+
+    report = VTV.evaluate(
+        {"gates": [
+            {"id": "stop_verify", "kind": "claude_hook",
+             "target": str(tmp_path / "absent.py"),
+             "registered_in": str(tmp_path / "nope.json"),
+             "event": "Stop", "disarm_substring": None},
+            {"id": "lint_present", "kind": "lint_script",
+             "target": str(lint), "consumer": str(consumer)},
+        ]},
+        only_scope="repo",
+    )
+    assert [r.verdict for r in report.results] == [VTV.SKIPPED, VTV.ARMED]
 
 
 def test_main_exit_code_green(tmp_path: Path, monkeypatch) -> None:
@@ -381,3 +413,137 @@ def test_alive_signal_written(tmp_path: Path, monkeypatch) -> None:
     assert data["_writer"] == "verify_the_verifiers"
     assert data["status"] == "ok"
     assert "ts" in data and isinstance(data["ts"], int)
+
+
+# --------------------------------------------------------------------------- #
+# A meta-verifier that iterates nothing must be RED, not GREEN
+#
+# `Report.ok` used to read "zero DISARMED gates", which is trivially true of a run
+# that checked nothing at all. Measured 2026-09-05 on a scratch copy of the shipped
+# registry: emptying `gates:`, or deleting the key outright, produced "0/0 gates
+# ARMED", `report.ok is True`, exit 0, and an alive signal reading `status: "ok"` —
+# with no warning printed anywhere, unlike the `consumer: null` case which at least
+# emits a WARN. The organ whose whole job is to make "a gate went dark" observable
+# was the one place where an empty collection read as success.
+#
+# Both directions are pinned, because a floor strict enough to refuse the registry
+# actually shipped, or the synthetic one- and two-gate registries the other tests
+# pass via `--registry`, would be safe and useless (superscar #3).
+# --------------------------------------------------------------------------- #
+
+def test_guilt_a_report_that_checked_nothing_is_not_green() -> None:
+    assert VTV.Report(results=[]).ok is False
+
+
+def test_guilt_a_report_where_every_gate_was_SKIPPED_is_not_green() -> None:
+    """"Nothing was found disarmed" is not the statement "the gates are armed"."""
+    rep = VTV.Report(results=[
+        VTV.GateResult("a", "claude_hook", VTV.SKIPPED, "scope=local"),
+        VTV.GateResult("b", "claude_hook", VTV.SKIPPED, "scope=local"),
+    ])
+    assert rep.ok is False
+    assert rep.checked == []
+
+
+def test_guilt_an_empty_gates_list_evaluates_to_a_report_that_is_not_green() -> None:
+    assert VTV.evaluate({"gates": []}).ok is False
+
+
+def test_guilt_main_refuses_an_empty_registry_instead_of_exiting_zero(tmp_path: Path) -> None:
+    """The measured fail-open: this returned 0 and printed "0/0 gates ARMED"."""
+    reg = tmp_path / "gates.yaml"
+    reg.write_text("version: 1\ngates: []\n")
+    assert VTV.main(["--registry", str(reg), "--no-signal"]) == 3
+
+
+def test_guilt_main_refuses_a_registry_with_no_gates_key(tmp_path: Path) -> None:
+    reg = tmp_path / "gates.yaml"
+    reg.write_text("version: 1\n")
+    assert VTV.main(["--registry", str(reg), "--no-signal"]) == 3
+
+
+def test_guilt_the_alive_signal_is_never_ok_for_a_run_that_checked_nothing(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """The dead-man's switch is the consumer that made this dangerous.
+
+    The launchd job runs every 600s and writes this file; a watcher that only
+    checks staleness would see a fresh payload saying `status: "ok"` with
+    `gates_total: 0`. `write_alive_signal` derives status from `report.ok`, so
+    curing the property cures the signal — pinned here rather than assumed.
+    """
+    state = tmp_path / "state" / "verify_the_verifiers.json"
+    monkeypatch.setattr(VTV, "STATE_FILE", state)
+    VTV.write_alive_signal(VTV.Report(results=[]))
+    data = json.loads(state.read_text())
+    assert data["status"] == "disarmed_gates_detected"
+    assert data["gates_total"] == 0
+
+
+def test_guilt_the_default_registry_below_the_floor_is_refused(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Emptying the registry is loud; deleting gates one at a time was not.
+
+    The floor lives in the SCRIPT, not in the registry, so lowering it is a diff
+    in a different file from the one a bad merge or an attacker edits.
+    """
+    lint = tmp_path / "lint_x.py"
+    lint.write_text("# lint\n")
+    consumer = tmp_path / "x.yml"
+    consumer.write_text(f"python {lint}\n")
+    reg = tmp_path / "gates.yaml"
+    reg.write_text(
+        "version: 1\ngates:\n"
+        f"  - id: lint_x\n    kind: lint_script\n    target: {lint}\n    consumer: {consumer}\n"
+    )
+    monkeypatch.setattr(VTV, "DEFAULT_REGISTRY", reg)
+    assert VTV.main(["--registry", str(reg), "--no-signal"]) == 3
+
+
+def test_innocence_a_synthetic_registry_passed_via_registry_is_not_floored(
+    tmp_path: Path,
+) -> None:
+    """The over-match direction: `--registry` is a test affordance, not the shipped file.
+
+    Every other `main()` test in this file passes a one- or two-gate registry. If the
+    floor applied to those, this battery would fail the suite it belongs to.
+    """
+    lint = tmp_path / "lint_x.py"
+    lint.write_text("# lint\n")
+    consumer = tmp_path / "x.yml"
+    consumer.write_text(f"python {lint}\n")
+    reg = tmp_path / "gates.yaml"
+    reg.write_text(
+        "version: 1\ngates:\n"
+        f"  - id: lint_x\n    kind: lint_script\n    target: {lint}\n    consumer: {consumer}\n"
+    )
+    assert VTV.main(["--registry", str(reg), "--no-signal"]) == 0
+
+
+def test_innocence_the_shipped_registry_still_clears_the_floor() -> None:
+    """A floor above the registry actually shipped would take main red on every run."""
+    import yaml as _yaml
+    doc = _yaml.safe_load(VTV.DEFAULT_REGISTRY.read_text())
+    assert len(doc["gates"]) >= VTV.MINIMUM_GATES
+
+
+def test_innocence_the_shipped_registry_still_checks_gates_under_repo_scope() -> None:
+    """Not "is green" — the shipped registry's verdict depends on the environment.
+
+    What must hold is that a repo-scope run still CHECKS gates rather than skipping
+    them all, which is the precondition `Report.ok` now requires.
+    """
+    import yaml as _yaml
+    doc = _yaml.safe_load(VTV.DEFAULT_REGISTRY.read_text())
+    report = VTV.evaluate(doc, only_scope="repo")
+    assert len(report.checked) >= 20
+
+
+def test_innocence_a_report_with_armed_and_skipped_gates_is_still_green() -> None:
+    """SKIPPED must not COUNT; it must also not POISON a run that checked something."""
+    rep = VTV.Report(results=[
+        VTV.GateResult("a", "lint_script", VTV.ARMED),
+        VTV.GateResult("b", "claude_hook", VTV.SKIPPED, "scope=local"),
+    ])
+    assert rep.ok is True
