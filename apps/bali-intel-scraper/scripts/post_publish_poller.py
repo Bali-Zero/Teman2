@@ -70,8 +70,11 @@ API_KEY = os.environ.get("SCRAPER_API_KEY", "internal-scraper-key")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "8847435604")
 
-GITHUB_OWNER = "Balizero1987"
-GITHUB_REPO = "Teman2"
+# The repository lives under the Bali-Zero org; on the old user path GitHub
+# answers 307 and every `gh api` create-ref/contents call fails (2026-09-04:
+# SEO and layout batches lost after a successful run). Env overrides for tests.
+GITHUB_OWNER = os.environ.get("POST_PUBLISH_GITHUB_OWNER", "Bali-Zero")
+GITHUB_REPO = os.environ.get("POST_PUBLISH_GITHUB_REPO", "Teman2")
 IMAGE_GH_DIR = "apps/mouth/public/static/news"
 
 # ── Codex $imagegen cover engine ─────────────────────────────────────────────
