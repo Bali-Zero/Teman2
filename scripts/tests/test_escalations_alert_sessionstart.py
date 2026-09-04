@@ -139,3 +139,73 @@ class TestNetPending:
         assert out is not None
         ctx = out["hookSpecificOutput"]["additionalContext"]
         assert "1 NORMAL pending" in ctx
+
+
+class TestOutputCap:
+    """Output cap (2026-09-04): this receptor injects into EVERY session start
+    on every machine, so a board carrying dozens of HIGH items must not itself
+    become the noise CLAUDE.md §2/§14 asked it to cut through. The cap is on
+    the WHOLE stdout (JSON envelope included, since that is what the harness
+    actually injects), default 1500 bytes, overridable via
+    SESSIONSTART_HOOK_MAX_BYTES. Priority: HIGH count + HIGH items survive
+    first; the long explanatory paragraph is the first thing dropped; the
+    /escalations pointer survives every stage."""
+
+    def _raw_payload_bytes(self, esc_file: Path, tasks_dir: Path, extra_env=None) -> tuple[bytes, dict | None]:
+        env = dict(os.environ)
+        env["ESCALATIONS_FILE_OVERRIDE"] = str(esc_file)
+        env["CLAUDE_TASKS_DIR"] = str(tasks_dir)
+        env["ESCALATIONS_RECEPTOR_ENABLED"] = "true"
+        if extra_env:
+            env.update(extra_env)
+        result = subprocess.run(
+            ["bash", str(_SCRIPT)], env=env, capture_output=True, text=True, timeout=15,
+        )
+        assert result.returncode == 0, f"hook must always exit 0; stderr={result.stderr}"
+        raw = result.stdout.strip()
+        parsed = json.loads(raw) if raw else None
+        return raw.encode("utf-8"), parsed
+
+    def test_guilt_oversized_board_stays_under_cap_and_keeps_high_and_pointer(self, tmp_path, tasks_dir):
+        esc = tmp_path / "escalations_pro.jsonl"
+        records = [
+            {"job": f"job_{i}", "status": "pending", "priority": "HIGH",
+             "error_summary": "x" * 78, "ts": 100 + i}
+            for i in range(60)
+        ]
+        _write_jsonl(esc, records)
+        raw, out = self._raw_payload_bytes(esc, tasks_dir)
+        assert len(raw) <= 1500, f"payload must fit the default cap, got {len(raw)} bytes"
+        assert out is not None
+        ctx = out["hookSpecificOutput"]["additionalContext"]
+        assert "HIGH-priority open" in ctx, "HIGH count line must survive the cap"
+        assert "🔴" in ctx, "at least one HIGH item must survive the cap"
+        assert "/escalations" in ctx, "the /escalations pointer must survive every cap stage"
+
+    def test_innocence_small_board_is_not_over_trimmed(self, tmp_path, tasks_dir):
+        esc = tmp_path / "escalations_pro.jsonl"
+        _write_jsonl(esc, [
+            {"job": "fly_backup", "status": "pending", "priority": "HIGH",
+             "error_summary": "exit 1", "ts": 100},
+        ])
+        raw, out = self._raw_payload_bytes(esc, tasks_dir)
+        assert len(raw) <= 1500
+        ctx = out["hookSpecificOutput"]["additionalContext"]
+        assert "the receptor is read-only" in ctx, (
+            "a board well under budget must keep the full explanation — the "
+            "cap must not trim content that already fits"
+        )
+
+    def test_env_override_shrinks_the_cap(self, tmp_path, tasks_dir):
+        esc = tmp_path / "escalations_pro.jsonl"
+        records = [
+            {"job": f"job_{i}", "status": "pending", "priority": "HIGH",
+             "error_summary": "y" * 78, "ts": 100 + i}
+            for i in range(60)
+        ]
+        _write_jsonl(esc, records)
+        raw, out = self._raw_payload_bytes(esc, tasks_dir, extra_env={"SESSIONSTART_HOOK_MAX_BYTES": "500"})
+        assert len(raw) <= 500, f"SESSIONSTART_HOOK_MAX_BYTES=500 must be honored, got {len(raw)} bytes"
+        assert out is not None
+        ctx = out["hookSpecificOutput"]["additionalContext"]
+        assert "HIGH-priority open" in ctx
