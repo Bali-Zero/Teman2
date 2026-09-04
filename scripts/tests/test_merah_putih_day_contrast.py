@@ -909,9 +909,24 @@ def _sentinel_step_script(event_name: str, base_sha: str) -> str:
     return script.replace("${{ github.event.pull_request.base.sha }}", base_sha)
 
 
-def _run_sentinel_step(tmp_path, *, base_sha: str, changed: list[str], event_name: str = "pull_request"):
+def _run_sentinel_step(
+    tmp_path,
+    *,
+    base_sha: str,
+    changed: list[str],
+    event_name: str = "pull_request",
+    mutate=None,
+    env_extra=None,
+):
     """Executes the step in a throwaway git repo carrying a copy of this
     workflow, and returns (CompletedProcess, parsed $GITHUB_OUTPUT dict).
+
+    `mutate` rewrites the extracted step body before it runs, and exists for one
+    purpose: proving that a test built on this harness can still go RED. A test
+    that only ever drives the CORRECT script cannot tell "the guard fired" from
+    "nothing could have fired here anyway", which is the exact hole the verdict
+    gate's first test had. `env_extra` is merged over the runner environment and
+    is how a shim directory reaches PATH.
 
     A temp repo rather than REPO: the step writes to $GITHUB_OUTPUT and diffs
     two refs it must be able to construct, and a test that needs commits of its
@@ -948,10 +963,13 @@ def _run_sentinel_step(tmp_path, *, base_sha: str, changed: list[str], event_nam
 
     out_file = tmp_path / "gh_output"
     out_file.write_text("", encoding="utf-8")
+    script = _sentinel_step_script(event_name, base_sha or head_base)
+    if mutate is not None:
+        script = mutate(script)
     res = subprocess.run(
-        ["bash", "-c", _sentinel_step_script(event_name, base_sha or head_base)],
+        ["bash", "-c", script],
         capture_output=True, text=True, cwd=repo, check=False,
-        env={**os.environ, "GITHUB_OUTPUT": str(out_file)},
+        env={**os.environ, "GITHUB_OUTPUT": str(out_file), **(env_extra or {})},
     )
     parsed = dict(
         line.split("=", 1) for line in out_file.read_text(encoding="utf-8").splitlines() if "=" in line
@@ -1237,4 +1255,175 @@ def test_the_sentinel_fails_closed_when_the_base_tree_cannot_be_listed(tmp_path)
         "the sentinel printed `true` for some reason OTHER than the failed "
         "ls-tree — the shim proved nothing about the branch it was built to "
         f"reach. stderr={res.stderr!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# THE VERDICT GATE, REACHED RATHER THAN LIFTED OUT. `_run_case_fragment` above
+# executes the real `case` fragment, which answers "does the gate reject
+# garbage" — and cannot answer "does the step ever run the gate". Wrap the gate
+# in `if false; then … fi` and every test built on the fragment stays green
+# while the shipped step publishes whatever the snippet printed (Gear-3 council
+# on #5666, MERAH-4 finding 1, declared open at merge and cured here). The two
+# tests below drive the WHOLE step with a `python3` shim standing in for the
+# sentinel snippet, so the gate is reached the way the runner reaches it.
+# ---------------------------------------------------------------------------
+
+
+def _python3_shim(tmp_path, prints: str):
+    """A `python3` early on PATH that ignores its stdin script and prints
+    `prints`. The step's only python3 call is the sentinel snippet, so this
+    substitutes the snippet's VERDICT without touching the step's shell."""
+    import shlex
+
+    shim_dir = tmp_path / "shimbin"
+    shim_dir.mkdir(exist_ok=True)
+    shim = shim_dir / "python3"
+    # `cat >/dev/null` drains the heredoc on stdin: a shim that exits without
+    # reading it would hand the writer an EPIPE instead of the clean exit the
+    # real interpreter gives.
+    shim.write_text(
+        "#!/bin/sh\ncat >/dev/null 2>&1\nprintf '%s\\n' " + shlex.quote(prints) + "\n",
+        encoding="utf-8",
+    )
+    shim.chmod(0o755)
+    return shim_dir
+
+
+def test_the_verdict_gate_is_reached_by_the_step_itself(tmp_path) -> None:
+    """The gate fires from INSIDE the shipped step, not from a fragment lifted
+    out of it. A snippet that prints garbage must never reach $GITHUB_OUTPUT:
+    the step must publish `run=true` and name the reason.
+
+    Skipped where the shell cannot run a heredoc nested in `$( )` — the same
+    probe the no-op test uses, because this test reaches the same line."""
+    if not _shell_runs_a_heredoc_inside_a_substitution():
+        pytest.skip(
+            "this shell mangles a heredoc nested inside $( ), which is the shape "
+            "the step ships and the line this test must reach — probed, not "
+            "assumed from a version string. CI's ubuntu runner runs this."
+        )
+    shim_dir = _python3_shim(tmp_path, "maybe")
+    import os
+
+    res, out = _run_sentinel_step(
+        tmp_path,
+        base_sha="",
+        changed=["README.md"],
+        env_extra={"PATH": f"{shim_dir}:{os.environ['PATH']}"},
+    )
+    assert res.returncode == 0, f"the step died instead of failing closed: {res.stderr!r}"
+    assert out.get("run") == "true", (
+        "the step did not fail closed on a garbage verdict — the gate was not "
+        f"reached from inside the step. $GITHUB_OUTPUT={out!r} stdout={res.stdout!r}"
+    )
+    assert out.get("run") != "maybe" and "maybe" not in out.values(), (
+        f"the garbage verdict was published verbatim: {out!r}"
+    )
+    # WHICH branch fired: the verdict gate names the word it rejected, and no
+    # other fail-closed path in this step does.
+    assert "is not a verdict word" in res.stdout, (
+        "the step failed closed for a reason other than the verdict gate — some "
+        f"earlier branch covered for a gate that may be dead. stdout={res.stdout!r}"
+    )
+
+
+def test_the_end_to_end_verdict_harness_can_still_go_red(tmp_path) -> None:
+    """GUILT for the test above, which is the whole point of MERAH-4 finding 1:
+    if the gate is disarmed, the harness must NOTICE. The step is mutated so the
+    real gate is never reached — exactly the `if false; then … fi` the finding
+    named — and the garbage verdict must then reach $GITHUB_OUTPUT verbatim.
+
+    Without this, `test_the_verdict_gate_is_reached_by_the_step_itself` could be
+    passing because some unrelated branch produces `run=true` on this fixture."""
+    if not _shell_runs_a_heredoc_inside_a_substitution():
+        pytest.skip("same shell capability as the test above — probed, not assumed")
+    import os
+
+    def disarm(script: str) -> str:
+        head, rest = script.split('case "$RUN"', 1)
+        body, tail = rest.split("esac", 1)
+        return head + 'if false; then\ncase "$RUN"' + body + "esac\nfi" + tail
+
+    shim_dir = _python3_shim(tmp_path, "maybe")
+    res, out = _run_sentinel_step(
+        tmp_path,
+        base_sha="",
+        changed=["README.md"],
+        mutate=disarm,
+        env_extra={"PATH": f"{shim_dir}:{os.environ['PATH']}"},
+    )
+    assert out.get("run") == "maybe", (
+        "the gate was wrapped in `if false` and the garbage verdict STILL did "
+        "not reach $GITHUB_OUTPUT — this fixture proves nothing about the gate, "
+        f"because something else is producing the verdict. out={out!r} "
+        f"stdout={res.stdout!r} stderr={res.stderr!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# EXACTLY TWO, not "five samples did not get through". MERAH-4 finding 2: a
+# parametrised list of garbage shows those five are rejected and says nothing
+# about the size of the accepting set — `true|false|maybe)` passes every one of
+# them. The accepting arms are PARSED and their literals compared as a set.
+# ---------------------------------------------------------------------------
+
+
+def _verdict_case_arms() -> list[tuple[str, str]]:
+    """[(pattern, arm body)] for the step's real `case "$RUN"`, in order."""
+    script = _sentinel_step_script("pull_request", "deadbeef")
+    body = script.split('case "$RUN"', 1)[1].split("esac", 1)[0]
+    body = body.split("in", 1)[1]
+    arms = []
+    for raw in body.split(";;"):
+        if ")" not in raw:
+            continue
+        pattern, _, arm = raw.partition(")")
+        pattern = pattern.strip()
+        if pattern:
+            arms.append((pattern, arm.strip()))
+    return arms
+
+
+def test_the_verdict_gate_accepts_exactly_two_literal_words() -> None:
+    """The accepting set is {true, false} — measured, not sampled.
+
+    Three ways a widened gate slips past a sample-based test, all of them red
+    here: a third literal enlarges the parsed set; a glob in an accepting arm
+    makes the set unbounded; a second accepting arm adds its literals too. Each
+    parsed literal is then DRIVEN through the real fragment, so this test also
+    fails if the parse and the shell disagree about what the pattern means."""
+    arms = _verdict_case_arms()
+    assert arms, "the step no longer has a `case \"$RUN\"` with any arms at all"
+    accepting = [(p, a) for p, a in arms if "fail_closed" not in a]
+    rejecting = [(p, a) for p, a in arms if "fail_closed" in a]
+    assert rejecting, (
+        "no arm of the verdict gate calls fail_closed — nothing is rejected, so "
+        f"the gate is decorative. arms={arms!r}"
+    )
+    literals: set[str] = set()
+    for pattern, _arm in accepting:
+        for alternative in pattern.split("|"):
+            alternative = alternative.strip()
+            assert not set(alternative) & set("*?["), (
+                f"an ACCEPTING arm of the verdict gate carries the glob "
+                f"{alternative!r} — the accepting set is no longer bounded, and "
+                "every sample-based test of this gate would still pass"
+            )
+            literals.add(alternative)
+    assert literals == {"true", "false"}, (
+        "the verdict gate accepts something other than exactly the two verdict "
+        f"words: {sorted(literals)}"
+    )
+    # And the shell agrees with the parse, in both directions.
+    for word in sorted(literals):
+        res = _run_case_fragment(word)
+        assert "ACCEPTED" in res.stdout and "FAIL_CLOSED_FIRED" not in res.stdout, (
+            f"parsed {word!r} as accepted, but the real fragment rejects it: {res.stdout!r}"
+        )
+    outsider = "true_"  # not in the set, and not a prefix the globless arms match
+    res = _run_case_fragment(outsider)
+    assert "FAIL_CLOSED_FIRED" in res.stdout, (
+        f"a word outside the parsed accepting set ({outsider!r}) was accepted — "
+        f"the parse understates what the gate lets through: {res.stdout!r}"
     )
