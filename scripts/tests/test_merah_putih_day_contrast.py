@@ -779,12 +779,20 @@ def test_the_sentinel_reads_the_base_copy_via_git_show() -> None:
 
 
 def test_the_concurrency_group_never_cancels_a_merge_group_run() -> None:
-    """Condition 1. `github.ref` on a merge_group event is the QUEUE's ref, not
-    this PR's — so a bare `cancel-in-progress: true` lets the queue's next entry
-    cancel the entry ahead of it. A cancelled required context does not report a
-    failure, it reports nothing, and the entry is torn out of the queue rather
-    than merely delayed. Cancelling is right on `pull_request`, where the ref is
-    the PR's own and the superseded run is genuinely dead work.
+    """Condition 1, and its stated reason is FALSE — recorded here instead of
+    repeated. Measured 2026-09-04: merge-queue refs are
+    `gh-readonly-queue/main/pr-<N>-<sha>`, unique per entry, so with `github.ref`
+    in the group key no two entries share a group and the queue's next entry
+    cannot cancel the one ahead. Both council seats confirmed the measurement
+    independently; `security.yml` had already refuted the same collision on
+    2026-07-27.
+
+    What this test pins is therefore DEFENCE IN DEPTH, and it is worth pinning:
+    a cancelled required context reports nothing at all, so if the group key
+    ever loses `github.ref` or GitHub re-dispatches a merge_group ref, a bare
+    `true` would tear the entry out of the queue rather than delay it.
+    Cancelling stays right on `pull_request`, where the ref is the PR's own and
+    a superseded run is genuinely dead work.
     """
     import yaml
 
