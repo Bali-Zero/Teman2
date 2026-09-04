@@ -38,6 +38,17 @@ TG_NOTIFY="$SCRIPT_DIR/tg_notify.py"
 # 04:00 cron on Pro (W96: tests must never touch production state).
 LOCK_FILE="${NB_CURATOR_LOCK_FILE:-/tmp/nb-curator.lock}"
 LOG="$HOME/logs/nb-curator.log"
+
+# Agent definitions are project-level (`.claude/agents/`, git-tracked) and OUTRANK the
+# machine-local `~/.claude/agents/` copy -- but only when the process cwd is inside the repo.
+# launchd starts this job with cwd=/ and claude-cascade.sh never cd's, so without this the
+# untracked HOME copy is the only definition that can ever load (cicatrix family #1, HOME-fork).
+NUZ_ROOT="${NUZ_ROOT:-$HOME/nuzantara}"
+if [ -f "$NUZ_ROOT/.claude/agents/nb-curator.md" ]; then
+  cd "$NUZ_ROOT" || exit 1
+else
+  echo "[$(date)] WARN: $NUZ_ROOT/.claude/agents/nb-curator.md missing -- falling back to the ~/.claude/agents copy" >> "$LOG"
+fi
 # G2_heartbeat — proof of life at ~/.organism/last_seen/<id>.json, which is what
 # organs_registry.yaml (bridge_source.path) and the stale-detector actually read.
 # The library is INVOKED under `bash`, never sourced: this wrapper is zsh, and
@@ -206,7 +217,7 @@ else
     REPORT_PATH="$OUTPUT_DIR/${DATE_STR}-health.md"
 fi
 
-MODE_PROMPT="Run nb-curator daily pass. FIRST read your full operating spec at ~/.claude/agents/nb-curator.md (use your file-read tool) and follow it exactly. You have shell + file tools: use them to write the report file. Today is $DATE_STR.
+MODE_PROMPT="Run nb-curator daily pass. FIRST read your full operating spec at $NUZ_ROOT/.claude/agents/nb-curator.md (use your file-read tool) and follow it exactly. You have shell + file tools: use them to write the report file. Today is $DATE_STR.
 
 HARD LIMITS — violating these = failure:
 - Do NOT write, create, or run ANY python/bash analysis or diff scripts. Read files and reason directly.

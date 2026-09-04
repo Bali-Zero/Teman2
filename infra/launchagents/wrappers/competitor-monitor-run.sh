@@ -18,10 +18,21 @@ mkdir -p "$HOME/nuzantara/research/competitive" "$HOME/.claude/projects/-Users-n
 LOG="$HOME/logs/competitor-monitor.log"
 MONTH=$(TZ=Asia/Makassar date +%Y-%m)
 
+# Agent definitions are project-level (`.claude/agents/`, git-tracked) and OUTRANK the
+# machine-local `~/.claude/agents/` copy -- but only when the process cwd is inside the repo.
+# launchd starts this job with cwd=/ and claude-cascade.sh never cd's, so without this the
+# untracked HOME copy is the only definition that can ever load (cicatrix family #1, HOME-fork).
+NUZ_ROOT="${NUZ_ROOT:-$HOME/nuzantara}"
+if [ -f "$NUZ_ROOT/.claude/agents/competitor-monitor.md" ]; then
+  cd "$NUZ_ROOT" || exit 1
+else
+  echo "[$(date)] WARN: $NUZ_ROOT/.claude/agents/competitor-monitor.md missing -- falling back to the ~/.claude/agents copy" >> "$LOG"
+fi
+
 echo "[$(date)] competitor-monitor run starting for $MONTH" >> "$LOG"
 
 PROMPT="Run competitor-monitor agent for month $MONTH.
-Read ~/.claude/agents/competitor-monitor.md for full spec.
+Read $NUZ_ROOT/.claude/agents/competitor-monitor.md for full spec.
 - Web fetch 3 competitors: Lets Move Indonesia, Emerhub, Flado
 - Compare vs last month's snapshot in ~/.claude/projects/-Users-nuzantara/competitive-snapshots/
 - IG screenshot triage via Ollama qwen2.5vl:7b LOCAL pre-filter
