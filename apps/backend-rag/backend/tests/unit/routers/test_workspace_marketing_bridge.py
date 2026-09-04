@@ -507,7 +507,11 @@ async def test_failed_github_publish_remains_pending_and_retryable(
 ) -> None:
     item = _ready_news_item()
     item["cover_image"] = "cover.png"
-    (tmp_path / "cover.png").write_bytes(b"\x89PNG\r\n\x1a\n" + (b"x" * 5_100))
+    # A decodable image: the cover is re-encoded as JPEG at publish time, so a
+    # bare PNG header would be refused as unreadable before GitHub is reached.
+    cover_png = io.BytesIO()
+    Image.new("RGB", (1200, 630), color="navy").save(cover_png, format="PNG")
+    (tmp_path / "cover.png").write_bytes(cover_png.getvalue())
     staging_path = tmp_path / "news_1.json"
     staging_path.write_text(json.dumps(item), encoding="utf-8")
     monkeypatch.setattr(intel_scraper.staging_service, "load_staging_item", lambda *_: item)
