@@ -544,7 +544,14 @@ def _workflow_trigger_paths() -> list[str]:
     # list — vacuously green, which is worse than red.
     trigger = doc.get("on", doc.get(True))
     assert trigger, f"{WORKFLOW.name}: no trigger block parsed — check the YAML 1.1 `on:` key trap"
-    return list(trigger["pull_request"]["paths"])
+    # The list moved from `pull_request.paths` to `push.paths` on 2026-09-03,
+    # when this workflow took the shape a REQUIRED context must have. The
+    # trigger no longer filters PRs at all — the in-job sentinel reads THIS
+    # list and decides — so `push.paths` is now the single copy, and both the
+    # sentinel and this test read it from here.
+    paths = trigger["push"]["paths"]
+    assert paths, f"{WORKFLOW.name}: `push.paths` is empty — the guarded set cannot be nothing"
+    return list(paths)
 
 
 def test_the_workflow_trigger_covers_every_file_this_guard_reads() -> None:
@@ -579,4 +586,169 @@ def test_the_workflow_trigger_covers_every_file_this_guard_reads() -> None:
         "these files are READ by this guard but match no `paths:` pattern in "
         f"{WORKFLOW.name}, so changing one starts no check run:\n  "
         + "\n  ".join(uncovered)
+    )
+
+
+def test_the_workflow_has_the_shape_a_required_context_must_have() -> None:
+    """A path-filtered check cannot be REQUIRED, and finding that out from a
+    jammed merge queue is the expensive way.
+
+    GitHub does not synthesise a passing report for a workflow that did not
+    start: a required context whose `pull_request` trigger filters by path
+    simply never reports on the PRs it does not match, and both the PR and the
+    merge-queue entry wait for it forever. This repo has already paid that once
+    (2026-08-30). The two properties below are what the required workflows here
+    (`guard-conformance.yml`, `organ-conformance.yml`) have in common, and they
+    are asserted rather than described so that a later edit re-adding a
+    `paths:` filter to `pull_request` fails here instead of in the queue.
+
+    Both halves matter independently: without `merge_group` the context never
+    reports on the queue's own ref; with `pull_request.paths` it never reports
+    on two thirds of the PRs.
+    """
+    import yaml
+
+    doc = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    trigger = doc.get("on", doc.get(True))
+    assert trigger, f"{WORKFLOW.name}: no trigger block parsed"
+
+    assert "pull_request" in trigger, f"{WORKFLOW.name}: no pull_request trigger"
+    pr = trigger["pull_request"]
+    # A bare `pull_request:` parses as None — that is the shape we want.
+    assert pr is None or "paths" not in pr, (
+        f"{WORKFLOW.name}: `pull_request` carries a `paths:` filter again. A "
+        "required context must report on EVERY pull request; filter inside the "
+        "job with the sentinel, never at the trigger."
+    )
+    assert "merge_group" in trigger, (
+        f"{WORKFLOW.name}: no `merge_group:` trigger. A required context that "
+        "never runs on the merge queue's ref leaves every entry waiting."
+    )
+
+
+def test_the_sentinel_reads_the_trigger_list_instead_of_restating_it() -> None:
+    """The sentinel decides whether the guard runs. If it carried its own copy
+    of the guarded paths, the copy would rot exactly like the hand-kept list
+    this guard's docstring already warns about — and the failure is silent: the
+    sentinel reports "nothing changed" for a file that did, and the job is green
+    over a real regression.
+
+    So the sentinel must READ `push.paths` out of the workflow at run time.
+    This asserts the mechanism, not the wording: the sentinel step must parse
+    this workflow file and index `push`/`paths`.
+    """
+    text = WORKFLOW.read_text(encoding="utf-8")
+    sentinel = text.split("Did a guarded surface change?", 1)
+    assert len(sentinel) == 2, f"{WORKFLOW.name}: the sentinel step is gone"
+    body = sentinel[1].split("- name:", 1)[0]
+    assert "merah-putih-day-contrast.yml" in body, (
+        "the sentinel does not read this workflow file — it is deciding from "
+        "something other than the trigger's own list"
+    )
+    assert '["push"]["paths"]' in body, (
+        "the sentinel does not index `push.paths` — if it now keeps its own "
+        "pattern list, the trigger and the gate can disagree silently"
+    )
+
+
+# ---------------------------------------------------------------------------
+# The sentinel is executed here, not just grepped. Two defects found by the
+# Gear-3 council on 2026-09-04 were both invisible to the static assertions
+# above: (1) the whole heredoc was piped into $GITHUB_OUTPUT, notice line
+# included, so the "nothing guarded changed" path — the one this promotion
+# exists to make green — went red on an invalid env-file line; (2) the pattern
+# list was read from the PR's OWN copy of this file, so a PR that narrowed
+# `push.paths` judged itself by its own shortened list.
+# ---------------------------------------------------------------------------
+
+
+def _sentinel_snippet() -> str:
+    """The python between `<<'PY'` and `PY` inside the sentinel step, dedented."""
+    import textwrap
+
+    text = WORKFLOW.read_text(encoding="utf-8")
+    body = text.split("Did a guarded surface change?", 1)[1].split("- name:", 1)[0]
+    start = body.index("<<'PY'\n") + len("<<'PY'\n")
+    end = body.index("\n          PY\n", start)
+    return textwrap.dedent(body[start:end])
+
+
+def _run_sentinel(tmp_path, changed: list[str], **env_extra: str) -> "subprocess.CompletedProcess[str]":
+    import os
+    import subprocess
+    import sys
+
+    changed_file = tmp_path / "changed.txt"
+    changed_file.write_text("\n".join(changed) + "\n", encoding="utf-8")
+    env = {**os.environ, "BASE_SHA": "HEAD", "CHANGED_FILE": str(changed_file), **env_extra}
+    return subprocess.run(
+        [sys.executable, "-"],
+        input=_sentinel_snippet(),
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+        env=env,
+        check=False,
+    )
+
+
+def test_the_sentinel_prints_exactly_one_word_for_github_output(tmp_path) -> None:
+    """Innocence for defect (1): on an unguarded change the snippet's stdout is
+    the single word `false` — nothing else may reach `$GITHUB_OUTPUT`."""
+    res = _run_sentinel(tmp_path, ["README.md"])
+    assert res.returncode == 0, res.stderr
+    assert res.stdout == "false\n", (
+        "the sentinel wrote more than `false` to stdout — anything but the "
+        f"verdict word becomes an invalid $GITHUB_OUTPUT line: {res.stdout!r}"
+    )
+    res = _run_sentinel(tmp_path, ["apps/mouth/src/lib/theme/merahPutihDayVars.ts"])
+    assert res.returncode == 0, res.stderr
+    assert res.stdout == "true\n"
+
+
+def test_only_the_verdict_line_is_appended_to_github_output() -> None:
+    """Guilt for defect (1), at the shell layer: the heredoc must not be
+    redirected into `$GITHUB_OUTPUT`; only an `echo "run=…"` may write there."""
+    text = WORKFLOW.read_text(encoding="utf-8")
+    body = text.split("Did a guarded surface change?", 1)[1].split("- name:", 1)[0]
+    assert '<<\'PY\' >> "$GITHUB_OUTPUT"' not in body, (
+        "the sentinel pipes its whole heredoc into $GITHUB_OUTPUT again — the "
+        "::notice:: line is not NAME=VALUE and the runner fails the step"
+    )
+    writers = [
+        l.strip()
+        for l in body.splitlines()
+        if "$GITHUB_OUTPUT" in l and not l.strip().startswith("#")
+    ]
+    assert writers and all(l.startswith('echo "run=') for l in writers), writers
+
+
+def test_a_pr_that_narrows_its_own_list_cannot_disarm_the_sentinel(tmp_path) -> None:
+    """Guilt for defect (2): the PR's copy of this workflow drops every guarded
+    path but one unrelated file. The sentinel must still say `true` for a
+    token-file change, because it also reads the BASE copy the PR cannot edit."""
+    narrowed = tmp_path / "narrowed.yml"
+    narrowed.write_text(
+        "on:\n  push:\n    paths:\n      - \"docs/never-touched.md\"\n", encoding="utf-8"
+    )
+    res = _run_sentinel(
+        tmp_path,
+        ["apps/mouth/src/lib/theme/merahPutihDayVars.ts"],
+        HEAD_WORKFLOW=str(narrowed),
+    )
+    assert res.returncode == 0, res.stderr
+    assert res.stdout == "true\n", (
+        "the sentinel judged itself by the PR's own narrowed list — a PR can "
+        "shrink `push.paths` and skip the corpus that would catch it"
+    )
+
+
+def test_the_sentinel_reads_the_base_copy_via_git_show() -> None:
+    body = (
+        WORKFLOW.read_text(encoding="utf-8")
+        .split("Did a guarded surface change?", 1)[1]
+        .split("- name:", 1)[0]
+    )
+    assert '"git", "show"' in body and 'BASE_SHA' in body, (
+        "the sentinel no longer reads the base ref's copy of its pattern list"
     )
