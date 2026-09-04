@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import ast
 import contextlib
 import importlib.util
 import io
@@ -734,6 +735,108 @@ class ChangeMapTests(unittest.TestCase):
         if message.startswith("WARNING"):
             print(message)
         self.assertTrue(should_pass, message)
+
+    def test_census_trees_cover_every_app_tests_yml_runs(self) -> None:
+        """``TREES`` is the census's INPUT corpus, and it was hand-written.
+
+        ``apps/admin-dashboard-local`` runs ``npx vitest run`` inside the
+        REQUIRED ``(mouth, true)`` leg of frontend-tests, yet was absent
+        from ``TREES`` for as long as the census existed — so any repo-root
+        ``scripts/`` file that tree imports or invokes was invisible to the
+        coupling census. That is the UNDER-match direction (superscar #3):
+        it SKIPS a suite that should have run, which is the expensive
+        mistake, not the cheap one.
+
+        Note the trap the fix had to avoid: ``apps/admin-dashboard`` is a
+        PREFIX of ``apps/admin-dashboard-local`` and covers none of it.
+        Coverage is asserted by tree ENTITY, never by substring.
+
+        This re-derives the requirement from ``tests.yml`` on every run
+        rather than trusting the one-off audit that found the gap — the
+        next app added to a job leg has to be declared, or this goes red.
+        """
+
+        rel = Path("scripts") / "ci" / "scripts_coupling_census.py"
+        repo_root = _locate_repo_root(rel)
+        if repo_root is None:
+            self.skipTest(
+                "scripts_coupling_census.py not reachable from cwd, GITHUB_WORKSPACE "
+                "or __file__ — TREES coverage is asserted where the checkout is present"
+            )
+        workflow = repo_root / ".github" / "workflows" / "tests.yml"
+        if not workflow.is_file():
+            self.skipTest("tests.yml absent from this checkout")
+        text = workflow.read_text(encoding="utf-8")
+
+        # TREES is read as a LITERAL from the source: importing the census
+        # would pull it into tests.yml's trusted-extraction closure, and it
+        # has no business there (it shells out to `git grep` and writes).
+        tree_node = next(
+            (
+                node.value
+                for node in ast.parse(
+                    (repo_root / rel).read_text(encoding="utf-8")
+                ).body
+                if isinstance(node, ast.Assign)
+                and any(
+                    isinstance(t, ast.Name) and t.id == "TREES" for t in node.targets
+                )
+            ),
+            None,
+        )
+        self.assertIsNotNone(tree_node, "TREES assignment not found in the census")
+        trees = ast.literal_eval(tree_node)
+
+        entered = set(
+            re.findall(r"(?:cd|working-directory:)\s+apps/([A-Za-z0-9._-]+)", text)
+        )
+        # `cd apps/${{ matrix.app }}` — resolve it, never skip it. A form
+        # this guard cannot resolve must FAIL, not pass quietly: a guard
+        # that fail-opens on the case it does not understand is the whole
+        # family #2 pattern in miniature.
+        expressions = []
+        for match in re.finditer(r"apps/\$\{\{([^}]*)\}\}", text):
+            expr = match.group(1).strip()
+            expressions.append(expr)
+            # Name the LINE, not just the expression: the next person to hit
+            # this is reading a red CI log, not this file, and "an expression
+            # I cannot resolve" without a location is a hunt.
+            line_no = text.count("\n", 0, match.start()) + 1
+            self.assertEqual(
+                expr,
+                "matrix.app",
+                f".github/workflows/tests.yml:{line_no} enters apps/ through an "
+                f"expression this guard cannot resolve: {match.group(0)!r}\n"
+                f"    {text.splitlines()[line_no - 1].strip()}\n"
+                "Teach this test the form (see the `- app:` matrix handling just "
+                "below) — do not let it through, or the tree it names goes "
+                "unchecked against the census TREES list.",
+            )
+        if expressions:
+            matrix_apps = set(
+                re.findall(r"^\s*-\s*app:\s*([A-Za-z0-9._-]+)\s*$", text, re.MULTILINE)
+            )
+            self.assertTrue(
+                matrix_apps,
+                "tests.yml uses `apps/${{ matrix.app }}` but declares no `- app:` "
+                "matrix values this guard can read",
+            )
+            entered |= matrix_apps
+
+        uncovered = sorted(
+            tree
+            for tree in (f"apps/{name}" for name in entered)
+            if not any(tree == t or tree.startswith(f"{t}/") for t in trees)
+        )
+        self.assertEqual(
+            uncovered,
+            [],
+            "tests.yml executes code from these trees, but the coupling census "
+            f"does not read them: {uncovered}. Any repo-root scripts/ file they "
+            "import or invoke is invisible to SCRIPTS_COUPLING — the UNDER-match "
+            "direction. Add each to TREES in scripts_coupling_census.py and re-run "
+            "--write.",
+        )
 
     def test_guilt_fleet_ops_combined_with_backend_change_still_runs_backend(
         self,
