@@ -1,63 +1,79 @@
-task_id: frontend-job-cap-0904
+task_id: bites-b-cut-0904
 gear: 3
 l_level: L2
 gate_class: opus
-objective:
-  "Stop the merge queue from being blocked by a timeout cap that sits one minute above the
+# CORRECTED 2026-09-05: an earlier draft of this brief declared gear 1, computed
+# by measuring `evidence_pack_lint.py --print-floor` against the diff of THIS
+# PR's contribution on top of #5673's tip (9b4be2bf24) rather than against the
+# actual PR base (main). Against main - what CI's harness-floor.yml actually
+# diffs, merge-base anchored - this branch's diff carries #5673's own
+# `.github/workflows/immune-enforcement.yml` change too (test wiring for the
+# antidotes job, kept: a test nothing runs is scar #5625), which is a hot-zone
+# path regardless of size. Floor is 3. tp1-qwen3.8-max was dispatched as the
+# second council seat (kimi-code/k3 already served as refuter) to satisfy the
+# Gear-3 two-seat requirement honestly instead of narrowing scope to dodge it.
+objective: >-
+  Answer the line-count question PR #5673 left open. That PR cut bites_parse.py from
+  1,462 to 1,127 lines and reported "target not met — 1,127 is not a few hundred",
+  naming the only lever left: admit fewer binaries or carry fewer guards. RULED
+  2026-09-04 b (Zero, Legge 5, relayed on #5673) answered: option b, fewer binaries,
+  NEVER fewer guards. `observe:` now admits exactly TWO shapes — `python3
+  scripts/<path>.py [literal args]` (in-tree, no `..`, no symlink escape, marked
+  `bites-observable` in its own source) and `fly <read-only subcommand> [args]`
+  (`status`, `releases`, `image show`, `machine list` only, `-a`/`--app` the only
+  flag). `gh`, `curl`, `git` and `python3 -m pytest` are gone entirely — every escape
+  found on this surface so far lived in one of the three binaries, and `python3 -m
+  pytest` imports whatever `conftest.py` an unmerged branch happens to carry.
 
-  frontend job's own healthy runtime.
-
-
-  `Frontend Tests (Next.js)` in `.github/workflows/tests.yml` ran under `timeout-minutes: 10`
-
-  while its healthy path measured 9m13s (run 33825884926, 2026-09-04 01:30Z). From 01:43Z the
-
-  `npm ci` step took 4m20s instead of 1m07s on the SAME commit — registry/cache degradation, not
-
-  code — so every run reported the job `cancelled` at the cap and `Test Summary` went red:
-
-  PR runs (#5626, #5627) and merge_group runs (queue entries for #5569, #5614, #5626) alike.
-
-  Main did not move in that window (`git log origin/main --since=2026-09-04T00:00Z` is empty).
-
-
-  The diff is one value: `timeout-minutes: 10` → `16`, plus a comment carrying the measurement.
-
-  No change to the matrix, the required contexts, the `!cancelled()` gate or concurrency.
-
-
-  Gear 3 by PATH, deterministically: `.github/workflows/**` is a hot-zone path in
-
-  `scripts/evidence_pack_lint.py::compute_floor` regardless of diff size.
-
-  "
-gear_reason: hot-zone path `.github/workflows/tests.yml` (floor 3 by path, not by size).
+  This PR supersedes #5673 (kept open until this PR is proven, then closed): same
+  module, same corpus, same test file, cut down to the ruled surface rather than
+  merged as a wider one.
+appetite:
+  wall_clock_hours: 3
 constraints:
-  - One concern, one value. The npm cache/registry regression that made the cap bite is a separate cure
-    with a separate owner; this PR does not touch caching, `npm ci`, or the suite.
-  - The required context `Frontend Tests (Next.js) (mouth, true)` (infra/required.d/contexts.json) must
-    still materialize identically — job name, matrix, event coverage unchanged.
-  - "Never `gh run rerun` a queue run against this cap: the cap is the cause, a rerun replays it."
+  - >-
+    Fixtures for the removed binaries FLIP from innocence to guilt, never deleted —
+    the corpus is the record of what used to be allowed and now is not.
+  - >-
+    Keep the lossless discipline PR #5673 established: a differential over the
+    ORIGINAL corpus entries (re-classified by the cut module) must show ONLY
+    removed-binary/narrowed-fly-subcommand entries flipping to malformed — nothing
+    else may change verdict for the same input text.
+  - >-
+    Never fewer guards on the two surviving shapes. Cutting a binary must not
+    quietly cut a guard's OWN mutation-proof if that proof's fixture happened to use
+    the removed binary as an incidental example — re-isolate it on an allowed head
+    instead of accepting the loss.
+  - Keep the `_StrictLoader` and its closed top-level key set exactly as is.
+  - No new required context on main; no paid API; no LLM in the executor at all.
 acceptance:
-  - "WHEN the next merge_group run executes 'Frontend Tests (Next.js) (mouth, true)' with an install step
-    over four minutes, the job SHALL conclude success and Test Summary SHALL report Frontend matrix success.
-    probe: gh run view <merge_group run id> --json jobs → conclusion success on that job"
-  - "WHEN a genuine hang occurs, the job SHALL still be bounded at 16 minutes, not unbounded. probe: grep
-    -n 'timeout-minutes: 16' .github/workflows/tests.yml → exactly one hit, on the frontend job"
-consumer_map:
-  - The merge queue on `main` (ruleset 19779175) — every queue entry runs this job.
-  - Every `pull_request` run of `tests.yml` — the `Test Summary` fan-in reads this job's conclusion.
-  - "`infra/required.d/contexts.json` — unchanged; the context name is not touched."
-risks:
-  - A real hang is now detected six minutes later. Bounded, and cheaper than a blocked queue.
-  - "Headroom against the degraded path is ~3.5 minutes; if the registry degrades further the cap bites
-    again. Both council seats named the same follow-up: measure the `actions/cache` hit rate on 'Cache
-    dependencies' and the `npm ci` registry path — a separate PR."
-grader:
-  "Opus-class final on-disk gate per CLAUDE.md §5 (2026-08-20 ruling). Generator is this session
-
-  (M5, worktree infra-frontend-job-cap); council reviews by codex-gpt-5.6-sol and kimi-code/k3
-
-  on the full diff, journal in the pack directory.
-
-  "
+  - >-
+    A1: `python3 scripts/ci/bites_parse.py --selftest` exits 0 over the full corpus;
+    the count is reported honestly (see receipts), not padded and not pinned to a
+    number future fixtures would turn into a ratchet.
+  - >-
+    A2: `python3 infra/guard-conformance/check_guard_conformance.py` reports the
+    bites-parse surface with 0 violations.
+  - >-
+    A3: a mutation check (patch each `_guard_*` to a no-op, one at a time, and ask
+    whether ANY corpus fixture's actual classification then disagrees with its
+    declared one) shows every one of the nine guards still provably necessary
+    against the corpus alone.
+  - >-
+    A4: the differential over the ORIGINAL 121 corpus entries shows only
+    removed-binary/narrowed-fly flips to malformed, zero unintended verdict changes,
+    zero deleted labels.
+  - >-
+    A5: a cross-family refuter dispatched on the cut, two-shape module either finds
+    nothing after checking the flag lists, the path resolution and the fly
+    subcommand table, or its finding is reproduced against the real guard functions
+    before being applied.
+dissent_process: >-
+  One refuter seat this time (kimi-code/k3), not the three-plus of #5673 — the
+  surface is narrower by construction (two shapes, nine guards, most of them
+  unchanged). Its pass raised four findings, not one: brace-expansion defeating
+  the observable-marker check, a subcommand-table match that ignored a third
+  leading word, a positional argument hiding after a flag's own value, and the
+  marker check accepting any file (not just a `.py` one) whose bytes happened to
+  carry the marker string. Each was reproduced against the real guard functions
+  before being applied — none taken on the seat's word; see journal.jsonl.
