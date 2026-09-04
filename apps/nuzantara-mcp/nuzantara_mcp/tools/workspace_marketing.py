@@ -1899,7 +1899,14 @@ def register(mcp: Any, backend_call: BackendCall) -> None:
         cover_image_base64: str,
         filename: str,
     ) -> dict[str, Any]:
-        """Attach the approved native-ImageGen cover before publication."""
+        """Attach the approved native-ImageGen cover before publication.
+
+        Send a JPEG of 1200x630 pixels and at most 300 KB (base64 under
+        ~400 KB). The chat channel truncates larger payloads and the upload
+        is then rejected as an invalid image; PNG covers must be converted
+        and compressed first. The backend republishes the cover as a
+        slug-named JPEG plus a 16:10 card at publish time.
+        """
 
         _require_writes_armed()
         safe_id = _validated_item_id(item_id)

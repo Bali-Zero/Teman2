@@ -136,6 +136,21 @@ def test_bridge_instructions_and_docstrings_make_publish_a_single_order() -> Non
     assert "His order is the decision" in tools["newsroom_publish"].__doc__
 
 
+def test_bridge_tells_the_agent_the_cover_size_the_chat_channel_can_carry() -> None:
+    # 2026-09-04: a PNG cover from native ImageGen was truncated by the chat
+    # channel and rejected; the retry as a 1200x630 JPEG (42 KB) went through.
+    text = mcp.instructions
+    tools, _ = _capture_tools(AsyncMock())
+    doc = tools["newsroom_attach_cover"].__doc__
+
+    assert "1200x630" in text
+    assert "300 KB" in text
+    assert "truncates" in text
+    assert "1200x630" in doc
+    assert "300 KB" in doc
+    assert "PNG covers must be converted" in doc
+
+
 def test_workspace_server_never_imports_full_server_or_admin_client() -> None:
     source = inspect.getsource(server_workspace_marketing)
     marketing_source = inspect.getsource(marketing)
