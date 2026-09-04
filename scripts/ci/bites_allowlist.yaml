@@ -1,0 +1,214 @@
+# The security model of scripts/ci/bites_parse.py, as data.
+#
+# An `observe:` command is executed POST-MERGE by a runner holding a write-scoped
+# token. Everything here answers one question: can this invocation change anything?
+# Everything not named here is refused. Adding an entry means adding a guilt AND an
+# innocence fixture to bites_corpus.yaml (infra/guard-conformance enforces the pair).
+#
+# This file left bites_parse.py on 2026-09-04 under Zero's cut order. The rationale
+# comments came with it on purpose: a rule whose scar record lives in another
+# document is a rule the next editor deletes without knowing what it cost.
+
+# First-token allow-list. Anything not here is rejected outright.
+commands: [gh, curl, git, python3, fly, flyctl]
+
+# What may follow an allow-listed subcommand word. The first draft spelled both of
+# these `null`, which read as "anything may follow" and was two different rules
+# wearing one name: `gh api <path>` is followed by DATA, while `fly version` is
+# followed by nothing - and `fly version upgrade` REPLACES THE BINARY. Naming the two
+# cases apart is what closes that hole: every pair entry declares which it is.
+#   NO_SUBCOMMAND  - nothing but flags may follow
+#   ANY_POSITIONAL - a data argument follows, never a verb
+
+fly:
+  # Read-only fly/flyctl subcommand PAIRS. The first draft listed FIRST WORDS only, and
+  # `machine` was one of them - which Kimi K3, refuting this file on 2026-09-04, pointed
+  # out admits `fly machine run <image>`: arbitrary container execution on production
+  # infrastructure, through a guard whose whole purpose was to keep observations
+  # read-only. `fly machine destroy` and `fly machine update` came through the same gap.
+  # A one-word check on a command with two-word subcommands is superscar #3's
+  # under-match, and it recurred a third time on `version`: `fly version upgrade`
+  # downloads and installs a new flyctl.
+  # `logs` was here until 2026-09-04: it is read-only in the fly sense, but it pipes
+  # PRODUCTION application logs into a CI log a pull request can trigger, which is
+  # Builder Contract section 4's output boundary rather than a fly-API question. An
+  # executor may earn it back with a redaction step; a parser cannot grant it.
+  subcommands:
+    - [status, NO_SUBCOMMAND]
+    - [releases, NO_SUBCOMMAND]
+    - [version, NO_SUBCOMMAND]
+    - [image, show]
+    - [machine, list]
+    - [machine, status]
+  # `-c`/`--config` READS a file the argument names, which is how
+  # `fly status --config=.git/config` reached a credential file through a subcommand
+  # table that was otherwise correct - the pairs were checked and the flags were not.
+  flags: [-a, --app, --json, -j, --now, --all]
+
+curl:
+  # INVERTED to an allow-list on 2026-09-04, after the FOURTH hole in the deny-list it
+  # replaces. That deny-list had already lost `-b` (reads .git/config, where
+  # actions/checkout persists the token), `-w@<path>` (prints a local file to stdout),
+  # `--netrc-file` and `--variable`; a fifth review found three more in one pass -
+  # `--json=@<path>` (documented as a shortcut for `--data`, and it takes the same
+  # `@filename` file-read syntax), `--libcurl=<path>` (writes a generated C file) and
+  # `--etag-save=<path>` (writes a file whose content the remote controls). curl 8.7 has
+  # over two hundred options; a deny-list over them can only ever be a list of the ones
+  # someone thought of. Rule 8: a surface that fails four times the same way is
+  # under-specified, so this is the SPEC.
+  #
+  # A value beginning with `@` is refused wherever it appears: `-H @file` and
+  # `--json @file` both make curl read a local file into the request.
+  flags:
+    - -s, --silent, -S, --show-error, -f, --fail, --fail-with-body
+    - -L, --location, -i, --include, -I, --head, --compressed
+    - -m, --max-time, --connect-timeout, --max-redirs
+    - --retry, --retry-delay, --retry-max-time, -w, --write-out
+    - -H, --header, -A, --user-agent, --http1.1, --http2, --ipv4, --ipv6
+  # Short options that carry no value, so they may be bundled (`-sS`, `-sSL`).
+  short_bundle: sSfLiI
+  # Options whose value is the NEXT token unless glued. They are consumed in pairs
+  # rather than counted as the URL, which is what lets this repo's own idioms through:
+  # `curl -fsS -m 5 <url>` appears in five scripts and `-w "%{http_code}"` is the
+  # standard health check. `-w@<path>` stays refused - by the args-from-file guard,
+  # which judges the VALUE, so re-admitting the option does not reopen the hole.
+  value_taking:
+    - -H, --header, -A, --user-agent, -m, --max-time, --connect-timeout
+    - --max-redirs, --retry, --retry-delay, --retry-max-time, -w, --write-out
+
+pytest:
+  # An allow-list for the third time in this file, and for the same reason: the
+  # deny-list it replaces named the options that choose code to IMPORT (`-p`, `-o`,
+  # `--override-ini`, `--rootdir`, `--import-mode`, `--pdb`, `--assert`) and never
+  # considered the ones that WRITE. `--junitxml=<relative path>` writes an XML report
+  # anywhere in the checkout, including over a source file, and the path guard permits
+  # a relative path by design.
+  #
+  # `-W` was here until 2026-09-04 and is deliberately gone: pytest resolves a warning
+  # filter's category with `__import__`, so `-W error::evil.Custom` imports a module the
+  # argument names. An allow-list of OPTIONS still has to ask what each option's VALUE
+  # can reach - the same lesson as `curl -b`, one level in.
+  flags:
+    - -q, --quiet, -v, --verbose, -x, --exitfirst, --tb, -k, -m
+    - --maxfail, --no-header, --no-summary, -r, --durations, --color
+    - --strict-markers, --strict-config, --capture, -s
+  # Must be written `--flag=value`: a separate value is indistinguishable from a test
+  # path to any reader of argv - `pytest -k tests` reads as the target `tests`.
+  value_taking: [-k, -m, -r, --maxfail, --durations, --tb, --capture, --color]
+
+gh:
+  # Subcommand PAIRS that only read. `gh pr merge`, `gh workflow run`, `gh api -X POST`
+  # and `gh repo clone` all act; an allow-list keyed on `gh` alone would permit each one.
+  subcommands:
+    - [pr, view]
+    - [pr, list]
+    - [pr, diff]
+    - [pr, checks]
+    - [run, view]
+    - [run, list]
+    - [release, view]
+    - [workflow, view]
+    - [issue, view]
+    - [issue, list]
+    - [search, prs]
+    - [api, ANY_POSITIONAL]
+  # The fourth list inverted, and the last two entries were removed for findings a
+  # deny-list could not have held: `--cache=1h` persists the response to a local cache
+  # (a write), and `--web` opens a browser. The deny-list it replaces named only the
+  # retargeting flags (`-R`, `--repo`, `--hostname`).
+  #
+  # `--jq`/`-q` were here until an independent gate found the third instance of this
+  # file's own recurring lesson - "an allow-list of OPTIONS still has to ask what each
+  # option's VALUE can reach", already written about `pytest -W` and `curl -b`. gh
+  # filters with gojq, whose `env` builtin needs no `$` and so is invisible to the
+  # shell-metacharacter guard: `gh api repos/o/r --jq env.GITHUB_TOKEN` prints the
+  # runner's token, and `--jq 'env|keys'` enumerates every secret NAME the step holds
+  # regardless of Actions log masking. Worse, `expect: regex:^ghs_AB` would turn the
+  # executor's own pass/fail into a character-at-a-time oracle over a masked value.
+  # Use `--json <fields>` and match with `expect: contains:` instead.
+  flags:
+    # `--template`/`-t` went with them. Not measured to reach the environment - gh
+    # renders it with Go templates, not gojq - but it is an EXPRESSION LANGUAGE over
+    # the response, no observation needs one that `--json` plus `expect: contains:`
+    # cannot express, and this option surface has now produced two holes in two
+    # reviews. When the same surface fails twice, narrow the surface (Rule 8).
+    - --json, --limit, -L, --state, -s
+    - --paginate, --header, -H, --slurp
+  # `gh api` flags that turn a read into a write or read a body from a file.
+  api_forbidden: [-X, --method, -f, -F, --field, --raw-field, --input]
+
+git:
+  # Subcommands that only read the local object store. `clone`, `fetch`, `push`,
+  # `remote` and `submodule` all reach the network; the rest here do not. `tag` and
+  # `branch` were here in the first draft and are gone: with an argument they CREATE a
+  # ref, which is a write to the object store, and `-d` deletes one. "Read-only" has to
+  # mean the subcommand cannot write in ANY invocation, not that its common form happens
+  # not to. These stay single words rather than pairs because each is a terminal verb:
+  # git's namespaced subcommands (`stash list`, `notes add`, `remote add`) are all absent
+  # here, so there is no second word that could name an action.
+  subcommands:
+    - log, show, status, diff, rev-parse, ls-tree, cat-file, grep
+    - describe, ls-files, shortlog, blame, rev-list
+  # GLOBAL options - the ones BEFORE the subcommand - are an allow-list with NOTHING in
+  # it. `-c` is code execution, `--paginate` starts $PAGER, `--help` becomes `git help`
+  # which starts man or a browser, `-C`/`--git-dir`/`--work-tree` retarget the tree. An
+  # observation has never needed one, so the honest allow-list is empty rather than a
+  # list of the dangerous ones somebody remembered.
+  global_flags: []
+  # Subcommand options, checked AFTER the subcommand word. Inverted for the same reason
+  # as curl's, after the same shape of failure three times over: `git diff
+  # --output=<relative>` writes a file the path guard permits; `git grep -O<cmd>` opens
+  # matches in a PAGER COMMAND the argument names; and `git diff --no-index <a> <b>`
+  # leaves the repository entirely and diffs two arbitrary files, turning a repo-scoped
+  # read into a filesystem read. Each was found by a different reviewer, none by the
+  # list itself. A bare `-<digits>` (`git log -1`) is accepted as a count.
+  flags:
+    - -n, --max-count, --skip, --oneline, --format, --pretty, --date
+    - --name-only, --name-status, --stat, --numstat, --shortstat
+    - --abbrev-commit, --no-abbrev-commit, --no-color, --color, --no-patch
+    - --no-merges, --merges, --first-parent, --follow, --reverse, --graph
+    - --since, --until, --author, --committer, --grep, --all, --decorate
+    - --cached, --staged, --porcelain, --short, --branch, --exit-code
+    - --quiet, -q, -c, -l, -L, -i, -E, -w, -h, -r, -t, -p, -s
+    - --count, --files-with-matches, --files-without-match, --line-number
+    - --word-diff, --full-tree, --name-rev, --verify, --abbrev-ref
+    - --show-toplevel, --is-inside-work-tree, --symbolic-full-name, --tags
+    - --contains, --long, --dirty, --check, --summary, --find-renames
+    # Added 2026-09-04 after a review measured the OVER-match the inversion introduced:
+    # each of these is display-shape only, and each is already in daily use in this repo
+    # (`--diff-filter=` in 8 files, `--no-renames` in 11, `--` in the standard
+    # `git diff --name-only HEAD -- <path>` idiom). Inverting a list is only safe if the
+    # real shapes survive it, and three of them did not.
+    - --diff-filter, --no-renames, --no-ext-diff, --no-textconv, -z, --
+  # `-U<n>` (diff context) is a numeric option nothing can enumerate, and it can name
+  # neither a file nor a program.
+  numeric_prefixes: [-U]
+
+# A script is reachable by `observe:` only if its own SOURCE carries this marker.
+# Codex, red-teaming this file on 2026-09-04, made the point that killed the first
+# draft's rule: allow-listing `python3 scripts/...` allow-lists roughly nine hundred
+# scripts, and it named the worst ones by path. `scripts/usage/cswap.py run <cmd>`
+# reaches `os.execvpe`; `scripts/ci/restore_drill_verify.py --psql-bin` and
+# `scripts/ci/stage_council_journal.py --git-bin` each execute a binary the argument
+# names; a dozen more take a `--dsn`, a `--database-url` or an `--output-db`. A path
+# prefix is not a capability boundary. The marker is: a script is observable because
+# someone wrote in it that it is, which is content-keyed rather than location-keyed
+# (W109: an exemption keyed to where a file sits rather than what it is, is itself a
+# scar). Absent marker, absent file, unreadable file -> refused.
+observable_marker: bites-observable
+
+# Tokens that reach another machine. Barred ANYWHERE, not just in first position.
+remote_shell_tokens: [ssh, scp, sftp, rsync, nc, netcat, telnet]
+
+# Characters that would let one command become two, or become a different one.
+shell_metachars: ["|", ";", "&", "$", "`", "(", ")", "<", ">", "\n", "\r", "\\"]
+
+# A value containing one of these reads identically to a value without it, so the human
+# reviewer and the parser can be shown two different contracts. Written as escapes on
+# purpose: a file carrying the literal character cannot be reviewed by eye.
+invisible_chars: ["\u200b", "\u200c", "\u200d", "\u2060", "\ufeff", "\u00ad"]
+
+# The four keys, the top-level key they live under, and the scopes `where:` may name.
+key: bites
+required_keys: [consumer, where, observe, expect]
+where_scopes: [ci, fly, pro, mini]

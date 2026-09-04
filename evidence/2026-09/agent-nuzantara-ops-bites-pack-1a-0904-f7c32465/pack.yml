@@ -23,7 +23,7 @@ bites_note: >-
   weaker half of the observation: --selftest proves the corpus, and the test file plus
   the registry entry prove the consumer. `regex:[0-9]{3}/[0-9]{3} pass` rather than `exit0` so that
   silently emptying the corpus fails the observation instead of passing it. Three digits
-  rather than the literal count on purpose: pinning `104/104` would make every fixture
+  rather than the literal count on purpose: pinning `118/118` would make every fixture
   added afterwards a red observation, which is a ratchet, while the shape still goes red
   if the corpus ever drops back below a hundred — an
   observation that cannot fail when its subject is deleted is the disease this lane
@@ -78,15 +78,15 @@ diff: >-
   figure written into a file that is itself part of the diff.
 
   SHAPE. One new module (scripts/ci/bites_parse.py: nine guards, a YAML layer with a strict
-  loader, a 104-entry guilt+innocence corpus, a --selftest that needs no network and no
-  token), one new test file (114 tests), one registry surface naming every guard's proofs,
+  loader, a 118-entry guilt+innocence corpus, a --selftest that needs no network and no
+  token), one new test file (122 tests), one registry surface naming every guard's proofs,
   four small edits to the conformance checker's dispatch, three lines added to
   immune-enforcement.yml, and one corrected block in the lane brief.
 
   SIZE, stated rather than hidden: 3,049 added lines from the merge-base, of which 2,677
   outside this evidence directory, against the contract's ~400. It is one
   concern — the format and the boundary that makes it safe to execute — and the bulk is
-  proofs: 104 corpus fixtures and 114 tests for nine guards. Splitting the guards from their
+  proofs: 118 corpus fixtures and 122 tests for nine guards. Splitting the guards from their
   evidence would land a validator with nothing showing that it validates. The ceiling rule
   is not engaged (the floor is 3 by path, from the workflow edit), so this is a disclosure,
   not an override.
@@ -102,13 +102,13 @@ receipts:
       A1. The guilt+innocence corpus passes, and it is the observation this pack's own
       `bites:` block names.
     cmd: python3 scripts/ci/bites_parse.py --selftest
-    result: "bites_parse selftest: 104/104 pass (guilt + innocence)"
+    result: "bites_parse selftest: 118/118 pass (guilt + innocence)"
     exit: 0
     ts: "2026-09-04T20:52+08:00"
     seat: session (Pro)
   - claim: A1. The full battery for this surface.
     cmd: python3 -m pytest scripts/tests/test_bites_parse.py -q
-    result: "114 passed"
+    result: "122 passed"
     exit: 0
     ts: "2026-09-04T20:52+08:00"
     seat: session (Pro)
@@ -184,7 +184,10 @@ receipts:
       earlier draft of this same pack said "~2,000" with no receipt behind it, which the
       countable-claims rule exists to catch and a verifier caught first.
     cmd: git diff --numstat $(git merge-base HEAD origin/main) | awk '{a+=$1;d+=$2} END {print a,d}'
-    result: "3049 21 (2677 added outside this evidence directory)"
+    result:
+      "2984 21 outside evidence/ — the figure INSIDE evidence/ is omitted on
+      purpose: a pack that states its own total contradicts itself the moment the
+      pack changes, which is exactly how receipt 12 was wrong at the previous sha"
     exit: 0
     ts: "2026-09-04T21:45+08:00"
     seat: session (Pro)
@@ -192,7 +195,7 @@ receipts:
       The corpus and the test file report their own sizes, so the prose cannot drift from
       them again.
     cmd: python3 -c "<len(CONFORMANCE_CORPUS)>" ; grep -c "^def test_" scripts/tests/test_bites_parse.py
-    result: "104 and 114"
+    result: "118 and 122"
     exit: 0
     ts: "2026-09-04T21:45+08:00"
     seat: session (Pro)
@@ -296,8 +299,9 @@ dissent:
       produces the OPPOSITE classification from the one claimed. Receipt 10's cmd reaches
       52 of the 78 passes it claims; the other 26 arrive through prose. Receipt 1 claims a
       string no flag emits. Receipt 11 says 154 where the number is 157. And three numbers
-      in the `diff:` prose (96-entry corpus, 110 tests, ~2,000 lines) contradict the
-      pack's own receipts or nothing at all — the real figures are 104, 114 and 3,049."
+      in the `diff:` prose (96-entry corpus, 110 tests, ~2,000 lines) contradicted the
+      pack's own receipts or nothing at all. Corrected again after round 6: the figures
+      move with every commit, so the pack now names only the stable one."
     status: CONFIRMED
     resolution: >-
       Every one reproduced on this machine and fixed here, and the round is recorded

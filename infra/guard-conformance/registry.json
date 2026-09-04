@@ -23,7 +23,7 @@
         "prefix": "_guard_"
       },
       "test_file": "scripts/tests/test_bites_parse.py",
-      "note": "The allow-list that stands between a pull-request-controlled file and a command a CI job will execute. RULED 2026-09-04 (Zero, Legge 5): the contract lives in the evidence pack's pack.yml under a top-level `bites:` mapping, not in the PR body, so a real YAML parser reads it and the question of which Markdown region a human SAW does not arise. Every guard here is load-bearing for that boundary, so both proofs matter in the usual way and one shape matters especially: _guard_no_remote_shell's guilt case asserts that _guard_command_allowlist ALSO passes the same input. That is deliberate. `git clone ssh://host/repo` is waved through by an allow-list keyed on argv[0], which is exactly superscar #3's under-match twin -- a guard that inspects only the head of a command guards a spelling. The pair is what proves the two guards are not redundant. The same under-match recurred a third time on `fly version upgrade`, which downloads and installs a new flyctl, so every entry in a subcommand table is now a full pair carrying NO_SUBCOMMAND or ANY_POSITIONAL rather than a bare None. Round 4 (the Gear-3 verdict gate, 2026-09-04) added the positional split of git's options: git's GLOBAL -c is code execution and must precede the subcommand, while `git grep -c` is grep's count flag and is innocent. Scanning one flat list over the whole command line refuses the innocent one — the OVER-match mirror of the two under-matches this same surface was already cured of, which is why test_command_allowlist_innocence_git_grep_count_flag_passes is registered as innocence rather than left implicit.",
+      "note": "The allow-list that stands between a pull-request-controlled file and a command a CI job will execute. RULED 2026-09-04 (Zero, Legge 5): the contract lives in the evidence pack's pack.yml under a top-level `bites:` mapping, not in the PR body, so a real YAML parser reads it and the question of which Markdown region a human SAW does not arise. Every guard here is load-bearing for that boundary, so both proofs matter in the usual way and one shape matters especially: _guard_no_remote_shell's guilt case asserts that _guard_command_allowlist ALSO passes the same input. That is deliberate. `git clone ssh://host/repo` is waved through by an allow-list keyed on argv[0], which is exactly superscar #3's under-match twin -- a guard that inspects only the head of a command guards a spelling. The pair is what proves the two guards are not redundant. The same under-match recurred a third time on `fly version upgrade`, which downloads and installs a new flyctl, so every entry in a subcommand table is now a full pair carrying NO_SUBCOMMAND or ANY_POSITIONAL rather than a bare None. Round 4 (the Gear-3 verdict gate, 2026-09-04) added the positional split of git's options: git's GLOBAL -c is code execution and must precede the subcommand, while `git grep -c` is grep's count flag and is innocent. Scanning one flat list over the whole command line refuses the innocent one — the OVER-match mirror of the two under-matches this same surface was already cured of, which is why test_command_allowlist_innocence_git_grep_count_flag_passes is registered as innocence rather than left implicit. Round 5 (Zero's cut order, 2026-09-04) moved the allow-list itself out of the module into scripts/ci/bites_allowlist.yaml and the 118-fixture corpus into scripts/ci/bites_corpus.yaml; the module fails CLOSED if either is missing or malformed, because an allow-list that fails to an empty tuple refuses everything and looks like a broken parser rather than a breached one. The same round replaced this registry's weakest proof: the Gear-3 gate mutation-tested every guard and found _guard_no_invisible could be deleted with the whole corpus and the whole battery still green, because every invisible-character fixture used a LITERAL character, which _invisible_in_text catches first by scanning the pack text. Written as a YAML escape the file holds no invisible character at all and only the post-parse value does, so that is the shape now registered. The census keys on the `_guard_` prefix, so a guilt proof that actually exercises an unprefixed helper passes this check while proving nothing -- a phantom by effect rather than by name. Every one of the nine guards is now mutation-proved against the corpus alone, which is what `--selftest`, this PR's own bites observation, actually runs.",
       "guards": {
         "_guard_shell_composition": {
           "scar": ["superscar-3-guard-over-match"],
@@ -62,6 +62,10 @@
             "test_command_allowlist_guilt_git_grep_pager_command_is_rejected",
             "test_command_allowlist_guilt_git_global_flags_that_retarget_are_rejected",
             "test_command_allowlist_guilt_pytest_override_ini_is_rejected",
+            "test_command_allowlist_guilt_gh_jq_reaches_the_runner_environment",
+            "test_command_allowlist_guilt_gh_api_absolute_url_leaves_github",
+            "test_command_allowlist_guilt_gh_template_is_refused_with_jq",
+            "test_command_allowlist_guilt_fly_logs_crosses_the_output_boundary",
             "test_command_allowlist_guilt_curl_credential_files_are_rejected",
             "test_command_allowlist_guilt_curl_variable_expands_the_environment",
             "test_command_allowlist_guilt_curl_write_out_is_rejected",
@@ -74,6 +78,8 @@
             "test_command_allowlist_innocence_every_real_shape_passes",
             "test_command_allowlist_innocence_fly_read_pairs_pass",
             "test_command_allowlist_innocence_git_grep_count_flag_passes",
+            "test_command_allowlist_innocence_the_gh_shape_that_survives_jq_removal",
+            "test_command_allowlist_innocence_a_gh_api_rest_path_still_passes",
             "test_command_allowlist_innocence_fly_version_and_flagged_reads_pass",
             "test_command_allowlist_innocence_the_curl_shapes_an_observation_needs_pass",
             "test_command_allowlist_innocence_the_git_shapes_an_observation_needs_pass",
@@ -146,10 +152,12 @@
         "_guard_no_invisible": {
           "scar": ["superscar-3-guard-over-match"],
           "guilt": [
-            "test_an_invisible_character_anywhere_in_the_pack_is_refused"
+            "test_an_invisible_character_anywhere_in_the_pack_is_refused",
+            "test_no_invisible_guilt_a_yaml_ESCAPED_zero_width_char_is_refused"
           ],
           "innocence": [
-            "test_innocence_ordinary_unicode_in_a_pack_is_not_penalised"
+            "test_innocence_ordinary_unicode_in_a_pack_is_not_penalised",
+            "test_no_invisible_innocence_the_same_double_quoted_shape_without_the_escape"
           ]
         },
         "_guard_where_scope": {

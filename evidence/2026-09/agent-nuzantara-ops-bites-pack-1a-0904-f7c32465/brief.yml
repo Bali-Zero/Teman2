@@ -28,7 +28,7 @@ objective: >-
   (.github/workflows/immune-enforcement.yml).
 appetite:
   wall_clock_hours: 3
-  adversarial_rounds: 3
+  adversarial_rounds: 3 # exceeded: 6 rounds ran; see appetite_exceeded in pack.yml
 constraints:
   - >-
     Every pack already on main stays green. A pack with no `bites:` key is `absent` and a
@@ -50,7 +50,7 @@ constraints:
   - No paid API, no LLM in the reconciler at all. It needs none.
 acceptance:
   - >-
-    A1: `python3 scripts/ci/bites_parse.py --selftest` exits 0 over 67 guilt+innocence
+    A1: `python3 scripts/ci/bites_parse.py --selftest` exits 0 over 118 guilt+innocence
     fixtures; a pack whose observe pipes to a shell exits 2; a pack with no `bites:` key
     returns {"absent": true}; this PR's own pack returns the four fields.
   - >-
