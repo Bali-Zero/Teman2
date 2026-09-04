@@ -1,4 +1,5 @@
 brief_ref: evidence/brief.yml
+council_run: journal.jsonl
 plan_ref:
   "PR #5158 (agent/air-m5/ops/watcher-coverage-0828) — cure the watcher-coverage self-conformance
   red that pre-exists on origin/main, 2026-08-28. Split out of PR #5157, where it surfaced as an unrelated
@@ -26,9 +27,9 @@ seat_diversity_note:
   so spending a council on it is exactly the ceremony this repo's own ceiling rule exists to prevent."
 diff:
   net_lines:
-    3 files, +182/-1 (one line changed in the workflow itself; the rest is this pack and its
-    brief). One entry added to the watcher's on.workflow_run.workflows set, one stale entry
-    removed. No script, no logic.
+    4 files, +207/-1 (one line changed in the workflow itself; the rest is this pack, its
+    brief and the added council journal). One entry added to the watcher's
+    on.workflow_run.workflows set, one stale entry removed. No script, no logic.
   behaviour_change:
     "main-push-failure-watch.yml now LISTS check-skills-canonical, and no longer names
     a workflow that does not exist. It does NOT gain paging for it: that workflow is `pull_request`-only,
@@ -96,6 +97,28 @@ pii_scan_note:
   The diff contains two workflow-name strings and nothing else. No identifier, address,
   token, path under a user's home, or client reference appears in it or in this pack.
 dissent:
+  - seat: codex-gpt-5.6-sol (council review, journal.jsonl)
+    objection:
+      "This PR's added entry (`check-skills-canonical` at what is now line 119) is a redundant
+      duplicate: the SAME name was already present at line 125, landed independently by PR #5192
+      (2026-08-29, tailnet ACL work, unrelated to this PR) — its own comment says so verbatim
+      ('check-skills-canonical landed unwatched with PR #5041 ... Registered here'). Because
+      watcher_name_and_list() folds the workflows: list into a Python set, the duplicate has zero
+      behavioral effect, and the guard now exits 0 on a clean origin/main checkout WITHOUT this
+      PR's diff at all — only the stale AI-PR-review warning remains. The PR's stated premise (a
+      required-check-blocking violation on origin/main) is therefore stale as of today; the only
+      change this diff still does something for is removing that one warning."
+    status: CONFIRMED
+    resolution:
+      "Independently reproduced by the reviewing session: `git blame` on origin/main dates the
+      pre-existing line 125 entry to commit 16a153b6b1 (2026-08-29, PR #5192), which is an
+      ancestor of this branch's own merge-base (2026-09-01) — so the duplicate was already on
+      main before this branch's last sync, not a race introduced afterward. A detached worktree
+      of origin/main tip, `python3 scripts/check_watcher_coverage.py`, exits 0 today with no
+      violations. NOT fixed here — reported to the conducting session/owner per this PR's own
+      contract (a review lane does not silently rewrite the diff it is reviewing); disposition
+      (rebase to drop the now-redundant add, or close, or merge as a no-op cleanup for the stale
+      warning alone) is the owner's call."
   - seat: session (self-observation, not an objection to the diff)
     objection:
       "A two-line DATA fix to a CI guard requires a Gear-3 brief, pack and gate verdict purely
