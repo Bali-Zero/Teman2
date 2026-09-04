@@ -93,20 +93,20 @@ Quick start: `python scripts/agent_start.py --lane <X> --task-id <Y>` → cd out
 
 | Contenuto (era) | Stato vigente | Dove |
 |---|---|---|
-| Agent PR Contract (Merge-OS v2 Wave 0) | 8 regole PR agent-produced, vigenti | `.claude/rules/operations.md` |
-| §2 Behavior & Autonomous Ops | no-phantom-operator, ship-lifecycle esteso, master loop modus, product assembly line, federation orchestrator, preflight SDD | `.claude/rules/operations.md` |
-| §5 Agent/LLM Routing & Bans | routing Claude 5, i 3 RULED 07-25/08-19/08-20, roster, Fable contingency (moot), Kimi seat, fleet order, DeepSeek due porte, Antigravity, SDK ban, MCP servers, off-limits files (dettaglio), Codex sandbox | `.claude/rules/RULINGS.md` |
-| §6 Anti-Hallucination (corpo intero) | 4-LLM panel + workflow generator≠grader | `.claude/rules/operations.md` |
-| §7/§7bis Hooks + Repomap/Branch-cleanup | hook attivi, repomap cron, branch cleanup weekly | `.claude/rules/operations.md` |
+| Agent PR Contract (Merge-OS v2 Wave 0) | 8 regole PR agent-produced, vigenti | `docs/rules/operations.md` |
+| §2 Behavior & Autonomous Ops | no-phantom-operator, ship-lifecycle esteso, master loop modus, product assembly line, federation orchestrator, preflight SDD | `docs/rules/operations.md` |
+| §5 Agent/LLM Routing & Bans | routing Claude 5, i 3 RULED 07-25/08-19/08-20, roster, Fable contingency (moot), Kimi seat, fleet order, DeepSeek due porte, Antigravity, SDK ban, MCP servers, off-limits files (dettaglio), Codex sandbox | `docs/rules/RULINGS.md` |
+| §6 Anti-Hallucination (corpo intero) | 4-LLM panel + workflow generator≠grader | `docs/rules/operations.md` |
+| §7/§7bis Hooks + Repomap/Branch-cleanup | hook attivi, repomap cron, branch cleanup weekly | `docs/rules/operations.md` |
 | §8 Code Golden Rules · §9 Data Invariants · §10 Postgres MCP · §11 Deploy Lifecycle · §12 Operational Channels | golden rules backend-rag, embedding/KBLI/thresholds frozen, deploy Fly.io, 4 canali live | `apps/backend-rag/CLAUDE.md` |
-| §13 Critical Operational Rules · §14 Escalations & Continuity | email/RBAC/team-perimeter/OCR/Drive-OAuth/GitHub-secrets · PII/OSINT output boundary (Legge 2) | `.claude/rules/operations.md` |
+| §13 Critical Operational Rules · §14 Escalations & Continuity | email/RBAC/team-perimeter/OCR/Drive-OAuth/GitHub-secrets · PII/OSINT output boundary (Legge 2) | `docs/rules/operations.md` |
 | §15 Research Capture Convention | soglia ≥400 parole+3 fonti, frontmatter, mai auto-promote a kb/ | `research/CLAUDE.md` |
 
 ## Regole sempre-applicabili
 
-- **Ship-lifecycle**: la sessione fa tutto — review → merge → arm → deploy → prove-live. Il codeowner non merga, non review, non deploya. Storia e dettaglio (RULED 2026-07-16 + eccezione editorial-delegation 2026-09-01): `.claude/rules/operations.md`.
-- **Anti-hallucination**: mai citare output di un tool senza averlo eseguito in QUESTO turn. 4-LLM panel + workflow generator≠grader: `.claude/rules/operations.md`.
-- **Off-limits files** (top-level hard boundary): `zantara_core.py`, `fly.toml`, `.env*`, `apps/bali-intel-scraper/backend/db/migrations/env.py`. Correzione 2026-08-21 (il vecchio `alembic/env.py` non esiste in questo repo) + dettaglio: `.claude/rules/RULINGS.md`.
+- **Ship-lifecycle**: la sessione fa tutto — review → merge → arm → deploy → prove-live. Il codeowner non merga, non review, non deploya. Storia e dettaglio (RULED 2026-07-16 + eccezione editorial-delegation 2026-09-01): `docs/rules/operations.md`.
+- **Anti-hallucination**: mai citare output di un tool senza averlo eseguito in QUESTO turn. 4-LLM panel + workflow generator≠grader: `docs/rules/operations.md`.
+- **Off-limits files** (top-level hard boundary): `zantara_core.py`, `fly.toml`, `.env*`, `apps/bali-intel-scraper/backend/db/migrations/env.py`. Correzione 2026-08-21 (il vecchio `alembic/env.py` non esiste in questo repo) + dettaglio: `docs/rules/RULINGS.md`.
 
 ## 3. Memory (MOS — Memory Operating System)
 

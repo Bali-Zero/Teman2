@@ -29,6 +29,13 @@ This guard is three things, deliberately kept together:
    is present and non-empty, and every file path cited in the root's
    "## INDICE — dove sta cosa" section resolves to a real file on disk — a
    dangling pointer in an index file is worse than no index at all.
+4. An anti-regression guard on `.claude/rules/`: a file dropped into that
+   directory WITHOUT `paths:` frontmatter is auto-injected into every session
+   and every subagent, no scoping — that is exactly what `RULINGS.md` and
+   `operations.md` were doing until 2026-09-04, when they were moved to
+   `docs/rules/` for that reason (see their own file headers). The one
+   deliberate exception is `cicatrix-superscar.md`, which is meant to be
+   always-injected. This guard fails if a second paths-less file appears.
 
 Deliberately excluded from the per-folder scan: anything under
 `scripts/tests/fixtures/` — that tree holds fixture CLAUDE.md files used by
@@ -57,6 +64,14 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 ROOT_CLAUDE_MD = REPO_ROOT / "CLAUDE.md"
+RULES_DIR = REPO_ROOT / ".claude" / "rules"
+
+# The one file in .claude/rules/ that is DELIBERATELY always-injected (no
+# `paths:` frontmatter) — the superscar bridge, by design. Every other file
+# in that directory must be scoped, or it is auto-loaded into every session
+# regardless of relevance (the exact bug that sent RULINGS.md/operations.md
+# to docs/rules/ instead).
+ALWAYS_INJECTED_RULES_EXCEPTION = "cicatrix-superscar.md"
 
 ROOT_BYTE_BUDGET = 16 * 1024  # 16KB
 SUBFOLDER_BYTE_BUDGET = 12 * 1024  # 12KB
@@ -121,6 +136,20 @@ def extract_indice_section(text: str) -> str | None:
     return "\n".join(lines[start_idx:end_idx])
 
 
+def has_paths_frontmatter(text: str) -> bool:
+    """True if `text` opens with a YAML frontmatter block (starts with a `---`
+    line) that contains a `paths:` key before the closing `---`."""
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return False
+    for line in lines[1:]:
+        if line.strip() == "---":
+            return False  # closed the frontmatter without ever seeing paths:
+        if line.strip().startswith("paths:"):
+            return True
+    return False
+
+
 def pointer_paths_in(text: str) -> set[str]:
     """Every backtick-quoted path-shaped token in the given text that looks
     like a repo-relative file reference (contains a '/' and an extension)."""
@@ -159,6 +188,15 @@ class TestGuiltADanglingPointer:
         assert not (fake_root / "nonexistent/file.md").exists()
 
 
+class TestGuiltAPathslessRulesFile:
+    def test_a_rules_file_with_no_frontmatter_at_all_is_flagged(self) -> None:
+        assert has_paths_frontmatter("# just a heading\n\nsome prose\n") is False
+
+    def test_a_frontmatter_block_missing_the_paths_key_is_flagged(self) -> None:
+        text = "---\ntitle: something else entirely\n---\n\nbody\n"
+        assert has_paths_frontmatter(text) is False
+
+
 class TestInnocenceOfTheGuardItself:
     def test_the_indice_section_stops_at_the_next_h2_not_the_end_of_file(
         self,
@@ -179,6 +217,14 @@ class TestInnocenceOfTheGuardItself:
         # `AGENT_BROKER_ENABLED` and similar env-var-shaped backtick spans
         # must not be misread as file paths.
         assert pointer_paths_in("see `AGENT_BROKER_ENABLED=false` for the kill switch") == set()
+
+    def test_single_line_paths_frontmatter_is_recognized(self) -> None:
+        text = '---\npaths: ["scripts/generate_*.py"]\n---\n\nbody\n'
+        assert has_paths_frontmatter(text) is True
+
+    def test_multiline_paths_frontmatter_is_recognized(self) -> None:
+        text = '---\npaths:\n  [\n    "apps/mouth/**/*.ts",\n  ]\n---\n\nbody\n'
+        assert has_paths_frontmatter(text) is True
 
 
 class TestTheRealFilesAreClean:
@@ -242,4 +288,22 @@ class TestTheRealFilesAreClean:
         assert missing == [], (
             f"{len(missing)} pointer(s) in the root INDICE section do not resolve "
             f"to a real file: {missing}"
+        )
+
+    def test_every_claude_rules_file_except_the_named_exception_has_paths_frontmatter(
+        self,
+    ) -> None:
+        offenders = []
+        for p in sorted(RULES_DIR.glob("*.md")):
+            if p.name == ALWAYS_INJECTED_RULES_EXCEPTION:
+                continue
+            text = p.read_text(encoding="utf-8")
+            if not has_paths_frontmatter(text):
+                offenders.append(p.relative_to(REPO_ROOT).as_posix())
+        assert offenders == [], (
+            f"{len(offenders)} file(s) in .claude/rules/ have no `paths:` frontmatter, "
+            f"which means they are auto-injected into EVERY session and subagent: "
+            f"{offenders}. Either add scoping `paths:` frontmatter, or move the file "
+            "out of .claude/rules/ (e.g. to docs/rules/) if it should be loaded "
+            "on demand instead of always."
         )

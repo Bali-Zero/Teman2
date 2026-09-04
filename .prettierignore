@@ -142,9 +142,11 @@ docs/plans/2026-08-24-garuda-voa-live/GATE-CONDITIONS-4959.md
 docs/scars/cicatrix-scars.md
 docs/scars/cicatrix-scars-archive.md
 
-# .claude/rules/RULINGS.md + operations.md (2026-09-04, context-diet root-CLAUDE.md-becomes-index):
-# both carry content moved VERBATIM out of root CLAUDE.md §5 (itself prettier-ignored above) —
-# `*single-asterisk*` italics rewritten to `_underscore_` would break the byte-identical-move
-# guarantee the diet's mandate requires (same W112 class as cicatrix-superscar.md above).
-.claude/rules/RULINGS.md
-.claude/rules/operations.md
+# docs/rules/RULINGS.md + operations.md (2026-09-04, context-diet root-CLAUDE.md-becomes-index;
+# moved out of .claude/rules/ same day — a rules file with no `paths:` frontmatter is auto-injected
+# into every session, which would have undone the diet): both carry content moved VERBATIM out of
+# root CLAUDE.md §5 (itself prettier-ignored above) — `*single-asterisk*` italics rewritten to
+# `_underscore_` would break the byte-identical-move guarantee the diet's mandate requires (same
+# W112 class as cicatrix-superscar.md above).
+docs/rules/RULINGS.md
+docs/rules/operations.md
