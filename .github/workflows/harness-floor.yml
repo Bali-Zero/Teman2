@@ -1145,3 +1145,217 @@ jobs:
             --pr-head-sha "${{ github.event.pull_request.head.sha }}" \
             --merge-group-head-ref "${{ github.event.merge_group.head_ref }}" \
             --dispatch-sha "${{ github.event_name == 'workflow_dispatch' && github.sha || '' }}"
+
+      # -----------------------------------------------------------------
+      # Step 8 — the `Bites:` contract, judged on THIS PR's evidence pack.
+      #
+      # RULED 2026-09-04 (Zero, Legge 5): the executable observation lives
+      # in the pack's top-level `bites:` mapping, never in the PR body — a
+      # hand-rolled CommonMark reader can only ever approximate "which
+      # region a human SAW", while a YAML parser makes hidden regions cease
+      # to exist. #5693 landed the parser
+      # (scripts/ci/bites_parse.py, its allow-list and its 138-fixture
+      # corpus); this step is the other half of PR-1b — the LINT that
+      # actually reads a pack, without which the parser is a file nothing
+      # calls (superscar #2: exists != armed).
+      #
+      # ADVISORY BY CONSTRUCTION (design rule D4): 110 packs on main carry
+      # prose Bites and 67 carry none. `absent` and `legacy` are NOTICEs
+      # forever; the ONLY red is a block that reaches for the executable
+      # form and gets it wrong (exit 2 — a pipe in `observe:`, a missing
+      # `expect:`, a duplicate `bites:` key, an invisible character). The
+      # lint judges the pack under review and never history.
+      #
+      # NOT gear-gated, unlike Step 7b: a pack is a pack. If a Gear-2 PR
+      # authors one, its contract is judged too. The gate is "did THIS diff
+      # write this pack", which is Step 7b's tree-presence-vs-diff-
+      # membership correction (2026-08-21) applied here — a pack inherited
+      # from a prior PR at HEAD is not this PR's contract to answer for,
+      # and re-judging it would red an innocent diff on someone else's
+      # bytes.
+      #
+      # The two membership checks are INLINE (`git cat-file` + `grep`)
+      # rather than delegated to scripts/ci/tracked_file_present_in_diff.sh,
+      # which Step 7b uses. Deliberate: that helper's absence has to degrade
+      # to something, and for an advisory step the honest degradation is a
+      # skip — which is a standing fail-open, since a later PR deleting the
+      # helper would silently disable this lint forever with nothing red
+      # anywhere. git and grep cannot be deleted from the runner, so the
+      # question does not arise.
+      #
+      # BOOTSTRAP, and it is a SENTINEL rather than a bare skip (the
+      # harness_gate_read.py shape at Step 7c, generalised because this one
+      # has no single bootstrap PR to name): this job checks out BASE, so a
+      # PR opened before #5693 merged legitimately has no parser in its
+      # checkout. That case is told apart from a DELETION by asking HEAD:
+      # missing at base AND present at head = stale base, skip with a
+      # notice; missing at BOTH = the parser is gone from the tree, and
+      # this step fails closed. The base copy is the only one ever
+      # executed — HEAD's is pull-request-controlled and is read for
+      # existence alone, never run.
+      # -----------------------------------------------------------------
+      - name: Bites contract — parse this PR's evidence pack
+        if: steps.kill_switch.outputs.disabled != 'true'
+        env:
+          HEAD_SHA: ${{ github.event.merge_group.head_sha || github.event.pull_request.head.sha || github.sha }}
+          PACK_PATH: ${{ steps.evpaths.outputs.pack }}
+        run: |
+          set -u
+          if [[ -z "${PACK_PATH:-}" ]]; then
+            echo "::notice::no evidence pack path resolved for this diff — bites lint has nothing to judge"
+            exit 0
+          fi
+          # A path is DATA when git reads it and TEXT when this step prints it, and the two
+          # need different care. SAFE_PACK_PATH is the printing form: a filename may legally
+          # contain a newline, and `echo "::notice::... ${PACK_PATH}"` would then emit a
+          # second line that the runner parses as a workflow command of the author's
+          # choosing (council finding 7, codex-gpt-5.6-sol, LOW — forged annotations, no
+          # execution). Every echo below uses SAFE_PACK_PATH; every git call uses the real
+          # one.
+          SAFE_PACK_PATH=$(printf '%s' "$PACK_PATH" | tr -d '\000-\037\177')
+          # THE HEAD OBJECT HAS TO BE HERE BEFORE ANY OF THIS MEANS ANYTHING
+          # (council finding 1, kimi-code/k3, HIGH). Step 2's enumerator
+          # (scripts/ci/hotzone_changed_files.sh:48) already fetches HEAD_SHA when it is not
+          # local — a fork PR's head is not in a base checkout — but it does so with
+          # `|| true` and then degrades to the GitHub PR-files API. In exactly that case
+          # /tmp/changed-files.txt and PACK_PATH are still correct while the head commit
+          # never became a local object, and every `git ls-tree` below returns empty for a
+          # reason that has nothing to do with the pack. Empty would then read as "this diff
+          # authors no pack" and the step would pass GREEN on a PR it never opened. Same
+          # fetch, then fail CLOSED (superscar #2 — fail loud, never blind).
+          if ! git cat-file -e "${HEAD_SHA}^{commit}" 2>/dev/null; then
+            git fetch --no-tags --depth=200 origin "$HEAD_SHA" >/dev/null 2>&1 || true
+          fi
+          if ! git cat-file -e "${HEAD_SHA}^{commit}" 2>/dev/null; then
+            echo "::error::the head commit ${HEAD_SHA} is not in this checkout and could not be fetched — nothing here can read this PR's pack, and 'no pack' would be a conclusion drawn from a missing object rather than from the tree. Failing closed."
+            exit 1
+          fi
+          # ls-tree, not `cat-file -e`, for the PATH question: Step 1 checks out with
+          # `filter: blob:none`, so blobs arrive lazily over the network while TREES are
+          # always local, and `cat-file -e` on a path can fail for a promisor fetch that
+          # flaps (superscar #8). ls-tree answers from the tree alone.
+          #
+          # `--literal-pathspecs`, and the EXIT STATUS read separately from the output
+          # (council finding 2, codex-gpt-5.6-sol, HIGH). A pathspec is a small language, not
+          # a filename: `:(` is magic-pathspec syntax, git exits non-zero and prints nothing,
+          # and a step that looks only at stdout reads that silence as "the pack is not in
+          # the tree" and exits 0 on a pack it never opened. Empty-and-succeeded is a fact
+          # about the tree; empty-and-failed is a fact about the question.
+          if ! PACK_IN_TREE=$(git --literal-pathspecs ls-tree --name-only "${HEAD_SHA}" -- "${PACK_PATH}" 2>&1); then
+            echo "::error::git ls-tree could not be asked about ${SAFE_PACK_PATH} at ${HEAD_SHA}: ${PACK_IN_TREE}. That is a failed question, not a negative answer — failing closed rather than reading it as 'no pack'."
+            exit 1
+          fi
+          if [[ -z "$PACK_IN_TREE" ]]; then
+            echo "::notice::no ${SAFE_PACK_PATH} at HEAD — this diff authors no evidence pack, so it declares no executable Bites (D4: absent is never a red)"
+            exit 0
+          fi
+          # `--` because a PACK_PATH beginning with a dash would otherwise be eaten by grep
+          # as options, leaving no file operand, so grep would read empty stdin, not match,
+          # and skip to green (council finding 6, kimi-code/k3, LOW).
+          if ! grep -qxF -- "$PACK_PATH" /tmp/changed-files.txt; then
+            echo "::notice::${SAFE_PACK_PATH} exists at HEAD but was NOT touched by this diff — it belongs to an earlier PR, whose bites block that PR already answered for. Not judging it here."
+            exit 0
+          fi
+          # WHICH PARSER JUDGES, and the two council rounds that decided it.
+          #
+          # Round 1 (kimi-code/k3, finding 2): the first cut SKIPPED when the parser was
+          # missing from the base checkout but present at HEAD. Both halves are
+          # attacker-controlled — `pull_request` fires for every base branch, so a PR
+          # targeting any branch older than #5693 needed only a one-line stub at
+          # scripts/ci/bites_parse.py to buy a green skip for a malformed pack. Replaced by
+          # a question about origin/main, which no pull request controls, and by USING the
+          # trunk's copy rather than skipping: running origin/main's parser is strictly less
+          # trusting than running base's, since base is an older snapshot of the same
+          # protected branch. The two data files come along because the module fails CLOSED
+          # without them.
+          #
+          # Round 2 (codex-gpt-5.6-sol, findings 3 and 4) removed the last two ways out.
+          # An UNRESOLVABLE origin/main used to be read as "the parser is not on the trunk",
+          # which is a fact about the ref, not about the tree — so it is now its own red.
+          # And the bootstrap exception ("this diff adds the parser back, so skip") is GONE:
+          # it made a required check switchable off by adding a file with the right name, and
+          # "another gate would have caught the stub" does not make THIS check's status
+          # honest. The cost is the deadlock kimi named in its finding 5 — after a merged
+          # deletion of the parser, every PR reds until a restore lands, and the restore PR
+          # reds too. That is accepted deliberately: deleting the parser that guards which
+          # commands CI will execute should cost a human an admin merge, and quiet is how
+          # superscar #2 gets written in the first place.
+          #
+          # The head copy is never EXECUTED in any branch. It is asked about, not run.
+          if [[ ! -f scripts/ci/bites_parse.py ]]; then
+            if ! MAIN_SHA=$(git rev-parse --verify --quiet origin/main); then
+              echo "::error::scripts/ci/bites_parse.py is not in the base checkout and origin/main does not resolve in this workspace, so the trunk cannot be asked whether the parser still exists. An unresolvable ref is not evidence that a file was deleted — failing closed rather than guessing either way."
+              exit 1
+            fi
+            if [[ -z "$(git --literal-pathspecs ls-tree --name-only "$MAIN_SHA" -- scripts/ci/bites_parse.py)" ]]; then
+              echo "::error::scripts/ci/bites_parse.py is missing from the base checkout AND from origin/main — the parser that decides which commands CI may execute was deleted from the trunk. Failing closed. Restoring it is an operator action: the restore PR will red here too, by design."
+              exit 1
+            fi
+            if ! git checkout "$MAIN_SHA" -- scripts/ci/bites_parse.py scripts/ci/bites_allowlist.yaml scripts/ci/bites_corpus.yaml 2>/dev/null; then
+              echo "::error::scripts/ci/bites_parse.py is on origin/main but could not be checked out into this workspace — failing closed rather than skipping the lint."
+              exit 1
+            fi
+            echo "::notice::scripts/ci/bites_parse.py is absent from the base checkout (this PR's base predates #5693) — using origin/main's copy of the parser and its two data files. The head copy is never executed."
+          fi
+          if ! git show "${HEAD_SHA}:${PACK_PATH}" > /tmp/bites-pack.yml; then
+            echo "::error::could not read ${SAFE_PACK_PATH} at ${HEAD_SHA} even though git ls-tree just named it in the tree — a lazy blob fetch failed, or the object is gone. Failing closed."
+            exit 1
+          fi
+          # `set -u` only above — errexit is deliberately NOT on in this job's steps, so the
+          # parser's non-zero exit is captured rather than aborting the step before the
+          # message that explains it.
+          python3 scripts/ci/bites_parse.py --pack - < /tmp/bites-pack.yml > /tmp/bites-parsed.json 2> /tmp/bites-parse.err
+          RC=$?
+          if [[ $RC -ne 0 && $RC -ne 2 ]]; then
+            [[ -s /tmp/bites-parse.err ]] && cat /tmp/bites-parse.err
+            echo "::error::scripts/ci/bites_parse.py exited $RC — neither 0 (parsed) nor 2 (malformed). That is outside its own documented taxonomy; failing closed."
+            exit 1
+          fi
+          # ASK the parser what shape this is; never re-derive it from its bytes. The first
+          # cut grepped the JSON for '"absent": true', correct only while json.dumps keeps
+          # today's separators, and its else-branch was a catch-all that would have announced
+          # any future fourth shape as "executable, parsed clean" (council finding 8,
+          # kimi-code/k3, LOW; independently re-checked and cleared by codex-gpt-5.6-sol).
+          CLASSIFICATION=$(python3 -c 'import json, sys; sys.path.insert(0, "scripts/ci"); import bites_parse; print(bites_parse.classify(json.load(open("/tmp/bites-parsed.json"))))' 2>/dev/null)
+          cat /tmp/bites-parsed.json
+          case "$CLASSIFICATION" in
+            absent)
+              echo "::notice::${SAFE_PACK_PATH} carries no bites: key — legacy shape, allowed (D4). The executable form is four keys: consumer / where / observe / expect; see docs/rules/operations.md."
+              ;;
+            legacy)
+              echo "::notice::${SAFE_PACK_PATH} carries a PROSE bites: block — allowed (D4), but nothing will ever execute it. Rewrite it as consumer/where/observe/expect to get a machine-made observation."
+              ;;
+            executable)
+              echo "::notice::${SAFE_PACK_PATH} declares an EXECUTABLE bites: contract — it parsed clean against the allow-list."
+              ;;
+            malformed)
+              # The reasons live in the JSON's `errors` list on STDOUT, not on stderr (stderr
+              # carries only the argv-level refusals, which this call site cannot reach — it
+              # feeds the pack on stdin). Each is re-emitted as its own annotation so the
+              # author reads the cure in the Checks tab. That text is attacker-influenced (it
+              # quotes the offending pack line), so it is stripped of control characters and
+              # its `%` escaped: the runner URL-decodes %0A/%0D inside an annotation message
+              # (council finding 7, kimi-code/k3, LOW).
+              [[ -s /tmp/bites-parse.err ]] && cat /tmp/bites-parse.err
+              python3 -c 'import json, re; d = json.load(open("/tmp/bites-parsed.json")); [print("::error::bites: " + re.sub(r"[\x00-\x1f\x7f]", " ", str(e)).replace("%", "%25")) for e in (d.get("errors") or ["(the parser reported no reason - see the JSON above)"])]'
+              # THE OVER-MATCH THIS STEP DOES NOT DESIGN AWAY, and the round that proved why
+              # it must not try. The parser that judges is base's (or the trunk's); the pack
+              # it judges is HEAD's. A PR that teaches the parser a fifth key and uses that
+              # key in its own pack is therefore RED on a pack correct against the parser
+              # shipping in the same diff (council finding 4, kimi-code/k3, MEDIUM).
+              #
+              # A previous revision of this step downgraded that red to a notice whenever the
+              # diff touched the parser or its data files. codex-gpt-5.6-sol rated that
+              # HIGH and was right: the condition is bought with one comment line in
+              # bites_corpus.yaml, so ANY malformed block — `observe: echo pwned` included —
+              # passed green. A false RED on a rare self-inflicted case with a written
+              # remedy is a smaller harm than a false GREEN on an attacker-chosen one, so the
+              # downgrade is gone and the remedy is stated in the error instead.
+              echo "::error::${SAFE_PACK_PATH} declares a MALFORMED executable bites: block — a block that uses any of where/observe/expect must use all four keys and nothing else, and observe: must satisfy the allow-list in scripts/ci/bites_allowlist.yaml (RULED 2026-09-04 option b: exactly \`python3 scripts/<path>.py [args]\` on a marker-declared script, or \`fly <read-only subcommand>\`). Prose and an absent bites: key are both fine (NOTICE); this block is neither. If you are EVOLVING the format, this red is expected: the judge here is the parser on main, one version behind the contract you wrote — land the parser change first and the pack that uses it second. See docs/rules/operations.md."
+              exit 1
+              ;;
+            *)
+              echo "::error::scripts/ci/bites_parse.py classified this pack as '${CLASSIFICATION:-<nothing>}', which is not one of absent/legacy/executable/malformed. Either classify() grew a shape this step does not know, or the import failed. Failing closed rather than guessing."
+              exit 1
+              ;;
+          esac

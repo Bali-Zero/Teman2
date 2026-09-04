@@ -1,0 +1,506 @@
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: bites-1b-lint
+    role: build
+    seat: claude-opus-5 xhigh (builder session, Pro)
+council_run: journal.jsonl
+plan_ref: >-
+  docs/plans/2026-09-03-relaunch-lanes/LANE-H-bites-reconciler.md, PR-1b (the lint half;
+  the docs half landed as #5680). Named as a deferred follow-up, with its reason, in
+  #5693's own pack: "Reverted from THIS PR's scope; open a follow-up PR for the
+  workflow-wiring fix alone, at whatever gear that isolated change actually floors to."
+
+bites:
+  consumer: >-
+    the required status check "Harness floor recompute"
+    (.github/workflows/harness-floor.yml), which from this PR forward parses every PR's
+    own evidence pack through scripts/ci/bites_parse.py — the parser #5693 landed and
+    nothing called
+  where: ci
+  observe: python3 scripts/ci/bites_parse.py --selftest
+  expect: regex:[0-9]{3}/[0-9]{3} pass
+
+bites_note: >-
+  The observation this PR can honestly make in `ci` scope is that the parser it ARMS is
+  itself sound — the same shape #5693 used, deliberately unchanged so the two rows are
+  comparable in the ledger PR-2 will build. What this PR adds cannot be observed by a
+  command on a runner at all: "the step ran on a PR" is a property of a workflow run, not
+  of the checkout. That is precisely the gap PR-2 (the post-merge reconciler) exists to
+  close, and the honest prove-live for THIS PR is the one in `receipts` below: read the
+  step's own annotations in the Harness floor recompute run on this very PR.
+
+diff: >-
+  3 files, +221/-1, all under .github/workflows/ (`git diff --numstat HEAD` on the branch
+  cut from e84a92b692). harness-floor.yml carries one new step plus its comment block, guard-conformance.yml four
+  path entries and one widened alternation, immune-enforcement.yml two case-pattern entries
+  — the per-file split is in per_component below rather than restated as a second pair of
+  totals here (the countable-claims rule reads any such pair as a claim about the WHOLE
+  diff, and it is right to). No script changes, no new
+  script, no new required context.
+
+  GEAR 3 BY PATH, not by size: `.github/workflows/` is a hot zone, so
+  `python3 scripts/evidence_pack_lint.py --print-floor` returns 3 for a one-line change to
+  any file here. #5693 measured the same thing on its own draft of this diff and deferred
+  it rather than satisfy a 2-seat council it could not reach that night. It is reachable
+  now; the council is in journal.jsonl and the findings are in `dissent`.
+
+per_component:
+  probe: >-
+    `git diff --numstat HEAD` on the branch, plus a by-hand split of the harness-floor.yml
+    addition into comment lines vs shell lines, counted from the step's own final text.
+  table:
+    - {
+        component: "harness-floor.yml — step comment blocks",
+        before: 0,
+        after: 92,
+        delta: 92,
+      }
+    - {
+        component: "harness-floor.yml — step yaml header + env",
+        before: 0,
+        after: 7,
+        delta: 7,
+      }
+    - {
+        component: "harness-floor.yml — shell body",
+        before: 0,
+        after: 115,
+        delta: 115,
+      }
+    - {
+        component: "guard-conformance.yml — push paths",
+        before: 0,
+        after: 4,
+        delta: 4,
+      }
+    - {
+        component: "guard-conformance.yml — in-job relevance regex",
+        before: 1,
+        after: 1,
+        delta: 0,
+      }
+    - {
+        component: "immune-enforcement.yml — case patterns",
+        before: 0,
+        after: 2,
+        delta: 2,
+      }
+  note: >-
+    The comment blocks are 92 of the 214 lines added to harness-floor.yml, and 6 of the 8
+    paragraphs are answers to a council finding rather than narration: why the head object is
+    asserted before anything is inferred from its absence, why the path questions use ls-tree
+    rather than cat-file under `filter: blob:none`, why the stale-base branch USES origin/main's
+    parser instead of skipping, why a diff touching the parser downgrades a malformed verdict to
+    a notice, and why the classification asks classify() instead of grepping bytes. This file's
+    own convention is that a guard whose reasoning is not written down gets re-litigated by the
+    next session — and the first cut of this step was wrong in three of those five places.
+
+cloud_ok: >-
+  SYMBIOSIS Law 2, output boundary. The subject is a CI step and two path filters. No
+  client data, no OSINT, no credential is anywhere in this lane. The two council seats were
+  handed the step's own text and the parser's documented contract — nothing from the
+  repository beyond that, no secret, no client identifier.
+
+pii_scan: clean
+pii_scan_note: >-
+  No path in this diff is PII-bearing. The council prompts carried the step body only; both
+  were composed in the session scratchpad and neither reached a client record.
+
+receipts:
+  - claim: >-
+      step-battery-case-1-malformed — a pack declaring a MALFORMED executable bites: block
+      turns the step red, and the parser's own reasons arrive as GitHub error annotations.
+      The subject is a REAL pack on main: #5682's, authored AFTER the parser landed and
+      merged without anyone noticing its `observe:` violates the two-shape allow-list. That
+      pack is the proof this lint was missing, not a fixture.
+    cmd: >-
+      PACK_PATH=evidence/2026-09/agent-nuzantara-ops-yamlstrict-pii-0904-44cce72e/pack.yml
+      HEAD_SHA=$(git rev-parse origin/main) bash <the step body, extracted from the workflow
+      with yaml.safe_load>
+    result: >-
+      "::error::bites: observe: `python3` must run `scripts/<path>.py` from the checkout" +
+      "::error::bites: `-m` is not a `.py` file" + the step's own summary error; exit 1
+    exit: 1
+    ts: "2026-09-05T03:29+08:00"
+    seat: session (Pro)
+  - claim: >-
+      step-battery-case-2-3-absent-and-prose — D4 holds in both legacy shapes. A pack with
+      NO bites: key and a pack with a PROSE bites: block each exit 0 with their own NOTICE.
+      The prose case was proved against a real commit object (git commit-tree over
+      origin/main's tree with one pack rewritten), so the step's own `git show
+      "${HEAD_SHA}:${PACK_PATH}"` path was exercised rather than a loose file read.
+    cmd: >-
+      bash <the step body> with PACK_PATH=.../agent-air-m5-backend-rag-wa-contact-all-surfaces-9bb7860c/pack.yml
+      (absent), then again with HEAD_SHA=6c0b0e8c92 (prose)
+    result: "both exit 0; '... carries no bites: key' and '... carries a PROSE bites: block'"
+    exit: 0
+    ts: "2026-09-05T03:29+08:00"
+    seat: session (Pro)
+  - claim: >-
+      step-battery-case-5-inherited — a pack that exists at HEAD but is not in this diff is
+      NOT judged here (the over-match half of superscar #3, and the same tree-presence-vs-
+      diff-membership correction Step 7b took on 2026-08-21).
+    cmd: >-
+      bash <the step body> with PACK_PATH=.../agent-nuzantara-bites-b-cut-0904-41e2a79b/pack.yml
+      and /tmp/changed-files.txt containing only README.md
+    result: "'::notice::... exists at HEAD but was NOT touched by this diff', exit 0"
+    exit: 0
+    ts: "2026-09-05T03:29+08:00"
+    seat: session (Pro)
+  - claim: >-
+      step-battery-case-11-12-stale-base — the council's finding 2 is closed, measured on
+      the cure rather than argued. With scripts/ci/bites_parse.py AND its two data files
+      moved out of the working tree (a base checkout predating #5693), the step now checks
+      out origin/main's copies and JUDGES: a malformed pack exits 1 where the first cut of
+      this step exited 0, and a clean pack still exits 0. There is no skip branch left for
+      an attacker to reach by targeting a stale base branch.
+    cmd: >-
+      mv scripts/ci/bites_{parse.py,allowlist.yaml,corpus.yaml} aside; bash <the step body>
+      against the malformed pack, then against the executable one
+    result: "malformed -> exit 1 (was exit 0 pre-cure); executable -> exit 0"
+    exit: 1
+    ts: "2026-09-05T03:29+08:00"
+    seat: session (Pro)
+  - claim: >-
+      The battery, re-run from scratch after EVERY rewrite of the step — four times: the
+      first cut, the ls-tree/head-object hardening, the post-kimi rewrite, and the post-codex
+      rewrite. Final run, 11 cases: malformed / absent / prose / executable / inherited /
+      no-pack-at-HEAD / empty-PACK_PATH / head-object-missing, plus the three codex
+      reproductions (buy-a-green via a corpus edit, magic pathspec `:(`, newline-in-filename
+      annotation forgery). The first two of those exited 0 before the cure and are the
+      reason the pack's `diff` grew between rounds.
+    cmd: >-
+      extract the step's `run:` with yaml.safe_load and drive it under bash with HEAD_SHA,
+      PACK_PATH and /tmp/changed-files.txt set per case
+    result: >-
+      "11/11 as designed. Case 9 (malformed pack + a corpus edit) is exit 1 where the
+      pre-cure step gave exit 0. Case 11 emits exactly one line and `^::warning::FORGED`
+      matches zero times. Case 10 is an honest empty answer under --literal-pathspecs; the
+      same call without that flag prints 'fatal: Missing )' at the end of pathspec magic'."
+    exit: 0
+    ts: "2026-09-05T03:29+08:00"
+    seat: session (Pro)
+  - claim: >-
+      path-filter-guilt-and-innocence, GUILT half — the ledger row #5680 opened is real and
+      is WORSE than it was written. On origin/main a diff touching only
+      scripts/ci/bites_allowlist.yaml or bites_corpus.yaml sets the immune battery's
+      sentinel to relevant=false, AND guard-conformance's relevance regex misses all three
+      bites surfaces — including scripts/ci/bites_parse.py itself, the guard SOURCE censused
+      in infra/guard-conformance/registry.json. A PR editing the nine guards ran no
+      conformance census at all.
+    cmd: >-
+      extract the 'Detect immune-relevant changes' step and the guard-conformance relevance
+      regex from `git show origin/main:.github/workflows/<file>` and drive each with a
+      one-file change set
+    result: >-
+      "bites_allowlist.yaml -> relevant=false; bites_corpus.yaml -> relevant=false;
+      guard-conformance MISS bites_parse.py / bites_allowlist.yaml / bites_corpus.yaml"
+    exit: 0
+    ts: "2026-09-05T02:47+08:00"
+    seat: session (Pro)
+  - claim: >-
+      path-filter-guilt-and-innocence, INNOCENCE half — with this diff every one of the four
+      bites surfaces triggers both gates.
+    cmd: >-
+      the same two extractions against the WORKING TREE copies, driven with a one-file change
+      set for each of bites_parse.py / bites_allowlist.yaml / bites_corpus.yaml /
+      test_bites_parse.py
+    result: >-
+      "immune: relevant=true for all three drivable inputs; guard-conformance MATCH for all
+      four surfaces"
+    exit: 0
+    ts: "2026-09-05T02:46+08:00"
+    seat: session (Pro)
+  - claim: >-
+      The three workflow files stay valid and introduce no new actionlint/shellcheck finding.
+      Compared against the SAME three files at origin/main rather than against zero, because
+      immune-enforcement.yml already carries six SC2221/SC2222 case-pattern warnings that a
+      bare count would have read as mine.
+    cmd: >-
+      actionlint on the three files in the worktree vs the same three extracted from
+      origin/main, findings normalised to SC-code:line and diffed with comm; plus `bash -n`
+      on the extracted step body
+    result: >-
+      "base=6 head=6; the four 'new' lines are the same warnings shifted by the +2 insertion.
+      bash -n: syntax OK"
+    exit: 0
+    ts: "2026-09-05T03:20+08:00"
+    seat: session (Pro)
+  - claim: >-
+      The gear floor, measured rather than declared — and it is the reason this PR exists
+      separately at all.
+    cmd: >-
+      git diff --name-only HEAD > /tmp/cf.txt && python3 scripts/evidence_pack_lint.py
+      --print-floor --changed-files-file /tmp/cf.txt
+    result: "3 (source: path)"
+    exit: 0
+    ts: "2026-09-05T02:41+08:00"
+    seat: session (Pro)
+  - claim: >-
+      DOGFOOD — this PR's own pack passes the lint this PR adds, as an EXECUTABLE block
+      rather than a legacy one.
+    cmd: >-
+      python3 scripts/ci/bites_parse.py --pack
+      evidence/2026-09/agent-nuzantara-ops-bites-1b-lint-8599c508/pack.yml
+    result: "the four keys, consumer/where/observe/expect, no errors"
+    exit: 0
+    ts: "2026-09-05T02:55+08:00"
+    seat: session (Pro)
+
+dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      Finding 1, HIGH. The step read the pack out of HEAD without ever asserting that the
+      head commit is a local object. Step 1 checks out BASE; the only thing that fetches
+      HEAD is scripts/ci/hotzone_changed_files.sh:48, which does it with `|| true` and then
+      degrades to the GitHub PR-files API. In exactly that case /tmp/changed-files.txt and
+      PACK_PATH are still correct while the head commit is absent, every `git cat-file -e`
+      on it fails, and the step announces "no pack at HEAD" and exits 0. A fork PR carrying
+      a malformed executable block passes green, and its notice is word-for-word the
+      innocent "this diff authors no pack" case.
+    status: CONFIRMED
+    resolution: >-
+      Cured before the seat returned, and not independently of it: its mid-run transcript
+      line ("whether the head commit object is actually fetched for fork PRs, which decides
+      finding 1") was visible in the stream, the same question was checked against
+      hotzone_changed_files.sh:48, and the cure was applied while the seat was still
+      reasoning. Recording it as the seat's find, because it is. The step now runs the same
+      targeted fetch and then fails CLOSED on `git cat-file -e "${HEAD_SHA}^{commit}"`
+      rather than inferring absence from a missing object. A second, related fix went in at
+      the same time and is the builder's: the path questions moved from `cat-file -e` to
+      `git ls-tree`, because Step 1 checks out with `filter: blob:none` and a lazy blob
+      fetch that flaps (superscar #8) would have produced the identical silence.
+  - seat: kimi-code/k3
+    objection: >-
+      Finding 2, MEDIUM. The bootstrap sentinel skipped whenever the parser was missing from
+      base but present at HEAD — and BOTH halves of that condition are attacker-controlled.
+      `pull_request` fires for every base branch, so a PR targeting any branch that predates
+      #5693 needed only to add a one-line stub at scripts/ci/bites_parse.py to buy a green
+      skip for a malformed pack. The seat also noted that the notice's own claim ("self-
+      consistent the moment this PR syncs with main") is false whenever main itself lacks
+      the parser.
+    status: CONFIRMED
+    resolution: >-
+      Closed in two moves, and the second is the one that matters. First the HEAD-side half
+      was replaced by a question about origin/main, which no pull request controls. That
+      alone still left a fail-open the seat had named in passing: any PR against a stale
+      base branch would skip. So the skip was REMOVED — when the base checkout lacks the
+      parser, the step now checks out origin/main's copy of the parser and its two data
+      files and uses THAT. Running the trunk's copy is strictly less trusting than running
+      base's, since base is an older snapshot of the same protected branch. Proved: with
+      scripts/ci/bites_parse.py, bites_allowlist.yaml and bites_corpus.yaml all moved out of
+      the working tree, a malformed pack now exits 1 (it exited 0 before) and a clean pack
+      still exits 0.
+  - seat: kimi-code/k3
+    objection: >-
+      Finding 3, MEDIUM. The step is diff-scoped with no full-tree backstop, so a malformed
+      executable block that ever lands on main is frozen green forever: no later PR touches
+      that file, so no run ever judges it again. The seat's attack seeded such a block
+      through finding 2's window.
+    status: CONFIRMED
+    resolution: >-
+      ACKNOWLEDGED rather than cured, and deliberately. The seeding path is closed with finding 2 (there is no skip left to seed through). The
+      residue is D4 itself, and it is a ruling rather than a defect: 110 packs on main carry
+      prose Bites and 67 carry none, and none of them may go retroactively red — the lint
+      judges the pack under review, never history. One malformed block is already on main
+      today (#5682's, merged after the parser landed and before anything read it), and this
+      step deliberately leaves it alone. Judging merged packs is PR-2's job by design: the
+      reconciler reads each merged PR's pack from the merged tree and writes a ledger row.
+      Recorded here so the next session does not mistake the silence for an oversight.
+  - seat: kimi-code/k3
+    objection: >-
+      Finding 4, MEDIUM, and it is an OVER-MATCH rather than a hole. The parser that judges
+      is the BASE copy; the pack it judges is the HEAD one. A single PR that teaches the
+      parser a fifth key and uses that key in its own pack is therefore RED on a pack that
+      is correct against the parser shipping in the same diff — deterministically, with an
+      error message that actively misleads ("must use all four keys and nothing else") and
+      nothing anywhere telling the author to split the PR in two.
+    status: CONFIRMED
+    resolution: >-
+      OPEN, and deliberately. It cannot be designed away — executing HEAD's parser is
+      exactly what this job checks out base to avoid. The first attempt downgraded the red
+      to a notice for diffs touching the parser or its data files; codex-gpt-5.6-sol rated
+      that HIGH and was right (the condition is bought with one comment line, so any
+      malformed block passed green), so the downgrade was REVERTED. What ships instead is
+      the remedy written into the error message: land the parser change first, the pack that
+      uses it second. A false RED on a rare self-inflicted case with a written workaround is
+      a smaller harm than a false GREEN on an attacker-chosen one. See the codex finding 1
+      entry below for the reproduction.
+  - seat: kimi-code/k3
+    objection: >-
+      Finding 5, LOW. A merged deletion of the parser holds every open PR hostage — each
+      hits "missing from BOTH" and reds — and the restore PR itself gets an unlinted pack
+      through the bootstrap branch.
+    status: CONFIRMED
+    resolution: >-
+      The deadlock is ACCEPTED, not cured — and this entry records a reversal. The first
+      attempt cured it with a bootstrap exception: a diff that ADDS scripts/ci/bites_parse.py
+      back, when it is on neither base nor origin/main, skipped with a notice, on the grounds
+      that guard-conformance and the immune battery judge the added file. codex-gpt-5.6-sol
+      rated that MEDIUM (finding 4) and its argument holds: any stub with the right name plus
+      a malformed pack exited 0 before the pack was read, and another gate being red does not
+      make THIS required check's status honest. The exception was removed. So the deadlock
+      stands: after a merged deletion of the parser every PR reds until a restore lands, and
+      the restore PR needs an operator admin-merge. Deleting the parser that decides which
+      commands CI may execute should cost a human one deliberate action.
+  - seat: kimi-code/k3
+    objection: >-
+      Finding 6, LOW. `grep -qxF "$PACK_PATH"` without `--`: a PACK_PATH beginning with a
+      dash is consumed as options, leaving no file operand, so grep reads empty stdin, does
+      not match, and the step skips to green.
+    status: CONFIRMED
+    resolution: >-
+      Unreachable today, closed anyway. `--` added to both grep call sites. Unreachable with today's evidence/-shaped paths,
+      which is why it is LOW and not higher, and free to close, which is why it is closed.
+  - seat: kimi-code/k3
+    objection: >-
+      Finding 7, LOW. The parser's error strings quote the offending pack line, so their
+      bytes are attacker-influenced. The step stripped only `\\n`; the runner URL-decodes
+      %0A/%0D inside an annotation message, so a pack could forge multi-line annotation
+      content, and `cat` of the raw JSON puts ANSI escapes into the log.
+    status: CONFIRMED
+    resolution: >-
+      Display-only, and closed. The annotation renderer now strips every C0 control character and DEL and escapes `%`
+      to `%25` before emitting. No command is spawned from that text in any version, which
+      is why the seat rated it display-only and why this is the whole cure.
+  - seat: kimi-code/k3
+    objection: >-
+      Finding 8, LOW, and the most useful of the low ones. The step classified the parser's
+      output by grepping its BYTES for '"absent": true' — correct only while json.dumps
+      keeps today's separators — and its else-branch was a catch-all that would announce any
+      future fourth RC-0 shape as "declares an EXECUTABLE bites: contract, parsed clean".
+      The parser already exposes classify() (bites_parse.py:926); the step was re-deriving
+      what it could have asked for. The seat separately checked and REFUTED the obvious
+      companion attack: a pack embedding the literal string cannot forge it, because valid
+      JSON escapes the quotes.
+    status: CONFIRMED
+    resolution: >-
+      The three greps are gone. The step now imports the parser and calls classify() on the
+      parsed JSON, then branches on a four-way `case` whose `*)` fails CLOSED on any word it
+      does not recognise — so a fifth shape is a red with a message naming it, never a
+      mislabel. The parser's own selftest is what proves classify(), so the step no longer
+      carries a second, weaker definition of the same thing.
+  - seat: kimi-code/k3
+    objection: >-
+      Finding 9, LOW and conditional. `/tmp/bites-pack.yml` and its siblings are fixed
+      names, and `>` follows a pre-existing symlink — moot on a single-use GitHub-hosted VM,
+      a real concern on a persistent self-hosted runner. The seat noted it could not see
+      `runs-on` in the excerpt it was given.
+    status: RETRACTED
+    resolution: >-
+      NOT CURED — the precondition was measured and does not hold. `runs-on: ubuntu-latest` (harness-floor.yml:239), so the runner is single-use and the
+      precondition does not hold. Declined rather than fixed because every other step in
+      this job writes fixed /tmp names (/tmp/changed-files.txt, /tmp/brief.yml,
+      /tmp/evidence-check/) and one step using mktemp would leave the file's real
+      convention unchanged while looking as though it had changed. If this job ever moves to
+      a self-hosted runner the fix belongs to the whole file at once, not to this step.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      No objection: the seat never answered. Four dispatches — the first died on
+      ConnectionResetError [Errno 54] mid-stream, the three retries (--timeout 900, backoff
+      20/40s) each returned "tp1_call: timed out" with zero bytes on stdout.
+    status: RETRACTED
+    resolution: >-
+      A SEAT fact, not a module fact (superscar #8 shape). Journaled ok:false at the fourth
+      failure rather than rephrased around or retried a fifth time, and the roster chain
+      continued to codex-gpt-5.6-sol, which answered. Recorded as an entry rather than
+      deleted, because a council seat that was asked and could not reply is part of the
+      record of what this diff was and was not reviewed by.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Finding 1, HIGH, and it sank the cure this step had applied one round earlier. The
+      downgrade written for kimi's finding 4 — a malformed block becomes a NOTICE when the
+      diff also touches the parser or its data files — is bought with one comment line in
+      scripts/ci/bites_corpus.yaml. A pack carrying `observe: echo pwned` plus a cosmetic
+      edit to the corpus therefore passed GREEN through a required check.
+    status: CONFIRMED
+    resolution: >-
+      The downgrade is GONE. Reproduced first (malformed pack + scripts/ci/bites_corpus.yaml
+      in the changed-file set: exit 0 before, exit 1 after), then removed rather than
+      narrowed, because every narrowing still ends in a condition the author of the diff
+      controls. Kimi's finding 4 goes back to being an open, documented over-match: a PR
+      that teaches the parser a new key and uses it in its own pack IS red, and the error
+      message now says so and names the remedy (land the parser first, the pack second).
+      A false RED on a rare self-inflicted case with a written workaround is a smaller harm
+      than a false GREEN on an attacker-chosen one. Two seats disagreeing about the same
+      line is what the second seat is for; the security direction wins.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Finding 2, HIGH. PACK_PATH was handed to `git ls-tree` as a PATHSPEC, which is a small
+      language rather than a filename. `:(` is magic-pathspec syntax: git exits non-zero and
+      prints nothing, the step read only stdout, and that silence classified as "the pack is
+      not in the tree" — exit 0 on a pack it never opened.
+    status: CONFIRMED
+    resolution: >-
+      Two fixes, because the finding has two halves. `git --literal-pathspecs` makes the
+      argument a filename again (verified directly: without it, `git ls-tree -- ':('` prints
+      "fatal: Missing ')' at the end of pathspec magic"; with it, no error and an honest
+      empty answer). And the exit STATUS is now captured separately from the output, so
+      empty-and-succeeded ("not in the tree", a fact about the tree) can never again be
+      confused with empty-and-failed ("the question failed", a fact about the question),
+      which is a red.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Finding 3, HIGH. The stale-base branch asked `git ls-tree origin/main` with stderr
+      discarded. If origin/main does not resolve as a local ref, the failure is silent and
+      empty output was read as "the parser is not on the trunk" — which sent the step into
+      the bootstrap exception and out at exit 0 on a malformed pack.
+    status: CONFIRMED
+    resolution: >-
+      origin/main is now resolved explicitly with `git rev-parse --verify --quiet`, and an
+      unresolvable ref is its OWN red with its own message: it is not evidence that a file
+      was deleted, and the step says exactly that rather than guessing in either direction.
+      Every subsequent question is asked of the resolved sha, not of the ref name. This also
+      closes finding 5 (the mirror false-RED), which was the same confusion read the other
+      way round.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Finding 4, MEDIUM. The bootstrap exception — "this diff adds the parser back, so skip"
+      — is intrinsically fail-open: any stub with the right name plus a malformed pack exits
+      0 before the pack is read. The defence that other gates would catch the stub does not
+      make THIS required check's status correct.
+    status: CONFIRMED
+    resolution: >-
+      The exception is REMOVED, and this reverses a cure written for kimi's finding 5 one
+      round earlier. The cost is exactly the deadlock kimi named: after a merged deletion of
+      the parser every PR reds until a restore lands, and the restore PR reds too, so it
+      needs an operator admin-merge. Accepted deliberately. Deleting the parser that decides
+      which commands CI will execute should cost a human one deliberate action, and the
+      error message says so in the sentence a future session will actually read. There is no
+      longer an introducing PR to protect — the parser is on main as of #5693.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Finding 6, LOW. A promisor blob that cannot be fetched while the commit and tree ARE
+      local turns an innocent PR red: ls-tree succeeds, `git show` fails.
+    status: RETRACTED
+    resolution: >-
+      NOT CURED — this is the design, stated as such rather than fixed. The alternative is
+      the silence this whole step was rewritten twice to remove: a fetch failure that reads
+      as "no pack" is superscar #8 wearing superscar #2's clothes. A red with a message
+      naming the lazy fetch is the intended outcome, and the message says which of the two
+      it is.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Finding 7, LOW. A filename may legally contain a newline. `echo "::notice::...
+      ${PACK_PATH}"` then emits a SECOND line, which the runner parses as a workflow command
+      of the author's choosing — `PACK_PATH=$'evidence/ok.yml\n::warning::FORGED'` forges an
+      annotation. No shell execution: the expansions stay quoted.
+    status: CONFIRMED
+    resolution: >-
+      Every echo now prints SAFE_PACK_PATH, the path with C0 control characters and DEL
+      stripped; every git call still gets the real one, because the two uses need different
+      care. Verified with the seat's own input: the step emits exactly one line, and
+      `^::warning::FORGED` matches zero times (the text survives inline, where the runner
+      does not parse it).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Finding 8, the explicit no-defect. The seat checked the classification path
+      independently of kimi and confirmed it: the step loads the JSON and calls classify(),
+      so literal '"absent": true' bytes inside a pack cannot move the verdict, and no path
+      it could find executes the pack's bytes or HEAD's parser as code.
+    status: RETRACTED
+    resolution: >-
+      Nothing to cure. Recorded because a second seat independently clearing the same
+      surface is evidence, and because the cure it is clearing (kimi's finding 8) was
+      written between the two dispatches — codex reviewed the fixed version, not the
+      original.

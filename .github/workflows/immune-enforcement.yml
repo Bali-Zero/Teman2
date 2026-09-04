@@ -140,6 +140,8 @@ jobs:
               scripts/tests/test_secrets_permissions_audit.py|\
               scripts/tests/test_pending_arms_report.py|\
               scripts/ci/bites_parse.py|\
+              scripts/ci/bites_allowlist.yaml|\
+              scripts/ci/bites_corpus.yaml|\
               scripts/tests/test_bites_parse.py|\
               .github/dependabot.yml|\
               scripts/tests/test_dependabot_excludes_compiled_locks.py|\
