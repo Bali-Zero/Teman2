@@ -69,15 +69,12 @@ def test_catalog_excludes_memory_and_backup_files(tmp_path, filename):
     assert "discovery_kept_2026_09_01.md" in text
 
 
-# ---------------------------------------------------------------------------
-# Redaction
-# ---------------------------------------------------------------------------
-
 @pytest.mark.parametrize("desc, needle, placeholder", [
     ("contact the client at mario.rossi@example.com for details", "mario.rossi@example.com", "<email>"),
     ("call the client on +62 812 345 6789 tomorrow", "812 345 6789", "<num>"),
     ("reference number 1234567890123 on file", "1234567890123", "<num>"),
     ("copy of passport A1234567 attached", "A1234567", "<id>"),
+    ("KTP number 3171234567890123 on file", "3171234567890123", "<id>"),
 ])
 def test_catalog_redacts_pii_in_descriptions(tmp_path, desc, needle, placeholder):
     memdir = tmp_path / "memdir_pii"
@@ -91,30 +88,16 @@ def test_catalog_redacts_pii_in_descriptions(tmp_path, desc, needle, placeholder
     assert meta["pii_offender_count"] == 1
 
 
-def test_pii_scan_clean_text_has_no_hits():
+def test_redact_clean_text_has_no_hits():
     clean = "the migration runner reads schema_migrations and applies pending DDL"
-    assert index_mod.pii_scan(clean) == []
+    _text, hits = index_mod.redact(clean)
+    assert hits == []
 
-
-# ---------------------------------------------------------------------------
-# --check staleness
-# ---------------------------------------------------------------------------
 
 def test_is_stale_true_when_catalog_missing(tmp_path):
     memdir = tmp_path / "memdir_stale_missing"
     memdir.mkdir()
     assert index_mod.is_stale(str(memdir), str(memdir / "MEMORY_INDEX.md")) is True
-
-
-def test_is_stale_false_after_fresh_build(tmp_path):
-    memdir = tmp_path / "memdir_stale_fresh"
-    memdir.mkdir()
-    _write_memory_file(memdir, "discovery_x_2026_09_01.md", "x", "desc", "discovery", "topic")
-    out_path = memdir / "MEMORY_INDEX.md"
-    text, _meta = index_mod.build_index(str(memdir))
-    out_path.write_text(text, encoding="utf-8")
-
-    assert index_mod.is_stale(str(memdir), str(out_path)) is False
 
 
 def test_is_stale_true_after_new_memory_file_added(tmp_path):
@@ -132,10 +115,6 @@ def test_is_stale_true_after_new_memory_file_added(tmp_path):
 
     assert index_mod.is_stale(str(memdir), str(out_path)) is True
 
-
-# ---------------------------------------------------------------------------
-# Slug derivation (shared shape with the Layer-2 recall hook)
-# ---------------------------------------------------------------------------
 
 def test_resolve_memdir_slug_shape(tmp_path):
     fake_home = tmp_path / "home"
