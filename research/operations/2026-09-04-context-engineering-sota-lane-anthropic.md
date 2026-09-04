@@ -1,3 +1,10 @@
+---
+date: 2026-09-04
+domain: operations
+client_case: none — raw lane capture for 2026-09-04-context-engineering-sota.md
+adversarial_review: exempt-raw-lane-capture-reviewed-via-synthesis
+---
+
 # Guidance ufficiale su context management per agenti (Anthropic + confronto OpenAI/Google)
 (lane research-anthropic, 2026-09-04)
 

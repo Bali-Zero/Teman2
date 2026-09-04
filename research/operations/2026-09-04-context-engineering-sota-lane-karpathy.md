@@ -1,3 +1,10 @@
+---
+date: 2026-09-04
+domain: operations
+client_case: none — raw lane capture for 2026-09-04-context-engineering-sota.md
+adversarial_review: exempt-raw-lane-capture-reviewed-via-synthesis
+---
+
 # Report: Context Engineering secondo Karpathy e i thought-leader del settore
 
 ## 1. Andrej Karpathy
