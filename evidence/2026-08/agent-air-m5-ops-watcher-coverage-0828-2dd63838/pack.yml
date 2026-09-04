@@ -26,8 +26,9 @@ seat_diversity_note:
   so spending a council on it is exactly the ceremony this repo's own ceiling rule exists to prevent."
 diff:
   net_lines:
-    1 file, +1/-1 (plus this pack and brief). One entry added to the watcher's on.workflow_run.workflows
-    set, one stale entry removed. No script, no logic, no other workflow.
+    3 files, +182/-1 (one line changed in the workflow itself; the rest is this pack and its
+    brief). One entry added to the watcher's on.workflow_run.workflows set, one stale entry
+    removed. No script, no logic.
   behaviour_change:
     "main-push-failure-watch.yml now LISTS check-skills-canonical, and no longer names
     a workflow that does not exist. It does NOT gain paging for it: that workflow is `pull_request`-only,
