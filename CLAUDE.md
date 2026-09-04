@@ -108,6 +108,18 @@ Quick start: `python scripts/agent_start.py --lane <X> --task-id <Y>` → cd out
 - **Anti-hallucination**: mai citare output di un tool senza averlo eseguito in QUESTO turn. 4-LLM panel + workflow generator≠grader: `docs/rules/operations.md`.
 - **Off-limits files** (top-level hard boundary): `zantara_core.py`, `fly.toml`, `.env*`, `apps/bali-intel-scraper/backend/db/migrations/env.py`. Correzione 2026-08-21 (il vecchio `alembic/env.py` non esiste in questo repo) + dettaglio: `docs/rules/RULINGS.md`.
 
+## Strumenti (MCP→CLI, dieta 2026-09-04)
+
+Il server MCP `nuzantara-knowledge` è staccato dal contesto di default (~−5k token/sessione) — stessi dati via API; `.mcp.json` locale tiene `mcpServers` vuoto (backup `.mcp.json.bak-diet-20260904`).
+
+| Serve | Usa |
+|---|---|
+| Prezzi / KBLI / visa / legal (PII-free) | `curl https://nuzantara-rag.fly.dev/...` — è il backend che l'MCP wrappava (`apps/nuzantara-mcp/nuzantara_mcp/server_knowledge.py`); per una sessione che vuole i tool MCP: ripristina il backup di `.mcp.json` |
+| Docs librerie/framework | WebFetch / WebSearch (plugin context7 disinstallato) |
+| GitHub · Fly · Postgres | `gh` · `fly` · `scripts/pg.sh` |
+| Browser QA post-deploy | MCP `claude-in-chrome` (resta, deferred) |
+| Google Drive | connector claude.ai on-demand (`operator[gui]`) |
+
 ## 3. Memory (MOS — Memory Operating System)
 
 SessionStart hook auto-loads last 5 memories (importance ≥7). Manual CLI `~/.claude/scripts/mem`:

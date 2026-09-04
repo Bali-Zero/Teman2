@@ -1,6 +1,6 @@
 ---
 name: wr2-storyboarder
-description: "MUST BE USED by wr2-design-architect at Step 3 of every carousel run. Use IMMEDIATELY when brief-interpreter returns its brief. Returns 4-10 slide narrative spec. ENFORCES bullet-promise rule (Article 6.3). No HTML, no rendering."
+description: "MUST BE USED by wr2-design-architect at Step 3 of every carousel run. Use IMMEDIATELY when brief-interpreter returns its brief."
 tools: Read, Glob, Grep, Bash
 model: sonnet
 color: purple
