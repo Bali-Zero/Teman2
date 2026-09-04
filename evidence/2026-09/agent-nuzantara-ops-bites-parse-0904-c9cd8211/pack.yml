@@ -1,0 +1,208 @@
+brief_ref: evidence/brief.yml
+brief_ref_note: >-
+  The literal path is required: harness-floor.yml stages the brief to
+  /tmp/evidence-check/evidence/brief.yml and lints with --repo-root /tmp/evidence-check, so a
+  per-task path here does not resolve in CI. The real brief for this task is the sibling
+  brief.yml in this directory.
+plan_ref: >-
+  docs/plans/2026-09-03-relaunch-lanes/LANE-H-bites-reconciler.md, PR-1 of four. Zero's
+  mandate of 2026-09-04. The brief is committed by the sibling PR #5658.
+lanes:
+  - lane: bites-parse-build
+    role: build
+    seat: >-
+      claude-opus-5 xhigh (conducting session, Pro) — measured the finding, designed the
+      format, wrote the parser, its corpus, its tests, the registry surface, the lint step
+      and the docs section, and disposed every refuter finding by re-verifying it on disk.
+  - lane: bites-parse-refute-1
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol, read-only sandbox, xhigh (cross-family) — dispatched on the threat
+      model, not on a conclusion to confirm: "find a PR body that makes the runner do
+      something other than observe". Its first dispatch was REFUSED by the vendor's cyber
+      filter and produced nothing; that run is journaled as not-run rather than counted.
+      The second, framed as maintainer-side validation review, returned the finding that
+      changed the design.
+  - lane: bites-parse-refute-2
+    role: review
+    seat: >-
+      kimi-code/k3 (cross-family) — dispatched on the ALREADY-HARDENED file, deliberately,
+      so it could not re-find what the first round had already cured. It found six things
+      nobody else did, one of them production-critical.
+  - lane: bites-parse-refute-3
+    role: review
+    seat: >-
+      gemini-3.1-pro via agy (width) — dispatched on the same three questions. Not a
+      COUNCIL_REVIEW_SEATS member and not counted toward quorum; recorded because its
+      finding was the most structural of the three.
+seat_diversity: satisfied
+seat_diversity_note: >-
+  Three distinct non-Anthropic families reviewed a diff authored by an Anthropic seat, and
+  the author gated nothing of its own: every finding was re-verified against the file
+  before being applied or declined. Two of the three (codex, kimi-code/k3) are
+  COUNCIL_REVIEW_SEATS; the Alibaba seat was dispatched and did not run, and is journaled
+  as such — a seat that did not run is not a seat that agreed.
+council_run: journal.jsonl
+diff: >-
+  Measured from the merge-base, never two-dot (W102):
+  `git diff --cached --numstat $(git merge-base HEAD origin/main)`. Run it rather than
+  trusting a figure written into a file that is itself part of the diff.
+
+  SHAPE. One new module (scripts/ci/bites_parse.py: seven guards, a two-stage parse layer,
+  a 51-entry guilt+innocence corpus, a --selftest that needs no network and no token), one
+  new test file (66 tests), one registry surface with every guard's proofs named, four
+  small edits to the conformance checker's dispatch, and two additions to
+  immune-enforcement.yml (a lint step, and the test in both the unit-test loop AND the
+  sentinel path list). Plus one section in docs/rules/operations.md.
+
+  SIZE, stated rather than hidden: ~1,500 added lines against the contract's ~400. It is
+  one concern — the format and the boundary that makes it safe — and the bulk is proofs:
+  splitting the guards from their guilt+innocence corpus would have landed a validator
+  with no evidence that it validates. The ceiling rule is not engaged (the floor is 3 by
+  path, from the workflow edit), so this is a disclosure, not an override.
+receipts:
+  - claim: The deterministic gear floor recomputed from this PR's changed-file list is 3.
+    cmd: git diff --cached --name-only > /tmp/cf1.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/cf1.txt
+    result: "3 (source: path)"
+    exit: 0
+    ts: "2026-09-04T18:58+08:00"
+    seat: session (Pro)
+  - claim: >-
+      A1. The guilt+innocence corpus passes, and it is the observation this PR's own Bites
+      line names.
+    cmd: python3 scripts/ci/bites_parse.py --selftest
+    result: "bites_parse selftest: 51/51 pass (guilt + innocence)"
+    exit: 0
+    ts: "2026-09-04T19:20+08:00"
+    seat: session (Pro)
+  - claim: >-
+      A1. A body whose observe pipes to a shell exits 2; an absent body exits 0. The
+      asymmetry the migration depends on is real, not asserted.
+    cmd: python3 scripts/ci/bites_parse.py --body-file <pipe-to-shell body>; echo $?  /  echo "no bites" | python3 scripts/ci/bites_parse.py; echo $?
+    result: "2 and 0"
+    exit: 0
+    ts: "2026-09-04T18:47+08:00"
+    seat: session (Pro)
+  - claim: >-
+      A1. Four real merged PR bodies classify as legacy — the 110 prose bodies on main do
+      not turn red.
+    cmd: for n in 5625 5651 5654 5655; do python3 scripts/ci/bites_parse.py --pr $n; done
+    result: '{"legacy": true} four times (region_kind heading x3, inline x1)'
+    exit: 0
+    ts: "2026-09-04T18:47+08:00"
+    seat: session (Pro)
+  - claim: >-
+      THE CENTRAL RECEIPT. This PR's own body parses as executable, and the fenced example
+      of the format inside that same body is correctly NOT read as the contract.
+    cmd: python3 scripts/ci/bites_parse.py --body-file <this PR's body>
+    result: 'consumer/where/observe/expect all four returned; observe = "python3 scripts/ci/bites_parse.py --selftest"'
+    exit: 0
+    ts: "2026-09-04T19:12+08:00"
+    seat: session (Pro)
+  - claim: >-
+      A4. A hostile block hidden in an HTML comment does not become the contract, and does
+      not displace a visible one.
+    cmd: python3 -c "<parse a body with a commented hostile block above a visible block>"
+    result: "chosen observe = 'git status', consumer = 'x' — the hidden `git log` was never read"
+    exit: 0
+    ts: "2026-09-04T19:15+08:00"
+    seat: session (Pro)
+  - claim: >-
+      A2. Every censused guard has a guilt AND an innocence proof resolvable by name, with
+      no phantom references.
+    cmd: python3 infra/guard-conformance/check_guard_conformance.py
+    result: "7 bites-parse guards, 0 violation(s)"
+    exit: 0
+    ts: "2026-09-04T19:32+08:00"
+    seat: session (Pro)
+  - claim: >-
+      A3. The new test is REACHABLE, not merely listed. The immune loop skips absent files,
+      so a test with no sentinel trigger path never runs — the repo's own symmetry lint
+      caught exactly that and this is it passing after the fix.
+    cmd: python3 -m pytest scripts/tests/test_immune_enforcement_trigger_symmetry.py scripts/tests/test_lint_trigger_symmetry.py -q
+    result: "26 passed"
+    exit: 0
+    ts: "2026-09-04T19:02+08:00"
+    seat: session (Pro)
+  - claim: The full battery for this surface, plus every workflow lint that judges the edited file.
+    cmd: python3 -m pytest scripts/tests/test_bites_parse.py scripts/tests/test_lint_workflow_errexit_decap.py scripts/tests/test_unreachable_workflow_conditions.py scripts/tests/test_lint_doc_executable_refs.py -q
+    result: "all passed (66 in the new file)"
+    exit: 0
+    ts: "2026-09-04T19:32+08:00"
+    seat: session (Pro)
+cloud_ok: >-
+  SYMBIOSIS Law 2 output boundary. Nothing client-bearing exists anywhere near this lane:
+  the subject is a markdown parser and a CI lint. Every cross-family dispatch carried the
+  parser's own rules and, in one case, the file itself — no client identifier, no message
+  body, no CRM row, no OSINT record, no credential. The one credential-adjacent fact
+  discussed (that actions/checkout persists a token into .git/config) is upstream public
+  documentation, and it appears here as the REASON `curl -b` is refused, never as a value.
+pii_scan: clean
+pii_scan_note: >-
+  No path in this diff is PII-bearing and no prompt carried client data. The `${VAR:+SET}`
+  discipline was not needed because no secret was read at any point.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      "`python3 scripts/...` is not a capability boundary. It admits every script in the
+      tree, including scripts/usage/cswap.py, whose `run` subcommand reaches os.execvpe,
+      and scripts/ci/restore_drill_verify.py --psql-bin and
+      scripts/ci/stage_council_journal.py --git-bin, each of which executes a binary its
+      argument names."
+    status: CONFIRMED
+    resolution: >-
+      Applied, and it replaced a rule rather than patching one. `_guard_observable_script`
+      makes reachability a property a script declares in its own SOURCE (the marker
+      `bites-observable`), fail-closed on a missing marker, a missing file, an unreadable
+      file or a path that escapes the checkout. Content-keyed, never location-keyed (W109).
+      Verified on disk: scripts/usage/cswap.py exists and is refused
+      (test_observable_script_guilt_a_real_execvpe_script_is_rejected asserts BOTH, so the
+      day the file moves the test says so rather than passing vacuously).
+  - seat: kimi-code/k3
+    objection: >-
+      "FLY_READONLY_SUBCOMMANDS lists first WORDS and the guard reads rest[0] only, so
+      `fly machine run <image>` passes — arbitrary container execution on production."
+    status: CONFIRMED
+    resolution: >-
+      Applied. Fly is now checked as PAIRS, like gh already was: `machine list` and
+      `machine status` are permitted, `machine run`/`destroy`/`update` are not. This is the
+      SECOND instance of superscar #3's under-match inside this one file — the first was
+      the guard that inspects only argv[0] — which is why the registry note for
+      _guard_no_remote_shell now records the pattern rather than the instance.
+      Five further findings from the same seat were applied with it: `git tag`/`git branch`
+      create refs and left the read-only list; `git diff --output=<relative>` writes a file
+      the path guard permits and joined GIT_FORBIDDEN_FLAGS; `curl -b .git/config` reads
+      the file actions/checkout leaves credentials in; `curl evil.test/x` carries no `://`
+      so the https check never fired; `gh --repo=other/repo` retargets the observation.
+  - seat: gemini-3.1-pro
+    objection: >-
+      "extract_region can pick a different block than the one a human sees rendered: a
+      `## Bites` inside an HTML comment is invisible on GitHub and parsed identically to a
+      visible one; a fenced example parses as a contract; two blocks are silently
+      first-wins; zero-width characters make the heading and the keys parse differently
+      from how they render."
+    status: CONFIRMED
+    resolution: >-
+      Applied, and it is the finding that mattered most because it defeats every guard at
+      once — a reviewer approving what they can see would have been approving something
+      else. blind_hidden_regions() blanks fenced blocks and HTML comments before scanning
+      (preserving line positions so the two extractions stay comparable); two visible
+      blocks are `malformed` rather than first-wins; a block needing normalisation is
+      refused rather than guessed. The narrowness is proven too: a zero-width character
+      ELSEWHERE in the body is not penalised
+      (test_a_zero_width_character_elsewhere_in_the_body_is_not_penalised), because a guard
+      that fails a whole class to catch one case is the over-match twin of the same scar.
+  - seat: kimi-code/k3
+    objection: >-
+      "A pull request can add scripts/evil.py carrying the `bites-observable` marker in the
+      same diff. The marker is only as strong as the review of the diff that adds it."
+    status: CONFIRMED
+    resolution: >-
+      Confirmed as a real limit, and DECLINED as a code change because it is not fixable in
+      the parser: any marker a diff can add, a diff can add. It is
+      answered by a CONSTRAINT ON THE EXECUTOR instead, written into the module's docstring
+      and into docs/rules/operations.md so PR-2 inherits it in writing: observations run
+      POST-MERGE ONLY, when the marked script is reviewed, merged code. The same argument
+      covers `python3 -m pytest`, which imports whatever conftest.py a branch carries.
+      Recorded rather than quietly noted, because a constraint that lives only in a
+      reviewer's head is the class of promise this whole lane exists to abolish.

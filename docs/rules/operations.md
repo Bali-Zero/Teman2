@@ -45,6 +45,100 @@ still does not arm, merge, or deploy). The operational commands are documented i
    driving it spent 3.9M output tokens, and 27 of the 200 commits that landed on main 2026-08-20..22 (195 merged PRs) existed
    only to correct a claim made by a previous one.
 
+## The `Bites` contract, in its executable form
+
+Rule 2 of the Builder Contract (`CLAUDE.md`) says every PR body carries a `Bites:` line
+naming the CONSUMER and the observation that proves the change is in force. Until
+2026-09-04 that line was prose honoured by whoever wrote it: of the 177 PRs merged since
+2026-09-01, 110 carried one, and `grep -rlE Bites .github/workflows scripts/*.py
+scripts/ci/*.py infra/claude-hooks` returned zero files — no lint, workflow or hook had
+ever read a single one. The machine verified the DIFF; the runtime was verified by a
+sentence about it.
+
+A `Bites` block MAY now be written in a form a machine can execute:
+
+```
+## Bites
+consumer: <who reads or executes the changed thing>
+where: ci | fly | pro | mini
+observe: `<one command>`
+expect: exit0 | contains:<text> | regex:<pattern>
+```
+
+- `consumer` is prose, as before: who or what actually reads the changed thing.
+- `where` says where the observation can be made. `ci` and `fly` can run on a GitHub
+  runner; `pro` and `mini` need the machine itself.
+- `observe` is ONE command, and the format is deliberately narrow about what that can
+  be — see the guards below.
+- `expect` is the comparison: the command exits 0, its output contains a string, or its
+  output matches a regular expression.
+- The single substitution available is the literal `{sha}`, replaced with the merged
+  commit's sha.
+
+**The prose form remains valid and is not deprecated.** `scripts/ci/bites_parse.py`
+classifies a body as `absent`, `legacy` (a Bites section with no `observe:` key) or
+`executable`, and the lint inside the required `antidotes` job emits a NOTICE for the
+first two and FAILS only for a body that reached for the executable form and got it
+wrong. The 110 prose bodies already on main are not retroactively red, and making the
+executable form mandatory is Zero's decision (Legge 5), not a lint's.
+
+**Why the command is so restricted.** `observe:` is text from a pull-request body, and a
+later CI job will run it on a runner holding a write-scoped `GITHUB_TOKEN`. So the parser
+allow-lists rather than deny-lists, at parse time, before any caller can forget to check:
+
+| Guard | What it refuses |
+|---|---|
+| `_guard_shell_composition` | any chaining, substitution, redirection or expansion — `$` included, because a bare `$SECRET` executes nothing and exfiltrates just as well inside a URL |
+| `_guard_command_allowlist` | any first token but `gh`, `curl`, `git`, `python3`, `fly`, `flyctl`, and then each one narrowed: `fly`/`flyctl` to read-only subcommand PAIRS (`machine list`, not `machine run`); `git` to local read-only subcommands with `-c` and `--output` refused; `gh` to read-only subcommand pairs with `--repo` and a non-GET `gh api` refused; `curl` to exactly one non-flag argument which must be an `https://` URL, with no body, no proxy and no flag that reads a local file |
+| `_guard_no_remote_shell` | `ssh`, `scp`, `sftp`, `rsync`, `nc` in ANY position, not just the first — an allow-list keyed on `argv[0]` waves `git clone ssh://host/repo` straight through |
+| `_guard_path_containment` | `..` segments and absolute-path arguments |
+| `_guard_expect_form` | an `expect` outside the three forms, and a regex that does not compile |
+| `_guard_where_scope` | a `where` outside the four scopes |
+| `_guard_observable_script` | a `python3 scripts/...` target that does not carry the marker `bites-observable` in its own source, or a `pytest` path outside a `tests/` directory |
+
+`_guard_observable_script` exists because the first draft's rule — "`python3` may run
+`scripts/...`" — reads narrow and is not: it admits every script in the tree, and the
+tree holds `scripts/usage/cswap.py`, whose `run` subcommand reaches `os.execvpe`, plus
+scripts taking `--psql-bin`, `--git-bin` and `--dsn`. Reachability is therefore
+something a script declares about ITSELF: add a comment containing `bites-observable`,
+and only to a script whose arguments cannot name a program to run, a file to write, or a
+database to reach. Location grants nothing — an exemption keyed to where a file sits
+rather than what it is, is itself a scar (W109).
+
+**The block must also be the one a reviewer saw.** Before any guard runs, the parser
+blanks out what GitHub renders inert — fenced code blocks and HTML comments — so a
+`## Bites` hidden in a comment is not a contract and the format shown as an example in a
+fence is not one either. Two visible blocks are `malformed` rather than first-wins: a
+reviewer sees both, so there is no first one to obey. A block containing zero-width or
+invisible characters is `malformed` too — it renders as one contract and parses as
+another, and with two readings available there is no honest way to pick one.
+
+The narrowing is two-word wherever the command is: `fly machine` and `gh pr` both have
+subcommands that write, so a check on the first word alone admits `fly machine run`
+(arbitrary container execution on production) and `gh pr merge`. Both were in the first
+draft and both were found by refutation rather than by review of the draft's own logic.
+
+**What the marker does not cover, stated plainly.** A pull request can add a script AND the
+marker in the same diff, so `bites-observable` is only as strong as the review of the diff
+that introduces it. That is why the executor runs POST-MERGE only: by then the marked
+script is reviewed, merged code. An executor that ran an observation against an unmerged
+PR checkout would have no boundary at all, marker or not.
+
+Each guard carries a guilt and an innocence proof registered in
+`infra/guard-conformance/registry.json` (surface `bites_parse_observe_allowlist`), so a
+guard added without both fails CI rather than shipping untested.
+
+Check a body before opening the PR:
+
+```bash
+python3 scripts/ci/bites_parse.py --selftest        # the guilt+innocence corpus
+python3 scripts/ci/bites_parse.py --pr <number>     # what the lint will see
+```
+
+Deciding whether a given PR's observation may actually RUN is not the parser's question:
+trust (author association, forks) belongs to the executor that consumes this output, and
+a body that parses is not thereby a body that is executed.
+
 ## 2. Behavior & Autonomous Ops
 
 **DO NOT ask the user to write code.** Act first, ask if blocked. Use `Edit`/`Write`/`Bash` without asking permission.

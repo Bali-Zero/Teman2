@@ -135,6 +135,8 @@ jobs:
               scripts/tests/test_proprioception_executed_code_currency.py|\
               scripts/tests/test_secrets_permissions_audit.py|\
               scripts/tests/test_pending_arms_report.py|\
+              scripts/ci/bites_parse.py|\
+              scripts/tests/test_bites_parse.py|\
               .github/dependabot.yml|\
               scripts/tests/test_dependabot_excludes_compiled_locks.py|\
               .github/workflows/auto-merge-whitelist.yml|\
@@ -481,6 +483,63 @@ jobs:
         # reporting a clean tree it did not earn.
         run: python3 scripts/tests/test_gateway_callers_read_the_verdict.py
 
+      # BITES CONTRACT LINT (LANE H, 2026-09-04). The builder contract says every PR
+      # body carries a `Bites:` line naming the consumer and the observation that
+      # proves the change is in force. Measured the day this landed: 110 of the 177
+      # PRs merged since 2026-09-01 carried one, and NOTHING read any of them --
+      # `grep -rlE Bites .github/workflows scripts/*.py scripts/ci/*.py
+      # infra/claude-hooks` returned zero files. This step is the first reader.
+      #
+      # IT IS NOT A RATCHET YET, and the asymmetry is the whole design:
+      #   absent / legacy -> ::notice::   (the 177 bodies already on main stay green)
+      #   malformed       -> FAIL         (only a body that TRIED the executable form
+      #                                    and got it wrong, which is a promise the
+      #                                    later executor would act on)
+      # Making the executable form mandatory is Zero's call (Legge 5), not this
+      # step's, and it would be a one-line change here when he makes it.
+      #
+      # THE PR BODY IS UNTRUSTED TEXT and reaches this step ONLY through the `env:`
+      # mapping. It is never interpolated into the run block: `${{ }}` inside `run:`
+      # is textual substitution before bash ever sees it, so a body containing a
+      # quote would end the string and everything after it would execute. env + a
+      # quoted expansion has no such seam. This is the same class the parser itself
+      # exists to close, one layer up.
+      - name: Bites contract lint (malformed executable block fails; prose is a notice)
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -uo pipefail
+          printf '%s' "$PR_BODY" > "$RUNNER_TEMP/pr-body.md"
+          OUT=$(python3 scripts/ci/bites_parse.py --body-file "$RUNNER_TEMP/pr-body.md")
+          RC=$?
+          if [ "$RC" -eq 0 ]; then
+            KIND=$(printf '%s' "$OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("absent" if d.get("absent") else "legacy" if d.get("legacy") else "executable")')
+            case "$KIND" in
+              absent)
+                echo "::notice::no Bites section. The builder contract asks for one; the executable form is documented in docs/rules/operations.md."
+                ;;
+              legacy)
+                echo "::notice::prose Bites section (not machine-executable). The executable form is documented in docs/rules/operations.md."
+                ;;
+              executable)
+                echo "Bites: executable block parsed and every guard passed."
+                printf '%s\n' "$OUT"
+                ;;
+            esac
+            exit 0
+          fi
+          if [ "$RC" -eq 2 ]; then
+            echo "::error::the Bites block uses the executable form but does not satisfy it:"
+            printf '%s\n' "$OUT"
+            exit 1
+          fi
+          # Any other exit code is the LINT failing, not the body. Say which, and fail:
+          # a parser that crashed proves nothing about the body it did not finish reading.
+          echo "::error::bites_parse.py exited $RC -- the lint itself failed, the body is unjudged"
+          printf '%s\n' "$OUT"
+          exit 1
+
       - name: Unit tests (guilt + innocence per tool)
         if: steps.paths.outputs.relevant == 'true'
         run: |
@@ -504,6 +563,7 @@ jobs:
             scripts/tests/test_secrets_permissions_audit.py \
             scripts/tests/test_lane_outcome_report.py \
             scripts/tests/test_pending_arms_report.py \
+            scripts/tests/test_bites_parse.py \
             scripts/tests/test_dependabot_excludes_compiled_locks.py \
             scripts/tests/test_auto_merge_protects_compiled_locks.py \
             scripts/tests/test_lint_decision_registry.py \

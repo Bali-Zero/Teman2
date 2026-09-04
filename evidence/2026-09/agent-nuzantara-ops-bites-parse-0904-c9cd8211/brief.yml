@@ -1,0 +1,60 @@
+task_id: bites-parse-0904
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  Make the `Bites:` contract executable, and give it its first reader.
+
+  Rule 2 of the Builder Contract says every PR body carries a `Bites:` line naming the
+  CONSUMER and the observation that proves the change is in force. Measured on 2026-09-04
+  over the 177 PRs merged since 2026-09-01: 110 carry one (62%), and NOTHING reads any of
+  them -- `grep -rlE Bites .github/workflows scripts/*.py scripts/ci/*.py
+  infra/claude-hooks` returns zero files. Every verification contract in this repository
+  is prose honoured by an LLM while the machine verifies only the diff.
+
+  This is PR-1 of LANE H (docs/plans/2026-09-03-relaunch-lanes/LANE-H-bites-reconciler.md,
+  Zero's mandate of 2026-09-04): the FORMAT a machine can parse, the PARSER, its security
+  boundary, and an advisory lint inside the already-required `antidotes` job. The executor
+  that runs the observation is PR-2 and is deliberately not here -- the boundary has to be
+  reviewable with no runner anywhere near it.
+
+  Gear 3 by PATH, deterministically: --print-floor returns 3 on this changed-file list
+  (.github/workflows/immune-enforcement.yml).
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 3
+constraints:
+  - >-
+    The 110 prose bodies and the 67 absent ones stay green. `absent` and `legacy` are
+    NOTICE outcomes and exit 0; only a body that reached for the executable form and got
+    it wrong FAILS. A format that turned merged history red would be a ratchet nobody
+    could land a PR through, and making the executable form mandatory is Zero's decision
+    (Legge 5), not a lint's.
+  - >-
+    The parser executes nothing. Trust -- author_association, fork-ness -- is the
+    EXECUTOR's question, not the parser's, and keeping the split is what lets every guard
+    be unit-tested with no network, no token and no runner.
+  - >-
+    The PR body reaches the workflow step ONLY through the `env:` mapping. `${{ }}` inside
+    a `run:` block is textual substitution before bash sees it, so a body containing a
+    quote would end the string and execute the rest. That is the same injection class the
+    parser exists to close, one layer up, and it would have been ironic to ship it.
+  - >-
+    No new required context on main. The lint rides inside the existing required
+    `antidotes` job, so nothing about branch protection changes.
+  - No paid API, no LLM in the reconciler at all. It needs none.
+acceptance:
+  - >-
+    A1: `python3 scripts/ci/bites_parse.py --selftest` exits 0; a body whose observe pipes
+    to a shell exits 2; `--pr 5625` returns {"legacy": true}; this PR's own body returns
+    the four fields.
+  - >-
+    A2: `python3 infra/guard-conformance/check_guard_conformance.py` reports the new
+    surface with 0 violations -- every guard censused in the module has a guilt AND an
+    innocence proof resolvable by name in the test file.
+  - >-
+    A3: `test_immune_enforcement_trigger_symmetry` passes -- the new test is reachable by
+    a sentinel path, not merely listed in a loop that skips absent files.
+  - >-
+    A4: a `## Bites` block inside an HTML comment does not become the contract, and a
+    visible block beside a hidden one wins.
