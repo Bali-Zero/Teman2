@@ -366,6 +366,30 @@ def test_a_four_backtick_fence_is_not_closed_by_three():
     assert bp.parse_body(body) == {"absent": True}
 
 
+def test_a_comment_delimiter_inside_a_code_span_is_literal_text():
+    """The over-match this parser committed against its own author's commit message.
+
+    GitHub renders `` `<!--` `` as literal text. Reading it as a real comment opener
+    swallows the rest of the body — fail-closed, so never a hole, but it deletes the
+    contract from any PR whose prose DISCUSSES html comments, which is precisely the
+    prose a PR about this parser contains.
+    """
+    body = (
+        "The bug was `<!-- note --> <!--` in prose.\n\n"
+        "## Bites\nconsumer: CI\nwhere: ci\nobserve: `git status`\nexpect: exit0"
+    )
+    assert bp.parse_body(body).get("observe") == "git status"
+
+
+def test_a_real_comment_after_a_code_span_on_the_same_line_still_hides():
+    """Narrowness in the other direction: masking must not blind the guard entirely."""
+    body = (
+        "Prose with `a span` then a real opener <!--\n"
+        "## Bites\nconsumer: attacker\nwhere: ci\nobserve: `git log`\nexpect: exit0\n-->\n"
+    )
+    assert bp.parse_body(body) == {"absent": True}
+
+
 def test_command_allowlist_guilt_git_grep_pager_command_is_rejected():
     """`-O<cmd>` glues its value on, which a split-on-`=` comparison never matches."""
     assert bp._guard_command_allowlist("git grep -Oevil pattern")

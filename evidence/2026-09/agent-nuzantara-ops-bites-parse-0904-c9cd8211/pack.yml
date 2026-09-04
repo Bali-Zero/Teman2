@@ -278,6 +278,22 @@ dissent:
       workflow — delete any of the three and the observation goes red. A Bites line whose
       observation cannot fail when its consumer is deleted is precisely the disease this
       whole PR exists to cure, and the first draft of it had the disease.
+  - seat: the parser itself, applied to its own rework commit message
+    objection: >-
+      After the comment scanner landed, running it on THIS PR's own new body returned
+      `{"absent": true}`: a sentence documenting the very bug being fixed contained
+      `<!-- note --> <!--` inside an inline code span, the scanner read the unclosed
+      opener as real, and swallowed everything after it — including the Bites block.
+    status: CONFIRMED
+    resolution: >-
+      Fixed by masking inline code spans before scanning, since a delimiter inside one is
+      literal text on the rendered page. Recorded because of what it says about the two
+      failure directions: the fix for an UNDER-match (a hidden block being read) produced
+      an OVER-match (a discussed block being deleted) within the hour, and no fixture
+      caught it — real prose did, on the first document that talked about the feature.
+      Both directions are now pinned:
+      test_a_comment_delimiter_inside_a_code_span_is_literal_text and
+      test_a_real_comment_after_a_code_span_on_the_same_line_still_hides.
   - seat: kimi-code/k3
     objection: >-
       "A pull request can add scripts/evil.py carrying the `bites-observable` marker in the

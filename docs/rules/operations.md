@@ -112,7 +112,10 @@ fence is not one either. Both passes follow the rendering rules rather than appr
 them: comments are consumed by a scanner, so a line carrying a closed pair AND an opener
 (`<!-- note --> <!--`) leaves the comment OPEN as GitHub does; and a fence closes only on
 the same character at least as long as the opener, so a block opened with four backticks
-is not closed by three. Two visible blocks are `malformed` rather than first-wins: a
+is not closed by three. Delimiters inside an INLINE CODE SPAN are literal text, as they
+are on the rendered page — without that rule the parser deletes the contract from any PR
+whose prose discusses HTML comments, which is exactly the prose a PR about this parser
+contains. Two visible blocks are `malformed` rather than first-wins: a
 reviewer sees both, so there is no first one to obey. A block containing zero-width or
 invisible characters is `malformed` too — it renders as one contract and parses as
 another, and with two readings available there is no honest way to pick one.

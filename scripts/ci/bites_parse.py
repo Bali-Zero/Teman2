@@ -542,6 +542,29 @@ _COMMAND_GUARDS = (
 _FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})")
 
 
+#: An inline code span. Delimiters INSIDE one are literal text on the rendered page.
+_CODE_SPAN_RE = re.compile(r"(`+)[^\n]*?\1")
+
+
+def _mask_code_spans(line: str) -> str:
+    """Return `line` with the interior of every inline code span replaced by `x`.
+
+    Same length, same indices — so delimiters are FOUND on the masked copy and text is
+    SLICED from the original. This exists because the parser rejected its own author's
+    commit message: a sentence documenting the comment bug contained
+    `` `<!-- note --> <!--` `` inside backticks, the scanner read the unclosed opener as
+    real, and swallowed the whole body. Fail-closed, so not a hole — but wrong about
+    rendering, which makes it superscar #3's over-match, found by using the tool on real
+    prose rather than on fixtures.
+    """
+    out = list(line)
+    for m in _CODE_SPAN_RE.finditer(line):
+        fence = len(m.group(1))
+        for i in range(m.start() + fence, m.end() - fence):
+            out[i] = "x"
+    return "".join(out)
+
+
 def _strip_comments_on_line(line: str, in_comment: bool) -> tuple[str, bool]:
     """Remove HTML-comment spans from one line, carrying the open/closed state out.
 
@@ -553,17 +576,23 @@ def _strip_comments_on_line(line: str, in_comment: bool) -> tuple[str, bool]:
     cannot have that bug: it consumes spans in order and its state is whatever the
     last unmatched delimiter left it.
     """
+    # Inside a comment nothing renders, so code spans do not apply there; outside one
+    # they do, and a delimiter within them is literal text.
+    probe = line if in_comment else _mask_code_spans(line)
     kept: list[str] = []
     i = 0
     while i < len(line):
         if in_comment:
-            close = line.find("-->", i)
+            close = probe.find("-->", i)
             if close == -1:
                 return "".join(kept), True
             i = close + 3
             in_comment = False
+            # Out of the comment: the REST of the line is rendered text again, so
+            # re-mask it. Index-stable, because masking never changes length.
+            probe = line[:i] + _mask_code_spans(line[i:])
         else:
-            open_at = line.find("<!--", i)
+            open_at = probe.find("<!--", i)
             if open_at == -1:
                 kept.append(line[i:])
                 return "".join(kept), False
@@ -909,6 +938,9 @@ CONFORMANCE_CORPUS: tuple[tuple[str, str, str], ...] = (
     ("guilt-four-backtick-fence-not-closed-by-three",
      "````\n```\n## Bites\nconsumer: attacker\nwhere: ci\nobserve: `git log`\nexpect: exit0\n````\n",
      "absent"),
+    ("ok-a-comment-delimiter-inside-a-code-span-is-literal-text",
+     "The bug was `<!-- note --> <!--` in prose.\n\n## Bites\nconsumer: CI\nwhere: ci\nobserve: `git status`\nexpect: exit0",
+     "executable"),
     ("guilt-git-grep-pager-command",
      "## Bites\nconsumer: x\nwhere: ci\nobserve: `git grep -Oevil pattern`\nexpect: exit0",
      "malformed"),
