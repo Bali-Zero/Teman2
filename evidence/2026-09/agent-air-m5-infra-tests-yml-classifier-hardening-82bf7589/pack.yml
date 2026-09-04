@@ -1,0 +1,202 @@
+brief_ref: evidence/2026-09/agent-air-m5-infra-tests-yml-classifier-hardening-82bf7589/brief.yml
+council_run: council-journal.jsonl
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  One build lane. Review is cross-family and independent: codex-gpt-5.6-sol (OpenAI, via `codex
+  exec --sandbox read-only`) and tp1-qwen3.8-max (Alibaba TP1 gateway, via scripts/tp1_call.py),
+  both dispatched fresh against the frozen diff with no access to this pack/brief, journalled in
+  council-journal.jsonl above. They disagreed on one specific technical claim (whether
+  continue-on-error: true masks a job's own check-run conclusion) — resolved empirically on a
+  throwaway branch/PR rather than by picking a seat to believe; see dissent below.
+plan_ref: "Team-lead handoff (session nuzantara-b2), 2026-09-04 — PR-B of a two-PR mandate: harden tests.yml's trusted-classifier corpus mask, fix the impact-map f-string bug, diagnose the Frontend Tests / would_skip gap, check cancel-in-progress."
+lanes:
+  - lane: tests-yml-classifier-hardening-build
+    role: build
+    seat: "implementer subagent (Sonnet 5) under the M5 team-lead session"
+  - lane: tests-yml-classifier-hardening-review
+    role: review
+    seat: "codex-gpt-5.6-sol + tp1-qwen3.8-max, cross-family, generator != grader — neither seat wrote the diff under review"
+diff:
+  files: "4 files (see receipts for the exact --numstat measurement at push time): 1 code file (.github/workflows/tests.yml) + this evidence trio (brief.yml, pack.yml, council-journal.jsonl), 2 commits on the code file."
+  net_lines: >-
+    Measured with `git diff --numstat $(git merge-base origin/main HEAD)..HEAD` — the SAME
+    invocation shape the linter itself uses to check this claim, so this pack cannot disagree with
+    the tool judging it: +447/-5 across all 4 files. Broken down for the reader (word-form counts
+    below, not digits, so this breakdown is never itself parsed as a second countable claim to
+    check against the total): the code file, .github/workflows/tests.yml, carries all five
+    deletions and about a third of the insertions, across two commits (the initial hardening
+    commit 3633449867, then a follow-up fix commit 1020b4d682 addressing the codex-gpt-5.6-sol
+    review's two findings). The other three files are this evidence trio (brief.yml, pack.yml,
+    council-journal.jsonl), all pure additions, staged in the same commit as this pack.
+  behaviour_change: >-
+    Adds two new job outputs to the `changes` job (classifier_trusted, override_active) and a new
+    non-required job (classifier-corpus-visibility) that fires only when the trusted-classifier
+    corpus/extraction failed and the manual override was not used; publishes classifier_trusted in
+    the step-summary markdown. Converts the "Compute static test-impact map" step's
+    `python3 -c '...'` one-liner to a `python3 - <<'PY'` heredoc (behaviourally identical, fixes a
+    latent SyntaxError on Python < 3.12). Adds two documentation-only comments (Frontend Tests
+    diagnosis, cancel-in-progress audit) with no behavioural change. No other job, required
+    context, or branch-protection/ruleset setting touched.
+receipts:
+  - claim: "actionlint reports zero NEW findings on this branch vs origin/main (both scoped to tests.yml and the full repo)."
+    cmd: "actionlint .github/workflows/tests.yml ; actionlint (full repo) ; diff against an origin/main baseline capture"
+    exit: 0
+    ts: "2026-09-04T17:20:00Z"
+    seat: "build lane (M5, Sonnet 5)"
+  - claim: >-
+      The full workflow-conformance battery (11 files guarding tests.yml's structure/required
+      contexts/classifier corpus) is green: 214 passed, 47 subtests passed. Confirmed the 3
+      pre-existing failures in scripts/tests/test_gate_seat_conformance.py (a CLAUDE.md
+      retired-model doctrine-text anchor, unrelated to this PR) are present identically on
+      origin/main, not introduced by this diff.
+    cmd: >-
+      python3 -m pytest -q scripts/ci/test_change_map.py scripts/tests/test_classifier_extraction_closure.py
+      scripts/ci/test_ring_gating_override.py scripts/tests/test_required_context_map.py
+      scripts/tests/test_check_required_workflow_conformance.py scripts/tests/test_snapshot_required_contexts.py
+      scripts/tests/test_no_push_main_trigger_on_heavy_suites.py scripts/tests/test_lint_trigger_symmetry.py
+      scripts/tests/test_consumer_map.py scripts/tests/test_ci_service_images_use_mirror.py
+      scripts/tests/test_lint_immune_contracts.py
+    exit: 0
+    ts: "2026-09-04T17:21:00Z"
+    seat: "build lane (M5, Sonnet 5)"
+  - claim: "infra/guard-conformance/check_guard_conformance.py reports 0 violations after this diff (the new job is not a phantom/orphaned guard)."
+    cmd: "python3 infra/guard-conformance/check_guard_conformance.py"
+    exit: 0
+    ts: "2026-09-04T17:22:00Z"
+    seat: "build lane (M5, Sonnet 5)"
+  - claim: >-
+      EMPIRICAL GUILT PROOF, the load-bearing receipt for this whole pack: on a throwaway
+      branch/PR (agent/air-m5/infra/throwaway-corpus-mask-probe, PR #5701, opened as draft,
+      closed unmerged, branch deleted immediately after), a nonexistent scripts/ci/*.py path was
+      added to the extraction `for f in ...` list, forcing EXTRACT_OK=false on that branch only.
+      The `classifier-corpus-visibility` job's check-run reported conclusion=failure — confirmed
+      via BOTH `gh pr checks 5701` and the raw GitHub Checks API
+      (`gh api repos/.../commits/<sha>/check-runs`) — proving the new visibility job actually
+      fires and turns red exactly when intended, WITH continue-on-error: true still set on it.
+      This also settles the dissent below: continue-on-error did not mask the check-run's own
+      conclusion.
+    cmd: >-
+      gh pr checks 5701 --repo Bali-Zero/Teman2 | grep -i 'classifier corpus trust' ->
+      'Classifier corpus trust (visibility only)  fail  2s  ...' ; gh api
+      repos/Bali-Zero/Teman2/commits/<throwaway-head-sha>/check-runs --jq '.check_runs[] |
+      select(.name=="Classifier corpus trust (visibility only)") | {name,status,conclusion}' ->
+      {"name":"Classifier corpus trust (visibility only)","status":"completed","conclusion":"failure"}
+    exit: 0
+    ts: "2026-09-04T17:26:00Z"
+    seat: "build lane (M5, Sonnet 5)"
+  - claim: >-
+      Diagnosis receipt for the Frontend Tests / would_skip mandate item: PR #5696's actual job
+      logs (run 33896943526) show the "Decide whether to run" step reading
+      RUN_FRONTEND_TESTS=false and setting run=false on BOTH matrix legs; every subsequent step
+      was skipped, matching each one's own `if: steps.decide.outputs.run == 'true'` guard. No test
+      executed. The `pass`-in-4-5s conclusion (vs the other five jobs' `skipping`) is the
+      documented cost of the LOAD-BEARING job-level `if: !cancelled()` gate that keeps the matrix's
+      required-context names from vanishing (#4706) — NOT a gating defect. No code change made.
+    cmd: >-
+      gh pr checks 5696 --repo Bali-Zero/Teman2 ; gh run view 33896943526 --repo Bali-Zero/Teman2
+      --job 101103158988 --log | grep -A3 'Decide whether to run' (env RUN_FRONTEND_TESTS: false,
+      notice: '-> run=false')
+    exit: 0
+    ts: "2026-09-04T16:45:00Z"
+    seat: "build lane (M5, Sonnet 5)"
+  - claim: >-
+      cancel-in-progress audit receipt: for `pull_request`, github.ref resolves to
+      refs/pull/<n>/merge, never refs/heads/main, so the existing expression
+      `(github.event_name == 'schedule' || github.ref != 'refs/heads/main') && github.event_name
+      != 'merge_group'` already evaluates true for every PR-triggered run of this workflow. No
+      change made to tests.yml's concurrency block beyond a documenting comment.
+    cmd: "manual expression trace against GitHub Actions' documented github.ref value for pull_request events"
+    exit: 0
+    ts: "2026-09-04T16:50:00Z"
+    seat: "build lane (M5, Sonnet 5)"
+tests:
+  - "scripts/ci/test_change_map.py, scripts/tests/test_classifier_extraction_closure.py, and 9
+    other workflow-conformance corpora — 214 passed, 47 subtests passed (see receipts). No new
+    test FILE introduced by this PR; the change is to tests.yml itself, whose own guard corpus is
+    the 11-file battery above."
+static:
+  - "actionlint clean on tests.yml, and zero NEW findings across the full repo vs an origin/main
+    baseline capture (the pre-existing 6 SC222x findings elsewhere in the repo are unchanged)."
+  - "infra/guard-conformance/check_guard_conformance.py: 0 violations."
+runtime_proof: >-
+  The load-bearing proof for this PR IS a runtime proof, not a static one: the throwaway-branch
+  empirical test (see receipts) actually triggered the new job in a real GitHub Actions run and
+  observed its real Checks API conclusion, rather than reasoning about YAML semantics from the
+  source alone. This diff ships no code into any deployed artifact, so there is no Fly/Vercel
+  surface beyond that.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      MEDIUM. classifier_trusted/override_active job outputs used a bare `|| 'false'` fallback,
+      which only substitutes on an EMPTY left side (GHA `||` truthiness: any non-empty string,
+      including an unexpected one, is truthy and passes through unchanged) — the advertised
+      "false on anything but a genuine true" contract was not actually enforced for a future
+      writer emitting something other than the two literal strings this PR's own steps write
+      today.
+    status: CONFIRMED
+    disposition: >-
+      CURED in commit 1020b4d682: both outputs now use explicit `== 'true' && 'true' || 'false'`
+      normalization. Re-verified by the build lane (YAML re-parses clean, actionlint clean,
+      full pytest battery still 214 passed).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      MEDIUM. The new classifier-corpus-visibility job's `exit 1` is not guaranteed non-blocking
+      under every branch-protection shape: omitting it from infra/required.d/contexts.json only
+      defends against exact NAMED required-context matching. A repository/organization ruleset
+      requiring the entire workflow, or merge automation reading the raw checks list rather than
+      the named-required subset, could still treat this job's failure as blocking despite the
+      pack's stated intent.
+    status: CONFIRMED
+    disposition: >-
+      Partially cured, partially found not to be the live risk it could have been. Cure applied in
+      commit 1020b4d682: `continue-on-error: true` added to the job (prevents the job's failure
+      from also failing the aggregate WORKFLOW RUN conclusion — the same two-layer shape the
+      npm-audit job already uses elsewhere in this file). Separately, the build lane checked
+      Bali-Zero/Teman2's LIVE merge-queue ruleset directly (`gh api repos/.../rulesets/19779175`)
+      and found its only rule is `type: merge_queue` (grouping/batching/timeout mechanics) — it
+      carries NO `required_status_checks` rule, so only the classic branch-protection NAMED list
+      (11 contexts, infra/required.d/contexts.json) can currently block a merge, and this job's
+      name is not in it. The residual risk (a FUTURE ruleset change) is recorded in the brief's
+      `risks:` section, not silently dismissed.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      LGTM overall, but disagreed with codex-gpt-5.6-sol's continue-on-error recommendation:
+      argued that adding `continue-on-error: true` to the visibility job would MASK its own
+      check-run conclusion (i.e. the check-run itself would report success/neutral instead of
+      failure even when the underlying step failed), defeating the job's entire purpose.
+    status: CONFIRMED
+    disposition: >-
+      The DISAGREEMENT was real and worth resolving on evidence, not by picking a seat to believe
+      (brief constraint) — resolved empirically rather than accepted from either seat's prose. The
+      throwaway branch/PR #5701 receipt above shows the check-run's conclusion was `failure` WITH
+      continue-on-error: true in place, confirmed via both `gh pr checks` and the raw Checks API.
+      tp1-qwen3.8-max's specific technical CLAIM (masking) did not hold on this repo's live runner
+      behavior; codex-gpt-5.6-sol's characterization (continue-on-error only affects the aggregate
+      workflow-run conclusion, not the individual check-run) is the one the empirical test
+      confirms. No code change resulted from this specific objection beyond what was already
+      applied for the other codex finding.
+residual_risks:
+  - "A future repository/organization ruleset that DOES carry a required_status_checks rule (none
+    exists today, verified live against ruleset id 19779175) could change this job's blocking
+    behavior. Not addressable from this PR; flagged in the brief for whoever next touches branch
+    protection."
+  - "The empirical throwaway-branch test proves this repo's CURRENT GitHub Actions runner/Checks
+    API behavior for continue-on-error at the job level. A future GitHub Actions platform change
+    to that semantic is outside this PR's ability to guard against, though considered unlikely
+    (this is long-documented, stable GHA behavior, and the repo's own pre-existing npm-audit job
+    comment already asserted the same property before this PR was ever written)."
+sources:
+  - "PR #5696 (Bali-Zero/Teman2) actual job logs, run 33896943526 — the Frontend Tests diagnosis"
+  - "tests.yml's own LOAD-BEARING comment on the frontend-tests job (#4706 / run 32866302767) —
+    why a job-level if: was rejected as the fix for that diagnosis"
+  - "tests.yml's npm-audit job 'Two-layer advisory design' comment — the continue-on-error pattern
+    this PR's new job now matches"
+  - "codex-gpt-5.6-sol adversarial review, dispatched 2026-09-04T17:03Z via `codex exec --sandbox
+    read-only`, fresh context, no access to this pack/brief"
+  - "tp1-qwen3.8-max adversarial review, dispatched 2026-09-04T17:16Z via scripts/tp1_call.py,
+    fresh context, no access to this pack/brief"
+  - "Throwaway PR #5701 (Bali-Zero/Teman2), opened draft and closed unmerged same session — the
+    empirical resolution of the codex/tp1 dissent"
+  - "gh api repos/Bali-Zero/Teman2/rulesets/19779175 — live confirmation of the merge-queue
+    ruleset's actual rule set (merge_queue mechanics only, no required_status_checks rule)"
+pii_scan: clean
