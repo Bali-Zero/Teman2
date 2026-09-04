@@ -126,6 +126,57 @@ class ChangeMapTests(unittest.TestCase):
                 self.assertFalse(result["domains"]["mouth"])
                 self.assertNotIn("frontend-tests", result["suggested_jobs"])
 
+    def test_guilt_kb_corpus_files_run_the_backend_suite_that_guards_them(
+        self,
+    ) -> None:
+        # kb/ landed 2026-08-25 (#4907/#4974) and was never wired into the
+        # routing tables, so every kb/-only PR fell into `unknown_paths` ->
+        # run_all=true. Measured on PR #5662 (one file, kb/inventory/
+        # immigration.yaml): CodeQL-python 14m01s, plus ~9m of Snyk/Bandit/
+        # Safety, against a YAML data file.
+        #
+        # The obvious cure is wrong. Routing kb/ to docs_content_data ALONE
+        # would switch off the tests that protect these very files:
+        # apps/backend-rag/backend/tests/unit/kb/ holds nine suites that read
+        # kb/inventory/*.yaml directly (test_kb_inventory_contract,
+        # test_kb_topic_contract, test_kb_inventory_probe_topic, ...), and
+        # _suggested_jobs() never grants docs_content_data any of the six
+        # jobs. The precedent is data/ -- both backend_python and
+        # docs_content_data -- so the corpus keeps its own guard.
+        for path in (
+            "kb/inventory/immigration.yaml",
+            "kb/topics/immigration.yaml",
+            "kb/ops/probe_retrieval.py",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertEqual(result["unknown_paths"], [])
+                self.assertTrue(result["domains"]["backend_python"])
+                self.assertIn("backend-tests", result["suggested_jobs"])
+
+    def test_innocence_kb_does_not_drag_in_the_frontend_or_e2e_suites(
+        self,
+    ) -> None:
+        # The other half: kb/ is backend data, so widening it to the FRONTEND
+        # would trade one kind of waste for another. data/ reaches mouth only
+        # through an explicit filename rule (the KBLI canonical pins); nothing
+        # under kb/ is read by a frontend suite.
+        #
+        # e2e-tests is deliberately NOT asserted absent. It is granted by
+        # `backend_python` at _suggested_jobs()'s own last rule
+        # (`domains.intersection({"backend_python", "mouth", "packages_core"})`),
+        # so demanding the backend suite that guards this corpus necessarily
+        # brings e2e with it. This test's first draft asserted otherwise and
+        # was wrong about the code, not the other way round — recorded here so
+        # nobody "fixes" the rule to satisfy a mistaken expectation.
+        result = cm.classify(["kb/inventory/immigration.yaml"])
+        self.assertFalse(result["domains"]["mouth"])
+        self.assertFalse(result["domains"]["packages_core"])
+        self.assertNotIn("frontend-tests", result["suggested_jobs"])
+        self.assertNotIn("packages-core-tests", result["suggested_jobs"])
+        self.assertNotIn("mcp-tests", result["suggested_jobs"])
+
     def test_guilt_kbli_canonical_pin_inputs_also_run_frontend(self) -> None:
         # Red-team HIGH-9, 2026-08-14: apps/mouth/src/lib/
         # kbli-canonical-pins.test.ts is a REQUIRED frontend-tests suite (no
