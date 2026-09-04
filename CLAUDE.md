@@ -93,7 +93,7 @@ MCP: `.mcp.json` untracked (per macchina); tool MCP differiti (`ENABLE_TOOL_SEAR
 
 ## 3. Memory (MOS)
 
-SessionStart auto-load ultime 5 memorie (importance ≥7). CLI `~/.claude/scripts/mem`: `recent`/`query "txt"`(FTS5)/`save <type> "txt" <importance>`(decision/discovery/fact/unresolved)/`entities "name"`/`sessions`/`stats`. `mem` prima di `notebook_query` (NLM solo dominio/cross-query). Salvataggio proattivo OBBLIGATORIO — `mem save` subito: decision(8-10), discovery/fact(7-8), unresolved(5-6); non chiedere, salva e basta.
+SessionStart: hook `memory_recall_sessionstart.sh` inietta le top-6 memorie pertinenti (≤1,5KB, muto se nulla); catalogo `MEMORY_INDEX.md` in memdir; `mem query` a richiesta. CLI `~/.claude/scripts/mem`: `recent`/`query "txt"`(FTS5)/`save <type> "txt" <importance>`(decision/discovery/fact/unresolved)/`entities "name"`/`sessions`/`stats`. `mem` prima di `notebook_query` (NLM solo dominio/cross-query). Salvataggio proattivo OBBLIGATORIO — `mem save` subito: decision(8-10), discovery/fact(7-8), unresolved(5-6); non chiedere, salva e basta.
 
 ## 4. Language Protocol
 
