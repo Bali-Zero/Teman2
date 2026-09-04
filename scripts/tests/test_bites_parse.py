@@ -812,6 +812,54 @@ def test_a_yaml_error_does_not_echo_the_offending_line():
     assert "s3cr3t-looking-value" not in message, message
 
 
+# --- round 4: the two escapes still open, and the over-match the inversions introduced
+
+
+def test_path_containment_guilt_the_two_escapes_a_slash_split_misses():
+    """`~user` is a tilde too, and a `..` component can follow a delimiter other than `/`.
+
+    `git log -L 1,1:../secret` splits on `/` to ['1,1:..', 'secret'] and neither piece
+    equals `..`; git's own line-range syntax puts a colon there. The rule the first
+    version stated ("the checkout or nothing") was simply false for both.
+    """
+    assert bp._guard_path_containment("git log -L 1,1:../secret -1")
+    assert bp._guard_path_containment("git log ~otheruser/.ssh/id_rsa")
+    assert bp._guard_path_containment("python3 scripts/x.py --out=1,1:../secret")
+
+
+def test_command_allowlist_innocence_the_repo_own_idioms_survived_the_inversion():
+    """The half a reviewer has to be ASKED for: what did inverting three lists break?
+
+    Each of these is read-only and each is already in daily use in this repository —
+    `--diff-filter=` in eight files, `--no-renames` in eleven, `curl -m 5` in five,
+    `-w '%{http_code}'` as the standard health check. Three of them were refused by the
+    first draft of the inversion, which is the over-match twin of the holes the
+    inversion closed.
+    """
+    for command in (
+        "git diff --cached --name-only --diff-filter=ACMR",
+        "git diff --name-only -- apps/backend-rag",
+        "git diff --no-renames HEAD",
+        "git diff -U0 HEAD",
+        "git diff -z --name-only HEAD",
+        "curl -fsS -m 5 https://nuzantara-rag.fly.dev/health",
+        "curl -sS -w %{http_code} https://nuzantara-rag.fly.dev/health",
+    ):
+        assert bp._guard_command_allowlist(command) == [], command
+
+
+def test_curl_still_takes_exactly_one_url_after_the_arity_fix():
+    """Consuming a value must not let a SECOND url through."""
+    assert bp._guard_command_allowlist("curl -sS -m 5 https://a.test/h https://b.test/h")
+    assert bp._guard_command_allowlist("curl -sS -w %{http_code} https://a.test/h b.test")
+
+
+def test_args_from_file_innocence_a_url_query_string_is_not_a_flag_value():
+    """`?cb=@2` in a URL contains `=@` and reads no file."""
+    assert bp._guard_args_from_file("curl -sS https://x.test/health?cb=@2") == []
+    assert bp._guard_args_from_file("curl -sS -w@.git/config https://x.test/h")
+
+
 # ------------------------------------------------- _guard_where_scope
 
 

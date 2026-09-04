@@ -77,7 +77,8 @@
             "test_command_allowlist_innocence_fly_version_and_flagged_reads_pass",
             "test_command_allowlist_innocence_the_curl_shapes_an_observation_needs_pass",
             "test_command_allowlist_innocence_the_git_shapes_an_observation_needs_pass",
-            "test_command_allowlist_innocence_the_pytest_shapes_an_observation_needs_pass"
+            "test_command_allowlist_innocence_the_pytest_shapes_an_observation_needs_pass",
+            "test_command_allowlist_innocence_the_repo_own_idioms_survived_the_inversion"
           ]
         },
         "_guard_no_remote_shell": {
@@ -94,7 +95,8 @@
             "test_path_containment_guilt_parent_escape_is_rejected",
             "test_path_containment_guilt_absolute_path_is_rejected",
             "test_path_containment_guilt_a_flag_can_carry_a_path",
-            "test_path_containment_guilt_a_home_relative_path_is_an_escape"
+            "test_path_containment_guilt_a_home_relative_path_is_an_escape",
+            "test_path_containment_guilt_the_two_escapes_a_slash_split_misses"
           ],
           "innocence": [
             "test_path_containment_innocence_repo_relative_paths_pass",
@@ -137,7 +139,8 @@
             "test_args_from_file_guilt_at_prefixed_arguments_are_rejected"
           ],
           "innocence": [
-            "test_args_from_file_innocence_an_email_shaped_value_is_not_a_file_read"
+            "test_args_from_file_innocence_an_email_shaped_value_is_not_a_file_read",
+            "test_args_from_file_innocence_a_url_query_string_is_not_a_flag_value"
           ]
         },
         "_guard_no_invisible": {

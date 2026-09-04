@@ -16,13 +16,16 @@ bites:
     module's guards by AST and fails on any without both proofs
   where: ci
   observe: python3 scripts/ci/bites_parse.py --selftest
-  expect: contains:96/96
+  expect: regex:[0-9]{3}/[0-9]{3} pass
 
 bites_note: >-
   THE FIRST ONE. This is the format's own first instance, and it is deliberately the
   weaker half of the observation: --selftest proves the corpus, and the test file plus
-  the registry entry prove the consumer. `contains:96/96` rather than `exit0` so that
-  silently emptying the corpus fails the observation instead of passing it — an
+  the registry entry prove the consumer. `regex:[0-9]{3}/[0-9]{3} pass` rather than `exit0` so that
+  silently emptying the corpus fails the observation instead of passing it. Three digits
+  rather than the literal count on purpose: pinning `104/104` would make every fixture
+  added afterwards a red observation, which is a ratchet, while the shape still goes red
+  if the corpus ever drops back below a hundred — an
   observation that cannot fail when its subject is deleted is the disease this lane
   exists to cure, and PR-1's first draft had it.
 
@@ -75,14 +78,14 @@ diff: >-
   figure written into a file that is itself part of the diff.
 
   SHAPE. One new module (scripts/ci/bites_parse.py: nine guards, a YAML layer with a strict
-  loader, a 96-entry guilt+innocence corpus, a --selftest that needs no network and no
-  token), one new test file (110 tests), one registry surface naming every guard's proofs,
+  loader, a 104-entry guilt+innocence corpus, a --selftest that needs no network and no
+  token), one new test file (114 tests), one registry surface naming every guard's proofs,
   four small edits to the conformance checker's dispatch, three lines added to
   immune-enforcement.yml, and one corrected block in the lane brief.
 
   SIZE, stated rather than hidden: ~2,000 added lines against the contract's ~400. It is one
   concern — the format and the boundary that makes it safe to execute — and the bulk is
-  proofs: 96 corpus fixtures and 110 tests for nine guards. Splitting the guards from their
+  proofs: 104 corpus fixtures and 114 tests for nine guards. Splitting the guards from their
   evidence would land a validator with nothing showing that it validates. The ceiling rule
   is not engaged (the floor is 3 by path, from the workflow edit), so this is a disclosure,
   not an override.
@@ -98,13 +101,13 @@ receipts:
       A1. The guilt+innocence corpus passes, and it is the observation this pack's own
       `bites:` block names.
     cmd: python3 scripts/ci/bites_parse.py --selftest
-    result: "bites_parse selftest: 96/96 pass (guilt + innocence)"
+    result: "bites_parse selftest: 104/104 pass (guilt + innocence)"
     exit: 0
     ts: "2026-09-04T20:52+08:00"
     seat: session (Pro)
   - claim: A1. The full battery for this surface.
     cmd: python3 -m pytest scripts/tests/test_bites_parse.py -q
-    result: "110 passed"
+    result: "114 passed"
     exit: 0
     ts: "2026-09-04T20:52+08:00"
     seat: session (Pro)
@@ -245,6 +248,26 @@ dissent:
       diff, textconv, core.fsmonitor, lazy-fetch and gpg.program all arrive through CONFIG,
       which no allow-list over argv can see) and `curl -q` (curl reads ~/.curlrc every
       invocation).
+  - seat: claude-opus-5 (spalla-review, round 4, on the already-hardened file)
+    objection: >-
+      "Two escapes remain: `~otheruser/...` is a tilde form the guard does not see, and a
+      `..` component glued after a colon survives a split on `/` — `git log -L 1,1:../secret`
+      splits to ['1,1:..', 'secret'] and neither piece equals `..`. And inverting three
+      option lists in one sitting broke real use: `--diff-filter=` (8 files in this repo),
+      `--no-renames` (11), `--` as a pathspec separator, `-U<n>`, `-z`, `curl -m 5` (5
+      files) and `-w '%{http_code}'` (the standard health check here) are all refused, and
+      a URL whose query string contains `=@` is refused as a file read."
+    status: CONFIRMED
+    resolution: >-
+      Applied in both directions, which is the point of having asked for the second one.
+      The escapes: every tilde form is refused, and `..` is looked for after splitting on
+      `[/:]` rather than `/`. The over-match: the seven refused idioms are allow-listed
+      (each verified read-only against `git <sub> --help`), curl's value-taking options are
+      consumed BY ARITY so `-m 5` and `-w '%{http_code}'` no longer count as a second URL,
+      and the `@` rule skips anything containing `://`. `-w@<path>` stays refused, by the
+      guard that judges the VALUE, so re-admitting the option did not reopen the hole it
+      was removed for. A reviewer will not volunteer the over-match half unless asked for
+      it by name, and three of the seven idioms were already broken when this round began.
   - seat: the test suite of this PR, applied to itself
     objection: >-
       An innocence test written in this very PR asserted that a zero-width character

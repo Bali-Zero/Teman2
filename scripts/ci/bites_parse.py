@@ -191,13 +191,23 @@ FLY_READONLY_SUBCOMMANDS = (
 CURL_ALLOWED_FLAGS = (
     "-s", "--silent", "-S", "--show-error", "-f", "--fail", "--fail-with-body",
     "-L", "--location", "-i", "--include", "-I", "--head", "--compressed",
-    "--max-time", "--connect-timeout", "--max-redirs",
-    "--retry", "--retry-delay", "--retry-max-time",
+    "-m", "--max-time", "--connect-timeout", "--max-redirs",
+    "--retry", "--retry-delay", "--retry-max-time", "-w", "--write-out",
     "-H", "--header", "-A", "--user-agent", "--http1.1", "--http2", "--ipv4", "--ipv6",
 )
 
 #: Short options that carry no value, so they may be bundled (`-sS`, `-sSL`).
 CURL_ALLOWED_SHORT_BUNDLE = "sSfLiI"
+
+#: Options whose value is the NEXT token unless glued. They are consumed in pairs rather
+#: than counted as the URL, which is what lets this repo's own idioms through:
+#: `curl -fsS -m 5 <url>` appears in five scripts and `-w "%{http_code}"` is the standard
+#: health check. `-w@<path>` stays refused — by _guard_args_from_file, which judges the
+#: VALUE, so re-admitting the option does not reopen the hole it was removed for.
+CURL_VALUE_TAKING_FLAGS = (
+    "-H", "--header", "-A", "--user-agent", "-m", "--max-time", "--connect-timeout",
+    "--max-redirs", "--retry", "--retry-delay", "--retry-max-time", "-w", "--write-out",
+)
 
 #: pytest options an observation may use. An allow-list for the third time in this file,
 #: and for the same reason: the deny-list it replaces named the options that choose code to
@@ -280,17 +290,6 @@ GIT_READONLY_SUBCOMMANDS = (
     "describe", "ls-files", "shortlog", "blame", "rev-list",
 )
 
-#: `git` options that make git run a program of the caller's choosing. `-c` alone is
-#: enough: `git -c core.sshCommand=... ` and `git -c alias.x='!sh' x` are both code
-#: execution with no shell metacharacter anywhere in the command line.
-#: git options are checked BY POSITION, and the position is load-bearing rather than
-#: fussy: git's own `-c` is a GLOBAL option and must precede the subcommand, while
-#: `git grep -c` is grep's count flag and is entirely innocent. Scanning one flat list
-#: over the whole command line refuses `git grep -c`, which is superscar #3's over-match
-#: — the mirror of the under-match this same file was cured of twice.
-GIT_GLOBAL_FORBIDDEN_FLAGS = (
-    "-c", "--config-env", "--exec-path", "-C", "--git-dir", "--work-tree", "--namespace",
-)
 
 #: Subcommand options an observation may use, checked AFTER the subcommand word. Inverted
 #: to an allow-list for the same reason as curl's, and after the same shape of failure
@@ -314,7 +313,17 @@ GIT_SUB_ALLOWED_FLAGS = (
     "--word-diff", "--full-tree", "--name-rev", "--verify", "--abbrev-ref",
     "--show-toplevel", "--is-inside-work-tree", "--symbolic-full-name", "--tags",
     "--contains", "--long", "--dirty", "--check", "--summary", "--find-renames",
+    # Added 2026-09-04 after a review measured the OVER-match the inversion introduced:
+    # each of these is display-shape only, and each is already in daily use in this repo
+    # (`--diff-filter=` in 8 files, `--no-renames` in 11, `--` in the standard
+    # `git diff --name-only HEAD -- <path>` idiom). Inverting a list is only safe if the
+    # real shapes survive it, and three of them did not.
+    "--diff-filter", "--no-renames", "--no-ext-diff", "--no-textconv", "-z", "--",
 )
+
+#: `-U<n>` (diff context) and `-<n>` (commit count) are numeric options nothing can
+#: enumerate, and neither can name a file or a program.
+GIT_NUMERIC_FLAG_PREFIXES = ("-U",)
 
 #: Invisible characters. A value containing one reads identically to a value without
 #: it, so the human reviewer and the parser can be shown two different contracts.
@@ -361,6 +370,8 @@ def _guard_args_from_file(command: str) -> list[str]:
     except ValueError:
         argv = command.split()
     for arg in argv[1:]:
+        if "://" in arg:
+            continue  # a URL's query string may carry `=@`; it is not a flag value
         opens_a_file = (
             arg.startswith("@")                       # `@args.txt`
             or "=@" in arg                            # `--json=@path`
@@ -394,8 +405,13 @@ def _guard_shell_composition(command: str) -> list[str]:
 
 
 def _is_count_flag(token: str) -> bool:
-    """`git log -1` — a bare short numeric option, which no allow-list can enumerate."""
-    return len(token) > 1 and token[0] == "-" and token[1:].isdigit()
+    """`git log -1`, `git diff -U0` — numeric options no allow-list can enumerate."""
+    if len(token) > 1 and token[0] == "-" and token[1:].isdigit():
+        return True
+    return any(
+        token.startswith(prefix) and token[len(prefix):].isdigit() and token[len(prefix):]
+        for prefix in GIT_NUMERIC_FLAG_PREFIXES
+    )
 
 
 def _leading_words(rest: list[str]) -> list[str]:
@@ -609,7 +625,20 @@ def _guard_command_allowlist(command: str) -> list[str]:
         # sailed through and curl defaulted it to plain http. The rule is now positive:
         # exactly one non-flag argument, and it must be https. A flag that takes a
         # separate value must therefore be written in its `--flag=value` form.
-        words = [a for a in rest if not a.startswith("-")]
+        # Consume a value-taking option's value so it is not counted as the URL. Doing
+        # this by ARITY rather than by "does it start with -" is what admits
+        # `curl -m 5 <url>` and `-w '%{http_code}' <url>` without admitting a second URL.
+        words: list[str] = []
+        skip_next = False
+        for token in rest:
+            if skip_next:
+                skip_next = False
+                continue
+            if token in CURL_VALUE_TAKING_FLAGS:
+                skip_next = True
+                continue
+            if not token.startswith("-"):
+                words.append(token)
         if len(words) != 1:
             return [
                 f"observe: `curl` must take exactly one non-flag argument (the https URL); "
@@ -729,9 +758,15 @@ def _escapes_checkout(value: str) -> str:
     """
     if value.startswith("/"):
         return f"the absolute path `{value}`"
-    if value == "~" or value.startswith("~/"):
-        return f"the home-relative path `{value}`, which a shell expands to an absolute one"
-    if ".." in value.split("/"):
+    if value.startswith("~"):
+        # Every tilde form, not only `~` and `~/`. `~otheruser/...`, `~-` (the previous
+        # directory) and `~+2` are all expansions a shell performs, and the argument for
+        # banning `~/` is exactly the argument for banning them.
+        return f"the tilde-expanded path `{value}`, which a shell turns into an absolute one"
+    if ".." in re.split(r"[/:]", value):
+        # Splitting on `/` alone misses a `..` glued after another delimiter, and git has
+        # such a syntax: `git log -L 1,1:../secret` splits to ['1,1:..', 'secret'] and
+        # neither piece equals `..`. A path component boundary is not only a slash.
         return f"a `..` segment in `{value}`"
     return ""
 
@@ -1295,6 +1330,27 @@ CONFORMANCE_CORPUS: tuple[tuple[str, str, str], ...] = (
     ("guilt-bites-is-a-list", "bites: []\n", "malformed"),
     ("ok-pytest-glued-option-value",
      _pack("python3 -m pytest -k=bites scripts/tests/test_bites_parse.py"), "executable"),
+
+    # --- round 4: two escapes the containment guard missed, and the OVER-match the
+    # --- three inversions introduced, which is the half a reviewer has to be asked for
+    ("guilt-dotdot-glued-after-a-colon",
+     _pack("git log -L 1,1:../secret -1"), "malformed"),
+    ("guilt-tilde-user-is-still-a-tilde",
+     _pack("git log ~otheruser/.ssh/id_rsa"), "malformed"),
+    ("ok-diff-filter", _pack("git diff --cached --name-only --diff-filter=ACMR"),
+     "executable"),
+    ("ok-pathspec-separator", _pack("git diff --name-only -- apps/backend-rag"),
+     "executable"),
+    ("ok-diff-context", _pack("git diff -U0 HEAD"), "executable"),
+    ("ok-curl-max-time-separate-value",
+     _pack("curl -fsS -m 5 https://nuzantara-rag.fly.dev/health", where="fly"),
+     "executable"),
+    ("ok-curl-write-out-separate-value",
+     _pack("curl -sS -w %{http_code} https://nuzantara-rag.fly.dev/health", where="fly"),
+     "executable"),
+    ("ok-url-query-string-carrying-at",
+     _pack("curl -sS https://nuzantara-rag.fly.dev/health?cb=@2", where="fly"),
+     "executable"),
 
     # --- guilt the FILE form has to answer, which the body form never faced
     ("guilt-two-bites-blocks-in-one-pack",
