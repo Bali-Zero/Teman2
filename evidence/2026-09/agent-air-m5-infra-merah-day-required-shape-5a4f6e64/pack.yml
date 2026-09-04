@@ -18,22 +18,25 @@ lanes:
     role: review
     seat: "codex-gpt-5.6-sol + kimi-code/k3, cross-family, generator != grader — neither seat wrote the diff under review"
 diff:
-  files: 5 files, +693/-23, 5 commits
+  files: 5 files, +696/-23, 6 commits
   net_lines: >-
     Measured with `git diff --numstat` against the merge-base 57281989a0 (== origin/main at the
     time of this build), taken from the linter's own --print-measured so the pack cannot disagree
     with the tool that judges it, over the WHOLE diff (the original code change, the sentinel fix,
-    and this evidence pair, not any one commit alone): 5 files, +693/-23, 5 commits. Broken down
+    and this evidence pair, not a single commit's diff alone): 5 files, +696/-23, 6 commits. Broken down
     by hand for the reader (word-form counts below, not digits, so this breakdown is never itself
     parsed as a second countable claim to check against the total above): two of those five files
     are code — .github/workflows/merah-putih-day-contrast.yml (cumulative across the original
     reshape and the sentinel fix) and scripts/tests/test_merah_putih_day_contrast.py (cumulative
     across both, now 49 passing tests). The other three files are this evidence pair (brief.yml,
-    pack.yml, council-journal.jsonl), all pure additions. The five commits are: the PR's original
+    pack.yml, council-journal.jsonl), all pure additions. The six commits are: the PR's original
     trigger-reshape (3e314b9720); a "Merge branch 'main' into ..." commit (ca140c9843) already on
     the remote branch from a prior `gh pr update-branch`, not authored in this build session; this
     lane's first evidence commit (ec69646aca); the team-lead session's sentinel fix
-    (314a582365, addressing the two CONFIRMED findings below); and this refresh commit.
+    (314a582365, addressing the two CONFIRMED findings below); this refresh commit
+    (4b1e58384c); and one follow-up fix to this same refresh's own prose (a word-form
+    countable-claims false positive caught only by real CI, corrected in place rather than
+    amending the already-pushed refresh commit).
   behaviour_change: >-
     Reshapes the trigger of .github/workflows/merah-putih-day-contrast.yml: `pull_request` loses
     its implicit path scoping (bare `pull_request:`, no `paths:`), `merge_group:` is added, and an
