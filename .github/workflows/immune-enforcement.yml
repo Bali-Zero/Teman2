@@ -126,6 +126,10 @@ jobs:
               .claude/agents/*.md|\
               scripts/tests/test_agent_defs_model_pins.py|\
               scripts/tests/test_lint_home_fork.py|\
+              scripts/lib/yaml_strict.py|\
+              scripts/_redact_pii.py|\
+              agent-library/config/redaction-rules.yaml|\
+              scripts/tests/test_yaml_strict_policy_loader.py|\
               scripts/tests/test_home_fork_stale_side_attribution.py|\
               scripts/tests/test_home_fork_bak_shadows.py|\
               scripts/tests/test_home_fork_skipped_visibility.py|\
@@ -135,6 +139,8 @@ jobs:
               scripts/tests/test_proprioception_executed_code_currency.py|\
               scripts/tests/test_secrets_permissions_audit.py|\
               scripts/tests/test_pending_arms_report.py|\
+              scripts/ci/bites_parse.py|\
+              scripts/tests/test_bites_parse.py|\
               .github/dependabot.yml|\
               scripts/tests/test_dependabot_excludes_compiled_locks.py|\
               .github/workflows/auto-merge-whitelist.yml|\
@@ -487,6 +493,7 @@ jobs:
           python -m pip install --quiet pytest PyYAML==6.0.3
           fail=0
           for t in \
+            scripts/tests/test_yaml_strict_policy_loader.py \
             scripts/tests/test_injected_surface_budget.py \
             scripts/tests/test_injected_surface_attest.py \
             scripts/tests/test_agent_start.py \
@@ -504,6 +511,7 @@ jobs:
             scripts/tests/test_secrets_permissions_audit.py \
             scripts/tests/test_lane_outcome_report.py \
             scripts/tests/test_pending_arms_report.py \
+            scripts/tests/test_bites_parse.py \
             scripts/tests/test_dependabot_excludes_compiled_locks.py \
             scripts/tests/test_auto_merge_protects_compiled_locks.py \
             scripts/tests/test_lint_decision_registry.py \
@@ -1238,6 +1246,33 @@ jobs:
           if [ -f scripts/lint/test_lint_claude_headless_limits.py ]; then
             python3 -m pip install --quiet pytest
             python3 -m pytest scripts/lint/test_lint_claude_headless_limits.py -q
+          fi
+
+      # Trusted-classifier extraction closure: the THIRD instance of the same
+      # gap on this page, and the one that had already bitten. tests.yml copies
+      # scripts/ci/ files out of the base ref and runs the change-map corpus
+      # from that isolated dir; #5070 added an import to test_change_map.py
+      # without adding the module, so from 2026-08-26 the corpus died on
+      # ModuleNotFoundError and the workflow's fail-open ran the full six-job
+      # suite on EVERY pull request, reporting green throughout.
+      #
+      # The test shipped with that fix asserts the structural property (an
+      # extraction list must be closed under the imports of the files in it).
+      # It is armed HERE rather than left to scripts-tests-sweep.yml, which is
+      # `schedule:`-only and `continue-on-error: true` by its own design — a
+      # guard against family #2 that is itself unarmed is the joke this repo
+      # has already told twice above. Caught by the Gear-3 council (codex,
+      # 2026-09-04) before merge: the first draft of that PR shipped the test
+      # with no runner at all.
+      #
+      # DELIBERATELY NOT gated on steps.paths.outputs.relevant: the property is
+      # broken by editing EITHER a workflow's extraction list OR any
+      # scripts/ci/*.py it names, and it is a sub-second ast parse.
+      - name: Trusted-classifier extraction lists are import-closed
+        run: |
+          if [ -f scripts/tests/test_classifier_extraction_closure.py ]; then
+            python3 -m pip install --quiet pytest
+            python3 -m pytest scripts/tests/test_classifier_extraction_closure.py -q
           fi
 
       # Claude-headless-model-pin lint: the SAME class of gap recurring on

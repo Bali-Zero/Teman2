@@ -1,0 +1,95 @@
+task_id: tests-yml-classifier-hardening-0905
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Close the "corpus dies silently" mask on tests.yml's trusted-classifier corpus, which caused two
+  independent incidents to run every one of the six heavy test jobs on every PR — #5070
+  (2026-08-26, 9 days) and #5679 (2026-09-04, 9 days) — both invisible in CI's own signal, because
+  the fail-open contract (run_all=true on corpus failure) is correct and deliberately
+  continue-on-error at the step level, so the `changes` job stayed green throughout both windows.
+  Neither incident was found by CI; both were found by a human reading an unrelated diff's
+  run_all=true and asking why.
+
+  This PR adds VISIBILITY without touching the trust boundary or weakening the fail-open default:
+  a `classifier_trusted` job output (true only when both extraction AND the corpus itself
+  succeeded in the flat trusted layout), published in the step-summary; a new
+  `classifier-corpus-visibility` job that fires and turns red ONLY when classifier_trusted is
+  false and the manual override was not used — never added to infra/required.d/contexts.json or
+  branch protection, so it can be seen but can never gate a merge queue entry (continue-on-error:
+  true added after review, closing a residual-risk finding — see dissent below).
+
+  Also fixes a real (if not yet live) bug found while reading the same job: the "Compute static
+  test-impact map" step's `python3 -c '...'` one-liner quoted dict keys with a backslash-escaped
+  `\"` inside an f-string expression, a SyntaxError on Python < 3.12. Converted to a
+  `python3 - <<'PY'` heredoc, the same pattern already used two steps down in this file.
+
+  A third item in the mandate — "Frontend Tests (Next.js) ran to completion on PR #5696 despite
+  would_skip listing frontend-tests" — was investigated against that PR's actual job logs (run
+  33896943526) and found NOT to be a defect: the job's internal step-level gate correctly read
+  run_frontend_tests=false and skipped every real step in ~5s; no test executed. The visible
+  `pass`-in-5s vs the other five jobs' zero-cost `skipping` conclusion is a documented,
+  intentional trade-off (moving frontend-tests to a job-level `if:` would reopen #4706, a required
+  context silently vanishing when `changes` doesn't conclude cleanly). Documented in place, not
+  changed — see the PR body for the full evidence trail.
+
+  cancel-in-progress was checked against the same mandate item and found already `true` for every
+  pull_request-triggered run of this workflow (github.ref resolves to refs/pull/<n>/merge, never
+  refs/heads/main, for that event) — documented in place, not changed.
+constraints:
+  - "Never touch the extraction trust boundary (BASE_SHA-anchored `git show` of scripts/ci/*
+    files) — the visibility work is additive, layered on top of the existing fail-open contract,
+    never a replacement for it."
+  - "The new visibility job must never be capable of blocking a PR or a merge-queue entry, under
+    ANY interpretation of branch protection (classic required-status-checks OR an org/repo
+    ruleset requiring every check-run) — not just the interpretation the first draft assumed."
+  - "Do not move the path predicate into frontend-tests' job-level `if:` — that is the exact shape
+    #4706 already broke (required-context matrix names vanishing when `changes` doesn't conclude
+    cleanly)."
+  - "Judge every new assertion/signal by mutation on a real (throwaway, unmerged) branch, not by
+    reading the YAML and assuming it is correct — two independent review seats disagreed on
+    whether `continue-on-error: true` masks or preserves the new job's own check-run conclusion;
+    resolved empirically, not by picking a seat to believe."
+acceptance:
+  - text: >-
+      WHEN the trusted-classifier extraction is deliberately broken (a nonexistent scripts/ci/*.py
+      path added to the extraction list), THEN the `classifier-corpus-visibility` job's check-run
+      SHALL report a `failure` conclusion, WHILE the overall workflow run and every other required
+      context SHALL be unaffected by that job's own failure.
+    probe: >-
+      Push a throwaway branch with exactly this mutation, open a PR, `gh pr checks <n>` — quote
+      the check name and conclusion. Delete the branch/PR afterward, never merge it.
+  - text: "WHEN the workflow file changes, actionlint SHALL report no new findings vs origin/main."
+    probe: "actionlint .github/workflows/tests.yml ; actionlint (full repo, diff vs origin/main baseline)"
+  - text: >-
+      WHEN scripts/ci/test_change_map.py and every workflow-conformance/required-context test in
+      scripts/tests/ that names tests.yml is run, THEY SHALL all still pass (no regression from
+      this PR's edits).
+    probe: >-
+      python3 -m pytest -q scripts/ci/test_change_map.py scripts/tests/test_classifier_extraction_closure.py
+      scripts/ci/test_ring_gating_override.py scripts/tests/test_required_context_map.py
+      scripts/tests/test_check_required_workflow_conformance.py scripts/tests/test_snapshot_required_contexts.py
+      scripts/tests/test_no_push_main_trigger_on_heavy_suites.py scripts/tests/test_lint_trigger_symmetry.py
+      scripts/tests/test_consumer_map.py scripts/tests/test_ci_service_images_use_mirror.py
+      scripts/tests/test_lint_immune_contracts.py
+consumer_map:
+  - "Every PR/merge_group run of tests.yml's `changes` job — ships in this PR, no future job
+    needed. The visibility job is a new, always-evaluated (non-required) check on the same run."
+  - "Any human triaging a run where the corpus failed — the step-summary now says so explicitly
+    instead of only a generic ::warning:: buried in step logs, and there is a dedicated red
+    check-run to notice in the PR checks list."
+  - "No runtime consumer: this diff ships no code into any deployed artifact."
+risks:
+  - "A repository/organization ruleset broader than classic required-status-checks could still, in
+    principle, treat ANY red check-run as blocking — continue-on-error: true (added after review)
+    defends the WORKFLOW RUN conclusion against that, but the individual job's own check-run
+    conclusion still reports failure by design (that is the point). If Bali-Zero/Teman2 ever
+    adopts such a ruleset, this job's exact shape should be re-audited against it."
+  - "The empirical throwaway-branch observation (acceptance item 1) proves the behavior on THIS
+    repo's current branch-protection configuration at the time of this PR. A later change to that
+    configuration is outside this PR's ability to guard against."
+grader: |
+  Independent seat, generator != grader: this file's author wrote the workflow diff and cannot
+  gate it. The grader must independently confirm the throwaway-branch observation's check
+  conclusion (re-run it or accept the PR body's quoted `gh pr checks` output as the receipt), and
+  must confirm no line in this diff touches infra/required.d/contexts.json or branch protection.

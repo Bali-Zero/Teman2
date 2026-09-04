@@ -40,6 +40,7 @@ from backend.app.utils.internal_api_auth import verify_internal_api_key
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import invalidate_cache
 from backend.core.qdrant_db import QdrantClient
+from backend.services.article_routes import served_category
 from backend.services.cover_images import _cover_as_jpeg
 from backend.services.intel.intel_staging_service import assert_valid_item_id
 
@@ -818,7 +819,7 @@ async def _publish_staging_item(
         try:
             from claude_validator import ClaudeValidator
 
-            published_url = f"{settings.balizero_website_url}/{category}/{item_id}"
+            published_url = f"{settings.balizero_website_url}/{served_category(category)}/{item_id}"
 
             ClaudeValidator.add_published_article(
                 title=title,
@@ -846,7 +847,7 @@ async def _publish_staging_item(
             )
 
         # Step 3: Publish to GitHub/Vercel → balizero.com
-        published_url = f"{settings.balizero_website_url}/{category}/{item_id}"
+        published_url = f"{settings.balizero_website_url}/{served_category(category)}/{item_id}"
         github_commit_sha = None
         mdx_path = None
         article_slug = item_id  # fallback: use item_id if GitHub publish fails

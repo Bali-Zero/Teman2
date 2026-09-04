@@ -66,6 +66,14 @@ EXACT_RULES: dict[str, set[str] | frozenset[str]] = {
     | {"infra_workflows", "security_sensitive"},
     "scripts/ci/change_map.py": {"infra_workflows", "security_sensitive"},
     "scripts/ci/test_change_map.py": {"infra_workflows", "security_sensitive"},
+    # Harness config, not app code — the six tests.yml jobs never read
+    # .claude/settings*.json, and it is verified by immune-enforcement.yml
+    # and the hook tests under scripts/tests/, not by tests.yml's jobs.
+    # Before this entry both fell into unknown_paths (run_all=True) — every
+    # hook/settings PR paid the full suite for a file none of the six jobs
+    # touch.
+    ".claude/settings.json": {"fleet_ops"},
+    ".claude/settings.local.json": {"fleet_ops"},
     "package.json": {
         "mouth",
         "admin_dashboard",
@@ -235,7 +243,39 @@ PREFIX_RULES: tuple[tuple[str, frozenset[str]], ...] = (
     (".husky/", frozenset({"infra_workflows", "security_sensitive"})),
     (".security/", frozenset({"infra_workflows", "security_sensitive"})),
     ("scripts/ci/", frozenset({"infra_workflows", "security_sensitive"})),
-    ("infra/", frozenset({"infra_workflows", "security_sensitive"})),
+    # More specific than the "infra/" catch-all below, so it must stay ahead
+    # of it in this tuple (first match wins). guard-conformance corpora are
+    # verified by guard-conformance.yml's own guilt+innocence run (cicatrix
+    # #3's own ESEGUIBILE), not by tests.yml's six product suites — before
+    # this entry, infra/guard-conformance/registry.json inherited the
+    # broad "infra/" rule and forced every one of the six jobs regardless.
+    ("infra/guard-conformance/", frozenset({"fleet_ops"})),
+    # Also more specific than the catch-all, and the ONE sub-tree of infra/
+    # that a tests.yml suite genuinely reads (census 2026-09-05, all 38
+    # sub-trees against all six suites):
+    # apps/backend-rag/backend/tests/unit/core/test_ingest_target_registry.py
+    # opens infra/eventbus/regulatory_ingest_runner.py by that literal path
+    # and asserts on its contents, and scripts/ci/ingest_target_lint.py
+    # hardcodes the same path in DECLARED_ENTRYPOINTS. Every other sub-tree
+    # (ghostty, launchagents, required.d, conductor, vcr, healer, home-fork,
+    # …) either has zero hits in the six suites' trees, or hits confined to
+    # scripts/ (covered by SCRIPTS_COUPLING below), or — claude-hooks,
+    # launchagents — hits that are PROSE inside docstrings naming the
+    # directory, not code that opens or imports anything there.
+    ("infra/eventbus/", frozenset({"backend_python", "security_sensitive"})),
+    # The catch-all. `infra_workflows` (2026-09-05) was the second half of
+    # the same over-match `infra/guard-conformance/` was carved out of above,
+    # applied to the other 37 sub-trees: infra/ is fleet payload — plists,
+    # wrappers, terminal profiles, required-context mirrors — not CI workflow
+    # definitions. Those live in .github/, which keeps infra_workflows and
+    # keeps forcing all six suites. `security_sensitive` STAYS: CodeQL's
+    # config (.github/codeql-config.yml) declares no paths-ignore, so it
+    # analyses infra/'s Python and shell like any other tree, and dropping
+    # the domain here would silence that scan — the UNDER-match twin of the
+    # defect being cured. The security posture of an infra/-only PR is
+    # therefore byte-identical to before this change; only the six product
+    # suites stop being bought.
+    ("infra/", frozenset({"fleet_ops", "security_sensitive"})),
     ("config/", frozenset({"infra_workflows", "security_sensitive"})),
     ("data/", frozenset({"backend_python", "docs_content_data"})),
     # kb/ is the knowledge-base corpus (inventories, topics, journeys, ops
@@ -277,6 +317,10 @@ PREFIX_RULES: tuple[tuple[str, frozenset[str]], ...] = (
     ("scripts/pro/", frozenset({"fleet_ops"})),
     ("scripts/review_routes/", frozenset({"fleet_ops"})),
     ("scripts/ruslana-node/", frozenset({"fleet_ops"})),
+    # Hook scripts, not app code — verified by their own corpus under
+    # scripts/tests/ (e.g. test_precommit_print_gate.sh) and by
+    # immune-enforcement.yml, never by the six tests.yml jobs.
+    (".claude/hooks/", frozenset({"fleet_ops"})),
 )
 
 DOC_PREFIXES = (
@@ -404,10 +448,36 @@ def _domains_for_path(path: str) -> set[str]:
 
 
 def _suggested_jobs(domains: set[str], run_all: bool) -> list[str]:
-    # CI infrastructure and security-sensitive surfaces can affect any suite
-    # indirectly. They are known paths, but never candidates for selective
-    # execution.
-    if run_all or domains.intersection({"infra_workflows", "security_sensitive"}):
+    # CI infrastructure can affect any suite indirectly: the workflow files,
+    # the classifier itself and the hooks that run around them are known
+    # paths, but never candidates for selective execution.
+    #
+    # `security_sensitive` was in this set until 2026-09-05 and is NOT, because
+    # it names TWO unrelated questions under one word (cicatrix #3, over-match
+    # on the domain instead of the entity):
+    #   1. "which SECURITY SCANNERS must run" — read by
+    #      scripts/ci/security_gate_flags.py, which is the only thing this
+    #      domain was ever designed to answer, and still answers unchanged;
+    #   2. "which of the six PRODUCT TEST SUITES must run" — answered here.
+    # Conflating them made every security-sensitive path buy all six suites,
+    # whatever its real coupling. Measured on PR #5697: a one-file diff
+    # (infra/ghostty/machines/m5.ghostty) classified correctly — run_all
+    # false, reason `classified`, only infra_workflows + security_sensitive
+    # lit, no frontend domain at all — and still ran Frontend Tests for 16 of
+    # its 18 steps, because this line looked at the union.
+    #
+    # Dropping it here is not an UNDER-match (the twin defect), because no
+    # rule reaches `security_sensitive` alone: every entry that carries it —
+    # EXACT_RULES' package.json / pyproject.toml, PYTHON_MANIFEST_NAMES,
+    # PREFIX_RULES' .github/ .husky/ .security/ scripts/ci/ config/ infra/,
+    # and the two additive rules below (`auth|security|migrations|deploy`
+    # path parts, Dockerfile/fly.toml basenames) — also carries the domains
+    # of the code it actually touches. So a lockfile change still fans out to
+    # its own runtimes, a workflow edit still runs everything through
+    # infra_workflows, and what stops is only the fan-out to suites that
+    # cannot read the changed file: pyproject.toml no longer runs the
+    # frontend, package-lock.json no longer runs the Python suites.
+    if run_all or domains.intersection({"infra_workflows"}):
         return list(TEST_JOBS)
 
     jobs: list[str] = []

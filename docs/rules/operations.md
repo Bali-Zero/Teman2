@@ -45,6 +45,79 @@ still does not arm, merge, or deploy). The operational commands are documented i
    driving it spent 3.9M output tokens, and 27 of the 200 commits that landed on main 2026-08-20..22 (195 merged PRs) existed
    only to correct a claim made by a previous one.
 
+## 1bis. The `Bites:` contract, and the one shape a machine can execute
+
+Contract §2 says every PR body carries a `Bites:` line naming the CONSUMER and the
+observation that proves the change is in force. Measured 2026-09-04 21:40 WITA over the
+209 PRs merged since 2026-09-01: **139 bodies (66%) mention one, and nothing reads any of
+them** — `grep -rlE Bites .github/workflows scripts/*.py scripts/ci/*.py infra/claude-hooks`
+returns zero files. (The ratio drifts with every merge and is dated for that reason; the
+ZERO is the load-bearing half, and it is the one that does not drift on its own.)
+The machine verifies the DIFF; the runtime is verified by a sentence someone wrote
+about it. Prose stays welcome and stays the default. What follows is the
+OPTIONAL second shape, for when you want the claim checked rather than believed.
+
+> ✅ **RULED 2026-09-04 (Zero, Legge 5): the executable contract lives in the DIFF, not in
+> the PR body.** The first draft read the block out of the body, which meant deciding which
+> Markdown region a human actually SAW — a `<!-- -->` comment, a fenced block, a four-space
+> indent and a raw `<pre>` all render as page furniture rather than as a contract, and a
+> block hidden in one of them must not become an executable observation. Three adversarial
+> rounds closed five spellings of that one defect and found a sixth; CodeQL named the
+> pattern independently (`py/bad-tag-filter`). The class does not close by patching: a
+> hand-rolled CommonMark reader can only ever approximate the renderer it is guessing at.
+> So the block moved into a file the diff carries, read by a real YAML parser. Hidden
+> regions and line-splitting cease to EXIST rather than being guarded — a pack has no
+> rendered form, so there is no gap between what a reviewer sees and what the machine reads.
+
+It is a top-level `bites:` mapping in the evidence pack's `pack.yml`, under the dated
+directory `scripts/ci/evidence_paths.py` emits — never a hand-built path:
+
+```yaml
+bites:
+  consumer: <who reads or executes the changed thing>
+  where: ci | fly | pro | mini
+  observe: python3 scripts/ci/bites_parse.py --selftest
+  expect: exit0            # or contains:<text> / regex:<pattern>
+```
+
+**Three outcomes, and the difference between them is the whole migration story.** A pack
+with no `bites:` key is `absent`; a `bites:` block with no `observe:` key is `legacy`
+(prose, the old shape). **Neither is ever an error.** Every pack merged before this format
+existed is `absent`, and no merged pack may turn red retroactively because a format
+arrived after it. Only a block that HAS `observe:` and then fails the guards is malformed.
+
+**`observe:` is executed post-merge by a runner holding a write-scoped token, so it takes
+exactly TWO shapes and nothing else parses.** An allow-list over a general command line
+has to model every option of every binary it admits, and this one was rewritten three
+times because each pass found another option whose VALUE reached further than the option
+looked — `curl -b`, `pytest -W`, `gh --jq` (gojq's `env` builtin prints the runner's
+environment). So the surface was narrowed instead of patched again:
+
+```
+observe: python3 scripts/<path>.py [literal args]    # anything you can write in Python
+observe: fly status                                  # also: releases, image show,
+                                                     #       machine list
+```
+
+(Spelled one per line on purpose: a `|` in an `observe:` value is a shell metacharacter
+and is refused, so it must not appear in the example that teaches the format either.)
+
+Anything else is malformed, and the cure is always the same: **wrap it in a script under
+`scripts/ci/`**, where it is reviewable code in the diff rather than a command line a
+parser has to second-guess. Two things the parser cannot decide from a command string and
+the executor must honour: a sanitised environment (half of git's dangerous behaviour is
+reached through CONFIG, not argv) and POST-MERGE ONLY (a PR can add a script and its
+observable marker in the same diff, so pre-merge the marker is worth exactly what the
+review of that diff is worth).
+
+**Nothing reads this yet, and that is the point of saying so here.** As of 2026-09-04 the
+parser is not on `main` — it lands with the parser PR replacing #5673. The advisory lint
+stacks AFTER that: `harness-floor.yml` checks out the BASE ref, not HEAD, so a step
+calling the parser cannot run until the parser is on `main`. The post-merge executor that
+actually closes the loop is PR-2. Until it lands, an executable `bites:` block is a
+well-formed claim, not a verified one — the same distance this section was written to
+close, and writing it down does not close it.
+
 ## 2. Behavior & Autonomous Ops
 
 **DO NOT ask the user to write code.** Act first, ask if blocked. Use `Edit`/`Write`/`Bash` without asking permission.

@@ -17,6 +17,13 @@ bridge is now a 2.5KB index of families only — see
 the SAME project root as MEMDIR, which is repo-relative and therefore
 identical on every machine (unlike MEMDIR's `~/.claude/projects/<slug>`
 mapping, which can differ across hosts).
+
+Sibling (2026-09-04): `mos_recall_userprompt.py` imports this module's
+functions directly to run the SAME recall on every UserPromptSubmit turn
+with a tighter budget (top-3/<=600B/0.45 vs this file's top-6/1500B/0.35).
+`format_output()`'s `header`/`claim_max_chars` params and this CLI's
+`--max-bytes`/`--header`/`--claim-max-chars`/`--no-memory-warning` flags
+exist for that sibling; SessionStart's own call path never sets them.
 """
 from __future__ import annotations
 
@@ -274,7 +281,7 @@ def build_context_query(cwd: str) -> str:
 
 def recall(memdir: str, cache_path: str, query: str, topk: int = DEFAULT_TOPK,
            threshold: float = DEFAULT_RELEVANCE_THRESHOLD, use_cache: bool = True,
-           scars_dir: str | None = None) -> tuple[list[dict], dict]:
+           scars_dir: str | None = None, min_overlap: int = 0) -> tuple[list[dict], dict]:
     index, idx_stats = build_or_refresh_index(memdir, cache_path, use_cache=use_cache)
     scar_count = 0
     if scars_dir:
@@ -286,15 +293,21 @@ def recall(memdir: str, cache_path: str, query: str, topk: int = DEFAULT_TOPK,
     scored = []
     for path, entry in index.items():
         rel = bm25_relevance(q_tokens, doc_tokens[path], df, n_docs, avgdl)
-        scored.append((recency_score(entry, now_ts) * importance_score(entry) * rel, rel, entry))
+        scored.append((recency_score(entry, now_ts) * importance_score(entry) * rel, rel, path, entry))
     scored.sort(key=lambda t: t[0], reverse=True)
     best_rel = scored[0][1] if scored else 0.0
+    # min_overlap (2026-09-04, per-prompt caller only — default 0 leaves every other
+    # caller unaffected): a long pasted-log query can clear the relevance floor on a
+    # single rare token's IDF alone, so also require the WINNING candidate to share at
+    # least this many distinct query terms with the caller's own text.
+    best_overlap = len(set(q_tokens) & set(doc_tokens[scored[0][2]])) if scored else 0
     stats = {**idx_stats, "scar_count": scar_count, "best_relevance": round(best_rel, 4),
-              "threshold": threshold, "query": query}
-    if best_rel < threshold:
+              "threshold": threshold, "query": query, "best_overlap": best_overlap,
+              "min_overlap": min_overlap}
+    if best_rel < threshold or best_overlap < min_overlap:
         return [], stats
     results = []
-    for _, _, e in scored[:topk]:
+    for _, _, _, e in scored[:topk]:
         r = {"filename": e["filename"], "description": e["description"]}
         if e.get("wnum"):
             r["wnum"] = e["wnum"]
@@ -308,15 +321,16 @@ def memory_md_warning(memdir: str) -> str | None:
         return None
     return MEMORY_MD_WARN_TEMPLATE.format(bytes=size) if size > MEMORY_MD_WARN_BYTES else None
 
-def format_output(results: list[dict], warning: str | None = None, cap_bytes: int = OUTPUT_CAP_BYTES) -> str:
+def format_output(results: list[dict], warning: str | None = None, cap_bytes: int = OUTPUT_CAP_BYTES,
+                   header: str = HEADER_LINE, claim_max_chars: int = CLAIM_MAX_CHARS) -> str:
     budget = max(cap_bytes - (len(warning.encode("utf-8")) + 1 if warning else 0), 0)
-    hb = len(HEADER_LINE.encode("utf-8")) + 1
-    lines = [HEADER_LINE] if results and hb <= budget else []
+    hb = len(header.encode("utf-8")) + 1
+    lines = [header] if results and hb <= budget else []
     total = hb if lines else 0
     for r in results:
         claim = redact(r["description"] or r["filename"])
-        if len(claim) > CLAIM_MAX_CHARS:
-            claim = claim[: CLAIM_MAX_CHARS - 1].rstrip() + "…"
+        if len(claim) > claim_max_chars:
+            claim = claim[: claim_max_chars - 1].rstrip() + "…"
         prefix = f"[{r['wnum']}] " if r.get("wnum") else ""
         line = f"- {prefix}{claim} → {r['filename']}"
         lb = len(line.encode("utf-8")) + 1
@@ -334,7 +348,14 @@ def main() -> int:
         for name, kw in [("--memdir", {}), ("--cache-path", {}), ("--no-cache", {"action": "store_true"}),
                          ("--query", {}), ("--cwd", {}), ("--topk", {"type": int, "default": DEFAULT_TOPK}),
                          ("--threshold", {"type": float, "default": DEFAULT_RELEVANCE_THRESHOLD}),
-                         ("--scars-dir", {})]:
+                         ("--scars-dir", {}),
+                         # Below: surface added for mos_recall_userprompt.py (the per-prompt sibling hook,
+                         # 2026-09-04) and for manual CLI debugging — never touched by SessionStart's own
+                         # call path, so its defaults reproduce the pre-existing behaviour exactly.
+                         ("--max-bytes", {"type": int, "default": OUTPUT_CAP_BYTES}),
+                         ("--header", {"default": HEADER_LINE}),
+                         ("--claim-max-chars", {"type": int, "default": CLAIM_MAX_CHARS}),
+                         ("--no-memory-warning", {"action": "store_true"})]:
             ap.add_argument(name, **kw)
         args = ap.parse_args()
         cwd = args.cwd or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
@@ -346,7 +367,9 @@ def main() -> int:
         results, _stats = recall(memdir, cache_path, args.query or build_context_query(cwd),
                                   topk=args.topk, threshold=args.threshold, use_cache=not args.no_cache,
                                   scars_dir=scars_dir)
-        out = format_output(results, warning=memory_md_warning(memdir))
+        warning = None if args.no_memory_warning else memory_md_warning(memdir)
+        out = format_output(results, warning=warning, cap_bytes=args.max_bytes, header=args.header,
+                             claim_max_chars=args.claim_max_chars)
         if out:
             print(out)
         return 0
