@@ -102,9 +102,14 @@ _CURRENCY_RE = re.compile(
     r"(?<!\w)(?:Rp|IDR)\s*\d(?:[\d.,]*\d)?(?!\w)",
     re.IGNORECASE,
 )
+# The token after the keyword must carry a digit. Without that lookahead the
+# guard matched the keyword plus ANY following word of six letters — "passport
+# holders", "NPWP registration", "KTP elektronik", "tax ID numbers" — so every
+# tax/immigration article Damar saved was rejected as "private or local-only
+# data" (Pro tunnel log 2026-09-02, twice). Guard-over-match, scar family #3.
 _IDENTIFIER_RE = re.compile(
     r"\b(NIK|KTP|NPWP|passport(?:\s+number)?|nomor\s+paspor|tax\s+id|id\s+number)"
-    r"\b\s*[:#-]?\s*[A-Z0-9.-]{6,}",
+    r"\b\s*[:#-]?\s*(?=[A-Z0-9.-]{0,20}\d)[A-Z0-9.-]{6,}",
     re.IGNORECASE,
 )
 _SPACED_IDENTIFIER_RE = re.compile(
