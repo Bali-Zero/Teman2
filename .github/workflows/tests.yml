@@ -1608,7 +1608,13 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
-    timeout-minutes: 10
+    # 10 was the cap while the healthy path measured 9m13s (run 33825884926,
+    # 2026-09-04 01:30Z). When `npm ci` slowed from 1m07s to 4m20s on the same
+    # commit (registry/cache, not code), every run from 01:43Z on — PR runs AND
+    # merge_group runs — reported `cancelled` here and `Test Summary` went red
+    # on a diff that never touched the frontend. A cap one minute above the
+    # healthy path is a cap on the registry, not on the suite.
+    timeout-minutes: 16
 
     strategy:
       matrix:
