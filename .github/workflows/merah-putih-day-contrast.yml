@@ -236,8 +236,15 @@ jobs:
           # checkout or an unfetched base sha is a broken measurement and must
           # not be believed, while a PR that INTRODUCES this workflow has no base
           # copy by construction and head-only is the correct reading for it.
-          # `git cat-file -e` is the probe for both — `git rev-parse <sha>:<path>`
-          # would answer with a hash-shaped non-answer either way.
+          # The two probes are DIFFERENT and the difference is the point: the
+          # commit's reachability is asked of `cat-file -e <sha>^{commit}`, and
+          # the file's existence is asked of `ls-tree` (see the block at that
+          # call for why not `cat-file` there). Neither is `git rev-parse
+          # <sha>:<path>`, which answers with a hash-shaped non-answer either
+          # way. This paragraph used to say `cat-file -e` was "the probe for
+          # both"; it stopped being true when the ls-tree cure landed, and a
+          # comment that describes the code it no longer describes is the same
+          # defect as prose asserting a collision that does not exist.
           def _git(*args):
               return subprocess.run(["git", *args], capture_output=True, text=True)
 

@@ -978,13 +978,40 @@ def test_the_step_itself_runs_the_guard_when_the_base_ref_is_unreachable(tmp_pat
     )
 
 
-def _bash_major() -> int:
-    import re
+def _shell_runs_a_heredoc_inside_a_substitution() -> bool:
+    """CAPABILITY, probed by doing the dangerous thing — not a version number,
+    and not `bash -n`.
+
+    The step nests a `<<'PY'` heredoc inside `$( )`. bash 3.2, still
+    /bin/bash on macOS, does NOT skip the heredoc body while scanning for the
+    closing `)`: an apostrophe in that body opens a quote, the substitution
+    swallows the rest of the script, and the python is executed as shell.
+    Measured here, and the measurement corrected this probe twice —
+    `bash -n` exits 0 on the real step (so a syntax check reports the shell
+    fit and is wrong), and a canary WITHOUT an apostrophe runs clean on 3.2
+    (so the shape alone is not the hazard). The canary below therefore carries
+    the hazard: a heredoc inside `$( )` whose body holds an apostrophe, which
+    is what every comment in the sentinel snippet holds.
+
+    Both council seats rejected the `bash --version` check this replaces — one
+    because `bash --version` reads whatever PATH resolves first, so the same
+    checkout proved innocence on a Mac with Homebrew bash and skipped on one
+    without ("a guard property that evaporates based on PATH order is not
+    pinned; it is weather"), the other because the stated parse limitation is
+    not what `bash -n` reports.
+    """
     import subprocess
 
-    out = subprocess.run(["bash", "--version"], capture_output=True, text=True).stdout
-    m = re.search(r"version (\d+)", out)
-    return int(m.group(1)) if m else 0
+    canary = (
+        "V=\"$(python3 - <<'PY'\n"
+        "# a comment with the PR's apostrophe in it\n"
+        'print("ok")\n'
+        "PY\n"
+        ")\"\n"
+        'printf %s "$V"\n'
+    )
+    res = subprocess.run(["bash", "-c", canary], capture_output=True, text=True)
+    return res.returncode == 0 and res.stdout == "ok"
 
 
 def test_the_step_still_declares_a_no_op_when_the_base_is_readable(tmp_path) -> None:
@@ -992,18 +1019,17 @@ def test_the_step_still_declares_a_no_op_when_the_base_is_readable(tmp_path) -> 
     touching nothing guarded, must still produce `run=false`. Without this the
     cure above would be indistinguishable from hardcoding `true`.
 
-    Needs bash >= 4. The step nests a `<<'PY'` heredoc inside `$( )`, which
-    bash 3.2 — still the /bin/bash macOS ships — cannot parse; the runner is
-    ubuntu-latest (bash 5), so this executes where the workflow actually runs
-    and skips on a developer's Mac rather than pretending to pass there. The
-    guilt test above needs no such guard: its fail-closed branch exits before
-    that line is ever reached, which is the whole reason it is the branch under
-    test.
+    Skipped only where the shell cannot run the shape the step ships — probed
+    directly (see `_shell_runs_a_heredoc_inside_a_substitution`), never inferred
+    from `bash --version`. The guilt tests need no such guard: their fail-closed
+    branches exit before the heredoc line is reached, which is the whole reason
+    they are the branches under test.
     """
-    if _bash_major() < 4:
+    if not _shell_runs_a_heredoc_inside_a_substitution():
         pytest.skip(
-            f"bash {_bash_major()} cannot parse a heredoc inside $( ) — this "
-            "test executes the full step and needs bash >= 4 (CI's ubuntu runner)"
+            "this shell mangles a heredoc nested inside $( ) at run time, which "
+            "is the exact shape the step ships — probed, not assumed from a "
+            "version string. CI's ubuntu runner passes the probe and runs this."
         )
     res, out = _run_sentinel_step(tmp_path, base_sha="", changed=["README.md"])
     assert res.returncode == 0, res.stderr
@@ -1013,27 +1039,176 @@ def test_the_step_still_declares_a_no_op_when_the_base_is_readable(tmp_path) -> 
     )
 
 
-def test_the_step_refuses_a_verdict_that_is_not_a_verdict_word() -> None:
-    """Council finding #2, asserted STRUCTURALLY and said so plainly: an exit-0
-    with empty stdout would write the line `run=` and both downstream steps,
-    comparing it against 'true', would skip — a disarmed guard with no red
-    anywhere. Structural because forging that stdout means rewriting the
-    heredoc the other tests exist to execute unmodified; what is checked is
-    that the validation stands BETWEEN the snippet and $GITHUB_OUTPUT, not that
-    some particular wording appears somewhere in the step."""
+def _run_case_fragment(run_value: str):
+    """Executes the step's REAL `case "$RUN" ... esac` fragment with `$RUN`
+    preset and `fail_closed` stubbed, and reports whether it fired.
+
+    The previous version of this test was substring surgery — it searched the
+    step body for `case "$RUN"` and `fail_closed` and never made the rejection
+    path run. Both council seats named the same hole from opposite sides: codex
+    ("it passes if the valid arm becomes `true|false|*`, because it merely
+    searches for the literal"), kimi ("a `# case \"$RUN\"` comment above a
+    validation-free step satisfies len(guard) == 2"). Lifting the fragment out
+    and DRIVING it closes both: a widened arm accepts the garbage below and the
+    test goes red, and a commented-out case never matches the extraction.
+
+    Portable to bash 3.2 on purpose — the fragment carries no heredoc, so this
+    test runs everywhere rather than skipping where the full step cannot.
+    """
+    import subprocess
+
     script = _sentinel_step_script("pull_request", "deadbeef")
-    guard = script.split('case "$RUN"', 1)
-    assert len(guard) == 2, (
-        "the step no longer validates the sentinel's verdict word — an empty or "
-        "malformed stdout would be written to $GITHUB_OUTPUT as-is"
+    fragment = 'case "$RUN"' + script.split('case "$RUN"', 1)[1].split("esac", 1)[0] + "esac"
+    harness = (
+        "fail_closed() { echo FAIL_CLOSED_FIRED; exit 0; }\n"
+        f"RUN={run_value!r}\n" .replace("'", '"')
+        + fragment
+        + '\necho ACCEPTED\n'
     )
-    before_write, after_case = guard[0], guard[1]
-    assert 'echo "run=$RUN"' not in before_write, (
-        "the verdict is written to $GITHUB_OUTPUT before it is validated — the "
-        "validation cannot stop what has already been published"
+    return subprocess.run(["bash", "-c", harness], capture_output=True, text=True)
+
+
+@pytest.mark.parametrize("verdict", ["true", "false"])
+def test_the_verdict_gate_lets_the_two_real_verdicts_through(verdict: str) -> None:
+    """Innocence, executed: the words the sentinel legitimately prints must not
+    trip the fail-closed arm, or the guard runs its full corpus on every PR."""
+    res = _run_case_fragment(verdict)
+    assert "ACCEPTED" in res.stdout and "FAIL_CLOSED_FIRED" not in res.stdout, (
+        f"the verdict gate rejected the legitimate word {verdict!r}: {res.stdout!r} {res.stderr!r}"
     )
-    branch = after_case.split("esac", 1)[0]
-    assert "true|false" in branch and "fail_closed" in branch, (
-        "the verdict-word case no longer accepts exactly the two words and fails "
-        f"closed on everything else: {branch!r}"
+
+
+@pytest.mark.parametrize("garbage", ["", "maybe", "true false", "TRUE", " true"])
+def test_the_verdict_gate_fails_closed_on_anything_that_is_not_a_verdict(garbage: str) -> None:
+    """Guilt, executed. The empty string is the one that mattered: an exit-0
+    with no stdout writes the line `run=` and both downstream steps, comparing
+    it against 'true', skip — a disarmed guard with no red anywhere."""
+    res = _run_case_fragment(garbage)
+    assert "FAIL_CLOSED_FIRED" in res.stdout, (
+        f"the verdict gate accepted {garbage!r} as a verdict — it would reach "
+        f"$GITHUB_OUTPUT verbatim: {res.stdout!r} {res.stderr!r}"
+    )
+
+
+def test_the_verdict_is_validated_before_it_is_published() -> None:
+    """Ordering, which no amount of driving the fragment can show: a validation
+    that runs AFTER the write cannot stop what is already published. Structural
+    by necessity and only about position, never about wording."""
+    script = _sentinel_step_script("pull_request", "deadbeef")
+    assert 'case "$RUN"' in script, "the step no longer validates the verdict word at all"
+    before_gate = script.split('case "$RUN"', 1)[0]
+    assert 'echo "run=$RUN"' not in before_gate, (
+        "the verdict reaches $GITHUB_OUTPUT before the gate that judges it"
+    )
+
+
+def test_the_step_fails_closed_when_the_base_is_reachable_but_undiffable(tmp_path) -> None:
+    """The SECOND shell fail-closed branch, which the unreachable-base test
+    cannot reach (codex, round 2: "only the first shell failure branch is
+    pinned ... the second `fail_closed` call can regress independently without
+    detection").
+
+    Two disconnected root commits: the base sha IS reachable, so the first
+    probe passes, and `git diff BASE...HEAD` then fails for want of a merge
+    base. Nothing guarded changed, so head-only reasoning would say `false`;
+    only the diff guard produces `true`.
+    """
+    import os
+    import subprocess
+
+    repo = tmp_path / "split"
+    (repo / ".github/workflows").mkdir(parents=True)
+    (repo / ".github/workflows/merah-putih-day-contrast.yml").write_text(
+        WORKFLOW.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+
+    def git(*args):
+        return subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
+            capture_output=True, text=True, cwd=repo, check=True,
+        )
+
+    git("init", "-q", "-b", "main")
+    git("add", "-A")
+    git("commit", "-qm", "head-line")
+    git("checkout", "-q", "--orphan", "other")
+    (repo / "README.md").write_text("unrelated\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "orphan-line")
+    orphan = git("rev-parse", "HEAD").stdout.strip()
+    git("checkout", "-q", "main")
+
+    # The precondition, asserted rather than assumed: these two really have no
+    # merge base, so the diff really must fail.
+    probe = subprocess.run(["git", "merge-base", orphan, "HEAD"], capture_output=True, text=True, cwd=repo)
+    assert probe.returncode != 0, "the two histories share a merge base — the case under test is not being exercised"
+
+    out_file = tmp_path / "gh_output_split"
+    out_file.write_text("", encoding="utf-8")
+    res = subprocess.run(
+        ["bash", "-c", _sentinel_step_script("pull_request", orphan)],
+        capture_output=True, text=True, cwd=repo, check=False,
+        env={**os.environ, "GITHUB_OUTPUT": str(out_file)},
+    )
+    parsed = dict(
+        line.split("=", 1) for line in out_file.read_text(encoding="utf-8").splitlines() if "=" in line
+    )
+    assert res.returncode == 0, (
+        f"the step died on an undiffable base instead of failing closed: {res.stderr!r}"
+    )
+    assert parsed.get("run") == "true", (
+        "a base that could not be diffed did not make the step run the whole "
+        f"guard: {parsed!r} stderr={res.stderr!r}"
+    )
+
+
+def test_the_sentinel_fails_closed_when_the_base_tree_cannot_be_listed(tmp_path) -> None:
+    """The third outcome of the ls-tree probe, and the only one no ordinary
+    repository can produce: `ls-tree` itself failing. Forced with a `git` shim
+    early on PATH that fails ONLY `ls-tree` and delegates everything else to
+    the real binary — so the reachability probe still passes and this test
+    isolates one branch rather than the whole block.
+
+    What it does NOT pin, and the pack records as an open finding: that under
+    `filter: blob:none` a real promisor-fetch failure surfaces on `cat-file`
+    and not on `ls-tree`. Reproducing that needs a server that honours the
+    filter — `git clone --filter=blob:none file://...` answers "filtering not
+    recognized by server, ignoring" and hands over every blob (measured), so a
+    test built on it would assert nothing while looking rigorous.
+    """
+    import os
+    import subprocess
+
+    real_git = subprocess.run(["which", "git"], capture_output=True, text=True).stdout.strip()
+    shim_dir = tmp_path / "bin"
+    shim_dir.mkdir()
+    shim = shim_dir / "git"
+    shim.write_text(
+        "#!/bin/sh\n"
+        'for a in "$@"; do [ "$a" = "ls-tree" ] && exit 1; done\n'
+        f'exec {real_git} "$@"\n',
+        encoding="utf-8",
+    )
+    shim.chmod(0o755)
+
+    changed_file = tmp_path / "changed.txt"
+    changed_file.write_text("README.md\n", encoding="utf-8")
+    env = {
+        **os.environ,
+        "PATH": f"{shim_dir}:{os.environ['PATH']}",
+        "BASE_SHA": "HEAD",
+        "CHANGED_FILE": str(changed_file),
+    }
+    import sys as _sys
+
+    res = subprocess.run(
+        [_sys.executable, "-"],
+        input=_sentinel_snippet(),
+        capture_output=True, text=True, cwd=REPO, env=env, check=False,
+    )
+    assert res.returncode == 0, res.stderr
+    assert res.stdout == "true\n", (
+        "the sentinel could not list the base tree and still declared a no-op — "
+        "an unreadable base took the head-only branch the block exists to "
+        f"refuse. stdout={res.stdout!r} stderr={res.stderr!r}"
     )
