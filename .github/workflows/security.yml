@@ -1125,12 +1125,11 @@ jobs:
               ["CodeQL", "${{ needs.codeql.result }}"],
               ["Bandit", "${{ needs.bandit.result }}"],
               ["Safety", "${{ needs.safety.result }}"],
-              # Label corrected 2026-09-05: this job now DOES skip on
-              # merge_group (redundant re-scan of the same PR-head diff, see
-              # its own job comment) — "never skipped" stopped being true the
-              # moment that dedup shipped, and this file's own comment two
-              # lines up exists specifically to stop a static label from
-              # outliving the behavior it described.
+              // Label corrected 2026-09-05: this job now DOES skip on
+              // merge_group (redundant re-scan of the same PR-head diff, see
+              // its own job comment). This is JavaScript inside github-script:
+              // a "#" line here is a SyntaxError, not a comment — the Security
+              // Summary failed on exactly that on this PR's own run (2026-09-04).
               ["Detect Secrets", "${{ needs.detect-secrets.result }}"],
             ];
             const icon = (r) => r === "success" ? "✅ ran" : r === "skipped" ? "⏭️ skipped (path-aware gate)" : r === "failure" ? "❌ FAILED" : `⚠️ ${r}`;
