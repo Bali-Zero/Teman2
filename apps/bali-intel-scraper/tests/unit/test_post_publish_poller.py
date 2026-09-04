@@ -8,11 +8,14 @@ once, per kind, into ONE bot branch + auto-merged PR.
 """
 
 import base64
+from io import BytesIO
 import json
+from pathlib import Path
 import subprocess
 from unittest.mock import MagicMock, patch
 
 import pytest
+from PIL import Image
 
 from scripts import post_publish_poller as ppp
 
@@ -866,6 +869,99 @@ class TestRunSeo:
         assert ok is False
         assert [c for c in ppp._PENDING_COMMITS if c["kind"] == "seo"] == []
 
+    def test_run_seo_preserves_authored_seo_title_and_description(self):
+        content = (
+            "---\n"
+            'title: "Test Article"\n'
+            'seoTitle: "Authored title"\n'
+            'seoDescription: "Authored description"\n'
+            "---\n"
+            "Body text here.\n"
+        )
+        gh_payload = json.dumps({"content": base64.b64encode(content.encode()).decode("ascii")})
+        seo_json = (
+            '{"seoTitle": "Generated title", "seoDescription": "Generated description", '
+            '"aiOptimization": {"answerSnippet": "The answer.", '
+            '"primaryQuestion": "What is it?"}}'
+        )
+
+        with (
+            patch("scripts.post_publish_poller.subprocess.run", return_value=_res(stdout=gh_payload)),
+            patch.object(ppp, "_seo_llm_complete", return_value=(seo_json, "agy")),
+        ):
+            assert ppp.run_seo("test-slug", "business") is True
+
+        decoded = base64.b64decode(ppp._PENDING_COMMITS[0]["content_b64"]).decode()
+        assert 'seoTitle: "Authored title"' in decoded
+        assert 'seoDescription: "Authored description"' in decoded
+        assert 'answerSnippet: "The answer."' in decoded
+        assert 'primaryQuestion: "What is it?"' in decoded
+
+    def test_run_seo_fills_empty_seo_fields(self):
+        gh_payload = _mdx_frontmatter_payload()
+        seo_json = (
+            '{"seoTitle": "Generated title", "seoDescription": "Generated description", '
+            '"aiOptimization": {"answerSnippet": "The answer.", '
+            '"primaryQuestion": "What is it?"}}'
+        )
+
+        with (
+            patch("scripts.post_publish_poller.subprocess.run", return_value=_res(stdout=gh_payload)),
+            patch.object(ppp, "_seo_llm_complete", return_value=(seo_json, "agy")),
+        ):
+            assert ppp.run_seo("test-slug", "business") is True
+
+        decoded = base64.b64decode(ppp._PENDING_COMMITS[0]["content_b64"]).decode()
+        assert 'seoTitle: "Generated title"' in decoded
+        assert 'seoDescription: "Generated description"' in decoded
+
+
+class TestRunImage:
+    @staticmethod
+    def _hero_bytes() -> bytes:
+        image = Image.new("RGB", (2100, 900), "navy")
+        output = BytesIO()
+        image.save(output, format="JPEG")
+        return output.getvalue()
+
+    def test_run_image_derives_card_from_existing_hero_without_codex(self):
+        hero_bytes = self._hero_bytes()
+
+        with (
+            patch.object(ppp, "_image_exists_on_github", side_effect=[True, False]),
+            patch.object(ppp, "_download_github_file", return_value=hero_bytes),
+            patch.object(ppp, "codex_generate_image", side_effect=AssertionError("must not be called")),
+        ):
+            assert ppp.run_image("test-slug", "business") is True
+
+        assert len(ppp._PENDING_COMMITS) == 1
+        staged = ppp._PENDING_COMMITS[0]
+        assert staged["gh_path"].endswith("_card.jpg")
+        with Image.open(BytesIO(base64.b64decode(staged["content_b64"]))) as card:
+            assert card.format == "JPEG"
+            assert abs((card.width / card.height) - 1.6) < 0.01
+
+    def test_run_image_generates_both_when_hero_missing(self):
+        def generate_image(_: str, destination: Path) -> bool:
+            destination.write_bytes(self._hero_bytes())
+            return True
+
+        with (
+            patch.object(ppp, "_image_exists_on_github", side_effect=[False, False]),
+            patch.object(ppp, "_fetch_mdx_meta", return_value=("Test Article", None)),
+            patch.object(ppp, "codex_healthy", return_value=True),
+            patch.object(ppp, "codex_generate_image", side_effect=generate_image) as generate,
+        ):
+            assert ppp.run_image("test-slug", "business") is True
+
+        assert generate.call_count == 2
+        assert [commit["gh_path"] for commit in ppp._PENDING_COMMITS] == [
+            f"{ppp.IMAGE_GH_DIR}/test-slug.jpg",
+            f"{ppp.IMAGE_GH_DIR}/test-slug_card.jpg",
+        ]
+
+
+class TestAgyGenerateText:
     def test_agy_invocation_uses_configured_model_and_sandbox(self):
         """Regression pin for the actual CLI invocation shape (agy_swarm_
         commander.py convention: --model "Gemini 3.1 Pro (High)" --sandbox)."""
