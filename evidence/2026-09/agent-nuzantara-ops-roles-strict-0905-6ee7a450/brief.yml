@@ -1,0 +1,70 @@
+task_id: roles-strict-0905
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  roles.yaml decides which MCP tools a role may call. Both of its readers loaded it with
+  yaml.safe_load, which lets a DUPLICATE top-level key win in silence, and `roles:` is a
+  mapping keyed by role name. Move both readers onto scripts/lib/yaml_strict.py, and ship
+  the loader to the one reader that is deployed by copy rather than by package.
+
+  Measured on a scratch copy of the shipped file before any change: appending five lines
+  that repeat `tax_consultant:` with `tools: ["*"]` took get_allowed_tools from 11 named
+  tools to ["*"], and is_allowed("tax_consultant", <anything>) from False to True. The
+  diff reads as an appended block. This is not a claim the repo is breached -- anyone who
+  can append can edit outright. What the silence defeats is REVIEW.
+
+  Gear 2 by SIZE, deterministically: --print-floor returns 2 and --print-floor-source
+  returns "size" on this changed-file list with the numstat supplied. Recorded because I
+  first computed the floor WITHOUT the numstat, got 1, and opened the PR on that number --
+  the SIZE term cannot see a size it was not given. Same shape as the #5682 mistake earlier
+  in this lane: I measured the floor with an input that could not produce the answer I was
+  checking for.
+constraints:
+  - >-
+    The two readers keep their OWN failure contracts and therefore fail differently on the
+    same poisoned file. permissions.py raises at construction (server.py:45 builds the
+    checker at module import, so it already crashed on a bad config). auth.py never raises:
+    it degrades to an empty taxonomy and every decorated tool denies, which is its
+    documented Legge 4 contract. Both refuse; neither escalates.
+  - >-
+    No fallback to yaml.safe_load in either reader, under any condition. Silently
+    downgrading to the permissive loader when the strict one is absent restores the whole
+    defect with an extra step.
+  - >-
+    One canonical sys.modules name for the path-loaded module. scripts/lib is not an
+    importable package, and loading one file twice under two names produces two distinct
+    StrictYAMLError CLASSES, so `except StrictYAMLError` in one caller does not catch the
+    error raised through the other. Measured: four guilt cases failed against a working
+    cure before this was fixed.
+  - >-
+    "Fail closed" is right for an ambiguous policy file and WRONG for a loader that is
+    merely somewhere else. apps/team-agent/mcp-wrapper is installed by
+    `cp -r .../mcp-wrapper/*` (mac-bootstrap.sh:90-93), which does not ship the repo's
+    scripts/. A repo-relative-only lookup made the wrapper unstartable on every onboarded
+    Mac -- reproduced as FileNotFoundError. One source of truth in the repo, staged into
+    $WRAPPER_DIR/lib/ by the bootstrap, never a second editable copy (superscar #1).
+  - >-
+    apps/team-agent/mcp-wrapper is named by NO workflow: its 16 tests are run by no CI job.
+    Arming that tree is a workflow edit and a separate concern, and is NOT smuggled in
+    here. The battery therefore lives under apps/nuzantara-mcp/tests, which tests.yml
+    collects wholesale, and asserts its own collection wiring.
+  - >-
+    Guilt AND innocence, both directions (superscar #3). The battery also pins the ATTACK
+    under plain safe_load, so it cannot pass by the poison quietly ceasing to be a poison.
+acceptance:
+  - >-
+    WHEN the poisoned roles.yaml is loaded, THEN PermissionChecker raises StrictYAMLError
+    naming the duplicated key and its line, AND auth.py's ROLE_TAXONOMY is {} with a WARNING
+    carrying the same message. probe: pytest apps/nuzantara-mcp/tests/test_roles_yaml_is_loaded_strictly.py
+  - >-
+    WHEN the shipped roles.yaml is loaded, THEN both readers still agree on all four roles
+    and every pre-existing assertion holds. probe: pytest apps/nuzantara-mcp/tests -k "innocence or per_tool_auth or tripwire"
+  - >-
+    WHEN the wrapper runs from the onboarded copy with the loader staged, THEN it starts and
+    still refuses the poison; without it staged, it raises a message naming both candidate
+    paths rather than a bare FileNotFoundError. probe: pytest -k onboarded
+  - >-
+    WHEN mac-bootstrap.sh runs, THEN it stages scripts/lib/yaml_strict.py into
+    $WRAPPER_DIR/lib/. probe: test_the_onboarding_script_actually_stages_the_loader
+pii_scan: clean
