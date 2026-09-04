@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import unittest
@@ -869,6 +870,95 @@ class ChangeMapTests(unittest.TestCase):
         self.assertIn("frontend-tests", result["suggested_jobs"])
         self.assertNotIn("backend-tests", result["suggested_jobs"])
         self.assertNotIn("mcp-tests", result["suggested_jobs"])
+
+    def test_infra_coupling_census_is_not_stale(self) -> None:
+        # The RATCHET, and the reason it exists: before the `infra/` catch-all
+        # stopped buying all six suites, a new coupling from a suite into
+        # infra/ was harmless — the over-match ran the suite anyway. Removing
+        # the over-match removes that accidental safety net, so the census
+        # that justified the carve-out has to be re-derived on every run
+        # instead of trusted as a one-off (the same reasoning that turned the
+        # scripts/ audit into scripts_coupling_census.py --check, cicatrix #9:
+        # a rule whose evidence was measured once and never again).
+        #
+        # This pins the FULL reference profile — file -> segment -> count —
+        # not just the set of segments, so adding a reference to an
+        # already-listed sub-tree trips it too. Every entry below was read by
+        # hand on 2026-09-05. The `infra/eventbus` ones are the carved-out
+        # coupling (PREFIX_RULES, pinned by its own test above) — and only ONE
+        # of them is a real read: test_ingest_target_registry.py opens the
+        # runner; ingest_paths.py and outbox_handlers.py merely name it in a
+        # docstring. Every NON-eventbus entry is PROSE: a docstring naming the
+        # plist that invokes the module, a README paragraph, a comment, a
+        # branch-name string in a fixture, a data-note inside a corpus JSON.
+        # None of them opens, imports or subprocesses anything under infra/.
+        #
+        # When this goes red: read the new reference. Prose -> update the pin.
+        # A real read/import -> add a PREFIX_RULES carve-out mapping that
+        # sub-tree to the domain of the suite that reads it, THEN update the
+        # pin. Do not update the pin to make the test quiet.
+        expected: dict[str, dict[str, int]] = {
+            "apps/backend-rag/backend/app/utils/ingest_paths.py": {"infra/eventbus": 1},
+            "apps/backend-rag/backend/scripts/federation_alert_daemon.py": {"infra/launchagents": 1},
+            "apps/backend-rag/backend/scripts/kg_fix_68112_node.py": {"infra/kg-68112-licenses": 1},
+            "apps/backend-rag/backend/services/federation_alerts/__init__.py": {"infra/launchd": 1},
+            "apps/backend-rag/backend/services/garuda_orders/outbox_handlers.py": {"infra/eventbus": 1},
+            "apps/backend-rag/backend/services/sota_loop/__init__.py": {"infra/launchagents": 1},
+            "apps/backend-rag/backend/services/sota_loop/_promote.py": {"infra/launchagents": 1},
+            "apps/backend-rag/backend/services/sota_loop/m13_weekly.py": {"infra/claude-hooks": 1},
+            "apps/backend-rag/backend/tests/unit/core/test_ingest_target_registry.py": {"infra/eventbus": 1},
+            "apps/backend-rag/backend/tests/unit/response/test_w119c_outbound_marker_newline_bleed.py": {"infra/claude-hooks": 1},
+            "apps/backend-rag/backend/tests/unit/routers/test_ingest_path_confinement.py": {"infra/eventbus": 1},
+            "apps/backend-rag/backend/tests/unit/scripts/test_codex_tri_llm_review_script.py": {"infra/y": 1},
+            "apps/backend-rag/backend/tests/unit/services/ingestion/test_ingest_success_is_reported_honestly.py": {"infra/eventbus": 1},
+            "apps/backend-rag/backend/tests/unit/services/sota_loop/test_m13_weekly_repo_root.py": {"infra/claude-hooks": 1},
+            "apps/evaluator/nlm_deep_research/scripts/run_nb5_t4_monitor.sh": {"infra/launchagents": 1},
+            "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json": {"infra/workflows": 1},
+            "apps/wa-mirror/README.md": {"infra/home-fork": 2},
+        }
+        # The trees the six heavy jobs actually execute. scripts/ci/ is
+        # DELIBERATELY absent: it is mapped to infra_workflows (all six jobs)
+        # and it contains this very file, so including it would make the pin
+        # count its own prose and change on every edit to it.
+        trees = (
+            "apps/backend-rag",
+            "apps/nuzantara-mcp",
+            "apps/evaluator",
+            "apps/mouth",
+            "apps/admin-dashboard",
+            "apps/admin-dashboard-local",
+            "apps/wa-mirror",
+            "packages/core",
+        )
+        repo_root = _locate_repo_root(Path("scripts") / "ci" / "change_map.py")
+        if repo_root is None:
+            self.skipTest(
+                "no checkout reachable from cwd, GITHUB_WORKSPACE or __file__ — the "
+                "infra/ census is re-derived where the checkout is present"
+            )
+        present = [t for t in trees if (repo_root / t).is_dir()]
+        completed = subprocess.run(
+            ["git", "grep", "-nIE", r"infra/[a-z0-9_-]+", "--", *present],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+        )
+        # git grep exits 1 on "no matches", which is a legitimate (if
+        # surprising) outcome; anything else is a broken invocation.
+        self.assertIn(completed.returncode, (0, 1), completed.stderr)
+        found: dict[str, dict[str, int]] = {}
+        for line in completed.stdout.splitlines():
+            path, _, rest = line.partition(":")
+            for token in re.findall(r"infra/[a-z0-9_-]+", rest):
+                found.setdefault(path, {}).setdefault(token, 0)
+                found[path][token] += 1
+        self.assertEqual(
+            found,
+            expected,
+            "the infra/ reference profile moved — a suite's tree gained or lost a "
+            "reference into infra/. Read it before touching this pin: prose -> update "
+            "the pin; a real read/import -> carve the sub-tree out in PREFIX_RULES first.",
+        )
 
     def test_cli_stdout_is_one_compact_json_line(self) -> None:
         script = Path(__file__).with_name("change_map.py")
