@@ -650,14 +650,22 @@ export async function getArticleBySlug(
   category: string,
   slug: string,
 ): Promise<Article | null> {
-  // Try backend API first
+  // Local MDX first: it's the reviewed, composed artifact (TL;DR <InfoCard>,
+  // SEO frontmatter, aiOptimization, translations). The `news_items` row for
+  // the same slug carries the raw staging body used for listings/API, not
+  // what should render on the article page.
+  const mdxArticle = await getMdxArticleBySlug(category, slug);
+  if (mdxArticle) {
+    return mdxArticle;
+  }
+
+  // Fallback to backend API (news_items) when no local MDX exists.
   const backendItem = await fetchBackendArticleBySlug(slug);
   if (backendItem) {
     return backendToArticle(backendItem);
   }
 
-  // Fallback to local MDX
-  return getMdxArticleBySlug(category, slug);
+  return null;
 }
 
 /**
