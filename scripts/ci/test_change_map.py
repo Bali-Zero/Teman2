@@ -14,6 +14,30 @@ import change_map as cm
 import security_gate_flags as sgf
 
 
+def _locate_repo_root(rel: Path) -> Path | None:
+    """Find the checkout that contains ``rel``, or None.
+
+    Never resolve the checkout relative to ``__file__`` alone: tests.yml
+    extracts this file FLAT into $RUNNER_TEMP/trusted-classifier/ (no
+    scripts/ci/ above it), where parents[2] is /home/runner/work and every
+    path built from it 404s. That mis-resolution turned the census staleness
+    assertion red on EVERY PR from #5679 (2026-09-04) until #5692, and the
+    classify step fell to run_all=true meanwhile. Any test here that touches
+    the checkout goes through this function and SKIPS when it is absent —
+    the assertion is made where the checkout exists, never faked where it
+    does not.
+    """
+
+    workspace = os.environ.get("GITHUB_WORKSPACE")
+    file_root = Path(__file__).resolve()
+    candidates = [Path.cwd()]
+    if workspace:
+        candidates.append(Path(workspace))
+    if len(file_root.parents) > 2:
+        candidates.append(file_root.parents[2])
+    return next((c for c in candidates if (c / rel).is_file()), None)
+
+
 class ChangeMapTests(unittest.TestCase):
     def test_guilt_backend_change_runs_backend_and_e2e(self) -> None:
         result = cm.classify(["apps/backend-rag/backend/app/main.py"])
@@ -620,21 +644,11 @@ class ChangeMapTests(unittest.TestCase):
         # extraction list, and it has no business there (it shells out to
         # `git grep` and writes files). --check re-derives SCRIPTS_COUPLING
         # live and exits 1 on drift (cicatrix #9).
-        # Locate the census in the CHECKOUT, never relative to __file__:
-        # tests.yml extracts this test FLAT into $RUNNER_TEMP/trusted-classifier/
-        # (no scripts/ci/ above it), where parents[2] resolved to /home/runner/work,
-        # the subprocess 404'd, this assertion failed, and the classify step fell
-        # to run_all=true (enumeration_failed) on EVERY PR from #5679 (2026-09-04)
-        # until this fix — the same disease #5676 cured for security_gate_flags.
+        # Locate the census in the CHECKOUT, never relative to __file__ —
+        # see _locate_repo_root's docstring for the flat-extraction trap and
+        # the #5679→#5692 outage it caused.
         rel = Path("scripts") / "ci" / "scripts_coupling_census.py"
-        workspace = os.environ.get("GITHUB_WORKSPACE")
-        file_root = Path(__file__).resolve()
-        candidates = [Path.cwd()]
-        if workspace:
-            candidates.append(Path(workspace))
-        if len(file_root.parents) > 2:
-            candidates.append(file_root.parents[2])
-        repo_root = next((c for c in candidates if (c / rel).is_file()), None)
+        repo_root = _locate_repo_root(rel)
         if repo_root is None:
             self.skipTest(
                 "scripts_coupling_census.py not reachable from cwd, GITHUB_WORKSPACE "
@@ -738,6 +752,123 @@ class ChangeMapTests(unittest.TestCase):
         self.assertEqual(result["unknown_paths"], [])
         self.assertTrue(result["domains"]["fleet_ops"])
         self.assertEqual(result["suggested_jobs"], [])
+
+    def test_innocence_infra_fleet_payload_skips_every_test_job(self) -> None:
+        # The measurement that opened this cure (PR #5697, 2026-09-05): a diff
+        # of ONE file under infra/ classified perfectly — run_all false,
+        # reason `classified`, no frontend domain lit — and still ran all six
+        # heavy jobs, Frontend Tests included (16 of its 18 steps executed),
+        # because both domains the "infra/" catch-all handed out were in
+        # _suggested_jobs()'s multiplier set. Third recidive of cicatrix #3's
+        # over-match half in two days (scripts/ #5679, .claude/ #5685, this),
+        # and the cure's own precedent was already in this file: the
+        # infra/guard-conformance/ carve-out above.
+        result = cm.classify(["infra/ghostty/machines/m5.ghostty"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["reason"], "classified")
+        self.assertEqual(result["unknown_paths"], [])
+        self.assertTrue(result["domains"]["fleet_ops"])
+        self.assertFalse(result["domains"]["infra_workflows"])
+        self.assertEqual(result["suggested_jobs"], [])
+        self.assertEqual(result["would_skip"], list(cm.TEST_JOBS))
+
+    def test_guilt_infra_still_buys_the_security_scanners(self) -> None:
+        # The UNDER-match twin, pinned so a later "simplification" cannot
+        # take it: .github/codeql-config.yml declares NO paths-ignore, so
+        # CodeQL analyses infra/'s Python and shell like any other tree.
+        # infra/ therefore keeps `security_sensitive` — the domain
+        # security_gate_flags.py reads — even though it no longer buys a
+        # single product test suite. `CodeQL Analysis (python)` and
+        # `(javascript)` are both required contexts on main.
+        #
+        # The path is deliberately a real .py file reached by the CATCH-ALL
+        # rule, not by the infra/eventbus/ carve-out — the carve-out carries
+        # security_sensitive of its own, so an eventbus path would stay green
+        # while the catch-all silently lost the domain.
+        result = cm.classify(["infra/claude-hooks/host_boundary.py"])
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["security_sensitive"])
+        self.assertEqual(result["suggested_jobs"], [])
+        flags = sgf.compute_flags(result, js_manifest=False)
+        self.assertTrue(flags["run_codeql_python"])
+        self.assertTrue(flags["run_codeql_js"])
+
+    def test_guilt_infra_eventbus_runs_the_backend_suite_that_reads_it(
+        self,
+    ) -> None:
+        # The one real coupling the 2026-09-05 census found across all 38
+        # infra/ sub-trees, and it is a literal-path read, not an import:
+        # test_ingest_target_registry.py opens this exact file and asserts on
+        # its contents, and scripts/ci/ingest_target_lint.py names it in
+        # DECLARED_ENTRYPOINTS. Both are checked here so a rename of either
+        # side fails this test instead of silently un-coupling the rule.
+        runner = "infra/eventbus/regulatory_ingest_runner.py"
+        result = cm.classify([runner])
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["backend_python"])
+        self.assertIn("backend-tests", result["suggested_jobs"])
+        self.assertNotIn("frontend-tests", result["suggested_jobs"])
+
+        rel = Path("apps/backend-rag/backend/tests/unit/core/test_ingest_target_registry.py")
+        repo_root = _locate_repo_root(rel)
+        if repo_root is None:
+            self.skipTest(
+                "the coupled backend test is not reachable from cwd, GITHUB_WORKSPACE "
+                "or __file__ — the coupling is asserted where the checkout is present"
+            )
+        self.assertIn(runner, (repo_root / rel).read_text(encoding="utf-8"))
+
+    def test_guilt_infra_does_not_suppress_a_real_backend_change(self) -> None:
+        # fleet_ops maps to zero jobs, so a co-changed product path must keep
+        # every job it earns on its own — the union, never the minimum.
+        result = cm.classify(
+            ["infra/launchagents/com.example.plist", "apps/backend-rag/backend/app/main.py"]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertIn("backend-tests", result["suggested_jobs"])
+
+    def test_guilt_workflow_definitions_still_force_every_suite(self) -> None:
+        # infra_workflows stays in _suggested_jobs()'s multiplier set and
+        # .github/ keeps it: editing what RUNS the suites still buys them all.
+        result = cm.classify([".github/workflows/some-workflow.yml"])
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["infra_workflows"])
+        self.assertEqual(result["suggested_jobs"], list(cm.TEST_JOBS))
+
+    def test_innocence_manifests_reach_their_own_runtimes_and_no_others(
+        self,
+    ) -> None:
+        # The other half of dropping `security_sensitive` from the multiplier:
+        # it must not become an UNDER-match. Every manifest still fans out to
+        # the runtimes it can actually break — via its OWN domains, which is
+        # why the drop is safe — and stops paying for the ones it cannot.
+        python = cm.classify(["pyproject.toml"])
+        self.assertTrue(python["domains"]["security_sensitive"])
+        for job in ("backend-tests", "mcp-tests", "evaluator-critical-tests", "e2e-tests"):
+            self.assertIn(job, python["suggested_jobs"])
+        self.assertNotIn("frontend-tests", python["suggested_jobs"])
+        self.assertNotIn("packages-core-tests", python["suggested_jobs"])
+
+        node = cm.classify(["package-lock.json"])
+        self.assertTrue(node["domains"]["security_sensitive"])
+        for job in ("frontend-tests", "packages-core-tests"):
+            self.assertIn(job, node["suggested_jobs"])
+        self.assertNotIn("backend-tests", node["suggested_jobs"])
+        self.assertNotIn("mcp-tests", node["suggested_jobs"])
+
+    def test_innocence_a_security_sensitive_path_part_no_longer_buys_all_six(
+        self,
+    ) -> None:
+        # The additive `auth|security|migrations|deploy` rule tags a path
+        # security_sensitive ON TOP of its prefix domains. Before the split
+        # that tag alone forced all six suites onto a frontend-only file.
+        result = cm.classify(["apps/mouth/src/app/auth/page.tsx"])
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["security_sensitive"])
+        self.assertTrue(result["domains"]["mouth"])
+        self.assertIn("frontend-tests", result["suggested_jobs"])
+        self.assertNotIn("backend-tests", result["suggested_jobs"])
+        self.assertNotIn("mcp-tests", result["suggested_jobs"])
 
     def test_cli_stdout_is_one_compact_json_line(self) -> None:
         script = Path(__file__).with_name("change_map.py")
