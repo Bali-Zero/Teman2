@@ -1,4 +1,4 @@
-brief_ref: evidence/2026-09/agent-air-m5-infra-agent-inventory-cure-09237e6b/brief.yml
+brief_ref: evidence/brief.yml
 council_run: council-journal.jsonl
 plan_ref: >-
   Handoff mandate from Zero, 2026-09-04: "bonifica completa" of the subagent inventory, opened by
@@ -37,8 +37,13 @@ lanes:
     role: review
     seat: >-
       tp1-qwen3.8-max at effort xhigh, cross-family, read-only (cannot execute — asked to reason
-      from the diff text and name a defeating input, a file:line and a consequence). Verdict in
-      journal.jsonl under the same NON-JUDGEMENT rule.
+      from the diff text and name a defeating input, a file:line and a consequence). OUTCOME:
+      NON-JUDGEMENT, measured — ZERO bytes on stdout AND stderr, then death on its own wall-clock
+      budget (`tp1_call: timed out`, rc=1, 0 bytes, ~55 minutes). Recorded in council-journal.jsonl
+      with ok:false and NOT counted toward quorum: an empty answer is not a clean one. Second
+      occurrence of this exact shape on this seat with a full-diff prompt — the 2026-09-01
+      floor-workflow-pin pack recorded it at ~20 minutes. Quorum is carried by the two seats that
+      returned findings.
   - lane: agents-refute-kimi
     role: review
     seat: >-
