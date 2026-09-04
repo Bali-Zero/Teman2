@@ -17,6 +17,13 @@ bridge is now a 2.5KB index of families only — see
 the SAME project root as MEMDIR, which is repo-relative and therefore
 identical on every machine (unlike MEMDIR's `~/.claude/projects/<slug>`
 mapping, which can differ across hosts).
+
+Sibling (2026-09-04): `mos_recall_userprompt.py` imports this module's
+functions directly to run the SAME recall on every UserPromptSubmit turn
+with a tighter budget (top-3/<=600B/0.45 vs this file's top-6/1500B/0.35).
+`format_output()`'s `header`/`claim_max_chars` params and this CLI's
+`--max-bytes`/`--header`/`--claim-max-chars`/`--no-memory-warning` flags
+exist for that sibling; SessionStart's own call path never sets them.
 """
 from __future__ import annotations
 
@@ -308,15 +315,16 @@ def memory_md_warning(memdir: str) -> str | None:
         return None
     return MEMORY_MD_WARN_TEMPLATE.format(bytes=size) if size > MEMORY_MD_WARN_BYTES else None
 
-def format_output(results: list[dict], warning: str | None = None, cap_bytes: int = OUTPUT_CAP_BYTES) -> str:
+def format_output(results: list[dict], warning: str | None = None, cap_bytes: int = OUTPUT_CAP_BYTES,
+                   header: str = HEADER_LINE, claim_max_chars: int = CLAIM_MAX_CHARS) -> str:
     budget = max(cap_bytes - (len(warning.encode("utf-8")) + 1 if warning else 0), 0)
-    hb = len(HEADER_LINE.encode("utf-8")) + 1
-    lines = [HEADER_LINE] if results and hb <= budget else []
+    hb = len(header.encode("utf-8")) + 1
+    lines = [header] if results and hb <= budget else []
     total = hb if lines else 0
     for r in results:
         claim = redact(r["description"] or r["filename"])
-        if len(claim) > CLAIM_MAX_CHARS:
-            claim = claim[: CLAIM_MAX_CHARS - 1].rstrip() + "…"
+        if len(claim) > claim_max_chars:
+            claim = claim[: claim_max_chars - 1].rstrip() + "…"
         prefix = f"[{r['wnum']}] " if r.get("wnum") else ""
         line = f"- {prefix}{claim} → {r['filename']}"
         lb = len(line.encode("utf-8")) + 1
@@ -334,7 +342,14 @@ def main() -> int:
         for name, kw in [("--memdir", {}), ("--cache-path", {}), ("--no-cache", {"action": "store_true"}),
                          ("--query", {}), ("--cwd", {}), ("--topk", {"type": int, "default": DEFAULT_TOPK}),
                          ("--threshold", {"type": float, "default": DEFAULT_RELEVANCE_THRESHOLD}),
-                         ("--scars-dir", {})]:
+                         ("--scars-dir", {}),
+                         # Below: surface added for mos_recall_userprompt.py (the per-prompt sibling hook,
+                         # 2026-09-04) and for manual CLI debugging — never touched by SessionStart's own
+                         # call path, so its defaults reproduce the pre-existing behaviour exactly.
+                         ("--max-bytes", {"type": int, "default": OUTPUT_CAP_BYTES}),
+                         ("--header", {"default": HEADER_LINE}),
+                         ("--claim-max-chars", {"type": int, "default": CLAIM_MAX_CHARS}),
+                         ("--no-memory-warning", {"action": "store_true"})]:
             ap.add_argument(name, **kw)
         args = ap.parse_args()
         cwd = args.cwd or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
@@ -346,7 +361,9 @@ def main() -> int:
         results, _stats = recall(memdir, cache_path, args.query or build_context_query(cwd),
                                   topk=args.topk, threshold=args.threshold, use_cache=not args.no_cache,
                                   scars_dir=scars_dir)
-        out = format_output(results, warning=memory_md_warning(memdir))
+        warning = None if args.no_memory_warning else memory_md_warning(memdir)
+        out = format_output(results, warning=warning, cap_bytes=args.max_bytes, header=args.header,
+                             claim_max_chars=args.claim_max_chars)
         if out:
             print(out)
         return 0
