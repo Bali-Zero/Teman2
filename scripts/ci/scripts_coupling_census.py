@@ -56,6 +56,12 @@ TREES = [
     "apps/evaluator",
     "apps/mouth",
     "apps/admin-dashboard",
+    # NOT covered by "apps/admin-dashboard" above — a different tree whose
+    # name merely starts with it. Its vitest suite runs inside the REQUIRED
+    # `(mouth, true)` leg of frontend-tests (tests.yml, "Run
+    # admin-dashboard-local tests"), so code it executes belongs in the
+    # census corpus. Held by test_census_trees_cover_every_app_tests_yml_runs.
+    "apps/admin-dashboard-local",
     "apps/wa-mirror",
     "packages/core",
     ".github/workflows/tests.yml",
