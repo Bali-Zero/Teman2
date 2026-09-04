@@ -11,9 +11,11 @@ seat_diversity: not_applicable
 seat_diversity_note: >-
   One build lane, so the D3 floor (>= 2 build lanes) does not fire. The REVIEW side is
   cross-family and generator != grader: codex-gpt-5.6-sol and kimi-code/k3 were dispatched
-  against the frozen diff with no access to this pack or brief, and their raw transcripts ship
-  beside this file (review-codex-raw.txt, review-kimi-raw.txt) so the verdicts can be read rather
-  than taken on trust.
+  against the frozen diff with no access to this pack or brief, TWICE — round 2 reviewed the cures
+  round 1 asked for, because the build seat wrote those cures and grading them itself is the thing
+  this rule exists to stop. All four raw transcripts ship beside this file (review-codex-raw.txt,
+  review-kimi-raw.txt, review-codex-round2-raw.txt, review-kimi-round2-raw.txt) so every verdict
+  can be read rather than taken on trust.
 plan_ref: >-
   Session handoff HANDOFF-2026-09-04-M5.md (M5 conductor), continued 2026-09-04 — close the two
   conditions the Gear-3 gate attached to #5614's PASS-WITH-CONDITIONS, so the Merah Putih DAY
@@ -29,17 +31,18 @@ lanes:
     role: review
     seat: kimi-code/k3
 diff:
-  files: 7 files, +2165/-11, 6 commits
+  files: 9 files, +4804/-11, 8 commits
   net_lines: >-
     Measured with `git diff --no-renames --numstat` against the merge-base 60d0c4e856, over the
-    WHOLE branch and not a lone commit's diff, and INCLUDING this pack file — CI recomputes same
-    numbers at lint time from the same merge-base, so a count that quietly omits itself is a count
-    that fails. The shape matters more than the total: the two raw council transcripts are 1525 of
-    those added lines, pure evidence that changes no behaviour, and only two of the seven files
-    are code — the workflow and its test corpus. The history is the original pair of conditions
-    (6434bfa6a4), the innocence-fixture correction (bfb31e9e5d), the three council cures
-    (2fca39e821), the correction of condition 1's stated reason (b1c1c776ac), this pack
-    (54c3a51e97), and the commit that made these very numbers count themselves.
+    WHOLE branch and not a lone commit's diff, and INCLUDING this pack file — CI recomputes the
+    same numbers at lint time from the same merge-base, so a count that quietly omits itself is a
+    count that fails, which is how the first version of this line went red. The shape matters more
+    than the total: the four raw council transcripts are 3830 of those added lines, pure evidence
+    that changes no behaviour, and only two of the nine files are code — the workflow and its test
+    corpus. The history is the original pair of conditions (6434bfa6a4), the innocence-fixture
+    correction (bfb31e9e5d), the three round-1 cures (2fca39e821), the correction of condition 1's
+    stated reason (b1c1c776ac), the pack (54c3a51e97), the commit that made these numbers count
+    themselves (a59ba2c59b), the round-2 cures (278ab62532), and this evidence refresh.
   behaviour_change: >-
     `.github/workflows/merah-putih-day-contrast.yml`: `cancel-in-progress` becomes conditional on
     the event instead of an unconditional true; the sentinel step gains a SHELL-level fail-closed
@@ -48,16 +51,20 @@ diff:
     <sha>:<path>` to `ls-tree`, so a promisor fetch failure under `filter: blob:none` is no longer
     read as "the file is absent"; and the verdict word is validated against exactly {true,false}
     before it reaches $GITHUB_OUTPUT. `scripts/tests/test_merah_putih_day_contrast.py` gains the two
-    condition tests and three more that execute the SHELL STEP rather than the Python snippet
-    it invokes; the receipts below report what the whole corpus then counts. No branch-protection entry is added here and no other workflow, job or required
+    condition tests, tests that execute the SHELL STEP rather than the Python snippet it invokes,
+    and a verdict gate driven through both its innocence and its guilt arms; the receipts below
+    report what the whole corpus then counts. No branch-protection entry is added here and no other workflow, job or required
     context is touched — the promotion itself is the next PR, after a real merge_group run is
     observed. Ships no code into any deployed artifact.
 receipts_ts_precision: >-
   Every `ts` below is a real `date -u +%Y-%m-%dT%H:%M:%SZ` printed by the same shell invocation
   that then ran the command on the line it annotates, so it is the command's START to the second,
-  not its completion and not a time written by hand. Where one invocation ran two commands, both
-  receipts carry that invocation's single timestamp; they are not separately clocked and are not
-  presented as if they were.
+  not its completion and not a time written by hand — with ONE exception, the 15:38:00Z receipt,
+  which aggregates three probes from one invocation and carries its own `ts_note` saying so.
+  Where an invocation ran two commands, both receipts carry that invocation's single timestamp;
+  they are not separately clocked and are not presented as if they were. The council journal's own
+  timestamps are file mtimes and say so per line; two of them were written by hand first and
+  replaced with the measured value.
 receipts:
   - claim: "The corpus is green on the branch as the council received it: 52 passed."
     cmd: "python3 -m pytest scripts/tests/test_merah_putih_day_contrast.py"
@@ -87,18 +94,20 @@ receipts:
   - claim: >-
       The first cut of the shell-level tests went RED and is recorded rather than quietly
       re-rolled: 54 passed, 1 failed. The failure was environmental, not a defect in the cure —
-      /bin/bash on macOS is 3.2 and cannot parse a heredoc nested inside $( ), which is exactly
-      the shape the sentinel step ships. It is why the innocence half of the shell test now skips
-      below bash 4 instead of pretending to pass.
+      /bin/bash on macOS is 3.2 and mishandles the shape the sentinel step ships. NOTE, and this
+      receipt is left standing with its error named rather than rewritten: the diagnosis recorded
+      here at the time — "cannot parse" — is FALSE, and round 2 measured why. `bash -n` exits 0 on
+      that script. The failure is at run time and the trigger is an apostrophe in the heredoc body.
+      The receipt at 15:38:00Z carries the corrected measurement.
     cmd: "python3 -m pytest scripts/tests/test_merah_putih_day_contrast.py"
     exit: 1
     ts: "2026-09-04T14:44:31Z"
     seat: "conductor (M5, build lane)"
   - claim: >-
       After the three council cures and the bash-version guard: 54 passed, 1 skipped. The skip is
-      test_the_step_still_declares_a_no_op_when_the_base_is_readable, which needs bash >= 4 and
-      therefore runs on this workflow's own ubuntu-latest job — named here because a skip that is
-      not named is a silent pass.
+      test_the_step_still_declares_a_no_op_when_the_base_is_readable, gated at this point on a
+      bash VERSION check — which round 2 replaced with a capability probe, both seats having
+      objected to it. Named here because a skip that is not named is a silent pass.
     cmd: "python3 -m pytest scripts/tests/test_merah_putih_day_contrast.py"
     exit: 0
     ts: "2026-09-04T14:46:16Z"
@@ -125,6 +134,50 @@ receipts:
     exit: 0
     ts: "2026-09-04T14:48:01Z"
     seat: "conductor (M5, build lane)"
+  - claim: >-
+      Round 2 went RED first and it is recorded: 63 passed, 1 failed. The failing test was the
+      innocence half of the shell suite, which had stopped skipping because the first capability
+      probe was wrong — a heredoc inside $( ) with no apostrophe in its body runs clean on bash
+      3.2, so the canary passed and the real step still could not run. That is what sent the probe
+      back for a second measurement.
+    cmd: "python3 -m pytest scripts/tests/test_merah_putih_day_contrast.py"
+    exit: 1
+    ts: "2026-09-04T15:39:47Z"
+    seat: "conductor (M5, build lane)"
+  - claim: >-
+      After the probe was rebuilt around the real hazard: 63 passed, 1 skipped, and actionlint
+      exit 0. The skip is the same named test as before, now skipped on a PROBE that does the
+      dangerous thing rather than on a bash version string.
+    cmd: >-
+      python3 -m pytest scripts/tests/test_merah_putih_day_contrast.py && actionlint
+      .github/workflows/merah-putih-day-contrast.yml
+    exit: 0
+    ts: "2026-09-04T15:40:48Z"
+    seat: "conductor (M5, build lane)"
+  - claim: >-
+      GUILT for the whole round-2 corpus: this branch's test file run against main's copy of the
+      workflow fails 14 tests and passes 49 — the fail-closed branches, the verdict gate in both
+      directions, the ls-tree branch and the publish-ordering assertion all go red without the
+      cure.
+    cmd: >-
+      git worktree add --detach .worktrees/_verify-merah-main origin/main && cp
+      scripts/tests/test_merah_putih_day_contrast.py .worktrees/_verify-merah-main/scripts/tests/
+      && cd .worktrees/_verify-merah-main && python3 -m pytest
+      scripts/tests/test_merah_putih_day_contrast.py
+    exit: 1
+    ts: "2026-09-04T15:41:00Z"
+    seat: "conductor (M5, build lane)"
+  - claim: >-
+      The bash 3.2 hazard is an APOSTROPHE, not the heredoc shape — measured directly, and it is
+      why the first probe was wrong. `bash -n` exits 0 on the shipped step; a canary heredoc
+      inside $( ) with a clean body runs and prints ok; the same canary with "the PR's" in its
+      body dies with "unexpected EOF while looking for matching `''". bash 3.2 does not skip the
+      heredoc body while scanning for the closing paren.
+    cmd: "bash --version && bash -n <extracted step> && bash <canary with an apostrophe in the heredoc body>"
+    exit: 2
+    ts: "2026-09-04T15:38:00Z"
+    seat: "conductor (M5, build lane)"
+    ts_note: "minute precision — this receipt aggregates three probes run in one shell invocation, and is the only receipt here not stamped by its own `date -u`."
 dissent:
   - seat: codex-gpt-5.6-sol
     status: CONFIRMED
@@ -193,12 +246,109 @@ dissent:
       in depth against a future key that loses `github.ref`, not a live bug fix. This is the same
       finding the brief carries as open_finding MERAH-1, now closed in the file rather than only
       recorded.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    verdict: BLOCK
+    round: 2
+    objection: >-
+      HIGH — the verdict protection was tested lexically, not behaviourally. "The test never
+      forces empty or malformed sentinel output. It passes if the valid arm becomes `true|false|*`,
+      because it merely searches for `"true|false"` and `"fail_closed"`."
+    resolution: >-
+      Cured in 278ab62532: the real `case "$RUN" ... esac` fragment is lifted out of the shipped
+      step and EXECUTED with `fail_closed` stubbed — two innocence cases (true, false) and five
+      guilt cases (empty string, maybe, "true false", TRUE, leading space). A widened arm now
+      accepts the garbage and the test goes red. Ordering stays structural, deliberately: position
+      is the one property driving the fragment cannot show.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    verdict: BLOCK
+    round: 2
+    objection: >-
+      HIGH — only the first shell failure branch was pinned. "It never exercises the distinct case
+      where the commit exists but `git diff A...HEAD` fails ... The second `fail_closed` call can
+      regress independently without detection."
+    resolution: >-
+      Cured in 278ab62532 by
+      test_the_step_fails_closed_when_the_base_is_reachable_but_undiffable: two orphan roots in a
+      temp repo give a base that IS reachable and has no merge base, so the first probe passes and
+      the diff guard is the only thing that can produce `run=true`. The absence of a merge base is
+      asserted as a precondition rather than assumed.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    verdict: BLOCK
+    round: 2
+    objection: >-
+      MEDIUM — "the `blob:none` cure is not tested under `blob:none`. Both new execution tests
+      construct ordinary full repositories." Also: the prose still said `cat-file -e` is "the probe
+      for both".
+    resolution: >-
+      Partly cured and partly recorded, which is the honest split. The three ls-tree OUTCOMES are
+      now driven: present and absent were already covered, and the third — the listing itself
+      failing — is forced in 278ab62532 by a `git` shim early on PATH that fails only `ls-tree`
+      and execs the real binary for everything else. The blob:none PREMISE is NOT pinned and could
+      not be: `git clone --filter=blob:none file://...` answers "filtering not recognized by
+      server, ignoring" and hands over every blob (measured this round), so a test built on it
+      would assert nothing while looking rigorous. Carried as open finding MERAH-3. The prose is
+      corrected in the same commit.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    verdict: BLOCK
+    round: 2
+    objection: >-
+      MEDIUM — "The complete shipping script passes `bash -n` under macOS Bash 3.2; the alleged
+      parse limitation does not justify skipping."
+    resolution: >-
+      Confirmed and the premise was indeed false — `bash -n` exits 0 on the shipped step, measured.
+      The SKIP still stands, because running it fails; what was wrong was the stated reason and the
+      version check behind it. Cured in 278ab62532 with a capability probe that performs the
+      dangerous operation, and the hazard is now named precisely: not the heredoc-in-$( ) shape,
+      which runs clean on 3.2, but an APOSTROPHE in the heredoc body, which bash 3.2 reads as an
+      opening quote while scanning for the closing paren. Every comment in the snippet carries one.
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    verdict: CONCERN
+    round: 2
+    objection: >-
+      "`_bash_major()` probes whatever `bash` PATH resolves first — the same checkout proves
+      innocence on a Mac with Homebrew bash and silently 'passes' on one without. A guard property
+      that evaporates based on PATH order is not pinned; it's weather." And, independently of
+      codex: the verdict test "pins spelling, and says so" — a `# case "$RUN"` comment above a
+      validation-free step would satisfy it.
+    resolution: >-
+      Both closed by the same two cures as the codex findings above (capability probe, executed
+      fragment). Recorded separately because two seats reaching the same defect from opposite
+      directions is the signal, not a duplicate.
+  - seat: kimi-code/k3
+    status: PLAUSIBLE
+    verdict: CONCERN
+    round: 2
+    objection: >-
+      "`fail_closed` itself dereferences `$GITHUB_OUTPUT` under `set -u`; unset, the fail-closed
+      branch dies mid-recovery — red, not silent, and the runner always sets it, so latent only."
+    resolution: >-
+      Accepted as stated and NOT cured. The seat's own reading is that this is latent: GitHub
+      Actions always sets $GITHUB_OUTPUT, and the failure mode is a red job, not a silent pass — so
+      curing it would add a branch no reachable input takes. Recorded here rather than closed with
+      code, which is the difference between a finding answered and a finding buried.
 open_findings:
   - id: MERAH-2
-    title: "The innocence half of the shell test does not execute on a developer Mac"
+    title: "The innocence half of the shell test does not execute where the shell mangles the step"
     detail: >-
-      test_the_step_still_declares_a_no_op_when_the_base_is_readable skips below bash 4, because
-      /bin/bash on macOS is 3.2 and cannot parse the heredoc-inside-$( ) shape the step ships. It
-      runs on ubuntu-latest, which is where the workflow actually runs, so the guarantee is
-      asserted where it matters — but an M5 session gets 54 passed / 1 skipped and must not read
-      that as full local coverage. Recorded rather than hidden behind a green count.
+      test_the_step_still_declares_a_no_op_when_the_base_is_readable skips wherever the shell
+      cannot run the shape the step ships — now decided by a probe that performs the operation,
+      not by `bash --version` (which reads whatever PATH resolves first) and not by `bash -n`
+      (which exits 0 on the real step). On /bin/bash 3.2, macOS's, the probe fails and the test
+      skips; on the ubuntu runner it passes and the test executes, which is where the workflow
+      actually runs. An M5 session therefore sees 63 passed / 1 skipped and must not read that as
+      full local coverage — the CI run of this workflow's own job is the one to read.
+  - id: MERAH-3
+    title: "The blob:none premise is argued, not pinned"
+    detail: >-
+      The ls-tree cure rests on a claim about partial clones: that a failed promisor fetch
+      surfaces on `cat-file -e <sha>:<path>` and not on `ls-tree`, because a blob:none clone
+      already holds the trees. The three ROUTING outcomes are driven by tests; the premise itself
+      is not, and the attempt to pin it is why this is recorded rather than claimed: a local
+      `git clone --filter=blob:none file://...` answers "filtering not recognized by server,
+      ignoring" and copies every blob, so the fixture cannot be built without a filter-honouring
+      server. Raised by codex-gpt-5.6-sol, round 2, MEDIUM.
