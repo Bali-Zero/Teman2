@@ -83,7 +83,8 @@ diff: >-
   four small edits to the conformance checker's dispatch, three lines added to
   immune-enforcement.yml, and one corrected block in the lane brief.
 
-  SIZE, stated rather than hidden: ~2,000 added lines against the contract's ~400. It is one
+  SIZE, stated rather than hidden: 3,049 added lines from the merge-base, of which 2,677
+  outside this evidence directory, against the contract's ~400. It is one
   concern — the format and the boundary that makes it safe to execute — and the bulk is
   proofs: 104 corpus fixtures and 114 tests for nine guards. Splitting the guards from their
   evidence would land a validator with nothing showing that it validates. The ceiling rule
@@ -92,8 +93,8 @@ diff: >-
 
 receipts:
   - claim: The deterministic gear floor recomputed from this PR's changed-file list is 3.
-    cmd: git diff --name-only origin/main > /tmp/cf.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/cf.txt
-    result: "3 (source: path)"
+    cmd: git diff --name-only $(git merge-base HEAD origin/main) > /tmp/cf.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/cf.txt && python3 scripts/evidence_pack_lint.py --print-floor-source --changed-files-file /tmp/cf.txt
+    result: "3 then path (two separate print() calls, two flags — no single flag emits both)"
     exit: 0
     ts: "2026-09-04T20:40+08:00"
     seat: session (Pro)
@@ -114,8 +115,10 @@ receipts:
   - claim: >-
       A1. A pack with no `bites:` key is `absent` and exits 0; a pack whose observe pipes
       to a shell exits 2. The asymmetry the migration depends on is real, not asserted.
-    cmd: printf 'gear 3' | python3 scripts/ci/bites_parse.py --pack - ; and the pipe-to-shell fixture through the same CLI
-    result: '{"absent": true} at exit 0, and exit 2 for the pipe'
+    cmd: >-
+      printf 'gear: 3\n' | python3 scripts/ci/bites_parse.py --pack - ; then the
+      pipe-to-shell fixture through the same CLI
+    result: '{"absent": true} at exit 0, and {"malformed": true} at exit 2 for the pipe'
     exit: 0
     ts: "2026-09-04T20:20+08:00"
     seat: session (Pro)
@@ -155,14 +158,14 @@ receipts:
   - claim: >-
       ROUND 2. The ReDoS pattern is refused, and the cost it would have imposed was
       measured rather than assumed.
-    cmd: python3 -c "re.compile('^(a+)+$').match('a'*24+'b')" with a timer
+    cmd: python3 -c "import re,time; t=time.time(); re.compile('^(a+)+$').match('a'*24+'b'); print(time.time()-t)"
     result: "0.376s at n=24 for (a+)+, 0.703s for (a|a)+; both now refused, `[0-9]+ passed` still accepted"
     exit: 0
     ts: "2026-09-04T20:48+08:00"
     seat: session (Pro)
   - claim: The neighbouring workflow lints that judge the edited file are green.
-    cmd: python3 -m pytest scripts/tests/test_lint_workflow_errexit_decap.py scripts/tests/test_unreachable_workflow_conditions.py scripts/tests/test_lint_doc_executable_refs.py -q
-    result: "78 passed (with the two trigger-symmetry files)"
+    cmd: python3 -m pytest scripts/tests/test_immune_enforcement_trigger_symmetry.py scripts/tests/test_lint_trigger_symmetry.py scripts/tests/test_lint_workflow_errexit_decap.py scripts/tests/test_unreachable_workflow_conditions.py scripts/tests/test_lint_doc_executable_refs.py -q
+    result: "78 passed"
     exit: 0
     ts: "2026-09-04T21:08+08:00"
     seat: session (Pro)
@@ -170,10 +173,28 @@ receipts:
       The registry edit adds and never reformats: no line that existed on origin/main is
       touched, which is how the first attempt (json.dumps round-trip, 107 lines rewritten)
       was caught and undone.
-    cmd: git diff --numstat origin/main -- infra/guard-conformance/registry.json
-    result: "154 0"
+    cmd: git diff --numstat $(git merge-base HEAD origin/main) -- infra/guard-conformance/registry.json
+    result: "157 0"
     exit: 0
     ts: "2026-09-04T21:06+08:00"
+    seat: session (Pro)
+
+  - claim: >-
+      The size figure, measured rather than estimated. It is stated here because an
+      earlier draft of this same pack said "~2,000" with no receipt behind it, which the
+      countable-claims rule exists to catch and a verifier caught first.
+    cmd: git diff --numstat $(git merge-base HEAD origin/main) | awk '{a+=$1;d+=$2} END {print a,d}'
+    result: "3049 21 (2677 added outside this evidence directory)"
+    exit: 0
+    ts: "2026-09-04T21:45+08:00"
+    seat: session (Pro)
+  - claim: >-
+      The corpus and the test file report their own sizes, so the prose cannot drift from
+      them again.
+    cmd: python3 -c "<len(CONFORMANCE_CORPUS)>" ; grep -c "^def test_" scripts/tests/test_bites_parse.py
+    result: "104 and 114"
+    exit: 0
+    ts: "2026-09-04T21:45+08:00"
     seat: session (Pro)
 
 cloud_ok: >-
@@ -268,6 +289,33 @@ dissent:
       guard that judges the VALUE, so re-admitting the option did not reopen the hole it
       was removed for. A reviewer will not volunteer the over-match half unless asked for
       it by name, and three of the seven idioms were already broken when this round began.
+  - seat: claude sonnet (independent receipt verifier, round 5)
+    objection: >-
+      "Four receipts are stated more strongly than their commands produce. Receipt 4's
+      literal cmd has a one-character typo (`gear 3`, not a YAML mapping) and therefore
+      produces the OPPOSITE classification from the one claimed. Receipt 10's cmd reaches
+      52 of the 78 passes it claims; the other 26 arrive through prose. Receipt 1 claims a
+      string no flag emits. Receipt 11 says 154 where the number is 157. And three numbers
+      in the `diff:` prose (96-entry corpus, 110 tests, ~2,000 lines) contradict the
+      pack's own receipts or nothing at all — the real figures are 104, 114 and 3,049."
+    status: CONFIRMED
+    resolution: >-
+      Every one reproduced on this machine and fixed here, and the round is recorded
+      because of what it is: a pack whose subject is the distance between a claim and an
+      observation had four claims that did not survive being re-run. Receipt 4 is the one
+      that matters — a typo turned a receipt into its own contradiction, and it read as
+      evidence because nobody had re-executed the string as written.
+
+      ONE OF THE FIVE WAS NOT MINE, and finding that out cost the same discipline. The
+      verifier reported that a pre-existing registry line had been deleted, and so did
+      `git diff origin/main` on my own machine. Measured from the MERGE-BASE, as this
+      pack's own `diff:` field says to do, the registry edit is 157/0 and touches nothing:
+      the line belongs to a commit that landed on main while this branch was open. Both of
+      us had measured against a ref that moved (W102), and the correct answer was written
+      three lines above the mistake. I re-added the line before checking, and
+      guard-conformance immediately failed with "exempted file no longer exists" — the
+      checker caught my correction, which is the second time in this PR that a gate has
+      caught the author repairing something that was not broken.
   - seat: the test suite of this PR, applied to itself
     objection: >-
       An innocence test written in this very PR asserted that a zero-width character
