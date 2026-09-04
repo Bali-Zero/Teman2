@@ -10,7 +10,8 @@
 # it NEVER blocks — see the bottom of this file and the call site in
 # `.husky/pre-push`).
 #
-# SCOPE (four checks, each scoped to what actually changed vs origin/main):
+# SCOPE (six checks; 1-3 are scoped to what changed vs origin/main, 3b/3c are
+# deliberately unconditional — each says why at its own definition):
 #   1. impact-scoped pytest, via `scripts/ci/impact_map.py` (the SAME engine
 #      the PR lane's test-selection uses) — only the backend test modules
 #      the diff can actually reach, never the full 17k-test suite.
@@ -18,6 +19,12 @@
 #      package.json's own `format`/`format:check` scripts).
 #   3. `actionlint` — only when `.github/workflows/` is touched, run with no
 #      file args (same auto-discovery scope as `.github/workflows/actionlint.yml`).
+#   3b. skills-canon: untracked drift between `.claude/skills` and
+#      `.agents/skills` — unconditional, because the drift it catches is by
+#      definition untracked and never appears in a diff.
+#   3c. scripts-coupling: `scripts/ci/scripts_coupling_census.py --check`,
+#      unconditional — a stale SCRIPTS_COUPLING block landing on main makes
+#      every later PR re-buy all six heavy suites.
 #   4. R1 heading presence: if the current branch has an open PR, check its
 #      body for the LITERAL line `## Adversarial review` — exact string,
 #      anchored, case-sensitive. NOT a substring match on "adversarial":
@@ -396,7 +403,20 @@ run_scripts_coupling_census_check() {
     fi
 
     printf '%s\n' "$out" | sed 's/^/            /'
-    echo "   [scripts-coupling] STALE (rc=$rc) — fix: python3 scripts/ci/scripts_coupling_census.py --write"
+    if [ "$rc" -ne 1 ]; then
+        # rc=2 is the census tool failing on itself, not a stale block: it
+        # exits 2 when `git grep -P` breaks (an old git without PCRE, most
+        # likely). Telling the user to run --write there would be WRONG advice
+        # — `main()` calls `_census()` before it dispatches to either mode, so
+        # --write walks the identical `_run_git_grep()` path and dies the same
+        # way. One remedy printed for two different faults is how an advisory
+        # becomes noise.
+        echo "   [scripts-coupling] the census TOOL failed (rc=$rc) — this is NOT a staleness"
+        echo "                      result and --write will not fix it: it runs the same"
+        echo "                      \`git grep -P\` first. See the output above."
+        return 0
+    fi
+    echo "   [scripts-coupling] STALE (rc=1) — fix: python3 scripts/ci/scripts_coupling_census.py --write"
     echo "                      then commit scripts/ci/change_map.py in THIS PR."
     echo "                      A mention of a repo-root scripts/ path anywhere under apps/,"
     echo "                      packages/core or tests.yml counts — a COMMENT counts too."
