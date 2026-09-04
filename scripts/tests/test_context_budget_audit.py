@@ -2,11 +2,12 @@
 rollup). Module loaded via importlib (scripts/ is a flat bag, not a
 package — mirrors test_adversarial_review_gate.py's convention).
 
-REPO_SCOPE_TOKEN_CEILING is a RATCHET, not the diet's eventual 15,000-token
-target: measured 2026-09-04 (ratio 2.04) the real total was ~15,553 est.
-tokens. Tighten toward 15,000 once the superscar 8KB PR (#5639) and the
-root CLAUDE.md trim land — the assertion message always prints the
-measured breakdown, so tightening is a one-line, evidence-backed edit.
+REPO_SCOPE_TOKEN_CEILING is a RATCHET: measured 2026-09-04 evening (ratio
+2.04) after #5639 (superscar 8,189B) and #5642 (root CLAUDE.md 7,468B)
+landed, the repo-scope total is 12,135 est. tokens; the ceiling sits ~3%
+above that. UNSCOPED_RULES_BYTE_CEILING mirrors test_superscar_budget.py's
+8,192-byte cap. The assertion message prints the measured breakdown, so any
+further tightening stays a one-line, evidence-backed edit.
 """
 
 from __future__ import annotations
@@ -31,9 +32,9 @@ def _load_module() -> ModuleType:
 
 cba = _load_module()
 
-REPO_SCOPE_TOKEN_CEILING = 16_000
+REPO_SCOPE_TOKEN_CEILING = 12_500
 # Matches test_superscar_budget.py's BYTE_BUDGET on cicatrix-superscar.md.
-UNSCOPED_RULES_BYTE_CEILING = 14_000
+UNSCOPED_RULES_BYTE_CEILING = 8_192
 
 
 def _write(path: Path, content: str) -> None:
