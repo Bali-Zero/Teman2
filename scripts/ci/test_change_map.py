@@ -653,6 +653,72 @@ class ChangeMapTests(unittest.TestCase):
         self.assertFalse(result["run_all"])
         self.assertEqual(result["suggested_jobs"], ["backend-tests", "e2e-tests"])
 
+    def test_innocence_claude_settings_and_hooks_skip_every_test_job(self) -> None:
+        # Before this PR, .claude/settings.json, .claude/settings.local.json
+        # and .claude/hooks/*.py fell into unknown_paths (unmapped) and
+        # forced run_all=True — none of the six tests.yml jobs read the
+        # harness config or hook scripts; they are verified by
+        # immune-enforcement.yml and scripts/tests/ instead. (a) in the PR
+        # body's numbering.
+        for path in (
+            ".claude/settings.json",
+            ".claude/settings.local.json",
+            ".claude/hooks/x.py",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertEqual(result["reason"], "classified")
+                self.assertEqual(result["unknown_paths"], [])
+                self.assertTrue(result["domains"]["fleet_ops"])
+                self.assertEqual(result["suggested_jobs"], [])
+
+    def test_guilt_claude_settings_does_not_suppress_a_real_backend_change(
+        self,
+    ) -> None:
+        # (b) in the PR body's numbering: fleet_ops must not suppress the
+        # job set a co-changed backend_python path already earns.
+        result = cm.classify(
+            [".claude/settings.json", "apps/backend-rag/backend/app/main.py"]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["backend_python"])
+        self.assertIn("backend-tests", result["suggested_jobs"])
+
+    def test_innocence_guard_conformance_registry_skips_every_test_job(self) -> None:
+        # infra/guard-conformance/ is more specific than the "infra/"
+        # catch-all and must win — before this entry the registry inherited
+        # infra_workflows/security_sensitive and forced all six jobs, though
+        # guard-conformance.yml's own guilt+innocence run is what actually
+        # verifies it (cicatrix #3's ESEGUIBILE).
+        result = cm.classify(["infra/guard-conformance/registry.json"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["unknown_paths"], [])
+        self.assertTrue(result["domains"]["fleet_ops"])
+        self.assertFalse(result["domains"]["infra_workflows"])
+        self.assertEqual(result["suggested_jobs"], [])
+
+    def test_innocence_a_hooks_settings_only_pr_shape_skips_every_test_job(
+        self,
+    ) -> None:
+        # (c) in the PR body's numbering: the realistic PR #5681 shape (a
+        # per-prompt recall hook touching scripts/memory, scripts/hooks,
+        # scripts/tests, the guard-conformance registry, and the harness
+        # settings file) must classify cleanly with zero suggested jobs.
+        result = cm.classify(
+            [
+                "scripts/memory/mos_recall_sessionstart.py",
+                "scripts/hooks/organism_alert_sessionstart.sh",
+                "scripts/tests/test_memory_layers.py",
+                "infra/guard-conformance/registry.json",
+                ".claude/settings.json",
+            ]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["unknown_paths"], [])
+        self.assertTrue(result["domains"]["fleet_ops"])
+        self.assertEqual(result["suggested_jobs"], [])
+
     def test_cli_stdout_is_one_compact_json_line(self) -> None:
         script = Path(__file__).with_name("change_map.py")
         completed = subprocess.run(
