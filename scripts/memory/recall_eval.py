@@ -14,6 +14,7 @@ import re
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import mos_recall_sessionstart as mos  # noqa: E402
@@ -127,6 +128,37 @@ def main() -> int:
     ap.add_argument("--skip-baseline", action="store_true")
     args = ap.parse_args()
 
+    # DEFECT 2 fix: the docstring above claims this bench is "read-only on MEMDIR", but
+    # nothing enforced it -- mos.recall(..., use_cache=True) calls build_or_refresh_index
+    # -> save_cache(cache_path, index), and that cache serialises each memory's `name`,
+    # `description` and a body preview UNREDACTED. If --cache-path (or --out) points inside
+    # --memdir, this bench itself becomes the leak: an unredacted copy of the operator's
+    # real memory content written back into the memory dir it is supposed to only measure.
+    # This is not a theoretical concern -- it is the concrete failure mode of the very cache
+    # this bench forces on (use_cache=True in run_prototype). Resolve real paths and refuse
+    # to run rather than silently write there.
+    memdir_real = Path(args.memdir).resolve() if args.memdir else None
+    out_real = Path(args.out).resolve()
+    cache_real = Path(args.cache_path).resolve()
+
+    def _is_inside(path: Path, base: Path) -> bool:
+        try:
+            path.relative_to(base)
+            return True
+        except ValueError:
+            return False
+
+    if memdir_real is not None:
+        offenders = [flag for flag, p in (("--out", out_real), ("--cache-path", cache_real)) if _is_inside(p, memdir_real)]
+        if offenders:
+            raise SystemExit(
+                f"recall_eval.py: {', '.join(offenders)} resolve(s) inside --memdir ({memdir_real}) -- "
+                "this bench is read-only on MEMDIR by contract. mos.recall(..., use_cache=True) writes "
+                "an UNREDACTED cache (memory name/description/body preview) to --cache-path, so a "
+                "--cache-path (or --out) under MEMDIR is a concrete PII/content leak into the memory "
+                "dir, not a theoretical one. Point --out and --cache-path outside --memdir."
+            )
+
     os.makedirs(args.out, exist_ok=True)
 
     missing = verify_expected_files_exist(args.memdir)
@@ -180,7 +212,13 @@ def main() -> int:
                 "baseline_rank": b_rank,
                 "baseline_returncode": b_rc,
                 "baseline_elapsed_s": round(b_elapsed, 4),
-                "baseline_stderr_snippet": (b_err or "")[:200],
+                # DEFECT 4 fix: the raw baseline stderr used to be copied verbatim into the
+                # report ("baseline_stderr_snippet": b_err[:200]) -- `mem recall` is free to
+                # echo back fragments of the query or matched memory content on error, and
+                # this report is a shared artifact (CLAUDE.md Part A rule 4: no client PII/
+                # OSINT in cleartext in any shared artifact). Record only the fact that stderr
+                # was non-empty, never its content.
+                "baseline_stderr_nonempty": bool((b_err or "").strip()),
             })
 
         rows.append(row)
@@ -214,6 +252,16 @@ def main() -> int:
 
     print(json.dumps({k: v for k, v in report.items() if k != "rows"}, indent=2))
     print(f"\n[recall_eval] wrote {report_path}", file=sys.stderr)
+
+    # DEFECT 4 fix: a PII hit used to sit quietly in the report's pii_findings list with
+    # exit code 0 -- a green CI/cron run and a positive PII finding looked identical from
+    # the outside (exactly the "green != working" shape this repo's scar family #2 names).
+    # Surface it on stderr and fail the process so a caller (human or cron) cannot miss it.
+    if pii_findings:
+        print(f"[recall_eval] PII findings: {len(pii_findings)}", file=sys.stderr)
+        for finding in pii_findings:
+            print(f"  scenario={finding['scenario']!r} layer={finding['layer']} hits={finding['hits']}", file=sys.stderr)
+        return 2
     return 0
 
 

@@ -8,13 +8,12 @@ under ~/.claude or the operator's real memdir is touched.
 """
 from __future__ import annotations
 
+import hashlib
 import inspect
 import json
 import os
 import subprocess
 import sys
-
-import pytest
 
 SCRIPTS_MEMORY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "memory")
 sys.path.insert(0, SCRIPTS_MEMORY)
@@ -33,6 +32,18 @@ def test_the_bench_api_surface_it_depends_on_still_exists():
     caught the rename until the bench was actually run again. Pin the exact
     callables and parameter names the bench calls so the next rename over there
     breaks a test HERE, loudly, instead of silently rotting an eval bench again.
+
+    DEFECT 5: name-only pinning (checking a param name is present *somewhere* in the
+    signature) is both too strict and too loose against the REAL call shape.
+    run_prototype() calls `mos.recall(memdir, cache_path, query, topk=k,
+    use_cache=True)` -- the first three arguments POSITIONALLY, in that order, and
+    `topk`/`use_cache` as keywords. `mos.format_output(results)` passes `results`
+    positionally. `resolve_memdir()` is called with zero arguments as a CLI default
+    (`ap.add_argument("--memdir", default=mos.resolve_memdir())`). A signature change
+    that keeps every name but makes `memdir` keyword-only, or reorders the first
+    three params, would still satisfy the old name-only assertions while breaking the
+    bench at runtime with a TypeError. `inspect.signature(...).bind(...)` reproduces
+    the actual call shape and raises TypeError itself if it no longer fits.
     """
     for name in ("recall", "format_output", "resolve_memdir"):
         assert callable(getattr(mos, name, None)), (
@@ -40,18 +51,43 @@ def test_the_bench_api_surface_it_depends_on_still_exists():
             "on mos_recall_sessionstart -- a rename here silently rots the bench."
         )
 
-    recall_params = set(inspect.signature(mos.recall).parameters)
-    for p in ("memdir", "cache_path", "query", "topk", "use_cache"):
-        assert p in recall_params, (
-            f"recall_eval.py calls mos.recall(...) with a '{p}' argument; it is no "
-            "longer in mos.recall's signature -- a rename here silently rots the bench."
-        )
-
-    format_output_params = set(inspect.signature(mos.format_output).parameters)
-    assert "results" in format_output_params, (
-        "recall_eval.py calls mos.format_output(results); 'results' is no longer in "
-        "mos.format_output's signature -- a rename here silently rots the bench."
+    recall_sig = inspect.signature(mos.recall)
+    recall_param_names = list(recall_sig.parameters)
+    assert recall_param_names[:3] == ["memdir", "cache_path", "query"], (
+        "run_prototype() calls mos.recall(memdir, cache_path, query, ...) "
+        "POSITIONALLY in that exact order; mos.recall's first three parameters "
+        "are no longer (memdir, cache_path, query) in that order -- a reorder here "
+        "silently rots the bench (wrong values bound to the wrong names)."
     )
+    try:
+        recall_sig.bind("dummy_memdir", "dummy_cache_path", "dummy_query", topk=6, use_cache=True)
+    except TypeError as e:
+        raise AssertionError(
+            "recall_eval.py's run_prototype() calls "
+            "mos.recall(memdir, cache_path, query, topk=k, use_cache=True) -- that "
+            "exact call shape no longer binds against mos.recall's signature "
+            f"({e}); a rename/reorder/keyword-only change here silently rots the "
+            "bench."
+        ) from e
+
+    format_output_sig = inspect.signature(mos.format_output)
+    try:
+        format_output_sig.bind("dummy_results")
+    except TypeError as e:
+        raise AssertionError(
+            "recall_eval.py calls mos.format_output(results) positionally; "
+            f"mos.format_output's first parameter no longer accepts a positional "
+            f"argument ({e}) -- a rename here silently rots the bench."
+        ) from e
+
+    try:
+        inspect.signature(mos.resolve_memdir).bind()
+    except TypeError as e:
+        raise AssertionError(
+            "recall_eval.py calls mos.resolve_memdir() with zero arguments as a "
+            f"CLI default; that no longer binds ({e}) -- a new required parameter "
+            "here silently rots the bench."
+        ) from e
 
 
 def test_the_twelve_scenario_set_matches_what_the_live_threshold_cites():
@@ -96,12 +132,20 @@ SYNTHETIC_MEMORIES = [
 
 def test_the_bench_runs_end_to_end_on_a_synthetic_memdir(tmp_path):
     """Full subprocess smoke test: the bench must run clean against a throwaway
-    memdir that has real memory-file shape but none of the SCENARIOS' expected
-    filenames. This does NOT assert a hit rate -- a synthetic corpus legitimately
-    can't hit real expected files, so every scenario should legitimately miss. What
-    it proves instead is that the bench correctly REPORTS a memdir that lacks its
-    corpus (missing_expected_files has all 12 entries) rather than silently scoring
-    an empty or broken run as if it were a real result.
+    memdir that has real memory-file shape but (deliberately, for 11 of the 12
+    scenarios) none of the SCENARIOS' expected filenames.
+
+    DEFECT 1: the previous version of this test only asserted shape (exit code,
+    report-file existence, its keys, "12 missing") -- never that mos.recall()
+    actually ran and returned anything. Replacing run_prototype()'s body with
+    `return [], 0, "", {}` still passed all of that. Plant ONE scenario's real
+    expected file -- read live_query/live_expected from recall_eval.SCENARIOS at
+    RUNTIME rather than hardcoding a filename here, so this stays honest if
+    SCENARIOS ever changes -- with body text built from that scenario's own query
+    string, so there is a genuine, high-overlap BM25 match to find. A stubbed
+    run_prototype returns zero results for every scenario, which flips both
+    assertions below: missing_expected_files would stay at 12 (the planted file
+    would never be "found" by a dead recall) and hit_at_6 would stay at 0.
     """
     memdir = tmp_path / "memdir"
     memdir.mkdir()
@@ -109,6 +153,19 @@ def test_the_bench_runs_end_to_end_on_a_synthetic_memdir(tmp_path):
         (memdir / filename).write_text(
             SYNTHETIC_FRONT.format(name=name, desc=desc, typ=typ, topic=topic), encoding="utf-8"
         )
+
+    live_query, live_expected = recall_eval.SCENARIOS[0]
+    (memdir / live_expected).write_text(
+        "---\n"
+        "name: live-scenario\n"
+        f"description: {live_query}\n"
+        "metadata:\n"
+        "  type: discovery\n"
+        "---\n\n"
+        f"Body text about {live_query}, distinct vocabulary: "
+        f"{live_query} {live_query} {live_query}.\n",
+        encoding="utf-8",
+    )
 
     out_dir = tmp_path / "out"
     cache_path = tmp_path / "cache.json"
@@ -132,31 +189,120 @@ def test_the_bench_runs_end_to_end_on_a_synthetic_memdir(tmp_path):
     for key in ("n_scenarios", "prototype", "missing_expected_files", "pii_findings"):
         assert key in report
 
-    assert len(report["missing_expected_files"]) == 12, (
-        "synthetic memdir carries none of SCENARIOS' expected filenames; the bench "
-        "must report all 12 as missing rather than silently scoring the run as if "
-        "the real corpus were present."
+    assert len(report["missing_expected_files"]) == 11, (
+        "11 of SCENARIOS' 12 expected filenames are genuinely absent from this "
+        "synthetic memdir; only the one planted above (SCENARIOS[0]'s expected "
+        "file) is present. The bench must report exactly 11 missing -- 12 would "
+        "mean the planted file was never found, which is what a dead/stubbed "
+        "run_prototype() would also produce."
+    )
+    assert report["prototype"]["hit_at_6"] >= 1, (
+        "the planted file carries genuine query-matching vocabulary for "
+        "SCENARIOS[0] and should land inside the prototype's top 6; a stubbed "
+        "run_prototype() (`return [], 0, \"\", {}`) returns zero results for every "
+        "scenario and would leave hit_at_6 at 0 -- this is the assertion DEFECT 1 "
+        "found missing."
+    )
+    assert report["pii_findings"] == [], (
+        "DEFECT 4: the synthetic corpus carries no PII, so pii_findings must "
+        "genuinely be empty, not merely present as a report key."
     )
 
 
-def test_the_bench_never_writes_into_the_memory_dir():
+def _write_synthetic_memdir(memdir):
+    for filename, name, desc, typ, topic in SYNTHETIC_MEMORIES:
+        (memdir / filename).write_text(
+            SYNTHETIC_FRONT.format(name=name, desc=desc, typ=typ, topic=topic), encoding="utf-8"
+        )
+
+
+def _snapshot_dir(d):
+    """(size, mtime_ns, sha256) per file -- strict enough to catch a content OR a
+    timestamp-only mutation (e.g. an in-place re-save with identical bytes)."""
+    snap = {}
+    for p in sorted(d.iterdir()):
+        st = p.stat()
+        snap[p.name] = (st.st_size, st.st_mtime_ns, hashlib.sha256(p.read_bytes()).hexdigest())
+    return snap
+
+
+def test_the_bench_never_writes_into_the_memory_dir(tmp_path):
     """recall_eval.py measures the operator's REAL memories (or, in tests, a
     synthetic stand-in) and is read-only on --memdir by contract -- it may only
-    write inside the scratchpad dir given via --out. A bench that ever opens a
-    path derived from args.memdir in a write mode could corrupt or fabricate
-    entries in the operator's actual memory corpus, which is exactly the kind of
-    irreversible action this repo treats as off-limits without explicit care.
-    Static-scan the source rather than the running process: cheap, and it catches
-    the mistake even in a code path this test's own runs never exercise.
+    write inside the scratchpad dir given via --out / --cache-path.
+
+    DEFECT 3: the previous version of this test statically grepped source lines for
+    `args.memdir` sitting next to `open(`/`"w"` -- that catches nothing real, because
+    the actual write path is indirect: mos.recall(..., use_cache=True) calls
+    build_or_refresh_index() -> save_cache(cache_path, index), and cache_path is a
+    CLI flag value, never a literal expression containing the string "args.memdir"
+    anywhere in this file's source. Replace the static scan with a BEHAVIOURAL one:
+    snapshot every file under a synthetic memdir, run the bench for real with
+    --out/--cache-path OUTSIDE it (as the contract requires), and assert the memdir
+    is byte-identical afterwards with no new file added.
     """
-    src_path = os.path.join(SCRIPTS_MEMORY, "recall_eval.py")
-    with open(src_path, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-    for i, line in enumerate(lines, start=1):
-        if "args.memdir" in line:
-            assert '"w"' not in line and "open(" not in line, (
-                f"recall_eval.py:{i} appears to open a path derived from args.memdir "
-                "in a write mode -- the bench is READ-ONLY on MEMDIR by contract "
-                "(it measures the operator's real memories) and may only write "
-                "inside --out."
-            )
+    memdir = tmp_path / "memdir"
+    memdir.mkdir()
+    _write_synthetic_memdir(memdir)
+
+    before = _snapshot_dir(memdir)
+
+    out_dir = tmp_path / "out"
+    cache_path = tmp_path / "cache.json"  # deliberately OUTSIDE memdir
+    proc = subprocess.run(
+        [
+            sys.executable,
+            os.path.join(SCRIPTS_MEMORY, "recall_eval.py"),
+            "--memdir", str(memdir),
+            "--cache-path", str(cache_path),
+            "--out", str(out_dir),
+            "--skip-baseline",
+        ],
+        capture_output=True, text=True, timeout=60, cwd=REPO_ROOT,
+    )
+    assert proc.returncode == 0, f"bench exited nonzero: stdout={proc.stdout!r} stderr={proc.stderr!r}"
+
+    after = _snapshot_dir(memdir)
+    assert after == before, (
+        "memdir contents (size/mtime/sha256) changed after a bench run that "
+        "declares itself read-only on --memdir -- a genuine mutation, not just a "
+        "static-scan miss."
+    )
+    assert set(after) == set(before), "a new file appeared inside memdir during a bench run."
+
+
+def test_the_bench_refuses_a_cache_path_inside_memdir(tmp_path):
+    """DEFECT 2's companion: asserts the guard added to recall_eval.py's main()
+    actually fires. mos.recall(..., use_cache=True) writes an UNREDACTED cache
+    (memory name/description/body preview) to --cache-path via save_cache() -- a
+    --cache-path resolving inside --memdir is a concrete content leak back into the
+    memory dir this bench is supposed to only measure. Without a test that exercises
+    the guard end-to-end (not just reads its source), a later refactor could move the
+    check after the write, or drop it, and nothing would catch it -- the same way the
+    read-only contract itself rotted silently before DEFECT 3's fix.
+    """
+    memdir = tmp_path / "memdir"
+    memdir.mkdir()
+    _write_synthetic_memdir(memdir)
+
+    out_dir = tmp_path / "out"
+    bad_cache_path = memdir / ".recall_cache.json"  # INSIDE memdir -- the leak DEFECT 2 fixes
+    proc = subprocess.run(
+        [
+            sys.executable,
+            os.path.join(SCRIPTS_MEMORY, "recall_eval.py"),
+            "--memdir", str(memdir),
+            "--cache-path", str(bad_cache_path),
+            "--out", str(out_dir),
+            "--skip-baseline",
+        ],
+        capture_output=True, text=True, timeout=60, cwd=REPO_ROOT,
+    )
+    assert proc.returncode != 0, (
+        "recall_eval.py must refuse to run (non-zero exit) when --cache-path "
+        f"resolves inside --memdir (stdout={proc.stdout!r} stderr={proc.stderr!r})"
+    )
+    assert not bad_cache_path.exists(), (
+        "the read-only-on-memdir guard fired too late -- a cache file was still "
+        "written inside memdir before the process exited."
+    )
