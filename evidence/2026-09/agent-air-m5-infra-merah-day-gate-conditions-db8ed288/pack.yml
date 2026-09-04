@@ -11,11 +11,12 @@ seat_diversity: not_applicable
 seat_diversity_note: >-
   One build lane, so the D3 floor (>= 2 build lanes) does not fire. The REVIEW side is
   cross-family and generator != grader: codex-gpt-5.6-sol and kimi-code/k3 were dispatched
-  against the frozen diff with no access to this pack or brief, TWICE — round 2 reviewed the cures
-  round 1 asked for, because the build seat wrote those cures and grading them itself is the thing
-  this rule exists to stop. All four raw transcripts ship beside this file (review-codex-raw.txt,
-  review-kimi-raw.txt, review-codex-round2-raw.txt, review-kimi-round2-raw.txt) so every verdict
-  can be read rather than taken on trust.
+  against the frozen diff with no access to this pack or brief, over THREE rounds — each round
+  reviewed the cures the previous one asked for, because the build seat wrote those cures and
+  grading them itself is the thing this rule exists to stop. All five raw transcripts ship beside
+  this file (review-codex-raw.txt, review-kimi-raw.txt, review-codex-round2-raw.txt,
+  review-kimi-round2-raw.txt, review-codex-round3-raw.txt) so every verdict can be read rather
+  than taken on trust — including the two BLOCKs this pack does not claim to have answered.
 plan_ref: >-
   Session handoff HANDOFF-2026-09-04-M5.md (M5 conductor), continued 2026-09-04 — close the two
   conditions the Gear-3 gate attached to #5614's PASS-WITH-CONDITIONS, so the Merah Putih DAY
@@ -31,18 +32,19 @@ lanes:
     role: review
     seat: kimi-code/k3
 diff:
-  files: 9 files, +4804/-11, 8 commits
+  files: 10 files, +7645/-11, 10 commits
   net_lines: >-
     Measured with `git diff --no-renames --numstat` against the merge-base 60d0c4e856, over the
     WHOLE branch and not a lone commit's diff, and INCLUDING this pack file — CI recomputes the
     same numbers at lint time from the same merge-base, so a count that quietly omits itself is a
     count that fails, which is how the first version of this line went red. The shape matters more
-    than the total: the four raw council transcripts are 3830 of those added lines, pure evidence
-    that changes no behaviour, and only two of the nine files are code — the workflow and its test
-    corpus. The history is the original pair of conditions (6434bfa6a4), the innocence-fixture
-    correction (bfb31e9e5d), the three round-1 cures (2fca39e821), the correction of condition 1's
-    stated reason (b1c1c776ac), the pack (54c3a51e97), the commit that made these numbers count
-    themselves (a59ba2c59b), the round-2 cures (278ab62532), and this evidence refresh.
+    than the total: the five raw council transcripts are the large majority of those added lines,
+    pure evidence that changes no behaviour, and only two of the ten files are code — the workflow
+    and its test corpus. The history is the original pair of conditions (6434bfa6a4), the
+    innocence-fixture correction (bfb31e9e5d), the round-1 cures (2fca39e821), the correction of
+    condition 1's stated reason (b1c1c776ac), the pack (54c3a51e97), the commit that made these
+    numbers count themselves (a59ba2c59b), the round-2 cures (278ab62532), the round-2 evidence
+    (ba9fd487a5), the round-3 branch witnesses (54f13b68a9), and this evidence refresh.
   behaviour_change: >-
     `.github/workflows/merah-putih-day-contrast.yml`: `cancel-in-progress` becomes conditional on
     the event instead of an unconditional true; the sentinel step gains a SHELL-level fail-closed
@@ -331,6 +333,54 @@ dissent:
       Actions always sets $GITHUB_OUTPUT, and the failure mode is a red job, not a silent pass — so
       curing it would add a branch no reachable input takes. Recorded here rather than closed with
       code, which is the difference between a finding answered and a finding buried.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    verdict: BLOCK
+    round: 3
+    objection: >-
+      MEDIUM — "the orphan fixture does not identify the second branch. It proves only 'no merge
+      base' and later observes generic `run=true`. A regression making the first `fail_closed`
+      fire incorrectly masks a dead second branch." And the same defect on the shim: "the test
+      never records/asserts that its `ls-tree` arm ran; any earlier fail-closed producing `true`
+      satisfies it."
+    resolution: >-
+      Cured in 54f13b68a9. The three fail-closed paths print three different reasons, so the
+      reason is the witness: the undiffable-base test asserts "could not be taken" AND the absence
+      of "not reachable", the unreachable-base test asserts "not reachable", and the shim test
+      asserts "could not be listed" on the snippet's stderr. A branch that dies while another
+      covers for it is now red.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    verdict: BLOCK
+    round: 3
+    objection: >-
+      HIGH — "dead validation still passes. `_run_case_fragment` extracts only the textual
+      `case...esac`, discarding its surrounding control flow. Wrapping the workflow's real gate in
+      `if false; then ... fi` leaves the extracted harness green."
+    resolution: >-
+      CONFIRMED and NOT CURED — stated plainly rather than answered with a fourth cure. It is
+      true: lifting the fragment out proves the fragment's logic, not that the step reaches it.
+      Closing it properly means driving the whole step through a stubbed `python3` on PATH, which
+      needs the shell capability the ubuntu runner has and this machine does not, so it would be a
+      test that never executes where it was written. The PR stops here under the builder
+      contract's depth-1 rule — this is the third review round and the second consecutive one
+      whose findings are about the strength of the proofs rather than the behaviour of the code.
+      Carried as MERAH-4 so the next attempt inherits a named target instead of a moving one.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    verdict: BLOCK
+    round: 3
+    objection: >-
+      HIGH — "'anything' is five examples. An arm widened to `true|false|bogus)` passes every
+      parameter. The cure catches `*`, but still does not prove that exactly two values are
+      accepted." Plus LOW: the capability probe demands stdout exactly "ok" and would false-skip a
+      capable shell whose BASH_ENV emits harmless output.
+    resolution: >-
+      CONFIRMED and NOT CURED, for the same reason and with the same honesty as the entry above.
+      Proving "exactly two" needs the accepted set enumerated from the parsed case arms rather
+      than sampled, which is a different test and a different design conversation. The BASH_ENV
+      false-skip errs toward skipping a test that would have passed — the safe direction, and it
+      cannot turn a red into a green. Both carried as MERAH-4.
 open_findings:
   - id: MERAH-2
     title: "The innocence half of the shell test does not execute where the shell mangles the step"
@@ -342,6 +392,19 @@ open_findings:
       skips; on the ubuntu runner it passes and the test executes, which is where the workflow
       actually runs. An M5 session therefore sees 63 passed / 1 skipped and must not read that as
       full local coverage — the CI run of this workflow's own job is the one to read.
+  - id: MERAH-4
+    title: "Two round-3 findings are confirmed and deliberately not cured"
+    detail: >-
+      codex-gpt-5.6-sol returned BLOCK a third time, and both remaining findings are real: the
+      executed `case` fragment proves the gate's logic but not that the step REACHES it (wrap the
+      real gate in `if false; then ... fi` and the harness stays green), and five parameterised
+      garbage values do not prove that exactly two values are accepted. Neither is answered with a
+      fourth cure, on purpose. The builder contract stops a fix-of-a-fix at depth 1 and this is
+      round three, the second consecutive one whose findings are about the strength of the proofs
+      rather than the behaviour of the code — the shape the contract calls an under-specified
+      surface. What both want is the same thing: the whole step driven end to end with a stubbed
+      `python3`, which needs the shell capability MERAH-2 records this machine as lacking. That is
+      the spec for the next attempt, written here rather than attempted at midnight.
   - id: MERAH-3
     title: "The blob:none premise is argued, not pinned"
     detail: >-
