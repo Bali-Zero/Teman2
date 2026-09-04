@@ -244,3 +244,7 @@ rate — but it confirms the gate mechanism itself works exactly as designed whe
   read off the number, not confirmed from billing/runner-group config).
 - The single-digit-percent share of PRs that used an admin merge override (excluded from the
   sample by construction — merge-queue behavior only applies to queue-routed merges).
+
+## Adversarial review
+
+Seat: codex (GPT-5, `codex exec --sandbox read-only`), one round on the main report. Nine of its ten findings were arithmetic or attribution errors that were checked and corrected against the tables in THIS file (off-by-ones in job counts, a 5-vs-6 heavy-job enumeration, totals that did not reconcile, a wrong "same commit" claim); the tenth (HEADGREEN causality) was rebutted by a direct check on `merge_group` head SHAs, also recorded here. Dispositions, one per finding, live in the main report's `## Adversarial review`; this lane holds the raw rows they were verified against and carries no independent narrative to review.
