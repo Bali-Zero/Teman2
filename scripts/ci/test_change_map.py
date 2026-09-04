@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import json
+import os
+import re
 import subprocess
 import sys
 import unittest
@@ -11,6 +13,30 @@ from pathlib import Path
 
 import change_map as cm
 import security_gate_flags as sgf
+
+
+def _locate_repo_root(rel: Path) -> Path | None:
+    """Find the checkout that contains ``rel``, or None.
+
+    Never resolve the checkout relative to ``__file__`` alone: tests.yml
+    extracts this file FLAT into $RUNNER_TEMP/trusted-classifier/ (no
+    scripts/ci/ above it), where parents[2] is /home/runner/work and every
+    path built from it 404s. That mis-resolution turned the census staleness
+    assertion red on EVERY PR from #5679 (2026-09-04) until #5692, and the
+    classify step fell to run_all=true meanwhile. Any test here that touches
+    the checkout goes through this function and SKIPS when it is absent —
+    the assertion is made where the checkout exists, never faked where it
+    does not.
+    """
+
+    workspace = os.environ.get("GITHUB_WORKSPACE")
+    file_root = Path(__file__).resolve()
+    candidates = [Path.cwd()]
+    if workspace:
+        candidates.append(Path(workspace))
+    if len(file_root.parents) > 2:
+        candidates.append(file_root.parents[2])
+    return next((c for c in candidates if (c / rel).is_file()), None)
 
 
 class ChangeMapTests(unittest.TestCase):
@@ -619,8 +645,17 @@ class ChangeMapTests(unittest.TestCase):
         # extraction list, and it has no business there (it shells out to
         # `git grep` and writes files). --check re-derives SCRIPTS_COUPLING
         # live and exits 1 on drift (cicatrix #9).
-        repo_root = Path(__file__).resolve().parents[2]
-        census = repo_root / "scripts" / "ci" / "scripts_coupling_census.py"
+        # Locate the census in the CHECKOUT, never relative to __file__ —
+        # see _locate_repo_root's docstring for the flat-extraction trap and
+        # the #5679→#5692 outage it caused.
+        rel = Path("scripts") / "ci" / "scripts_coupling_census.py"
+        repo_root = _locate_repo_root(rel)
+        if repo_root is None:
+            self.skipTest(
+                "scripts_coupling_census.py not reachable from cwd, GITHUB_WORKSPACE "
+                "or __file__ — staleness is asserted where the checkout is present"
+            )
+        census = repo_root / rel
         completed = subprocess.run(
             [sys.executable, str(census), "--check"],
             cwd=repo_root,
@@ -652,6 +687,278 @@ class ChangeMapTests(unittest.TestCase):
         )
         self.assertFalse(result["run_all"])
         self.assertEqual(result["suggested_jobs"], ["backend-tests", "e2e-tests"])
+
+    def test_innocence_claude_settings_and_hooks_skip_every_test_job(self) -> None:
+        # Before this PR, .claude/settings.json, .claude/settings.local.json
+        # and .claude/hooks/*.py fell into unknown_paths (unmapped) and
+        # forced run_all=True — none of the six tests.yml jobs read the
+        # harness config or hook scripts; they are verified by
+        # immune-enforcement.yml and scripts/tests/ instead. (a) in the PR
+        # body's numbering.
+        for path in (
+            ".claude/settings.json",
+            ".claude/settings.local.json",
+            ".claude/hooks/x.py",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertEqual(result["reason"], "classified")
+                self.assertEqual(result["unknown_paths"], [])
+                self.assertTrue(result["domains"]["fleet_ops"])
+                self.assertEqual(result["suggested_jobs"], [])
+
+    def test_guilt_claude_settings_does_not_suppress_a_real_backend_change(
+        self,
+    ) -> None:
+        # (b) in the PR body's numbering: fleet_ops must not suppress the
+        # job set a co-changed backend_python path already earns.
+        result = cm.classify(
+            [".claude/settings.json", "apps/backend-rag/backend/app/main.py"]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["backend_python"])
+        self.assertIn("backend-tests", result["suggested_jobs"])
+
+    def test_innocence_guard_conformance_registry_skips_every_test_job(self) -> None:
+        # infra/guard-conformance/ is more specific than the "infra/"
+        # catch-all and must win — before this entry the registry inherited
+        # infra_workflows/security_sensitive and forced all six jobs, though
+        # guard-conformance.yml's own guilt+innocence run is what actually
+        # verifies it (cicatrix #3's ESEGUIBILE).
+        result = cm.classify(["infra/guard-conformance/registry.json"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["unknown_paths"], [])
+        self.assertTrue(result["domains"]["fleet_ops"])
+        self.assertFalse(result["domains"]["infra_workflows"])
+        self.assertEqual(result["suggested_jobs"], [])
+
+    def test_innocence_a_hooks_settings_only_pr_shape_skips_every_test_job(
+        self,
+    ) -> None:
+        # (c) in the PR body's numbering: the realistic PR #5681 shape (a
+        # per-prompt recall hook touching scripts/memory, scripts/hooks,
+        # scripts/tests, the guard-conformance registry, and the harness
+        # settings file) must classify cleanly with zero suggested jobs.
+        result = cm.classify(
+            [
+                "scripts/memory/mos_recall_sessionstart.py",
+                "scripts/hooks/organism_alert_sessionstart.sh",
+                "scripts/tests/test_memory_layers.py",
+                "infra/guard-conformance/registry.json",
+                ".claude/settings.json",
+            ]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["unknown_paths"], [])
+        self.assertTrue(result["domains"]["fleet_ops"])
+        self.assertEqual(result["suggested_jobs"], [])
+
+    def test_innocence_infra_fleet_payload_skips_every_test_job(self) -> None:
+        # The measurement that opened this cure (PR #5697, 2026-09-05): a diff
+        # of ONE file under infra/ classified perfectly — run_all false,
+        # reason `classified`, no frontend domain lit — and still ran all six
+        # heavy jobs, Frontend Tests included (16 of its 18 steps executed),
+        # because both domains the "infra/" catch-all handed out were in
+        # _suggested_jobs()'s multiplier set. Third recidive of cicatrix #3's
+        # over-match half in two days (scripts/ #5679, .claude/ #5685, this),
+        # and the cure's own precedent was already in this file: the
+        # infra/guard-conformance/ carve-out above.
+        result = cm.classify(["infra/ghostty/machines/m5.ghostty"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["reason"], "classified")
+        self.assertEqual(result["unknown_paths"], [])
+        self.assertTrue(result["domains"]["fleet_ops"])
+        self.assertFalse(result["domains"]["infra_workflows"])
+        self.assertEqual(result["suggested_jobs"], [])
+        self.assertEqual(result["would_skip"], list(cm.TEST_JOBS))
+
+    def test_guilt_infra_still_buys_the_security_scanners(self) -> None:
+        # The UNDER-match twin, pinned so a later "simplification" cannot
+        # take it: .github/codeql-config.yml declares NO paths-ignore, so
+        # CodeQL analyses infra/'s Python and shell like any other tree.
+        # infra/ therefore keeps `security_sensitive` — the domain
+        # security_gate_flags.py reads — even though it no longer buys a
+        # single product test suite. `CodeQL Analysis (python)` and
+        # `(javascript)` are both required contexts on main.
+        #
+        # The path is deliberately a real .py file reached by the CATCH-ALL
+        # rule, not by the infra/eventbus/ carve-out — the carve-out carries
+        # security_sensitive of its own, so an eventbus path would stay green
+        # while the catch-all silently lost the domain.
+        result = cm.classify(["infra/claude-hooks/host_boundary.py"])
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["security_sensitive"])
+        self.assertEqual(result["suggested_jobs"], [])
+        flags = sgf.compute_flags(result, js_manifest=False)
+        self.assertTrue(flags["run_codeql_python"])
+        self.assertTrue(flags["run_codeql_js"])
+
+    def test_guilt_infra_eventbus_runs_the_backend_suite_that_reads_it(
+        self,
+    ) -> None:
+        # The one real coupling the 2026-09-05 census found across all 38
+        # infra/ sub-trees, and it is a literal-path read, not an import:
+        # test_ingest_target_registry.py opens this exact file and asserts on
+        # its contents, and scripts/ci/ingest_target_lint.py names it in
+        # DECLARED_ENTRYPOINTS. Both are checked here so a rename of either
+        # side fails this test instead of silently un-coupling the rule.
+        runner = "infra/eventbus/regulatory_ingest_runner.py"
+        result = cm.classify([runner])
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["backend_python"])
+        self.assertIn("backend-tests", result["suggested_jobs"])
+        self.assertNotIn("frontend-tests", result["suggested_jobs"])
+
+        rel = Path("apps/backend-rag/backend/tests/unit/core/test_ingest_target_registry.py")
+        repo_root = _locate_repo_root(rel)
+        if repo_root is None:
+            self.skipTest(
+                "the coupled backend test is not reachable from cwd, GITHUB_WORKSPACE "
+                "or __file__ — the coupling is asserted where the checkout is present"
+            )
+        self.assertIn(runner, (repo_root / rel).read_text(encoding="utf-8"))
+
+    def test_guilt_infra_does_not_suppress_a_real_backend_change(self) -> None:
+        # fleet_ops maps to zero jobs, so a co-changed product path must keep
+        # every job it earns on its own — the union, never the minimum.
+        result = cm.classify(
+            ["infra/launchagents/com.example.plist", "apps/backend-rag/backend/app/main.py"]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertIn("backend-tests", result["suggested_jobs"])
+
+    def test_guilt_workflow_definitions_still_force_every_suite(self) -> None:
+        # infra_workflows stays in _suggested_jobs()'s multiplier set and
+        # .github/ keeps it: editing what RUNS the suites still buys them all.
+        result = cm.classify([".github/workflows/some-workflow.yml"])
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["infra_workflows"])
+        self.assertEqual(result["suggested_jobs"], list(cm.TEST_JOBS))
+
+    def test_innocence_manifests_reach_their_own_runtimes_and_no_others(
+        self,
+    ) -> None:
+        # The other half of dropping `security_sensitive` from the multiplier:
+        # it must not become an UNDER-match. Every manifest still fans out to
+        # the runtimes it can actually break — via its OWN domains, which is
+        # why the drop is safe — and stops paying for the ones it cannot.
+        python = cm.classify(["pyproject.toml"])
+        self.assertTrue(python["domains"]["security_sensitive"])
+        for job in ("backend-tests", "mcp-tests", "evaluator-critical-tests", "e2e-tests"):
+            self.assertIn(job, python["suggested_jobs"])
+        self.assertNotIn("frontend-tests", python["suggested_jobs"])
+        self.assertNotIn("packages-core-tests", python["suggested_jobs"])
+
+        node = cm.classify(["package-lock.json"])
+        self.assertTrue(node["domains"]["security_sensitive"])
+        for job in ("frontend-tests", "packages-core-tests"):
+            self.assertIn(job, node["suggested_jobs"])
+        self.assertNotIn("backend-tests", node["suggested_jobs"])
+        self.assertNotIn("mcp-tests", node["suggested_jobs"])
+
+    def test_innocence_a_security_sensitive_path_part_no_longer_buys_all_six(
+        self,
+    ) -> None:
+        # The additive `auth|security|migrations|deploy` rule tags a path
+        # security_sensitive ON TOP of its prefix domains. Before the split
+        # that tag alone forced all six suites onto a frontend-only file.
+        result = cm.classify(["apps/mouth/src/app/auth/page.tsx"])
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["security_sensitive"])
+        self.assertTrue(result["domains"]["mouth"])
+        self.assertIn("frontend-tests", result["suggested_jobs"])
+        self.assertNotIn("backend-tests", result["suggested_jobs"])
+        self.assertNotIn("mcp-tests", result["suggested_jobs"])
+
+    def test_infra_coupling_census_is_not_stale(self) -> None:
+        # The RATCHET, and the reason it exists: before the `infra/` catch-all
+        # stopped buying all six suites, a new coupling from a suite into
+        # infra/ was harmless — the over-match ran the suite anyway. Removing
+        # the over-match removes that accidental safety net, so the census
+        # that justified the carve-out has to be re-derived on every run
+        # instead of trusted as a one-off (the same reasoning that turned the
+        # scripts/ audit into scripts_coupling_census.py --check, cicatrix #9:
+        # a rule whose evidence was measured once and never again).
+        #
+        # This pins the FULL reference profile — file -> segment -> count —
+        # not just the set of segments, so adding a reference to an
+        # already-listed sub-tree trips it too. Every entry below was read by
+        # hand on 2026-09-05. The `infra/eventbus` ones are the carved-out
+        # coupling (PREFIX_RULES, pinned by its own test above) — and only ONE
+        # of them is a real read: test_ingest_target_registry.py opens the
+        # runner; ingest_paths.py and outbox_handlers.py merely name it in a
+        # docstring. Every NON-eventbus entry is PROSE: a docstring naming the
+        # plist that invokes the module, a README paragraph, a comment, a
+        # branch-name string in a fixture, a data-note inside a corpus JSON.
+        # None of them opens, imports or subprocesses anything under infra/.
+        #
+        # When this goes red: read the new reference. Prose -> update the pin.
+        # A real read/import -> add a PREFIX_RULES carve-out mapping that
+        # sub-tree to the domain of the suite that reads it, THEN update the
+        # pin. Do not update the pin to make the test quiet.
+        expected: dict[str, dict[str, int]] = {
+            "apps/backend-rag/backend/app/utils/ingest_paths.py": {"infra/eventbus": 1},
+            "apps/backend-rag/backend/scripts/federation_alert_daemon.py": {"infra/launchagents": 1},
+            "apps/backend-rag/backend/scripts/kg_fix_68112_node.py": {"infra/kg-68112-licenses": 1},
+            "apps/backend-rag/backend/services/federation_alerts/__init__.py": {"infra/launchd": 1},
+            "apps/backend-rag/backend/services/garuda_orders/outbox_handlers.py": {"infra/eventbus": 1},
+            "apps/backend-rag/backend/services/sota_loop/__init__.py": {"infra/launchagents": 1},
+            "apps/backend-rag/backend/services/sota_loop/_promote.py": {"infra/launchagents": 1},
+            "apps/backend-rag/backend/services/sota_loop/m13_weekly.py": {"infra/claude-hooks": 1},
+            "apps/backend-rag/backend/tests/unit/core/test_ingest_target_registry.py": {"infra/eventbus": 1},
+            "apps/backend-rag/backend/tests/unit/response/test_w119c_outbound_marker_newline_bleed.py": {"infra/claude-hooks": 1},
+            "apps/backend-rag/backend/tests/unit/routers/test_ingest_path_confinement.py": {"infra/eventbus": 1},
+            "apps/backend-rag/backend/tests/unit/scripts/test_codex_tri_llm_review_script.py": {"infra/y": 1},
+            "apps/backend-rag/backend/tests/unit/services/ingestion/test_ingest_success_is_reported_honestly.py": {"infra/eventbus": 1},
+            "apps/backend-rag/backend/tests/unit/services/sota_loop/test_m13_weekly_repo_root.py": {"infra/claude-hooks": 1},
+            "apps/evaluator/nlm_deep_research/scripts/run_nb5_t4_monitor.sh": {"infra/launchagents": 1},
+            "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json": {"infra/workflows": 1},
+            "apps/wa-mirror/README.md": {"infra/home-fork": 2},
+        }
+        # The trees the six heavy jobs actually execute. scripts/ci/ is
+        # DELIBERATELY absent: it is mapped to infra_workflows (all six jobs)
+        # and it contains this very file, so including it would make the pin
+        # count its own prose and change on every edit to it.
+        trees = (
+            "apps/backend-rag",
+            "apps/nuzantara-mcp",
+            "apps/evaluator",
+            "apps/mouth",
+            "apps/admin-dashboard",
+            "apps/admin-dashboard-local",
+            "apps/wa-mirror",
+            "packages/core",
+        )
+        repo_root = _locate_repo_root(Path("scripts") / "ci" / "change_map.py")
+        if repo_root is None:
+            self.skipTest(
+                "no checkout reachable from cwd, GITHUB_WORKSPACE or __file__ — the "
+                "infra/ census is re-derived where the checkout is present"
+            )
+        present = [t for t in trees if (repo_root / t).is_dir()]
+        completed = subprocess.run(
+            ["git", "grep", "-nIE", r"infra/[a-z0-9_-]+", "--", *present],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+        )
+        # git grep exits 1 on "no matches", which is a legitimate (if
+        # surprising) outcome; anything else is a broken invocation.
+        self.assertIn(completed.returncode, (0, 1), completed.stderr)
+        found: dict[str, dict[str, int]] = {}
+        for line in completed.stdout.splitlines():
+            path, _, rest = line.partition(":")
+            for token in re.findall(r"infra/[a-z0-9_-]+", rest):
+                found.setdefault(path, {}).setdefault(token, 0)
+                found[path][token] += 1
+        self.assertEqual(
+            found,
+            expected,
+            "the infra/ reference profile moved — a suite's tree gained or lost a "
+            "reference into infra/. Read it before touching this pin: prose -> update "
+            "the pin; a real read/import -> carve the sub-tree out in PREFIX_RULES first.",
+        )
 
     def test_cli_stdout_is_one_compact_json_line(self) -> None:
         script = Path(__file__).with_name("change_map.py")

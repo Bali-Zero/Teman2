@@ -381,6 +381,25 @@ def codex_generate_image(prompt: str, out_path: Path) -> bool:
 # direct commit b19de9bf5a). Writes are staged in-memory during a poller tick
 # and flushed once, per kind, into ONE branch + auto-merged PR.
 _PENDING_COMMITS: list[dict] = []  # {"kind", "gh_path", "content_b64", "message"}
+_PENDING_STEP_MARKS: dict[str, list[tuple[str, str]]] = {}
+
+
+def _defer_step_mark(kind: str, slug: str, step: str) -> None:
+    """Queue a queue-step acknowledgement until its GitHub batch succeeds."""
+    pending = _PENDING_STEP_MARKS.setdefault(kind, [])
+    marker = (slug, step)
+    if marker not in pending:
+        pending.append(marker)
+
+
+def _finalize_deferred_step_marks(kind: str, succeeded: bool) -> None:
+    """Mark a flushed batch's steps done, or leave them queued for retry."""
+    pending = _PENDING_STEP_MARKS.pop(kind, [])
+    if succeeded:
+        for slug, step in pending:
+            mark_step_done(slug, step)
+    elif pending:
+        log(f"  ↩ {len(pending)} {kind} step(s) left unmarked for retry")
 
 
 def _log_gh_failure(op: str, result: "subprocess.CompletedProcess[str]") -> None:
@@ -438,8 +457,13 @@ def _commit_to_branch(gh_path: str, content_b64: str, message: str, branch: str)
     """PUT one file to `branch` (create or update — resolves existing sha on that branch)."""
     existing_sha = ""
     try:
+        # `gh api` switches to POST as soon as a `-f` field is given; without
+        # an explicit GET the lookup answers Not Found, the PUT goes out with
+        # no `sha`, and GitHub rejects every update of an existing file with
+        # "Invalid request" (2026-09-04: SEO, layout and 2/4 translations).
         check = subprocess.run(
-            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{gh_path}",
+            ["gh", "api", "--method", "GET",
+             f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{gh_path}",
              "-f", f"ref={branch}", "--jq", ".sha"],
             capture_output=True, text=True, timeout=15,
         )
@@ -505,6 +529,7 @@ def _flush_batch(kind: str, branch_prefix: str, title_template: str) -> bool:
     global _PENDING_COMMITS
     batch = [c for c in _PENDING_COMMITS if c["kind"] == kind]
     if not batch:
+        _finalize_deferred_step_marks(kind, succeeded=True)
         return True
     _PENDING_COMMITS = [c for c in _PENDING_COMMITS if c["kind"] != kind]
 
@@ -512,11 +537,10 @@ def _flush_batch(kind: str, branch_prefix: str, title_template: str) -> bool:
     log(f"▶ Flushing {len(batch)} {kind} change(s) → branch {branch}")
 
     if not _create_bot_branch(branch):
-        # The queue items behind this batch were already marked step-done in the
-        # DB (staging succeeds independently of the flush) — a lost batch here
-        # needs a manual re-push, not an automatic retry. The Telegram alert in
-        # main() is what surfaces this instead of it failing silently.
+        # The related queue steps are left unmarked, so the poller retries them
+        # automatically after a lost batch instead of needing a manual re-push.
         log(f"  ❌ Could not create branch {branch} — {len(batch)} staged {kind} change(s) lost, needs manual re-push")
+        _finalize_deferred_step_marks(kind, succeeded=False)
         return False
 
     all_ok = True
@@ -534,7 +558,9 @@ def _flush_batch(kind: str, branch_prefix: str, title_template: str) -> bool:
         "\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)"
     )
     if not _open_and_arm_pr(branch, title, body):
+        _finalize_deferred_step_marks(kind, succeeded=False)
         return False
+    _finalize_deferred_step_marks(kind, succeeded=all_ok)
     return all_ok
 
 
@@ -646,7 +672,7 @@ def api_post(path: str, data: dict) -> dict:
         return json.loads(resp.read())
 
 
-def mark_step_done(slug: str, step: str):
+def mark_step_done(slug: str, step: str) -> None:
     """Report a completed step to the backend."""
     try:
         api_post("/api/intel/post-publish-queue/step-done", {"slug": slug, "step": step})
@@ -1261,13 +1287,13 @@ def process_item(item: dict) -> tuple[bool, list[str]]:
         # SEO
         if not done.get("seo"):
             if run_seo(slug, category):
-                mark_step_done(slug, "seo")
+                _defer_step_mark("seo", slug, "seo")
             else:
                 failed_steps.append("seo")
         # Translate
         if not done.get("translate"):
             if run_translate(slug, category):
-                mark_step_done(slug, "translate")
+                _defer_step_mark("translation", slug, "translate")
                 # Auto-rotate hero after successful translate
                 rotate_hero(slug)
             else:
@@ -1279,7 +1305,7 @@ def process_item(item: dict) -> tuple[bool, list[str]]:
         # a cheap no-op (~2 `gh api` calls) when the covers genuinely exist, and
         # regenerates them when the flag lied.
         if run_image(slug, category, title=title):
-            mark_step_done(slug, "image")
+            _defer_step_mark("image", slug, "image")
         else:
             failed_steps.append("image")
 
@@ -1289,7 +1315,7 @@ def process_item(item: dict) -> tuple[bool, list[str]]:
         # Image — same "never skip on completed_steps alone" rule as the intel
         # branch above (see comment there).
         if run_image(slug, category, title=title, article_id=article_id):
-            mark_step_done(slug, "image")
+            _defer_step_mark("image", slug, "image")
         else:
             failed_steps.append("image")
         return (len(failed_steps) == 0, failed_steps)

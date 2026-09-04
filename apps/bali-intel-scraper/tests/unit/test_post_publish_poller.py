@@ -31,8 +31,10 @@ def _res(returncode: int = 0, stdout: str = "", stderr: str = "") -> "subprocess
 @pytest.fixture(autouse=True)
 def _reset_pending_commits():
     ppp._PENDING_COMMITS.clear()
+    ppp._PENDING_STEP_MARKS.clear()
     yield
     ppp._PENDING_COMMITS.clear()
+    ppp._PENDING_STEP_MARKS.clear()
 
 
 @pytest.fixture(autouse=True)
@@ -77,6 +79,61 @@ class TestFlushImageBatch:
             ok = ppp.flush_image_batch()
         assert ok is True
         assert calls == []
+
+
+class TestDeferredStepMarks:
+    def test_seo_step_is_marked_done_only_after_the_batch_flushes(self):
+        ppp._stage_commit("seo", "apps/mouth/src/content/articles/business/s.mdx", b"seo", "seo")
+        ppp._defer_step_mark("seo", "S", "seo")
+
+        with (
+            patch.object(ppp, "_create_bot_branch", return_value=True),
+            patch.object(ppp, "_commit_to_branch", return_value=True),
+            patch.object(ppp, "_open_and_arm_pr", return_value=True),
+            patch.object(ppp, "mark_step_done") as mock_mark,
+        ):
+            mock_mark.assert_not_called()
+            assert ppp.flush_seo_batch() is True
+
+        mock_mark.assert_called_once_with("S", "seo")
+
+    def test_seo_step_stays_unmarked_when_the_batch_fails(self, _silence_log):
+        ppp._stage_commit("seo", "apps/mouth/src/content/articles/business/s.mdx", b"seo", "seo")
+        ppp._defer_step_mark("seo", "S", "seo")
+
+        with (
+            patch.object(ppp, "_create_bot_branch", return_value=False),
+            patch.object(ppp, "mark_step_done") as mock_mark,
+        ):
+            assert ppp.flush_seo_batch() is False
+
+        mock_mark.assert_not_called()
+        assert ppp._PENDING_STEP_MARKS == {}
+        assert any("left unmarked for retry" in message for message in _silence_log)
+
+    def test_translation_step_stays_unmarked_when_one_put_fails(self):
+        ppp._stage_commit("translation", "one.fr.mdx", b"one", "translation")
+        ppp._stage_commit("translation", "one.ru.mdx", b"two", "translation")
+        ppp._defer_step_mark("translation", "S", "translate")
+
+        with (
+            patch.object(ppp, "_create_bot_branch", return_value=True),
+            patch.object(ppp, "_commit_to_branch", side_effect=[True, False]),
+            patch.object(ppp, "_open_and_arm_pr", return_value=True) as mock_open_pr,
+            patch.object(ppp, "mark_step_done") as mock_mark,
+        ):
+            assert ppp.flush_translation_batch() is False
+
+        mock_open_pr.assert_called_once()
+        mock_mark.assert_not_called()
+
+    def test_empty_batch_marks_pending_steps(self):
+        ppp._defer_step_mark("seo", "S", "seo")
+
+        with patch.object(ppp, "mark_step_done") as mock_mark:
+            assert ppp.flush_seo_batch() is True
+
+        mock_mark.assert_called_once_with("S", "seo")
 
     def test_creates_branch_puts_with_branch_key_and_arms_automerge(self):
         ppp._stage_commit(
@@ -649,7 +706,8 @@ class TestProcessItemNeverSkipsImageStep:
         assert all_ok is True
         assert failed_steps == []
         mock_image.assert_called_once_with("test-slug", "business", title="Test Title")
-        mock_mark.assert_called_once_with("test-slug", "image")
+        mock_mark.assert_not_called()
+        assert ppp._PENDING_STEP_MARKS == {"image": [("test-slug", "image")]}
         # seo/translate are genuinely done — only the image gate is bypassed
         mock_seo.assert_not_called()
         mock_translate.assert_not_called()
@@ -675,7 +733,8 @@ class TestProcessItemNeverSkipsImageStep:
         mock_image.assert_called_once_with(
             "news-slug", "regulation", title="News Title", article_id="art-1"
         )
-        mock_mark.assert_called_once_with("news-slug", "image")
+        mock_mark.assert_not_called()
+        assert ppp._PENDING_STEP_MARKS == {"image": [("news-slug", "image")]}
 
     def test_regenerates_and_reports_failure_when_flag_lied_and_regen_fails(self):
         """completed_steps.image=true but run_image() itself returns False
@@ -990,3 +1049,25 @@ def test_poller_targets_the_bali_zero_org_not_the_old_user_path() -> None:
     # create-ref / contents call fails; a whole SEO + layout batch was lost.
     assert ppp.GITHUB_OWNER == "Bali-Zero"
     assert ppp.GITHUB_REPO == "Teman2"
+
+
+def test_commit_to_branch_looks_up_the_existing_sha_with_an_explicit_get() -> None:
+    # 2026-09-04: `gh api … -f ref=<branch>` without --method GET is a POST,
+    # answers Not Found, and the PUT of an existing file then carries no sha
+    # ("gh: Invalid request" on SEO, layout and 2/4 translations).
+    calls: list[list[str]] = []
+    inputs: list[str] = []
+
+    def fake_run(cmd, **kwargs):  # noqa: ANN001
+        calls.append(list(cmd))
+        inputs.append(kwargs.get("input") or "")
+        return subprocess.CompletedProcess(cmd, 0, stdout="abc123\n", stderr="")
+
+    with patch.object(ppp.subprocess, "run", side_effect=fake_run):
+        assert ppp._commit_to_branch("apps/x.mdx", "Zm9v", "msg", "bot/b") is True
+
+    lookup, put = calls[0], calls[1]
+    assert lookup[:4] == ["gh", "api", "--method", "GET"]
+    assert "ref=bot/b" in lookup
+    assert "PUT" in put
+    assert json.loads(inputs[1])["sha"] == "abc123"
