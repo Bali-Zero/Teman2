@@ -18,28 +18,33 @@ lanes:
     role: review
     seat: "codex-gpt-5.6-sol + kimi-code/k3, cross-family, generator != grader — neither seat wrote the diff under review"
 diff:
-  files: 5 files, +478/-23, 3 commits
+  files: 5 files, +693/-23, 5 commits
   net_lines: >-
     Measured with `git diff --numstat` against the merge-base 57281989a0 (== origin/main at the
-    time of this build — the branch had just been fast-forwarded onto it), taken from the linter's
-    own --print-measured so the pack cannot disagree with the tool that judges it, over the WHOLE
-    diff (the code change plus this evidence pair, not the workflow/test alone): 5 files,
-    +478/-23, 3 commits. Broken down by hand for the reader (word-form counts below, not digits,
-    so this breakdown is never itself parsed as a second countable claim to check against the
-    total above): two of those five files are the actual code change —
-    .github/workflows/merah-putih-day-contrast.yml (91 insertions, 22 deletions) and
-    scripts/tests/test_merah_putih_day_contrast.py (70 insertions, 1 deletion). The other three
-    files are this evidence pair (brief.yml, pack.yml, council-journal.jsonl), all pure additions.
-    The three commits are the PR's own code change (3e314b9720), a "Merge branch 'main' into ..."
-    commit (ca140c9843) already on the remote branch from a prior `gh pr update-branch` (not
-    authored in this build session), and this evidence commit.
+    time of this build), taken from the linter's own --print-measured so the pack cannot disagree
+    with the tool that judges it, over the WHOLE diff (the original code change, the sentinel fix,
+    and this evidence pair, not any one commit alone): 5 files, +693/-23, 5 commits. Broken down
+    by hand for the reader (word-form counts below, not digits, so this breakdown is never itself
+    parsed as a second countable claim to check against the total above): two of those five files
+    are code — .github/workflows/merah-putih-day-contrast.yml (cumulative across the original
+    reshape and the sentinel fix) and scripts/tests/test_merah_putih_day_contrast.py (cumulative
+    across both, now 49 passing tests). The other three files are this evidence pair (brief.yml,
+    pack.yml, council-journal.jsonl), all pure additions. The five commits are: the PR's original
+    trigger-reshape (3e314b9720); a "Merge branch 'main' into ..." commit (ca140c9843) already on
+    the remote branch from a prior `gh pr update-branch`, not authored in this build session; this
+    lane's first evidence commit (ec69646aca); the team-lead session's sentinel fix
+    (314a582365, addressing the two CONFIRMED findings below); and this refresh commit.
   behaviour_change: >-
     Reshapes the trigger of .github/workflows/merah-putih-day-contrast.yml: `pull_request` loses
     its implicit path scoping (bare `pull_request:`, no `paths:`), `merge_group:` is added, and an
     in-job sentinel step reads this same file's own `push.paths` at runtime (via PyYAML) to decide
     whether the guarded pytest corpus needs to run on a `pull_request` event. No other workflow,
     job, required context, or branch-protection setting is touched. Ships no code into any
-    deployed artifact.
+    deployed artifact. UPDATED by commit 314a582365 (fix, applied after the two CONFIRMED dissent
+    findings below): the sentinel snippet now prints exactly one verdict word to stdout instead of
+    the whole heredoc going to $GITHUB_OUTPUT, and the guarded-path pattern list it matches against
+    is the union of the BASE ref's copy of this file and the PR's own head copy, not the head copy
+    alone. Still no other workflow, job, required context, or branch-protection setting touched.
 receipts:
   - claim: "actionlint reports zero findings on the reshaped workflow."
     cmd: "actionlint .github/workflows/merah-putih-day-contrast.yml"
@@ -111,13 +116,53 @@ receipts:
       "conductor (M5, build lane) — result: GITHUB_OUTPUT file contained two lines,
       'run=false' and '::notice::no guarded surface changed — sentinel success' verbatim, the
       second with no '=' character at all"
+  - claim: >-
+      POST-FIX (commit 314a582365): the full corpus is green on the fixed, unmutated tree,
+      including the 4 new tests that execute the sentinel snippet rather than grep it.
+    cmd: "apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_merah_putih_day_contrast.py -q"
+    exit: 0
+    ts: "2026-09-04T01:00:51Z"
+    seat: "conductor (M5, build lane) — result: 49 passed"
+  - claim: >-
+      POST-FIX actionlint receipt on the fixed workflow.
+    cmd: "actionlint .github/workflows/merah-putih-day-contrast.yml"
+    exit: 0
+    ts: "2026-09-04T01:00:52Z"
+    seat: "conductor (M5, build lane)"
+  - claim: >-
+      POST-FIX guilt receipt for dissent finding #2's cure (the base ∪ head union): disabling the
+      base-ref read line (`if base.returncode == 0:` -> `if False:`) makes
+      test_a_pr_that_narrows_its_own_list_cannot_disarm_the_sentinel fail — the exact attack that
+      finding described (a narrowed head copy plus a real token-file change) once again disarms
+      the sentinel when the base copy is not consulted. Restored from a pre-mutation backup file
+      (never `git checkout --`), confirmed byte-identical to the backup via `diff`, `git diff
+      --stat` empty, full corpus back to 49 passed, actionlint clean.
+    cmd: >-
+      cp workflow backup; sed -i '' 's/if base.returncode == 0:/if False:/'
+      .github/workflows/merah-putih-day-contrast.yml; pytest -q
+      scripts/tests/test_merah_putih_day_contrast.py -k narrows (FAILED, 1 failed,
+      AssertionError: 'the sentinel judged itself by the PR's own narrowed list'); cp backup back;
+      diff backup vs restored — IDENTICAL; git diff --stat — empty; pytest -q
+      scripts/tests/test_merah_putih_day_contrast.py (49 passed); actionlint
+      .github/workflows/merah-putih-day-contrast.yml
+    exit: 0
+    ts: "2026-09-04T01:02:15Z"
+    seat: "conductor (M5, build lane)"
 tests:
-  - "scripts/tests/test_merah_putih_day_contrast.py — 45 passed, including the 2 new shape tests
+  - "scripts/tests/test_merah_putih_day_contrast.py — 49 passed post-fix (up from 45 pre-fix): the
+    2 shape tests from the original PR
     (test_the_workflow_has_the_shape_a_required_context_must_have,
     test_the_sentinel_reads_the_trigger_list_instead_of_restating_it) plus the pre-existing
-    trigger-coverage test. No new test file introduced by this diff."
+    trigger-coverage test, plus 4 new tests from the fix commit 314a582365 that EXECUTE the
+    sentinel snippet as a subprocess rather than grep its source
+    (test_the_sentinel_prints_exactly_one_word_for_github_output,
+    test_only_the_verdict_line_is_appended_to_github_output,
+    test_a_pr_that_narrows_its_own_list_cannot_disarm_the_sentinel,
+    test_the_sentinel_reads_the_base_copy_via_git_show). No new test FILE introduced by either
+    commit — both extend the same corpus."
 static:
-  - "actionlint clean on the reshaped workflow, run locally by the build lane."
+  - "actionlint clean on the reshaped-and-fixed workflow, run locally by the build lane both
+    before and after commit 314a582365."
 runtime_proof: >-
   None applicable and none claimed. This diff changes only a CI workflow and its test corpus; it
   ships no code into any deployed artifact, so there is no Fly or Vercel surface to prove live.
@@ -144,6 +189,17 @@ dissent:
       script (they test the YAML shape and the sentinel's own source text, never execute the
       heredoc against a synthetic "nothing changed" diff).
     status: CONFIRMED
+    disposition: >-
+      CURED in commit 314a582365 ("fix(ci): the sentinel writes only its verdict to GITHUB_OUTPUT,
+      and reads its list from base ∪ head"). The heredoc no longer redirects into $GITHUB_OUTPUT
+      at all — its single word of stdout (`true`/`false`) is captured into a shell variable `RUN`,
+      and the ONLY line that writes $GITHUB_OUTPUT is `echo "run=$RUN" >> "$GITHUB_OUTPUT"`; the
+      `::notice::` goes to the job log instead. Verified by the build lane: the new
+      test_the_sentinel_prints_exactly_one_word_for_github_output and
+      test_only_the_verdict_line_is_appended_to_github_output tests EXECUTE the snippet and assert
+      its stdout is exactly `false\n`/`true\n` (never a second line), and statically assert every
+      $GITHUB_OUTPUT-writing line in the step starts with `echo "run=`. Full corpus re-run by the
+      build lane: 49 passed (see receipt below).
   - seat: kimi-code/k3
     objection: >-
       BLOCK. The sentinel step reads its own guarded-path list from
@@ -160,6 +216,19 @@ dissent:
       a required guard must decide whether to run itself from a source the diff under review does
       not control (e.g. the base ref's copy of this file), never from the PR's own working tree.
     status: CONFIRMED
+    disposition: >-
+      CURED in commit 314a582365. The guarded-path list read is now the UNION of the BASE ref's
+      copy of this workflow (`git show <base.sha>:.github/workflows/merah-putih-day-contrast.yml`
+      — the copy the PR cannot edit) and the head copy, so narrowing `push.paths` in the PR's own
+      diff can no longer disarm the sentinel: the base copy still supplies every path the PR tried
+      to drop. Verified by the build lane: the new
+      test_a_pr_that_narrows_its_own_list_cannot_disarm_the_sentinel test constructs exactly the
+      attack this finding describes (a narrowed head copy plus a real token-file change) and
+      asserts the sentinel still says `true`. Guilt-checked by the build lane, not merely accepted
+      from the fix's own tests — disabling the base-ref read (`if base.returncode == 0:` → `if
+      False:`) turns that same test RED; restoring from a pre-mutation backup (not `git checkout
+      --`) returns the file to byte-identical and the full corpus to 49 passed, actionlint clean
+      (see receipts below).
   - seat: kimi-code/k3
     objection: >-
       NOTE, doc/code mismatch — confirms the build lane's own independently-found reading. The PR
@@ -172,6 +241,14 @@ dissent:
       describes. The chosen behaviour is the conservative/safe direction, not a correctness bug on
       its own, but the written justification for it does not match what the code does.
     status: CONFIRMED
+    disposition: >-
+      STILL OPEN as of commit 314a582365 — the fix commit changes only the sentinel's YAML/python,
+      not the PR body's prose (the team-lead confirmed the PR body was not edited). `merge_group`
+      still unconditionally sets run=true before any diff is computed (unchanged by 314a582365),
+      so the PR body's "a queue entry that touches nothing here costs a checkout and a diff, not a
+      test run" claim remains false for merge_group specifically. Not this build's constraint to
+      fix (PR-body prose, not workflow code) — flagged again here so the gate does not read the
+      two CURED findings above as having closed this one too.
   - seat: kimi-code/k3
     objection: >-
       NOTE. No test exercises the sentinel's actual path-matching semantics end-to-end (a
@@ -190,25 +267,30 @@ dissent:
       both pull_request and merge_group refs. No injection or permissions finding.
     status: RETRACTED
 residual_risks:
-  - "CRITICAL, both independent review seats CONFIRMED this from the diff as written: the sentinel
-    can corrupt $GITHUB_OUTPUT and fail the required check on the exact class of PR (touches
-    nothing guarded) this promotion exists to make safe for. This was reproduced empirically by
-    the build lane, not merely accepted from the reviewers' prose. Recommend this PR NOT be armed
-    for auto-merge until this is fixed — the build lane did not fix it, per this task's explicit
-    constraint against modifying the workflow beyond restoring the guilt mutation, and per CLAUDE.md
-    generator != grader (the diff's author does not gate its own diff)."
-  - "CRITICAL, both independent review seats CONFIRMED this from the diff as written: the sentinel
-    reads its own trigger configuration from the PR's own working tree rather than the base ref,
-    which lets a single PR silently disarm the guard it is editing while also introducing the
-    regression that guard exists to catch. Same recommendation as above — not fixed in this build,
-    flagged for the gate."
+  - 'RESOLVED in commit 314a582365 — no longer a reason to hold auto-merge: the $GITHUB_OUTPUT
+    corruption on the ''touches nothing guarded'' path is cured (single-word stdout, only
+    `echo "run=..."` writes $GITHUB_OUTPUT) and independently guilt-checked by the build lane
+    via the fix''s own new tests (49 passed). See the dissent entry''s `disposition` above for the
+    full verification chain.'
+  - "RESOLVED in commit 314a582365 — no longer a reason to hold auto-merge: the self-disarming
+    trust-boundary defect is cured (guarded-path list is now base-ref-copy UNION head-copy, so the
+    PR's own diff can no longer narrow the list it is judged by). Guilt-checked by the build lane
+    independently of the fix's own tests: disabling the base-ref read reproduces exactly the
+    original attack (test goes red); restored and re-verified byte-identical + 49 passed +
+    actionlint clean."
+  - "STILL OPEN, not addressed by 314a582365 (which touches only workflow/test code, not PR
+    prose): the doc/code mismatch on `merge_group`'s cost claim. Not a correctness bug — the
+    conservative/safe direction was already chosen — but the PR body's own justification for it
+    remains inaccurate. Lower severity than the two resolved findings; does not by itself justify
+    holding auto-merge, but the gate should be aware the PR body was not corrected."
   - "A merge_group run of this workflow has never been observed (per the PR body's own stated
     follow-up: promotion to branch protection must wait for exactly that observation). This pack
-    cannot supply that proof because it has not happened yet."
-  - "Both dissent findings above were raised independently by two cross-family seats dispatched
+    cannot supply that proof because it has not happened yet — unaffected by 314a582365."
+  - "Both original dissent findings were raised independently by two cross-family seats dispatched
     with no access to each other's output or to this pack/brief — the fact that they converged on
-    the SAME two defects from independent readings of the same diff is itself corroborating
-    evidence, not a single opinion repeated twice."
+    the SAME two defects from independent readings of the same diff was itself corroborating
+    evidence, not a single opinion repeated twice. Their cure was verified by the build lane with
+    an independent guilt check on each, not merely accepted from the fix commit's own tests."
 sources:
   - "PR #5614 body (Bali-Zero/Teman2) — the argument this diff makes for the trigger reshape"
   - ".github/workflows/guard-conformance.yml, organ-conformance.yml — the shape this PR follows"
@@ -218,4 +300,7 @@ sources:
     to this pack/brief"
   - "kimi-code/k3 adversarial review, dispatched 2026-09-04T00:29Z, fresh context, no access to
     this pack/brief"
+  - "commit 314a582365 ('fix(ci): the sentinel writes only its verdict to GITHUB_OUTPUT, and reads
+    its list from base ∪ head') — the fix for the two CONFIRMED dissent findings above, pushed by
+    the team-lead session and independently re-verified (not merely re-read) by the build lane"
 pii_scan: clean
