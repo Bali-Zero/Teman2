@@ -2039,3 +2039,87 @@ def test_editor_facing_errors_remain_value_and_runtime_errors() -> None:
     assert issubclass(marketing.EditorFacingRuntimeError, RuntimeError)
     tools, _ = _capture_tools(AsyncMock())
     assert tools["newsroom_get_article"].__wrapped__.__name__ == "newsroom_get_article"
+
+
+def test_notebooklm_questions_stay_under_the_cli_limit_and_cover_the_article() -> None:
+    """`nlm query` refuses questions over ~5,000 characters (measured on Pro
+    2026-09-04). Every built question must fit the budget and the parts must
+    reassemble into the full body, in order."""
+
+    body = "\n\n".join(
+        f"Paragraph {n}: the KITAS holder must report within thirty days. " * 4
+        for n in range(60)
+    )
+    article = {"title": "Long visa update", "content": body, "source_url": "https://x.y/z"}
+    parts = marketing._split_article_for_notebooklm(article)
+
+    assert len(parts) > 1
+    assert "".join(parts) == body
+    for index, part in enumerate(parts, start=1):
+        question = marketing._notebooklm_question(article, part, index, len(parts))
+        assert len(question.encode("utf-8")) <= marketing._NOTEBOOKLM_QUESTION_BUDGET
+        assert f"part {index} of {len(parts)}" in question
+
+    short = {"title": "t", "content": "One short claim.", "source_url": ""}
+    assert marketing._split_article_for_notebooklm(short) == ["One short claim."]
+    assert "part 1 of 1" not in marketing._notebooklm_question(short, "x", 1, 1)
+
+
+def test_notebooklm_budget_is_measured_on_the_serialised_form() -> None:
+    """Quotes, backslashes and non-ASCII text grow when JSON-encoded; a budget
+    measured on the raw text would still overflow the CLI."""
+
+    body = ('"quoted" \\ back\\slash " ' * 300) + ("Peraturan Menteri — ‘kutipan’ " * 200)
+    article = {"title": "t", "content": body, "source_url": ""}
+    parts = marketing._split_article_for_notebooklm(article)
+    assert "".join(parts) == body
+    for index, part in enumerate(parts, start=1):
+        question = marketing._notebooklm_question(article, part, index, len(parts))
+        assert len(question.encode("utf-8")) <= marketing._NOTEBOOKLM_QUESTION_BUDGET
+
+
+async def test_query_notebooklm_queries_once_per_part_and_joins_the_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+
+    async def fake_subprocess(argv: list[str], **_: Any) -> str:
+        calls.append(argv)
+        return json.dumps({"answer": f"evidence {len(calls)}"})
+
+    monkeypatch.setattr(marketing, "_run_public_subprocess", fake_subprocess)
+    monkeypatch.setattr(marketing.shutil, "which", lambda *_a, **_k: "/usr/bin/nlm")
+
+    body = "Claim sentence number one about LKPM reporting. " * 400
+    evidence = await marketing._query_notebooklm(
+        {"title": "t", "content": body, "source_url": ""}, "nb-id"
+    )
+
+    assert len(calls) >= 3
+    assert all(argv[:4] == ["/usr/bin/nlm", "query", "notebook", "nb-id"] for argv in calls)
+    assert all(
+        len(argv[4].encode("utf-8")) <= marketing._NOTEBOOKLM_QUESTION_BUDGET for argv in calls
+    )
+    assert evidence.startswith("[part 1/")
+    assert f"evidence {len(calls)}" in evidence
+
+    # A single-part article keeps the plain evidence note.
+    calls.clear()
+    evidence = await marketing._query_notebooklm(
+        {"title": "t", "content": "short", "source_url": ""}, "nb-id"
+    )
+    assert calls and evidence == "evidence 1"
+
+
+async def test_query_notebooklm_refuses_an_article_beyond_the_part_cap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(marketing.shutil, "which", lambda *_a, **_k: "/usr/bin/nlm")
+    monkeypatch.setattr(
+        marketing, "_run_public_subprocess", AsyncMock(side_effect=AssertionError("no call"))
+    )
+    body = "x" * (marketing._NOTEBOOKLM_QUESTION_BUDGET * (marketing._NOTEBOOKLM_MAX_PARTS + 2))
+    with pytest.raises(RuntimeError, match="too long for NotebookLM"):
+        await marketing._query_notebooklm(
+            {"title": "t", "content": body, "source_url": ""}, "nb-id"
+        )
