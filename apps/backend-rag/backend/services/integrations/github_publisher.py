@@ -80,8 +80,12 @@ class GitHubPublisher:
     def _get_client(self) -> httpx.AsyncClient:
         """Get or create the shared async client."""
         if self._client is None or self._client.is_closed:
+            # A renamed or transferred repository answers 301 on its old
+            # path; without following it every publish fails as a bare
+            # "GitHub publish failed" (2026-08-28, 2026-09-04).
             self._client = httpx.AsyncClient(
                 timeout=30.0,
+                follow_redirects=True,
                 limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
             )
         return self._client

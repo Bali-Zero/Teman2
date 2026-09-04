@@ -1,0 +1,22 @@
+task_id: lane-e-bot-wa-corpus-government-fee-gate
+gear: 2
+l_level: L2
+gate_class: client-facing
+objective: >-
+  Refuse, at ingest, any curated_qa row that states a government-fee figure to a
+  client without an explicit per-row review marker. Cycle 359 questions 11 and 14
+  volunteered "PNBP Rp 9.500.000" beside the Bali Zero price against Zero's
+  standing one-all-inclusive-price ruling; the cause is the corpus, not the
+  prompt, and the offending points' source file has never existed in this repo,
+  so deleting them alone leaves the next harvest free to write them back.
+grader: codex-sol
+pii: none
+notes: >-
+  Recall measured 9/9 against the live 808-point collection; cost measured at 26
+  refusals, of which 17 are compliant rows that now need a written note. A
+  proximity rule was built as the alternative and REJECTED on its numbers (at
+  every window from 40 to 160 chars it caught at most 8 of 9 while blocking 11
+  to 13 compliant rows) — recorded in the module docstring so it is not
+  re-derived. Mutation-verified: replacing the gate call with `fee_refusal =
+  None` turns the wiring test red. The data half (two prod Qdrant deletions) was
+  snapshotted with vectors to a 0600 file outside the repo before execution.

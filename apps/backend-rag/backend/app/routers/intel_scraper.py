@@ -40,6 +40,7 @@ from backend.app.utils.internal_api_auth import verify_internal_api_key
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import invalidate_cache
 from backend.core.qdrant_db import QdrantClient
+from backend.services.cover_images import _cover_as_jpeg
 from backend.services.intel.intel_staging_service import assert_valid_item_id
 
 logger = get_logger(__name__)
@@ -58,6 +59,52 @@ def _require_publish_admin(user: dict[str, Any]) -> None:
 
 
 # --- CONVERSION FUNCTIONS ---
+
+
+def _summary_from_content(content: str, limit: int = 300) -> str:
+    """Extract a complete-sentence summary from the first prose paragraph."""
+    paragraph_lines: list[str] = []
+    for line in content.splitlines():
+        stripped_line = line.strip()
+        if not stripped_line:
+            if paragraph_lines:
+                break
+            continue
+        if re.match(r"^#{1,6}\s", stripped_line):
+            continue
+        paragraph_lines.append(stripped_line)
+
+    paragraph = " ".join(paragraph_lines)
+    paragraph = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", paragraph)
+    paragraph = re.sub(r"[*_`]", "", paragraph).strip()
+    if not paragraph:
+        return ""
+
+    sentences = re.split(r"(?<=[.!?])\s+", paragraph)
+    summary_sentences: list[str] = []
+    summary_length = 0
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        separator_length = 1 if summary_sentences else 0
+        if summary_length + separator_length + len(sentence) > limit:
+            break
+        summary_sentences.append(sentence)
+        summary_length += separator_length + len(sentence)
+
+    if summary_sentences:
+        return " ".join(summary_sentences).rstrip(" (—-,;:")
+
+    words = paragraph.split()
+    truncated_words: list[str] = []
+    for word in words:
+        candidate = " ".join([*truncated_words, word])
+        if len(candidate) + 1 > limit:
+            break
+        truncated_words.append(word)
+
+    return " ".join(truncated_words).rstrip(" (—-,;:") + "…"
 
 
 def convert_staging_to_enriched_article(staging_data: dict) -> dict:
@@ -89,7 +136,9 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
         content,
         re.DOTALL | re.IGNORECASE,
     )
-    ai_summary = summary_match.group(1).strip() if summary_match else content[:280]
+    ai_summary = (
+        summary_match.group(1).strip()[:280] if summary_match else _summary_from_content(content)
+    )
 
     # Extract Facts section
     facts_match = re.search(r"## Facts\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE)
@@ -253,7 +302,7 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
         "category": category,
         "priority": priority,
         "relevance_score": relevance_score,
-        "ai_summary": ai_summary[:280],  # Limit to 280 chars
+        "ai_summary": ai_summary,
         "ai_tags": ai_tags[:5],  # Limit to 5 tags
         "suggested_components": suggested_components[:3],  # Limit to 3 components
         "cover_image": None,  # Will be set from staging_data if available
@@ -666,6 +715,8 @@ async def publish_staging_item_internal(
     actor: str,
     allow_generated_cover: bool = True,
     position: str = "latest",
+    *,
+    pool: Any | None = None,
 ) -> dict[str, Any]:
     """Publish path for internal callers that carry their own authorization.
 
@@ -681,7 +732,15 @@ async def publish_staging_item_internal(
         request=None,
         actor=actor,
         allow_generated_cover=allow_generated_cover,
+        pool=pool,
     )
+
+
+def _resolve_publish_pool(pool: Any | None, request: Request | None) -> Any | None:
+    """Prefer an explicitly supplied pool for internal publish callers."""
+    if pool is not None:
+        return pool
+    return getattr(request.app.state, "db_pool", None) if request else None
 
 
 async def _publish_staging_item(
@@ -691,6 +750,8 @@ async def _publish_staging_item(
     request: Request | None,
     actor: str,
     allow_generated_cover: bool = True,
+    *,
+    pool: Any | None = None,
 ) -> dict[str, Any]:
     """Publish implementation. Callers are responsible for authorization."""
     # Single funnel-in for both callers (the admin HTTP endpoint and the Telegram
@@ -790,6 +851,7 @@ async def _publish_staging_item(
         mdx_path = None
         article_slug = item_id  # fallback: use item_id if GitHub publish fails
         publish_result = None
+        github_error: str | None = None
 
         try:
             from backend.app.routers.article_composer import (
@@ -798,6 +860,7 @@ async def _publish_staging_item(
                 NextSteps,
                 PublishRequest,
                 TLDRSection,
+                generate_slug,
             )
 
             # Convert staging item to EnrichedArticle
@@ -829,6 +892,7 @@ async def _publish_staging_item(
             # Prepare cover image if available
             cover_image_base64 = None
             cover_image_filename = None
+            cover_slug = (data.get("slug") or "").strip() or generate_slug(title)
 
             # Priority 1: Download from Google Drive (uploaded by scraper)
             if data.get("image_drive_file_id"):
@@ -843,9 +907,10 @@ async def _publish_staging_item(
                         # Download file content from Drive
                         request = drive_svc.service.files().get_media(fileId=file_id)
                         image_bytes = await asyncio.to_thread(request.execute)
-                        cover_image_base64 = base64.b64encode(image_bytes).decode("utf-8")
-                        file_ext = "png" if image_bytes[:4] == b"\x89PNG" else "jpg"
-                        cover_image_filename = f"{item_id}.{file_ext}"
+                        cover_image_base64 = base64.b64encode(_cover_as_jpeg(image_bytes)).decode(
+                            "utf-8"
+                        )
+                        cover_image_filename = f"{cover_slug}.jpg"
                         logger.info(
                             "Cover image downloaded from Drive",
                             extra={
@@ -877,10 +942,9 @@ async def _publish_staging_item(
                         cover_image_path = PathLib(cover_image_path)
 
                     if cover_image_path.exists():
-                        cover_image_base64 = base64.b64encode(cover_image_path.read_bytes()).decode(
-                            "utf-8",
-                        )
-                        cover_image_filename = cover_image_path.name
+                        image_bytes = cover_image_path.read_bytes()
+                        cover_image_base64 = base64.b64encode(_cover_as_jpeg(image_bytes)).decode("utf-8")
+                        cover_image_filename = f"{cover_slug}.jpg"
                         logger.info(
                             "Cover image found on local filesystem",
                             extra={
@@ -1037,6 +1101,7 @@ async def _publish_staging_item(
                 )
 
             else:
+                github_error = publish_result.error or publish_result.message
                 logger.error(
                     f"⚠️ Failed to publish to GitHub/Vercel: {publish_result.error}",
                     extra={"type": type, "item_id": item_id, "title": title},
@@ -1053,6 +1118,9 @@ async def _publish_staging_item(
                 extra={"type": type, "item_id": item_id},
             )
         except Exception as e:
+            # NOTE: `type` is the route parameter (str) in this function scope,
+            # not the builtin — use e.__class__.__name__ instead of type(e).
+            github_error = f"{e.__class__.__name__}: {e}"
             logger.error(
                 "⚠️ Failed to publish to GitHub/Vercel: %s",
                 e,
@@ -1064,9 +1132,9 @@ async def _publish_staging_item(
 
         # Step 4: Write to news_items table (serves /api/news for balizero.com frontend)
         try:
-            pool = getattr(request.app.state, "db_pool", None) if request else None
-            if pool:
-                slug = item_id  # item_id is already a slug-friendly identifier
+            publish_pool = _resolve_publish_pool(pool, request)
+            if publish_pool:
+                slug = article_slug or item_id
                 summary = (data.get("content") or "")[:500]
                 content_full = data.get("content") or ""
                 ai_summary = (
@@ -1075,7 +1143,17 @@ async def _publish_staging_item(
                     else ""
                 )
                 ai_tags = data.get("tags") or []
-                image_url = data.get("image_url") or data.get("cover_image")
+                if (
+                    (
+                        publish_result is not None
+                        and publish_result.success
+                        and publish_result.image_path
+                    )
+                    or data.get("published_cover_path")
+                ):
+                    image_url = f"/static/news/{slug}.jpg"
+                else:
+                    image_url = data.get("image_url") or data.get("cover_image")
                 priority_val = data.get("priority", "medium")
                 if priority_val not in ("high", "medium", "low"):
                     priority_val = "medium"
@@ -1092,7 +1170,9 @@ async def _publish_staging_item(
                 }
                 news_category = category if category in valid_categories else "business"
 
-                async with pool.acquire() as conn:
+                # news_items.slug has no unique constraint on prod (only a plain
+                # index), so ON CONFLICT (slug) raises; guard by existence instead.
+                async with publish_pool.acquire() as conn:
                     await conn.execute(
                         """
                         INSERT INTO news_items (
@@ -1100,8 +1180,8 @@ async def _publish_staging_item(
                             category, priority, status, image_url, published_at,
                             ai_summary, ai_tags, external_id
                         )
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'approved', $9, NOW(), $10, $11, $12)
-                        ON CONFLICT (slug) DO NOTHING
+                        SELECT $1, $2, $3, $4, $5, $6, $7, $8, 'approved', $9, NOW(), $10, $11, $12
+                        WHERE NOT EXISTS (SELECT 1 FROM news_items WHERE slug = $2)
                         """,
                         title,
                         slug,
@@ -1130,11 +1210,10 @@ async def _publish_staging_item(
 
         # Step 4b: Enqueue for post-processing (translate + image + SEO) — DB-backed
         try:
-            if not pool:
-                pool = getattr(request.app.state, "db_pool", None) if request else None
-            if not pool:
+            publish_pool = _resolve_publish_pool(pool, request)
+            if not publish_pool:
                 raise RuntimeError("No DB pool available")
-            async with pool.acquire() as conn:
+            async with publish_pool.acquire() as conn:
                 await conn.execute(
                     """
                     INSERT INTO post_publish_queue (slug, category, source)
@@ -1223,6 +1302,8 @@ async def _publish_staging_item(
                 "Article saved to search index but NOT published to the website "
                 "(GitHub publish failed). Check backend logs and retry."
             )
+            if github_error:
+                message = f"{message} Cause: {github_error[:300]}"
 
         await invalidate_cache("zantara:intel_scraper:*")
         return {

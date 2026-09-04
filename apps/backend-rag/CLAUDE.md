@@ -401,3 +401,83 @@ Per-provider kill-switch (no redeploy, takes effect on next restart):
 - Cron every 5min (`scripts/drive_poll_cron.sh`) — runs on Pro (NOT on Fly.io: auto_stop loses page_token)
 - `page_token` in `system_settings` table — loss = full re-scan
 - Circuit breaker: 3 failures → OPEN + Telegram alert → auto-recovery 5min
+
+---
+
+## Moved from repo-root CLAUDE.md (2026-09-04, context-diet)
+
+> Golden Rules / Data Invariants / Postgres MCP / Deploy Lifecycle / Operational Channels —
+> moved verbatim out of root `CLAUDE.md` §8-§12 on 2026-09-04. This file already existed
+> (403 lines of backend-specific gotchas above) before the context-diet mandate; the mandate
+> named this path as the destination for §8-§12 without knowing that. Appended, not merged
+> into the prose above, so neither body was rewritten.
+
+## 8. Code Golden Rules (ENFORCE STRICTLY)
+
+1. **Virtualenv Mandatory** — `apps/backend-rag/.venv/`. Never system Python.
+2. **No Root Execution** — `PYTHONPATH=. python -m backend.module`
+3. **Path Discipline** — Absolute imports: `from backend.core import config`
+4. **Async First** — `httpx` not `requests`. All I/O async.
+5. **Type Hints** — Full annotations on every function.
+6. **No Hardcoded Secrets** — env vars or secrets manager.
+7. **Data/Logic Separation** — Business logic ≠ data access.
+8. **Clean Logging** — `logger` never `print()`.
+9. **Verify Sources** — Never presume, verify against actual data.
+10. **Async HTTP Clients** — NEVER `httpx.AsyncClient()` in methods/loops. Persistent `_get_client`, close in `lifespan`.
+11. **PricingTool Only** — All prices from `PricingTool`. Never hardcode.
+12. **Commit discipline** — atomic per fix, `feat|fix|chore|refactor|docs(scope):` convention. Co-author `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>` (matches what the harness itself appends; historical commits keep whatever model authored them — never rewrite them). Never `--no-verify`/`--amend` on pushed.
+
+## 9. Data Invariants (NEVER VIOLATE)
+
+- **Embedding model FROZEN**: `text-embedding-3-small` (1536 dims). Changing invalidates the existing vector index. NEVER change without re-indexing plan.
+- **KBLI flat payload — Qdrant collection ONLY**: the KBLI Qdrant collection payload (built by `reindex_kbli_2025_final.py::build_payload`, its own comment calls this the "KBLI flat-payload golden rule") is flat — `kode_kbli`, `judul`, `content`/`text`, `sektor`/`section`, `pma_status`, `kategori_risiko`, `scales`, etc. Never nested. **This does NOT describe the separate Postgres `kbli_documents` table** (feeds `chat_kbli`'s LLM context, seeded 2026-02-18 out-of-band, no migration/ORM model): that table has exactly 6 columns — `kode_kbli`, `judul`, `content`, `metadata` (jsonb), `created_at`, `updated_at` — with business fields (`sektor_id`, `pma_status`, `per_skala`, ...) nested INSIDE `metadata`, actively evolving under the kbli-navigator lane's cure work; `kategori_risiko` does not exist on this table at all (Qdrant-only concept). Corrected 2026-07-21 (lever #8, `research/operations/2026-07-19-balizero-kb-activation-plan.md`) — the old wording conflated the two stores and was never true for the Postgres one. Tripwire: `test_kbli_documents_queries_read_metadata_not_flat_business_columns` in `test_data_invariant_tripwires.py`.
+- **Evidence scoring thresholds**: NOT one number — **5 NAMED gates, one SSOT** (`backend/services/rag/agentic/_abstain_policy.py`; domanda #31 CLOSED 2026-07-05). GENERATION gate flat `0.15` (reasoning.py, strict `<`) · LABEL gate per-domain `tax:0.10 / visa:0.12 / kbli:0.20 / pricing,default:0.15` (orchestrator_response.py; env `DOMAIN_ABSTAIN_THRESHOLDS`, values clamped to [0,1]) · CONFIDENCE zone edges `0.15/0.60` (streaming) · CONTEXT_QUALITY_MIN `0.15`. The generation≠label VALUE divergence is **intentional and panel-ruled** (2026-06-14: per-domain in generation = tax advice at 0.11 evidence = safety regression) — do NOT "tidy" it into one value; tripwire tests in `test_abstain_threshold_convergence.py` + golden matrix in `test_abstain_policy_hardening.py` enforce this.
+- **Vision model**: `qwen2.5vl:7b` ONLY for OCR/vision (qwen3.5 Q4_K_M strips vision weights). API: `"images": [base64]`.
+- **Ollama `think:false`** REQUIRED for Qwen 3.5 client (`backend/llm/ollama_client.py`).
+- **Cache invalidation**: `await invalidate_cache("zantara:namespace:*")` after EVERY mutation. Namespaces: `crm_clients_stats`, `crm_practices`.
+
+## 10. Postgres MCP — Read-Only Access
+
+`postgres-nuzantara` MCP (`mcp__postgres-nuzantara__*`) connects via `nuzantara_readonly` role on Fly Postgres (T3.2 shipped 2026-05-23). **Defense-in-depth**: 255 SELECT grants, ZERO INSERT/UPDATE/DELETE/CREATE. Use `query` tool for ad-hoc data inspection. For mutations: backend code only, NEVER MCP. Password in Keychain (`nuzantara-postgres-readonly`).
+
+## 11. Deploy Lifecycle
+
+**Fly.io 2 apps**: `nuzantara-rag` (shared-2x, 2GB, always-on, EventBus) + `nuzantara-postgres` (postgres-flex 17.7, `repmgr` HA — NOT Stolon; rolling-upgraded 17.2→17.7 on 2026-08-09 after an isolated restore proof; backup → Tigris daily — WAL archiving re-enabled same day: a legacy override had disabled it, so "DONE" backups were not actually restorable). Frontend on Vercel (auto-deploy on `git push origin main`).
+
+**Pre-deploy** (run sequentially):
+```bash
+git diff --name-only HEAD -- apps/backend-rag/backend/
+cd apps/backend-rag && source .venv/bin/activate
+python -c "from backend.app.dependencies import get_current_user; print('OK')"
+PYTHONPATH=. pytest backend/tests/services/rag/test_kg_langgraph.py backend/tests/services/rag/test_kg_subgraphs.py backend/tests/services/rag/test_confidence.py
+```
+
+**Deploy** — run from the monorepo ROOT, not from `apps/backend-rag` (corrected 2026-07-24, PR #3062 ship:
+the Dockerfile's `COPY` paths are repo-root-relative — `apps/backend-rag/backend`, `packages/cell-core`,
+`apps/crm-cell/crm_cell` — so a build invoked with cwd=`apps/backend-rag` fails with `"apps/backend-rag/backend": not found`.
+The local `fly` shell-function wrapper on Pro/Mini also hardcodes that wrong cwd regardless of caller
+location — bypass it with a direct `ssh pro`/`ssh mini` call when deploying):
+```bash
+cd ~/nuzantara  # repo root, NOT apps/backend-rag — corrected 2026-08-29: the repo moved out of
+                # ~/Desktop (TCC-protected) to ~/nuzantara on all three fleet machines on 2026-07-16;
+                # this line still said the superseded path. `scripts/lint_tcc_desktop_paths.py` does
+                # NOT flag doc files (scope is deliberately *.sh/*.py/*.plist only — its own docstring
+                # says docs can legitimately reference a historical Desktop path), so this was a stale
+                # path, not a lint gap: nothing else to reconcile here.
+fly deploy --config apps/backend-rag/fly.toml --dockerfile apps/backend-rag/Dockerfile --strategy rolling -a nuzantara-rag
+```
+
+**Migration PRs** touching `migrations_v2/*.sql` auto-run Squawk lint (PR #306). Bypass: `-- squawk-ignore: <rule>`.
+
+**Post-deploy QA OBBLIGATORIO**: wait curl 200/307 → screenshot via `mcp__claude-in-chrome__*` → verify colors/logo/no broken → fix/redeploy → final report. URLs: `kita`/`my`/`prime`/`knowledge`/`zantara`.balizero.com — `calendar`/`mail`/`drive` were removed on 2026-08-18: their Vercel projects were deleted in `7f287c623` (2026-04-17) and the orphan DNS answers 404, so QA-ing them was checking surfaces that no longer exist.
+
+## 12. Operational Channels
+
+4 live (see `apps/backend-rag/backend/channels/`):
+
+- **WhatsApp** ✅ Fly.io (Gemini 3 Flash + RAG)
+- **Telegram** ✅ Pro OpenClaw (Opus 4.6 + SOUL.md)
+- **Instagram** ✅ Fly.io
+- **Web Chat** ✅ Fly.io
+
+Twitter (CRC broken), Google Chat (scaffold), Slack (scaffold) quarantined `.disabled-2026-04-30/`.

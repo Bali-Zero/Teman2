@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import unittest
@@ -125,6 +126,57 @@ class ChangeMapTests(unittest.TestCase):
                 self.assertFalse(result["run_all"])
                 self.assertFalse(result["domains"]["mouth"])
                 self.assertNotIn("frontend-tests", result["suggested_jobs"])
+
+    def test_guilt_kb_corpus_files_run_the_backend_suite_that_guards_them(
+        self,
+    ) -> None:
+        # kb/ landed 2026-08-25 (#4907/#4974) and was never wired into the
+        # routing tables, so every kb/-only PR fell into `unknown_paths` ->
+        # run_all=true. Measured on PR #5662 (one file, kb/inventory/
+        # immigration.yaml): CodeQL-python 14m01s, plus ~9m of Snyk/Bandit/
+        # Safety, against a YAML data file.
+        #
+        # The obvious cure is wrong. Routing kb/ to docs_content_data ALONE
+        # would switch off the tests that protect these very files:
+        # apps/backend-rag/backend/tests/unit/kb/ holds nine suites that read
+        # kb/inventory/*.yaml directly (test_kb_inventory_contract,
+        # test_kb_topic_contract, test_kb_inventory_probe_topic, ...), and
+        # _suggested_jobs() never grants docs_content_data any of the six
+        # jobs. The precedent is data/ -- both backend_python and
+        # docs_content_data -- so the corpus keeps its own guard.
+        for path in (
+            "kb/inventory/immigration.yaml",
+            "kb/topics/immigration.yaml",
+            "kb/ops/probe_retrieval.py",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertEqual(result["unknown_paths"], [])
+                self.assertTrue(result["domains"]["backend_python"])
+                self.assertIn("backend-tests", result["suggested_jobs"])
+
+    def test_innocence_kb_does_not_drag_in_the_frontend_or_e2e_suites(
+        self,
+    ) -> None:
+        # The other half: kb/ is backend data, so widening it to the FRONTEND
+        # would trade one kind of waste for another. data/ reaches mouth only
+        # through an explicit filename rule (the KBLI canonical pins); nothing
+        # under kb/ is read by a frontend suite.
+        #
+        # e2e-tests is deliberately NOT asserted absent. It is granted by
+        # `backend_python` at _suggested_jobs()'s own last rule
+        # (`domains.intersection({"backend_python", "mouth", "packages_core"})`),
+        # so demanding the backend suite that guards this corpus necessarily
+        # brings e2e with it. This test's first draft asserted otherwise and
+        # was wrong about the code, not the other way round — recorded here so
+        # nobody "fixes" the rule to satisfy a mistaken expectation.
+        result = cm.classify(["kb/inventory/immigration.yaml"])
+        self.assertFalse(result["domains"]["mouth"])
+        self.assertFalse(result["domains"]["packages_core"])
+        self.assertNotIn("frontend-tests", result["suggested_jobs"])
+        self.assertNotIn("packages-core-tests", result["suggested_jobs"])
+        self.assertNotIn("mcp-tests", result["suggested_jobs"])
 
     def test_guilt_kbli_canonical_pin_inputs_also_run_frontend(self) -> None:
         # Red-team HIGH-9, 2026-08-14: apps/mouth/src/lib/
@@ -463,45 +515,152 @@ class ChangeMapTests(unittest.TestCase):
                 self.assertTrue(result["domains"]["fleet_ops"])
                 self.assertEqual(result["suggested_jobs"], [])
 
-    def test_guilt_hidden_backend_test_coupled_scripts_stay_unclassified(
+    def test_guilt_hidden_backend_test_coupled_scripts_now_route_via_census(
         self,
     ) -> None:
-        # Regression tripwire for the census this PR ran: these top-level
-        # scripts/*.py files are silently `from scripts.X import Y`-imported
-        # by apps/backend-rag/backend/tests/{scripts,unit/scripts}/ (verified
-        # live, 2026-08-20 — a sys.path shim in that tree's own conftest.py
-        # resolves `scripts` to the repo-root package once ANY file under it
-        # has been pytest-collected in the same run). None of their names
-        # hint at the coupling — this is exactly the shape a naive
-        # directory/prefix rule on all of scripts/ would have missed, and
-        # exactly why fleet_ops only covers directories proven to contain no
-        # .py at all. If any of these ever starts reporting run_all=false,
-        # something either mapped a domain over it directly or widened an
-        # existing fleet_ops prefix to swallow it — both are a live
-        # under-match on a file backend-tests actually needs to run for.
+        # Closes the tripwire this test used to pin (2026-08-20): these
+        # top-level scripts/*.py files were silently imported by
+        # apps/backend-rag/backend/tests/{scripts,unit/scripts}/ via that
+        # tree's own sys.path shim, with no naming pattern in common, so
+        # they fell through to unknown_paths and forced run_all=True. The
+        # census now embeds each in SCRIPTS_COUPLING directly.
         for path in (
             "scripts/wr2_html_render_apply.py",  # forced run_all=true on PR #4431, same day
             "scripts/drive_token_watchdog.py",
-            "scripts/fix_lkpm_q1_2026_client_ids.py",
             "scripts/sentinel_lib/alerter.py",  # imported by PRODUCTION backend code, not just tests
             "scripts/bot/wa_blind_bench.py",  # scripts/bot/ is pytest-collected directly by tests.yml
         ):
             with self.subTest(path=path):
                 result = cm.classify([path])
-                self.assertTrue(result["run_all"])
-                self.assertEqual(result["reason"], "unclassified_paths")
-                self.assertEqual(result["suggested_jobs"], list(cm.TEST_JOBS))
+                self.assertFalse(result["run_all"])
+                self.assertEqual(result["reason"], "classified")
+                self.assertTrue(result["domains"]["backend_python"])
+                self.assertEqual(
+                    result["suggested_jobs"], ["backend-tests", "e2e-tests"]
+                )
 
-    def test_innocence_loose_top_level_script_outside_mapped_dirs_stays_unclassified(
+    def test_innocence_relocated_script_no_longer_couples_from_repo_root(
         self,
     ) -> None:
-        # A file living directly in scripts/ (not under any of the ten
-        # fleet_ops directories) must not inherit the exemption just for
-        # sharing the scripts/ prefix — the rule is per-directory, not
-        # repo-wide on scripts/.
+        # This file was one of the five the 2026-08-20 comment listed as
+        # coupled — it has since moved to apps/backend-rag/scripts/ (verified:
+        # `git ls-files scripts/fix_lkpm_q1_2026_client_ids.py` is empty
+        # today). The census reflects what is coupled TODAY, not history.
+        result = cm.classify(["scripts/fix_lkpm_q1_2026_client_ids.py"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["reason"], "classified")
+        self.assertTrue(result["domains"]["fleet_ops"])
+        self.assertEqual(result["suggested_jobs"], [])
+
+    def test_innocence_loose_top_level_script_outside_mapped_dirs_routes_to_fleet_ops(
+        self,
+    ) -> None:
+        # Not under a PREFIX_RULES fleet_ops directory and not in
+        # SCRIPTS_COUPLING — now fleet_ops via the census fallback instead
+        # of unknown_paths/run_all=True: scripts/ has no unmapped remainder.
         result = cm.classify(["scripts/pro-mini-healthcheck.sh"])
-        self.assertTrue(result["run_all"])
-        self.assertEqual(result["reason"], "unclassified_paths")
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["reason"], "classified")
+        self.assertTrue(result["domains"]["fleet_ops"])
+        self.assertEqual(result["suggested_jobs"], [])
+
+    def test_guilt_uncoupled_script_mixed_with_frontend_change_has_no_backend_tests(
+        self,
+    ) -> None:
+        # fleet_ops must contribute nothing but must not suppress the job
+        # set a real co-changed mouth path already earns (symmetric with
+        # the existing scripts/pro/ + backend_python case above).
+        result = cm.classify(
+            ["scripts/pro-mini-healthcheck.sh", "apps/mouth/src/app.tsx"]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["fleet_ops"])
+        self.assertTrue(result["domains"]["mouth"])
+        self.assertFalse(result["domains"]["backend_python"])
+        self.assertNotIn("backend-tests", result["suggested_jobs"])
+        self.assertEqual(result["suggested_jobs"], ["frontend-tests", "e2e-tests"])
+
+    def test_innocence_scripts_ci_self_edit_is_unaffected_by_the_census_rule(
+        self,
+    ) -> None:
+        # Stays on EXACT_RULES (all jobs via the infra_workflows/
+        # security_sensitive escape hatch) — SCRIPTS_COUPLING sits after
+        # EXACT_RULES/PREFIX_RULES and never runs for this path.
+        result = cm.classify(["scripts/ci/change_map.py"])
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["infra_workflows"])
+        self.assertTrue(result["domains"]["security_sensitive"])
+        self.assertEqual(result["suggested_jobs"], list(cm.TEST_JOBS))
+
+    def test_innocence_uncoupled_scripts_pairs_skip_every_test_job(self) -> None:
+        # The mandate proof (PR body `Bites:`): a script plus its own test,
+        # neither referenced by the six jobs' trees, classifies cleanly
+        # (no unknown_paths) with zero suggested jobs.
+        for pair in (
+            (
+                "scripts/memory/mos_recall_sessionstart.py",
+                "scripts/tests/test_memory_layers.py",
+            ),
+            (
+                "scripts/home_surface_suite.sh",
+                "scripts/tests/test_home_surface_suite.py",
+            ),
+        ):
+            with self.subTest(pair=pair):
+                result = cm.classify(list(pair))
+                self.assertFalse(result["run_all"])
+                self.assertEqual(result["reason"], "classified")
+                self.assertEqual(result["unknown_paths"], [])
+                self.assertTrue(result["domains"]["fleet_ops"])
+                self.assertEqual(result["suggested_jobs"], [])
+
+    def test_scripts_coupling_census_is_not_stale(self) -> None:
+        # Runs the census via subprocess, not import — an import would need
+        # scripts_coupling_census.py added to tests.yml's trusted-classifier
+        # extraction list, and it has no business there (it shells out to
+        # `git grep` and writes files). --check re-derives SCRIPTS_COUPLING
+        # live and exits 1 on drift (cicatrix #9).
+        # Locate the census in the CHECKOUT, never relative to __file__:
+        # tests.yml extracts this test FLAT into $RUNNER_TEMP/trusted-classifier/
+        # (no scripts/ci/ above it), where parents[2] resolved to /home/runner/work,
+        # the subprocess 404'd, this assertion failed, and the classify step fell
+        # to run_all=true (enumeration_failed) on EVERY PR from #5679 (2026-09-04)
+        # until this fix — the same disease #5676 cured for security_gate_flags.
+        rel = Path("scripts") / "ci" / "scripts_coupling_census.py"
+        workspace = os.environ.get("GITHUB_WORKSPACE")
+        file_root = Path(__file__).resolve()
+        candidates = [Path.cwd()]
+        if workspace:
+            candidates.append(Path(workspace))
+        if len(file_root.parents) > 2:
+            candidates.append(file_root.parents[2])
+        repo_root = next((c for c in candidates if (c / rel).is_file()), None)
+        if repo_root is None:
+            self.skipTest(
+                "scripts_coupling_census.py not reachable from cwd, GITHUB_WORKSPACE "
+                "or __file__ — staleness is asserted where the checkout is present"
+            )
+        census = repo_root / rel
+        completed = subprocess.run(
+            [sys.executable, str(census), "--check"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+        )
+        if completed.returncode != 0 and "git" in completed.stderr.lower() and (
+            "FileNotFoundError" in completed.stderr
+            or "not found" in completed.stderr.lower()
+        ):
+            self.skipTest(
+                f"git unavailable in this sandbox: {completed.stderr.strip()[-200:]}"
+            )
+        self.assertEqual(
+            completed.returncode,
+            0,
+            "SCRIPTS_COUPLING is stale or the census failed — run "
+            "`python3 scripts/ci/scripts_coupling_census.py --write`.\n"
+            f"stdout: {completed.stdout}\nstderr: {completed.stderr}",
+        )
 
     def test_guilt_fleet_ops_combined_with_backend_change_still_runs_backend(
         self,
@@ -513,6 +672,72 @@ class ChangeMapTests(unittest.TestCase):
         )
         self.assertFalse(result["run_all"])
         self.assertEqual(result["suggested_jobs"], ["backend-tests", "e2e-tests"])
+
+    def test_innocence_claude_settings_and_hooks_skip_every_test_job(self) -> None:
+        # Before this PR, .claude/settings.json, .claude/settings.local.json
+        # and .claude/hooks/*.py fell into unknown_paths (unmapped) and
+        # forced run_all=True — none of the six tests.yml jobs read the
+        # harness config or hook scripts; they are verified by
+        # immune-enforcement.yml and scripts/tests/ instead. (a) in the PR
+        # body's numbering.
+        for path in (
+            ".claude/settings.json",
+            ".claude/settings.local.json",
+            ".claude/hooks/x.py",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertFalse(result["run_all"])
+                self.assertEqual(result["reason"], "classified")
+                self.assertEqual(result["unknown_paths"], [])
+                self.assertTrue(result["domains"]["fleet_ops"])
+                self.assertEqual(result["suggested_jobs"], [])
+
+    def test_guilt_claude_settings_does_not_suppress_a_real_backend_change(
+        self,
+    ) -> None:
+        # (b) in the PR body's numbering: fleet_ops must not suppress the
+        # job set a co-changed backend_python path already earns.
+        result = cm.classify(
+            [".claude/settings.json", "apps/backend-rag/backend/app/main.py"]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertTrue(result["domains"]["backend_python"])
+        self.assertIn("backend-tests", result["suggested_jobs"])
+
+    def test_innocence_guard_conformance_registry_skips_every_test_job(self) -> None:
+        # infra/guard-conformance/ is more specific than the "infra/"
+        # catch-all and must win — before this entry the registry inherited
+        # infra_workflows/security_sensitive and forced all six jobs, though
+        # guard-conformance.yml's own guilt+innocence run is what actually
+        # verifies it (cicatrix #3's ESEGUIBILE).
+        result = cm.classify(["infra/guard-conformance/registry.json"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["unknown_paths"], [])
+        self.assertTrue(result["domains"]["fleet_ops"])
+        self.assertFalse(result["domains"]["infra_workflows"])
+        self.assertEqual(result["suggested_jobs"], [])
+
+    def test_innocence_a_hooks_settings_only_pr_shape_skips_every_test_job(
+        self,
+    ) -> None:
+        # (c) in the PR body's numbering: the realistic PR #5681 shape (a
+        # per-prompt recall hook touching scripts/memory, scripts/hooks,
+        # scripts/tests, the guard-conformance registry, and the harness
+        # settings file) must classify cleanly with zero suggested jobs.
+        result = cm.classify(
+            [
+                "scripts/memory/mos_recall_sessionstart.py",
+                "scripts/hooks/organism_alert_sessionstart.sh",
+                "scripts/tests/test_memory_layers.py",
+                "infra/guard-conformance/registry.json",
+                ".claude/settings.json",
+            ]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["unknown_paths"], [])
+        self.assertTrue(result["domains"]["fleet_ops"])
+        self.assertEqual(result["suggested_jobs"], [])
 
     def test_cli_stdout_is_one_compact_json_line(self) -> None:
         script = Path(__file__).with_name("change_map.py")
