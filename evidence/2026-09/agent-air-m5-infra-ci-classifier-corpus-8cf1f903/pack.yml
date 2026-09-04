@@ -1,7 +1,13 @@
 task_id: ci-classifier-corpus
 gear: 3
 verdict: PASS
-brief_ref: evidence/2026-09/agent-air-m5-infra-ci-classifier-corpus-8cf1f903/brief.yml
+# CI stages every per-PR pair under /tmp/evidence-check/evidence/{brief,pack}.yml and resolves
+# brief_ref against THAT synthetic root, never against the real repo layout. The per-PR path this
+# field used to carry ("evidence/2026-09/<slug>/brief.yml") is the obviously-correct-looking value
+# that does not exist in the staging tree — it failed the lint with "does not resolve to a file on
+# disk", a message that says nothing about staging. The canonical staging reference is the only
+# value that passes; see scripts/ci/evidence_paths.py's module docstring.
+brief_ref: evidence/brief.yml
 pii_scan: clean
 council_run: council-journal.jsonl
 lanes:
