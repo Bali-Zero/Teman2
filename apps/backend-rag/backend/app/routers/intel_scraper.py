@@ -40,6 +40,7 @@ from backend.app.utils.internal_api_auth import verify_internal_api_key
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import invalidate_cache
 from backend.core.qdrant_db import QdrantClient
+from backend.services.cover_images import _cover_as_jpeg
 from backend.services.intel.intel_staging_service import assert_valid_item_id
 
 logger = get_logger(__name__)
@@ -798,6 +799,7 @@ async def _publish_staging_item(
                 NextSteps,
                 PublishRequest,
                 TLDRSection,
+                generate_slug,
             )
 
             # Convert staging item to EnrichedArticle
@@ -829,6 +831,7 @@ async def _publish_staging_item(
             # Prepare cover image if available
             cover_image_base64 = None
             cover_image_filename = None
+            cover_slug = (data.get("slug") or "").strip() or generate_slug(title)
 
             # Priority 1: Download from Google Drive (uploaded by scraper)
             if data.get("image_drive_file_id"):
@@ -843,9 +846,10 @@ async def _publish_staging_item(
                         # Download file content from Drive
                         request = drive_svc.service.files().get_media(fileId=file_id)
                         image_bytes = await asyncio.to_thread(request.execute)
-                        cover_image_base64 = base64.b64encode(image_bytes).decode("utf-8")
-                        file_ext = "png" if image_bytes[:4] == b"\x89PNG" else "jpg"
-                        cover_image_filename = f"{item_id}.{file_ext}"
+                        cover_image_base64 = base64.b64encode(_cover_as_jpeg(image_bytes)).decode(
+                            "utf-8"
+                        )
+                        cover_image_filename = f"{cover_slug}.jpg"
                         logger.info(
                             "Cover image downloaded from Drive",
                             extra={
@@ -877,10 +881,9 @@ async def _publish_staging_item(
                         cover_image_path = PathLib(cover_image_path)
 
                     if cover_image_path.exists():
-                        cover_image_base64 = base64.b64encode(cover_image_path.read_bytes()).decode(
-                            "utf-8",
-                        )
-                        cover_image_filename = cover_image_path.name
+                        image_bytes = cover_image_path.read_bytes()
+                        cover_image_base64 = base64.b64encode(_cover_as_jpeg(image_bytes)).decode("utf-8")
+                        cover_image_filename = f"{cover_slug}.jpg"
                         logger.info(
                             "Cover image found on local filesystem",
                             extra={

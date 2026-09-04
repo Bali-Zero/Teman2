@@ -10,9 +10,13 @@ Covers:
 - ingest_intel_to_qdrant (helper)
 """
 
+import base64
+from io import BytesIO
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from PIL import Image
 
 # ---------------------------------------------------------------------------
 # Helper: convert_staging_to_enriched_article
@@ -694,6 +698,64 @@ class TestSubmitFromScraper:
 
 
 class TestPublishStagingItem:
+    @pytest.mark.asyncio
+    async def test_workspace_cover_is_slug_named_jpeg_before_publish(self, tmp_path) -> None:
+        """A workspace PNG reaches the composer as the canonical slug-named JPEG."""
+        from backend.app.routers.article_composer import generate_slug
+        from backend.app.routers.intel_scraper import publish_staging_item_internal
+
+        title = "Indonesia Activates Global 15% Minimum Tax — Can DJP Deliver?"
+        item_id = "news_20260903_173409_3446a476"
+        cover_dir = tmp_path / "covers"
+        cover_dir.mkdir()
+        cover_path = cover_dir / f"{item_id}.png"
+        image_output = BytesIO()
+        Image.new("RGB", (2100, 900), color="navy").save(image_output, format="PNG")
+        cover_path.write_bytes(image_output.getvalue())
+
+        staging_data = {
+            "title": title,
+            "content": "## Summary\nTax update.\n## Facts\nDetails.\n## Bali Zero Take\nImpact.\n## Next Steps\nAct.",
+            "category": "tax",
+            "relevance_score": 80,
+            "cover_image": f"covers/{item_id}.png",
+        }
+        publish_response = SimpleNamespace(
+            success=True,
+            article_url="https://balizero.com/tax-legal/example",
+            commit_sha="abc123",
+            mdx_path="apps/mouth/src/content/articles/tax-legal/example.mdx",
+            pull_request_number=1,
+            auto_merge_enabled=True,
+            image_path=f"/static/news/{generate_slug(title)}.jpg",
+        )
+
+        with (
+            patch("backend.app.routers.intel_scraper.staging_service") as mock_staging,
+            patch("backend.app.routers.intel_scraper.intel_user_actions_total") as mock_metric,
+            patch(
+                "backend.app.routers.intel_scraper.ingest_intel_to_qdrant",
+                new=AsyncMock(return_value=True),
+            ),
+            patch("backend.app.routers.intel_scraper.invalidate_cache", new=AsyncMock()),
+            patch(
+                "backend.app.routers.article_composer.publish_article_internal",
+                new=AsyncMock(return_value=publish_response),
+            ) as mock_publish,
+        ):
+            mock_staging.load_staging_item.return_value = staging_data
+            mock_staging.get_staging_dir.return_value = tmp_path
+            mock_metric.labels.return_value.inc = MagicMock()
+
+            result = await publish_staging_item_internal(
+                "news", item_id, actor="test", allow_generated_cover=False
+            )
+
+        assert result["success"] is True
+        request = mock_publish.await_args.args[0]
+        assert request.cover_image_filename == f"{generate_slug(title)}.jpg"
+        assert base64.b64decode(request.cover_image_base64).startswith(b"\xff\xd8")
+
     @pytest.mark.asyncio
     async def test_not_found(self) -> None:
         from fastapi import HTTPException

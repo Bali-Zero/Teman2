@@ -13,10 +13,12 @@ Tests cover:
 import base64
 import json
 from datetime import datetime, timezone
+from io import BytesIO
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from backend.app.routers.article_composer import (
     BaliZeroTake,
@@ -35,8 +37,34 @@ from backend.services.article_composer.claude_client import (
     _TextBlock,
     _Usage,
 )
+from backend.services.cover_images import _cover_as_jpeg, cover_card_as_jpeg
 
 # --- FIXTURES ---
+
+
+def _png_bytes(width: int = 64, height: int = 40) -> bytes:
+    """Create a valid RGB PNG for cover publication tests."""
+    output = BytesIO()
+    Image.new("RGB", (width, height), color="navy").save(output, format="PNG")
+    return output.getvalue()
+
+
+def test_cover_helper_converts_png_to_jpeg_and_crops_card_to_16_10() -> None:
+    """Covers stay full-size while cards are cropped, never stretched or padded."""
+    hero = _cover_as_jpeg(_png_bytes(width=2100, height=900))
+    card = cover_card_as_jpeg(hero)
+
+    with Image.open(BytesIO(hero)) as hero_image:
+        assert hero_image.format == "JPEG"
+        assert hero_image.mode == "RGB"
+        assert hero_image.size == (2100, 900)
+
+    with Image.open(BytesIO(card)) as card_image:
+        assert card_image.format == "JPEG"
+        assert card_image.mode == "RGB"
+        assert abs((card_image.width / card_image.height) - 1.6) < 0.01
+        assert card_image.width <= 2100
+        assert card_image.height <= 900
 
 
 @pytest.fixture
@@ -401,7 +429,7 @@ async def test_publish_article_with_cover_image(
     )
 
     # Create base64 image
-    image_data = b"fake-image-data"
+    image_data = _png_bytes()
     image_base64 = base64.b64encode(image_data).decode("utf-8")
 
     # Call endpoint
@@ -424,9 +452,18 @@ async def test_publish_article_with_cover_image(
     # Verify atomic commit was called via the pull-request path
     mock_publisher.create_commit_with_files.assert_called_once()
     call_args = mock_publisher.create_commit_with_files.call_args
-    assert len(call_args[1]["files"]) == 2  # MDX + image
+    files = call_args[1]["files"]
+    assert {entry["path"] for entry in files} == {
+        "apps/mouth/public/static/news/test-article.jpg",
+        "apps/mouth/public/static/news/test-article_card.jpg",
+        "apps/mouth/src/content/articles/immigration/indonesia-tightens-visa-rules-what-expats-need-to-know.mdx",
+    }
+    mdx = next(entry["content"] for entry in files if entry["path"].endswith(".mdx"))
+    assert 'cardImage: "/static/news/test-article_card.jpg"' in mdx
     assert call_args[1]["pull_request"] is True
-    assert call_args[1]["must_not_exist_paths"] == [call_args[1]["files"][1]["path"]]
+    assert call_args[1]["must_not_exist_paths"] == [
+        "apps/mouth/src/content/articles/immigration/indonesia-tightens-visa-rules-what-expats-need-to-know.mdx"
+    ]
 
 
 @pytest.mark.asyncio
@@ -486,7 +523,7 @@ async def test_hero_publication_commits_article_cover_and_layout_atomically(
             "auto_merge_enabled": True,
         }
     )
-    image_base64 = base64.b64encode(b"fake-image-data").decode("utf-8")
+    image_base64 = base64.b64encode(_png_bytes()).decode("utf-8")
     request = PublishRequest(
         article=sample_enriched_article,
         cover_image_base64=image_base64,
@@ -503,6 +540,7 @@ async def test_hero_publication_commits_article_cover_and_layout_atomically(
     paths = {entry["path"] for entry in files}
     assert paths == {
         "apps/mouth/public/static/news/hero.jpg",
+        "apps/mouth/public/static/news/hero_card.jpg",
         "apps/mouth/src/content/articles/immigration/new-hero-story.mdx",
     }
     assert mock_publisher.create_commit_with_files.await_args.kwargs[

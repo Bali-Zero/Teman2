@@ -24,6 +24,7 @@ import os
 import time
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
@@ -47,6 +48,7 @@ from backend.services.article_composer import (
     handle_json_error,
     log_error_with_context,
 )
+from backend.services.cover_images import _cover_as_jpeg, cover_card_as_jpeg
 
 router = APIRouter(prefix="/api/articles", tags=["Article Composer"])
 logger = logging.getLogger(__name__)
@@ -908,14 +910,16 @@ async def publish_article_internal(request: PublishRequest) -> PublishResponse:
             import base64
 
             # Decode base64 image
-            image_data = base64.b64decode(request.cover_image_base64)
+            image_data = _cover_as_jpeg(base64.b64decode(request.cover_image_base64))
 
             # Determine image path
-            image_filename = request.cover_image_filename or f"{slug}.jpg"
+            image_filename = f"{Path(request.cover_image_filename).stem}.jpg"
             image_git_path = f"apps/mouth/public/static/news/{image_filename}"
             cover_image_path = f"/static/news/{image_filename}"
+            card_git_path = f"apps/mouth/public/static/news/{Path(image_filename).stem}_card.jpg"
 
             files_to_commit.append({"path": image_git_path, "content": image_data})
+            files_to_commit.append({"path": card_git_path, "content": cover_card_as_jpeg(image_data)})
             logger.info("Will upload cover image: %s", image_git_path)
 
         # 2. Generate MDX content
