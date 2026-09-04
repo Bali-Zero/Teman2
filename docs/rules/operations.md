@@ -89,7 +89,7 @@ allow-lists rather than deny-lists, at parse time, before any caller can forget 
 | Guard | What it refuses |
 |---|---|
 | `_guard_shell_composition` | any chaining, substitution, redirection or expansion — `$` included, because a bare `$SECRET` executes nothing and exfiltrates just as well inside a URL |
-| `_guard_command_allowlist` | any first token but `gh`, `curl`, `git`, `python3`, `fly`, `flyctl`, and then each one narrowed: `fly`/`flyctl` to read-only subcommand PAIRS (`machine list`, not `machine run`); `git` to local read-only subcommands with `-c` and `--output` refused; `gh` to read-only subcommand pairs with `--repo` and a non-GET `gh api` refused; `curl` to exactly one non-flag argument which must be an `https://` URL, with no body, no proxy and no flag that reads a local file |
+| `_guard_command_allowlist` | any first token but `gh`, `curl`, `git`, `python3`, `fly`, `flyctl`, and then each one narrowed: `fly`/`flyctl` to read-only subcommand PAIRS (`machine list`, not `machine run`); `git` to local read-only subcommands, with its GLOBAL options (`-c`, `-C`, `--git-dir`) refused BEFORE the subcommand and its writing/paging ones (`--output`, `-O`, `--textconv`) refused after — position matters, because `git grep -c` is grep's innocent count flag; `gh` to read-only subcommand pairs with `--repo` and a non-GET `gh api` refused; `curl` to exactly one non-flag argument which must be an `https://` URL, with no body, no proxy, and no flag that reads a local file or expands a variable inside curl (`--netrc-file`, `--variable`) |
 | `_guard_no_remote_shell` | `ssh`, `scp`, `sftp`, `rsync`, `nc` in ANY position, not just the first — an allow-list keyed on `argv[0]` waves `git clone ssh://host/repo` straight through |
 | `_guard_path_containment` | `..` segments and absolute-path arguments |
 | `_guard_expect_form` | an `expect` outside the three forms, and a regex that does not compile |
@@ -108,7 +108,11 @@ rather than what it is, is itself a scar (W109).
 **The block must also be the one a reviewer saw.** Before any guard runs, the parser
 blanks out what GitHub renders inert — fenced code blocks and HTML comments — so a
 `## Bites` hidden in a comment is not a contract and the format shown as an example in a
-fence is not one either. Two visible blocks are `malformed` rather than first-wins: a
+fence is not one either. Both passes follow the rendering rules rather than approximating
+them: comments are consumed by a scanner, so a line carrying a closed pair AND an opener
+(`<!-- note --> <!--`) leaves the comment OPEN as GitHub does; and a fence closes only on
+the same character at least as long as the opener, so a block opened with four backticks
+is not closed by three. Two visible blocks are `malformed` rather than first-wins: a
 reviewer sees both, so there is no first one to obey. A block containing zero-width or
 invisible characters is `malformed` too — it renders as one contract and parses as
 another, and with two readings available there is no honest way to pick one.
@@ -127,6 +131,10 @@ PR checkout would have no boundary at all, marker or not.
 Each guard carries a guilt and an innocence proof registered in
 `infra/guard-conformance/registry.json` (surface `bites_parse_observe_allowlist`), so a
 guard added without both fails CI rather than shipping untested.
+
+**Options are matched in all three of their spellings** — `--flag`, `--flag=value`, and a
+short option with its value glued on (`-Oevil`). The third is the one a naive
+`split("=")` comparison misses, and it was live for a whole review round.
 
 Check a body before opening the PR:
 

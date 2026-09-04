@@ -9,7 +9,11 @@
         "test_a_fenced_example_is_documentation_not_a_contract",
         "test_two_bites_blocks_are_ambiguous_not_first_wins",
         "test_a_zero_width_character_in_the_block_is_refused_not_guessed",
-        "test_a_zero_width_character_elsewhere_in_the_body_is_not_penalised"
+        "test_a_zero_width_character_elsewhere_in_the_body_is_not_penalised",
+        "test_a_comment_closed_and_reopened_on_one_line_still_hides_what_follows",
+        "test_a_four_backtick_fence_is_not_closed_by_three",
+        "test_the_lint_step_and_its_edited_trigger_are_wired_into_the_required_job",
+        "test_flag_matcher_handles_all_three_spellings"
       ],
       "source": "scripts/ci/bites_parse.py",
       "census": {
@@ -17,7 +21,7 @@
         "prefix": "_guard_"
       },
       "test_file": "scripts/tests/test_bites_parse.py",
-      "note": "The allow-list that stands between a pull-request body and a command a CI job will execute. Every guard here is load-bearing for that boundary, so both proofs matter in the usual way and one shape matters especially: _guard_no_remote_shell's guilt case asserts that _guard_command_allowlist ALSO passes the same input. That is deliberate. `git clone ssh://host/repo` is waved through by an allow-list keyed on argv[0], which is exactly superscar #3's under-match twin -- a guard that inspects only the head of a command guards a spelling. The pair is what proves the two guards are not redundant.",
+      "note": "The allow-list that stands between a pull-request body and a command a CI job will execute. Every guard here is load-bearing for that boundary, so both proofs matter in the usual way and one shape matters especially: _guard_no_remote_shell's guilt case asserts that _guard_command_allowlist ALSO passes the same input. That is deliberate. `git clone ssh://host/repo` is waved through by an allow-list keyed on argv[0], which is exactly superscar #3's under-match twin -- a guard that inspects only the head of a command guards a spelling. The pair is what proves the two guards are not redundant. Round 4 (the Gear-3 verdict gate, 2026-09-04) added the positional split of git's options: git's GLOBAL -c is code execution and must precede the subcommand, while `git grep -c` is grep's count flag and is innocent. Scanning one flat list over the whole command line refuses the innocent one — the OVER-match mirror of the two under-matches this same surface was already cured of, which is why test_command_allowlist_innocence_git_grep_count_flag_passes is registered as innocence rather than left implicit.",
       "guards": {
         "_guard_shell_composition": {
           "scar": ["superscar-3-guard-over-match"],
@@ -52,11 +56,17 @@
             "test_command_allowlist_guilt_git_output_writes_a_file",
             "test_command_allowlist_guilt_curl_reading_a_local_file_is_rejected",
             "test_command_allowlist_guilt_curl_schemeless_host_is_rejected",
-            "test_command_allowlist_guilt_gh_pointing_at_another_repo_is_rejected"
+            "test_command_allowlist_guilt_gh_pointing_at_another_repo_is_rejected",
+            "test_command_allowlist_guilt_git_grep_pager_command_is_rejected",
+            "test_command_allowlist_guilt_git_global_flags_that_retarget_are_rejected",
+            "test_command_allowlist_guilt_pytest_override_ini_is_rejected",
+            "test_command_allowlist_guilt_curl_credential_files_are_rejected",
+            "test_command_allowlist_guilt_curl_variable_expands_the_environment"
           ],
           "innocence": [
             "test_command_allowlist_innocence_every_real_shape_passes",
-            "test_command_allowlist_innocence_fly_read_pairs_pass"
+            "test_command_allowlist_innocence_fly_read_pairs_pass",
+            "test_command_allowlist_innocence_git_grep_count_flag_passes"
           ]
         },
         "_guard_no_remote_shell": {

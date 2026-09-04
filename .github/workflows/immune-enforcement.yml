@@ -18,6 +18,14 @@ name: Immune enforcement (superscar antidotes)
 on:
   workflow_dispatch:
   pull_request:
+    # `edited` is here for the Bites lint below, and it closes a fail-open the 2026-09-04
+    # verdict gate found: the DEFAULT types are opened/synchronize/reopened, so a body
+    # edited after the last push is never re-judged — clean body, green check, edit to
+    # malformed, merges green. The other gates in this job read the DIFF and are
+    # unaffected by a body edit; the extra runs they cost are the cheap ledger gates
+    # only, because the heavy battery is still gated on `steps.paths.outputs.relevant`,
+    # which a body-edit run computes as false.
+    types: [opened, synchronize, reopened, edited]
   merge_group:
 
 concurrency:

