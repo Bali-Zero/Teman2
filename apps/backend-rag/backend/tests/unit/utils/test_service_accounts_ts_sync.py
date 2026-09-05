@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pytest
 
-from backend.app.utils.service_accounts import NON_HUMAN_ROLES
+from backend.app.utils.service_accounts import NON_HUMAN_ROLES, TEAM_ROLES
 
 # Six levels up from this file (utils -> unit -> tests -> backend ->
 # backend-rag -> apps) reaches the repo root, same convention as
@@ -36,6 +36,10 @@ _TS_HOOK_PATH = (
 
 _NON_HUMAN_ROLES_TS_RE = re.compile(
     r"const\s+NON_HUMAN_ROLES\s*=\s*new\s+Set\(\s*\[(?P<items>[^\]]*)\]\s*\)",
+)
+
+_TEAM_ROLES_TS_RE = re.compile(
+    r"const\s+TEAM_ROLES\s*=\s*new\s+Set\(\s*\[(?P<items>[^\]]*)\]\s*\)",
 )
 
 _STRING_LITERAL_RE = re.compile(r"""["']([^"']+)["']""")
@@ -117,3 +121,28 @@ class TestNonHumanRolesStaysInSyncWithPython:
         source = 'const SOME_OTHER_SET = new Set(["foo", "bar"]);\n'
         with pytest.raises(AssertionError, match="Could not find"):
             _extract_ts_non_human_roles(source)
+
+
+class TestTeamRolesStaysInSyncWithPython:
+    """The allow-list mirror (PENDING-ARMS row 88): same guilt as above, other set."""
+
+    def test_ts_hook_declares_the_same_allow_list_as_the_python_ssot(self) -> None:
+        source = _TS_HOOK_PATH.read_text()
+        match = _TEAM_ROLES_TS_RE.search(source)
+        assert match is not None, (
+            f"Could not find `const TEAM_ROLES = new Set([...])` in {_TS_HOOK_PATH} — "
+            "renamed, reformatted past this regex, or removed. Fix the pattern, never skip."
+        )
+        ts_roles = set(_STRING_LITERAL_RE.findall(match.group("items")))
+        assert ts_roles, "extracted an EMPTY TEAM_ROLES set — extraction bug, not a real set"
+        assert ts_roles == set(TEAM_ROLES), (
+            f"Frontend TEAM_ROLES {sorted(ts_roles)} has drifted from the Python SSOT "
+            f"{sorted(TEAM_ROLES)}: a colleague the backend admits would be unknown to "
+            "the frontend, or the frontend would call someone a colleague the gate refuses."
+        )
+
+    def test_the_two_mirrors_never_overlap(self) -> None:
+        source = _TS_HOOK_PATH.read_text()
+        non_human = _extract_ts_non_human_roles(source)
+        team = set(_STRING_LITERAL_RE.findall(_TEAM_ROLES_TS_RE.search(source).group("items")))
+        assert not (non_human & team)
