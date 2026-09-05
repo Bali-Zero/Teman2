@@ -35,10 +35,16 @@ seat_diversity_note: >-
   both returned a real judgement rather than a non-judgement.
 diff:
   net_lines: >-
-    6 files, +1071/-0 measured by `git diff --numstat` against the merge-base with origin/main.
-    Three are new .sql files under `apps/backend-rag/backend/db/migrations_v2/`; the other three
-    are this task's own evidence-pack files (`brief.yml`, `pack.yml`, `council-journal.jsonl`).
-    Zero Python, zero workflow. Renumbering from 281/282/283 is invisible — names never landed.
+    7 files, +1113/-0 measured by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
+    Three are new .sql files under `apps/backend-rag/backend/db/migrations_v2/`; three are this
+    task's own evidence-pack files (`brief.yml`, `pack.yml`, `council-journal.jsonl`); the
+    seventh, added post-open after `Harness floor recompute`/CI went red on
+    `test_retention_policy_scope_family_tripwire.py`, is
+    `backend/tests/test_retention_policy_scope_family_tripwire.py` — a 42-line, test-only fix
+    (see the receipt below) narrowing `_unscoped_lookups` so a file that only MENTIONS the shared
+    `visa_decision_retention_policies` table in prose (294's header, explaining why it does NOT
+    reuse that table) is not indicted for a different, single-purpose policy table's lookups.
+    Renumbering from 281/282/283 is invisible — names never landed.
   behaviour_change: >-
     Three new tables plus two functions and four triggers are created. One pre-existing production
     table is altered, in its catalog only: `visa_oracle_sessions.expires_at`'s DEFAULT moves from
@@ -171,6 +177,30 @@ receipts:
     exit: 0
     ts: "2026-08-26T14:52Z"
     seat: "session (Pro)"
+  - claim: >-
+      `test_no_shipped_active_policy_lookup_is_missing_its_scope_predicate` failed CI (Backend
+      Shard 3) on this PR's head, naming 294's two `effective_period @>` lookups (lines 301, 377)
+      as unscoped. Both join `visa_oracle_consultant_request_retention_policies` -- a table with
+      no `policy_scope` column, created by 294 itself, governing exactly one data class with its
+      own EXCLUDE constraint on `effective_period` alone. The census only pulled 294 in because
+      its header (line 88) mentions `visa_decision_retention_policies` in prose, explaining why
+      that shared table is deliberately NOT reused. Mirroring migration 289's fix (`AND
+      policy_scope = 'VISA_DECISION'`) here would reference a column that does not exist and
+      fail at apply time -- the correct cure is the test's file-selection-vs-resolution-target
+      gap, not the migration.
+    cmd: >-
+      PYTHONPATH=backend /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python3 -m pytest
+      backend/tests/test_retention_policy_scope_family_tripwire.py -vv (before and after the
+      fix, against the merged origin/main base)
+    result: >-
+      Before: 1 failed, 4 passed (the false-positive offence above). After
+      `_unscoped_lookups` was made to require the shared table's name inside the match window,
+      not just presence anywhere in the file: 6 passed (the pre-existing 4, plus one new
+      innocence test asserting `_unscoped_lookups` on the real 294 file returns `[]`). No
+      guilt/innocence test for the ORIGINAL defect class was touched or weakened.
+    exit: 0
+    ts: "2026-09-05T00:00Z"
+    seat: "session (M5, cure PR #5037)"
 pii_scan: clean
 pii_note: >-
   The consultant-requests table stores `client_id` and an evaluation reference, not names,
