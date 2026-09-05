@@ -317,8 +317,11 @@ async def create_case(
     """Mint a new E33 case starting at ``fit_memo``.
 
     Property basis is out of V1 scope (pending addendum 007 —
-    ``property_validation_standard``). Client existence, archival state and
-    RBAC and the optional practice's client association are checked BEFORE any insert.
+    ``property_validation_standard``). Before any insert, validate the requested
+    client's existence, archival state and caller access, the optional practice's
+    client association, and the optional principal client's existence, archival
+    state and caller access. Principal and dependent may have different client IDs;
+    this access check does not establish their family relationship.
 
     On a case_id collision (``asyncpg.UniqueViolationError``) re-mint once;
     a second collision is a 500 (astronomically unlikely — 6 hex chars).
@@ -353,6 +356,24 @@ async def create_case(
             )
 
     repo = E33CaseRepository(db_pool)
+    if body.principal_case_id is not None:
+        unavailable = HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="principal case is not available",
+        )
+        principal = await repo.load(body.principal_case_id)
+        if principal is None:
+            raise unavailable
+        principal_client = await _fetch_client_for_create(db_pool, principal.client_id)
+        if principal_client is None or principal_client["deleted_at"] is not None:
+            raise unavailable
+        try:
+            _assert_client_access(current_user, principal_client["assigned_to"])
+        except HTTPException as exc:
+            if exc.status_code != status.HTTP_403_FORBIDDEN:
+                raise
+            raise unavailable from None
+
     today = date.today()
     case: E33Case | None = None
     last_error: asyncpg.UniqueViolationError | None = None
