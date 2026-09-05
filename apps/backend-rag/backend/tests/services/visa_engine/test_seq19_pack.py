@@ -301,6 +301,71 @@ class TestIdentity:
             assert seq19_source[key] == seq18_source[key], key
 
 
+class TestRuleIdSetIsExactlyTheDeclaredDelta:
+    """Literal, hand-enumerated regression witness for the P0 this fold's
+    first draft shipped: ``REMOVED_RULE_IDS`` originally also named
+    ``review.e23u.requested-product`` / ``review.e23v.requested-product`` —
+    two HUMAN_REVIEW gates that are LIVE in the signed 013/017/018
+    production chain and only absent from the unsigned 14→15 candidate line
+    (see the module docstring). A test that computed its expectation FROM
+    ``REMOVED_RULE_IDS`` (as ``test_rule_delta_is_exactly_the_declared_one``
+    above does) is tautological against exactly that class of bug — it would
+    have passed unchanged whether the constant named two ids or four. This
+    test instead spells out the id sets literally, independent of the
+    constant, so a future regression of the same shape fails here."""
+
+    #: Every rule id seq-15's repair (transplanted by this fold) actually
+    #: retires from the base it is folded onto. Two ids ONLY: the
+    #: byte-duplicate intent-only E31D SUPPORT rules. NOT the two E23 review
+    #: gates — those are live in 013/017/018 and are this fold's declared
+    #: non-concern (see module docstring, point 1).
+    _LITERAL_IDS_REMOVED = frozenset(
+        {
+            "el.e31d-step-parent-relation",
+            "el.e31d-sponsor-mixed-marriage",
+        }
+    )
+    #: This fold declares no insertion — the repair only edits `when`/
+    #: `required_facts` on existing rule ids (`EDITED_RULE_IDS`) and retires
+    #: the two ids above. Named literally (not derived) for the same reason
+    #: as `_LITERAL_IDS_REMOVED`.
+    _LITERAL_IDS_ADDED: frozenset[str] = frozenset()
+
+    def test_seq18_rule_count_is_111(self, seq18_source: dict[str, Any]) -> None:
+        """Pin the measured baseline this whole test class reasons from —
+        anyone changing this number must have re-measured seq-18 on disk,
+        not carried forward stale arithmetic."""
+        assert len(seq18_source["rules"]) == 111
+
+    def test_seq19_rule_count_is_109(self, seq19_source: dict[str, Any]) -> None:
+        assert len(seq19_source["rules"]) == 109
+
+    def test_e23_review_gates_survive_from_18_into_19(
+        self, seq18_source: dict[str, Any], seq19_source: dict[str, Any]
+    ) -> None:
+        ids18 = {r["rule_id"] for r in seq18_source["rules"]}
+        ids19 = {r["rule_id"] for r in seq19_source["rules"]}
+        for rule_id in ("review.e23u.requested-product", "review.e23v.requested-product"):
+            assert rule_id in ids18, f"{rule_id} must be live in seq-18 (the production chain)"
+            assert rule_id in ids19, (
+                f"{rule_id} must survive into seq-19 — retiring a live HUMAN_REVIEW "
+                "gate is a separate business decision from this fold's E31 repair"
+            )
+
+    def test_id_set_of_19_equals_id_set_of_18_minus_removed_plus_added(
+        self, seq18_source: dict[str, Any], seq19_source: dict[str, Any]
+    ) -> None:
+        ids18 = {r["rule_id"] for r in seq18_source["rules"]}
+        ids19 = {r["rule_id"] for r in seq19_source["rules"]}
+        expected = (ids18 - self._LITERAL_IDS_REMOVED) | self._LITERAL_IDS_ADDED
+        assert ids19 == expected
+        # Same fact, restated against the pack's own REMOVED_RULE_IDS
+        # constant, so a drift BETWEEN the literal list above and the
+        # constant the fold actually runs on is also caught here rather
+        # than only in the (already tautological-by-design) delta test.
+        assert self._LITERAL_IDS_REMOVED == set(REMOVED_RULE_IDS)
+
+
 class TestSignatureAndChain:
     def test_signed_seq18_bundle_verifies_against_pinned_production_trust_store(
         self, seq18_signed: dict[str, Any], prod_trust_store_env: None

@@ -23,12 +23,27 @@ Every rule this fold does not name, and every product/source_record, stays
 byte-identical to seq-18.
 
 THE REPAIR, TRANSPLANTED (not re-authored):
-1. Four rule ids retired — present (un-retired) in seq-17/seq-18 because the
+1. Two rule ids retired — present (un-retired) in seq-17/seq-18 because the
    chain that reached production skipped the line that removed them:
    ``el.e31d-step-parent-relation``, ``el.e31d-sponsor-mixed-marriage``
-   (byte-duplicate intent-only E31D SUPPORT rules) and
-   ``review.e23u.requested-product``, ``review.e23v.requested-product``
-   (seq-14's carried-forward review-rule retirements).
+   (byte-duplicate intent-only E31D SUPPORT rules).
+
+   ``review.e23u.requested-product`` and ``review.e23v.requested-product``
+   are DELIBERATELY NOT retired here, despite seq-15's own donor payload
+   omitting them (seq-15 chained from the unsigned 14→15 line, which had
+   already dropped them). Both are LIVE in the SIGNED production chain —
+   present, byte-identical, in seq-13, seq-17 AND seq-18 (verified this run)
+   — because seq-16 re-parented onto seq-13 rather than onto 14/15, so the
+   14→15 candidate's retirement of these two review gates never reached
+   production at all. Retiring a live HUMAN_REVIEW gate is a separate
+   business decision from re-landing the E31 fail-open repair (this fold's
+   single declared concern) — ruled by the consul reviewing this PR, option
+   (a): keep the fold scoped to E31, leave E23U/E23V retirement for its own
+   PR if and when Zero wants it. Consumer proof this matters: the mouth
+   app's ``engine-adapter.test.ts`` reads the HIGHEST-sequence rulepack
+   source file on disk and asserts every HUMAN_REVIEW ``reason_code`` it can
+   emit has copy — dropping these two ids here made that copy stale against
+   seq-19 with no seq-19 consumer ever having shipped a replacement.
 2. The nine ``*-itas-*`` sponsor rules' terminal
    ``{"fact": "family.sponsor_status_code", "op": "known"}`` (fail-open,
    accepts ANY answered value including ``"NONE"``) becomes seq-15's
@@ -122,12 +137,21 @@ _RULE_PACK_ID_URL_PREFIX = (
 
 #: Retired here because the 13->16->17->18 chain that reached production
 #: never dropped them — see the module docstring, point 1.
+#:
+#: ``review.e23u.requested-product`` / ``review.e23v.requested-product`` are
+#: DELIBERATELY excluded from this set — they are present, byte-identical,
+#: in the SIGNED 013/017/018 production chain, and are absent only from the
+#: unsigned 14→15 candidate line seq-16 never chained from. Retiring a live
+#: HUMAN_REVIEW gate is a separate business decision from this fold's single
+#: concern (re-landing seq-15's E31 fail-open repair) — see the module
+#: docstring, point 1, for the consul ruling and the consumer this protects
+#: (``engine-adapter.test.ts``'s ``latestProductionPackFile`` reads the
+#: highest-sequence source pack on disk and requires copy for every
+#: HUMAN_REVIEW reason code it can still emit).
 REMOVED_RULE_IDS: frozenset[str] = frozenset(
     {
         "el.e31d-step-parent-relation",
         "el.e31d-sponsor-mixed-marriage",
-        "review.e23u.requested-product",
-        "review.e23v.requested-product",
     }
 )
 

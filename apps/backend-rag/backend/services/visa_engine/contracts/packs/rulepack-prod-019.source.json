@@ -6115,6 +6115,76 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
+            "values": ["EMPLOYMENT"]
+          },
+          {
+            "op": "eq",
+            "fact": "intent.requested_product_code",
+            "value": "E23U"
+          }
+        ]
+      },
+      "scope": "PRODUCTS",
+      "stage": "HUMAN_REVIEW",
+      "effect": {
+        "type": "REQUIRE_REVIEW",
+        "reason_code": "E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW"
+      },
+      "rule_id": "review.e23u.requested-product",
+      "priority": 100,
+      "on_unknown": "NEEDS_INPUT",
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
+      "valid_period": {
+        "to": null,
+        "from": "2026-08-19T00:00:00Z"
+      },
+      "required_facts": ["intent.purposes", "intent.requested_product_code"],
+      "explanation_key": "explain.review.e23u.requested-product",
+      "safety_critical": false,
+      "product_version_ids": ["fa143e97-b444-5ae4-9b05-6365f15e3ec7"]
+    },
+    {
+      "when": {
+        "op": "all",
+        "args": [
+          {
+            "op": "intersects",
+            "fact": "intent.purposes",
+            "values": ["EMPLOYMENT"]
+          },
+          {
+            "op": "eq",
+            "fact": "intent.requested_product_code",
+            "value": "E23V"
+          }
+        ]
+      },
+      "scope": "PRODUCTS",
+      "stage": "HUMAN_REVIEW",
+      "effect": {
+        "type": "REQUIRE_REVIEW",
+        "reason_code": "E23V_TRADE_OFFICE_STAFF_REVIEW"
+      },
+      "rule_id": "review.e23v.requested-product",
+      "priority": 100,
+      "on_unknown": "NEEDS_INPUT",
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
+      "valid_period": {
+        "to": null,
+        "from": "2026-08-19T00:00:00Z"
+      },
+      "required_facts": ["intent.purposes", "intent.requested_product_code"],
+      "explanation_key": "explain.review.e23v.requested-product",
+      "safety_critical": false,
+      "product_version_ids": ["e8a1d738-daa7-5c99-a0c6-800b25579129"]
+    },
+    {
+      "when": {
+        "op": "all",
+        "args": [
+          {
+            "op": "intersects",
+            "fact": "intent.purposes",
             "values": ["FAMILY"]
           },
           {

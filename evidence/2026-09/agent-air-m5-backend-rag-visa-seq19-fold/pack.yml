@@ -47,7 +47,37 @@ lanes:
       (`SEQ18_PAYLOAD_SHA256`/`SEQ13_PAYLOAD_SHA256`/`SEQ15_PAYLOAD_SHA256`), matching the
       fold_pack_seq17/seq18 rule shape. No code path outside the test file, the two evidence
       files, and the triage script + its own test changed; `fold_pack_seq19.py`'s behavior and
-      `rulepack-prod-019.source.json`'s bytes are unchanged (Gear-3 conclusion unchanged).
+      `rulepack-prod-019.source.json`'s bytes ARE unchanged from the original build in this
+      round only (the NEXT round below changes them).
+
+      Anthropic-gate BLOCK round (P0, spec-driven): the gate found `REMOVED_RULE_IDS` also
+      named `review.e23u.requested-product` / `review.e23v.requested-product` — two
+      HUMAN_REVIEW gates that are LIVE, byte-identical, in the SIGNED 013/017/018 production
+      chain, and are absent only from the unsigned 14→15 candidate line seq-16 never chained
+      from (verified this round: both ids present in 013, 017 AND 018). Retiring a live
+      review gate is a business decision separate from this fold's single declared concern
+      (re-landing seq-15's E31 fail-open repair); the consul ruled option (a) — keep the fold
+      scoped to E31, drop the two ids from `REMOVED_RULE_IDS`, document why they stay. Cured:
+      `REMOVED_RULE_IDS` now names only the two `el.e31d-*` byte-duplicate rules; the fold was
+      re-run end to end, regenerating `rulepack-prod-019.source.json` (111 seq-18 rules minus
+      2 = 109, not the earlier 111-4=107; `previous_payload_sha256` still equals seq-18's real
+      digest, unchanged). `test_seq19_pack.py` gained `TestRuleIdSetIsExactlyTheDeclaredDelta`
+      — a LITERAL, hand-enumerated id-set/count witness independent of `REMOVED_RULE_IDS`
+      itself, so a future regression of this exact shape (the constant drifting without a
+      test noticing) fails here rather than passing a tautological check computed from the
+      same constant. The consumer this protects, `apps/mouth`'s `engine-adapter.test.ts`
+      (`latestProductionPackFile` reads the HIGHEST-sequence `rulepack-prod-*.source.json` on
+      disk and requires copy for every HUMAN_REVIEW `reason_code` it can still emit), was RED
+      against the first draft's 019 (missing `E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW` /
+      `E23V_TRADE_OFFICE_STAFF_REVIEW` copy keys — reproduced this round before the fix) and
+      is confirmed green with the corrected 019 present on disk (see receipts, run locally
+      before this push). New this round: `scripts/ci/observe_visa_seq19_fold.py`, a
+      `bites-observable` no-argv wrapper that runs both consumers
+      (`test_seq19_pack.py` + `engine-adapter.test.ts`) in sequence, backing this lane's
+      `bites:` block below. No code outside `fold_pack_seq19.py` (docstring +
+      `REMOVED_RULE_IDS`), `rulepack-prod-019.source.json` (regenerated),
+      `test_seq19_pack.py` (new test class), this pack.yml, and that new script changed this
+      round.
   - lane: gear3-council-review-kimi
     role: review
     seat: kimi-code/k3 (`kimi -m kimi-code/k3 -p ...`, non-Anthropic cross-family, agentic file access to this worktree)
@@ -88,40 +118,83 @@ seat_override: >-
 outcome: >-
   rulepack-prod-019.source.json chains from the SIGNED seq-18 payload (the pack
   production actually serves) and transplants seq-15's three E31 fail-open repairs
-  onto it verbatim: 4 rule ids retired, 10 rule ids' `when`/`required_facts` replaced
-  with seq-15's exact bytes, every other byte of seq-18's 111-rule payload untouched.
-  Compiles clean, byte-invariant across two runs, all declared guilt/innocence
-  witnesses pass through the real evaluator, all 18 gold-coverage personas remain
-  supported, and the 20-persona offline comparison against the REAL signed seq-18
-  shows persona #7's manufactured E31B/E31D candidates gone while the match set/count
-  and persona #6's (unrelated) divergence are unchanged end to end. NOT SIGNED, NOT
-  ACTIVATED — signing is the consul's ceremony, activation is Zero's.
+  onto it verbatim: 2 rule ids retired (`el.e31d-step-parent-relation`,
+  `el.e31d-sponsor-mixed-marriage` — byte-duplicate intent-only E31D SUPPORT rules),
+  10 rule ids' `when`/`required_facts` replaced with seq-15's exact bytes, every
+  other byte of seq-18's 111-rule payload untouched (109 rules on 019).
+  `review.e23u.requested-product` / `review.e23v.requested-product` — LIVE in the
+  signed 013/017/018 production chain — are DELIBERATELY NOT retired (Anthropic-gate
+  P0 fix, see below): retiring them is a business decision separate from this fold's
+  single concern. Compiles clean, byte-invariant across two runs, all declared
+  guilt/innocence witnesses pass through the real evaluator, all 18 gold-coverage
+  personas remain supported, and the 20-persona offline comparison against the REAL
+  signed seq-18 shows persona #7's manufactured E31B/E31D candidates gone while the
+  match set/count and persona #6's (unrelated) divergence are unchanged end to end.
+  NOT SIGNED, NOT ACTIVATED — signing is the consul's ceremony, activation is Zero's.
   Depth-1 follow-up (this pack's refresh, same PR): a codex-terra red-team pass found two
   gaps missed by the original council review — no guard against `--output` colliding with
   an input (up to and including the signed production anchor), and a real-clock-dependent
   signature-freshness check inside `fold()` — both cured with fail-closed code + one
-  witness test each; the fold's own output bytes are unchanged.
+  witness test each; the fold's own output bytes were unchanged by that round.
+  Anthropic-gate BLOCK round (P0, this pack's second refresh): the gate found
+  `REMOVED_RULE_IDS` wrongly also retired the two live E23 review gates named above —
+  cross-app consumer `apps/mouth`'s `engine-adapter.test.ts` (reads the
+  highest-sequence source pack on disk) was RED against that draft's 019, missing
+  copy keys for `E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW` /
+  `E23V_TRADE_OFFICE_STAFF_REVIEW`. Cured per the consul's ruling (option (a), keep
+  the fold scoped to E31): `REMOVED_RULE_IDS` narrowed to the 2 real ids, the fold
+  re-run (109 rules, not 107; `previous_payload_sha256` unchanged), a literal
+  (non-tautological) id-set/count regression test added
+  (`TestRuleIdSetIsExactlyTheDeclaredDelta`), and both named consumers confirmed
+  green locally before this push (see receipts).
 diff:
-  files: 8
-  net_lines: "authored across the fold script, the gate suite module, the evidence/brief files and the secrets-triage script + its test; 9,152 generated data (rulepack-prod-019.source.json, copied/transplanted verbatim, not hand-authored) — see measured_at for the real per-file numstat"
+  files: 9
+  net_lines: "authored across the fold script, the gate suite module, the evidence/brief files, the new bites-observation script, and the secrets-triage script + its test; 9,222 generated data (rulepack-prod-019.source.json, copied/transplanted verbatim, not hand-authored, prettier-formatted) — see measured_at for the real per-file numstat"
   measured_at: >-
     `git diff origin/main --numstat`, final state (post council-review hardening,
-    the depth-1 codex-terra follow-up, AND the Anthropic-gate PASS-WITH-CONDITIONS
-    round below) — every count re-measured this run, none carried forward from an
-    earlier draft: 614/0 fold_pack_seq19.py, 9152/0 rulepack-prod-019.source.json
-    (untouched by either follow-up), 968/0 test_seq19_pack.py, 2/0
-    council-journal.jsonl, 401/0 this pack.yml (measured after staging the final
-    content, per its own self-reference), 81/62 evidence/brief.yml, 31/0
-    scripts/detect_secrets_auto_triage.py, 4/3 scripts/tests/test_detect_secrets_auto_triage.py.
+    the depth-1 codex-terra follow-up, the Anthropic-gate PASS-WITH-CONDITIONS
+    round, AND the Anthropic-gate BLOCK/P0 round below, prettier-formatted) —
+    every file this task introduces is new vs origin/main, so its total line
+    count IS its added-lines count: 638/0 fold_pack_seq19.py, 9222/0
+    rulepack-prod-019.source.json, 1033/0 test_seq19_pack.py, 2/0
+    council-journal.jsonl, 556/0 this pack.yml (measured after staging the
+    final content, per its own self-reference), 81/62 evidence/brief.yml
+    (pre-existing, rewritten), 103/0 scripts/ci/observe_visa_seq19_fold.py
+    (new this round), 31/0 scripts/detect_secrets_auto_triage.py, 4/3
+    scripts/tests/test_detect_secrets_auto_triage.py.
+    This round's OWN delta (vs the PR's prior head, 70498511c0, none of it
+    carried from an earlier draft, measured post-`prettier --write`): 30/6
+    fold_pack_seq19.py, 70/0 rulepack-prod-019.source.json (regenerated —
+    prettier's own formatting made most of the file byte-identical in
+    position to the prior draft; only the two E23 review rules' re-added
+    lines show as a diff), 65/0 test_seq19_pack.py, 176/25 pack.yml, 103/0
+    the new observation script.
   shape: >-
     One new fold script, one new generated pack (data, not logic), one new test
     module, this evidence pack + council journal, the shared brief.yml rewritten
-    for this task (repo convention — one root file, overwritten per PR), and one
-    new content-keyed rule + count bump in the secrets-triage script and its test
-    (this round). No pre-existing visa_engine CODE file touched — the size floor
-    comes entirely from the generated pack's line count, not from authored-logic
-    surface area.
+    for this task (repo convention — one root file, overwritten per PR), one new
+    `bites-observable` CI wrapper script backing this lane's `bites:` block, and one
+    new content-keyed rule + count bump in the secrets-triage script and its test.
+    No pre-existing visa_engine CODE file touched — the size floor comes entirely
+    from the generated pack's line count, not from authored-logic surface area.
 pii_scan: clean
+bites:
+  consumer: >-
+    apps/backend-rag's test_seq19_pack.py (fold-integrity/identity/guard/gold-replay
+    gate suite for rulepack-prod-019.source.json) AND apps/mouth's
+    engine-adapter.test.ts (the cross-app consumer whose
+    `latestProductionPackFile` reads the HIGHEST-sequence rulepack-prod-*.source.json
+    on disk and requires REVIEW_REASON_COPY for every HUMAN_REVIEW reason_code the
+    active pack can still emit — the surface the Anthropic-gate P0 finding lived on)
+  where: ci
+  observe: python3 scripts/ci/observe_visa_seq19_fold.py
+  expect: exit0
+bites_note: >-
+  Both consumers run for real inside one process, not asserted separately: 65 pytest
+  cases (backend-rag) then 25 vitest cases (mouth), in the order the fold's own
+  chain-of-custody matters most (Python fold integrity before the cross-app copy
+  check). Run locally before this push: `python3 scripts/ci/observe_visa_seq19_fold.py`
+  exited 0 with both suites reporting green (see receipts).
 receipts:
   - claim: seq-18's payload re-hashes to the pinned chain anchor and its signed envelope declares the same digest
     cmd: >-
@@ -199,8 +272,10 @@ receipts:
       backend/tests/services/visa_engine/test_seq18_freshness_window.py
       backend/tests/services/visa_engine/test_seq19_pack.py
     result: >-
-      193 passed (189 before the depth-1 follow-up's +2 new tests, 191 after it, 193
-      after the Anthropic-gate conditions round below)
+      197 passed (189 before the depth-1 follow-up's +2 new tests, 191 after it, 193
+      after the Anthropic-gate conditions round, 197 after the Anthropic-gate
+      BLOCK/P0 round's +4 new literal TestRuleIdSetIsExactlyTheDeclaredDelta tests
+      — re-run this round, see the P0-round receipt above)
     ts: "2026-09-05T12:12:00Z"
     seat: claude-sonnet-5 (this worktree session)
     exit: 0
@@ -298,6 +373,86 @@ receipts:
     ts: "2026-09-05T11:36:00Z"
     seat: claude-sonnet-5 (this worktree session)
     exit: 1
+  - claim: >-
+      Anthropic-gate BLOCK round (P0): review.e23u.requested-product /
+      review.e23v.requested-product are LIVE, byte-identical, in the SIGNED
+      013/017/018 production chain — this fold must not retire them
+    cmd: >-
+      python3 -c set-membership check of both rule ids over
+      rulepack-prod-013/017/018.source.json's rules[]
+    result: "present in 013: True/True; 017: True/True; 018: True/True"
+    ts: "2026-09-06T00:20:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      apps/mouth's engine-adapter.test.ts is RED against the pre-fix 019 (missing
+      copy for the two E23 review reason codes) — reproduced before the fix, not
+      assumed from the P0 report
+    cmd: >-
+      cd apps/mouth && npx vitest run
+      'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts'
+    result: >-
+      1 failed, 24 passed — "never lets a stale key sit in the copy map" failed
+      with staleKeys=[E23U_DIPLOMATIC_HOUSEHOLD_STAFF_REVIEW,
+      E23V_TRADE_OFFICE_STAFF_REVIEW]
+    ts: "2026-09-06T00:35:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 1
+  - claim: >-
+      REMOVED_RULE_IDS narrowed to the 2 real ids; the fold re-run produces
+      109 rules (111 - 2, not 111 - 4 = 107), previous_payload_sha256 unchanged
+      (seq-18's real digest), and both E23 review rule ids survive into 019
+    cmd: >-
+      PYTHONPATH=. VISA_ENGINE_TRUST_STORE_KEYS_JSON=<prod public key> python3 -m
+      backend.scripts.visa_engine.fold_pack_seq19 --seq18-source ... --seq15-source
+      ... --seq13-source ... --output rulepack-prod-019.source.json ; then a python3
+      set-membership + count check of the regenerated file
+    result: >-
+      wrote the file; payload_sha256=bac5da8e4727e7f639c947c50211e6f95e15c1403cf6aef0dd57a92014d6e6ea;
+      retired ['el.e31d-sponsor-mixed-marriage', 'el.e31d-step-parent-relation'] (2, not 4);
+      18-rule count=111, 019=109; previous_payload_sha256=5a24472d187f85c54628f23d6e37b2a4b814e54762478c099472f0437d255849
+      (== seq-18's digest, unchanged); e23u/e23v present in both 018 and 019
+    ts: "2026-09-06T00:45:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      test_seq19_pack.py, including the new literal TestRuleIdSetIsExactlyTheDeclaredDelta
+      class, is fully green against the regenerated 019
+    cmd: >-
+      PYTHONPATH=backend VISA_ENGINE_TRUST_STORE_KEYS_JSON=<prod public key> python3 -m
+      pytest backend/tests/services/visa_engine/test_seq19_pack.py
+    result: "65 passed"
+    ts: "2026-09-06T00:50:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      apps/mouth's engine-adapter.test.ts is green with the corrected 019 present on
+      disk (the P0 regression is cured, confirmed by re-running the SAME command that
+      reproduced the failure above)
+    cmd: >-
+      cd apps/mouth && npx vitest run
+      'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts'
+    result: "25 passed, 0 failed"
+    ts: "2026-09-06T00:52:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the new bites-observation script (scripts/ci/observe_visa_seq19_fold.py) runs
+      both named consumers in one process and exits 0 only when both are green — the
+      script this lane's `bites:` block's `observe:` line points at
+    cmd: python3 scripts/ci/observe_visa_seq19_fold.py
+    result: >-
+      "65 passed" (test_seq19_pack.py) then "Test Files 1 passed (1), Tests 25 passed
+      (25)" (engine-adapter.test.ts); printed "both consumers green"; exit 0
+    ts: "2026-09-06T00:55:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: rulepack-prod-018.signed.json (the live signed production anchor) is byte-unchanged by this round
+    cmd: "git status --short -- apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-018.signed.json ; shasum -a 256 rulepack-prod-018.signed.json"
+    result: "git status: clean (no diff); sha256=b8939c4a51709384ace5a7929726e0c35d3afa4ef2d2b26be1fa57d09e77944a"
+    ts: "2026-09-06T00:57:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
 dissent:
   - seat: claude-sonnet-5 (this worktree session), self-caught
     status: CONFIRMED
