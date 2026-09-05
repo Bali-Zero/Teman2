@@ -1,0 +1,31 @@
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: b04b-evidence-provenance
+    role: build
+    seat: OpenAI Codex GPT-6; exact runtime variant not exposed.
+  - lane: b04b-evidence-review
+    role: review
+    seat: kimi-code/k3 via existing OAuth CLI
+dissent: []
+pii_scan: clean
+receipts:
+  - claim: The pinned CATEGORY_SEO initializer is byte-identical to the parent and reproduces the corrected digest.
+    cmd: node evidence/2026-09/agent-air-m5-ops-b04b-evidence-provenance/reproduce.cjs
+    result: initializer_byte_equal true; SHA-256 899ab45308ca82e278995d395bf07919cb8bfa5537066d106b52511577ed74e4 # pragma: allowlist secret - reproduced artifact digest
+    exit: 0
+    ts: "2026-09-05T13:42:29.725140+00:00"
+    seat: OpenAI Codex via TypeScript Compiler API
+correction:
+  prior_digest: 821228d56ed1ebd7e2b35f634de87121f779372d2e954d3f219eb11cc4e15e14 # pragma: allowlist secret - historical artifact digest
+  reason: The previous table_source_sha256 had no reproducible byte representation and did not match the initializer. It is superseded by a pinned Git-object extraction recipe.
+  corrected_digest: 899ab45308ca82e278995d395bf07919cb8bfa5537066d106b52511577ed74e4 # pragma: allowlist secret - reproduced artifact digest
+  historical_builder: The B04b pack correctly identifies OpenAI GPT-6. Legacy commit trailers naming Codex Opus 4.8 are incorrect; no Anthropic builder execution is claimed. Existing commit history is preserved.
+  verifier: Kimi source review and Fable independent gate are distinct from builder attribution.
+review:
+  verdict: PASS, static source review only; Kimi did not execute the recipe.
+  output_format: CLI review text with trailing blank lines removed.
+  finished_at: "2026-09-05T13:43:34.169017+00:00"
+  prompt_sha256: 912146e4afed22680118c433ce5e401554235dad005d4d586afca954a4bf416f # pragma: allowlist secret - review prompt digest
+  review_sha256: ed5247a8ad3deb11eac5c573dcbd5b835398c223bbab4ca02b19964a90449782 # pragma: allowlist secret - review artifact digest
+  limits: The replay proves initializer byte equality and its digest, not application wiring or production behavior. Existing TypeScript dependency and pinned Git objects are required.
+post_review_change: Moved the existing artifact-digest allowlist comment onto the hash literal line after formatting; executable recipe unchanged.

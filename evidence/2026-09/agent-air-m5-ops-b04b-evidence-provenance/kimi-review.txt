@@ -1,0 +1,22 @@
+• **PASS**
+
+  Findings from static review of the supplied source:
+
+  **Reproduction recipe — correct and self-consistent**
+  - `reproduce.cjs` pins both refs (`58e8b0b…` parent, `4c1247aa…` child) and reads content exclusively via `git show <ref>:<path>`, so the input is a pinned Git object, not working-tree state. Provenance claim holds.
+  - Byte representation is well-defined: `node.initializer.getText(sourceFile)` returns exact source text of the initializer node, which by AST construction excludes the trailing semicolon and newline — matching `sha256_representation` in `probes.yml:14`. The UTF-8 hash spec in `probes.yml` matches the `createHash("sha256").update(after, "utf8")` call exactly.
+  - Guard rails are sound: `assert(node.initializer, …)` and `values.length === 1` prevent silently hashing an empty or ambiguous extraction.
+  - Receipt in `pack.yml` (`initializer_byte_equal true; SHA-256 899ab453…`, exit 0) matches the supplied recipe stdout verbatim, and `table_source_sha256` in `probes.yml:13` is the same digest. The correction chain 821…→ 899… is internally coherent: prior digest had no reproducible representation, new one is pinned to Git objects plus a deterministic extractor.
+
+  **Provenance / attribution**
+  - The correction block is scoped correctly: it annotates attribution metadata (B04b builder = OpenAI GPT-6, legacy "Codex Opus 4.8" trailers incorrect) without rewriting history, consistent with the `never rewrite existing commits` constraint. Note this attribution claim is asserted, not machine-verifiable from the pack itself — acceptable for a metadata correction, but a reviewer can only confirm the digest claim, not the trailer history.
+  - Lane seat declaration ("exact runtime variant not exposed") is honest rather than over-claimed.
+
+  **Scope discipline — no hidden runtime changes**
+  - All artifacts live under `evidence/2026-09/agent-air-m5-ops-b04b-evidence-provenance/`; `probes.yml` timestamps (11:25) precede the correction receipt (13:42), consistent with an evidence-only followup after PR5778. `pii: none` / `pii_scan: clean` plausible — only commit hashes and digests present, and the `# pragma: allowlist secret` annotations are appropriate (these are digests/commits, not credentials).
+
+  **Minor gaps (non-blocking)**
+  - The byte-equality claim covers the `CATEGORY_SEO` initializer only; it does not prove the rest of the move (imports, re-export wiring in `layout.tsx`) was behavior-preserving. The earlier guilt/candidate probe results (28 failed → restored) support that, but the candidate-side log has no digest recorded — only `guilt_log_sha256` is pinned.
+  - Recipe depends on the `typescript` package and repo access; reproducibility is contingent on those, which is standard but worth noting for an independent reviewer.
+
+  No new test suite is warranted — this is a static evidence correction and the acceptance criterion (reproduce the initializer digest at the pinned commit) is fully covered by the shipped recipe.
