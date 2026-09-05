@@ -33,7 +33,19 @@ def test_empty_role_is_still_refused_here(role: str | None) -> None:
     assert _is_staff_role(role) is False
 
 
-def test_partner_never_becomes_a_garuda_staff_principal(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_partner_role_is_refused_on_the_role_path_with_the_admin_allowlist_emptied(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Scope of this assertion: the ROLE path only.
+
+    ``_staff_principal_from_role`` goes through ``can_manage_garuda_practices``,
+    which consults the admin-email allowlist (``_garuda_practice_admin_emails``)
+    BEFORE the role and grants on an email match whatever the role says. That
+    precedence is untouched by this change and is not asserted here in either
+    direction; the allowlist is emptied so the outcome below is decided by
+    ``_is_staff_role`` alone. With the allowlist empty, a ``partner`` role yields
+    no principal, while a real staff role still does.
+    """
     monkeypatch.setattr(staff_auth, "_garuda_practice_admin_emails", lambda: frozenset())
     assert _staff_principal_from_role("partner@example.com", "partner") is None
     assert _staff_principal_from_role("staff@balizero.com", "Reception") == {
