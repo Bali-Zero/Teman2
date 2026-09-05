@@ -68,11 +68,19 @@ def normalize_role(role: str | None) -> str:
 
 
 #: Every role a colleague can hold, normalised. The census of 2026-09-06 over
-#: the live ``team_members`` rows (job titles, free text) plus the repo roster
-#: (``backend/data/team_members.json``) plus the two legacy tokens fixtures and
-#: older code paths still use. A superset of
-#: ``services/crm/partners/service.py::INTERNAL_ROLES_ALWAYS_ALLOWED`` (CATA-6),
-#: which the tests pin so the two cannot drift apart.
+#: the live ``team_members`` rows (job titles, free text; ``SELECT lower(role),
+#: active, count(*) ... GROUP BY 1, 2`` through ``scripts/pg.sh``, active and
+#: inactive rows alike — an inactive colleague can be reactivated and must not
+#: find the door shut) plus the repo roster (``backend/data/team_members.json``)
+#: plus the two legacy tokens fixtures and older code paths still use. A
+#: superset of ``services/crm/partners/service.py::INTERNAL_ROLES_ALWAYS_ALLOWED``
+#: (CATA-6), which the tests pin so the two cannot drift apart.
+#:
+#: Deliberately absent, because none of them is a person: the ``user`` default
+#: ``deps/auth.py`` substitutes for a token without a role, and the pseudo-users
+#: ``middleware/hybrid_auth.py`` builds for a shared key (``internal``, the
+#: X-Internal-Key holder) or for nobody at all (``public``). The internal-key
+#: callers reach ``/api/crm/clients/*`` routes that never asked this predicate.
 TEAM_ROLES = frozenset(
     normalize_role(role)
     for role in (

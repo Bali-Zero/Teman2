@@ -101,7 +101,21 @@ class TestTeamRolesAreAnAllowList:
 
     @pytest.mark.parametrize(
         "role",
-        ["user", "unknown", "", "   ", None, "staff", "guest", "Partner ", "client", "monitoring"],
+        [
+            "user",
+            "unknown",
+            "",
+            "   ",
+            None,
+            "staff",
+            "guest",
+            "Partner ",
+            "client",
+            "monitoring",
+            # middleware pseudo-users (hybrid_auth.py): a shared key is not a person
+            "internal",
+            "public",
+        ],
     )
     def test_roles_the_census_never_issued_fail_closed(self, role: str | None) -> None:
         assert is_human_team_member(role) is False

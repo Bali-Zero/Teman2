@@ -178,7 +178,7 @@ class TestAuthDependencies:
         result = require_team_member(user)
         assert result == user
 
-    @pytest.mark.parametrize("role", ["agent", "user", "unknown", "", None])
+    @pytest.mark.parametrize("role", ["agent", "user", "unknown", "", None, "internal", "public"])
     def test_require_team_member_rejects_roles_outside_the_allow_list(self, role):
         """Row 88 of PENDING-ARMS: the gate used to be a denylist, so any role
         it had not heard of — including the ``user`` default a role-less token
