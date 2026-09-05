@@ -119,6 +119,23 @@ def _unscoped_lookups(path: Path) -> list[tuple[int, str]]:
         if line.lstrip().startswith(("--", "#", "*")):
             continue
         window = "\n".join(lines[max(0, index - _WINDOW) : index + _WINDOW])
+        if POLICY_TABLE not in window:
+            # This active-policy lookup does not resolve against the shared,
+            # multi-scope authority table this tripwire protects -- it is a
+            # DIFFERENT table's own dedicated, single-purpose policy resolver
+            # (own EXCLUDE constraint on `effective_period` alone, no second
+            # data class ever shares it). A file can still land in the census
+            # via `_candidate_files()`'s file-wide substring check even when
+            # POLICY_TABLE only appears far away in prose (e.g. a comment
+            # explaining why THIS table is deliberately NOT that one) --
+            # 294_visa_oracle_consultant_requests_retention_policy.sql is the
+            # concrete case: its two `effective_period @>` lookups both join
+            # `visa_oracle_consultant_request_retention_policies`, which has
+            # no `policy_scope` column and needs none, while POLICY_TABLE's
+            # name appears only in an unrelated comment ~200 lines away. A
+            # `policy_scope` predicate would not compile there -- the column
+            # does not exist -- so this is a false positive, not a defect.
+            continue
         if not _SCOPE_PREDICATE.search(window):
             offences.append((index + 1, line.strip()))
     return offences
@@ -213,6 +230,31 @@ def test_the_census_is_not_empty() -> None:
 
     files = _candidate_files()
     assert len(files) >= 5, [str(p) for p in files]
+
+
+def test_a_lookup_against_a_different_dedicated_policy_table_is_not_an_offence() -> None:
+    """A file can enter the census by prose alone; that must not indict it.
+
+    `294_visa_oracle_consultant_requests_retention_policy.sql` mentions
+    POLICY_TABLE's name once, in a comment explaining why it is deliberately
+    NOT reused, ~200 lines from its own two `effective_period @>` lookups --
+    both of which join `visa_oracle_consultant_request_retention_policies`, a
+    single-purpose table with its own EXCLUDE constraint on `effective_period`
+    alone (never a second data class, so no `policy_scope` column exists or
+    is needed there). Guilt on this file would demand a predicate against a
+    column that does not exist -- the assertion below is the innocence case
+    for `_unscoped_lookups`'s file-selection-vs-resolution-target distinction.
+    """
+
+    path = (
+        BACKEND_ROOT
+        / "db"
+        / "migrations_v2"
+        / "294_visa_oracle_consultant_requests_retention_policy.sql"
+    )
+    assert path.exists(), path
+    assert POLICY_TABLE in path.read_text(encoding="utf-8")
+    assert _unscoped_lookups(path) == []
 
 
 def test_no_shipped_active_policy_lookup_is_missing_its_scope_predicate() -> None:
