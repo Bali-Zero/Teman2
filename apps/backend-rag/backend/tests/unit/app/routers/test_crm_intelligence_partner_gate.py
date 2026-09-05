@@ -13,6 +13,7 @@ therefore proves the gate fired BEFORE any client data could be read.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import pytest
@@ -22,6 +23,7 @@ from fastapi.testclient import TestClient
 from backend.app.deps.auth import get_current_user, require_team_member
 from backend.app.deps.database import get_database_pool
 from backend.app.routers import crm_intelligence
+from backend.app.setup.logging_config import StructuredFormatter
 
 _PARTNER: dict[str, Any] = {
     "email": "partner@example.com",
@@ -87,13 +89,21 @@ def test_every_intelligence_route_is_behind_the_team_gate() -> None:
 
 @pytest.mark.parametrize(("method", "path", "body"), _ROUTES)
 def test_partner_gets_403_before_any_client_data_is_read(
-    method: str, path: str, body: dict[str, Any] | None
+    method: str, path: str, body: dict[str, Any] | None, caplog: pytest.LogCaptureFixture
 ) -> None:
     """Guilt: at the baseline this returned anything but 403."""
     client = TestClient(_app_for(_PARTNER))
     response = client.request(method, path, json=body)
     assert response.status_code == 403, response.text
     assert "team members" in response.json()["detail"]
+    denials = [
+        record
+        for record in caplog.records
+        if record.name == "backend.app.deps.auth" and record.levelno == logging.WARNING
+    ]
+    assert len(denials) == 1  # Keep the operational signal, not the identity.
+    assert _PARTNER["email"] not in caplog.text
+    assert _PARTNER["email"] not in StructuredFormatter().format(denials[0])
 
 
 def test_staff_passes_the_gate_and_reaches_the_data_layer() -> None:
