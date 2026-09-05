@@ -126,6 +126,36 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
 
+- 2026-09-05 (M5, two-consul lane — seq-19 SIGNED + ACTIVATED): **SEQ-19 IS THE ACTIVE PRODUCTION
+  PACK (SHADOW; activation ≠ ENFORCE, `VISA_ENGINE_EVALUATE_MODE` untouched).** Chain as MEASURED in
+  `visa_rule_packs` (readonly, 21:05Z, before the ceremony): 13 → 16 → 17 → 18 (seq-14/15 were never
+  inserted; the seq-17/seq-18 activations of 2026-08-30 had no entry here — seq-18 was activated
+  2026-08-30T17:28:56Z by `operator.zero.freshness-window-2026-08-31`, activation
+  `be75facc-b1c0-4daa-ae87-247b5bd408d2`, payload `5a24472d…`). seq-19 = seq-18 + seq-15's E31
+  fail-open repair re-landed (fold PR #5784, source `rulepack-prod-019.source.json`, 109 rules: the
+  only delta vs 018 is the two `el.e31d` byte-duplicates removed; `review.e23u|e23v.requested-product`
+  KEPT after a gate BLOCK caught their removal). Signed by Zero on M5 (`sign_pack.py`, kid
+  `prod-2026-07-1`, `signed_at 2026-09-05T20:48:52Z`, payload_sha256
+  `bac5da8e4727e7f639c947c50211e6f95e15c1403cf6aef0dd57a92014d6e6ea`, rule_pack_id
+  `8c09e059-4ab2-5963-b5af-d1363d55e508`); bundle PR #5812 gated by an independent Opus-xhigh reader
+  (mutation-verified) + the session's read (PASS-WITH-CONDITIONS, four low evidence/wrapper
+  follow-ups), merged 21:48:28Z (`4b06438363`), file on `origin/main` byte-identical to the signed
+  one. **Activated 2026-09-05T21:52:20.519792Z** (Zero's explicit authorisation the same evening):
+  `activate_pack.py --yes` with two DISTINCT ephemeral logins (`visa_pack_writer_ceremony_260906` IN
+  ROLE `visa_pack_writer`, `visa_activation_ceremony_260906` IN ROLE `visa_activation_executor`, minted
+  and dropped by Zero on the PG primary `0801696b541568`, leftover 0), actor `fable-session-m5`,
+  reason `seq19-shadow-activation-260906`, `activation_id 891720d3-e391-413f-8b5f-968889a4bd28`. DB
+  verified readonly with the runtime predicate (`legal_period @> now() AND system_period @> now()`):
+  exactly ONE open activation = seq-19; seq-18 `system_period` closed at the same instant, no gap.
+  **PROVE-LIVE:** `POST /api/visa-oracle/evaluate?traffic_source=synthetic_driver` ×2 → HTTP 200,
+  `mode=CURATED`, `rule_pack sequence=19 version=2026.9.5`; all-UNKNOWN facts →
+  `HUMAN_REVIEW_REQUIRED` (fail-closed). Ceremony gotchas measured this time: `activate_pack.py`
+  needs NO `JWT_SECRET_KEY`/`API_KEYS` dummies and its dry-run opens no DB connection; `DROP ROLE`
+  of an ephemeral role fails on "privileges for database" until `REVOKE CONNECT ON DATABASE` runs
+  first; the session's security classifier refuses superuser `psql` on the primary, so mint/drop
+  are the owner's `!`-prefixed commands while proxy/dry-run/`--yes`/verification/smoke stay with
+  the session. ENFORCE-GATE unchanged: 🔴 NO-GO / SHADOW.
+
 - 2026-08-29 (M5, gold-coverage lane, PR #5182): **the 4/20 zero-movement wall now has a first
   instrument and a first corpus.** New offline helper `gold_coverage_eval.py` (single persona →
   exact replay path vs highest signed pack) + `gold_coverage_replay.py` (fail-closed corpus runner)
