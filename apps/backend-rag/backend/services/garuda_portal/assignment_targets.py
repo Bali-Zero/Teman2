@@ -8,7 +8,8 @@ OFFER?" — so the staff UI filled its assignee `<select>`
 shared CRM roster `GET /api/team/members`, whose filter is the DENYLIST
 `service_accounts.non_human_roles_sql_array()` = {``client``, ``monitoring``}.
 The two predicates are not the same set, and the gap is measurable in
-production (read-only census 2026-09-06, `scripts/pg.sh`, counts only):
+production. A read-only census of `team_members` taken 2026-09-06 (counts
+only, never emails) found:
 
 * one ACTIVE row whose email is in `crm_utils.PRACTICES_EXTRA_VIEW_EMAILS`
   (the accounting full-view role; `role = 'board member'` in `team_members`).
