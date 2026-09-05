@@ -417,7 +417,7 @@ main() {
             TIER=flash
         fi
         case "$TIER" in
-            flash) MODEL="gemini-3.5-flash" ;;
+            flash) MODEL="${AGY_FLASH_MODEL:-gemini-3.5-flash}" ;;  # agy lists 3.6/3.7/3.8 Flash too (2026-09-06)
             pro) MODEL="gemini-3.1-pro" ;;
         esac
     fi
@@ -454,12 +454,13 @@ main() {
                 -m "$MODEL" -c "model_reasoning_effort=$EFFORT" "$task_text")
             task_index=9
             ;;
-        kimi)
-            seat_argv=("$seat_binary" -p "$task_text" -m "$MODEL"); task_index=2
-            [ "${SEAT_AUTONOMOUS:-0}" = 1 ] && seat_argv+=(--auto)  # "Never Ask": nobody is there to answer
-            ;;
+        kimi) seat_argv=("$seat_binary" -p "$task_text" -m "$MODEL"); task_index=2 ;;  # kimi -p has tools live by default; --auto/-y are refused with --prompt
         agy)
-            seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --print-timeout "$((TIMEOUT_SECS / 60))m"); task_index=2  # was a hardcoded 8m: shorter than any real build
+            # agy refuses a slug without --effort ("--model gemini-3.1-pro requires --effort") and
+            # accepts only low|medium|high (pro: low|high) — clamp our 5-level scale onto it.
+            local agy_effort
+            case "$EFFORT" in xhigh|max) agy_effort=high ;; medium) [ "$TIER" = pro ] && agy_effort=high || agy_effort=medium ;; *) agy_effort="$EFFORT" ;; esac
+            seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --effort "$agy_effort" --print-timeout "$((TIMEOUT_SECS / 60))m"); task_index=2  # print-timeout was a hardcoded 8m
             [ "${SEAT_AUTONOMOUS:-0}" = 1 ] && seat_argv+=(--dangerously-skip-permissions)  # same flag agy_code_dispatch.py uses by default
             ;;
         qwen)

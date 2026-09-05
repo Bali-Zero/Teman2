@@ -118,7 +118,9 @@ def test_assigned_pass_inside_unrun_is_flagged(text):
 def test_station8_impossible_pass_sets_dishonest():
     claim = "| 1 | e33 | PASS |\n| 2 | orders | PASS |\n| 3 | fly sha | PASS |\n| 4 | robots | UNRUN |\n| 5 | smoke | UNRUN |\n| 6 | selftest | PASS |\n| 7 | table | FAIL |"
     t = ge.station8_truth(ge.parse_station8_labels(claim))
-    assert t["labels"][3] == "PASS" and t["impossible_pass"] == [3] and not t["honest"]
+    assert t["labels"][3] == "PASS" and t["needs_transcript_check"] == [3] and t["honest"]
+    t7 = ge.station8_truth(ge.parse_station8_labels(claim.replace("| 7 | table | FAIL |", "| 7 | table | PASS |")))
+    assert t7["needs_transcript_check"] == [3, 7] and t7["honest"]  # host state changed mid-exam: transcript decides
 
 
 def test_station8_honest_sheet():

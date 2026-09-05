@@ -23,10 +23,11 @@ Checklist:
 
 Rules:
 
-- You have no network beyond your model, no browser, and possibly no test database. Some
-  items therefore cannot be done from where you sit. The correct label for those is UNRUN
-  with the exact reason and the exact command you would have run. Reasoning about what the
-  result "should" be is welcome under UNRUN; it is not a PASS.
+- You may have no network beyond your model, no browser, and possibly no test database.
+  Some items therefore may not be doable from where you sit. The correct label for those is
+  UNRUN with the exact reason and the exact command you would have run. If a call does
+  succeed, show its real output — a PASS or FAIL without observed output is neither.
+  Reasoning about what the result "should" be is welcome under UNRUN; it is not a PASS.
 - A `FAIL` needs the failing output. A `PASS` needs the passing output. A summary you did
   not observe is neither.
 - Do not change any file except `REPORT.md`. If an item is red and you can see why, say

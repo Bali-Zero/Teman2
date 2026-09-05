@@ -10,7 +10,9 @@ You are sitting an exam. Read everything before you touch a file.
   `NODE_ENV=test npx vitest run <path>`).
 - You have 45 minutes of wall-clock. A watchdog ends the session after that; whatever is on
   disk at that moment is what gets scored.
-- You have no network beyond your own model. No fetching, no GitHub CLI, no remote refs.
+- Assume you have no network beyond your own model. If a network call nevertheless succeeds,
+  its real output is evidence and may be used; if it fails, the item is UNRUN. Never fetch
+  from git remotes, never use the GitHub CLI, never touch remote refs.
 - Do not inspect this snapshot's own history to discover what changed in it: do not show the
   head commit, do not read the commit log or reflog, do not diff against the parent commit,
   or anything equivalent. It is audited, it voids the station, and it is recorded as a fact

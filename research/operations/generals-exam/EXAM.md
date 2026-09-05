@@ -18,7 +18,7 @@ Nobody can have seen the solutions in training: they were merged on 2026-09-05.
 | `deepseek-v4-pro` | Alibaba TP1 | `QWEN_MODEL=deepseek-v4-pro seat_build.sh --seat qwen` | PROBATION, zero measured calls — this IS the promotion trial |
 | `glm-5.2` | Alibaba TP1 | `QWEN_MODEL=glm-5.2 seat_build.sh --seat qwen` | counter-builder today |
 | `gemini-3.1-pro` | Google | `seat_build.sh --seat agy --tier pro --effort high` | candidate-only fence; TIMEOUT on the 09-05 probe |
-| `gemini-flash` | Google | `seat_build.sh --seat agy --tier flash --effort high` | roster names 3.5 Flash; whatever `agy` binds is what sits |
+| `gemini-flash` | Google | `AGY_FLASH_MODEL=gemini-3.8-flash seat_build.sh --seat agy --tier flash --effort high` | `agy` lists 3.8 Flash (High) on 2026-09-06; the roster's 3.5 row is stale |
 | `opus-5-xhigh` | Anthropic | `claude -p --model claude-opus-5 --effort xhigh` on A2/A3 | never AZ (gate allowance) |
 | `sonnet-5-xhigh` | Anthropic | `claude -p --model claude-sonnet-5 --effort xhigh` on A2/A3 | the BUILD default has to earn it |
 | `codex-sol` | OpenAI | `seat_build.sh --seat codex --tier sol --effort max --gear 3` on O2 | the only OpenAI seat that can red-team Astra without being Astra |

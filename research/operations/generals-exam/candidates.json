@@ -49,7 +49,8 @@
       "seat": "agy",
       "tier": "flash",
       "effort": "high",
-      "group": "google-g1"
+      "group": "google-g1",
+      "agy_model": "gemini-3.8-flash"
     },
     "opus-5-xhigh": {
       "family": "anthropic",
