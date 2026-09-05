@@ -1,0 +1,21 @@
+• PASS
+
+  The tests satisfy every stated requirement, and the four mutation runs line up exactly with what the assertions should catch. Findings below are low-severity notes, not blockers.
+
+  **Why the requirement set is met**
+
+  - Real mounts: `render(<StudioApp />)` mounts the actual `StudioApp` and its real `ConsentBanner` child — no mocks, no stand-ins. `window.location.hash` drives the verdict stage through the app's own hydration path, and `await screen.findByRole("button", { name: "Got it" })` correctly waits for the post-effect mount (banner sets `visible` in `useEffect`), with the existing `beforeEach` localStorage clear guaranteeing visibility.
+  - Wrapper removed → fail: `expect(reservation).not.toBeNull()` dies immediately. Matches the observed 2 fail (both stages).
+  - Banner outside wrapper → fail: `expect(reservation?.firstElementChild).toBe(banner)` is an identity check against `dismiss.closest(".fixed")`, not a class-existence check — an empty or differently-filled wrapper fails it. Matches 2 fail.
+  - Print rule removed → fail: the CSSOM walk (`style.sheet.cssRules` → MEDIA_RULE with `mediaText === "print"` → STYLE_RULE with exact selector `.bz-shs-consent-space`) yields zero rules, and `toHaveLength(1)` fails. Matches 1 fail. The positive assertions on `display: none` + `important` priority pin the rule's substance, not just its presence.
+  - No jsdom geometry claims: the comment explicitly disclaims printed geometry, and no test touches `getBoundingClientRect` or layout. The print test only proves the shipped rule exists and targets the reservation — exactly what jsdom can honestly prove.
+  - Containment in both stages: `it.each(["question", "verdict"])` runs the identity/containment assertions against the same mounted tree at both stages; `expect(reservation).toContainElement(dismiss)` is the child-containment check proper.
+  - Run counts are internally consistent: 2 + 2 + 1 failures on the three mutations, 54 pass restored — no unexplained collateral failures in either suite, which says the tests are coupled to the regression and not to incidental structure.
+
+  **Low-severity findings (brittleness / false-red risk, accepted for a regression pin)**
+
+  1. **Low — exact-selector and single-rule pinning.** `selectorText === ".bz-shs-consent-space"` and `toHaveLength(1)` will go red on legitimate, non-regression CSS edits: a selector list (`.a, .bz-shs-consent-space`), a second harmless print rule, or a reformatted media query. This is a false-red-on-refactor risk, not a false-green risk — acceptable for a pin, but the next editor should know the test guards the rule verbatim, not its effect.
+  2. **Low — `closest(".fixed")` couples to a Tailwind utility class.** If the banner is restyled (class renamed) while staying correctly inside the wrapper, `banner` becomes null and the test goes red despite no regression. Mitigated in practice because the banner's fixed positioning is itself part of the bug class being pinned (a non-fixed banner wouldn't need measured reservation), so this coupling is arguably intentional.
+  3. **Low — implicit assumption that the `<style>` tag stays inside `container`.** Verified empirically by the passing runs (React only hoists `<style>` with a `precedence` prop, which this inline tag lacks). If a future React/version change hoists it to `<head>`, the print test false-reds. Not actionable today.
+
+  **No false-green path found within scope:** moving the banner outside the wrapper can't pass the identity check; duplicating the banner (inside + outside) would make `findByRole` throw on multiple "Got it" buttons; weakening `display:none` to non-important or a wrong selector fails the priority/selector assertions. Runtime source is untouched. Historical browser receipts being recorded separately without rerun is consistent with the tests' own honesty about jsdom's limits.

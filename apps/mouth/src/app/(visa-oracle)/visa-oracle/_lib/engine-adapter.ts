@@ -3,6 +3,7 @@ import {
   VisaOracleResponseError,
 } from "./engine-response";
 import { QUESTIONS, type OracleFacts } from "./tree";
+import { translate, type I18nKey } from "./i18n";
 import { trustedPrimarySourceUrl } from "./trusted-source-url";
 import type {
   InterviewAssumption,
@@ -638,16 +639,19 @@ function price(
   };
 }
 
-function questionForFact(path: string): string | undefined {
-  for (const question of Object.values(QUESTIONS)) {
-    if (
+function questionForFact(
+  path: string,
+  editableQuestionIds: readonly string[] = [],
+): string | undefined {
+  const matches = Object.values(QUESTIONS).filter(
+    (question) =>
+      editableQuestionIds.includes(question.id) &&
       question.decisionMapping.kind !== "HUMAN_CONTEXT" &&
-      question.decisionMapping.factPaths.includes(path)
-    ) {
-      return question.id;
-    }
-  }
-  return undefined;
+      question.decisionMapping.factPaths.includes(path),
+  );
+  // Several branches can collect the same fact. Only offer an Edit that
+  // identifies one question in this interview's current history.
+  return matches.length === 1 ? matches[0].id : undefined;
 }
 
 function nonEmpty<T>(values: T[]): [T, ...T[]] {
@@ -661,6 +665,8 @@ export interface BuildEngineOutcomeOptions {
   assumptions?: readonly InterviewAssumption[];
   facts?: OracleFacts;
   interviewBranchesRemaining?: number;
+  /** Question nodes in the current, pruning-aware interview history. */
+  editableQuestionIds?: readonly string[];
 }
 
 /**
@@ -792,17 +798,27 @@ function buildValidatedOutcome(
         candidates: [],
         pathsRemaining: Math.max(1, options.interviewBranchesRemaining ?? 1),
         missingInputs: nonEmpty(
-          response.decision.missing_facts.map((path) => ({
-            code: path,
-            message: text(
-              `Verified evaluation needs: ${path}`,
-              `Evaluasi terverifikasi memerlukan: ${path}`,
-            ),
-            sourceIds: [],
-            ...(questionForFact(path)
-              ? { questionId: questionForFact(path) }
-              : {}),
-          })),
+          response.decision.missing_facts.map((path) => {
+            const questionId = questionForFact(
+              path,
+              options.editableQuestionIds,
+            );
+            const question = questionId ? QUESTIONS[questionId] : undefined;
+            return {
+              code: path,
+              message: question
+                ? text(
+                    translate("en", question.i18nKey as I18nKey),
+                    translate("id", question.i18nKey as I18nKey),
+                  )
+                : text(
+                    "Bali Zero can help clarify an additional detail needed for this assessment.",
+                    "Bali Zero dapat membantu memperjelas detail tambahan yang diperlukan untuk penilaian ini.",
+                  ),
+              sourceIds: [],
+              ...(questionId ? { questionId } : {}),
+            };
+          }),
         ),
       };
     case "HUMAN_REVIEW_REQUIRED":

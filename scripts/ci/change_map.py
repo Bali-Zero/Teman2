@@ -219,6 +219,8 @@ SCRIPTS_COUPLING: frozenset[str] = frozenset(
 # END SCRIPTS_COUPLING
 
 PREFIX_RULES: tuple[tuple[str, frozenset[str]], ...] = (
+    # OpenAPI feeds mouth's generated types and the backend live-router parity test.
+    ("products/garuda-voa/contracts/", frozenset({"backend_python", "mouth"})),
     ("apps/backend-rag/", frozenset({"backend_python"})),
     ("apps/crm-cell/", frozenset({"backend_python"})),
     ("packages/cell-core/", frozenset({"backend_python", "mcp"})),

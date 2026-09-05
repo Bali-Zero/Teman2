@@ -537,6 +537,40 @@ export function StudioApp() {
   const [plan, setPlan] = useState<PlanState>(emptyPlan);
   const [stepIndex, setStepIndex] = useState(0);
   const hydratedOnce = useRef(false);
+  const consentSpaceRef = useRef<HTMLDivElement>(null);
+  const [consentHeight, setConsentHeight] = useState(0);
+
+  useEffect(() => {
+    const host = consentSpaceRef.current;
+    if (!host) return;
+
+    // The fixed banner contributes no document height. Reserve its measured
+    // size here so recovery controls can scroll fully above it at any width.
+    const measure = () =>
+      setConsentHeight(
+        host.firstElementChild?.getBoundingClientRect().height ?? 0,
+      );
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(measure);
+    const observeBanner = () => {
+      resizeObserver?.disconnect();
+      if (host.firstElementChild)
+        resizeObserver?.observe(host.firstElementChild);
+      measure();
+    };
+    const mutationObserver = new MutationObserver(observeBanner);
+    mutationObserver.observe(host, { childList: true });
+    observeBanner();
+    window.addEventListener("resize", measure);
+
+    return () => {
+      resizeObserver?.disconnect();
+      mutationObserver.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
 
   const sequence = computeSequence(plan);
   const isVerdictStage = stepIndex >= sequence.length;
@@ -790,7 +824,16 @@ export function StudioApp() {
           </div>
         ) : null}
 
-        <ConsentBanner />
+        <div
+          ref={consentSpaceRef}
+          className="bz-shs-consent-space"
+          style={{
+            height: consentHeight,
+            display: consentHeight > 0 ? "block" : "contents",
+          }}
+        >
+          <ConsentBanner />
+        </div>
 
         <style>{`
         .bz-shs-layout {
@@ -818,6 +861,11 @@ export function StudioApp() {
           .bz-shs-layout * {
             transition: none !important;
             animation: none !important;
+          }
+        }
+        @media print {
+          .bz-shs-consent-space {
+            display: none !important;
           }
         }
       `}</style>

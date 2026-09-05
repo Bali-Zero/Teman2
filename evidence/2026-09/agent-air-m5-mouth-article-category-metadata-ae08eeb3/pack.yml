@@ -1,0 +1,24 @@
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: article-category-metadata
+    role: build
+    seat: gpt-6-astra
+dissent: []
+pii_scan: clean
+receipts:
+  - claim: Article metadata and parent category regressions preserve canonical, alias, localization and noIndex behavior.
+    cmd: >-
+      cd apps/mouth && npx --no-install vitest run
+      'src/app/(blog)/[category]/[slug]/page.metadata.test.tsx'
+      'src/app/(blog)/[category]/page.metadata.test.tsx'
+      'src/app/(blog)/[category]/layout.test.tsx'
+      --maxWorkers=1 --reporter=json --outputFile=/tmp/b04-category-metadata-fixed.json
+    result: "3 test files passed; 72 tests passed; 0 failed."
+    exit: 0
+    ts: "2026-09-05T06:43:25.863Z"
+    seat: gpt-6-astra
+notes:
+  - Before the source fix the new focused suite failed 8 unknown-category cases and passed 24 controls.
+  - The production probe reproduced conflicting index and noindex tags on the invalid /blog URL; the canonical /living article is separately indexable and present in the sitemap.
+  - This change handles invalid-route metadata only; it does not change article content or its indexing policy.
+  - The Fable consul owns independent review and the controlled shipping path; CI, real-browser QA and production proof remain pending.

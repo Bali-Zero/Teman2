@@ -335,8 +335,8 @@ export function restoreInterviewSnapshot(
  * evaluation-lease cache key, which now covers every engine mode — SHADOW,
  * internal preview and the rendered REAL verdict — not just SHADOW) can
  * key off `state.attempt` instead of enumerating which actions perform a
- * reset. Called from RESTART and from SELECT_CATEGORY's defensive
- * fallback below — both discard the ENTIRE interview (facts + history),
+ * reset. Called from RESTART and the EDIT / SELECT_CATEGORY defensive
+ * fallbacks below — all discard the ENTIRE interview (facts + history),
  * which is exactly what makes them resets rather than ordinary
  * forward/backward navigation.
  */
@@ -825,6 +825,10 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
         kind: "question",
         questionId: action.questionId,
       };
+      if (!state.history.some((node) => sameNode(node, target))) {
+        // An absent target cannot safely reopen this interview's branch.
+        return resetFlow(state);
+      }
       const history = truncateToNode(state.history, target);
       return {
         ...state,

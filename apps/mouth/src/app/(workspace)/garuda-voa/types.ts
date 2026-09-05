@@ -1,21 +1,11 @@
 /**
- * Types for the GARUDA VOA STAFF surface (step 8), reconciled against the
- * real backend contract diff on 2026-09-02: `git -C
- * .worktrees/ops-garuda-voa-step8-portal diff origin/main..HEAD --
- * products/garuda-voa/contracts/openapi.yaml` (that worktree belongs to
- * another agent, read-only). Field names, the list envelope, and error
- * codes below are a byte-accurate transcription of that diff's
- * `listStaffPractices` / `getStaffPractice` / `assignPractice` /
- * `StaffPracticeListItem` / `StaffPracticeView` / `PracticeAssignmentRequest`
- * blocks — no longer this lane's best-effort mirror of the spec prose (see
- * the superseded header comment in git history for the earlier assumption).
- * `transitionPractice`/`PracticeTransitionRequest` were already frozen and
- * unchanged by that diff.
- *
- * Same convention as `visa/voa/orders/types.ts`: no generated client yet.
+ * Types for the GARUDA VOA STAFF surface. Staff read models derive from
+ * the generated frozen product contract, preserving optional and nullable
+ * wire fields. Request and error types retain their existing public API.
  */
 
 import type { PracticeState } from "@/app/visa/voa/orders/types";
+import type { components, operations } from "@/lib/api/garuda-voa.generated";
 
 export type { PracticeState };
 
@@ -23,41 +13,22 @@ export type { PracticeState };
  * PII beyond what the contract explicitly allows, no `private_staff_note`.
  * `customer_reason_key`/`required_action_key` are `oneOf [null, string]` and
  * NOT in the schema's `required` list — optional AND nullable on the wire. */
-export interface StaffPracticeListRow {
-  practice_id: string;
-  order_id: string;
-  state: PracticeState;
-  assigned_to: string | null;
-  updated_at: string;
-  customer_reason_key?: string | null;
-  required_action_key?: string | null;
-  artifact_available: boolean;
-}
+export type StaffPracticeListRow =
+  components["schemas"]["StaffPracticeListItem"];
 
 /** `listStaffPractices` 200 body — `{ items, next_cursor }`, NOT
  * `{ practices, cursor }` (corrected 2026-09-02 against the real diff). */
-export interface StaffPracticeListResponse {
-  items: StaffPracticeListRow[];
-  next_cursor: string | null;
-}
+export type StaffPracticeListResponse =
+  operations["listStaffPractices"]["responses"][200]["content"]["application/json"];
 
 /** `StaffPracticeView` (openapi.yaml) — a superset of `StaffPracticeListItem`
  * carrying `private_staff_note` and `resume_target`. Never reused by a
  * customer-facing schema (contract note: PR-F04).
  *
- * `active_block_id`, `artifact_id`, `artifact_digest` are NOT in the
- * openapi.yaml diff read 2026-09-02 — the backend's round 2 will add them
- * (per team-lead relay). Kept optional here so this lane compiles against
- * both the current and the round-2 contract without another edit; treat a
- * missing `active_block_id` as "no active block on record" (see
+ * Note, resume target and artifact metadata retain the contract's optional
+ * fields. Treat a missing `active_block_id` as "no active block on record" (see
  * [practiceId]/page.tsx's read-only resume-id field). */
-export interface StaffPracticeView extends StaffPracticeListRow {
-  private_staff_note: string | null;
-  resume_target: PracticeState | null;
-  active_block_id?: string | null;
-  artifact_id?: string | null;
-  artifact_digest?: string | null;
-}
+export type StaffPracticeView = components["schemas"]["StaffPracticeView"];
 
 /** `PracticeAssignmentRequest` (openapi.yaml) — `assigned_to` required,
  * `null` unassigns. */

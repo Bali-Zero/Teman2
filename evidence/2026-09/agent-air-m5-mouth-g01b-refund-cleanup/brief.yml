@@ -1,0 +1,22 @@
+task_id: g01b-refund-cleanup
+gear: 1
+objective: Report only the refund status exposed by OrderView and prove polling resource cleanup.
+scope:
+  - apps/mouth/src/app/visa/voa/orders/OrderTracker.tsx
+  - apps/mouth/src/app/visa/voa/orders/OrderTracker.test.tsx
+  - apps/mouth/src/app/visa/voa/orders/useOrderTracking.test.ts
+constraints:
+  - No price, backend, contract, runtime hook, credential or production changes.
+  - Fable owns independent Anthropic review and shipping; this branch remains a draft.
+acceptance:
+  - text:
+      WHEN a refunded order is rendered the tracker SHALL report refunded status without claiming a
+      full refund.
+    probe:
+      "OrderTracker.test.tsx: reports a refund without claiming a refund amount the order view does
+      not supply"
+  - text: WHEN a polling tracker unmounts it SHALL remove its pending timer and abort an in-flight refresh.
+    probe: "useOrderTracking.test.ts: cancels a scheduled refresh / aborts an in-flight refresh"
+consumer_map:
+  - GARUDA customer tracker /visa/voa/orders/[orderId].
+  - Existing frontend Vitest job consumes both modified regression suites.
