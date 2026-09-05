@@ -118,7 +118,7 @@ function OrderTrackerReady({ order }: { order: OrderView }) {
 
       {order.order_state === "refunded" ? (
         <ExceptionPanel
-          heading="This order was refunded in full."
+          heading="This order was refunded."
           body="If you still need a Visa on Arrival, a consultant can start a new application with you."
         />
       ) : null}
