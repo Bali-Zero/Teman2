@@ -553,7 +553,9 @@ export class ApiClientBase implements IApiClient {
         return {} as T;
       }
 
-      return response.json();
+      // Keep the deadline and AbortError handling active while the body is read.
+      // Headers can arrive promptly even when the JSON body stalls.
+      return await response.json();
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         throw new Error("Request timeout");
