@@ -1,0 +1,9 @@
+gear: 1
+objective: Correct two flow.ts comments describing EDIT with an absent history target.
+constraints:
+  - Comments only; no runtime or test changes.
+acceptance:
+  - WHEN EDIT has no matching question history entry, both comments SHALL describe the existing reset.
+  - WHEN comments are omitted, the TypeScript and emitted JavaScript SHALL match the parent.
+consumer_map:
+  - Developers and reviewers reading flow.ts beside getTreeSteps and isEditableTreeStep.
