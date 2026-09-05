@@ -8,13 +8,13 @@ import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
-import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 import {
   assignPractice,
   getStaffPractice,
   transitionPractice,
   GarudaStaffError,
 } from "../api-client";
+import { useGarudaAssignmentTargets } from "../assignment-targets";
 import { getAllowedTransitions } from "../state-machine";
 import type {
   PracticeTransitionRequest,
@@ -114,9 +114,17 @@ export default function GarudaVoaStaffDetailPage() {
   const params = useParams();
   const toast = useToast();
   const practiceId = params?.practiceId as string | undefined;
-  const { options: teamMemberOptions } = useTeamMemberOptions();
 
   const [isAdmin, setIsAdmin] = useState(false);
+  // The picker's source is the assignment gate's own enumeration, never the
+  // shared CRM roster: the roster also lists rows `assignPractice` refuses (a
+  // read-only accounting full-view row, any partner row), which rendered as
+  // options whose only possible outcome was a 422. Admin-only, matching both
+  // the picker below and the endpoint's own 403 — see ../assignment-targets.ts.
+  const {
+    data: assignmentTargets = [],
+    isError: assignmentTargetsUnavailable,
+  } = useGarudaAssignmentTargets(isAdmin);
   const [practice, setPractice] = useState<StaffPracticeView | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -365,12 +373,31 @@ export default function GarudaVoaStaffDetailPage() {
               className="w-full max-w-xs border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] rounded-lg px-3 py-2 text-sm"
             >
               <option value="">Unassigned</option>
-              {teamMemberOptions.map((member) => (
-                <option key={member.value} value={member.value}>
-                  {member.label}
+              {/* A practice assigned BEFORE this picker was narrowed (or to a
+                  row the gate refuses, e.g. the read-only accounting viewer)
+                  still has to SHOW its current assignee — without this option
+                  the select's value matches nothing and renders as
+                  "Unassigned", which is a lie about a real assignment. Disabled
+                  so it cannot be picked again into a guaranteed 422. */}
+              {practice.assigned_to &&
+                !assignmentTargets.some(
+                  (target) => target.email === practice.assigned_to,
+                ) && (
+                  <option value={practice.assigned_to} disabled>
+                    {practice.assigned_to} (not assignable)
+                  </option>
+                )}
+              {assignmentTargets.map((target) => (
+                <option key={target.email} value={target.email}>
+                  {target.label}
                 </option>
               ))}
             </select>
+            {assignmentTargetsUnavailable && (
+              <p className="mt-1 text-xs text-[var(--bz-text-2)]">
+                Assignee list unavailable — reload before assigning.
+              </p>
+            )}
           </div>
         )}
       </div>
