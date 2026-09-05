@@ -1,7 +1,7 @@
 import { VISA_ORACLE_RESUME_TTL_MS } from "./resume-store";
 
-const CONSENT_SCHEMA_VERSION = 2 as const;
-const CONSENT_POLICY_VERSION = "visa-oracle-whatsapp-v2" as const;
+const CONSENT_SCHEMA_VERSION = 3 as const;
+const CONSENT_POLICY_VERSION = "visa-oracle-whatsapp-v3" as const;
 const RECEIPT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const PUBLIC_DECISION_ID_PATTERN = /^[a-z0-9]{16,20}$/;
 const OUTCOME_STATES = new Set([
@@ -12,6 +12,7 @@ const OUTCOME_STATES = new Set([
   "TEMPORARILY_UNAVAILABLE",
 ]);
 
+// Keep the storage key stable so loading prunes prior receipt schemas.
 export const VISA_ORACLE_CONSENT_KEY = "visa-oracle:v2:handoff-consent:v2";
 export const VISA_ORACLE_CONSENT_TTL_MS = VISA_ORACLE_RESUME_TTL_MS;
 
@@ -26,16 +27,19 @@ export interface LocalConsentReceipt {
   expiresAtIso: string;
 }
 
-export interface ConsentScope {
-  state:
-    | "SUPPORTED_CANDIDATES"
-    | "NEEDS_INPUT"
-    | "HUMAN_REVIEW_REQUIRED"
-    | "NO_SUPPORTED_PATH"
-    | "TEMPORARILY_UNAVAILABLE";
-  /** Opaque engine public id only. No facts, candidates or applicant data. */
-  assessmentReference: string | null;
-}
+export type ConsentScope =
+  | { context: "CONSULTATION"; state?: never; assessmentReference?: never }
+  | {
+      context: "ASSESSMENT";
+      state:
+        | "SUPPORTED_CANDIDATES"
+        | "NEEDS_INPUT"
+        | "HUMAN_REVIEW_REQUIRED"
+        | "NO_SUPPORTED_PATH"
+        | "TEMPORARILY_UNAVAILABLE";
+      /** Opaque engine public id only. No facts, candidates or applicant data. */
+      assessmentReference: string | null;
+    };
 
 export interface ConsentStoreOptions {
   storage?: Pick<Storage, "getItem" | "setItem" | "removeItem">;
@@ -74,9 +78,13 @@ const RECEIPT_KEYS = [
 
 function validScope(value: unknown): value is ConsentScope {
   if (!isRecord(value)) return false;
+  if (value.context === "CONSULTATION") {
+    return Object.keys(value).length === 1;
+  }
   if (
+    value.context !== "ASSESSMENT" ||
     Object.keys(value).sort().join("|") !==
-    ["assessmentReference", "state"].sort().join("|")
+      ["assessmentReference", "context", "state"].sort().join("|")
   ) {
     return false;
   }
@@ -89,8 +97,12 @@ function validScope(value: unknown): value is ConsentScope {
   );
 }
 
-function sameScope(left: ConsentScope, right: ConsentScope): boolean {
+export function sameConsentScope(
+  left: ConsentScope,
+  right: ConsentScope,
+): boolean {
   return (
+    left.context === right.context &&
     left.state === right.state &&
     left.assessmentReference === right.assessmentReference
   );
@@ -182,7 +194,7 @@ export function loadLocalConsentReceipt(
     if (
       !validReceipt(receipt) ||
       !validScope(expectedScope) ||
-      !sameScope(receipt.scope, expectedScope) ||
+      !sameConsentScope(receipt.scope, expectedScope) ||
       Date.parse(receipt.expiresAtIso) <= now.getTime()
     ) {
       storage.removeItem(VISA_ORACLE_CONSENT_KEY);

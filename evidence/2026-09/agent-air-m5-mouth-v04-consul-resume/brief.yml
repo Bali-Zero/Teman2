@@ -1,0 +1,35 @@
+task_id: v04-consul-resume
+gear: 2
+l_level: L2
+gate_class: opus
+objective:
+  Keep consultant contact available throughout the Visa Oracle interview, with explicit consultation consent
+  before a displayed verdict and fresh assessment consent at a verdict. Preserve interview state and exclude interview
+  answers from the WhatsApp message.
+constraints:
+  - Seven existing frontend source/test/style changes plus lane evidence.
+  - No engine, eligibility, pricing, regulatory claims or client data.
+  - Fresh branch from main after PR5762 merged; original prepared branch remains untouched.
+  - Prepare draft PR only; Fable owns independent Anthropic gate and shipping.
+acceptance:
+  - text:
+      WHEN the user opens consultant contact in any interview phase, the UI SHALL preserve interview state, avoid
+      triggering evaluation and offer the correct explicit consent.
+    probe: apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx
+  - text:
+      WHEN contact scope changes between consultation and a displayed assessment, previous consent SHALL NOT authorize
+      the new scope; a known minor SHALL require guardian authority.
+    probe: apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.test.tsx
+  - text:
+      The consultant disclosure SHALL support keyboard focus return, contain one handoff instance, fit mobile
+      viewports in both languages and remain hidden in print.
+    probe: apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx
+consumer_map:
+  - Visa Oracle visitors use the persistent consultant disclosure in every interview phase.
+risks:
+  - Historical browser run predates the new main base; seven owned source hashes match, current focused tests and
+    full TypeScript rerun.
+  - Production deployment and independent Fable gate are pending.
+grader: Kimi K3 PASS on supplied complete diff; independent Fable gate remains pending.
+budget: Existing subscriptions and installed tooling only; no paid API calls.
+pii: none
