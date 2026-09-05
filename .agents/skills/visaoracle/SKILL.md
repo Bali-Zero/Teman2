@@ -135,9 +135,9 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   fail-open repair re-landed (fold PR #5784, source `rulepack-prod-019.source.json`, 109 rules: the
   only delta vs 018 is the two `el.e31d` byte-duplicates removed; `review.e23u|e23v.requested-product`
   KEPT after a gate BLOCK caught their removal). Signed by Zero on M5 (`sign_pack.py`, kid
-  `prod-2026-07-1`, `signed_at 2026-09-05T20:48:52Z`, `payload_sha256
-  bac5da8e4727e7f639c947c50211e6f95e15c1403cf6aef0dd57a92014d6e6ea`, `rule_pack_id
-  8c09e059-4ab2-5963-b5af-d1363d55e508`); bundle PR #5812 gated by an independent Opus-xhigh reader
+  `prod-2026-07-1`, `signed_at 2026-09-05T20:48:52Z`, payload_sha256
+  `bac5da8e4727e7f639c947c50211e6f95e15c1403cf6aef0dd57a92014d6e6ea`, rule_pack_id
+  `8c09e059-4ab2-5963-b5af-d1363d55e508`); bundle PR #5812 gated by an independent Opus-xhigh reader
   (mutation-verified) + the session's read (PASS-WITH-CONDITIONS, four low evidence/wrapper
   follow-ups), merged 21:48:28Z (`4b06438363`), file on `origin/main` byte-identical to the signed
   one. **Activated 2026-09-05T21:52:20.519792Z** (Zero's explicit authorisation the same evening):
