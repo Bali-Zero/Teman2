@@ -1,0 +1,11 @@
+gear: 1
+objective: Name the six article fixtures according to the shared E33 rules they exercise.
+constraints:
+  - Change only the parametrized test title; preserve its six inputs and assertions.
+  - Do not change article content, rule patterns, the baseline or application behavior.
+acceptance:
+  - The title SHALL describe the shared claim rules without claiming a backend-only binding.
+  - Replacing the new title with its predecessor SHALL recover the parent test source byte for byte.
+  - The existing article-claim suite SHALL pass all twelve cases.
+consumer_map:
+  - Developers reading the six named fixture results in the required mouth test job.

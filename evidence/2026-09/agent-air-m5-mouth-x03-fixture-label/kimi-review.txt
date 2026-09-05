@@ -1,0 +1,13 @@
+• **PASS**
+
+  **Reasoning:**
+
+  - The scan's rule set is the union built at module load: `sharedRules()` (the `SEP`/`N1500`/`SUPERSEDED_1500`/`RULES` declarations extracted from `secondhome-forbidden-claims.test.ts`) merged with `backendPatterns(...)` and deduplicated by `pattern.toString()`. Both halves are shared dictionaries — one shared with the frontend forbidden-claims guard, one with the Python `e33_claim_guard.py`. Describing a hit against this union as "matching shared E33 claim rules" is accurate: it no longer attributes binding exclusively to the backend (the factual error Fable identified for the LPS/BSI cases), and it doesn't over-claim in the other direction either, since both rule sources are, by construction, shared with their respective guards.
+  - No regulatory claim: "matching shared E33 claim rules" is a lexical statement about regex hits, consistent with the file's own disclaimer in `assertBaseline` ("matches are lexical, not legal findings"). The title says a rule matched, not that the underlying statement is false.
+  - The `it.each` body is untouched, the six fixtures are unchanged, and the title is the only delta — consistent with the builder's byte-for-byte revert evidence.
+
+  **Limits of this verdict:**
+
+  - Accuracy of "shared" rests on Fable's finding that these fixtures hit the shared frontend dictionary (stated as verified for LPS and BSI). The title doesn't assert *which* rule matched, only that one of the shared union did — which the scan guarantees for any non-empty `dirty` result, so even a backend-only hit would still be a match against the shared rule union. No rework needed on that basis.
+  - I did not execute anything: the byte-for-byte revert, the declaration-interface coupling, and the six assertions are accepted as stated, not re-verified.
+  - The existing-article baseline suite result is explicitly out of scope and not claimed here.
