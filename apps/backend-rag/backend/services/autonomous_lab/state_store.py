@@ -294,7 +294,7 @@ WITH inserted AS (
         priority,
         max_attempts
     )
-    VALUES ($1, $2, $3, $4::jsonb, $5::text[], $6::jsonb, $7, $8)
+    VALUES ($1, $2, $3, $4::text::jsonb, $5::text[], $6::text::jsonb, $7, $8)
     ON CONFLICT (idempotency_key) DO NOTHING
     RETURNING
         run_id,
@@ -415,7 +415,7 @@ WITH updated AS (
 ),
 event_insert AS (
     INSERT INTO autonomous_lab_events_outbox (run_id, event_type, payload)
-    SELECT run_id, 'run_succeeded', $3::jsonb
+    SELECT run_id, 'run_succeeded', $3::text::jsonb
     FROM updated
     RETURNING event_id
 )
@@ -429,7 +429,7 @@ WITH updated AS (
     UPDATE autonomous_lab_runs
     SET
         status = 'paused',
-        metadata = metadata || $3::jsonb,
+        metadata = metadata || $3::text::jsonb,
         worker_id = NULL,
         updated_at = NOW(),
         last_error = NULL
@@ -440,7 +440,7 @@ WITH updated AS (
 ),
 event_insert AS (
     INSERT INTO autonomous_lab_events_outbox (run_id, event_type, payload)
-    SELECT run_id, 'run_paused', $4::jsonb
+    SELECT run_id, 'run_paused', $4::text::jsonb
     FROM updated
     RETURNING event_id
 )
@@ -468,7 +468,7 @@ WITH updated AS (
 ),
 event_insert AS (
     INSERT INTO autonomous_lab_events_outbox (run_id, event_type, payload)
-    SELECT run_id, 'run_failed', $5::jsonb
+    SELECT run_id, 'run_failed', $5::text::jsonb
     FROM updated
     RETURNING event_id
 )
@@ -551,7 +551,7 @@ updated AS (
     UPDATE autonomous_lab_runs
     SET
         status = $4,
-        metadata = metadata || $5::jsonb,
+        metadata = metadata || $5::text::jsonb,
         worker_id = NULL,
         next_attempt_at = CASE WHEN $4 = 'pending' THEN NOW() ELSE next_attempt_at END,
         updated_at = NOW()
@@ -565,7 +565,7 @@ updated AS (
 ),
 event_insert AS (
     INSERT INTO autonomous_lab_events_outbox (run_id, event_type, payload)
-    SELECT run_id, 'curator_decision_recorded', $6::jsonb
+    SELECT run_id, 'curator_decision_recorded', $6::text::jsonb
     FROM updated
     RETURNING event_id
 )
@@ -591,7 +591,7 @@ updated AS (
     UPDATE autonomous_lab_runs
     SET
         status = 'cancelled',
-        metadata = metadata || $3::jsonb,
+        metadata = metadata || $3::text::jsonb,
         worker_id = NULL,
         updated_at = NOW()
     WHERE run_id = $1
@@ -604,7 +604,7 @@ updated AS (
 ),
 event_insert AS (
     INSERT INTO autonomous_lab_events_outbox (run_id, event_type, payload)
-    SELECT run_id, 'run_cancelled', $4::jsonb
+    SELECT run_id, 'run_cancelled', $4::text::jsonb
     FROM updated
     RETURNING event_id
 )
@@ -990,7 +990,7 @@ class AutonomousLabStateStore:
                 payload,
                 max_attempts
             )
-            VALUES ($1, $2, $3::jsonb, $4)
+            VALUES ($1, $2, $3::text::jsonb, $4)
             RETURNING event_id
             """,
             run_id,
@@ -1149,6 +1149,8 @@ def _optional_note_reference(note: str | None) -> str | None:
 
 
 def _jsonb(value: Mapping[str, Any]) -> str:
+    # Bind these serialized values as SQL text, then cast to jsonb. Passing
+    # them as jsonb parameters would run the pool's JSON encoder a second time.
     return json.dumps(dict(value), allow_nan=False, ensure_ascii=False, sort_keys=True)
 
 
