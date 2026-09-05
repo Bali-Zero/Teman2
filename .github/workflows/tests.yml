@@ -1845,12 +1845,18 @@ jobs:
       # the merge queue for a reason that isn't a code change here.
       # The staff UI consumes this product contract directly. Run its existing
       # generator's freshness check in the required mouth leg, including when
-      # only products/ changes (the change map conservatively runs all suites).
+      # only the product contract changes (explicit backend + mouth coupling).
       - name: Check GARUDA generated contract
         if: matrix.app == 'mouth' && steps.decide.outputs.run == 'true'
         run: |
           ./node_modules/.bin/openapi-typescript products/garuda-voa/contracts/openapi.yaml \
             --output apps/mouth/src/lib/api/garuda-voa.generated.d.ts --check
+
+      - name: Typecheck mouth contract consumers
+        id: mouth-typecheck
+        if: matrix.app == 'mouth' && steps.decide.outputs.run == 'true'
+        working-directory: apps/mouth
+        run: npx tsc --noEmit
 
       - name: Run tests (with coverage)
         if: matrix.coverage && steps.decide.outputs.run == 'true'
