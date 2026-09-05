@@ -47,7 +47,7 @@ receipts:
     cmd: kimi -m kimi-code/k3 -p <read-only review prompt with final diff and hook context>
     result:
       "PASS; non-blocking notes: exact count pins current subtitle/heading duplication; negative regex
-      covers the scoped full-refund phrases. Prompt SHA-256 197e06f04f064941acccb9674ac184fceb574527a05f37b75104f462c1f27197"
+      covers the scoped full-refund phrases. Prompt SHA-256 197e06f04f064941acccb9674ac184fceb574527a05f37b75104f462c1f27197" # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
     exit: 0
     ts: "2026-09-05T11:29:19.776336+00:00"
     seat: kimi-code/k3
@@ -58,9 +58,9 @@ dissent:
       changes need a test update. Accepted as scoped, non-blocking.
     status: CONFIRMED
 source_sha256:
-  apps/mouth/src/app/visa/voa/orders/OrderTracker.tsx: 9328cd3de61b76a927ffd25184b65319b91c743319a89fde52f59b802b9c874b
-  apps/mouth/src/app/visa/voa/orders/OrderTracker.test.tsx: 544218b458dd1c26030b4efa0fb67772173f99b332b7d49818201b9fb6bb09f6
-  apps/mouth/src/app/visa/voa/orders/useOrderTracking.test.ts: eba611c993176ef563238cad236b7cdaeaf28fe65555a05eab015f19649df99e
+  apps/mouth/src/app/visa/voa/orders/OrderTracker.tsx: 9328cd3de61b76a927ffd25184b65319b91c743319a89fde52f59b802b9c874b # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  apps/mouth/src/app/visa/voa/orders/OrderTracker.test.tsx: 544218b458dd1c26030b4efa0fb67772173f99b332b7d49818201b9fb6bb09f6 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  apps/mouth/src/app/visa/voa/orders/useOrderTracking.test.ts: eba611c993176ef563238cad236b7cdaeaf28fe65555a05eab015f19649df99e # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
 residual_risks:
   - Synthetic component and hook tests do not prove production payment reconciliation.
   - Required CI, independent Anthropic gate and production observation remain pending.
