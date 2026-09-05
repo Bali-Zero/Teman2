@@ -1,0 +1,16 @@
+gear: 1
+objective: Prevent direct backend origins in browser-facing app API clients.
+scope:
+  - apps/mouth/src/app/api-client-same-origin.test.ts
+  - apps/mouth/DOCUMENTATION.md
+constraints:
+  - No runtime changes, no server-side URL restriction, no import-graph policy.
+  - No client data, credentials, production writes, merge or deploy.
+acceptance:
+  - Current app scan and browser/server/comment controls pass.
+  - A temporary app api-client.ts reading NEXT_PUBLIC_API_URL fails naming its path;
+    restoring the tree passes.
+  - Required frontend CI executes this new test.
+consumer_map:
+  - Vitest includes src/**/*.test.{ts,tsx} through apps/mouth/vitest.config.ts; existing
+    frontend CI consumes this test.

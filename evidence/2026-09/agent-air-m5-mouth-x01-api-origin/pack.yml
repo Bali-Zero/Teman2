@@ -1,0 +1,50 @@
+gear: 1
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: x01
+    role: build
+    seat: OpenAI GPT-6 (this Codex session; exact backend variant not exposed)
+  - lane: x01-review
+    role: review
+    seat: kimi-code/k3
+pii_scan: clean
+receipts:
+  - claim: Focused guard and controls pass on this worktree.
+    cmd: cd apps/mouth && npx vitest run src/app/api-client-same-origin.test.ts
+    result: 9 passed; final run after guilty fixture removal.
+    exit: 0
+    ts: "2026-09-05T11:05:15+00:00"
+    seat: Codex parent
+  - claim: A forbidden access in a real scanned temporary client is rejected.
+    cmd:
+      Create src/app/__x01_guilt/api-client.ts with process.env[`NEXT_PUBLIC_API_URL`];
+      run the same vitest command; remove fixture in finally.
+    result:
+      1 failed / 8 passed, diagnostic names __x01_guilt/api-client.ts:1; original
+      tree restored.
+    exit: 1
+    ts: "2026-09-05T11:05:13+00:00"
+    seat: Codex parent
+  - claim: Independent Kimi reviewed the supplied final source and documentation diff.
+    cmd: kimi -m kimi-code/k3 -p <final supplied source and documentation diff>
+    result:
+      PASS; source inspection only, no tests claimed by reviewer. Prompt SHA-256
+      3ae80e825b9788e299b5a8bcf9d0736195a3631a2c0864c3f52dbb57aa8d6024
+    exit: 0
+    ts: "2026-09-05T11:07:33.988861+00:00"
+    seat: kimi-code/k3
+dissent:
+  - seat: kimi-code/k3
+    objection:
+      Initial template access blind spot fixed with StringLiteralLike; final
+      review PASS.
+    status: CONFIRMED
+  - seat: kimi-code/k3
+    objection:
+      Initial server setup concern refuted by verified NUZANTARA_API_URL precedence;
+      documentation now explicitly names the legacy fallback.
+    status: RETRACTED
+residual_risks:
+  - Explicit client boundaries and named api-client.ts files only; transitive imports
+    and arbitrary data-flow are not traversed.
+  - Required CI execution and independent Anthropic gate remain pending.

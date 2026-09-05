@@ -294,8 +294,7 @@ apps/mouth/
 ```bash
 # .env.local
 
-# Backend API
-NEXT_PUBLIC_API_URL=https://nuzantara-rag.fly.dev
+# Backend API (server only; browser clients use the same-origin /api proxy)
 NUZANTARA_API_URL=https://nuzantara-rag.fly.dev
 
 # WebSocket
@@ -345,7 +344,8 @@ Or use Vercel dashboard/GitHub integration for automatic deployments.
 
 **Environment Variables (Vercel Dashboard):**
 
-- `NEXT_PUBLIC_API_URL` - Backend API URL (https://nuzantara-rag.fly.dev)
+- `NUZANTARA_API_URL` - Server-side backend URL (https://nuzantara-rag.fly.dev). Browser clients use `/api`, forwarded by `src/app/api/[...path]/route.ts`, to preserve same-origin authentication and CSRF handling.
+- `NEXT_PUBLIC_API_URL` - Legacy fallback in server routes, after `NUZANTARA_API_URL`. Do not use it as a browser API base URL.
 - `NEXT_PUBLIC_FRONTEND_URL` - Frontend URL (https://www.balizero.com)
 - `SENTRY_DSN` - Error tracking
 
@@ -574,7 +574,7 @@ class ApiClientBase {
   protected token: string | null;
 
   constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_API_URL;
+    this.baseUrl = baseUrl || "/api";
     this.token = localStorage.getItem("auth_token");
   }
 
