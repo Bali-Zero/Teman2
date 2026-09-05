@@ -11,9 +11,8 @@ pii_scan: clean
 receipts:
   - claim: Restoring alias resolution fails all 28 alias cases; the other 97 controls pass.
     cmd:
-      git apply evidence/2026-09/agent-air-m5-mouth-b04b-category-boundary/mutation.patch; cd apps/mouth
-      && npx vitest run 'src/app/(blog)/[category]/[slug]/page.metadata.test.tsx' 'src/app/(blog)/[category]/layout.test.tsx'
-      'src/app/(blog)/[category]/page.metadata.test.tsx' src/lib/blog/categories.test.ts
+      Python replaced the raw-category guard with the previous alias-resolving expression, ran the four focused
+      Vitest suites, and restored exact source in finally; mutation.patch records the same mutation for reproduction.
     exit: 1
     ts: "2026-09-05T11:25:39.958248+00:00"
     seat: OpenAI GPT-6 (exact backend variant not exposed)
@@ -31,8 +30,7 @@ receipts:
     seat: kimi-code/k3
 notes:
   - "Gear floor computed from the five changed source paths: 1."
-  - The CATEGORY_SEO object source matches the parent merge exactly; only module placement and its explanatory
-    comment changed.
-  - "Kimi PASS has context caveats: membership of digital-nomad and unchanged render alias resolution were
-    verified directly after review; see review-resolution.md. Independent Anthropic gate, CI and production
-    proof remain pending."
+  - The CATEGORY_SEO object source matches the parent merge exactly; only module placement and its explanatory comment
+    changed.
+  - "Kimi PASS has context caveats: membership of digital-nomad and unchanged render alias resolution were verified
+    directly after review; see review-resolution.md. Independent Anthropic gate, CI and production proof remain pending."
