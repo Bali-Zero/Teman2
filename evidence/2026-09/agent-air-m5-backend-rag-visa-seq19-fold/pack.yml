@@ -15,6 +15,21 @@ lanes:
       (generated, not hand-authored), and test_seq19_pack.py (fold integrity, identity/chain,
       guard guilt+innocence, real-evaluator witnesses, gold-coverage replay, gold-replay-driver
       comparison).
+
+      Depth-1 follow-up (same PR, same lane, this pack's refresh): a codex-terra red-team
+      pass, disk-verified before the cure, found two gaps missed by the original council
+      review. (P2) `main()` had no guard against `--output` colliding with one of its own
+      inputs, so a careless invocation could overwrite `--seq18-source`/`--seq15-source`/
+      `--seq13-source`, or the SIGNED `--seq18-signed` production anchor, with unsigned fold
+      bytes — cured with `_assert_output_does_not_collide_with_inputs` (resolve()d path
+      equality + a `.signed.json` suffix refusal), exercised by one guilt+innocence witness
+      in `TestOutputCollisionGuard`. (P3) `assert_anchor_is_a_verified_signed_artifact` was
+      called from `fold()` without `observed_at`, making its signature-freshness check
+      real-clock dependent — cured by threading an optional `observed_at` through
+      `fold()`/`main()` (default `datetime.now(timezone.utc)`, unchanged for every existing
+      caller), exercised by one pinned-clock witness in `TestFoldObservedAtThreading`.
+      Neither `rulepack-prod-019.source.json` nor any `*.signed.json` file was touched — the
+      fold's own output digest is unchanged (see receipts below).
   - lane: gear3-council-review-kimi
     role: review
     seat: kimi-code/k3 (`kimi -m kimi-code/k3 -p ...`, non-Anthropic cross-family, agentic file access to this worktree)
@@ -63,14 +78,21 @@ outcome: >-
   shows persona #7's manufactured E31B/E31D candidates gone while the match set/count
   and persona #6's (unrelated) divergence are unchanged end to end. NOT SIGNED, NOT
   ACTIVATED — signing is the consul's ceremony, activation is Zero's.
+  Depth-1 follow-up (this pack's refresh, same PR): a codex-terra red-team pass found two
+  gaps missed by the original council review — no guard against `--output` colliding with
+  an input (up to and including the signed production anchor), and a real-clock-dependent
+  signature-freshness check inside `fold()` — both cured with fail-closed code + one
+  witness test each; the fold's own output bytes are unchanged.
 diff:
   files: 6
   net_lines: "authored across the fold script, the gate suite module and the evidence/brief files; 10,254 generated data (rulepack-prod-019.source.json, copied/transplanted verbatim, not hand-authored) — see measured_at for the real per-file numstat"
   measured_at: >-
     `git -C <worktree> diff --cached --numstat`, final state (post council-review
-    hardening): 568/0 fold_pack_seq19.py, 10254/0 rulepack-prod-019.source.json,
-    818/0 test_seq19_pack.py, 2/0 council-journal.jsonl, 305/0 this pack.yml,
-    81/62 evidence/brief.yml.
+    hardening AND the depth-1 codex-terra follow-up below): 614/0 fold_pack_seq19.py
+    (568 + 46 net for the output-collision guard and observed_at threading),
+    10254/0 rulepack-prod-019.source.json (untouched by the follow-up), 889/0
+    test_seq19_pack.py (818 + 71 net for the two new witness classes), 2/0
+    council-journal.jsonl, 305/0 this pack.yml, 81/62 evidence/brief.yml.
   shape: >-
     One new fold script, one new generated pack (data, not logic), one new test
     module, this evidence pack + council journal, and the shared brief.yml
@@ -135,8 +157,11 @@ receipts:
     cmd: >-
       PYTHONPATH=. pytest --no-header -p no:cacheprovider
       backend/tests/services/visa_engine/test_seq19_pack.py
-    result: "57 passed (after adversarial-review hardening; 53 before it — see dissent)"
-    ts: "2026-09-05T11:40:00Z"
+    result: >-
+      59 passed (57 after adversarial-review hardening, 53 before it — see dissent —
+      plus 2 more from the depth-1 codex-terra follow-up: TestOutputCollisionGuard's
+      guilt+innocence witness and TestFoldObservedAtThreading's pinned-clock witness)
+    ts: "2026-09-05T12:10:00Z"
     seat: claude-sonnet-5 (this worktree session)
     exit: 0
   - claim: the neighboring seq-pack gates (10/15/17/18 + chain-and-pricing) plus seq-19's own suite together are green — no regression from this addition
@@ -148,8 +173,24 @@ receipts:
       backend/tests/services/visa_engine/test_seq17_freshness_restamp.py
       backend/tests/services/visa_engine/test_seq18_freshness_window.py
       backend/tests/services/visa_engine/test_seq19_pack.py
-    result: "189 passed"
-    ts: "2026-09-05T11:42:00Z"
+    result: "191 passed (189 before the depth-1 follow-up's +2 new tests)"
+    ts: "2026-09-05T12:12:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the depth-1 follow-up's output-collision guard refuses `--output` == the signed
+      seq-18 anchor without mutating it, and a normal invocation to a fresh path still
+      writes seq-19's output cleanly; the compile step and the fold's own output digest
+      are unchanged by the follow-up
+    cmd: >-
+      pytest -k TestOutputCollisionGuard test_seq19_pack.py; PYTHONPATH=. python3 -m
+      backend.scripts.visa_engine.compile_pack rulepack-prod-019.source.json
+    result: >-
+      guilt+innocence witness passed; compile_pack still reports
+      rule_pack_id=8c09e059-4ab2-5963-b5af-d1363d55e508 sequence=19, OK — zero
+      compilation errors (unchanged from the original build); `git status --short`
+      confirms rulepack-prod-019.source.json and every *.signed.json are untouched
+    ts: "2026-09-05T12:14:00Z"
     seat: claude-sonnet-5 (this worktree session)
     exit: 0
   - claim: the full visa_engine test directory shows only pre-existing, unrelated, Postgres-schema-drift failures — none touch a file this PR changed

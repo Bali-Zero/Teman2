@@ -421,6 +421,8 @@ def fold(
     seq18_signed: dict[str, Any],
     seq15: dict[str, Any],
     seq13: dict[str, Any],
+    *,
+    observed_at: datetime | None = None,
 ) -> dict[str, Any]:
     """Return the seq-19 payload, or abort loudly.
 
@@ -432,6 +434,10 @@ def fold(
     about to overwrite has drifted from seq-13 in seq-18 (see
     :func:`_assert_edited_rules_unchanged_since_seq13`; found by
     adversarial review of this diff, kimi-code/k3).
+    ``observed_at`` is threaded into the signature-verification clock check
+    (:func:`assert_anchor_is_a_verified_signed_artifact`); defaults to the
+    real wall clock via ``datetime.now(timezone.utc)`` so callers never have
+    to pass it, but a test pinning it is not left real-clock-dependent.
     """
     digest = hashlib.sha256(canonicalize_json(seq18)).hexdigest()
     if digest != SEQ18_PAYLOAD_SHA256:
@@ -440,7 +446,7 @@ def fold(
             f"digest {digest} != {SEQ18_PAYLOAD_SHA256}. Everything below would "
             "otherwise be built on a payload production never ran."
         )
-    assert_anchor_is_a_verified_signed_artifact(seq18_signed, digest)
+    assert_anchor_is_a_verified_signed_artifact(seq18_signed, digest, observed_at=observed_at)
     if seq18.get("sequence") != 18:
         _fail(f"expected sequence 18, got {seq18.get('sequence')!r}")
 
@@ -501,7 +507,37 @@ def fold(
     return out
 
 
-def main(argv: list[str] | None = None) -> int:
+def _assert_output_does_not_collide_with_inputs(
+    output: Path, input_paths: dict[str, Path]
+) -> None:
+    """Fail-closed guard: refuse to write `--output` onto any input path, and
+    refuse an output path that merely LOOKS like a signed artifact.
+
+    A careless invocation (a copy-pasted flag, a shell-history mistake) could
+    otherwise point `--output` at `--seq18-source`, `--seq15-source`,
+    `--seq13-source` or — the sharpest edge — `--seq18-signed`, the SIGNED
+    production anchor, and silently overwrite it with unsigned fold bytes.
+    Paths are `resolve()`d before comparison so a relative path and its
+    absolute twin, or a `..`-laden path, are not mistaken for "different"
+    (found by adversarial review of this diff, codex terra).
+    """
+    resolved_output = output.resolve()
+    for flag, path in input_paths.items():
+        if resolved_output == path.resolve():
+            _fail(
+                f"--output {output} resolves to the same file as {flag} "
+                f"({path}) — refusing to overwrite an input (or the signed "
+                "production anchor) with unsigned fold output"
+            )
+    if resolved_output.name.endswith(".signed.json"):
+        _fail(
+            f"--output {output} ends in '.signed.json' — this script only "
+            "ever writes an unsigned SOURCE file (see the module docstring); "
+            "refusing to write unsigned bytes to a path that looks signed"
+        )
+
+
+def main(argv: list[str] | None = None, *, observed_at: datetime | None = None) -> int:
     parser = argparse.ArgumentParser(description="Fold RulePack seq-19.")
     parser.add_argument("--seq18-source", required=True, type=Path)
     parser.add_argument(
@@ -547,11 +583,21 @@ def main(argv: list[str] | None = None) -> int:
     if signed_path == args.seq18_source or not signed_path.exists():
         _fail(f"no signed seq-18 bundle at {signed_path} — pass --seq18-signed")
 
+    _assert_output_does_not_collide_with_inputs(
+        args.output,
+        {
+            "--seq18-source": args.seq18_source,
+            "--seq15-source": args.seq15_source,
+            "--seq13-source": args.seq13_source,
+            "--seq18-signed": signed_path,
+        },
+    )
+
     seq18 = json.loads(args.seq18_source.read_text(encoding="utf-8"))
     seq18_signed = json.loads(signed_path.read_text(encoding="utf-8"))
     seq15 = json.loads(args.seq15_source.read_text(encoding="utf-8"))
     seq13 = json.loads(args.seq13_source.read_text(encoding="utf-8"))
-    seq19 = fold(seq18, seq18_signed, seq15, seq13)
+    seq19 = fold(seq18, seq18_signed, seq15, seq13, observed_at=observed_at)
     args.output.write_text(
         json.dumps(seq19, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )

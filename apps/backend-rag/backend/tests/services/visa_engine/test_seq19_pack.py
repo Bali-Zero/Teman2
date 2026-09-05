@@ -530,6 +530,77 @@ class TestDriftGuard:
             fold(seq18_source, seq18_signed, seq15_source, tampered_seq13)
 
 
+class TestFoldObservedAtThreading:
+    """`fold()` threads `observed_at` into the anchor's signature-verification
+    clock check instead of always reading `datetime.now()` — pinned here so
+    the witness is not itself real-clock-dependent (found by adversarial
+    review of this diff, codex terra)."""
+
+    def test_fold_succeeds_with_a_pinned_observed_at(
+        self,
+        seq18_source: dict[str, Any],
+        seq18_signed: dict[str, Any],
+        seq15_source: dict[str, Any],
+        seq13_source: dict[str, Any],
+        seq19_source: dict[str, Any],
+        prod_trust_store_env: None,
+    ) -> None:
+        result = fold(
+            seq18_source,
+            seq18_signed,
+            seq15_source,
+            seq13_source,
+            observed_at=OBSERVED_AT,
+        )
+        assert result == seq19_source
+
+
+class TestOutputCollisionGuard:
+    """`main()`'s fail-closed guard against `--output` equalling one of its
+    own inputs (or a signed-looking path) — added after adversarial review
+    (codex terra) found no such guard, so a careless invocation could
+    overwrite an input, or the SIGNED production anchor, with unsigned fold
+    bytes. Guilt and innocence in one witness (superscar #3: never a guard
+    without both): the guilty invocation must be refused without mutating
+    the signed file it targeted, and a normal invocation to a fresh path
+    must still go through end to end."""
+
+    def test_output_equal_to_seq18_signed_is_refused_but_a_normal_invocation_still_works(
+        self, tmp_path: Path, prod_trust_store_env: None
+    ) -> None:
+        from backend.scripts.visa_engine.fold_pack_seq19 import main
+
+        before_bytes = _SEQ18_SIGNED_PATH.read_bytes()
+        guilty_argv = [
+            "--seq18-source",
+            str(_SEQ18_SOURCE_PATH),
+            "--seq15-source",
+            str(_SEQ15_SOURCE_PATH),
+            "--seq13-source",
+            str(_SEQ13_SOURCE_PATH),
+            "--output",
+            str(_SEQ18_SIGNED_PATH),
+        ]
+        with pytest.raises(SystemExit):
+            main(guilty_argv, observed_at=OBSERVED_AT)
+        assert _SEQ18_SIGNED_PATH.read_bytes() == before_bytes
+
+        output_path = tmp_path / "rulepack-prod-019.source.json"
+        innocent_argv = [
+            "--seq18-source",
+            str(_SEQ18_SOURCE_PATH),
+            "--seq15-source",
+            str(_SEQ15_SOURCE_PATH),
+            "--seq13-source",
+            str(_SEQ13_SOURCE_PATH),
+            "--output",
+            str(output_path),
+        ]
+        rc = main(innocent_argv, observed_at=OBSERVED_AT)
+        assert rc == 0
+        assert output_path.exists()
+
+
 # ---------------------------------------------------------------------------
 # Behavioral witnesses (real evaluator on a CompiledRulePack built from 019)
 # ---------------------------------------------------------------------------
