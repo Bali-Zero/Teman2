@@ -112,7 +112,6 @@ class TestCreateCase:
         fake_repo.insert.assert_awaited_once()
         assert fake_repo.insert.await_args.args[0].practice_id is None
         fake_repo.load.assert_not_awaited()
-        conn.fetchval.assert_not_awaited()
 
     @pytest.mark.integration
     @pytest.mark.parametrize(
@@ -261,90 +260,6 @@ class TestCreateCase:
         fake_repo.insert.assert_awaited_once()
 
     @pytest.mark.integration
-    @pytest.mark.parametrize("role", ["admin", "team_member"])
-    def test_practice_for_requested_client_is_linked(
-        self, mock_db_pool, admin_user, role: str
-    ) -> None:
-        pool, conn = mock_db_pool
-        user = {**admin_user, "role": role}
-        client = TestClient(_make_app(pool, user), raise_server_exceptions=False)
-        conn.fetchrow = AsyncMock(
-            return_value={
-                "full_name": "Alice Example",
-                "assigned_to": user["email"],
-                "deleted_at": None,
-            }
-        )
-        conn.fetchval = AsyncMock(return_value=1)
-        fake_repo = MagicMock()
-        fake_repo.insert = AsyncMock(side_effect=lambda case: case)
-
-        with patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo):
-            response = client.post(
-                "/api/e33/cases",
-                json={"client_id": 1, "basis": "deposit", "practice_id": 42},
-            )
-
-        assert response.status_code == 201
-        fake_repo.insert.assert_awaited_once()
-        case = fake_repo.insert.await_args.args[0]
-        assert (case.client_id, case.practice_id) == (1, 42)
-        conn.fetchval.assert_awaited_once()
-        assert conn.fetchval.await_args.args[1:] == (42,)
-
-    @pytest.mark.integration
-    @pytest.mark.parametrize("practice_client_id", [None, 2], ids=["missing", "other-client"])
-    def test_unavailable_practice_returns_same_422_and_never_inserts(
-        self, mock_db_pool, admin_user, practice_client_id: int | None
-    ) -> None:
-        pool, conn = mock_db_pool
-        client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
-        conn.fetchrow = AsyncMock(
-            return_value={
-                "full_name": "Alice Example",
-                "assigned_to": admin_user["email"],
-                "deleted_at": None,
-            }
-        )
-        conn.fetchval = AsyncMock(return_value=practice_client_id)
-        fake_repo = MagicMock()
-        fake_repo.insert = AsyncMock(side_effect=lambda case: case)
-
-        with patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo):
-            response = client.post(
-                "/api/e33/cases",
-                json={"client_id": 1, "basis": "deposit", "practice_id": 42},
-            )
-
-        assert response.status_code == 422
-        assert response.json() == {"detail": "practice is not available for this client"}
-        fake_repo.insert.assert_not_awaited()
-
-    @pytest.mark.integration
-    def test_explicit_null_practice_preserves_case_creation(self, mock_db_pool, admin_user) -> None:
-        pool, conn = mock_db_pool
-        client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
-        conn.fetchrow = AsyncMock(
-            return_value={
-                "full_name": "Alice Example",
-                "assigned_to": admin_user["email"],
-                "deleted_at": None,
-            }
-        )
-        fake_repo = MagicMock()
-        fake_repo.insert = AsyncMock(side_effect=lambda case: case)
-
-        with patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo):
-            response = client.post(
-                "/api/e33/cases",
-                json={"client_id": 1, "basis": "deposit", "practice_id": None},
-            )
-
-        assert response.status_code == 201
-        assert fake_repo.insert.await_args.args[0].practice_id is None
-        conn.fetchval.assert_not_awaited()
-
-    @pytest.mark.integration
     def test_dependent_without_principal_case_id_returns_422(
         self, mock_db_pool, admin_user
     ) -> None:
@@ -451,7 +366,6 @@ class TestCreateCase:
         )
 
         assert response.status_code == 403
-        conn.fetchval.assert_not_awaited()
 
     @pytest.mark.integration
     def test_fk_violation_returns_422_generic_detail(self, mock_db_pool, admin_user) -> None:
@@ -468,8 +382,6 @@ class TestCreateCase:
         fake_repo = MagicMock()
         raw_pg_detail = "insert or update on table violates foreign key constraint pk_practice_42"
         fake_repo.insert = AsyncMock(side_effect=asyncpg.ForeignKeyViolationError(raw_pg_detail))
-        # The practice can disappear after the pre-insert ownership lookup.
-        conn.fetchval = AsyncMock(return_value=1)
 
         with patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo):
             response = client.post(

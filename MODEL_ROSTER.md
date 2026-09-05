@@ -234,7 +234,7 @@ presence. Known-live lanes (CLAUDE.md §9 data invariants + machine facts):
 
 - `qwen3.5:9b` — classifier, **`think:false` required** (Ollama client contract).
 - `deepseek-r1:32b` — offline reasoning.
-- `qwen2.5vl:7b` — **sole vision/OCR seat** (data invariant: `qwen3.5` Q4_K_M strips vision
+- `qwen3.5:9b` — **sole vision/OCR seat** (data invariant: `qwen2.5vl` Q4_K_M strips vision
   weights — never substitute).
 - `gemma4:26b` — translation cron.
 - `bge-m3` / `nomic-embed-text` — multilingual / general embedding.

@@ -345,8 +345,7 @@ export function SavePlanBar({ plan, onClear }: SavePlanBarProps) {
   const [showManualLink, setShowManualLink] = useState(false);
 
   useEffect(() => {
-    if (feedback !== "savedConfirmation" && feedback !== "copiedConfirmation")
-      return;
+    if (!feedback) return;
     const timeout = window.setTimeout(() => setFeedback(null), 2500);
     return () => window.clearTimeout(timeout);
   }, [feedback]);

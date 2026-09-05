@@ -304,13 +304,13 @@
           "accounts": ["O1", "O2"]
         },
         {
+          "model": "kimi-k3",
+          "accounts": ["K1"]
+        },
+        {
           "model": "glm-5.2",
           "accounts": ["TP1"],
           "note": "only live door: Alibaba TP1 seat tp1-glm-5.2 (see accounts.alibaba.slots.TP1); OpenAI-compatible base https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1, key loaded by load_tp1_settings_key() from ~/.qwen/settings.json. Zero's first-call ruling 2026-07-19 for compact reviews"
-        },
-        {
-          "model": "kimi-k3",
-          "accounts": ["K1"]
         },
         {
           "model": "gemini-3.1-pro (agy redteam)",

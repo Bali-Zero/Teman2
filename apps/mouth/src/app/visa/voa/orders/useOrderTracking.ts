@@ -29,9 +29,7 @@ function isStillMoving(order: OrderView): boolean {
     practiceState === undefined ||
     practiceState === "Received" ||
     practiceState === "In review" ||
-    practiceState === "Submitted" ||
-    practiceState === "Approved" ||
-    practiceState === "Blocked"
+    practiceState === "Submitted"
   );
 }
 

@@ -23,7 +23,6 @@ import logging
 import os
 import re
 import uuid
-from collections.abc import Callable
 
 import httpx
 import pytest
@@ -34,19 +33,10 @@ from backend.services.garuda_orders import journal
 from backend.services.garuda_orders.outbox_consumer import KILL_SWITCH_ENV, drain_once
 from backend.services.garuda_orders.outbox_handlers import (
     BrevoEmailSender,
-    CheckoutReadyEmailHandler,
     EmailSendFailed,
-    LateRefundConfirmationEmailHandler,
-    LateRefundFacts,
     OrderEmailFacts,
-    PaymentExpiredEmailHandler,
-    PaymentFailedEmailHandler,
     PaymentPaidEmailHandler,
-    PracticeReceivedEmailHandler,
     PracticeReleaseHandler,
-    PracticeTransitionEmailFacts,
-    RefundEmailHandler,
-    _practice_transition_body,
     build_handlers,
 )
 from backend.tests.fixtures.prod_shaped_pool import create_prod_shaped_pool
@@ -288,105 +278,6 @@ def test_the_body_carries_no_passport_or_name():
     body = PaymentPaidEmailHandler._body(_facts())
     assert "X0000000" not in body
     assert "SPECIMEN" not in body
-
-
-# --------------------------------------------------------------------------
-# GA-B-1: `case_type` reaches 8 separate HTML bodies (9 constructor sites
-# across 4 dataclasses feed them — no single upstream factory) and every one
-# must html-escape it. The 5 `staff_page_*` Telegram pages are plain-text /
-# `_escape_markdown`-escaped and are deliberately NOT covered here.
-# --------------------------------------------------------------------------
-
-
-def _late_refund_facts(**over) -> LateRefundFacts:
-    base = {
-        "order_id": "ord_specimen",
-        "email": RECIPIENT,
-        "case_type": "issuance",
-        "resolution": "refunded_in_full",
-    }
-    base.update(over)
-    return LateRefundFacts(**base)
-
-
-def _practice_transition_facts(**over) -> PracticeTransitionEmailFacts:
-    base = {
-        "order_id": "ord_specimen",
-        "email": RECIPIENT,
-        "case_type": "issuance",
-        "state": "Approved",
-        "customer_reason_key": None,
-        "required_action_key": None,
-        "artifact_available": False,
-    }
-    base.update(over)
-    return PracticeTransitionEmailFacts(**base)
-
-
-#: One entry per HTML body, named after the outbox `job_type` it renders for
-#: (`practice_transition_email` covers all seven PR-02..PR-11 job types —
-#: they share one `_body` factory, `_practice_transition_body`). Each value
-#: is a `case_type -> rendered body` callable so the escaping tests below can
-#: drive all 8 with the same two assertions and still name the failing body
-#: in the parametrize id.
-_HTML_BODY_RENDERERS: dict[str, Callable[[str], str]] = {
-    "payment_paid_email": lambda case_type: PaymentPaidEmailHandler._body(
-        _facts(case_type=case_type)
-    ),
-    "checkout_ready_email": lambda case_type: CheckoutReadyEmailHandler._body(
-        _facts(case_type=case_type), "https://pay.example.invalid/session"
-    ),
-    "payment_failed_email": lambda case_type: PaymentFailedEmailHandler._body(
-        _facts(case_type=case_type),
-        "Please try again with a different card or payment method.",
-    ),
-    "payment_expired_email": lambda case_type: PaymentExpiredEmailHandler._body(
-        _facts(case_type=case_type)
-    ),
-    "refund_email": lambda case_type: RefundEmailHandler._body(_facts(case_type=case_type)),
-    "late_refund_confirmation_email": lambda case_type: (
-        LateRefundConfirmationEmailHandler._body(_late_refund_facts(case_type=case_type))
-    ),
-    "practice_received_email": lambda case_type: PracticeReceivedEmailHandler._body(
-        _facts(case_type=case_type)
-    ),
-    "practice_transition_email": lambda case_type: _practice_transition_body(
-        "is now being reviewed by our team."
-    )(_practice_transition_facts(case_type=case_type)),
-}
-
-
-@pytest.mark.parametrize("job_type", sorted(_HTML_BODY_RENDERERS))
-def test_html_body_escapes_a_script_case_type(job_type):
-    """Guilt case: a `<script>` `case_type` must never reach the wire raw.
-
-    Revert `_h()` (or one of its 8 call sites) to a bare `facts.case_type` and
-    this goes red, naming the body in the parametrize id.
-    """
-
-    render = _HTML_BODY_RENDERERS[job_type]
-    body = render("<script>x</script>")
-    assert "<script>x</script>" not in body
-    assert "&lt;script&gt;x&lt;/script&gt;" in body
-
-
-@pytest.mark.parametrize("job_type", sorted(_HTML_BODY_RENDERERS))
-def test_html_body_escapes_ampersand_and_quote_case_type(job_type):
-    render = _HTML_BODY_RENDERERS[job_type]
-    body = render('visa & "extra"')
-    assert 'visa & "extra"' not in body
-    assert "visa &amp; &quot;extra&quot;" in body
-
-
-@pytest.mark.parametrize("job_type", sorted(_HTML_BODY_RENDERERS))
-def test_html_body_renders_a_normal_case_type_unchanged(job_type):
-    """Innocence case: an ordinary `case_type` is not mangled by the escape."""
-
-    render = _HTML_BODY_RENDERERS[job_type]
-    body = render("issuance")
-    assert "issuance" in body
-    assert "&amp;" not in body
-    assert "&lt;" not in body
 
 
 # --------------------------------------------------------------------------

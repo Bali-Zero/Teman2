@@ -47,7 +47,6 @@ shape and each subclass's docstring for its own paging condition.
 from __future__ import annotations
 
 import hashlib
-import html
 import json
 import logging
 import os
@@ -92,25 +91,6 @@ TELEGRAM_OWNER_CHAT_ID_ENV = "TELEGRAM_OWNER_CHAT_ID"
 #: succeeded — see `PaymentPaidEmailHandler.__call__` for why that is a
 #: resolved-not-sent outcome rather than a failure.
 _STATES_WORTH_CONFIRMING = frozenset({"paid"})
-
-
-def _h(value: object) -> str:
-    """Escape one interpolated value for the HTML customer-email bodies below.
-
-    GA-B-1: `case_type` (and any other non-compile-time-constant field) reaches
-    8 HTML `<br>`-joined bodies via 9 separate `*Facts` dataclass constructor
-    sites (`OrderEmailFacts` x6, `LateRefundFacts`, `PracticeTransitionEmailFacts`,
-    `OrderAnomalyFacts`) — there is no single upstream factory all 8 bodies flow
-    through, so escaping happens at render time, at each f-string site, not once
-    at construction. `quote=True` also escapes `"`/`'` (attribute-safe, though
-    none of these sites currently interpolate into an attribute). Do NOT apply
-    this to a URL's `href`/`src` value — that needs validation, not escaping —
-    and never to a value already escaped (double-escaping corrupts it). The five
-    `staff_page_*` Telegram handlers are plain text / Markdown-escaped
-    (`_escape_markdown` below) and are out of scope: this helper is HTML-only.
-    """
-
-    return html.escape(str(value), quote=True)
 
 
 class EmailSendFailed(RuntimeError):
@@ -262,7 +242,7 @@ class PaymentPaidEmailHandler:
         return (
             "Hello,<br><br>"
             "We've received your payment for your Bali Zero Visa on Arrival "
-            f"({_h(facts.case_type)}).<br><br>"
+            f"({facts.case_type}).<br><br>"
             f"<b>Amount paid: {amount}</b><br><br>"
             "Our team is preparing your application now. You can follow its "
             "progress at any time here:<br><br>"
@@ -358,7 +338,7 @@ class CheckoutReadyEmailHandler:
         return (
             "Hello,<br><br>"
             "Your Bali Zero Visa on Arrival application "
-            f"({_h(facts.case_type)}) is ready for payment.<br><br>"
+            f"({facts.case_type}) is ready for payment.<br><br>"
             f"<b>Amount due: {amount}</b><br><br>"
             f'<a href="{checkout_url}">Complete my payment</a><br><br>'
             "You can also follow this order's status here:<br><br>"
@@ -476,7 +456,7 @@ class PaymentFailedEmailHandler:
         return (
             "Hello,<br><br>"
             "We were unable to process your payment for your Bali Zero Visa on "
-            f"Arrival ({_h(facts.case_type)}).<br><br>"
+            f"Arrival ({facts.case_type}).<br><br>"
             f"<b>Amount not charged: {amount}</b><br><br>"
             f"{guidance}<br><br>"
             "You can follow this order's status here:<br><br>"
@@ -565,7 +545,7 @@ class PaymentExpiredEmailHandler:
         return (
             "Hello,<br><br>"
             "The payment session for your Bali Zero Visa on Arrival application "
-            f"({_h(facts.case_type)}) expired before it was completed, so no payment "
+            f"({facts.case_type}) expired before it was completed, so no payment "
             "was taken.<br><br>"
             "If you still need a Visa on Arrival, please start a new "
             "application.<br><br>"
@@ -648,7 +628,7 @@ class RefundEmailHandler:
         return (
             "Hello,<br><br>"
             "We've refunded your payment for your Bali Zero Visa on Arrival "
-            f"({_h(facts.case_type)}).<br><br>"
+            f"({facts.case_type}).<br><br>"
             "The refund goes back to the payment method you used, and follows "
             "your card provider's own timeline to appear on your statement.<br><br>"
             "You can follow this order's status here:<br><br>"
@@ -834,7 +814,7 @@ class LateRefundConfirmationEmailHandler:
         return (
             "Hello,<br><br>"
             "A payment was taken for your Bali Zero Visa on Arrival "
-            f"({_h(facts.case_type)}) that should not have been, and we have "
+            f"({facts.case_type}) that should not have been, and we have "
             "returned it.<br><br>"
             "The money goes back to the payment method you used, and follows "
             "your card provider's own timeline to appear on your "
@@ -1226,7 +1206,7 @@ class PracticeReceivedEmailHandler:
         return (
             "Hello,<br><br>"
             "Your Bali Zero Visa on Arrival application "
-            f"({_h(facts.case_type)}) has been received and is now open with our "
+            f"({facts.case_type}) has been received and is now open with our "
             "team.<br><br>"
             "You can follow its progress at any time here:<br><br>"
             f'<a href="{tracker}">Track my application</a><br><br>'
@@ -1342,7 +1322,7 @@ def _practice_transition_body(message: str) -> Callable[[PracticeTransitionEmail
         tracker = f"{base}/{facts.order_id}"
         return (
             "Hello,<br><br>"
-            f"Your Bali Zero Visa on Arrival application ({_h(facts.case_type)}) {message}<br><br>"
+            f"Your Bali Zero Visa on Arrival application ({facts.case_type}) {message}<br><br>"
             "You can follow its progress at any time here:<br><br>"
             f'<a href="{tracker}">Track my application</a><br><br>'
             "— Bali Zero"

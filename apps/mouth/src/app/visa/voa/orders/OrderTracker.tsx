@@ -92,7 +92,7 @@ function OrderTrackerReady({ order }: { order: OrderView }) {
         }}
       >
         <span style={{ fontSize: "0.85rem", color: "var(--color-text-muted)" }}>
-          {order.order_state === "paid" ? "Total paid" : "Order total"}
+          Total paid
         </span>
         <span style={{ fontSize: "1.6rem", fontWeight: 600 }}>
           {formatIDR(order.price_idr)}
@@ -109,16 +109,16 @@ function OrderTrackerReady({ order }: { order: OrderView }) {
         <ExceptionPanel
           heading={
             order.order_state === "failed"
-              ? "This checkout couldn't be completed."
+              ? "This payment didn't go through."
               : "This checkout session expired."
           }
-          body="A consultant can verify your payment status before you try again."
+          body="Nothing was charged. A consultant can open a fresh checkout for you right away."
         />
       ) : null}
 
       {order.order_state === "refunded" ? (
         <ExceptionPanel
-          heading="This order was refunded."
+          heading="This order was refunded in full."
           body="If you still need a Visa on Arrival, a consultant can start a new application with you."
         />
       ) : null}
@@ -151,7 +151,7 @@ function subtitleFor(order: OrderView): string {
     }
     return "Payment confirmed — here's where your application stands.";
   }
-  if (order.order_state === "failed") return "Checkout couldn't be completed.";
+  if (order.order_state === "failed") return "Payment didn't complete.";
   if (order.order_state === "expired") return "Checkout session expired.";
   if (order.order_state === "refunded") return "This order was refunded.";
   return "Tracking your Visa on Arrival application.";

@@ -1128,24 +1128,6 @@ def test_effort_for_cli_matches_effort_for_gear():
     assert proc.returncode == 3
 
 
-# Where fixtures that are NOT about rule 9 (root-path deprecation) put their
-# pack from 2026-09-05 on. Any fixture asserting exit 0 through the CLI on the
-# literal root `evidence/pack.yml` is a date bomb: green until the deprecation
-# date, red on it, with no diff on either side. Tests that exercise rule 9
-# itself keep using the root path deliberately.
-PER_TASK_PACK_RELPATH = "evidence/2026-09/lint-fixture-0badc0de/pack.yml"
-
-
-def _relocate_pack_per_task(tmp_path, root_pack):
-    """Move a tmp_repo-written root pack to PER_TASK_PACK_RELPATH (same bytes),
-    for CLI tests whose subject is something other than rule 9."""
-    dest = tmp_path / PER_TASK_PACK_RELPATH
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(root_pack.read_text(encoding="utf-8"), encoding="utf-8")
-    root_pack.unlink()
-    return dest
-
-
 def _write_full_tree(tmp_path, *, gear, pack_overrides):
     evidence_dir = tmp_path / "evidence"
     evidence_dir.mkdir(parents=True, exist_ok=True)
@@ -1164,23 +1146,17 @@ def _write_full_tree(tmp_path, *, gear, pack_overrides):
         "lanes": [{"lane": "D1", "role": "build", "seat": "codex"}],
     }
     pack.update(pack_overrides)
-    # Per-task path, not the root `evidence/pack.yml`: rule 9 turned the root
-    # path from NOTICE into a violation at EVIDENCE_ROOT_DEPRECATION_DATE
-    # (2026-09-05), and these fixtures test net-lines/ceiling, not rule 9 —
-    # measured 2026-09-05: the root path went red on the date and ejected every
-    # merge group on main while every PR head (built the day before) was green.
-    pack_path = tmp_path / PER_TASK_PACK_RELPATH
-    pack_path.parent.mkdir(parents=True, exist_ok=True)
-    pack_path.write_text(yaml.safe_dump(pack, sort_keys=False), encoding="utf-8")
-    return pack_path
+    (tmp_path / "evidence" / "pack.yml").write_text(
+        yaml.safe_dump(pack, sort_keys=False), encoding="utf-8"
+    )
+    return tmp_path / "evidence" / "pack.yml"
 
 
 def test_net_lines_cli_flag_overrides_pack_lie_end_to_end(tmp_path):
     """--net-lines, given a diff shaped like predicate (b), wins over the
     pack's own (lying) net_lines field — reaching compute_ceiling() through
     the full CLI entry point, not just lint() called in-process."""
-    # The journal lives NEXT TO the pack (council_run is pack-dir relative).
-    _write_journal((tmp_path / PER_TASK_PACK_RELPATH).parent, "council.jsonl", GOOD_COUNCIL_QUORUM)
+    _write_journal(tmp_path / "evidence", "council.jsonl", GOOD_COUNCIL_QUORUM)
     pack_path = _write_full_tree(
         tmp_path, gear=3,
         pack_overrides={"council": True, "net_lines": 10, "council_run": "council.jsonl"},
@@ -2673,11 +2649,11 @@ def test_brief_root_cli_accepts_and_threads_brief_source_path(tmp_repo):
     violation list (pre-flip, an over-matching rule shows up ONLY on stderr)."""
     tmp_path, write_brief, write_pack = tmp_repo
     write_brief(gear=1)
-    _relocate_pack_per_task(tmp_path, write_pack())
+    write_pack()
     result = subprocess.run(
         [
             sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
-            PER_TASK_PACK_RELPATH, "--repo-root", str(tmp_path),
+            "evidence/pack.yml", "--repo-root", str(tmp_path),
             "--brief-source-path", "evidence/2026-08/some-task-a0adff64/brief.yml",
             "--json",
         ],
@@ -2698,11 +2674,11 @@ def test_brief_root_cli_absent_flag_leaves_rule_inert(tmp_repo):
     brief location it cannot know."""
     tmp_path, write_brief, write_pack = tmp_repo
     write_brief(gear=1)
-    _relocate_pack_per_task(tmp_path, write_pack())
+    write_pack()
     result = subprocess.run(
         [
             sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
-            PER_TASK_PACK_RELPATH, "--repo-root", str(tmp_path), "--json",
+            "evidence/pack.yml", "--repo-root", str(tmp_path), "--json",
         ],
         capture_output=True, text=True, timeout=30,
     )

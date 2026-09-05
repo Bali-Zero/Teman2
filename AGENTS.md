@@ -839,7 +839,7 @@ When a seat hits quota or dies, escalate IN ORDER and log each hop in the task e
 
 ### 17.3 Account-lane mapping (lanes with borrowing, not round-robin)
 
-Lanes are **home assignments, not fences**: each lane drains its home account first, then borrows automatically from the least-loaded other account — nothing sits idle, no line ever stops. Mapping (see `FLEET_TOPOLOGY.json` → `accounts`): **A1** antonellosiano interactive/architect · **A2** kaiser1987… subagents/build+Cowork · **A3** applevisionpro1987 cron/batch, **designated donor** (cron auto-pauses to free its window when the gate calls) · **AZ** zero (Team seat Premium) **gate primary** — the dedicated allowance for the final on-disk gate lives here (Opus 5 xhigh effort, RULED 2026-08-20; was Fable's dedicated weekly allowance) · **O1** antonellosiano (ChatGPT Pro) refuter-primary · **O2** zero (ChatGPT Pro) builders+refuter-backup.
+Lanes are **home assignments, not fences**: each lane drains its home account first, then borrows automatically from the least-loaded other account — nothing sits idle, no line ever stops. Mapping (see `FLEET_TOPOLOGY.json` → `accounts`): **A1** antonellosiano interactive/architect · **A2** kaiser1987… subagents/build+Cowork · **A3** applevisionpro1987 cron/batch, **designated donor** (cron auto-pauses to free its window when the gate calls) · **AZ** zero (Team seat Premium) cron/batch, **designated donor** — pauses to free its window when the gate calls; the final on-disk gate runs on A1 (Opus 5 xhigh effort, RULED 2026-08-20) · **O1** antonellosiano (ChatGPT Pro) refuter-primary · **O2** zero (ChatGPT Pro) builders+refuter-backup.
 
 ### 17.4 Spend order
 
