@@ -1130,8 +1130,8 @@ export function getTreeSteps(
     // "category" entirely — yet "category" still sits earlier in `order`
     // than "review_gate", so the old `idx < currentIdx → "done"` rule
     // marked it "done" even though it was never asked, exposing a
-    // tap-to-edit button whose EDIT dispatch was a silent no-op
-    // (`truncateToNode` finds no matching history entry). Ground truth
+    // tap-to-edit button for a question absent from history. EDIT now
+    // resets the flow when its target is absent. Ground truth
     // for any REAL question step is the fact itself — `pruneFacts`
     // already guarantees `facts` only ever holds keys for questions
     // actually answered on the current path, so a question step is
@@ -1176,9 +1176,8 @@ export function getTreeSteps(
  * actual question node. "framing"/"confirmation"/"verdict" can reach
  * "done" status too (they're plain forward moves through the trunk, not
  * questions) and must never render as editable — `flowReducer`'s EDIT
- * action only knows how to truncate history to a `{ kind: "question" }`
- * node, so dispatching EDIT with one of those ids would silently no-op
- * (`truncateToNode` finds no match and returns the history unchanged).
+ * action requires a matching `{ kind: "question" }` history entry and
+ * resets the flow when its target is absent.
  * Current/pending/pruned steps are never editable either — you can't jump
  * forward to an answer that doesn't exist yet. Pure, so `LivingTree` never
  * has to re-derive this rule itself.
