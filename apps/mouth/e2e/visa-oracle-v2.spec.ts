@@ -627,10 +627,8 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
       name: "Talk to a consultant",
       exact: true,
     });
-    await expect(contact).toHaveAttribute("aria-expanded", "false");
-    await expect(page.locator("#oracle-consultant-panel")).toBeHidden();
-    await contact.click();
     await expect(contact).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator("#oracle-consultant-panel")).toBeVisible();
 
     const consent = page.getByRole("checkbox", {
       name: /i consent to open whatsapp with a minimal visa oracle receipt/i,
@@ -667,10 +665,8 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
       name: "Talk to a consultant",
       exact: true,
     });
-    await expect(contact).toHaveAttribute("aria-expanded", "false");
-    await expect(page.locator("#oracle-consultant-panel")).toBeHidden();
-    await contact.click();
     await expect(contact).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator("#oracle-consultant-panel")).toBeVisible();
 
     const guardian = page.getByRole("checkbox", {
       name: /i confirm that i am the parent or legal guardian/i,

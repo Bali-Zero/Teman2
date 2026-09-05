@@ -120,7 +120,7 @@ const SESSION_COPY = {
 } as const;
 
 function ConsultantContact(props: ConsentHandoffProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(props.context === "ASSESSMENT");
   const toggleRef = useRef<HTMLButtonElement>(null);
 
   return (
@@ -205,7 +205,6 @@ export function OracleShell({ internalMode = false }: OracleShellProps = {}) {
   if (hydrated === null) {
     return (
       <div className="oracle-root" data-oracle-theme="light" data-funnel="visa">
-        <ConsultantContact language="en" context="CONSULTATION" />
         <p className="oracle-subhead" role="status" aria-live="polite">
           {SESSION_COPY.en.loading}
         </p>
@@ -794,16 +793,13 @@ function OracleShellRuntime({
   }, [clearAllEvaluationIdentities]);
 
   const lane = useMemo(() => getLane(state.facts), [state.facts]);
-  const displayedOutcome =
-    current.kind === "verdict" && !evaluating ? outcome : null;
+  // Leaving a verdict or starting/retrying evaluation clears outcome before contact renders.
   const outcomeAssessmentReference =
-    displayedOutcome?.provenance === "ENGINE"
-      ? displayedOutcome.assessment.publicId
-      : undefined;
+    outcome?.provenance === "ENGINE" ? outcome.assessment.publicId : undefined;
   const guardianConsentRequired = isMinorForHandoff(
     state.facts.birth_date,
-    displayedOutcome?.provenance === "ENGINE"
-      ? displayedOutcome.assessment.evaluatedAtIso
+    outcome?.provenance === "ENGINE"
+      ? outcome.assessment.evaluatedAtIso
       : restoreToday.toISOString(),
   );
 
@@ -854,12 +850,13 @@ function OracleShellRuntime({
         </header>
 
         <ConsultantContact
+          key={outcome ? "assessment" : "consultation"}
           language={language}
           guardianConsentRequired={guardianConsentRequired}
-          {...(displayedOutcome
+          {...(outcome
             ? {
                 context: "ASSESSMENT",
-                state: displayedOutcome.state as VisaOracleTelemetryState,
+                state: outcome.state as VisaOracleTelemetryState,
                 assessmentReference: outcomeAssessmentReference,
               }
             : { context: "CONSULTATION" })}

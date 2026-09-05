@@ -3,9 +3,9 @@ gear: 2
 l_level: L2
 gate_class: opus
 objective:
-  Keep consultant contact available throughout the Visa Oracle interview, with explicit consultation consent
-  before a displayed verdict and fresh assessment consent at a verdict. Preserve interview state and exclude interview
-  answers from the WhatsApp message.
+  Keep consultant contact available after session hydration, default open at actual verdict and collapsed
+  at interview entry. Require fresh scoped consent and known-minor guardian authority without sending interview
+  answers.
 constraints:
   - Eight existing frontend source/test/style files plus lane evidence.
   - No engine, eligibility, pricing, regulatory claims or client data.
@@ -13,8 +13,8 @@ constraints:
   - Prepare draft PR only; Fable owns independent Anthropic gate and shipping.
 acceptance:
   - text:
-      WHEN the user opens consultant contact in any interview phase, the UI SHALL preserve interview state, avoid
-      triggering evaluation and offer the correct explicit consent.
+      WHEN hydration completes, the user SHALL have consultant contact available in each interview phase without
+      losing interview state or triggering evaluation.
     probe: apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx
   - text:
       WHEN contact scope changes between consultation and a displayed assessment, previous consent SHALL NOT authorize
@@ -25,15 +25,19 @@ acceptance:
       viewports in both languages and remain hidden in print.
     probe: apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx
   - text:
-      WHEN the user requests a WhatsApp handoff, the closed consultant disclosure SHALL open before consent; guardian,
-      link and QR assertions SHALL retain their prior behavior.
+      WHEN a verdict is displayed, the consultant disclosure SHALL already be open without an opening gesture;
+      guardian, link and QR assertions SHALL retain their prior behavior.
     probe: apps/mouth/e2e/visa-oracle-v2.spec.ts
+  - text:
+      Before session hydration completes there SHALL be no consultant checkbox; at a displayed verdict the disclosure
+      SHALL start open, and after Edit it SHALL start collapsed with fresh consent.
+    probe: apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx
 consumer_map:
   - Visa Oracle visitors use the persistent consultant disclosure in every interview phase.
 risks:
-  - Historical responsive browser run predates the new base; seven source hashes match. Current two-case Pro Chromium
-    proof covers the E2E correction on the fresh snapshot, not a production build or entire browser suite.
-  - Production deployment and independent Fable gate are pending.
-grader: Kimi K3 PASS on supplied complete diff; independent Fable gate remains pending.
+  - Current browser evidence covers four targeted desktop/mobile cases on the Pro development runtime. Historical
+    responsive and CI results predate this correction; fresh full CI follows the commit.
+  - Independent Fable gate and production shipping remain pending.
+grader: Kimi K3 PASS13:30:01Z on corrective source; independent Fable re-gate pending.
 budget: Existing subscriptions and installed tooling only; no paid API calls.
 pii: none

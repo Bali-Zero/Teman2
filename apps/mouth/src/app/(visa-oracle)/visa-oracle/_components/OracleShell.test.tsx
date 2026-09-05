@@ -298,9 +298,9 @@ describe("OracleShell authoritative evaluate integration", () => {
     await expectStateHeading("NEEDS_INPUT");
     expect(screen.queryByRole("button", { name: /^edit$/i })).toBeNull();
     expect(screen.getByText(/Bali Zero can help clarify/)).toBeInTheDocument();
-    fireEvent.click(
+    expect(
       screen.getByRole("button", { name: "Talk to a consultant" }),
-    );
+    ).toHaveAttribute("aria-expanded", "true");
     expect(
       screen.getByRole("heading", { name: "Continue with Bali Zero" }),
     ).toBeVisible();
@@ -673,17 +673,35 @@ describe("OracleShell persistent consultant contact", () => {
     vi.restoreAllMocks();
   });
 
-  it("includes the consultant disclosure in the initial hydration markup", () => {
+  it("withholds consultant consent until browser session hydration completes", () => {
     const container = document.createElement("div");
     container.innerHTML = renderToString(<OracleShell />);
-    expect(
-      container.querySelector("#oracle-consultant-toggle")?.textContent,
-    ).toContain(consultant);
-    expect(container.querySelector("#oracle-consultant-panel")).toHaveAttribute(
-      "hidden",
+    expect(container.querySelector('[role="status"]')?.textContent).toContain(
+      "Restoring your private browser session",
     );
-    expect(container.querySelectorAll("#oracle-handoff-title")).toHaveLength(1);
+    expect(container.querySelector("#oracle-consultant-toggle")).toBeNull();
+    expect(container.querySelector("#oracle-consultant-panel")).toBeNull();
+    expect(container.querySelector('input[type="checkbox"]')).toBeNull();
+    expect(container.querySelectorAll("#oracle-handoff-title")).toHaveLength(0);
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("shows verdict consent immediately while allowing the user to close and reopen contact", async () => {
+    installVerdictResume();
+    render(<OracleShell />);
+    await expectStateHeading("SUPPORTED_CANDIDATES");
+    const toggle = screen.getByRole("button", { name: consultant });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("region", { name: consultant })).toBeVisible();
+    expect(
+      screen.getByRole("checkbox", { name: /minimal Visa Oracle receipt/ }),
+    ).not.toBeChecked();
+    expect(screen.queryByRole("link", { name: "Open WhatsApp" })).toBeNull();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(global.fetch).toHaveBeenCalledOnce();
   });
 
   it.each(["framing", "question", "confirmation"] as const)(
@@ -780,6 +798,9 @@ describe("OracleShell persistent consultant contact", () => {
     await screen.findByRole("heading", {
       name: translate("en", "confirmation.title"),
     });
+    const interviewToggle = screen.getByRole("button", { name: consultant });
+    expect(interviewToggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(interviewToggle);
     const genericConsent = screen.getByRole("checkbox", {
       name: /I consent to open WhatsApp to speak/,
     });
@@ -790,23 +811,51 @@ describe("OracleShell persistent consultant contact", () => {
     expect(global.fetch).toHaveBeenCalledOnce();
   });
 
-  it("requires guardian authority for a known minor before any evaluation", async () => {
-    const birthDate = `${new Date().getUTCFullYear() - 10}-01-01`;
-    resumeBeforeVerdict([...ANSWERS.slice(0, 4), ["birth_date", birthDate]]);
-    render(<OracleShell />);
-    fireEvent.click(await screen.findByRole("button", { name: consultant }));
-    const consent = screen.getByRole("checkbox", {
-      name: /I consent to open WhatsApp to speak/,
-    });
-    expect(consent).toBeDisabled();
-    fireEvent.click(
-      screen.getByRole("checkbox", { name: /parent or legal guardian/ }),
-    );
-    expect(consent).toBeEnabled();
-    fireEvent.click(consent);
-    expect(whatsappMessage()).not.toContain(birthDate);
-    expect(global.fetch).not.toHaveBeenCalled();
-  });
+  it.each(["en", "id"] as const)(
+    "honours %s language and hydrated guardian authority before offering a known minor consent",
+    async (language) => {
+      const birthDate = `${new Date().getUTCFullYear() - 10}-01-01`;
+      resumeBeforeVerdict([...ANSWERS.slice(0, 4), ["birth_date", birthDate]]);
+      render(<OracleShell />);
+      await screen.findByRole("button", { name: consultant });
+      if (language === "id") {
+        fireEvent.click(
+          screen.getByRole("button", {
+            name: translate("en", "language.option.id.aria"),
+          }),
+        );
+      }
+      fireEvent.click(
+        await screen.findByRole("button", {
+          name: language === "en" ? consultant : "Bicara dengan konsultan",
+        }),
+      );
+      const consent = screen.getByRole("checkbox", {
+        name:
+          language === "en"
+            ? /I consent to open WhatsApp to speak/
+            : /Saya setuju membuka WhatsApp untuk berbicara/,
+      });
+      expect(consent).toBeDisabled();
+      fireEvent.click(
+        screen.getByRole("checkbox", {
+          name:
+            language === "en"
+              ? /parent or legal guardian/
+              : /orang tua atau wali sah/,
+        }),
+      );
+      expect(consent).toBeEnabled();
+      fireEvent.click(consent);
+      const link = screen.getByRole("link", {
+        name: language === "en" ? "Open WhatsApp" : "Buka WhatsApp",
+      });
+      expect(
+        new URL(link.getAttribute("href")!).searchParams.get("text"),
+      ).not.toContain(birthDate);
+      expect(global.fetch).not.toHaveBeenCalled();
+    },
+  );
 
   it("supports keyboard disclosure, Escape focus return and Indonesian without resetting the interview", async () => {
     const user = userEvent.setup();
