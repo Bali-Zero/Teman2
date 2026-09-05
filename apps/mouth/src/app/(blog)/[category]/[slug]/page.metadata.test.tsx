@@ -66,12 +66,20 @@ describe("article metadata category validation", () => {
   // not-found boundary, while the child's fallback lookup finds a real article
   // and overrides the parent's noindex metadata with index + googlebot.
   for (const lang of [undefined, "fr"]) {
-    it.each(["blog", "not-a-category", "constructor", "toString"])(
+    it.each([
+      "blog",
+      "not-a-category",
+      "constructor",
+      "toString",
+      "hasOwnProperty",
+      "valueOf",
+      "__proto__",
+    ])(
       `rejects /%s/<existing slug> before lookup (lang=${lang ?? "en"})`,
       async (category) => {
         const result = await metadata(category, lang);
         const parent = await categoryMetadata({
-          params: Promise.resolve({ category: "not-a-category" }),
+          params: Promise.resolve({ category }),
         });
         expect(result).toEqual({ title: parent.title, robots: parent.robots });
         expect(getArticleBySlug).not.toHaveBeenCalled();
@@ -80,28 +88,58 @@ describe("article metadata category validation", () => {
     );
   }
 
-  it.each<ArticleCategory>([
-    "visas",
-    "business",
-    "taxes",
-    "property",
-    "living",
-    "trends",
-  ])("preserves canonical /%s article metadata", async (category) => {
-    const current = { ...article, category };
-    vi.mocked(getArticleBySlug).mockResolvedValue(current);
-    expect(await metadata(category)).toEqual(generateArticleMetadata(current));
-    expect(getArticleBySlug).toHaveBeenCalledWith(category, article.slug);
-  });
+  for (const lang of [undefined, "fr"]) {
+    it.each<ArticleCategory>([
+      "visas",
+      "business",
+      "taxes",
+      "property",
+      "living",
+      "trends",
+    ])(
+      `preserves canonical /%s article metadata (lang=${lang ?? "en"})`,
+      async (category) => {
+        const current = { ...article, category };
+        vi.mocked(getArticleBySlug).mockResolvedValue(current);
+        vi.mocked(getArticleByLocale).mockResolvedValue(current);
+        expect(await metadata(category, lang)).toEqual(
+          generateArticleMetadata(current),
+        );
+        if (lang) {
+          expect(getArticleByLocale).toHaveBeenCalledWith(
+            category,
+            article.slug,
+            lang,
+          );
+          expect(getArticleBySlug).not.toHaveBeenCalled();
+        } else {
+          expect(getArticleBySlug).toHaveBeenCalledWith(category, article.slug);
+          expect(getArticleByLocale).not.toHaveBeenCalled();
+        }
+      },
+    );
 
-  it.each(
-    Object.entries(CATEGORY_MAP).filter(([alias, target]) => alias !== target),
-  )("preserves declared alias /%s -> /%s", async (alias, category) => {
-    const current = { ...article, category };
-    vi.mocked(getArticleBySlug).mockResolvedValue(current);
-    expect(await metadata(alias)).toEqual(generateArticleMetadata(current));
-    expect(getArticleBySlug).toHaveBeenCalledWith(alias, article.slug);
-  });
+    it.each(
+      Object.entries(CATEGORY_MAP).filter(
+        ([alias, target]) => alias !== target,
+      ),
+    )(
+      `rejects declared alias /%s -> /%s before lookup (lang=${lang ?? "en"})`,
+      async (alias) => {
+        const result = await metadata(alias, lang);
+        const parent = await categoryMetadata({
+          params: Promise.resolve({ category: alias }),
+        });
+        expect(result).toEqual({
+          title: "Page not found",
+          robots: { index: false, follow: false },
+        });
+        expect(result).toEqual({ title: parent.title, robots: parent.robots });
+        expect(getArticleBySlug).not.toHaveBeenCalled();
+        expect(getArticleByLocale).not.toHaveBeenCalled();
+      },
+    );
+  }
 
   it.each([undefined, "fr"])(
     "preserves article.noIndex (lang=%s)",

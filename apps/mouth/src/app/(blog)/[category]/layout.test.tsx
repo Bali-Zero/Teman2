@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 
 import CategoryLayout, { generateMetadata } from "./layout";
 import type { ArticleCategory } from "@/lib/blog/types";
+import { CATEGORY_MAP } from "@/lib/blog/categories";
 
 const REAL_CATEGORIES: ArticleCategory[] = [
   "visas",
@@ -49,6 +50,21 @@ const call = (category: string) =>
   });
 
 describe("(blog)/[category] layout: unknown categories must 404, not 200", () => {
+  it.each([
+    ...PROTOTYPE_KEYS,
+    ...Object.entries(CATEGORY_MAP)
+      .filter(([alias, target]) => alias !== target)
+      .map(([alias]) => alias),
+  ])("rejects /%s in both layout and metadata", async (category) => {
+    await expect(call(category)).rejects.toThrow();
+    expect(
+      await generateMetadata({ params: Promise.resolve({ category }) }),
+    ).toEqual({
+      title: "Page not found",
+      robots: { index: false, follow: false },
+    });
+  });
+
   for (const category of JUNK) {
     it(`guilt: /${category} calls notFound()`, async () => {
       await expect(call(category)).rejects.toThrow();
