@@ -454,11 +454,21 @@ main() {
                 -m "$MODEL" -c "model_reasoning_effort=$EFFORT" "$task_text")
             task_index=9
             ;;
-        kimi) seat_argv=("$seat_binary" -p "$task_text" -m "$MODEL"); task_index=2 ;;
-        agy) seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --print-timeout 8m); task_index=2 ;;
+        kimi)
+            seat_argv=("$seat_binary" -p "$task_text" -m "$MODEL"); task_index=2
+            [ "${SEAT_AUTONOMOUS:-0}" = 1 ] && seat_argv+=(--auto)  # "Never Ask": nobody is there to answer
+            ;;
+        agy)
+            seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --print-timeout "$((TIMEOUT_SECS / 60))m"); task_index=2  # was a hardcoded 8m: shorter than any real build
+            [ "${SEAT_AUTONOMOUS:-0}" = 1 ] && seat_argv+=(--dangerously-skip-permissions)  # same flag agy_code_dispatch.py uses by default
+            ;;
         qwen)
             seat_argv=("$seat_binary" -p "$task_text"); task_index=2
             [ -n "${QWEN_MODEL:-}" ] && seat_argv+=(--model "$QWEN_MODEL")
+            # Headless qwen cannot run a shell without -y (measured 2026-09-06: "requires
+            # user approval but cannot execute in non-interactive mode"). Opt-in only, for
+            # lanes whose worktree is disposable (the generals exam) — never the default.
+            [ "${SEAT_AUTONOMOUS:-0}" = 1 ] && seat_argv+=(-y)
             ;;
         tp1) seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --effort "$EFFORT"); task_index=2 ;;
     esac
