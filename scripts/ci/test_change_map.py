@@ -100,6 +100,26 @@ def _staleness_verdict(
 
 
 class ChangeMapTests(unittest.TestCase):
+    def test_guilt_e33_backend_vocabulary_runs_its_article_ratchet(self) -> None:
+        result = cm.classify(
+            ["apps/backend-rag/backend/services/visa_check/e33_claim_guard.py"]
+        )
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["unknown_paths"], [])
+        self.assertEqual(result["reason"], "classified")
+        self.assertEqual(
+            result["suggested_jobs"], ["backend-tests", "frontend-tests", "e2e-tests"]
+        )
+
+    def test_innocence_sibling_e33_files_do_not_select_the_article_ratchet(self) -> None:
+        for path in ("e33_lifecycle.py", "e33_claim_guard_notes.py"):
+            result = cm.classify(
+                ["apps/backend-rag/backend/services/visa_check/" + path]
+            )
+            self.assertFalse(result["run_all"])
+            self.assertFalse(result["domains"]["mouth"])
+            self.assertEqual(result["suggested_jobs"], ["backend-tests", "e2e-tests"])
+
     def test_guilt_backend_change_runs_backend_and_e2e(self) -> None:
         result = cm.classify(["apps/backend-rag/backend/app/main.py"])
         self.assertFalse(result["run_all"])

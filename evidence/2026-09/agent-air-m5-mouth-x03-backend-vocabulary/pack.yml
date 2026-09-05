@@ -1,0 +1,50 @@
+gear: 2
+brief_ref: evidence/brief.yml
+degraded_execution: true
+lanes:
+  - { lane: x03b, role: build, seat: OpenAI GPT-6 Astra }
+  - { lane: x03b-review, role: review, seat: gemini-3.1-pro-high via agy OAuth }
+pii_scan: clean
+receipts:
+  - probe: article-guilt-innocence
+    claim: "article-guilt-innocence: 53 passed in 3 suites; six backend families, unsupported syntax, reordered factory arguments, unknown locale, stale and duplicate allowances checked."
+    cmd: "cd apps/mouth && npx --no-install vitest run src/i18n/secondhome-backend-patterns.test.ts src/i18n/secondhome-article-claims.test.ts src/i18n/secondhome-forbidden-claims.test.ts --maxWorkers=1"
+    result: "53 passed in 3 suites; six backend families, unsupported syntax, reordered factory arguments, unknown locale, stale and duplicate allowances checked."
+    exit: 0
+    ts: "2026-09-05T14:04:36.774Z"
+    seat: OpenAI GPT-6 Astra
+  - probe: mouth-typecheck
+    claim: "mouth-typecheck: Full mouth tsc --noEmit passed."
+    cmd: "npm run typecheck -w apps/mouth"
+    result: "Full mouth tsc --noEmit passed."
+    exit: 0
+    ts: "2026-09-05T14:04:32.598Z"
+    seat: OpenAI GPT-6 Astra
+  - probe: classifier-coupling
+    claim: "classifier-coupling: 68 tests passed. Removing the exact rule in memory caused the expected single assertion failure."
+    cmd: "/Users/balizero/nuzantara/.venv/bin/python scripts/ci/test_change_map.py; /Users/balizero/nuzantara/.venv/bin/python .agent/x03b/classifier-guilt.py"
+    result: "68 tests passed. Removing the exact rule in memory caused the expected single assertion failure."
+    exit: 0
+    ts: "2026-09-05T13:45:06.651Z"
+    seat: OpenAI GPT-6 Astra
+  - probe: corpus-identity
+    claim: "corpus-identity: 532 selected article blobs equal base. Original 133 keys unchanged; 134 added exact-content keys. All 10 regex source strings equal independent Python AST extraction."
+    cmd: "node .agent/x03b/refresh-baseline.cjs; node .agent/x03b/compare-vocabulary.cjs; /Users/balizero/nuzantara/.venv/bin/python .agent/x03b/compare-vocabulary.py"
+    result: "532 selected article blobs equal base. Original 133 keys unchanged; 134 added exact-content keys. All 10 regex source strings equal independent Python AST extraction."
+    exit: 0
+    ts: "2026-09-05T13:44:40.878Z"
+    seat: OpenAI GPT-6 Astra
+  - probe: independent-review
+    claim: "independent-review: PASS on final source bytes; prompt and output hashes in receipts.json."
+    cmd: "agy --model gemini-3.1-pro-high --effort high --mode plan --disable-slash-commands --print-timeout 5m -p <source-only prompt>"
+    result: "PASS on final source bytes; prompt and output hashes in receipts.json."
+    exit: 0
+    ts: "2026-09-05T14:06:06.387Z"
+    seat: gemini-3.1-pro-high via agy OAuth
+dissent: []
+residual_risks:
+  - Lexical matches are not legal findings; backend context filtering, external negation logic and Python Unicode semantics are not ported.
+  - Baseline growth is inherited lexical debt, including overlaps with dictionary rules; no article or legal approval is implied.
+  - Unsupported future backend declaration syntax deliberately fails frontend CI until reviewed.
+  - Independent review is source-only; runtime claims are bound to local probe logs, not independently rerun by Gemini.
+  - Both Kimi attempts timed out after 300 seconds without a verdict; the actual review is the allowed Gemini OAuth fallback. Fable final gate remains pending.

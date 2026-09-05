@@ -6,6 +6,7 @@ import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import baseline from "./secondhome-article-claims.baseline.json";
+import { backendPatterns } from "./secondhome-backend-patterns";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ARTICLES = join(HERE, "../content/articles");
@@ -43,6 +44,11 @@ function sharedRules(source: string): Record<Locale, RegExp[]> {
     { timeout: 1000 },
   );
   const raw = JSON.parse(serialized) as Record<string, [string, string][]>;
+  const unknown = Object.keys(raw).filter(
+    (locale) => !LOCALES.includes(locale as Locale),
+  );
+  if (unknown.length)
+    throw new Error(`Unsupported shared E33 locales: ${unknown.join(", ")}`);
   return Object.fromEntries(
     LOCALES.map((locale) => {
       if (!raw[locale]?.length)
@@ -86,6 +92,25 @@ function selectArticles(articles: Article[]): Article[] {
 const rules = sharedRules(
   readFileSync(join(HERE, "secondhome-forbidden-claims.test.ts"), "utf8"),
 );
+const backend = backendPatterns(
+  readFileSync(
+    join(
+      HERE,
+      "../../../backend-rag/backend/services/visa_check/e33_claim_guard.py",
+    ),
+    "utf8",
+  ),
+);
+for (const locale of LOCALES) {
+  rules[locale] = [
+    ...new Map(
+      [...rules[locale], ...backend.values()].map((pattern) => [
+        pattern.toString(),
+        pattern,
+      ]),
+    ).values(),
+  ];
+}
 
 function scan(articles: Article[]): Hits {
   const hits: Hits = {};
@@ -173,5 +198,30 @@ describe("Second Home article claim ratchet", () => {
     expect(() => sharedRules("const RULES = {}; ")).toThrow(
       "declarations changed",
     );
+  });
+
+  it("rejects unknown dictionary locales rather than dropping their rules", () => {
+    const fixture = `const SEP = ""; const N1500 = ""; const SUPERSEDED_1500 = /x/;
+      const RULES = {en:[/x/],it:[/x/],id:[/x/],fr:[/x/],ru:[/x/]};`;
+    expect(Object.keys(sharedRules(fixture))).toEqual([...LOCALES]);
+    expect(() => sharedRules(fixture.replace("en:[", "es:[/x/],en:["))).toThrow(
+      "Unsupported shared E33 locales: es",
+    );
+    expect(() => sharedRules(fixture.replace("ru:[/x/]", "ru:[]"))).toThrow(
+      "Missing shared E33 rules: ru",
+    );
+  });
+
+  it.each([
+    "Second Home 5-10 years",
+    "E33 IDR 2,000,000",
+    "E33 allows you to work in Indonesia",
+    "E33 LPS fully covers the deposit",
+    "E33 BSI qualifies as a state-owned bank",
+    "E33 split the deposit",
+  ])("rejects a new backend-vocabulary article: %s", (source) => {
+    const dirty = scan([{ path: "example.mdx", source }]);
+    expect(Object.keys(dirty).length).toBeGreaterThan(0);
+    expect(() => assertBaseline(dirty, {})).toThrow();
   });
 });

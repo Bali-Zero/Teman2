@@ -134,6 +134,11 @@ EXACT_RULES: dict[str, set[str] | frozenset[str]] = {
         "backend_python",
         "mouth",
     },
+    # The mouth article ratchet reads this exact backend vocabulary source.
+    "apps/backend-rag/backend/services/visa_check/e33_claim_guard.py": {
+        "backend_python",
+        "mouth",
+    },
     # Cross-domain coupling found in the 57-run shadow audit (2026-08-14):
     # apps/mouth/src/lib/kbli-canonical-pins.test.ts (a REQUIRED
     # frontend-tests suite, no path filter) reads these two repo-root `data/`
