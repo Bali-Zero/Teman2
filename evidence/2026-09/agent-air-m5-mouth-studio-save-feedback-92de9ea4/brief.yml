@@ -1,0 +1,20 @@
+task_id: studio-save-feedback
+gear: 2
+l_level: L2
+gate_class: opus
+objective: Make Second Home Studio plan saving and copying truthful and recoverable when browser APIs fail.
+constraints:
+  - Plan persistence and recovery remain browser-local; sharing uses the existing sanitized URL fragment.
+  - No backend, pricing, regulatory, credential or production data changes.
+acceptance:
+  - text: WHEN storage rejects a write the Studio SHALL not report that the plan was saved.
+    probe: SavePlanBar.test.tsx
+  - text: WHEN clipboard access is denied or absent the Studio SHALL offer a selectable plan link.
+    probe: SavePlanBar.test.tsx
+  - text: WHEN the manual link is used it SHALL contain the current relevant plan only in the URL fragment and make no network call.
+    probe: SavePlanBar.test.tsx
+consumer_map:
+  - Second Home Studio plan save and copy controls at /visa/second-home/studio.
+risks:
+  - Synthetic browser API failures do not prove real-browser behavior or production rollout.
+grader: Independent Anthropic review requested from the Fable consul; no verdict asserted here.

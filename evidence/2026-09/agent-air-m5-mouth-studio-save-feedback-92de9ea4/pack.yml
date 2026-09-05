@@ -1,0 +1,28 @@
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: studio-plan-persistence
+    role: build
+    seat: gpt-6-astra
+dissent: []
+pii_scan: clean
+seat_override: >-
+  R8 applicability only: this visa-route UI change authors no immigration or pricing claim.
+  It handles browser storage and clipboard failures using the existing plan codec and relevance filter.
+receipts:
+  - claim: Plan persistence, manual recovery, Studio integration and copy-claim regressions pass.
+    cmd: >-
+      cd apps/mouth && npx vitest run
+      src/lib/secondhome-studio/__tests__/plan-codec.test.ts
+      src/app/visa/second-home/studio/components/SavePlanBar.test.tsx
+      src/app/visa/second-home/studio/StudioApp.test.tsx
+      src/lib/secondhome-studio/__tests__/forbidden-claims.test.ts
+      --maxWorkers=1 --reporter=json --outputFile=/tmp/s01-save-feedback-fixed.json
+    result: "4 test files passed; 180 tests passed; 0 failed."
+    exit: 0
+    ts: "2026-09-05T06:32:13.814Z"
+    seat: gpt-6-astra
+notes:
+  - The same final codec and component regressions on original HEAD sources failed 10 tests and passed 56; corrected sources were restored byte-for-byte afterward.
+  - Failure injection targets window.localStorage because the test setup uses LocalStorageMock, not the browser Storage prototype.
+  - Independent review, CI, real-browser QA and production proof remain pending.
+  - The Fable consul owns independent review and the controlled shipping path.
