@@ -24,8 +24,12 @@ without rewriting the checkout:
   --output apps/mouth/src/lib/api/garuda-voa.generated.d.ts --check
 ```
 
-Changes confined to `products/` currently select all test suites through the
-conservative change-map fallback, so a contract-only edit runs this check too.
+The same required mouth job then runs `npx tsc --noEmit` from `apps/mouth`
+before its coverage tests, so generated contract consumers must also compile.
+
+Changes under `products/garuda-voa/contracts/` explicitly select backend,
+frontend and E2E tests. The backend consumes this OpenAPI in
+`test_garuda_voa_openapi_parity.py`; mouth consumes its generated types.
 The separate `garuda-contract-parity` job continues to enforce the Python
 contract invariants. This product artifact is independent of the global backend
 `schema.d.ts`; generating it does not refresh or alter that unrelated snapshot.
