@@ -1,0 +1,12 @@
+{
+  "model_requested": "kimi-code/k3",
+  "started_at": "2026-09-05T11:26:03.992419+00:00",
+  "prompt_sha256": "eab19e10bdf3720c70f588520bc9628de5421781c38bb133accf247ed6825b04",
+  "command": "kimi -m kimi-code/k3 -p <supplied diff prompt>",
+  "timeout_seconds": 240,
+  "exit": 0,
+  "finished_at": "2026-09-05T11:27:29.169142+00:00",
+  "answer_sha256": "90a377ee4594655ceabf95beafa95b362116f9ee50461c443cef489d026572b5",
+  "raw_stdout_sha256": "894a4365144a849b0950846f8408bc4624af991afa6d9f17163daa2c67b77f4f",
+  "artifact_normalization": "Trailing blank lines removed from stdout; review content unchanged."
+}

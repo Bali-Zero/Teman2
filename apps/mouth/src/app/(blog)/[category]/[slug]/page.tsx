@@ -10,6 +10,7 @@ import {
 import { resolveContentLocale } from "@/i18n/content-locale";
 import { ContentLangSync } from "@/i18n/ContentLangSync";
 import { generateArticleMetadata } from "@/lib/blog/metadata";
+import { CATEGORY_SEO } from "@/lib/blog/category-seo";
 import { renderMDXBody } from "@/components/blog/MDXContentRSC";
 import {
   ArticleClient,
@@ -50,17 +51,8 @@ const STATIC_PATHS = [
   "settings",
 ];
 
-// Valid blog categories
-const VALID_CATEGORIES = [
-  "visas",
-  "business",
-  "taxes",
-  "property",
-  "living",
-  "digital-nomad",
-  "trends",
-  "living",
-];
+// The parent layout and article metadata share one raw-category boundary.
+const VALID_CATEGORIES = Object.keys(CATEGORY_SEO);
 
 /**
  * Check if this request is for a static file (should return 404 to let Next.js serve static)
@@ -90,11 +82,9 @@ export async function generateMetadata({
     return { title: "Not Found" };
   }
 
-  // Unknown categories otherwise fall back to a living article lookup, whose
-  // indexable metadata contradicts the parent layout's not-found boundary.
-  // Validate the resolved value too: Object.prototype names are not aliases.
-  const canonicalCategory = resolveCategoryAlias(category);
-  if (!canonicalCategory || !VALID_CATEGORIES.includes(canonicalCategory)) {
+  // Aliases are not routable in the parent layout, even when article lookup
+  // could resolve them. Reject the raw segment before either lookup.
+  if (!VALID_CATEGORIES.includes(category)) {
     return {
       title: "Page not found",
       robots: { index: false, follow: false },
