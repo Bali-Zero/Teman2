@@ -39,10 +39,20 @@ POLICY_TABLE = "visa_decision_retention_policies"
 _ACTIVE_LOOKUP = re.compile(r"(?<!NEW\.)(?<!\w)effective_period\s+@>")
 _SCOPE_PREDICATE = re.compile(r"policy_scope\s*(=|IN\b)", re.IGNORECASE)
 
-# The window around a lookup in which its scope predicate must appear. A
-# resolution query is a handful of lines; 12 is generous without reaching into
-# a neighbouring statement.
-_WINDOW = 12
+# Entity resolution, not a text window (SCAR family #3 -- a guard must judge
+# the ENTITY a lookup reads, not a substring/proximity heuristic around it).
+# A statement is the text between the previous `;` and the next `;`: SQL
+# statements are semicolon-delimited, so this isolates exactly the query the
+# lookup lives in without assuming anything about its length or shape.
+_TABLE_REF = re.compile(r"(?:FROM|JOIN)\s+(?:public\.)?(\w+)", re.IGNORECASE)
+_WITH_KEYWORD = re.compile(r"\bWITH\b", re.IGNORECASE)
+# Matches one `<name> AS (` CTE head at the current scan position, optionally
+# preceded by the comma that separates it from a prior CTE in the same
+# `WITH` clause. `re.Pattern.match(string, pos)` anchors at `pos`, so
+# advancing `pos` past a CTE's matched close-paren and re-matching here is
+# what walks a `WITH a AS (...), b AS (...) SELECT ...` list; the loop stops
+# the moment the text at `pos` is the main query instead of another CTE head.
+_CTE_HEAD = re.compile(r"\s*,?\s*(\w+)\s+AS\s*\(", re.IGNORECASE)
 
 # The census walks the WHOLE backend tree, not an allowlist of directories.
 # An allowlist is the same defect one level up: it silently stops covering
@@ -110,38 +120,121 @@ def _candidate_files() -> list[Path]:
     return sorted(found)
 
 
+def _extract_ctes(statement: str) -> dict[str, str]:
+    """Return {cte_name: cte_body} for every `WITH ... AS (...)` head in `statement`.
+
+    Only the CTE list itself is parsed (walking `,`-separated `name AS (`
+    heads immediately after `WITH`); the main query after the list is not a
+    CTE head and naturally fails `_CTE_HEAD`'s match, which is what ends the
+    walk. Nesting inside a CTE body (parentheses, sub-selects) is handled by
+    depth-counting rather than a second regex, since a body's own parens are
+    unbounded in shape.
+    """
+
+    with_match = _WITH_KEYWORD.search(statement)
+    if with_match is None:
+        return {}
+
+    ctes: dict[str, str] = {}
+    pos = with_match.end()
+    while True:
+        head = _CTE_HEAD.match(statement, pos)
+        if head is None:
+            break
+        name = head.group(1)
+        body_start = head.end()
+        depth = 1
+        idx = body_start
+        while idx < len(statement) and depth > 0:
+            char = statement[idx]
+            if char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+            idx += 1
+        if depth != 0:
+            # Unbalanced parens -- stop rather than misparse the remainder.
+            break
+        ctes[name] = statement[body_start : idx - 1]
+        pos = idx
+    return ctes
+
+
+def _resolve_tables(
+    statement: str, ctes: dict[str, str], seen: frozenset[str] = frozenset()
+) -> set[str]:
+    """Resolve every table `statement` actually reads, recursing through CTEs.
+
+    A `FROM`/`JOIN` target that names a CTE defined in the same statement is
+    not itself a table -- it is an alias for whatever that CTE's OWN body
+    reads, which may be the shared authority table several CTE layers away
+    from the `effective_period @>` predicate that ultimately depends on it
+    (the entity that matters), regardless of how many source lines separate
+    them (the text-window heuristic this replaces).
+    """
+
+    tables: set[str] = set()
+    for match in _TABLE_REF.finditer(statement):
+        name = match.group(1)
+        if name in ctes:
+            if name in seen:
+                continue  # cyclic CTE reference; nothing further to resolve
+            tables |= _resolve_tables(ctes[name], ctes, seen | {name})
+        else:
+            tables.add(name)
+    return tables
+
+
 def _unscoped_lookups(path: Path) -> list[tuple[int, str]]:
-    lines = _live_text(path).splitlines()
+    text = _live_text(path)
     offences: list[tuple[int, str]] = []
-    for index, line in enumerate(lines):
-        if not _ACTIVE_LOOKUP.search(line):
-            continue
+    for match in _ACTIVE_LOOKUP.finditer(text):
+        line_start = text.rfind("\n", 0, match.start()) + 1
+        line_end = text.find("\n", match.end())
+        if line_end == -1:
+            line_end = len(text)
+        line = text[line_start:line_end]
         if line.lstrip().startswith(("--", "#", "*")):
             continue
-        window = "\n".join(lines[max(0, index - _WINDOW) : index + _WINDOW])
-        if POLICY_TABLE not in window:
+
+        # Isolate the STATEMENT this lookup lives in -- SQL statements are
+        # `;`-delimited, so the text between the previous `;` and the next
+        # one (or the file boundary, for a fixture with no trailing `;`) is
+        # exactly the query to resolve, never a neighbouring statement's.
+        stmt_start = text.rfind(";", 0, match.start()) + 1
+        next_semicolon = text.find(";", match.end())
+        stmt_end = next_semicolon if next_semicolon != -1 else len(text)
+        statement = text[stmt_start:stmt_end]
+
+        ctes = _extract_ctes(statement)
+        tables = _resolve_tables(statement, ctes)
+        if POLICY_TABLE not in tables:
             # This active-policy lookup does not resolve against the shared,
-            # multi-scope authority table this tripwire protects -- it is a
-            # DIFFERENT table's own dedicated, single-purpose policy resolver
-            # (own EXCLUDE constraint on `effective_period` alone, no second
-            # data class ever shares it). A file can still land in the census
-            # via `_candidate_files()`'s file-wide substring check even when
+            # multi-scope authority table this tripwire protects -- entity
+            # resolution over its OWN statement shows it reads a DIFFERENT
+            # table's own dedicated, single-purpose policy resolver (own
+            # EXCLUDE constraint on `effective_period` alone, no second data
+            # class ever shares it). A file can still land in the census via
+            # `_candidate_files()`'s file-wide substring check even when
             # POLICY_TABLE only appears far away in prose (e.g. a comment
             # explaining why THIS table is deliberately NOT that one) --
             # 294_visa_oracle_consultant_requests_retention_policy.sql is the
             # concrete case: its two `effective_period @>` lookups both join
             # `visa_oracle_consultant_request_retention_policies`, which has
             # no `policy_scope` column and needs none, while POLICY_TABLE's
-            # name appears only in an unrelated comment ~200 lines away. A
-            # `policy_scope` predicate would not compile there -- the column
-            # does not exist -- so this is a false positive, not a defect.
+            # name appears only in an unrelated comment ~200 lines away, in a
+            # DIFFERENT statement. A `policy_scope` predicate would not
+            # compile there -- the column does not exist -- so this is a
+            # false positive, not a defect.
             continue
-        if not _SCOPE_PREDICATE.search(window):
-            offences.append((index + 1, line.strip()))
+        if not _SCOPE_PREDICATE.search(statement):
+            offences.append((text.count("\n", 0, match.start()) + 1, line.strip()))
     return offences
 
 
-def test_the_probe_can_actually_see_the_defect_it_guards_against() -> None:
+def test_the_probe_can_actually_see_the_defect_it_guards_against(
+    tmp_path: Path,
+) -> None:
     """Guilt case: an unscoped resolution must be reported, or the guard is theatre."""
 
     guilty = (
@@ -149,21 +242,14 @@ def test_the_probe_can_actually_see_the_defect_it_guards_against() -> None:
         "          INTO STRICT policy\n"
         "          FROM public.visa_decision_retention_policies\n"
         "         WHERE environment = NEW.environment\n"
-        "           AND effective_period @> NEW.evaluated_at\n"
+        "           AND effective_period @> NEW.evaluated_at;\n"
     )
-    lines = guilty.splitlines()
-    hits = [
-        line
-        for index, line in enumerate(lines)
-        if _ACTIVE_LOOKUP.search(line)
-        and not _SCOPE_PREDICATE.search(
-            "\n".join(lines[max(0, index - _WINDOW) : index + _WINDOW])
-        )
-    ]
-    assert len(hits) == 1, hits
+    path = tmp_path / "guilty.sql"
+    path.write_text(guilty, encoding="utf-8")
+    assert len(_unscoped_lookups(path)) == 1
 
 
-def test_the_probe_does_not_cry_wolf_on_a_scoped_resolution() -> None:
+def test_the_probe_does_not_cry_wolf_on_a_scoped_resolution(tmp_path: Path) -> None:
     """Innocence case: the cured shape must pass, or the guard is unusable."""
 
     innocent = (
@@ -172,18 +258,43 @@ def test_the_probe_does_not_cry_wolf_on_a_scoped_resolution() -> None:
         "          FROM public.visa_decision_retention_policies\n"
         "         WHERE environment = NEW.environment\n"
         "           AND policy_scope = 'VISA_DECISION'\n"
-        "           AND effective_period @> NEW.evaluated_at\n"
+        "           AND effective_period @> NEW.evaluated_at;\n"
     )
-    lines = innocent.splitlines()
-    hits = [
-        line
-        for index, line in enumerate(lines)
-        if _ACTIVE_LOOKUP.search(line)
-        and not _SCOPE_PREDICATE.search(
-            "\n".join(lines[max(0, index - _WINDOW) : index + _WINDOW])
-        )
-    ]
-    assert hits == []
+    path = tmp_path / "innocent.sql"
+    path.write_text(innocent, encoding="utf-8")
+    assert _unscoped_lookups(path) == []
+
+
+def test_a_lookup_through_a_cte_far_from_its_from_clause_is_still_reported(
+    tmp_path: Path,
+) -> None:
+    """Statement-wide entity resolution must not depend on line proximity.
+
+    The CTE's `FROM public.visa_decision_retention_policies` sits ~20 lines
+    above the `effective_period @>` predicate that resolves through the CTE
+    alias -- the retired ±12-line text window would have missed this entirely
+    (the FROM and the predicate are further apart than the window ever
+    looked); resolving the STATEMENT's tables, however deep the CTE nesting,
+    catches it regardless of distance.
+    """
+
+    padding = "\n".join(f"               -- padding line {i}" for i in range(20))
+    guilty = (
+        "        WITH active_policy AS (\n"
+        "            SELECT id, retention_interval, effective_period\n"
+        "              FROM public.visa_decision_retention_policies\n"
+        "             WHERE environment = NEW.environment\n"
+        f"{padding}\n"
+        "        )\n"
+        "        SELECT id, retention_interval\n"
+        "          INTO STRICT policy\n"
+        "          FROM active_policy AS ap\n"
+        "         WHERE ap.effective_period @> NEW.evaluated_at;\n"
+    )
+    path = tmp_path / "guilty_cte.sql"
+    path.write_text(guilty, encoding="utf-8")
+    offences = _unscoped_lookups(path)
+    assert len(offences) == 1, offences
 
 
 def test_the_historical_exemption_is_earned_by_a_later_scoped_redefinition() -> None:
@@ -243,7 +354,9 @@ def test_a_lookup_against_a_different_dedicated_policy_table_is_not_an_offence()
     alone (never a second data class, so no `policy_scope` column exists or
     is needed there). Guilt on this file would demand a predicate against a
     column that does not exist -- the assertion below is the innocence case
-    for `_unscoped_lookups`'s file-selection-vs-resolution-target distinction.
+    for `_unscoped_lookups`'s entity resolution: the comment mention lives in
+    a different STATEMENT than either lookup, so it never enters either
+    lookup's resolved table set.
     """
 
     path = (
@@ -255,6 +368,40 @@ def test_a_lookup_against_a_different_dedicated_policy_table_is_not_an_offence()
     assert path.exists(), path
     assert POLICY_TABLE in path.read_text(encoding="utf-8")
     assert _unscoped_lookups(path) == []
+
+
+def test_a_294_lookup_rewritten_onto_the_shared_table_is_reported(
+    tmp_path: Path,
+) -> None:
+    """294's exemption is earned by the TABLE a lookup reads, not by the file.
+
+    A copy of 294 where the purge function's JOIN target is swapped from the
+    per-class `visa_oracle_consultant_request_retention_policies` table to
+    the shared `visa_decision_retention_policies` authority (with no
+    `policy_scope` predicate added -- 294 has none anywhere) must NOT enjoy
+    294's exemption: entity resolution is per-lookup, and this lookup now
+    genuinely reads the shared, multi-scope table the tripwire protects.
+    """
+
+    source_path = (
+        BACKEND_ROOT
+        / "db"
+        / "migrations_v2"
+        / "294_visa_oracle_consultant_requests_retention_policy.sql"
+    )
+    original = source_path.read_text(encoding="utf-8")
+    assert "policy_scope" not in original
+    target = "public.visa_oracle_consultant_request_retention_policies AS p"
+    assert original.count(target) == 2
+    rewritten = original.replace(
+        target, "public.visa_decision_retention_policies AS p", 1
+    )
+    assert rewritten != original
+
+    path = tmp_path / "294_rewritten.sql"
+    path.write_text(rewritten, encoding="utf-8")
+    offences = _unscoped_lookups(path)
+    assert len(offences) == 1, offences
 
 
 def test_no_shipped_active_policy_lookup_is_missing_its_scope_predicate() -> None:

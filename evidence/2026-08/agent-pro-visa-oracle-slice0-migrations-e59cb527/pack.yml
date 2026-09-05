@@ -35,16 +35,20 @@ seat_diversity_note: >-
   both returned a real judgement rather than a non-judgement.
 diff:
   net_lines: >-
-    7 files, +1113/-0 measured by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
-    Three are new .sql files under `apps/backend-rag/backend/db/migrations_v2/`; three are this
-    task's own evidence-pack files (`brief.yml`, `pack.yml`, `council-journal.jsonl`); the
-    seventh, added post-open after `Harness floor recompute`/CI went red on
-    `test_retention_policy_scope_family_tripwire.py`, is
-    `backend/tests/test_retention_policy_scope_family_tripwire.py` — a 42-line, test-only fix
-    (see the receipt below) narrowing `_unscoped_lookups` so a file that only MENTIONS the shared
-    `visa_decision_retention_policies` table in prose (294's header, explaining why it does NOT
-    reuse that table) is not indicted for a different, single-purpose policy table's lookups.
-    Renumbering from 281/282/283 is invisible — names never landed.
+    Not restated as a count here (the rule permits dropping it — a self-declared number went
+    stale across two prior cure rounds on this same file, and re-chasing it a third time is not
+    the fix). Measure fresh with `git diff --numstat $(git merge-base origin/main HEAD)..HEAD` if
+    a count is needed. Shape: three new .sql files under
+    `apps/backend-rag/backend/db/migrations_v2/`, this task's own evidence-pack files
+    (`brief.yml`, `pack.yml`, `council-journal.jsonl`), and
+    `backend/tests/test_retention_policy_scope_family_tripwire.py` — touched twice post-open,
+    first (superseded) to narrow `_unscoped_lookups` with a ±12-line text window around a match
+    (SCAR family #3: a substring/proximity heuristic, not an entity judgment — the REWORK-BUILD
+    verdict on this PR named exactly that), then again (see the receipt below) to resolve entity
+    membership per-STATEMENT instead: a lookup requires the `policy_scope` predicate iff its own
+    statement's resolved FROM/JOIN table set — walked through any CTE indirection — contains the
+    shared `visa_decision_retention_policies` table, never by how close a comment or an unrelated
+    FROM sits to it. Renumbering from 281/282/283 is invisible — names never landed.
   behaviour_change: >-
     Three new tables plus two functions and four triggers are created. One pre-existing production
     table is altered, in its catalog only: `visa_oracle_sessions.expires_at`'s DEFAULT moves from
@@ -187,20 +191,51 @@ receipts:
       that shared table is deliberately NOT reused. Mirroring migration 289's fix (`AND
       policy_scope = 'VISA_DECISION'`) here would reference a column that does not exist and
       fail at apply time -- the correct cure is the test's file-selection-vs-resolution-target
-      gap, not the migration.
+      gap, not the migration. FIRST cure attempt exempted 294 with a ±12-line text window around
+      the match -- an Anthropic REWORK-BUILD verdict on this PR correctly named that a scar #3
+      substring/proximity guard, not an entity judgment, and pointed out that none of the six
+      tripwire tests called `_unscoped_lookups` directly, so mutating it to always return `[]`
+      would have left all six green.
     cmd: >-
       PYTHONPATH=backend /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python3 -m pytest
-      backend/tests/test_retention_policy_scope_family_tripwire.py -vv (before and after the
-      fix, against the merged origin/main base)
+      backend/tests/test_retention_policy_scope_family_tripwire.py -vv (before either fix,
+      against the merged origin/main base)
     result: >-
-      Before: 1 failed, 4 passed (the false-positive offence above). After
-      `_unscoped_lookups` was made to require the shared table's name inside the match window,
-      not just presence anywhere in the file: 6 passed (the pre-existing 4, plus one new
-      innocence test asserting `_unscoped_lookups` on the real 294 file returns `[]`). No
-      guilt/innocence test for the ORIGINAL defect class was touched or weakened.
-    exit: 0
+      Before: 1 failed, 4 passed (the false-positive offence above).
+    exit: 1
     ts: "2026-09-05T00:00Z"
-    seat: "session (M5, cure PR #5037)"
+    seat: "session (M5, cure PR #5037, first round)"
+  - claim: >-
+      SECOND cure round, entity-based per the Anthropic REWORK-BUILD spec: `_unscoped_lookups`
+      now isolates the SQL STATEMENT around each `effective_period @>` match (text between the
+      surrounding `;`s), resolves every table that statement's `FROM`/`JOIN` clauses read
+      (recursing into any same-statement CTE body so a lookup several CTE layers away from the
+      table it ultimately reads is still caught, regardless of source-line distance), and
+      requires the `policy_scope` predicate iff that resolved set contains
+      `visa_decision_retention_policies`. The ±12-line window is gone. Mutation-tested: with
+      `_unscoped_lookups` temporarily forced to return `[]`, 3 of 8 tests go red (the two direct
+      guilt cases plus the CTE-distance guilt case) -- so the suite exercises the real function,
+      not a fixture that would stay green under that mutation. Two of the eight tests are NEW
+      relative to the first cure round: a guilt case where the shared table is read through a CTE
+      whose own FROM sits ~20 lines above the predicate it feeds (proving statement-wide
+      resolution, not a wider window, is what closes the gap), and a guilt case built from a
+      hand-edited copy of 294 itself (one JOIN target swapped onto the shared table, no
+      `policy_scope` added) proving 294's exemption is earned by the TABLE a given lookup reads,
+      not by which FILE it lives in.
+    cmd: >-
+      PYTHONPATH=backend /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python3 -m pytest
+      backend/tests/test_retention_policy_scope_family_tripwire.py (green run, then the same
+      command after in-place mutating `_unscoped_lookups` to `return []` as its first line, then
+      restored from a pre-mutation copy and re-run green)
+    result: >-
+      Green run: 8 passed. Mutated run: 3 failed, 5 passed
+      (`test_the_probe_can_actually_see_the_defect_it_guards_against`,
+      `test_a_lookup_through_a_cte_far_from_its_from_clause_is_still_reported`,
+      `test_a_294_lookup_rewritten_onto_the_shared_table_is_reported`). Restored run: 8 passed
+      again, confirming the restore was exact.
+    exit: 0
+    ts: "2026-09-05T00:20Z"
+    seat: "session (M5, cure PR #5037, second round)"
 pii_scan: clean
 pii_note: >-
   The consultant-requests table stores `client_id` and an evaluation reference, not names,
