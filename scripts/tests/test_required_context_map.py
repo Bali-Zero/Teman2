@@ -14,7 +14,11 @@ Run:  python3 -m pytest scripts/tests/test_required_context_map.py -q
 from __future__ import annotations
 
 import importlib.util
+from copy import deepcopy
 from pathlib import Path
+from typing import Any
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 _MODULE_PATH = REPO_ROOT / "scripts" / "ci" / "required_context_map.py"
@@ -22,6 +26,78 @@ _spec = importlib.util.spec_from_file_location("required_context_map", _MODULE_P
 assert _spec is not None and _spec.loader is not None
 mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(mod)  # type: ignore[union-attr]
+
+
+def _assert_required_mouth_typecheck(workflow: dict[str, Any]) -> None:
+    """Pin the compiler in the required leg, not a separately green advisory job."""
+    job = workflow["jobs"]["frontend-tests"]
+    assert "Frontend Tests (Next.js) (mouth, true)" in mod._context_names_for_job(
+        "frontend-tests", job
+    )
+    assert job["needs"] == ["changes"]
+    assert job["if"] == "${{ !cancelled() }}"
+    assert job.get("continue-on-error", False) is False
+    steps = job["steps"]
+    matches = [step for step in steps if step.get("id") == "mouth-typecheck"]
+    assert len(matches) == 1
+    step = matches[0]
+    assert step["if"] == "matrix.app == 'mouth' && steps.decide.outputs.run == 'true'"
+    assert step["working-directory"] == "apps/mouth"
+    assert step["run"].strip() == "npx tsc --noEmit"
+    assert step.get("continue-on-error", False) is False
+    names = [entry.get("name") for entry in steps]
+    assert names.index("Check GARUDA generated contract") < steps.index(step)
+    assert steps.index(step) < names.index("Run tests (with coverage)")
+
+
+def test_required_mouth_job_compiles_contract_consumers() -> None:
+    # immune-enforcement.yml's required antidotes job runs this file from the
+    # candidate checkout. change_map's base-ref self-tests cannot provide that pin.
+    workflow = mod.load_workflow(REPO_ROOT / ".github/workflows/tests.yml")
+    assert workflow is not None
+    _assert_required_mouth_typecheck(workflow)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "remove", "move-to-advisory", "after-tests", "wrong-matrix",
+        "wrong-condition", "wrong-cwd", "step-advisory", "job-advisory",
+        "swallow-error", "missing-needs", "success-only-job",
+    ],
+)
+def test_required_mouth_typecheck_rejects_disarmed_mutations(mutation: str) -> None:
+    workflow = deepcopy(mod.load_workflow(REPO_ROOT / ".github/workflows/tests.yml"))
+    assert workflow is not None
+    job = workflow["jobs"]["frontend-tests"]
+    steps = job["steps"]
+    step = next(entry for entry in steps if entry.get("id") == "mouth-typecheck")
+    if mutation in {"remove", "move-to-advisory", "after-tests"}:
+        steps.remove(step)
+        if mutation == "move-to-advisory":
+            workflow["jobs"]["advisory-typecheck"] = {
+                "continue-on-error": True, "steps": [step]
+            }
+        elif mutation == "after-tests":
+            steps.append(step)
+    elif mutation == "wrong-matrix":
+        job["strategy"]["matrix"]["include"][0]["coverage"] = False
+    elif mutation == "wrong-condition":
+        step["if"] = "matrix.app == 'admin-dashboard'"
+    elif mutation == "wrong-cwd":
+        step["working-directory"] = "apps/admin-dashboard"
+    elif mutation == "step-advisory":
+        step["continue-on-error"] = True
+    elif mutation == "job-advisory":
+        job["continue-on-error"] = True
+    elif mutation == "swallow-error":
+        step["run"] += " || true"
+    elif mutation == "missing-needs":
+        job["needs"] = []
+    elif mutation == "success-only-job":
+        job["if"] = "${{ success() }}"
+    with pytest.raises(AssertionError):
+        _assert_required_mouth_typecheck(workflow)
 
 
 def _write(wf_dir: Path, name: str, content: str) -> None:

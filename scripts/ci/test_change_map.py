@@ -100,6 +100,44 @@ def _staleness_verdict(
 
 
 class ChangeMapTests(unittest.TestCase):
+    def test_garuda_contract_explicitly_selects_both_consumers(self) -> None:
+        for path in (
+            "products/garuda-voa/contracts/openapi.yaml",
+            "products/garuda-voa/contracts/README.md",
+            "products/garuda-voa/contracts/nested/future-schema.yaml",
+        ):
+            for files in ([path], [path, "docs/contract-notes.md"]):
+                with self.subTest(files=files):
+                    result = cm.classify(files)
+                    self.assertFalse(result["run_all"])
+                    self.assertEqual(result["reason"], "classified")
+                    self.assertEqual(result["unknown_paths"], [])
+                    self.assertTrue(result["domains"]["backend_python"])
+                    self.assertTrue(result["domains"]["mouth"])
+                    self.assertEqual(
+                        result["suggested_jobs"],
+                        ["backend-tests", "frontend-tests", "e2e-tests"],
+                    )
+
+    def test_garuda_contract_prefix_keeps_unknown_siblings_fail_open(self) -> None:
+        for path in (
+            "products/garuda-voa/contracts-extra/openapi.yaml",
+            "products/other-product/contracts/openapi.yaml",
+            "products/README.md",
+        ):
+            with self.subTest(path=path):
+                result = cm.classify([path])
+                self.assertTrue(result["run_all"])
+                self.assertEqual(result["reason"], "unclassified_paths")
+                self.assertEqual(result["unknown_paths"], [path])
+                self.assertEqual(result["suggested_jobs"], list(cm.TEST_JOBS))
+
+    def test_unrelated_docs_do_not_select_garuda_consumers(self) -> None:
+        result = cm.classify(["docs/contract-notes.md"])
+        self.assertFalse(result["run_all"])
+        self.assertEqual(result["reason"], "classified")
+        self.assertEqual(result["suggested_jobs"], [])
+
     def test_guilt_backend_change_runs_backend_and_e2e(self) -> None:
         result = cm.classify(["apps/backend-rag/backend/app/main.py"])
         self.assertFalse(result["run_all"])

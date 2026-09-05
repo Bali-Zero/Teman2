@@ -1,0 +1,2 @@
+{"seat": "codex-gpt-5.6-sol", "role": "review", "ok": true, "ts": "2026-09-05T11:42:25.011974+00:00", "note": "Actual CLI exit 0; PASS with remote CI proof pending. Same five-file snapshot; final Anthropic gate is separate."}
+{"seat": "kimi-code/k3", "role": "review", "ok": true, "ts": "2026-09-05T11:43:28.165495+00:00", "note": "Actual CLI exit 0; PASS conditional on remote CI execution and timing. Same five-file snapshot; final Anthropic gate is separate."}
