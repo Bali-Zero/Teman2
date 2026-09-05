@@ -21,14 +21,15 @@ outcome: >-
 diff:
   files: 4
   net_lines: >-
-    272 insertions, 8 deletions across the 4 changed files (code, its test
-    file, and this evidence pack) — see `git diff --numstat`.
+    290 insertions, 8 deletions across the 4 changed files (code, its test
+    file, and this evidence pack) — see `git diff --numstat origin/main...HEAD`.
   shape: >-
     `import html`, one new `_h(value) -> str` helper, 8 call-site edits
     (`facts.case_type` -> `_h(facts.case_type)`), plus a new test section:
     two dataclass-facts factories (`_late_refund_facts`,
     `_practice_transition_facts`), an `_HTML_BODY_RENDERERS` dict mapping
-    each of the 8 job types to a `case_type -> body` callable, and 3
+    each of the 8 job types to a `case_type -> body` callable (typed
+    `dict[str, Callable[[str], str]]`, `collections.abc.Callable`), and 3
     parametrized tests (24 cases) driving guilt (`<script>`), guilt
     (`&`/`"`), and innocence (`issuance`) through all 8.
 pii_scan: clean
@@ -65,10 +66,24 @@ receipts:
     exit: 0
   - claim: "the full pre-existing suite is unaffected apart from the same environmental Postgres gap the ground report already named"
     cmd: "PYTHONPATH=backend .venv/bin/python3 -m pytest backend/tests/services/garuda_orders/test_outbox_handlers.py"
-    result: '39 passed, 11 errors (all asyncpg.exceptions.UndefinedTableError: relation "garuda_voa_check_results" does not exist — unbootstrapped schema in this venv''s Postgres, pre-existing and unrelated)'
+    result: >-
+      39 passed, 11 errors, exit 1 (all asyncpg.exceptions.UndefinedTableError:
+      relation "garuda_voa_check_results" does not exist). Environmental, not a
+      regression: rerunning the identical file on a clean origin/main checkout
+      (/Users/balizero/nuzantara/.worktrees/ops-visa-consuls-claude, no
+      html-escape changes present) hits the SAME 11 errors, same table, exit 1
+      — only "15 passed" instead of 39 because that tree lacks this PR's 24 new
+      html_body tests. The scoped `-k html_body` run below (24 passed) is the
+      load-bearing receipt for this PR's change.
     ts: "2026-09-05T00:18:00Z"
     seat: claude-sonnet-5 (M5 worktree agent)
-    exit: 0
+    exit: 1
+  - claim: "the same 11-error Postgres gap is present on a clean origin/main checkout, unrelated to this branch's changes"
+    cmd: "cd /Users/balizero/nuzantara/.worktrees/ops-visa-consuls-claude/apps/backend-rag && PYTHONPATH=backend .venv/bin/python3 -m pytest backend/tests/services/garuda_orders/test_outbox_handlers.py"
+    result: '15 passed, 11 errors, exit 1 (identical asyncpg.exceptions.UndefinedTableError: relation "garuda_voa_check_results" does not exist across all 11)'
+    ts: "2026-09-05T00:19:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 1
   - claim: "ruff is clean on both touched files"
     cmd: ".venv/bin/python3 -m ruff check backend/services/garuda_orders/outbox_handlers.py backend/tests/services/garuda_orders/test_outbox_handlers.py"
     result: "All checks passed!"

@@ -23,6 +23,7 @@ import logging
 import os
 import re
 import uuid
+from collections.abc import Callable
 
 import httpx
 import pytest
@@ -328,7 +329,7 @@ def _practice_transition_facts(**over) -> PracticeTransitionEmailFacts:
 #: is a `case_type -> rendered body` callable so the escaping tests below can
 #: drive all 8 with the same two assertions and still name the failing body
 #: in the parametrize id.
-_HTML_BODY_RENDERERS: dict[str, object] = {
+_HTML_BODY_RENDERERS: dict[str, Callable[[str], str]] = {
     "payment_paid_email": lambda case_type: PaymentPaidEmailHandler._body(
         _facts(case_type=case_type)
     ),
