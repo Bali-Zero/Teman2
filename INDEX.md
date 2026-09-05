@@ -70,6 +70,8 @@
 
 Tabelle core: `articles`, `kg_nodes`/`kg_edges`, `publication_history`/`publication_assets`, `crm_clients`/`crm_practices`, `conversations`/`messages`, `google_drive_tokens`, `system_settings`, `lkpm_receipts`, `routing_stats`/`failed_queries`, `post_publish_queue`.
 
+Lettura per gli agent = `scripts/pg.sh` (read-only, role `nuzantara_readonly`); le scritture PROD le esegue Zero a mano. Procedura, credenziali, probe temporanei e prova di avvenuta esecuzione: [docs/runbooks/prod-db-writes.md](docs/runbooks/prod-db-writes.md).
+
 ### Filesystem state
 
 - `~/.agent/decisions/` — agent state, DLQ, escalation

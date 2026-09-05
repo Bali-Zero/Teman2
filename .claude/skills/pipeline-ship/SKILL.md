@@ -227,3 +227,7 @@ log** as its Bites evidence. Other domains are not inferred from kita's response
 - `.claude/rules/cicatrix-superscar.md` — the 10 scar families these traps belong to
   (#2 esiste≠armato, #3 over/under-match, #9 the proxy lies)
 - `docs/runbooks/merge-queue-discipline.md` — queue ruleset, canary, rollback
+- `docs/runbooks/prod-db-writes.md` — when prove-live needs a production ROW changed: the agent
+  has a read path and no write path, so it prepares the exact statement (measurement, rollback,
+  expected row count), the owner runs it, and the read path proves the result. Same standard as
+  §6: "the owner said done" is not the observation, the read-back is
