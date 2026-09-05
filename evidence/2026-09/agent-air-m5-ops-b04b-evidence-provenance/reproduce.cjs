@@ -4,7 +4,7 @@ const { execFileSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
 const ts = require("typescript");
 const parent = "58e8b0b027a25f8e213414577f154f16599d7ce6"; // pragma: allowlist secret - public Git commit
-const child = "4c1247aa45f1181a03db4a1514b53f772bacabb7"; // pragma: allowlist secret - public Git commit
+const child = "cd407c561304c6b0ea9b1318aa1103ba12d7c49a"; // pragma: allowlist secret - public Git commit
 function initializer(ref, path) {
   const text = execFileSync("git", ["show", `${ref}:${path}`], {
     encoding: "utf8",

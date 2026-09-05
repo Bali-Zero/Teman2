@@ -2,7 +2,7 @@ brief_ref: evidence/brief.yml
 lanes:
   - lane: b04b-evidence-provenance
     role: build
-    seat: OpenAI Codex GPT-6; exact runtime variant not exposed.
+    seat: "builder seat: Codex Astra-2 (OpenAI; runtime variant not exposed)"
   - lane: b04b-evidence-review
     role: review
     seat: kimi-code/k3 via existing OAuth CLI
@@ -10,6 +10,7 @@ dissent: []
 pii_scan: clean
 receipts:
   - claim: The pinned CATEGORY_SEO initializer is byte-identical to the parent and reproduces the corrected digest.
+    scope: Historical execution before the child-reference correction; current recipe execution is recorded under depth_1_correction.isolated_replay.
     cmd: node evidence/2026-09/agent-air-m5-ops-b04b-evidence-provenance/reproduce.cjs
     result: initializer_byte_equal true; SHA-256 899ab45308ca82e278995d395bf07919cb8bfa5537066d106b52511577ed74e4 # pragma: allowlist secret - reproduced artifact digest
     exit: 0
@@ -19,9 +20,10 @@ correction:
   prior_digest: 821228d56ed1ebd7e2b35f634de87121f779372d2e954d3f219eb11cc4e15e14 # pragma: allowlist secret - historical artifact digest
   reason: The previous table_source_sha256 had no reproducible byte representation and did not match the initializer. It is superseded by a pinned Git-object extraction recipe.
   corrected_digest: 899ab45308ca82e278995d395bf07919cb8bfa5537066d106b52511577ed74e4 # pragma: allowlist secret - reproduced artifact digest
-  historical_builder: The B04b pack correctly identifies OpenAI GPT-6. Legacy commit trailers naming Codex Opus 4.8 are incorrect; no Anthropic builder execution is claimed. Existing commit history is preserved.
+  historical_builder: "builder seat: Codex Astra-2 (OpenAI; runtime variant not exposed)"
   verifier: Kimi source review and Fable independent gate are distinct from builder attribution.
 review:
+  scope: Historical review of the pre-correction recipe and metadata; not a review of the depth-1 changes below.
   verdict: PASS, static source review only; Kimi did not execute the recipe.
   output_format: CLI review text with trailing blank lines removed.
   finished_at: "2026-09-05T13:43:34.169017+00:00"
@@ -29,3 +31,28 @@ review:
   review_sha256: ed5247a8ad3deb11eac5c573dcbd5b835398c223bbab4ca02b19964a90449782 # pragma: allowlist secret - review artifact digest
   limits: The replay proves initializer byte equality and its digest, not application wiring or production behavior. Existing TypeScript dependency and pinned Git objects are required.
 post_review_change: Moved the existing artifact-digest allowlist comment onto the hash literal line after formatting; executable recipe unchanged.
+depth_1_correction:
+  reason: Replace the unmerged feature reference with the reachable PR5778 merge commit and remove unsupported runtime model attribution.
+  changed_reference: cd407c561304c6b0ea9b1318aa1103ba12d7c49a # pragma: allowlist secret - public Git commit
+  checked_at: "2026-09-05T19:50:35.054728+00:00"
+  isolated_replay:
+    fetch: git fetch --no-tags --filter=blob:none --depth=128 origin main
+    main_ref: 2a97d99f610c3c43bae65925ee2978008bc41ec5 # pragma: allowlist secret - public Git commit
+    only_ref: refs/remotes/origin/main
+    shared_object_alternates: false
+    parent_and_merge_reachable: true
+    previous_feature_commit_absent_without_lazy_fetch: true
+    recipe_sha256: becb8baf01793cf9accffb5bf40ff9c20cefd471188509c2dd6b4daf59bd4a01 # pragma: allowlist secret - verified recipe digest
+    initializer_utf8_bytes: 1481
+    sha256: 899ab45308ca82e278995d395bf07919cb8bfa5537066d106b52511577ed74e4 # pragma: allowlist secret - reproduced artifact digest
+    result: The recipe exits 0 in a new independent main-only object store using the existing TypeScript dependency; both initializers are byte-identical.
+  legacy_trailer: Existing commit trailers remain historical and are not rewritten.
+depth_1_review:
+  verdict: PASS, independent static source review only; no reviewer execution.
+  seat: kimi-code/k3 via existing OAuth CLI
+  finished_at: "2026-09-05T19:52:50.095804+00:00"
+  artifact: evidence/2026-09/agent-air-m5-ops-b04b-evidence-provenance/kimi-depth1-review.txt
+  prompt_sha256: 78eb35c456bbbfd7b2d04b92203d64c507ca994d775d22b579f99831f3199f7b # pragma: allowlist secret - review prompt digest
+  output_format: CLI review text with trailing blank lines removed.
+  review_sha256: 5090903792f42533757507541d28b331de3d3144d2d500ce804e0fbef9667176 # pragma: allowlist secret - review artifact digest
+  limits: Reviewed the final recipe, corrected probes and pack before this review receipt was appended. Historical review remains unchanged; Fable independently gates the eventual commit.
