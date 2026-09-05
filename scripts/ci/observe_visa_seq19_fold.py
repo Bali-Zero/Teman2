@@ -40,7 +40,7 @@ MOUTH_DIR = REPO_ROOT / "apps" / "mouth"
 #: doing anything else.
 _TRUST_STORE_JSON = (
     '[{"kid": "prod-2026-07-1", "public_key": '
-    '"gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA", '
+    '"gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA", '  # pragma: allowlist secret
     '"environment": "PRODUCTION", "valid_from": "2026-07-19T00:00:00Z", '
     '"valid_to": null, "revoked_at": null}]'
 )
