@@ -1,0 +1,195 @@
+{
+  "campaign": "visa-consuls-2026-09-05",
+  "status": "active",
+  "coordination_base_sha": "af949e6eb5d1767454dd788cd7a8e5be4b89967d",
+  "single_writer": "codex-astra",
+  "codex_thread": "01a0703b-22d9-7270-8b93-d13e560968cc",
+  "fable_session": "7561e9d7-d544-48e5-a211-b3534020394d",
+  "handshake": "acknowledged",
+  "tasks": [
+    {
+      "id": "G-01",
+      "owner": "codex-astra",
+      "status": "draft_pr_review_requested",
+      "worktree": "/Users/balizero/nuzantara/.worktrees/mouth-garuda-tracker-truth",
+      "files": [
+        "apps/mouth/src/app/visa/voa/orders/OrderTracker.tsx",
+        "apps/mouth/src/app/visa/voa/orders/useOrderTracking.ts",
+        "apps/mouth/src/app/visa/voa/orders/OrderTracker.test.tsx",
+        "apps/mouth/src/app/visa/voa/orders/useOrderTracking.test.ts"
+      ],
+      "reviewer": "fable-consul dispatches independent Anthropic gate",
+      "proofs": [
+        "parent run 2026-09-05T06:29:54Z: 24 passed, 941ms; typecheck hook exit 0",
+        "24 focused tests; parent rerun passed; precommit typecheck and prepush passed"
+      ],
+      "acceptance_checks": [
+        "24 frontend regressions pass; Approved/Blocked advance; terminal cleanup"
+      ],
+      "ownership_acknowledged": true,
+      "base_sha": "af949e6eb5d1767454dd788cd7a8e5be4b89967d",
+      "pr": "https://github.com/Bali-Zero/Teman2/pull/5761",
+      "head_sha": "72770a67fb85e78cd08a24a1356a954ea388fe93",
+      "review_requested_at": "2026-09-05T06:39:07.638214+00:00",
+      "live_proof": null
+    },
+    {
+      "id": "V-01",
+      "owner": "codex-astra",
+      "status": "draft_pr_review_requested",
+      "worktree": "/Users/balizero/nuzantara/.worktrees/mouth-oracle-edit-routing",
+      "files": [
+        "apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts",
+        "apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts",
+        "apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.tsx",
+        "apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx"
+      ],
+      "reviewer": "fable-consul dispatches independent Anthropic gate",
+      "proofs": [
+        "worker receipt: 80 tests passed across 6 suites",
+        "80 tests across 6 suites; precommit typecheck and prepush passed"
+      ],
+      "acceptance_checks": [
+        "REMOTE/INVEST missing input Edit opens the visited question; unavailable target offers contact"
+      ],
+      "ownership_acknowledged": true,
+      "base_sha": "af949e6eb5d1767454dd788cd7a8e5be4b89967d",
+      "pr": "https://github.com/Bali-Zero/Teman2/pull/5762",
+      "head_sha": "511bf901c64e10a6eb57bcff6a0c7361f8736a44",
+      "review_requested_at": "2026-09-05T06:39:07.638214+00:00",
+      "live_proof": null
+    },
+    {
+      "id": "S-01",
+      "owner": "codex-astra",
+      "status": "draft_pr_review_requested",
+      "proofs": [
+        "180 tests across 4 suites; original sources 10 red/56 pass; hooks passed"
+      ],
+      "worktree": "/Users/balizero/nuzantara/.worktrees/mouth-studio-save-feedback",
+      "files": [
+        "apps/mouth/src/lib/secondhome-studio/plan-codec.ts",
+        "apps/mouth/src/lib/secondhome-studio/__tests__/plan-codec.test.ts",
+        "apps/mouth/src/lib/secondhome-studio/copy.ts",
+        "apps/mouth/src/app/visa/second-home/studio/components/SavePlanBar.tsx",
+        "apps/mouth/src/app/visa/second-home/studio/components/SavePlanBar.test.tsx"
+      ],
+      "acceptance_checks": [
+        "Denied storage never shows Saved; clipboard failure offers selectable fragment URL"
+      ],
+      "reviewer": "fable-consul dispatches independent Anthropic gate",
+      "ownership_acknowledged": true,
+      "base_sha": "af949e6eb5d1767454dd788cd7a8e5be4b89967d",
+      "pr": "https://github.com/Bali-Zero/Teman2/pull/5763",
+      "head_sha": "cce13f6e3174e65b08c7c420584b6e54fbf5eea5",
+      "review_requested_at": "2026-09-05T06:39:07.638214+00:00",
+      "live_proof": null
+    },
+    {
+      "id": "S-02",
+      "owner": "codex-astra",
+      "status": "draft_pr_review_requested",
+      "proofs": [
+        "worker Pro receipt: before 4 failed/37 passed, after 41 passed, 0.66s",
+        "Pro targeted 41 passed; original 4 red/37 pass; hooks passed; preexisting format deviations documented",
+        "Evidence-only followup: credential-free loopback command rerun41pass; exact scanner passes and unannotated synthetic guilty controls fail; GitHub Detect Secrets SUCCESS on new head"
+      ],
+      "worktree": "/Users/balizero/nuzantara/.worktrees/backend-rag-e33-practice-owner",
+      "files": [
+        "apps/backend-rag/backend/app/routers/e33_cases.py",
+        "apps/backend-rag/backend/tests/routers/test_e33_cases.py"
+      ],
+      "acceptance_checks": [
+        "Missing/mismatched practice rejected before insert; matching/omitted accepted"
+      ],
+      "reviewer": "fable-consul dispatches independent Anthropic gate",
+      "ownership_acknowledged": true,
+      "base_sha": "af949e6eb5d1767454dd788cd7a8e5be4b89967d",
+      "pr": "https://github.com/Bali-Zero/Teman2/pull/5764",
+      "head_sha": "a7bc733f08de11a017fc345786db2f551755a6b6",
+      "review_requested_at": "2026-09-05T06:39:07.638214+00:00",
+      "live_proof": null,
+      "superseded_heads": [
+        "59f04d8b60bc05546a857549b8fab5237cfa1d95"
+      ]
+    },
+    {
+      "id": "V-02",
+      "owner": "fable-consul",
+      "status": "accepted_by_fable",
+      "proofs": []
+    },
+    {
+      "id": "G-02",
+      "owner": "existing_pr_5526",
+      "status": "external_dependency",
+      "proofs": []
+    },
+    {
+      "id": "V-03",
+      "owner": "existing_pr_5037",
+      "status": "external_dependency",
+      "proofs": []
+    },
+    {
+      "id": "V-04",
+      "owner": "codex-astra",
+      "status": "tested_disjoint_part",
+      "worktree": "/Users/balizero/nuzantara/.worktrees/mouth-oracle-consultation-context",
+      "base_sha": "af949e6eb5d1767454dd788cd7a8e5be4b89967d",
+      "files": [
+        "apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.tsx",
+        "apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.test.tsx",
+        "apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/consent-store.ts",
+        "apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/consent-store.test.ts"
+      ],
+      "dependency": "OracleShell integration serializes after V-01 PR5762; generic-only helper does not ship without runtime consumer",
+      "acceptance_checks": [
+        "Consultation context never carries fabricated engine outcome or assessment reference",
+        "Consent expires, revokes, and cannot cross consultation/result boundaries",
+        "Visible consultant control across interview phases after integration"
+      ],
+      "reviewer": "independent Anthropic gate via Fable consul",
+      "ownership_acknowledged": true,
+      "proofs": [
+        "Worker:52 tests passed across ConsentHandoff, consent-store and OracleShell;21failed/8passed on original sources; scoped TS/ESLint/prettier clean"
+      ],
+      "live_proof": null
+    },
+    {
+      "id": "B-04",
+      "owner": "codex-astra",
+      "status": "draft_pr_review_requested",
+      "worktree": "/Users/balizero/nuzantara/.worktrees/mouth-article-category-metadata",
+      "base_sha": "af949e6eb5d1767454dd788cd7a8e5be4b89967d",
+      "pr": "https://github.com/Bali-Zero/Teman2/pull/5765",
+      "head_sha": "32c9734f8ac0323ca782e50d39d542fcde221895",
+      "files": [
+        "apps/mouth/src/app/(blog)/[category]/[slug]/page.tsx",
+        "apps/mouth/src/app/(blog)/[category]/[slug]/page.metadata.test.tsx"
+      ],
+      "acceptance_checks": [
+        "Unknown article categories never emit indexable metadata from fallback article",
+        "Canonical/alias/noIndex metadata preserved"
+      ],
+      "proofs": [
+        "Original8failed/24passed; fixed72pass/3files; hooks with typecheck passed"
+      ],
+      "reviewer": "independent Anthropic gate via Fable consul",
+      "ownership_acknowledged": true,
+      "live_proof": null
+    }
+  ],
+  "agreement": "research/operations/2026-09-05-visa-consuls-agreement.md",
+  "updated_at": "2026-09-05T06:47:13.654223+00:00",
+  "coordination_blocker": {
+    "observed_at": "2026-09-05T06:46:52.276753+00:00",
+    "session": "7561e9d7-d544-48e5-a211-b3534020394d",
+    "status": "waiting",
+    "waiting_for": "permission prompt",
+    "pending_tool": "Workflow",
+    "tool_requested_at": "2026-09-05T06:31:50.443Z",
+    "user_notified": true,
+    "impact": "Fable ground/review dispatch is not running; mailbox messages after06:30 remain queued until prompt resolved"
+  }
+}
