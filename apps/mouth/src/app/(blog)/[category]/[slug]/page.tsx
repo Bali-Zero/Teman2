@@ -90,6 +90,17 @@ export async function generateMetadata({
     return { title: "Not Found" };
   }
 
+  // Unknown categories otherwise fall back to a living article lookup, whose
+  // indexable metadata contradicts the parent layout's not-found boundary.
+  // Validate the resolved value too: Object.prototype names are not aliases.
+  const canonicalCategory = resolveCategoryAlias(category);
+  if (!canonicalCategory || !VALID_CATEGORIES.includes(canonicalCategory)) {
+    return {
+      title: "Page not found",
+      robots: { index: false, follow: false },
+    };
+  }
+
   try {
     const article = lang
       ? await getArticleByLocale(category, slug, lang)
