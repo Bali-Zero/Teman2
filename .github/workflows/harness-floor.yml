@@ -1287,7 +1287,18 @@ jobs:
               echo "::error::scripts/ci/bites_parse.py is not in the base checkout and origin/main does not resolve in this workspace, so the trunk cannot be asked whether the parser still exists. An unresolvable ref is not evidence that a file was deleted — failing closed rather than guessing either way."
               exit 1
             fi
-            if [[ -z "$(git --literal-pathspecs ls-tree --name-only "$MAIN_SHA" -- scripts/ci/bites_parse.py)" ]]; then
+            # Same separation as the pack question above, for the same reason and by the
+            # same rule: an ls-tree that FAILED is a fact about the question, an ls-tree
+            # that returned nothing is a fact about the tree. Both end in a red here, so
+            # this is a diagnosis fix rather than a hole — but a message that says "the
+            # parser was deleted from the trunk" when what actually happened is a corrupt
+            # object store is how an hour gets spent on the wrong file. Caught by the
+            # independent on-disk gate reading the finished step, not by either council seat.
+            if ! MAIN_PARSER=$(git --literal-pathspecs ls-tree --name-only "$MAIN_SHA" -- scripts/ci/bites_parse.py 2>&1); then
+              echo "::error::git ls-tree could not be asked about scripts/ci/bites_parse.py at origin/main (${MAIN_SHA}): ${MAIN_PARSER}. A failed question, not a negative answer — failing closed."
+              exit 1
+            fi
+            if [[ -z "$MAIN_PARSER" ]]; then
               echo "::error::scripts/ci/bites_parse.py is missing from the base checkout AND from origin/main — the parser that decides which commands CI may execute was deleted from the trunk. Failing closed. Restoring it is an operator action: the restore PR will red here too, by design."
               exit 1
             fi

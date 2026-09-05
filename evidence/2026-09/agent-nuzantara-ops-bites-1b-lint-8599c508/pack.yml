@@ -30,13 +30,16 @@ bites_note: >-
   step's own annotations in the Harness floor recompute run on this very PR.
 
 diff: >-
-  3 files, +221/-1, all under .github/workflows/ (`git diff --numstat HEAD` on the branch
-  cut from e84a92b692). harness-floor.yml carries one new step plus its comment block, guard-conformance.yml four
-  path entries and one widened alternation, immune-enforcement.yml two case-pattern entries
-  — the per-file split is in per_component below rather than restated as a second pair of
-  totals here (the countable-claims rule reads any such pair as a claim about the WHOLE
-  diff, and it is right to). No script changes, no new
-  script, no new required context.
+  6 files, +840/-1, measured merge-base anchored from
+  e84a92b692 — the WHOLE diff, evidence included, because that is what the countable-claims
+  rule counts and the first draft of this pack narrated the code-only figure and went red on
+  its own CI for it. The code half is entirely under `.github/workflows/`: harness-floor.yml
+  carries one new step plus its comment blocks, guard-conformance.yml four path entries and
+  one widened alternation, immune-enforcement.yml two case-pattern entries. The remainder is
+  this pack, its brief and its journal — and the per-file split is in per_component below
+  rather than restated here as a second set of totals, because the countable-claims rule
+  reads any such restatement as a claim about the WHOLE diff, and it is right to. No script
+  changes, no new script, no new required context.
 
   GEAR 3 BY PATH, not by size: `.github/workflows/` is a hot zone, so
   `python3 scripts/evidence_pack_lint.py --print-floor` returns 3 for a one-line change to
