@@ -3,6 +3,7 @@
 -- Broker connections own admission; model processes receive no database connection.
 -- Retained approval tombstones prevent revoke A -> bind B -> resurrect A.
 SET LOCAL lock_timeout = '5s';
+SET LOCAL search_path = public, pg_catalog;
 
 -- The legacy Python migration 124 is not guaranteed to have run before the SQL
 -- migration chain. Backfill its canonical Lab tables/indexes before the lease FK.

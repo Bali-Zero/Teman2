@@ -163,7 +163,13 @@ async def test_migration_306_bootstraps_absent_lab_and_preserves_rows_on_rollbac
         (MIGRATIONS / "306_autonomous_lab_consul_leases.sql").read_text()
     )
     async with dual_db.transaction():
+        await dual_db.execute("CREATE SCHEMA IF NOT EXISTS dual_consul_alternate")
+        await dual_db.execute("SET LOCAL search_path = dual_consul_alternate, public")
         await dual_db.execute(forward)
+        assert await dual_db.fetchval(
+            "SELECT to_regclass('public.autonomous_lab_runs') IS NOT NULL "
+            "AND to_regclass('dual_consul_alternate.autonomous_lab_runs') IS NULL"
+        )
     run_id = "consul-bootstrap-proof"
     store = await _enqueue(dual_db, run_id)
     request = make_request(await dual_db.fetchval("SELECT clock_timestamp()"), run_id)
