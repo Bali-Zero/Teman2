@@ -1,0 +1,248 @@
+task_id: visa-seq19-sign
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+date: 2026-09-06
+machine: M5
+lanes:
+  - lane: seq-19 signed-bundle land + independent verification gate
+    role: build
+    seat: claude-sonnet-5 (this worktree session on M5, branch agent/air-m5/backend-rag/visa-seq19-sign)
+    note: >-
+      Landed the operator's offline-signed rulepack-prod-019.signed.json (sign_pack.py
+      output, kid=prod-2026-07-1) exactly as produced — never modified, re-signed, or
+      regenerated. Added test_seq19_signed_bundle.py, which independently verifies the
+      bundle with the repo's own bundle.verify_rule_pack against the pinned production
+      Ed25519 public key (never trusting the signer's self-reported digest/kid/sequence):
+      real cryptographic verification, digest recomputation straight from disk via
+      canonicalize_json, chain-anchor cross-check against seq-18's own re-derived digest,
+      rule-count/review-gate-id pins, and a guilt/innocence tamper suite (signature-byte
+      flip, payload-field mutation, rule mutation, wrong trust-store key — each on an
+      in-memory copy.deepcopy, never the real file). Added one new
+      detect_secrets_auto_triage.py CONTENT_KEYED_RULES entry (path- and content-anchored
+      to this one test file's three trust-anchor literals) and bumped the registered-rule
+      count test 23->24, matching the fold_pack_seq19.py rule's own shape.
+  - lane: gear3-council-review-kimi
+    role: review
+    seat: kimi-code/k3 (`kimi -m kimi-code/k3 -p ...`, non-Anthropic cross-family, agentic file access to this worktree)
+    note: >-
+      Adversarial review of the new test file and the secrets-triage diff. Read
+      verify_rule_pack directly to confirm real Ed25519 verification, ran the test file
+      (17 passed) and the triage test suite (107 passed), confirmed tamper tests never
+      mutate the real file, confirmed the new triage regex cannot over-match. Found one
+      non-blocking nit (raw os.environ instead of monkeypatch in one tamper test) — cured
+      before this journal entry. See council-journal.jsonl for the full verbatim note.
+    verdict: OK
+  - lane: gear3-council-review-tp1
+    role: review
+    seat: tp1-qwen3.8-max (`scripts/tp1_call.py`, DashScope/TP1 gateway, non-Anthropic cross-family, text-only, fed the full test file + both triage-script diffs)
+    note: >-
+      Independent adversarial review, fresh context, no shared prompt with the kimi lane.
+      Confirmed the verification is real repo code, tamper tests are copy-only, and the
+      triage regex is fully anchored to one file/three exact literals. No blocking gaps.
+      See council-journal.jsonl for the full verbatim note.
+    verdict: OK
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  Both review lanes are non-Anthropic cross-family (kimi-code/k3, tp1-qwen3.8-max), fresh
+  context each, no shared prompt between them — both independently reached VERDICT: OK
+  and both independently surfaced the same non-blocking style nit (os.environ vs
+  monkeypatch), which was cured before this pack was written.
+
+seat_override: >-
+  R8 ground_truth: this diff touches `*/visa_engine/*` (GROUND_TRUTH_PATH_PATTERNS), but
+  it introduces NO new regulatory claim — the regulatory content (seq-19's rule payload)
+  was already authored, fact-checked, and gated in the prior PR (#5784, visa-seq19-fold);
+  this task only lands the operator's signature over those already-reviewed bytes and adds
+  a cryptographic verification gate. A fresh NB/ground-truth lane would be re-litigating
+  seq-19's own already-reviewed regulatory content, not checking anything new this diff
+  added.
+
+outcome: >-
+  rulepack-prod-019.signed.json is landed byte-for-byte as the operator produced it
+  (sign_pack.py, offline, M5) and independently verified with the repo's own Ed25519
+  code: bundle.verify_rule_pack succeeds against the pinned production trust store
+  (kid=prod-2026-07-1), payload_sha256 recomputed from BOTH the signed envelope and the
+  standalone source.json equals bac5da8e4727e7f639c947c50211e6f95e15c1403cf6aef0dd57a92
+  014d6e6ea, previous_payload_sha256 equals seq-18's own re-derived digest
+  (5a24472d187f85c54628f23d6e37b2a4b814e54762478c099472f0437d255849), sequence=19,
+  environment=PRODUCTION, 109 rules including both review.e23u.requested-product and
+  review.e23v.requested-product, and the signed payload is byte-identical under JCS to
+  the tracked source.json. Guilt half proven: flipping one byte of the signature or of
+  the payload on an in-memory copy fails verification; the committed file itself, re-read
+  fresh from disk after the tamper suite runs, still verifies. NOT ACTIVATED — activation
+  is a separate, Zero-only ceremony this PR does not touch.
+diff:
+  files: 9
+  net_lines: "10355/0 rulepack-prod-019.signed.json (generated, byte-for-byte the operator's sign_pack.py output — not hand-authored), 295/0 test_seq19_signed_bundle.py, 63/0 scripts/ci/observe_visa_seq19_sign.py (new, bites-observable), 30/0 scripts/detect_secrets_auto_triage.py, 3/2 scripts/tests/test_detect_secrets_auto_triage.py, 88/0 this per-task brief.yml (copy), 248/0 this pack.yml (measured after staging final content, per its own self-reference), 2/0 council-journal.jsonl, 78/101 root evidence/brief.yml (repo convention — one root file, overwritten per PR)"
+  measured_at: >-
+    `git diff f187acea1a0dbe3b1b3482f8341e6306a24379aa --numstat` (f187acea = this branch's
+    actual base commit, the seq-19 fold PR's merge; `git merge-base HEAD origin/main` ==
+    f187acea, confirming the branch is a strict ancestor of the current origin/main tip,
+    not diverged/conflicting — origin/main has simply advanced with unrelated PRs since
+    this worktree was created). Every file this task introduces or touches is new/changed
+    vs that base, so the numbers above are the real PR diff, not inflated by unrelated
+    origin/main drift.
+  shape: >-
+    One landed signed artifact (data, not logic — the operator's ceremony output), one new
+    test module (independent cryptographic verification + tamper guilt/innocence), one new
+    `bites-observable` CI wrapper script, one new content-keyed secrets-triage rule + its
+    count-bump test, and this evidence pack (root brief.yml rewritten per repo convention,
+    plus its per-task copy, pack.yml, and council-journal.jsonl). No pre-existing
+    visa_engine CODE file touched. The size floor comes entirely from the signed bundle's
+    pretty-printed line count, not from authored-logic surface area.
+pii_scan: clean
+bites:
+  consumer: >-
+    apps/backend-rag's test_seq19_signed_bundle.py (this PR's own gate suite — the
+    REQUIRED backend visa_engine test directory any future PR touching this bundle re-runs)
+    AND the future activation ceremony (activate_pack.py, Zero-only, separate act), which
+    reads this exact file from disk as its `signed_bundle` positional argument.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_seq19_sign.py
+  expect: exit0
+bites_note: >-
+  scripts/ci/observe_visa_seq19_sign.py (new this PR, bites-observable — no argv, every
+  path/command a literal) runs the one named consumer. Run locally before this push: 17
+  passed, "observe_visa_seq19_sign: consumer green", exit 0 (see receipts). This is the
+  CONSUMER a future regression in the bundle's bytes, the pinned trust anchors, or
+  bundle.verify_rule_pack's own contract would fail against — not a future job that has
+  not shipped yet.
+receipts:
+  - claim: the signed bundle verifies against the repo's own Ed25519 code, pinned production trust store
+    cmd: >-
+      PYTHONPATH=backend python3 -c "verify_rule_pack(json.load(open('rulepack-prod-019.signed.json')),
+      trust_store=StaticTrustStore.from_env(), observed_at=<fixed>)" with
+      VISA_ENGINE_TRUST_STORE_KEYS_JSON={kid: prod-2026-07-1, public_key: gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA, environment: PRODUCTION}
+    result: "VERIFIED OK. kid=prod-2026-07-1 sequence=19 env=Environment.PRODUCTION"
+    ts: "2026-09-06T00:10:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: payload_sha256 recomputed independently from the signed envelope, the source.json file, and verify_rule_pack's own return value all agree
+    cmd: >-
+      hashlib.sha256(canonicalize_json(signed['payload'])).hexdigest() vs
+      hashlib.sha256(canonicalize_json(source_json)).hexdigest() vs
+      verified.payload_sha256.hex()
+    result: "all three = bac5da8e4727e7f639c947c50211e6f95e15c1403cf6aef0dd57a92014d6e6ea; payload==source canonical bytes equal: True"
+    ts: "2026-09-06T00:11:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: the chain anchor is correct — seq-19's previous_payload_sha256 equals seq-18's own re-derived payload digest
+    cmd: hashlib.sha256(canonicalize_json(rulepack-prod-018.source.json)).hexdigest()
+    result: "5a24472d187f85c54628f23d6e37b2a4b814e54762478c099472f0437d255849 == verified.pack.payload.previous_payload_sha256"
+    ts: "2026-09-06T00:12:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: 109 rules including both live E23 HUMAN_REVIEW gates
+    cmd: len(verified.pack.payload.rules); {r.rule_id for r in verified.pack.payload.rules}
+    result: "109; review.e23u.requested-product and review.e23v.requested-product both present"
+    ts: "2026-09-06T00:13:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: activate_pack.py's default (no --yes) dry-run still requires a live Postgres DSN — correctly out of scope for this PR, not silently skipped
+    cmd: grep -n asyncpg.create_pool backend/scripts/visa_engine/activate_pack.py; python3 -m backend.scripts.visa_engine.activate_pack --help
+    result: >-
+      writer_pool = await asyncpg.create_pool(writer_database_url, ...) runs before the
+      --yes branch — no argv/env combination reaches a DB-free path; not invoked this PR
+    ts: "2026-09-06T00:14:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: test_seq19_signed_bundle.py is fully green
+    cmd: "PYTHONPATH=. pytest backend/tests/services/visa_engine/test_seq19_signed_bundle.py"
+    result: "17 passed"
+    ts: "2026-09-06T00:20:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      scripts/ci/observe_visa_seq19_sign.py (this lane's bites observe target, new this
+      PR, bites-observable — no argv) runs the named consumer and exits 0 only when it
+      is green
+    cmd: python3 scripts/ci/observe_visa_seq19_sign.py
+    result: '17 passed; "observe_visa_seq19_sign: consumer green"'
+    ts: "2026-09-06T00:21:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: the full visa_engine test directory shows only pre-existing, unrelated Postgres-schema-drift failures — none touch a file this PR changed
+    cmd: "PYTHONPATH=. pytest backend/tests/services/visa_engine/"
+    result: >-
+      2132 passed, 1 skipped, 1 failed, 39 errors — the 1 failure
+      (test_visa_engine_retention_fk_registry.py) and all 39 errors
+      (test_evaluate_endpoint.py / test_shadow_evidence.py / test_shadow_match.py,
+      asyncpg.exceptions.ExclusionViolationError) are pre-existing environmental/schema-drift
+      failures, unrelated to and unmodified by this PR's 4 changed files
+    ts: "2026-09-06T00:22:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 1
+  - claim: the new secrets-triage CONTENT_KEYED_RULES entry auto-approves exactly this test file's 3 trust-anchor literals, and the full sequence detect-secrets scan -> auto-triage --apply -> check-unaudited reports zero residue on the 4 changed files
+    cmd: >-
+      detect-secrets scan --baseline <scratch> <4 changed files>; python3
+      scripts/detect_secrets_auto_triage.py --apply (against a temporary copy of
+      .secrets.baseline, restored byte-identical afterward); python3
+      scripts/detect_secrets_check_unaudited.py
+    result: "Total findings: 100; Auto-approved: 100; Residue (unaudited): 0; ✅ All findings audited (100 total)"
+    ts: "2026-09-06T00:25:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: scripts/tests/test_detect_secrets_auto_triage.py is fully green after the count bump and new rule
+    cmd: "PYTHONPATH=. pytest scripts/tests/test_detect_secrets_auto_triage.py"
+    result: "107 passed"
+    ts: "2026-09-06T00:26:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: scripts/detect_secrets_check_file.py --selftest still passes after the triage-script edit (the tool's own guilt/innocence self-test)
+    cmd: "PYTHONPATH=. python3 scripts/detect_secrets_check_file.py --selftest"
+    result: "selftest OK — 4 guilt/innocence + 3 matcher unit cases + 2 entity-not-form unit cases + 3 canary-gate unit cases"
+    ts: "2026-09-06T00:27:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: this branch (agent/air-m5/backend-rag/visa-seq19-sign) is a strict ancestor of the current origin/main tip — no rebase needed, no unrelated-diff inflation in the numbers above
+    cmd: "git merge-base HEAD origin/main"
+    result: "f187acea1a0dbe3b1b3482f8341e6306a24379aa == HEAD (the branch's own base commit)"
+    ts: "2026-09-06T00:28:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: the gear floor for this PR's real diff (4 files) is Gear 3, sourced from size (the signed bundle's line count), matching the sibling fold PR's floor
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
+      --numstat-file <numstat of the 4 changed files> --changed-files-file <their paths>
+    result: "3 / size"
+    ts: "2026-09-06T00:29:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: kimi-code/k3's cross-family adversarial review ran for real (agentic file access, ran the test suites itself) and returned VERDICT OK
+    cmd: "kimi -m kimi-code/k3 -p <review prompt>"
+    result: "17 passed (test_seq19_signed_bundle.py), 107 passed (test_detect_secrets_auto_triage.py) confirmed by kimi itself; VERDICT: OK"
+    ts: "2026-09-06T00:30:00Z"
+    seat: kimi-code/k3
+    exit: 0
+  - claim: tp1-qwen3.8-max's independent cross-family review (fresh context, fed the full diff as text) returned VERDICT OK
+    cmd: "PYTHONPATH=. python3 scripts/tp1_call.py --model qwen3.8-max --task-file <diff+prompt> --effort medium --no-stream"
+    result: "VERDICT: OK — crypto verification sound, tamper tests copy-only, triage regex correctly scoped"
+    ts: "2026-09-06T00:31:00Z"
+    seat: tp1-qwen3.8-max
+    exit: 0
+dissent:
+  - seat: kimi-code/k3 and tp1-qwen3.8-max, independently, cross-family
+    status: CONFIRMED
+    objection: >-
+      test_wrong_trust_store_key_fails mutated os.environ directly with a try/finally
+      del, instead of pytest's monkeypatch fixture — if the env var were already set in
+      the invoking process, the finally-block del would clobber it rather than restore
+      it (in practice CI never sets this var, so not a live bug, but a real hygiene gap).
+      CURED: switched to monkeypatch.setenv before this pack was written; re-ran the test
+      file (17 passed) to confirm the fix did not change behavior.
+  - seat: claude-sonnet-5 (this worktree session), self-caught
+    status: PLAUSIBLE
+    objection: >-
+      This gate never calls validate_activation or activate_pack.py, so it proves the
+      bundle is a validly signed, correctly chained PRODUCTION candidate but does NOT
+      prove it is SAFE to activate against whatever the live database's current
+      active sequence/digest actually is at activation time — that anti-rollback check
+      only runs inside validate_activation, which needs the caller's own
+      current_sequence/current_payload_sha256 (a DB read this PR deliberately never
+      performs). Not a defect in this PR's scope (activation is explicitly out of
+      scope, see brief.yml), but worth stating plainly: this gate is necessary, not
+      sufficient, for activation.
+appetite_exceeded: ""
