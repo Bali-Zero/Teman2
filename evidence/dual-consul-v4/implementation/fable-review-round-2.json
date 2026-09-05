@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "scope": "independent review of frozen source plus round-2 delta; later migration bootstrap change requires its own review",
+  "session_id": "9db691ab-8167-459b-a921-54857dde0d49",
+  "requested_model": "claude-fable-5-1",
+  "observed_model": "claude-fable-5-1",
+  "runtime_version": "2.1.261",
+  "runtime_surface": "interactive CLI",
+  "permission_mode": "plan",
+  "tools": [],
+  "requested_effort": "xhigh",
+  "finish_reason": "end_turn",
+  "timestamp": "2026-09-05T23:40:15.811Z",
+  "response_sha256": "b377ae079bfc63221ecb216cab0e74a0b7d812a6cd137d66b93faa70f955b30e",
+  "input_packet_path": "fable-review-round-2-input.txt",
+  "input_packet_sha256": "08da546f89cb1fe3c4307bdd1b6e891903ba9919ca309f05cdaaae611b214503",
+  "input_file_sha256": {
+    "apps/backend-rag/backend/services/autonomous_lab/consul_store.py": "e273c72691c27f70d6d3f546376e44c5bff317bc62953288f139502ce5cd021f",
+    "apps/backend-rag/backend/db/migrations_v2/306_autonomous_lab_consul_leases.sql": "1b8f61eb1bc68babefaa75c8b1f38fdaa68460ade58c82136a505166f984483f",
+    "apps/backend-rag/backend/services/autonomous_lab/consul_executor.py": "6f3b4a2f68954019868d751ff58b42a536cd929d39f06aaebd1c562fae7e7ccc",
+    "scripts/conductor/adapter_contracts.py": "7e8e4e3f648bc70791857a39dc840720a398bd20bbdc19fca5a837ef330efcd8",
+    "docs/architecture/dual-consul/common-contract.md": "a0803b1922dfa2d8cb5dc93a19382ed76d63d7e6c13a03d24fbe970e2861ad85",
+    "apps/backend-rag/backend/services/autonomous_lab/state_store.py": "a90c5448d4cf6f3f9013b33800d4dfb0de0c21bc65ea84bb8ae5a49bc519ec4c",
+    "apps/backend-rag/backend/services/autonomous_lab/worker.py": "f6c5798f518ae9900310aa6dec17ffafd7b4cfa889adb1043ed37349baaa15b3",
+    "apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py": "f590cc9100af47d28b741ddf3ed340d564df8fbab87d0925d40e6fab633e15f4"
+  },
+  "claim_limit": "No independent test execution claimed. Reviewer supplied the pre-merge JSON shape question that triggered a live read-only prerequisite check."
+}

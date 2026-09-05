@@ -1,0 +1,26 @@
+{
+  "route": "agy",
+  "requested_model_reported_in_design_packet": "gemini-3.1-pro-high",
+  "identity_assurance": "unknown",
+  "effective_model": null,
+  "native_result": {
+    "conversation_id": "39d1d8e1-50d0-44ff-887c-92cb02b9df3d",
+    "status": "SUCCESS",
+    "duration_seconds": 55.269967,
+    "num_turns": 1,
+    "usage": {
+      "input_tokens": 11375,
+      "output_tokens": 2552,
+      "cache_read_tokens": 8120,
+      "total_tokens": 13927
+    }
+  },
+  "invocation_result": {
+    "exit": 0,
+    "seconds": 59.27,
+    "stdout_sha256": "3e07de9b102108c1dc35f0cce27f896d761b8610102f0877bb9e3edecde5f73c",
+    "stderr_bytes": 0
+  },
+  "original_stdout_sha256_verified": false,
+  "hash_scope_note": "The original stdout hash was recorded before the result was parsed/re-serialized in tool output. The original stdout bytes are unavailable; the selected response hash is independently computed, not substituted for that stdout hash."
+}
