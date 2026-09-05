@@ -81,11 +81,13 @@ describe("useOrderTracking", () => {
   });
 
   it("cancels a scheduled refresh on unmount", async () => {
-    fetchMock.mockResolvedValue(jsonResponse(order("Approved")));
+    fetchMock.mockResolvedValue(jsonResponse(order("In review")));
     const { unmount } = renderHook(() => useOrderTracking("order-1"));
     await advance(0);
+    expect(vi.getTimerCount()).toBe(1);
 
     unmount();
+    expect(vi.getTimerCount()).toBe(0);
     await advance(15000);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -93,7 +95,7 @@ describe("useOrderTracking", () => {
 
   it("aborts an in-flight refresh on unmount", async () => {
     fetchMock
-      .mockResolvedValueOnce(jsonResponse(order("Approved")))
+      .mockResolvedValueOnce(jsonResponse(order("In review")))
       .mockImplementationOnce(() => new Promise<Response>(() => {}));
     const { unmount } = renderHook(() => useOrderTracking("order-1"));
     await advance(0);

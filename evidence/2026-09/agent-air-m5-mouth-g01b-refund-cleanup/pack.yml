@@ -1,0 +1,66 @@
+gear: 1
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: g01b
+    role: build
+    seat: OpenAI GPT-6 (exact variant not exposed)
+  - lane: g01b-review
+    role: review
+    seat: kimi-code/k3
+pii_scan: clean
+seat_override:
+  "R8 applicability only: visa-route UI displays an existing order status and removes an
+  unsupported amount claim. It authors no immigration rule, eligibility condition or price; test order
+  amounts are synthetic fixtures."
+receipts:
+  - claim: Focused tracker and polling regressions pass after restoring both guilt mutations.
+    cmd: cd apps/mouth && npx vitest run src/app/visa/voa/orders/OrderTracker.test.tsx src/app/visa/voa/orders/useOrderTracking.test.ts
+    result: 25 tests passed in 2 files.
+    exit: 0
+    ts: "2026-09-05T11:25:24Z"
+    seat: Codex G-01b builder
+  - claim: Reintroducing the full-refund heading makes the refund regression fail.
+    cmd:
+      Temporarily restore heading="This order was refunded in full."; cd apps/mouth && npx vitest run
+      src/app/visa/voa/orders/OrderTracker.test.tsx -t "reports a refund"; restore in finally.
+    result: 1 failed, 14 skipped; expected two truthful status strings but found one.
+    exit: 1
+    ts: "2026-09-05T11:25:22Z"
+    seat: Codex G-01b builder
+  - claim: Removing the unmount clearTimeout is detected before a later fetch can mask the leak.
+    cmd:
+      Temporarily remove cleanup clearTimeout from useOrderTracking.ts; cd apps/mouth && npx vitest run
+      src/app/visa/voa/orders/useOrderTracking.test.ts -t "cancels a scheduled refresh"; restore in finally.
+    result: 1 failed, 9 skipped; expected 0 pending timers but observed 1 immediately after unmount.
+    exit: 1
+    ts: "2026-09-05T11:25:23Z"
+    seat: Codex G-01b builder
+  - claim: Formatting and the full frontend TypeScript project pass.
+    cmd:
+      cd apps/mouth && npx prettier --check src/app/visa/voa/orders/OrderTracker.tsx src/app/visa/voa/orders/OrderTracker.test.tsx
+      src/app/visa/voa/orders/useOrderTracking.test.ts && npx tsc --noEmit
+    result: Prettier passed; TypeScript exited 0.
+    exit: 0
+    ts: "2026-09-05T11:27:09.644776+00:00"
+    seat: Codex G-01b builder
+  - claim: Independent Kimi inspected the supplied diff, actual files and contract; verdict PASS.
+    cmd: kimi -m kimi-code/k3 -p <read-only review prompt with final diff and hook context>
+    result:
+      "PASS; non-blocking notes: exact count pins current subtitle/heading duplication; negative regex
+      covers the scoped full-refund phrases. Prompt SHA-256 197e06f04f064941acccb9674ac184fceb574527a05f37b75104f462c1f27197"
+    exit: 0
+    ts: "2026-09-05T11:29:19.776336+00:00"
+    seat: kimi-code/k3
+dissent:
+  - seat: kimi-code/k3
+    objection:
+      Refund copy assertion locks the existing two display sites; future legitimate subtitle copy
+      changes need a test update. Accepted as scoped, non-blocking.
+    status: CONFIRMED
+source_sha256:
+  apps/mouth/src/app/visa/voa/orders/OrderTracker.tsx: 9328cd3de61b76a927ffd25184b65319b91c743319a89fde52f59b802b9c874b
+  apps/mouth/src/app/visa/voa/orders/OrderTracker.test.tsx: 544218b458dd1c26030b4efa0fb67772173f99b332b7d49818201b9fb6bb09f6
+  apps/mouth/src/app/visa/voa/orders/useOrderTracking.test.ts: eba611c993176ef563238cad236b7cdaeaf28fe65555a05eab015f19649df99e
+residual_risks:
+  - Synthetic component and hook tests do not prove production payment reconciliation.
+  - Required CI, independent Anthropic gate and production observation remain pending.
