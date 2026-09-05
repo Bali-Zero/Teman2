@@ -1,0 +1,147 @@
+gear: 3
+brief_ref: evidence/2026-09/agent-air-m5-mouth-garuda-contract-types-b03/brief.yml
+council_run: council-journal.jsonl
+bites:
+  Staff detail and list callers consume generated read models through existing exports; required-only
+  detail rendering and exact generator freshness controls prove the consumer. The required frontend mouth
+  CI leg runs the same check.
+lanes:
+  - lane: staff-contract-build
+    role: build
+    seat: gpt-6-astra
+  - lane: sol-review
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: kimi-review
+    role: review
+    seat: kimi-code/k3
+diff:
+  behaviour_change:
+    Staff read-model optionality comes from frozen OpenAPI. Existing UI runtime behavior
+    is preserved. CI rejects stale or missing generated product types.
+  size_reason:
+    "Six implementation/doc files: 61 authored additions and 42 deletions, plus 2866 deterministic
+    generated lines. The complete product artifact is the existing documented generator output; no unrelated
+    global schema is regenerated."
+pii_scan: clean
+review_status:
+  Sol and Kimi completed independent static reviews of the same frozen six-file snapshot;
+  no actionable defect within their supplied scope. Gemini optional advisory timed out without output.
+  Final independent Anthropic gate and production proof remain pending.
+receipts:
+  - claim:
+      "Required-only detail and list responses fail against the original handwritten types and compile
+      against the generated-derived read models. Consumer: apps/mouth/src/app/(workspace)/garuda-voa/types.ts."
+    cmd:
+      node node_modules/typescript/bin/tsc --project <preserved baseline-tsconfig.json>; node node_modules/typescript/bin/tsc
+      --project <preserved tsconfig.json>
+    result:
+      Original expected exit2 with TS2739 for optional note/resume and TS2741 for optional next_cursor;
+      fixed exit0. Original definitions and exact configs preserved in ops-visa-consuls/output/reviews/b03-contract/type-witness/.
+    exit: 0
+    ts: "2026-09-05T07:52:35.760Z"
+    seat: gpt-6-astra worker; coordinator read actual source and diagnostics
+  - claim: "All four staff suites pass with the minimum-response regression. Regression: apps/mouth/src/app/(workspace)/garuda-voa/[practiceId]/page.test.tsx."
+    cmd:
+      cd apps/mouth && ../../node_modules/.bin/vitest run 'src/app/(workspace)/garuda-voa/page.test.tsx'
+      'src/app/(workspace)/garuda-voa/[practiceId]/page.test.tsx' 'src/app/(workspace)/garuda-voa/state-machine.test.ts'
+      'src/app/(workspace)/garuda-voa/api-client.test.ts' --maxWorkers=1
+    result:
+      15 tests passed in four files; coordinator rerun 1.62s. The original renderer already handled
+      omitted fields; the reproduced defect is static contract rejection.
+    exit: 0
+    ts: "2026-09-05T07:49:34Z"
+    seat: gpt-6-astra coordinating session
+  - claim: The generated artifact matches the frozen OpenAPI on Air-M5 and Pro.
+    cmd:
+      ./node_modules/.bin/openapi-typescript products/garuda-voa/contracts/openapi.yaml --output apps/mouth/src/lib/api/garuda-voa.generated.d.ts
+      --check
+    result:
+      Exit0 on both machines with lock-resolved openapi-typescript7.13.0. Pro Node26.5.0; source hashes
+      unchanged.
+    exit: 0
+    ts: "2026-09-05T07:53:40.614Z"
+    seat: gpt-6-astra via existing installed generator
+  - claim:
+      Freshness fails closed for stale generated output, changed contract without regeneration, and
+      an absent artifact.
+    cmd:
+      "Run the exact generator --check command against temporary copies: require the generated private_staff_note
+      field; add it to a copied schema required list without regeneration; pass an absent output file."
+    result:
+      Three expected exit1 results, original pair exit0, no source artifact mutation. Raw arguments/stdout/stderr
+      in ops-visa-consuls/output/reviews/b03-contract/freshness-controls.json.
+    exit: 0
+    ts: "2026-09-05T07:49:12.798866+00:00"
+    seat: gpt-6-astra coordinating session
+  - claim: Full mouth TypeScript passes on the exact base plus final source files.
+    cmd: On Pro, cd /private/tmp/b03-mouth-contract-types-af949-1788594717383/apps/mouth and npm run typecheck
+    result:
+      tsc --noEmit exit0 in8.238s; base af949, three final local/Pro hashes match. Complete receipt
+      and logs in ops-visa-consuls/output/reviews/b03-contract/pro-typecheck/. First attempt omitted imported
+      fixture/reference files; that failed attempt is retained and source selection corrected from the same
+      base before this successful run.
+    exit: 0
+    ts: "2026-09-05T07:53:39.988Z"
+    seat: gpt-6-astra worker via Pro
+  - claim: A change confined to the product contract selects frontend tests.
+    cmd: python scripts/ci/change_map.py with stdin products/garuda-voa/contracts/openapi.yaml
+    result:
+      run_all true, reason unclassified_paths, suggested_jobs includes frontend-tests. This documents
+      the current fallback rather than inventing a dedicated routing rule.
+    exit: 0
+    ts: "2026-09-05T07:58:39.435454+00:00"
+    seat: gpt-6-astra coordinating session
+  - claim: The authored workflow passes syntax checks.
+    cmd: actionlint -shellcheck= .github/workflows/tests.yml
+    result:
+      Exit0. The separately run Prettier and git diff checks also passed; the generated artifact preserves
+      its generator formatting.
+    exit: 0
+    ts: "2026-09-05T07:58:39.450313+00:00"
+    seat: gpt-6-astra coordinating session
+  - claim: Two independent council seats completed review of the same immutable source snapshot.
+    cmd:
+      "Existing subscription CLIs: codex exec with explicit gpt-5.6-sol, high effort, read-only sandbox;
+      kimi --model kimi-code/k3 with tools disabled. See preserved local invocation JSONs."
+    result:
+      Sol exit0 after42.013s; Kimi exit0 after278.209s. Actual Codex CLI0.147.0, KimiCLI0.39.1. No
+      server-reported effective model ID; CLI selection/configuration only. Six source hashes unchanged.
+      Journal and reviewer answers accompany this pack; journal times record completed receipt creation.
+      No TP1 fallback executed.
+    exit: 0
+    ts: "2026-09-05T08:01:26Z"
+    seat: codex-gpt-5.6-sol and kimi-code/k3
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection:
+      Verify root executable availability after a clean CI install, the product-only frontend routing
+      fallback, and compatibility beyond the supplied consumers.
+    status: PLAUSIBLE
+    disposition:
+      Full Pro typecheck and actual product-only change-map probe pass. Root install/lock both
+      resolve generator7.13.0, not the package range lower bound7.10.1 mentioned by the reviewer. The added
+      GitHub step must execute successfully on this PR before claiming CI proof.
+  - seat: kimi-code/k3
+    objection:
+      Prove products-only routing, generator check semantics and byte identity, clean-CI binary
+      hoisting, and compatibility of the two PracticeState unions.
+    status: PLAUSIBLE
+    disposition:
+      Actual products-only routing, three negative freshness controls, byte identity on Air-M5
+      and Pro, and full Pro TypeScript pass. Both reviewers saw a manifest range lower bound; the installed
+      and locked version is 7.13.0. Clean CI root binary availability and Node 24 byte identity remain first-PR-run
+      conditions.
+residual_risks:
+  - Final Anthropic gate and deployed-production verification remain pending.
+  - This change does not validate wire payloads at runtime or convert handwritten request/error models.
+  - Product-only CI selection relies on the existing conservative change-map fallback.
+optional_advisory:
+  seat: gemini-3.1-pro-high via agy
+  status: timeout_no_verdict
+  started_at: "2026-09-05T07:50:46.652Z"
+  completed_at: "2026-09-05T07:56:16.223Z"
+  exit: 1
+  stdout_bytes: 0
+  error: "Error: timeout waiting for response"
+  artifact: ops-visa-consuls/output/reviews/b03-gemini/completion.json
