@@ -570,14 +570,17 @@ import { Toast } from "@/components/ui/toast";
 
 ```typescript
 // src/lib/api/client.ts (abridged)
+import { safeStorage } from "@/lib/utils/storage";
 
 class ApiClientBase {
   protected baseUrl: string;
-  protected token: string | null;
+  protected token: string | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
-    this.token = localStorage.getItem("auth_token");
+    if (typeof window !== "undefined") {
+      this.token = safeStorage.getItem("auth_token");
+    }
   }
 
   protected async fetch<T>(
