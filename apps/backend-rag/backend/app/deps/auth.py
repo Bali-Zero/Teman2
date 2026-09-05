@@ -12,7 +12,7 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
-from backend.app.utils.service_accounts import is_human_team_member
+from backend.app.utils.service_accounts import is_human_team_member, normalize_role
 from backend.services.security.token_revocation import (
     RevocationStoreUnavailable,
     is_session_revoked_sync,
@@ -166,7 +166,12 @@ def require_team_member(user: dict[str, Any] = Depends(get_current_user)) -> dic
         HTTPException 403: If user is a client or a service account
     """
     if not is_human_team_member(user.get("role")):
-        logger.warning("Access denied to non-team account")
+        # The role is a job title or a token, never PII; logging it is what
+        # makes an allow-list gap visible before a colleague reports a lockout.
+        logger.warning(
+            "Access denied to non-team account",
+            extra={"role": normalize_role(user.get("role")) or "<empty>"},
+        )
         raise HTTPException(
             status_code=403,
             detail="Access denied. This endpoint is only accessible to team members.",

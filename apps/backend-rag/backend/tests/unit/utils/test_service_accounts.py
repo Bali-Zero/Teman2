@@ -21,6 +21,7 @@ from backend.app.utils.service_accounts import (
     NON_HUMAN_ROLES_SQL,
     NON_TEAM_ROLES,
     SERVICE_ROLES,
+    TEAM_ROLES,
     _sql_literal_list,
     is_human_team_member,
     non_human_roles_sql_array,
@@ -89,6 +90,71 @@ class TestExternalPartnersAreNotColleagues:
         assert NON_HUMAN_ROLES == frozenset({"client", "monitoring"})
         assert "partner" not in non_human_roles_sql_array()
         assert "partner" not in NON_HUMAN_ROLES_SQL
+
+
+class TestTeamRolesAreAnAllowList:
+    """The gate must fail closed on anything it has not been told is a colleague.
+
+    Row 88 of the PENDING-ARMS ledger: as a denylist, unknown/missing roles and
+    the ``user`` default walked through ``require_team_member``.
+    """
+
+    @pytest.mark.parametrize(
+        "role",
+        ["user", "unknown", "", "   ", None, "staff", "guest", "Partner ", "client", "monitoring"],
+    )
+    def test_roles_the_census_never_issued_fail_closed(self, role: str | None) -> None:
+        assert is_human_team_member(role) is False
+
+    @pytest.mark.parametrize(
+        "role",
+        [
+            # census 2026-09-06 of the live team_members rows (job titles)
+            "Accounting",
+            "Board Member",
+            "CEO",
+            "Consultant",
+            "Executive Consultant",
+            "Founder",
+            "Junior Consultant",
+            "Reception",
+            "Specialist Advisor",
+            "Supervisor",
+            "Tax Care",
+            "Tax Lead",
+            "Tax Manager",
+            "Team Leader",
+            "member",
+            # legacy tokens still used by fixtures and older code paths
+            "admin",
+            "team",
+        ],
+    )
+    def test_every_role_production_issues_still_passes(self, role: str) -> None:
+        """Innocence: the allow-list is the census, not a guess (scar family #3)."""
+        assert is_human_team_member(role) is True
+
+    def test_matching_is_case_and_padding_insensitive(self) -> None:
+        assert is_human_team_member("  TAX LEAD  ") is True
+        assert is_human_team_member("board member") is True
+
+    def test_the_allow_list_is_stored_normalised(self) -> None:
+        assert TEAM_ROLES == frozenset(normalize_role(r) for r in TEAM_ROLES)
+
+    def test_the_allow_list_and_the_refusals_are_disjoint(self) -> None:
+        assert not (TEAM_ROLES & NON_TEAM_ROLES)
+
+    def test_every_roster_role_is_on_the_allow_list(self) -> None:
+        """Tripwire: a new job title in the roster must be added here too."""
+        roster = {normalize_role(m["role"]) for m in json.loads(ROSTER.read_text())}
+        assert roster, "roster is empty"
+        assert roster <= TEAM_ROLES
+
+    def test_the_partners_service_allow_list_cannot_drift_wider(self) -> None:
+        """CATA-6 keeps its own list; it must never admit a role this one refuses."""
+        from backend.services.crm.partners.service import INTERNAL_ROLES_ALWAYS_ALLOWED
+
+        assert INTERNAL_ROLES_ALWAYS_ALLOWED <= TEAM_ROLES
 
 
 class TestSqlRendering:
@@ -208,7 +274,7 @@ class TestNoCallSiteUsesClientAsAProxyForStaff:
         assert self.HARDCODED.search('if user.get("role") == "client":')
         assert self.HARDCODED.search("if current_user.get('role') == 'client':")
         assert self.HARDCODED.search('current_user["role"] == "client" and x != y')
-        assert not self.HARDCODED.search("is_human_team_member(current_user.get(\"role\"))")
+        assert not self.HARDCODED.search('is_human_team_member(current_user.get("role"))')
         assert not self.HARDCODED.search('user.get("role") == "admin"')
 
     def test_the_deps_directory_was_actually_scanned(self) -> None:

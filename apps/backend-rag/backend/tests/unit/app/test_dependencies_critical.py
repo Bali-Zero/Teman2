@@ -178,12 +178,19 @@ class TestAuthDependencies:
         result = require_team_member(user)
         assert result == user
 
-    def test_require_team_member_allows_agent(self):
+    @pytest.mark.parametrize("role", ["agent", "user", "unknown", "", None])
+    def test_require_team_member_rejects_roles_outside_the_allow_list(self, role):
+        """Row 88 of PENDING-ARMS: the gate used to be a denylist, so any role
+        it had not heard of — including the ``user`` default a role-less token
+        gets — walked through. It is an allow-list now and fails closed."""
+        from fastapi import HTTPException
+
         from backend.app.dependencies import require_team_member
 
-        user = {"email": "agent@balizero.com", "role": "agent"}
-        result = require_team_member(user)
-        assert result == user
+        user = {"email": "someone@balizero.com", "role": role}
+        with pytest.raises(HTTPException) as exc_info:
+            require_team_member(user)
+        assert exc_info.value.status_code == 403
 
     def test_require_team_member_rejects_client(self):
         from fastapi import HTTPException
