@@ -151,10 +151,12 @@ The five draft PRs have passed their scoped regression tests and commit/push hoo
 Exact head SHAs, test receipts and addressed-review timestamps live in the state
 JSON. Those revisions are queued in Fable's single-writer inbox and fleet mailbox;
 the unresolved permission prompt means receipt is not inferred from enqueueing.
-The five initial PR heads completed their reported GitHub checks without failed
-or pending checks at the recorded observation. S-01 then gained a browser-driven
-layout correction: its earlier green CI must not be reused for the new head.
-The ledger records each revision's actual check state. Skipped and neutral checks
+At 2026-09-05 07:41:32 UTC, all five current PR heads had no failed or pending
+reported checks. S-01's browser-driven layout correction at `99e5fd7312` passed
+its own new CI run `33952834007`: frontend coverage tests, Playwright E2E and
+the disposable-DB Visa Oracle fullstack smoke executed successfully. Its earlier
+head's green CI was not reused. The ledger records each revision's actual check
+state and links the executed jobs. Skipped and neutral checks
 are not execution proof. Independent verdicts and deployed-production proof remain
 pending; browser evidence is scoped below.
 
