@@ -1,0 +1,24 @@
+task_id: e2e-startup-budget
+gear: 2
+objective:
+  Allow the existing Playwright production build and startup command 300 seconds before reporting a webServer
+  startup timeout.
+constraints:
+  - Change only webServer.timeout from 180000 to 300000 ms in apps/mouth/playwright.config.ts.
+  - Keep build/start command, test timeouts, URL, environment and workflow unchanged.
+  - GitHub CI performs the production build; no heavy build on Air-M5.
+acceptance:
+  - text:
+      WHEN the config is collected without starting a server, Playwright SHALL load the same test suite with a 300000 ms
+      webServer budget.
+    probe: config-collection
+  - text:
+      WHEN this PR runs its E2E job, its downloaded log SHALL show Next Ready within 300 seconds of the Run E2E
+      tests environment-end marker.
+    probe: own-pr-e2e-log
+consumer_map:
+  - The required E2E Tests (Playwright) job starts npm run build && npm run start through apps/mouth/playwright.config.ts.
+risks:
+  - A failed startup can take 120 seconds longer to time out; individual test limits are unchanged.
+  - Historical timings use the step environment-end marker; they do not instrument the internal Playwright timer.
+pii: none

@@ -1,0 +1,93 @@
+gear: 2
+brief_ref: evidence/brief.yml
+gear_reason: Fable explicitly assigned E2E-1 as Gear 2 after the measured startup-budget failure.
+lanes:
+  - lane: e2e-1
+    role: build
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - lane: e2e-1-review
+    role: review
+    seat: kimi-code/k3 via existing OAuth CLI
+pii_scan: clean
+dissent: []
+receipts:
+  - probe: config-collection
+    claim: "config-collection: Playwright loads the corrected config without starting a webServer."
+    cmd: cd apps/mouth && npx --no-install playwright test --list --config=playwright.config.ts
+    result: "Total: 1064 tests in 52 files."
+    exit: 0
+    ts: "2026-09-05T20:03:20.043090+00:00"
+    seat: Codex Astra-2 executing the existing Playwright CLI
+measurement_method:
+  GitHub Run E2E tests environment endgroup to Next WebServer Ready; not the instrumented Playwright
+  internal timer
+measurement_source:
+  Independently downloaded four successful E2E job logs; failing log from root verified at the
+  supplied path. Fable diagnostic identified the sample.
+historical_runs:
+  - run_id: 33988044153
+    job_id: 101365283831
+    event: merge_group
+    conclusion: success
+    step_environment_end: "2026-09-05T19:49:44.4061770Z"
+    next_ready: "2026-09-05T19:51:55.5213012Z"
+    elapsed_seconds: 131.115124
+    log_sha256: 4040e3692f30c41f63fdbdff4df46a2e0c867b77a92067ed135eff54197e2d1a # pragma: allowlist secret - downloaded CI log digest
+    job_url: https://github.com/Bali-Zero/Teman2/actions/runs/33988044153/job/101365283831
+  - run_id: 33983782467
+    job_id: 101353541219
+    event: schedule
+    conclusion: success
+    step_environment_end: "2026-09-05T18:24:03.9027561Z"
+    next_ready: "2026-09-05T18:26:38.1863270Z"
+    elapsed_seconds: 154.283571
+    log_sha256: a87308fec903b055e4222cc165afb3e5da26740104e12e2f087009407cf6fe68 # pragma: allowlist secret - downloaded CI log digest
+    job_url: https://github.com/Bali-Zero/Teman2/actions/runs/33983782467/job/101353541219
+  - run_id: 33988095719
+    job_id: 101365417656
+    event: pull_request
+    conclusion: success
+    step_environment_end: "2026-09-05T19:49:57.2552267Z"
+    next_ready: "2026-09-05T19:52:49.8183252Z"
+    elapsed_seconds: 172.563099
+    log_sha256: 1c24727400e4c6832510dd13ed8f8364e7b1b9daa4ff1de4652424e87fb69213 # pragma: allowlist secret - downloaded CI log digest
+    job_url: https://github.com/Bali-Zero/Teman2/actions/runs/33988095719/job/101365417656
+  - run_id: 33985225179
+    job_id: 101357674423
+    event: pull_request
+    conclusion: success
+    step_environment_end: "2026-09-05T18:53:51.2757665Z"
+    next_ready: "2026-09-05T18:56:45.7236183Z"
+    elapsed_seconds: 174.447852
+    log_sha256: 66e7694185c34174b69f0c00f06b406a32bda2ed30289d2714e04bf211613eb4 # pragma: allowlist secret - downloaded CI log digest
+    job_url: https://github.com/Bali-Zero/Teman2/actions/runs/33985225179/job/101357674423
+  - run_id: 33988016350
+    job_id: 101365269696
+    event: merge_group
+    conclusion: failure
+    step_environment_end: "2026-09-05T19:49:22.4772981Z"
+    next_ready: "2026-09-05T19:52:22.5100296Z"
+    elapsed_seconds: 180.032731
+    log_sha256: 64f7618d171dcceef0281be943128a98b7a8f9bfc49eba37b1143b8b68b1eb89 # pragma: allowlist secret - downloaded CI log digest
+    job_url: https://github.com/Bali-Zero/Teman2/actions/runs/33988016350/job/101365269696
+failed_run_observation:
+  ready_line: 2026-09-05T19:52:22.5100296Z [WebServer] ✓ Ready in 137ms
+  timeout_line: "2026-09-05T19:52:23.3860270Z Error: Timed out waiting 180000ms from config.webServer."
+  interpretation:
+    Next Ready precedes the timeout error; the 180.032731 seconds is measured from the environment-end marker,
+    not an instrumented internal timer.
+completion_requirement:
+  Own PR E2E log proof is pending until CI runs. Record its run/job IDs, timestamps, Ready
+  line and elapsed time in the PR body and local handoff before requesting the final Fable gate.
+additional_verification:
+  source_scope: An independent byte comparison against base 2421a3dd permits only the webServer timeout 180→300 replacement; every other config byte matches.
+  formatting_command: npx --no-install prettier --check apps/mouth/playwright.config.ts
+  formatting_result: PASS
+review:
+  verdict: PASS, independent static source review; reviewer executed no commands.
+  finished_at: "2026-09-05T20:03:44.263254+00:00"
+  artifact: evidence/2026-09/agent-air-m5-mouth-e2e-startup-budget/kimi-review.txt
+  prompt_sha256: cb452652bf5e2399c9facec7d8eb47e1884958e54db451279b149b8e6ce304b0 # pragma: allowlist secret - review prompt digest
+  review_sha256: b269f57cdbd5ae24583f2015e0e31c4dea76b23c1e85f5b3f41c244b56827e4a # pragma: allowlist secret - review artifact digest
+  output_format: CLI text with trailing blank lines removed.
+  post_review_changes: Prose spacing only; moved the byte-comparison and formatting claims out of the config-collection result as requested. Source unchanged. Appended this receipt and the review artifact.
