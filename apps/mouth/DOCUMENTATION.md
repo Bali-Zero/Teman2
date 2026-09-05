@@ -1045,26 +1045,42 @@ const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prom
    - nz_access_token (HttpOnly)
    - nz_csrf_token
                      ↓
-3. Frontend stores in localStorage:
-   - auth_token (for API calls)
+3. Frontend caches auth_token via safeStorage (optional bearer support):
+   - localStorage when available; memory fallback when unavailable
                      ↓
-4. Subsequent requests include:
-   - Authorization: Bearer {token}
-   - X-CSRF-Token: {csrf}
-   - Cookie: nz_access_token=...
+4. Subsequent requests use credentials: "include":
+   - Cookie: nz_access_token=... (primary session)
+   - Authorization: Bearer {token} (when available)
+   - X-CSRF-Token: {csrf} (state-changing requests, when available)
 ```
 
 ### Protected Routes
 
-```typescript
-// Middleware pattern (in page components)
-useEffect(() => {
-  const token = localStorage.getItem("auth_token");
-  if (!token) {
-    router.push("/login");
-  }
-}, []);
+Client pages use `useSessionState()`, backed by `api.hasSession()`, so a missing
+bearer token does not eject a valid cookie-only session. The hook starts at
+`pending`; only `anonymous` redirects to login. `pending` and `unknown` keep
+protected data loads gated until the session is `authenticated`.
 
+```typescript
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSessionState } from "@/hooks/useSessionState";
+
+// Inside a client page component (abridged from src/app/agents/page.tsx).
+const router = useRouter();
+const session = useSessionState();
+
+useEffect(() => {
+  if (session === "anonymous") {
+    router.push("/login");
+    return;
+  }
+  if (session !== "authenticated") return;
+  // Apply page-specific authorization and load protected data here.
+}, [session, router]);
+```
+
+```typescript
 // Server-side (API routes)
 const token = request.cookies.get("nz_access_token");
 if (!token) {
