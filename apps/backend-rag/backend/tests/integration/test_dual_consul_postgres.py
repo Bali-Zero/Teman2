@@ -12,6 +12,7 @@ import os
 from collections.abc import AsyncIterator
 from contextlib import suppress
 from pathlib import Path
+from textwrap import dedent
 from typing import Any
 from urllib.parse import unquote, urlsplit
 
@@ -125,6 +126,65 @@ async def _counts(conn: asyncpg.Connection) -> tuple[int, int, int]:
             "SELECT count(*) FROM autonomous_lab_events_outbox WHERE payload->>'result'='synthetic_confirmed'"
         ),
     )
+
+
+async def test_migration_306_reuses_every_canonical_124_statement() -> None:
+    statements: list[str] = []
+
+    class Recorder:
+        async def execute(self, sql: str) -> None:
+            statements.append(dedent(sql).strip())
+
+    await apply_lab(Recorder())
+    forward, _ = split_migration_sql(
+        (MIGRATIONS / "306_autonomous_lab_consul_leases.sql").read_text()
+    )
+    snapshot = (
+        forward.split("-- BEGIN LEGACY 124 APPLY SNAPSHOT\n", 1)[1]
+        .split("-- END LEGACY 124 APPLY SNAPSHOT", 1)[0]
+        .strip()
+    )
+    assert statements
+    assert snapshot == "\n\n".join(statements)
+
+
+async def test_migration_306_bootstraps_absent_lab_and_preserves_rows_on_rollback(
+    dual_db: asyncpg.Connection,
+) -> None:
+    await dual_db.execute(
+        "DROP TABLE public.autonomous_lab_consul_leases, "
+        "public.autonomous_lab_events_outbox, public.autonomous_lab_runs"
+    )
+    assert await dual_db.fetchval(
+        "SELECT to_regclass('public.autonomous_lab_runs') IS NULL "
+        "AND to_regclass('public.autonomous_lab_events_outbox') IS NULL"
+    )
+    forward, rollback = split_migration_sql(
+        (MIGRATIONS / "306_autonomous_lab_consul_leases.sql").read_text()
+    )
+    async with dual_db.transaction():
+        await dual_db.execute(forward)
+    run_id = "consul-bootstrap-proof"
+    store = await _enqueue(dual_db, run_id)
+    request = make_request(await dual_db.fetchval("SELECT clock_timestamp()"), run_id)
+    worker = AutonomousLabWorker(
+        placement=store.placement,
+        state_store=store,
+        stage_nodes=(ConsulSyntheticStage(dual_db, request, OWNER),),
+    )
+    assert (await worker.tick(dual_db, worker_id=OWNER)).status.value == "succeeded"
+    assert await _counts(dual_db) == (1, 1, 1)
+    assert rollback is not None
+    async with dual_db.transaction():
+        await dual_db.execute(rollback)
+    assert await dual_db.fetchval(
+        "SELECT to_regclass('public.autonomous_lab_consul_leases') IS NULL"
+    )
+    assert (
+        await dual_db.fetchval("SELECT status FROM autonomous_lab_runs WHERE run_id=$1", run_id)
+        == "succeeded"
+    )
+    assert await _counts(dual_db) == (1, 1, 1)
 
 
 async def test_migration_306_rollback_and_reapply_preserve_existing_lifecycle(
