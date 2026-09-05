@@ -219,7 +219,7 @@ describe("Second Home article claim ratchet", () => {
     "E33 LPS fully covers the deposit",
     "E33 BSI qualifies as a state-owned bank",
     "E33 split the deposit",
-  ])("rejects a new backend-vocabulary article: %s", (source) => {
+  ])("rejects a new article matching shared E33 claim rules: %s", (source) => {
     const dirty = scan([{ path: "example.mdx", source }]);
     expect(Object.keys(dirty).length).toBeGreaterThan(0);
     expect(() => assertBaseline(dirty, {})).toThrow();
