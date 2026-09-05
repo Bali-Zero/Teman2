@@ -1,0 +1,50 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index 1594198279..88f242ba23 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -839,7 +839,7 @@ When a seat hits quota or dies, escalate IN ORDER and log each hop in the task e
+ 
+ ### 17.3 Account-lane mapping (lanes with borrowing, not round-robin)
+ 
+-Lanes are **home assignments, not fences**: each lane drains its home account first, then borrows automatically from the least-loaded other account — nothing sits idle, no line ever stops. Mapping (see `FLEET_TOPOLOGY.json` → `accounts`): **A1** antonellosiano interactive/architect · **A2** kaiser1987… subagents/build+Cowork · **A3** applevisionpro1987 cron/batch, **designated donor** (cron auto-pauses to free its window when the gate calls) · **AZ** zero (Team seat Premium) **gate primary** — the dedicated allowance for the final on-disk gate lives here (Opus 5 xhigh effort, RULED 2026-08-20; was Fable's dedicated weekly allowance) · **O1** antonellosiano (ChatGPT Pro) refuter-primary · **O2** zero (ChatGPT Pro) builders+refuter-backup.
++Lanes are **home assignments, not fences**: each lane drains its home account first, then borrows automatically from the least-loaded other account — nothing sits idle, no line ever stops. Mapping (see `FLEET_TOPOLOGY.json` → `accounts`): **A1** antonellosiano interactive/architect · **A2** kaiser1987… subagents/build+Cowork · **A3** applevisionpro1987 cron/batch, **designated donor** (cron auto-pauses to free its window when the gate calls) · **AZ** zero (Team seat Premium) cron/batch, **designated donor** — pauses to free its window when the gate calls; the final on-disk gate runs on A1 (Opus 5 xhigh effort, RULED 2026-08-20) · **O1** antonellosiano (ChatGPT Pro) refuter-primary · **O2** zero (ChatGPT Pro) builders+refuter-backup.
+ 
+ ### 17.4 Spend order
+ 
+diff --git a/FLEET_TOPOLOGY.json b/FLEET_TOPOLOGY.json
+index 61afd05045..ece74e2ec7 100644
+--- a/FLEET_TOPOLOGY.json
++++ b/FLEET_TOPOLOGY.json
+@@ -303,15 +303,15 @@
+           "model": "codex-sol",
+           "accounts": ["O1", "O2"]
+         },
++        {
++          "model": "kimi-k3",
++          "accounts": ["K1"]
++        },
+         {
+           "model": "glm-5.2",
+           "accounts": ["TP1"],
+           "note": "only live door: Alibaba TP1 seat tp1-glm-5.2 (see accounts.alibaba.slots.TP1); OpenAI-compatible base https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1, key loaded by load_tp1_settings_key() from ~/.qwen/settings.json. Zero's first-call ruling 2026-07-19 for compact reviews"
+         },
+-        {
+-          "model": "kimi-k3",
+-          "accounts": ["K1"]
+-        },
+         {
+           "model": "gemini-3.1-pro (agy redteam)",
+           "accounts": ["G1"]
+diff --git a/MODEL_ROSTER.md b/MODEL_ROSTER.md
+index 9337918d54..13bf76049b 100644
+--- a/MODEL_ROSTER.md
++++ b/MODEL_ROSTER.md
+@@ -234,7 +234,7 @@ presence. Known-live lanes (CLAUDE.md §9 data invariants + machine facts):
+ 
+ - `qwen3.5:9b` — classifier, **`think:false` required** (Ollama client contract).
+ - `deepseek-r1:32b` — offline reasoning.
+-- `qwen2.5vl:7b` — **sole vision/OCR seat** (data invariant: `qwen3.5` Q4_K_M strips vision
++- `qwen3.5:9b` — **sole vision/OCR seat** (data invariant: `qwen2.5vl` Q4_K_M strips vision
+   weights — never substitute).
+ - `gemma4:26b` — translation cron.
+ - `bge-m3` / `nomic-embed-text` — multilingual / general embedding.

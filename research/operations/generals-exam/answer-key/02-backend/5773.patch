@@ -1,0 +1,455 @@
+commit b53648da24916ab3ea60f0eae815b89e7dc23648
+Author: Bali Zero <zero@balizero.com>
+Date:   Sat Sep 5 13:16:18 2026 +0000
+
+    fix(garuda_orders): html-escape case_type in the 8 outbox HTML email bodies (#5773)
+    
+    * fix(garuda_orders): html-escape case_type in the 8 outbox HTML email bodies
+    
+    GA-B-1: case_type reaches customer HTML emails raw at 8 render-time
+    f-string sites, across 9 constructor call sites in 4 dataclasses
+    (OrderEmailFacts x6, LateRefundFacts, PracticeTransitionEmailFacts,
+    OrderAnomalyFacts) — no single upstream factory to patch once. Add
+    one shared `_h()` helper (html.escape, quote=True) and apply it at
+    each of the 8 HTML bodies (PaymentPaidEmailHandler,
+    CheckoutReadyEmailHandler, PaymentFailedEmailHandler,
+    PaymentExpiredEmailHandler, RefundEmailHandler,
+    LateRefundConfirmationEmailHandler, PracticeReceivedEmailHandler,
+    _practice_transition_body). The 5 staff_page_* Telegram pages are
+    plain text / already _escape_markdown-escaped and are untouched.
+    
+    Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+    Claude-Session: https://claude.ai/code/session_01E8kvGP2hoVybnGJBSUQShh
+    
+    * fix(backend-rag): make the full-file test receipt honest, fix diff net_lines, type the renderer dict
+    
+    The pack.yml receipt for the full pytest run claimed exit 0 while narrating
+    "39 passed, 11 errors" — the real exit code is 1. Record it truthfully and
+    add a receipt proving the 11 asyncpg.UndefinedTableError failures are
+    environmental (identical on a clean origin/main checkout with no html-escape
+    changes present). Also correct diff.net_lines to match git diff --numstat
+    origin/main...HEAD (290/8, not the stale 272/8), and type
+    _HTML_BODY_RENDERERS as dict[str, Callable[[str], str]] instead of
+    dict[str, object] since its values are always case_type -> body callables.
+    
+    Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+    Claude-Session: https://claude.ai/code/session_01E8kvGP2hoVybnGJBSUQShh
+    
+    ---------
+    
+    Co-authored-by: Balizero (Air-M5) <antonellosiano@gmail.com>
+    Co-authored-by: Claude Fable 5.1 <noreply@anthropic.com>
+
+diff --git a/apps/backend-rag/backend/services/garuda_orders/outbox_handlers.py b/apps/backend-rag/backend/services/garuda_orders/outbox_handlers.py
+index b28b799af2..6ef6269bdc 100644
+--- a/apps/backend-rag/backend/services/garuda_orders/outbox_handlers.py
++++ b/apps/backend-rag/backend/services/garuda_orders/outbox_handlers.py
+@@ -47,6 +47,7 @@ shape and each subclass's docstring for its own paging condition.
+ from __future__ import annotations
+ 
+ import hashlib
++import html
+ import json
+ import logging
+ import os
+@@ -93,6 +94,25 @@ TELEGRAM_OWNER_CHAT_ID_ENV = "TELEGRAM_OWNER_CHAT_ID"
+ _STATES_WORTH_CONFIRMING = frozenset({"paid"})
+ 
+ 
++def _h(value: object) -> str:
++    """Escape one interpolated value for the HTML customer-email bodies below.
++
++    GA-B-1: `case_type` (and any other non-compile-time-constant field) reaches
++    8 HTML `<br>`-joined bodies via 9 separate `*Facts` dataclass constructor
++    sites (`OrderEmailFacts` x6, `LateRefundFacts`, `PracticeTransitionEmailFacts`,
++    `OrderAnomalyFacts`) — there is no single upstream factory all 8 bodies flow
++    through, so escaping happens at render time, at each f-string site, not once
++    at construction. `quote=True` also escapes `"`/`'` (attribute-safe, though
++    none of these sites currently interpolate into an attribute). Do NOT apply
++    this to a URL's `href`/`src` value — that needs validation, not escaping —
++    and never to a value already escaped (double-escaping corrupts it). The five
++    `staff_page_*` Telegram handlers are plain text / Markdown-escaped
++    (`_escape_markdown` below) and are out of scope: this helper is HTML-only.
++    """
++
++    return html.escape(str(value), quote=True)
++
++
+ class EmailSendFailed(RuntimeError):
+     """The send did not happen. Raised so the outbox records the attempt."""
+ 
+@@ -242,7 +262,7 @@ class PaymentPaidEmailHandler:
+         return (
+             "Hello,<br><br>"
+             "We've received your payment for your Bali Zero Visa on Arrival "
+-            f"({facts.case_type}).<br><br>"
++            f"({_h(facts.case_type)}).<br><br>"
+             f"<b>Amount paid: {amount}</b><br><br>"
+             "Our team is preparing your application now. You can follow its "
+             "progress at any time here:<br><br>"
+@@ -338,7 +358,7 @@ class CheckoutReadyEmailHandler:
+         return (
+             "Hello,<br><br>"
+             "Your Bali Zero Visa on Arrival application "
+-            f"({facts.case_type}) is ready for payment.<br><br>"
++            f"({_h(facts.case_type)}) is ready for payment.<br><br>"
+             f"<b>Amount due: {amount}</b><br><br>"
+             f'<a href="{checkout_url}">Complete my payment</a><br><br>'
+             "You can also follow this order's status here:<br><br>"
+@@ -456,7 +476,7 @@ class PaymentFailedEmailHandler:
+         return (
+             "Hello,<br><br>"
+             "We were unable to process your payment for your Bali Zero Visa on "
+-            f"Arrival ({facts.case_type}).<br><br>"
++            f"Arrival ({_h(facts.case_type)}).<br><br>"
+             f"<b>Amount not charged: {amount}</b><br><br>"
+             f"{guidance}<br><br>"
+             "You can follow this order's status here:<br><br>"
+@@ -545,7 +565,7 @@ class PaymentExpiredEmailHandler:
+         return (
+             "Hello,<br><br>"
+             "The payment session for your Bali Zero Visa on Arrival application "
+-            f"({facts.case_type}) expired before it was completed, so no payment "
++            f"({_h(facts.case_type)}) expired before it was completed, so no payment "
+             "was taken.<br><br>"
+             "If you still need a Visa on Arrival, please start a new "
+             "application.<br><br>"
+@@ -628,7 +648,7 @@ class RefundEmailHandler:
+         return (
+             "Hello,<br><br>"
+             "We've refunded your payment for your Bali Zero Visa on Arrival "
+-            f"({facts.case_type}).<br><br>"
++            f"({_h(facts.case_type)}).<br><br>"
+             "The refund goes back to the payment method you used, and follows "
+             "your card provider's own timeline to appear on your statement.<br><br>"
+             "You can follow this order's status here:<br><br>"
+@@ -814,7 +834,7 @@ class LateRefundConfirmationEmailHandler:
+         return (
+             "Hello,<br><br>"
+             "A payment was taken for your Bali Zero Visa on Arrival "
+-            f"({facts.case_type}) that should not have been, and we have "
++            f"({_h(facts.case_type)}) that should not have been, and we have "
+             "returned it.<br><br>"
+             "The money goes back to the payment method you used, and follows "
+             "your card provider's own timeline to appear on your "
+@@ -1206,7 +1226,7 @@ class PracticeReceivedEmailHandler:
+         return (
+             "Hello,<br><br>"
+             "Your Bali Zero Visa on Arrival application "
+-            f"({facts.case_type}) has been received and is now open with our "
++            f"({_h(facts.case_type)}) has been received and is now open with our "
+             "team.<br><br>"
+             "You can follow its progress at any time here:<br><br>"
+             f'<a href="{tracker}">Track my application</a><br><br>'
+@@ -1322,7 +1342,7 @@ def _practice_transition_body(message: str) -> Callable[[PracticeTransitionEmail
+         tracker = f"{base}/{facts.order_id}"
+         return (
+             "Hello,<br><br>"
+-            f"Your Bali Zero Visa on Arrival application ({facts.case_type}) {message}<br><br>"
++            f"Your Bali Zero Visa on Arrival application ({_h(facts.case_type)}) {message}<br><br>"
+             "You can follow its progress at any time here:<br><br>"
+             f'<a href="{tracker}">Track my application</a><br><br>'
+             "— Bali Zero"
+diff --git a/apps/backend-rag/backend/tests/services/garuda_orders/test_outbox_handlers.py b/apps/backend-rag/backend/tests/services/garuda_orders/test_outbox_handlers.py
+index 406b8755dd..fd53bee293 100644
+--- a/apps/backend-rag/backend/tests/services/garuda_orders/test_outbox_handlers.py
++++ b/apps/backend-rag/backend/tests/services/garuda_orders/test_outbox_handlers.py
+@@ -23,6 +23,7 @@ import logging
+ import os
+ import re
+ import uuid
++from collections.abc import Callable
+ 
+ import httpx
+ import pytest
+@@ -33,10 +34,19 @@ from backend.services.garuda_orders import journal
+ from backend.services.garuda_orders.outbox_consumer import KILL_SWITCH_ENV, drain_once
+ from backend.services.garuda_orders.outbox_handlers import (
+     BrevoEmailSender,
++    CheckoutReadyEmailHandler,
+     EmailSendFailed,
++    LateRefundConfirmationEmailHandler,
++    LateRefundFacts,
+     OrderEmailFacts,
++    PaymentExpiredEmailHandler,
++    PaymentFailedEmailHandler,
+     PaymentPaidEmailHandler,
++    PracticeReceivedEmailHandler,
+     PracticeReleaseHandler,
++    PracticeTransitionEmailFacts,
++    RefundEmailHandler,
++    _practice_transition_body,
+     build_handlers,
+ )
+ from backend.tests.fixtures.prod_shaped_pool import create_prod_shaped_pool
+@@ -280,6 +290,105 @@ def test_the_body_carries_no_passport_or_name():
+     assert "SPECIMEN" not in body
+ 
+ 
++# --------------------------------------------------------------------------
++# GA-B-1: `case_type` reaches 8 separate HTML bodies (9 constructor sites
++# across 4 dataclasses feed them — no single upstream factory) and every one
++# must html-escape it. The 5 `staff_page_*` Telegram pages are plain-text /
++# `_escape_markdown`-escaped and are deliberately NOT covered here.
++# --------------------------------------------------------------------------
++
++
++def _late_refund_facts(**over) -> LateRefundFacts:
++    base = {
++        "order_id": "ord_specimen",
++        "email": RECIPIENT,
++        "case_type": "issuance",
++        "resolution": "refunded_in_full",
++    }
++    base.update(over)
++    return LateRefundFacts(**base)
++
++
++def _practice_transition_facts(**over) -> PracticeTransitionEmailFacts:
++    base = {
++        "order_id": "ord_specimen",
++        "email": RECIPIENT,
++        "case_type": "issuance",
++        "state": "Approved",
++        "customer_reason_key": None,
++        "required_action_key": None,
++        "artifact_available": False,
++    }
++    base.update(over)
++    return PracticeTransitionEmailFacts(**base)
++
++
++#: One entry per HTML body, named after the outbox `job_type` it renders for
++#: (`practice_transition_email` covers all seven PR-02..PR-11 job types —
++#: they share one `_body` factory, `_practice_transition_body`). Each value
++#: is a `case_type -> rendered body` callable so the escaping tests below can
++#: drive all 8 with the same two assertions and still name the failing body
++#: in the parametrize id.
++_HTML_BODY_RENDERERS: dict[str, Callable[[str], str]] = {
++    "payment_paid_email": lambda case_type: PaymentPaidEmailHandler._body(
++        _facts(case_type=case_type)
++    ),
++    "checkout_ready_email": lambda case_type: CheckoutReadyEmailHandler._body(
++        _facts(case_type=case_type), "https://pay.example.invalid/session"
++    ),
++    "payment_failed_email": lambda case_type: PaymentFailedEmailHandler._body(
++        _facts(case_type=case_type),
++        "Please try again with a different card or payment method.",
++    ),
++    "payment_expired_email": lambda case_type: PaymentExpiredEmailHandler._body(
++        _facts(case_type=case_type)
++    ),
++    "refund_email": lambda case_type: RefundEmailHandler._body(_facts(case_type=case_type)),
++    "late_refund_confirmation_email": lambda case_type: (
++        LateRefundConfirmationEmailHandler._body(_late_refund_facts(case_type=case_type))
++    ),
++    "practice_received_email": lambda case_type: PracticeReceivedEmailHandler._body(
++        _facts(case_type=case_type)
++    ),
++    "practice_transition_email": lambda case_type: _practice_transition_body(
++        "is now being reviewed by our team."
++    )(_practice_transition_facts(case_type=case_type)),
++}
++
++
++@pytest.mark.parametrize("job_type", sorted(_HTML_BODY_RENDERERS))
++def test_html_body_escapes_a_script_case_type(job_type):
++    """Guilt case: a `<script>` `case_type` must never reach the wire raw.
++
++    Revert `_h()` (or one of its 8 call sites) to a bare `facts.case_type` and
++    this goes red, naming the body in the parametrize id.
++    """
++
++    render = _HTML_BODY_RENDERERS[job_type]
++    body = render("<script>x</script>")
++    assert "<script>x</script>" not in body
++    assert "&lt;script&gt;x&lt;/script&gt;" in body
++
++
++@pytest.mark.parametrize("job_type", sorted(_HTML_BODY_RENDERERS))
++def test_html_body_escapes_ampersand_and_quote_case_type(job_type):
++    render = _HTML_BODY_RENDERERS[job_type]
++    body = render('visa & "extra"')
++    assert 'visa & "extra"' not in body
++    assert "visa &amp; &quot;extra&quot;" in body
++
++
++@pytest.mark.parametrize("job_type", sorted(_HTML_BODY_RENDERERS))
++def test_html_body_renders_a_normal_case_type_unchanged(job_type):
++    """Innocence case: an ordinary `case_type` is not mangled by the escape."""
++
++    render = _HTML_BODY_RENDERERS[job_type]
++    body = render("issuance")
++    assert "issuance" in body
++    assert "&amp;" not in body
++    assert "&lt;" not in body
++
++
+ # --------------------------------------------------------------------------
+ # the handler, against real order rows
+ # --------------------------------------------------------------------------
+diff --git a/evidence/2026-09/agent-air-m5-backend-rag-garuda-mail-escape-a01760fa/brief.yml b/evidence/2026-09/agent-air-m5-backend-rag-garuda-mail-escape-a01760fa/brief.yml
+new file mode 100644
+index 0000000000..7774b132d2
+--- /dev/null
++++ b/evidence/2026-09/agent-air-m5-backend-rag-garuda-mail-escape-a01760fa/brief.yml
+@@ -0,0 +1,53 @@
++task_id: garuda-mail-escape
++gear: 1
++l_level: L1
++gate_class: none
++objective: >-
++  LANE GA-B-1 (GARUDA VOA outbox mails), scoped per the 2026-09-05 refuter
++  pass, not the original scout framing: html-escape `case_type` at every one
++  of the 8 HTML customer-email bodies in
++  `apps/backend-rag/backend/services/garuda_orders/outbox_handlers.py`. The
++  refuter disk-confirmed there is no single upstream facts-construction point
++  — 9 separate constructor call sites across 4 dataclasses (`OrderEmailFacts`
++  x6, `LateRefundFacts`, `PracticeTransitionEmailFacts`, `OrderAnomalyFacts`)
++  feed the 8 HTML bodies — so the fix escapes at each render-time f-string
++  site via one new shared helper (`_h`), not once at construction. Floor is 1
++  by `--print-floor` (no hot-zone path term matches
++  `apps/backend-rag/backend/services/garuda_orders/outbox_handlers.py` or its
++  test file).
++appetite:
++  wall_clock_hours: 1
++constraints:
++  - >-
++    Escape ONLY the 8 HTML bodies (`PaymentPaidEmailHandler`,
++    `CheckoutReadyEmailHandler`, `PaymentFailedEmailHandler`,
++    `PaymentExpiredEmailHandler`, `RefundEmailHandler`,
++    `LateRefundConfirmationEmailHandler`, `PracticeReceivedEmailHandler`,
++    `_practice_transition_body`) — the 5 `staff_page_*` Telegram pages are
++    plain text / already `_escape_markdown`-escaped and are out of scope.
++  - >-
++    Do not escape a URL's `href` value (`tracker`, `checkout_url`) — those
++    need validation, not escaping, and are unchanged by this PR (per the
++    mandate's own instruction).
++  - Keep the outbox contract (job types, payload shape, dataclasses) unchanged.
++  - No PII anywhere in code, tests, or this pack.
++acceptance:
++  - >-
++    A1: for each of the 8 HTML bodies, a `case_type` of `<script>x</script>`
++    renders as `&lt;script&gt;x&lt;/script&gt;` and the raw `<script>` string
++    is absent (guilt).
++  - >-
++    A2: for each of the 8 HTML bodies, a `case_type` carrying `&`/`"` is
++    escaped to `&amp;`/`&quot;` (guilt, second mutation).
++  - >-
++    A3: for each of the 8 HTML bodies, an ordinary `case_type` (`issuance`)
++    renders unchanged, with no stray `&amp;`/`&lt;` introduced (innocence).
++  - >-
++    A4: `python3 -m pytest backend/tests/services/garuda_orders/test_outbox_handlers.py`
++    — the 24 new tests (8 bodies x 3 cases) pass; the 11 pre-existing
++    Postgres-backed tests remain environmentally red (unbootstrapped schema,
++    unrelated to this change, confirmed by table-absence).
++dissent_process: >-
++  No adversarial seat dispatched — Gear 1, single-file (+test) mechanical
++  escaping fix, ground already refuted/reshaped by an independent consul pass
++  the same day (research/operations/2026-09-05-consuls-ground-garuda-*.md).
+diff --git a/evidence/2026-09/agent-air-m5-backend-rag-garuda-mail-escape-a01760fa/pack.yml b/evidence/2026-09/agent-air-m5-backend-rag-garuda-mail-escape-a01760fa/pack.yml
+new file mode 100644
+index 0000000000..714656817c
+--- /dev/null
++++ b/evidence/2026-09/agent-air-m5-backend-rag-garuda-mail-escape-a01760fa/pack.yml
+@@ -0,0 +1,100 @@
++task_id: garuda-mail-escape
++gear: 1
++gate_class: none
++brief_ref: evidence/brief.yml
++date: 2026-09-05
++machine: M5
++lanes:
++  - lane: GA-B-1 html-escape outbox mails
++    role: build
++    seat: claude-sonnet-5 (M5 worktree agent)
++    note: >-
++      one new helper `_h()` (html.escape, quote=True) applied at each of the
++      8 HTML f-string sites; 24 new pytest cases (guilt x2 + innocence, one
++      trio per body)
++outcome: >-
++  All 8 HTML outbox-email bodies now html-escape `case_type` at render time.
++  Verified per-body (not just once) because the ground refutation found 9
++  separate constructor sites across 4 dataclasses feeding them, with no
++  single upstream point to patch. The 5 Telegram staff pages (plain text /
++  `_escape_markdown`) are untouched, matching the mandate's scope.
++diff:
++  files: 4
++  net_lines: >-
++    290 insertions, 8 deletions across the 4 changed files (code, its test
++    file, and this evidence pack) — see `git diff --numstat origin/main...HEAD`.
++  shape: >-
++    `import html`, one new `_h(value) -> str` helper, 8 call-site edits
++    (`facts.case_type` -> `_h(facts.case_type)`), plus a new test section:
++    two dataclass-facts factories (`_late_refund_facts`,
++    `_practice_transition_facts`), an `_HTML_BODY_RENDERERS` dict mapping
++    each of the 8 job types to a `case_type -> body` callable (typed
++    `dict[str, Callable[[str], str]]`, `collections.abc.Callable`), and 3
++    parametrized tests (24 cases) driving guilt (`<script>`), guilt
++    (`&`/`"`), and innocence (`issuance`) through all 8.
++pii_scan: clean
++receipts:
++  - claim: "9 constructor sites across 4 dataclasses feed case_type into the module"
++    cmd: "grep -n 'case_type=' apps/backend-rag/backend/services/garuda_orders/outbox_handlers.py"
++    result: "9 hits: lines 230,327,445,535,613,782,1196,1307,1726 (OrderEmailFacts x6, LateRefundFacts, PracticeTransitionEmailFacts, OrderAnomalyFacts)"
++    ts: "2026-09-05T00:00:00Z"
++    seat: claude-sonnet-5 (M5 worktree agent)
++    exit: 0
++  - claim: "exactly 8 of those reach an HTML body (the other 5 go through Telegram's _escape_markdown)"
++    cmd: "grep -n 'facts\\.case_type' apps/backend-rag/backend/services/garuda_orders/outbox_handlers.py (post-fix: _h(facts.case_type))"
++    result: "8 sites now read _h(facts.case_type) (lines 265,361,479,568,651,837,1229,1345); the 5 Telegram sites still read _escape_markdown(facts.case_type), unchanged"
++    ts: "2026-09-05T00:05:00Z"
++    seat: claude-sonnet-5 (M5 worktree agent)
++    exit: 0
++  - claim: "the 24 new escaping tests pass"
++    cmd: "PYTHONPATH=backend .venv/bin/python3 -m pytest backend/tests/services/garuda_orders/test_outbox_handlers.py -k html_body"
++    result: "24 passed, 26 deselected"
++    ts: "2026-09-05T00:10:00Z"
++    seat: claude-sonnet-5 (M5 worktree agent)
++    exit: 0
++  - claim: "guilt is real: reverting one call site to a bare facts.case_type turns exactly that body's 2 tests red, naming it"
++    cmd: "temporarily reverted the payment_paid_email _h() call, reran the same -k html_body selection, then restored from a pre-edit backup"
++    result: "2 failed (test_html_body_escapes_a_script_case_type[payment_paid_email], test_html_body_escapes_ampersand_and_quote_case_type[payment_paid_email]), 22 passed; after restore, 24 passed again"
++    ts: "2026-09-05T00:12:00Z"
++    seat: claude-sonnet-5 (M5 worktree agent)
++    exit: 1
++  - claim: "no regression to the module's collection or its sibling suites"
++    cmd: "PYTHONPATH=backend .venv/bin/python3 -m pytest backend/tests/services/garuda_orders/ backend/tests/services/garuda_portal/test_practice_producer_crossing.py --collect-only"
++    result: "306 tests collected, 0 collection errors"
++    ts: "2026-09-05T00:15:00Z"
++    seat: claude-sonnet-5 (M5 worktree agent)
++    exit: 0
++  - claim: "the full pre-existing suite is unaffected apart from the same environmental Postgres gap the ground report already named"
++    cmd: "PYTHONPATH=backend .venv/bin/python3 -m pytest backend/tests/services/garuda_orders/test_outbox_handlers.py"
++    result: >-
++      39 passed, 11 errors, exit 1 (all asyncpg.exceptions.UndefinedTableError:
++      relation "garuda_voa_check_results" does not exist). Environmental, not a
++      regression: rerunning the identical file on a clean origin/main checkout
++      (/Users/balizero/nuzantara/.worktrees/ops-visa-consuls-claude, no
++      html-escape changes present) hits the SAME 11 errors, same table, exit 1
++      — only "15 passed" instead of 39 because that tree lacks this PR's 24 new
++      html_body tests. The scoped `-k html_body` run below (24 passed) is the
++      load-bearing receipt for this PR's change.
++    ts: "2026-09-05T00:18:00Z"
++    seat: claude-sonnet-5 (M5 worktree agent)
++    exit: 1
++  - claim: "the same 11-error Postgres gap is present on a clean origin/main checkout, unrelated to this branch's changes"
++    cmd: "cd /Users/balizero/nuzantara/.worktrees/ops-visa-consuls-claude/apps/backend-rag && PYTHONPATH=backend .venv/bin/python3 -m pytest backend/tests/services/garuda_orders/test_outbox_handlers.py"
++    result: '15 passed, 11 errors, exit 1 (identical asyncpg.exceptions.UndefinedTableError: relation "garuda_voa_check_results" does not exist across all 11)'
++    ts: "2026-09-05T00:19:00Z"
++    seat: claude-sonnet-5 (M5 worktree agent)
++    exit: 1
++  - claim: "ruff is clean on both touched files"
++    cmd: ".venv/bin/python3 -m ruff check backend/services/garuda_orders/outbox_handlers.py backend/tests/services/garuda_orders/test_outbox_handlers.py"
++    result: "All checks passed!"
++    ts: "2026-09-05T00:20:00Z"
++    seat: claude-sonnet-5 (M5 worktree agent)
++    exit: 0
++  - claim: "the gear floor for this diff is 1 (no hot-zone path)"
++    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file cf --numstat-file ns"
++    result: "1"
++    ts: "2026-09-05T00:22:00Z"
++    seat: claude-sonnet-5 (M5 worktree agent)
++    exit: 0
++dissent: []
++appetite_exceeded: ""

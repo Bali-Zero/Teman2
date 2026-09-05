@@ -375,7 +375,12 @@ main() {
             MODEL="pending"  # finalized below, after the pro/flash ctx+role gate (R4)
             ;;
         qwen)
-            binary_name="qwen"; MODEL="qwen-default"
+            binary_name="qwen"; MODEL="${QWEN_MODEL:-qwen-default}"
+            # QWEN_MODEL (generals exam, 2026-09-06): the `qwen` CLI drives every
+            # coding-plan model that PONGed 26/26 on all three machines
+            # (qwen3.8-max, deepseek-v4-pro, glm-5.2, ...); without a passthrough
+            # the seat could only ever sit the account default. Report shows the
+            # slug actually requested.
             # unchanged: no tiers. Clear (not just ignore) a --tier the caller
             # passed anyway, so the report never claims a tier qwen never used
             # (codex-sol adversarial review, PR #5044: a stray --tier value
@@ -451,7 +456,10 @@ main() {
             ;;
         kimi) seat_argv=("$seat_binary" -p "$task_text" -m "$MODEL"); task_index=2 ;;
         agy) seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --print-timeout 8m); task_index=2 ;;
-        qwen) seat_argv=("$seat_binary" -p "$task_text"); task_index=2 ;;  # unchanged
+        qwen)
+            seat_argv=("$seat_binary" -p "$task_text"); task_index=2
+            [ -n "${QWEN_MODEL:-}" ] && seat_argv+=(--model "$QWEN_MODEL")
+            ;;
         tp1) seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --effort "$EFFORT"); task_index=2 ;;
     esac
     strip_env_args=()

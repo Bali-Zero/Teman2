@@ -1,0 +1,196 @@
+commit c9ce7a7754e3f00a12d1170116a5dc7442508dc5
+Author: Bali Zero <zero@balizero.com>
+Date:   Sat Sep 5 13:20:28 2026 +0000
+
+    fix(garuda): keep refund claims factual and prove polling cleanup (#5779)
+    
+    * fix(garuda): keep refund claims factual and prove polling cleanup
+    
+    Remove the unsupported full-refund qualifier and pin order-total/help copy.
+    Seed cleanup tests independently of Approved and assert timer removal.
+    
+    Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>
+    
+    * chore(evidence): annotate verified GARUDA source digests
+    
+    Mark the three reproducible source SHA-256 values as public integrity
+    receipts so the secret scan does not mistake them for credentials.
+    
+    Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>
+    
+    ---------
+    
+    Co-authored-by: Balizero (Air-M5) <antonellosiano@gmail.com>
+    Co-authored-by: Codex Opus 4.8 (1M context) <noreply@anthropic.com>
+
+diff --git a/apps/mouth/src/app/visa/voa/orders/OrderTracker.test.tsx b/apps/mouth/src/app/visa/voa/orders/OrderTracker.test.tsx
+index 91cd98da93..cf2318db4e 100644
+--- a/apps/mouth/src/app/visa/voa/orders/OrderTracker.test.tsx
++++ b/apps/mouth/src/app/visa/voa/orders/OrderTracker.test.tsx
+@@ -180,6 +180,25 @@ describe("OrderTracker", () => {
+     },
+   );
+ 
++  it("reports a refund without claiming a refund amount the order view does not supply", async () => {
++    fetchMock.mockResolvedValue(
++      jsonResponse(200, order({ order_state: "refunded" })),
++    );
++    render(<OrderTracker orderId="order-1" />);
++
++    await screen.findByText(/Rp/);
++    expect(screen.getAllByText("This order was refunded.")).toHaveLength(2);
++    expect(document.body.textContent).not.toMatch(/in full|full refund/i);
++    expect(screen.getByText("Order total")).toBeInTheDocument();
++    expect(screen.queryByText("Total paid")).not.toBeInTheDocument();
++    expect(
++      screen.getByText(/a consultant can start a new application with you/i),
++    ).toBeInTheDocument();
++    expect(
++      screen.getByRole("link", { name: /continue on whatsapp/i }),
++    ).toBeInTheDocument();
++  });
++
+   it("shows a WhatsApp route when the practice is Blocked", async () => {
+     fetchMock.mockResolvedValue(
+       jsonResponse(
+diff --git a/apps/mouth/src/app/visa/voa/orders/OrderTracker.tsx b/apps/mouth/src/app/visa/voa/orders/OrderTracker.tsx
+index e9834c0ba7..bc122a88cc 100644
+--- a/apps/mouth/src/app/visa/voa/orders/OrderTracker.tsx
++++ b/apps/mouth/src/app/visa/voa/orders/OrderTracker.tsx
+@@ -118,7 +118,7 @@ function OrderTrackerReady({ order }: { order: OrderView }) {
+ 
+       {order.order_state === "refunded" ? (
+         <ExceptionPanel
+-          heading="This order was refunded in full."
++          heading="This order was refunded."
+           body="If you still need a Visa on Arrival, a consultant can start a new application with you."
+         />
+       ) : null}
+diff --git a/apps/mouth/src/app/visa/voa/orders/useOrderTracking.test.ts b/apps/mouth/src/app/visa/voa/orders/useOrderTracking.test.ts
+index 198bc76db7..0575b5d998 100644
+--- a/apps/mouth/src/app/visa/voa/orders/useOrderTracking.test.ts
++++ b/apps/mouth/src/app/visa/voa/orders/useOrderTracking.test.ts
+@@ -81,11 +81,13 @@ describe("useOrderTracking", () => {
+   });
+ 
+   it("cancels a scheduled refresh on unmount", async () => {
+-    fetchMock.mockResolvedValue(jsonResponse(order("Approved")));
++    fetchMock.mockResolvedValue(jsonResponse(order("In review")));
+     const { unmount } = renderHook(() => useOrderTracking("order-1"));
+     await advance(0);
++    expect(vi.getTimerCount()).toBe(1);
+ 
+     unmount();
++    expect(vi.getTimerCount()).toBe(0);
+     await advance(15000);
+ 
+     expect(fetchMock).toHaveBeenCalledTimes(1);
+@@ -93,7 +95,7 @@ describe("useOrderTracking", () => {
+ 
+   it("aborts an in-flight refresh on unmount", async () => {
+     fetchMock
+-      .mockResolvedValueOnce(jsonResponse(order("Approved")))
++      .mockResolvedValueOnce(jsonResponse(order("In review")))
+       .mockImplementationOnce(() => new Promise<Response>(() => {}));
+     const { unmount } = renderHook(() => useOrderTracking("order-1"));
+     await advance(0);
+diff --git a/evidence/2026-09/agent-air-m5-mouth-g01b-refund-cleanup/brief.yml b/evidence/2026-09/agent-air-m5-mouth-g01b-refund-cleanup/brief.yml
+new file mode 100644
+index 0000000000..1c13ed7eb9
+--- /dev/null
++++ b/evidence/2026-09/agent-air-m5-mouth-g01b-refund-cleanup/brief.yml
+@@ -0,0 +1,22 @@
++task_id: g01b-refund-cleanup
++gear: 1
++objective: Report only the refund status exposed by OrderView and prove polling resource cleanup.
++scope:
++  - apps/mouth/src/app/visa/voa/orders/OrderTracker.tsx
++  - apps/mouth/src/app/visa/voa/orders/OrderTracker.test.tsx
++  - apps/mouth/src/app/visa/voa/orders/useOrderTracking.test.ts
++constraints:
++  - No price, backend, contract, runtime hook, credential or production changes.
++  - Fable owns independent Anthropic review and shipping; this branch remains a draft.
++acceptance:
++  - text:
++      WHEN a refunded order is rendered the tracker SHALL report refunded status without claiming a
++      full refund.
++    probe:
++      "OrderTracker.test.tsx: reports a refund without claiming a refund amount the order view does
++      not supply"
++  - text: WHEN a polling tracker unmounts it SHALL remove its pending timer and abort an in-flight refresh.
++    probe: "useOrderTracking.test.ts: cancels a scheduled refresh / aborts an in-flight refresh"
++consumer_map:
++  - GARUDA customer tracker /visa/voa/orders/[orderId].
++  - Existing frontend Vitest job consumes both modified regression suites.
+diff --git a/evidence/2026-09/agent-air-m5-mouth-g01b-refund-cleanup/pack.yml b/evidence/2026-09/agent-air-m5-mouth-g01b-refund-cleanup/pack.yml
+new file mode 100644
+index 0000000000..7318d927af
+--- /dev/null
++++ b/evidence/2026-09/agent-air-m5-mouth-g01b-refund-cleanup/pack.yml
+@@ -0,0 +1,66 @@
++gear: 1
++brief_ref: evidence/brief.yml
++lanes:
++  - lane: g01b
++    role: build
++    seat: OpenAI GPT-6 (exact variant not exposed)
++  - lane: g01b-review
++    role: review
++    seat: kimi-code/k3
++pii_scan: clean
++seat_override:
++  "R8 applicability only: visa-route UI displays an existing order status and removes an
++  unsupported amount claim. It authors no immigration rule, eligibility condition or price; test order
++  amounts are synthetic fixtures."
++receipts:
++  - claim: Focused tracker and polling regressions pass after restoring both guilt mutations.
++    cmd: cd apps/mouth && npx vitest run src/app/visa/voa/orders/OrderTracker.test.tsx src/app/visa/voa/orders/useOrderTracking.test.ts
++    result: 25 tests passed in 2 files.
++    exit: 0
++    ts: "2026-09-05T11:25:24Z"
++    seat: Codex G-01b builder
++  - claim: Reintroducing the full-refund heading makes the refund regression fail.
++    cmd:
++      Temporarily restore heading="This order was refunded in full."; cd apps/mouth && npx vitest run
++      src/app/visa/voa/orders/OrderTracker.test.tsx -t "reports a refund"; restore in finally.
++    result: 1 failed, 14 skipped; expected two truthful status strings but found one.
++    exit: 1
++    ts: "2026-09-05T11:25:22Z"
++    seat: Codex G-01b builder
++  - claim: Removing the unmount clearTimeout is detected before a later fetch can mask the leak.
++    cmd:
++      Temporarily remove cleanup clearTimeout from useOrderTracking.ts; cd apps/mouth && npx vitest run
++      src/app/visa/voa/orders/useOrderTracking.test.ts -t "cancels a scheduled refresh"; restore in finally.
++    result: 1 failed, 9 skipped; expected 0 pending timers but observed 1 immediately after unmount.
++    exit: 1
++    ts: "2026-09-05T11:25:23Z"
++    seat: Codex G-01b builder
++  - claim: Formatting and the full frontend TypeScript project pass.
++    cmd:
++      cd apps/mouth && npx prettier --check src/app/visa/voa/orders/OrderTracker.tsx src/app/visa/voa/orders/OrderTracker.test.tsx
++      src/app/visa/voa/orders/useOrderTracking.test.ts && npx tsc --noEmit
++    result: Prettier passed; TypeScript exited 0.
++    exit: 0
++    ts: "2026-09-05T11:27:09.644776+00:00"
++    seat: Codex G-01b builder
++  - claim: Independent Kimi inspected the supplied diff, actual files and contract; verdict PASS.
++    cmd: kimi -m kimi-code/k3 -p <read-only review prompt with final diff and hook context>
++    result:
++      "PASS; non-blocking notes: exact count pins current subtitle/heading duplication; negative regex
++      covers the scoped full-refund phrases. Prompt SHA-256 197e06f04f064941acccb9674ac184fceb574527a05f37b75104f462c1f27197" # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
++    exit: 0
++    ts: "2026-09-05T11:29:19.776336+00:00"
++    seat: kimi-code/k3
++dissent:
++  - seat: kimi-code/k3
++    objection:
++      Refund copy assertion locks the existing two display sites; future legitimate subtitle copy
++      changes need a test update. Accepted as scoped, non-blocking.
++    status: CONFIRMED
++source_sha256:
++  apps/mouth/src/app/visa/voa/orders/OrderTracker.tsx: 9328cd3de61b76a927ffd25184b65319b91c743319a89fde52f59b802b9c874b # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
++  apps/mouth/src/app/visa/voa/orders/OrderTracker.test.tsx: 544218b458dd1c26030b4efa0fb67772173f99b332b7d49818201b9fb6bb09f6 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
++  apps/mouth/src/app/visa/voa/orders/useOrderTracking.test.ts: eba611c993176ef563238cad236b7cdaeaf28fe65555a05eab015f19649df99e # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
++residual_risks:
++  - Synthetic component and hook tests do not prove production payment reconciliation.
++  - Required CI, independent Anthropic gate and production observation remain pending.

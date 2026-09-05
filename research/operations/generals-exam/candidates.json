@@ -1,0 +1,93 @@
+{
+  "_doc": "Generals exam roster. `door` selects the dispatcher in scripts/generals_exam.py; `group` serializes seats that share a quota wallet (never two in flight from the same group). Anthropic seats pin CLAUDE_CONFIG_DIR to a non-gate account (A2/A3 per FLEET_TOPOLOGY.json) — never AZ. Effort = the maximum the seat's tier allows, recorded in every run's meta.json.",
+  "candidates": {
+    "kimi-k3": {
+      "family": "moonshot",
+      "door": "seat_build",
+      "seat": "kimi",
+      "tier": "k3",
+      "effort": "max",
+      "group": "moonshot-k1"
+    },
+    "qwen3.8-max": {
+      "family": "alibaba",
+      "door": "seat_build",
+      "seat": "qwen",
+      "qwen_model": "qwen3.8-max",
+      "effort": "high",
+      "group": "tp1"
+    },
+    "deepseek-v4-pro": {
+      "family": "deepseek",
+      "door": "seat_build",
+      "seat": "qwen",
+      "qwen_model": "deepseek-v4-pro",
+      "effort": "high",
+      "group": "tp1",
+      "status": "PROBATION — this exam is the promotion trial"
+    },
+    "glm-5.2": {
+      "family": "zhipu",
+      "door": "seat_build",
+      "seat": "qwen",
+      "qwen_model": "glm-5.2",
+      "effort": "high",
+      "group": "tp1"
+    },
+    "gemini-3.1-pro": {
+      "family": "google",
+      "door": "seat_build",
+      "seat": "agy",
+      "tier": "pro",
+      "effort": "high",
+      "role": "synthesis",
+      "group": "google-g1"
+    },
+    "gemini-flash": {
+      "family": "google",
+      "door": "seat_build",
+      "seat": "agy",
+      "tier": "flash",
+      "effort": "high",
+      "group": "google-g1"
+    },
+    "opus-5-xhigh": {
+      "family": "anthropic",
+      "door": "claude",
+      "model": "claude-opus-5",
+      "effort": "xhigh",
+      "config_dir": "~/.claude-kaiser",
+      "group": "anthropic-a2"
+    },
+    "sonnet-5-xhigh": {
+      "family": "anthropic",
+      "door": "claude",
+      "model": "claude-sonnet-5",
+      "effort": "xhigh",
+      "config_dir": "~/.claude-acct3",
+      "group": "anthropic-a3"
+    },
+    "codex-sol": {
+      "family": "openai",
+      "door": "seat_build",
+      "seat": "codex",
+      "tier": "sol",
+      "effort": "max",
+      "gear": "3",
+      "codex_home": "~/.codex-o2",
+      "group": "openai-o2"
+    }
+  },
+  "stations": {
+    "1": "01-product.md",
+    "2": "02-backend.md",
+    "3": "03-refute.md",
+    "4": "04-ops.md",
+    "5": "05-regulatory.md",
+    "6": "06-archaeology.md",
+    "7": "07-command.md",
+    "8": "08-honesty.md"
+  },
+  "timeout_s": 2700,
+  "max_parallel_per_host": 3
+}
