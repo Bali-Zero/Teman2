@@ -94,6 +94,14 @@ Pro; all campaign fixtures and shared artifacts are synthetic or non-PII.
 | V-03 | Visa Oracle | Consultant request persistence | Existing PR #5037; do not duplicate | Inherit the existing lane and its gate rather than recreate tables |
 | V-04 | Visa Oracle | Consultant available throughout the interview | Full UI tested and pushed at ff60b29a09 on exact #5762 dependency; PR waits for parent merge/rebase | Generic contact contains no invented verdict or interview answers; context-specific consent; visible control on every interview phase |
 | B-04 | Second Home editorial surface | Reject unknown article categories before metadata lookup | Draft PR #5765 fixes index contradiction; single-tag criterion remains unmet | Unknown category cannot inherit an indexable canonical article's metadata; canonical, alias and noIndex controls preserved; literal tag-count proof is still open |
+| B-03 | GARUDA staff contract | Derive staff read models from the frozen OpenAPI and enforce generated freshness | Draft PR #5769; local tests and Pro TypeScript passed; Sol/Kimi reviews complete; CI running | Required-only detail/list responses compile; the existing frontend CI leg rejects stale or absent generated types, including contract-only changes |
+
+The acknowledged Fable engine packages remain visible in the ledger as A-01
+(Visa Oracle engine/signed packs), A-02 (GARUDA backend/flow) and A-03 (Second Home
+engine/lifecycle/claim guard). Their board contains proposed defect leads, not
+completed diagnoses. The live session registry and unresolved Workflow call show
+that execution has not begun. On resume, Fable must ground those leads before
+claiming a defect or a completed fix; Codex refutes the resulting actual diffs.
 
 ## Completion evidence by product
 
@@ -228,3 +236,67 @@ the acknowledged split, explicit task-level scope/base/checks and durable agreem
 now replace the initial provisional entries. No runtime/production behavior was
 verified by that review. Its original artifact is
 `~/.gemini/antigravity-cli/brain/3c365124-4006-418c-89bb-efa0682a0d2b/workflow_review_plan.md`.
+
+## B-03 staff contract conformance
+
+PR #5769 at `0060374b4190900fca97574f5fb9d9865b8d6f5a` connects the staff
+read models to the frozen product OpenAPI and runs its generator freshness check
+in the existing required frontend mouth job. The source contract, backend, runtime
+client and lockfile are unchanged. The compiler witness rejects valid minimum
+responses under the original definitions and accepts them after the change. All
+15 staff tests and the full mouth TypeScript check pass; three negative freshness
+controls reject stale generation, contract drift and a missing artifact.
+
+Independent Sol and Kimi subscription reviews completed on the same immutable
+source snapshot; both returned no actionable defect within the supplied scope.
+Their requested routing, generator semantics and state-union proofs are attached.
+Clean-CI binary availability and Node 24 byte identity await the actual new step.
+Optional Gemini advisory timed out with no output or verdict. The exact two-seat
+journal and answers are committed with the Gear-3 pack. No final Anthropic verdict
+or production proof is inferred from these static reviews.
+
+The first B-03 harness run rejected the per-PR brief reference after CI staged
+the files under canonical names. A one-line evidence-only follow-up now declares
+`brief_ref: evidence/brief.yml`. The exact CI-shaped local staging reproduces the
+original exit 1 and returns exit 0 after correction; the six reviewed source files
+are unchanged. Its new head has a separate CI run.
+
+At 08:05:31 UTC the five earlier draft revisions remained clean and unarmed with
+no failed or pending reported checks. Their independent reviews are still absent.
+Existing engine dependencies remain distinct: #5526 is blocked by the harness;
+#5037 is blocked by backend/harness failures and a cancelled frontend job. #5037
+was already armed on September 1 by an earlier owner; this campaign changed no
+auto-merge state. V-04 remains clean at its matching local/remote head, with no PR.
+
+## Resume after the interactive Workflow prompt
+
+1. Read the newest Codex inbox and ledger, then verify current heads. The board's
+   old in-progress labels and future-labelled timestamps do not override receipts.
+2. Run the independent Anthropic gate on B-03 head `0060374b4190900fca97574f5fb9d9865b8d6f5a`.
+   The initial brief-staging error is fixed; the new required harness is pending
+   because that head has no real verdict. Rerun that harness only after a verdict
+   exists, using the documented existing PR-run path.
+3. Review G-01, V-01, S-01 and S-02 on their ledger heads; review B-04 with its
+   explicitly unmet one-tag criterion. Follow the authorized Claude ship path and
+   prove deployed behavior rather than equating green CI with completion.
+4. After V-01 lands, refresh V-04's base, rerun affected checks and open its own PR.
+5. Ground A-01/A-02/A-03 and existing #5526/#5037 failures; send actual engine diffs
+   to Codex for independent refutation. Preserve existing owner-only business gates.
+
+Consult the live ledger before restarting workers or tests. Retained source
+snapshots and raw logs are evidence, not running services.
+
+## Remaining lead dispositions
+
+B-01's unused `sensitive` boolean does not establish a current disclosure defect.
+The specified WhyWeAsk affordance is already rendered from each question's
+`whyWeAsk` metadata. Source and contract inspection refuted the alleged missing
+behavior; no new privacy feature or cleanup PR is inferred from an unused field.
+
+B-02's staff PR-02 and customer polling interfaces already exist. The source audit
+also establishes that a persisted synthetic-practice proof does not depend on
+Xendit or #5526. Codex is reusing existing fixture tools to verify that integration
+in a private Pro test runtime, with isolated synthetic data and distinct sessions.
+Product source, shared databases, public flags and Fable's implementation claims
+remain outside that QA fixture's write scope. The goal remains active while this
+independent verification can make progress.

@@ -43,6 +43,35 @@
         "incomplete": [],
         "nonpassing": [],
         "observed_at": "2026-09-05T07:41:32.882903+00:00"
+      },
+      "latest_handoff_observation": {
+        "observed_at": "2026-09-05T08:05:31.741Z",
+        "number": 5761,
+        "title": "fix(garuda): keep customer order status truthful and current",
+        "head": "72770a67fb85e78cd08a24a1356a954ea388fe93",
+        "state": "OPEN",
+        "draft": true,
+        "mergeState": "CLEAN",
+        "mergeable": "MERGEABLE",
+        "counts": {
+          "SKIPPED": 14,
+          "SUCCESS": 58,
+          "NEUTRAL": 1
+        },
+        "requiredCounts": {
+          "SUCCESS": 12,
+          "SKIPPED": 1
+        },
+        "requiredNonSuccess": [
+          {
+            "name": "Backend Tests (Python)",
+            "state": "SKIPPED",
+            "url": "https://github.com/Bali-Zero/Teman2/actions/runs/33950167726/job/101263449253"
+          }
+        ],
+        "reviewDecision": "",
+        "reviewStates": [],
+        "autoMerge": null
       }
     },
     {
@@ -82,6 +111,35 @@
         "incomplete": [],
         "nonpassing": [],
         "observed_at": "2026-09-05T07:41:32.882903+00:00"
+      },
+      "latest_handoff_observation": {
+        "observed_at": "2026-09-05T08:05:31.741Z",
+        "number": 5762,
+        "title": "fix(visa-oracle): reopen the current interview question for missing facts",
+        "head": "511bf901c64e10a6eb57bcff6a0c7361f8736a44",
+        "state": "OPEN",
+        "draft": true,
+        "mergeState": "CLEAN",
+        "mergeable": "MERGEABLE",
+        "counts": {
+          "SKIPPED": 14,
+          "SUCCESS": 59,
+          "NEUTRAL": 1
+        },
+        "requiredCounts": {
+          "SUCCESS": 12,
+          "SKIPPED": 1
+        },
+        "requiredNonSuccess": [
+          {
+            "name": "Backend Tests (Python)",
+            "state": "SKIPPED",
+            "url": "https://github.com/Bali-Zero/Teman2/actions/runs/33950235462/job/101263631387"
+          }
+        ],
+        "reviewDecision": "",
+        "reviewStates": [],
+        "autoMerge": null
       }
     },
     {
@@ -151,7 +209,36 @@
           "url": "https://github.com/Bali-Zero/Teman2/actions/runs/33952834007/job/101270848998",
           "completedAt": "2026-09-05T07:36:50Z"
         }
-      ]
+      ],
+      "latest_handoff_observation": {
+        "observed_at": "2026-09-05T08:05:31.741Z",
+        "number": 5763,
+        "title": "fix(secondhome): make plan save and copy failures recoverable",
+        "head": "99e5fd7312484992b5805ef0df17ecdab962c718",
+        "state": "OPEN",
+        "draft": true,
+        "mergeState": "CLEAN",
+        "mergeable": "MERGEABLE",
+        "counts": {
+          "SKIPPED": 14,
+          "SUCCESS": 58,
+          "NEUTRAL": 1
+        },
+        "requiredCounts": {
+          "SUCCESS": 12,
+          "SKIPPED": 1
+        },
+        "requiredNonSuccess": [
+          {
+            "name": "Backend Tests (Python)",
+            "state": "SKIPPED",
+            "url": "https://github.com/Bali-Zero/Teman2/actions/runs/33952834007/job/101270850123"
+          }
+        ],
+        "reviewDecision": "",
+        "reviewStates": [],
+        "autoMerge": null
+      }
     },
     {
       "id": "S-02",
@@ -191,6 +278,28 @@
         "incomplete": [],
         "nonpassing": [],
         "observed_at": "2026-09-05T07:41:32.882903+00:00"
+      },
+      "latest_handoff_observation": {
+        "observed_at": "2026-09-05T08:05:31.741Z",
+        "number": 5764,
+        "title": "fix(e33): validate practice ownership before case creation",
+        "head": "a7bc733f08de11a017fc345786db2f551755a6b6",
+        "state": "OPEN",
+        "draft": true,
+        "mergeState": "CLEAN",
+        "mergeable": "MERGEABLE",
+        "counts": {
+          "SKIPPED": 10,
+          "SUCCESS": 67,
+          "NEUTRAL": 1
+        },
+        "requiredCounts": {
+          "SUCCESS": 13
+        },
+        "requiredNonSuccess": [],
+        "reviewDecision": "",
+        "reviewStates": [],
+        "autoMerge": null
       }
     },
     {
@@ -203,13 +312,97 @@
       "id": "G-02",
       "owner": "existing_pr_5526",
       "status": "external_dependency",
-      "proofs": []
+      "proofs": [],
+      "pr": "https://github.com/Bali-Zero/Teman2/pull/5526",
+      "latest_handoff_observation": {
+        "observed_at": "2026-09-05T08:05:31.741Z",
+        "number": 5526,
+        "title": "feat(garuda-voa): give the document-upload lane the persistence it was written against",
+        "head": "6ea6eb9adec597646300fe8d10f8be870dcfb9bd",
+        "state": "OPEN",
+        "draft": false,
+        "mergeState": "BLOCKED",
+        "mergeable": "MERGEABLE",
+        "counts": {
+          "FAILURE": 1,
+          "SUCCESS": 73,
+          "SKIPPED": 4,
+          "NEUTRAL": 2
+        },
+        "requiredCounts": {
+          "SUCCESS": 11,
+          "FAILURE": 1
+        },
+        "requiredNonSuccess": [
+          {
+            "name": "Harness floor recompute",
+            "state": "FAILURE",
+            "url": "https://github.com/Bali-Zero/Teman2/actions/runs/33569035166/job/100058703256"
+          }
+        ],
+        "reviewDecision": "",
+        "reviewStates": [
+          {
+            "state": "COMMENTED",
+            "submittedAt": "2026-09-01T21:13:05Z",
+            "commit": "6155867019f9f2a006ca4508791e944aa7baa999",
+            "author": "github-advanced-security"
+          }
+        ],
+        "autoMerge": null
+      }
     },
     {
       "id": "V-03",
       "owner": "existing_pr_5037",
       "status": "external_dependency",
-      "proofs": []
+      "proofs": [],
+      "pr": "https://github.com/Bali-Zero/Teman2/pull/5037",
+      "latest_handoff_observation": {
+        "observed_at": "2026-09-05T08:05:31.741Z",
+        "number": 5037,
+        "title": "feat(visa-oracle): consultant-request tables + retention machinery (migrations 293/294/295)",
+        "head": "7387eb4ef2cb4223b616c5bf2cb93e60db3ddcb6",
+        "state": "OPEN",
+        "draft": false,
+        "mergeState": "BLOCKED",
+        "mergeable": "MERGEABLE",
+        "counts": {
+          "FAILURE": 4,
+          "SUCCESS": 63,
+          "SKIPPED": 3,
+          "CANCELLED": 1,
+          "NEUTRAL": 2
+        },
+        "requiredCounts": {
+          "FAILURE": 2,
+          "SUCCESS": 9,
+          "CANCELLED": 1
+        },
+        "requiredNonSuccess": [
+          {
+            "name": "Backend Tests (Python)",
+            "state": "FAILURE",
+            "url": "https://github.com/Bali-Zero/Teman2/actions/runs/33823887349/job/100873773686"
+          },
+          {
+            "name": "Frontend Tests (Next.js) (mouth, true)",
+            "state": "CANCELLED",
+            "url": "https://github.com/Bali-Zero/Teman2/actions/runs/33823887349/job/100872524519"
+          },
+          {
+            "name": "Harness floor recompute",
+            "state": "FAILURE",
+            "url": "https://github.com/Bali-Zero/Teman2/actions/runs/33823887290/job/100872276888"
+          }
+        ],
+        "reviewDecision": "",
+        "reviewStates": [],
+        "autoMerge": {
+          "enabledAt": "2026-09-01T01:06:21Z",
+          "method": "MERGE"
+        }
+      }
     },
     {
       "id": "V-04",
@@ -247,7 +440,18 @@
       "head_sha": "ff60b29a09cbbf4dbb21eb22b263b8bee6065d40",
       "branch": "agent/air-m5/mouth/oracle-consultation-context",
       "pr": null,
-      "evidence": "evidence/2026-09/agent-air-m5-mouth-oracle-consultation-context-2e13111f/pack.yml"
+      "evidence": "evidence/2026-09/agent-air-m5-mouth-oracle-consultation-context-2e13111f/pack.yml",
+      "latest_handoff_observation": {
+        "observedAt": "2026-09-05T08:05:31.722Z",
+        "worktree": "/Users/balizero/nuzantara/.worktrees/mouth-oracle-consultation-context",
+        "branch": "agent/air-m5/mouth/oracle-consultation-context",
+        "expectedHead": "ff60b29a09cbbf4dbb21eb22b263b8bee6065d40",
+        "localHead": "ff60b29a09cbbf4dbb21eb22b263b8bee6065d40",
+        "remoteHead": "ff60b29a09cbbf4dbb21eb22b263b8bee6065d40",
+        "clean": true,
+        "porcelain": "",
+        "pullRequests": []
+      }
     },
     {
       "id": "B-04",
@@ -287,13 +491,172 @@
         "incomplete": [],
         "nonpassing": [],
         "observed_at": "2026-09-05T07:41:32.882903+00:00"
+      },
+      "latest_handoff_observation": {
+        "observed_at": "2026-09-05T08:05:31.741Z",
+        "number": 5765,
+        "title": "fix(blog): reject unknown article categories in metadata",
+        "head": "32c9734f8ac0323ca782e50d39d542fcde221895",
+        "state": "OPEN",
+        "draft": true,
+        "mergeState": "CLEAN",
+        "mergeable": "MERGEABLE",
+        "counts": {
+          "SKIPPED": 14,
+          "SUCCESS": 59,
+          "NEUTRAL": 1
+        },
+        "requiredCounts": {
+          "SUCCESS": 12,
+          "SKIPPED": 1
+        },
+        "requiredNonSuccess": [
+          {
+            "name": "Backend Tests (Python)",
+            "state": "SKIPPED",
+            "url": "https://github.com/Bali-Zero/Teman2/actions/runs/33950671964/job/101264922012"
+          }
+        ],
+        "reviewDecision": "",
+        "reviewStates": [],
+        "autoMerge": null
       }
+    },
+    {
+      "id": "B-03",
+      "owner": "codex-astra",
+      "status": "draft_pr_ci_running_review_requested",
+      "worktree": "/Users/balizero/nuzantara/.worktrees/mouth-garuda-contract-types",
+      "base_sha": "af949e6eb5d1767454dd788cd7a8e5be4b89967d",
+      "files": [
+        "apps/mouth/src/lib/api/garuda-voa.generated.d.ts",
+        "apps/mouth/src/app/(workspace)/garuda-voa/types.ts",
+        "apps/mouth/src/app/(workspace)/garuda-voa/[practiceId]/page.test.tsx",
+        ".github/workflows/tests.yml",
+        ".prettierignore",
+        "products/garuda-voa/contracts/README.md"
+      ],
+      "ownership_acknowledged": true,
+      "acceptance_checks": [
+        "Canonical minimum StaffPracticeView detail and list response compile; missing optional note/resume/cursor fields are accepted; minimum detail renders safely",
+        "Product generated types are consumed by StaffPracticeView and the existing required frontend CI step rejects stale generation",
+        "Staff consumer regression suites and full TypeScript pass; no backend/spec/lockfile mutation"
+      ],
+      "reviewer": "Independent Anthropic gate via Fable consul; completed Sol and Kimi advisory reviews",
+      "proofs": [
+        "Preserved original minimum-response witness fails TS2739/TS2741; fixed witness passes. The complete product artifact has 2866 generated lines.",
+        "Parent rerun: 15 staff tests in four files passed in 1.62s at 15:49:34 WITA.",
+        "Exact generator check accepts current pair and rejects stale artifact, changed contract without regeneration, and missing artifact. All three negative controls exit1; source unchanged.",
+        "Full mouth TypeScript on Pro passes in8.238s; matching generator7.13.0 check passes in623ms on Node26.5.0. Base af949 and three source hashes match local.",
+        "Original canonical-response type witness fails TS2739/TS2741; identical witness with generated-derived types compiles. Preserved replay and Pro evidence live under output/reviews/b03-contract/.",
+        "Actionlint, Prettier, full normal commit/push hooks and evidence lint pass. Mechanical floor Gear3; no downgrade. Exact local, remote and PR revision recorded; source worktree clean.",
+        "Sol and Kimi completed independent static reviews on the same immutable six-file snapshot; no actionable defect within supplied scope. Two-seat journal and actual answers committed in evidence; final Anthropic gate remains pending.",
+        "Optional Gemini advisory timed out after329.57s with exit1 and zero stdout; no verdict and no TP1 fallback call.",
+        "Current required frontend CI must prove root executable availability after clean npm install and artifact byte identity under Node24; previous local proofs are not substituted for that step.",
+        "Initial CI rejected per-PR brief_ref in canonical staging. One evidence-only correction uses evidence/brief.yml; exact staged local probe reproduces prior exit1 and corrected exit0, zero violations. Six reviewed implementation sources unchanged; normal hooks passed. New CI head0060374 has its own run."
+      ],
+      "live_proof": null,
+      "branch": "agent/air-m5/mouth/garuda-contract-types",
+      "pr": "https://github.com/Bali-Zero/Teman2/pull/5769",
+      "evidence": "evidence/2026-09/agent-air-m5-mouth-garuda-contract-types-b03/pack.yml",
+      "head_sha": "0060374b4190900fca97574f5fb9d9865b8d6f5a",
+      "review_requested_at": "2026-09-05T08:04:39.599291+00:00",
+      "superseded_heads": [
+        "3cd93d91bd43e99604170f15b15ae64d6a1d8d2e"
+      ]
+    },
+    {
+      "id": "A-01",
+      "owner": "fable-consul",
+      "status": "claimed_not_running_permission_prompt",
+      "scope": "Visa Oracle engine and signed-pack diagnosis",
+      "declared_path_scope": [
+        "apps/backend-rag/backend/services/visa_engine/",
+        "apps/backend-rag/backend/scripts/visa_engine/",
+        "contracts/packs/"
+      ],
+      "scope_source": "Acknowledged agreement plus Fable BOARD.md. Relative basenames/globs are declared leads, not newly verified implementation files.",
+      "acceptance_checks": [
+        "Read actual highest signed candidate and active sequence, reproduce any source-versus-signed drift, then prepare a separately gated lawful repair. Activation remains an owner gate."
+      ],
+      "reviewer": "Codex cross-family refutation after an actual Fable diff; mandatory final gate per existing rules",
+      "proofs": [],
+      "live_proof": null,
+      "observation": "Session registry waiting/permission prompt; Workflow tool requested2026-09-05T06:31:50.443Z has no tool_result as of current transcript observation. Board claimed execution is not actual execution proof."
+    },
+    {
+      "id": "A-02",
+      "owner": "fable-consul",
+      "status": "claimed_not_running_permission_prompt",
+      "scope": "GARUDA backend and flow integration",
+      "declared_path_scope": [
+        "apps/backend-rag/backend/services/garuda_portal/",
+        "apps/backend-rag/backend/services/garuda_flow/",
+        "apps/backend-rag/backend/app/routers/garuda_*"
+      ],
+      "scope_source": "Acknowledged agreement plus Fable BOARD.md. Relative basenames/globs are declared leads, not newly verified implementation files.",
+      "acceptance_checks": [
+        "Reproduce the declared backend integration leads before assigning fixes; coordinate the existing DDL/document persistence dependency without duplicate work."
+      ],
+      "reviewer": "Codex cross-family refutation after an actual Fable diff; mandatory final gate per existing rules",
+      "proofs": [],
+      "live_proof": null,
+      "observation": "Session registry waiting/permission prompt; Workflow tool requested2026-09-05T06:31:50.443Z has no tool_result as of current transcript observation. Board claimed execution is not actual execution proof."
+    },
+    {
+      "id": "A-03",
+      "owner": "fable-consul",
+      "status": "claimed_not_running_permission_prompt",
+      "scope": "Second Home engine, lifecycle and claim guard",
+      "declared_path_scope": [
+        "e33_claim_guard.py",
+        "renewal_rules.py",
+        "e33_lifecycle.py"
+      ],
+      "scope_source": "Acknowledged agreement plus Fable BOARD.md. Relative basenames/globs are declared leads, not newly verified implementation files.",
+      "acceptance_checks": [
+        "Ground the claimed multilingual false-positive/false-negative and lifecycle gaps on actual source and synthetic cases before implementation."
+      ],
+      "reviewer": "Codex cross-family refutation after an actual Fable diff; mandatory final gate per existing rules",
+      "proofs": [],
+      "live_proof": null,
+      "observation": "Session registry waiting/permission prompt; Workflow tool requested2026-09-05T06:31:50.443Z has no tool_result as of current transcript observation. Board claimed execution is not actual execution proof."
+    },
+    {
+      "id": "B-01",
+      "owner": "codex-astra",
+      "status": "refuted_no_current_disclosure_defect",
+      "base_sha": "af949e6eb5d1767454dd788cd7a8e5be4b89967d",
+      "proofs": [
+        "Existing WhyWeAsk disclosure contract is fulfilled by question.whyWeAsk in QuestionScreen, independent of the unused sensitive boolean. Read-only source/AST disposition: output/reviews/remaining-leads/b01.md; parent reread renderer and exact research/visa spec. No new field-level privacy behavior was specified."
+      ],
+      "live_proof": null
+    },
+    {
+      "id": "B-02",
+      "owner": "codex-astra",
+      "status": "isolated_integrated_qa_discovery",
+      "base_sha": "af949e6eb5d1767454dd788cd7a8e5be4b89967d",
+      "worktree": "/Users/balizero/nuzantara/.worktrees/ops-visa-consuls",
+      "files": [
+        "output/playwright/b02-pr02-tracker/"
+      ],
+      "scope": "Private synthetic staff PR-02 to existing customer polling UI proof; source read-only; Pro-only owned isolated snapshot/database/server/browser. Reuse test helpers; never shared or production rows.",
+      "acceptance_checks": [
+        "Persisted Received practice transitions through real authorized staff PR-02 and appears In review on separately authenticated customer GET and already-open tracker without manual reload",
+        "Exact replay does not duplicate transition/outbox rows; unrelated customer cannot read it; source/runtime provenance and cleanup retained"
+      ],
+      "proofs": [
+        "Source path exists on af949; backend In_review maps to wire In review; no new frontend defect established. #5112 already removes Xendit coupling from tracker GET. #5526 affects upstream real intake, not this isolated persisted-practice proof. Source disposition: output/reviews/remaining-leads/b02.md."
+      ],
+      "reviewer": "Coordinator independently inspects actual receipts; final deployed integration remains with Fable",
+      "live_proof": null
     }
   ],
   "agreement": "research/operations/2026-09-05-visa-consuls-agreement.md",
-  "updated_at": "2026-09-05T07:41:32.882903+00:00",
+  "updated_at": "2026-09-05T08:18:35.798958+00:00",
   "coordination_blocker": {
-    "observed_at": "2026-09-05T07:41:32.882903+00:00",
+    "observed_at": "2026-09-05T08:04:39.599291+00:00",
     "session": "7561e9d7-d544-48e5-a211-b3534020394d",
     "status": "waiting",
     "waiting_for": "permission prompt",
@@ -315,12 +678,12 @@
     "scope": "Owned browser and server processes closed; source snapshots and evidence retained."
   },
   "loop_audit": {
-    "goal_turn": 2,
+    "goal_turn": 3,
     "previous_turn_classification": "progress",
-    "current_turn_progress": "Latest S01 CI completed; exact revision, three executed test jobs and all five draft PR states reverified.",
-    "same_coordination_blocker_consecutive_turns": 2,
-    "last_observed_at": "2026-09-05T07:41:32.882903+00:00",
-    "next_action": "Resume Fable ownership and independent gates when its Workflow prompt is resolved. Do not duplicate its engine claims or count mailbox delivery as execution.",
+    "current_turn_progress": "B03 source and two-seat reviews complete; normal CI generator, full mouth4710 tests, TypeScript, backend and E2E pass, final verdict absent. B01 refuted. B02 isolated integrated QA can progress independently; discovery underway.",
+    "same_coordination_blocker_consecutive_turns": 3,
+    "last_observed_at": "2026-09-05T08:04:39.599291+00:00",
+    "next_action": "Finish B03 remaining CI, execute safe isolated B02 staff/customer integration proof, then reassess true remaining blocker. Goal stays active while meaningful QA progresses.",
     "goal_status": "active"
   }
 }
