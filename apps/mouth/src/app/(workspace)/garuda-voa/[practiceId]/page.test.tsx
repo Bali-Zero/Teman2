@@ -70,6 +70,16 @@ const BLOCKED_PRACTICE: StaffPracticeView = {
   active_block_id: "block_abc123",
 };
 
+// Only the six fields required by the frozen StaffPracticeView contract.
+const MINIMUM_PRACTICE: StaffPracticeView = {
+  practice_id: "practice_1",
+  order_id: "order_1",
+  state: "Blocked",
+  assigned_to: null,
+  updated_at: "2026-08-01T10:00:00Z",
+  artifact_available: false,
+};
+
 describe("GarudaVoaStaffDetailPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -91,6 +101,23 @@ describe("GarudaVoaStaffDetailPage", () => {
     expect(screen.queryByTestId("transition-PR-04")).toBeNull();
     expect(screen.queryByTestId("transition-PR-06")).toBeNull();
     expect(screen.queryByTestId("transition-PR-11")).toBeNull();
+  });
+
+  it("renders a contract-minimum response without optional notes or a resume target", async () => {
+    mocks.isAdmin.mockReturnValue(false);
+    mocks.getStaffPractice.mockResolvedValue(MINIMUM_PRACTICE);
+
+    render(<GarudaVoaStaffDetailPage />);
+
+    expect(
+      await screen.findByRole("heading", { name: "practice_1" }),
+    ).toBeVisible();
+    expect(screen.queryByText("Private staff note")).toBeNull();
+    expect(
+      screen.getByText("No transitions are available from this state."),
+    ).toBeVisible();
+    expect(screen.queryByTestId("transition-PR-09")).toBeNull();
+    expect(screen.queryByTestId("transition-PR-10")).toBeNull();
   });
 
   it("narrows a Blocked practice to the single resume transition matching resume_target", async () => {
