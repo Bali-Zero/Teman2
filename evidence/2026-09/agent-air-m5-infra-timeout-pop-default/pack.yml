@@ -1,0 +1,77 @@
+gear: 1
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: timeout-pop-default
+    role: build
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - lane: timeout-fixture-review
+    role: review
+    seat: kimi-code/k3
+pii_scan: clean
+seat_override:
+  "R8 applicability: test setup hygiene only; no immigration rule, claim, eligibility or
+  price is authored. No NotebookLM query is claimed."
+receipts:
+  - claim: The existing workflow-guard suite passes all 21 cases.
+    cmd: apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_required_context_map.py -q
+    result: 21 passed; executed in the existing backend virtualenv.
+    exit: 0
+    ts: "2026-09-05T20:38:00.890471+00:00"
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - claim:
+      With timeout removed from the actual loaded workflow in memory, the negative fixture reaches
+      its assertion and the real guard still rejects absence.
+    cmd: |-
+      apps/backend-rag/.venv/bin/python - <<'PY'
+      from pathlib import Path
+      from types import ModuleType
+      p = Path("scripts/tests/test_required_context_map.py").resolve()
+      m = ModuleType("timeout_probe")
+      m.__file__ = str(p)
+      exec(compile(p.read_text(), str(p), "exec"), m.__dict__)
+      loader = m.mod.load_workflow
+      def without_timeout(path):
+          workflow = loader(path)
+          workflow["jobs"]["frontend-tests"].pop("timeout-minutes")
+          return workflow
+      m.mod.load_workflow = without_timeout
+      m.test_required_mouth_typecheck_rejects_disarmed_mutations("missing-timeout")
+      try:
+          m.test_required_mouth_job_compiles_contract_consumers()
+      except AssertionError:
+          pass
+      else:
+          raise AssertionError("The real guard failed to reject missing timeout")
+      print("PASS: negative mutation reaches assertion; real guard rejects missing timeout")
+      PY
+    result: "PASS: negative mutation reaches assertion; real guard rejects missing timeout"
+    exit: 0
+    ts: "2026-09-05T20:38:00.890471+00:00"
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - claim: Independent static reading of the complete supplied test source returns PASS.
+    cmd: kimi -m kimi-code/k3 -p "$(cat .agent/pop-default/kimi-prompt.txt)"
+    result: PASS; review did not execute tests or inspect the live workflow.
+    exit: 0
+    ts: "2026-09-05T20:36:30.708802+00:00"
+    seat: kimi-code/k3
+dissent: []
+source_scope:
+  parent: 8e09a6c6814dfed5f130d4cb3eb88cbe452595d1 # pragma: allowlist secret - verified public Git or artifact digest
+  path: scripts/tests/test_required_context_map.py
+  change:
+    One default argument, None, in the existing missing-timeout mutation; no other source bytes
+    change.
+  source_sha256: 6a2ab486d2fefbbb7afc8397afc1b7054a34cfbc9222025864284967e97a896a # pragma: allowlist secret - verified public Git or artifact digest
+review_scope:
+  artifact: evidence/2026-09/agent-air-m5-infra-timeout-pop-default/kimi-review.txt
+  artifact_sha256: 919bbb40816acbc1003f1817fe220e1bdd613bf9f63d328a3921777743cbf3fd # pragma: allowlist secret - verified public Git or artifact digest
+  prompt_sha256: 80e91bcfb23685934f92055e5927f6f96974733ac824c3e803ee0e5307d88c5c # pragma: allowlist secret - verified public Git or artifact digest
+  raw_stdout_sha256: 806957deb2013c041b4d331e6a2b186ca59a7ab1d4062b9ab5eaf7abbf870393 # pragma: allowlist secret - verified public Git or artifact digest
+  limits:
+    Static supplied-source reading only. Local prompt and raw stdout retained in .agent/pop-default;
+    the committed answer trims final blank lines only. Evidence assembled afterward; independent Fable
+    gate remains separate.
+counterfactual:
+  Before the change, the same missing-key loader scenario raised KeyError; the parent source
+  was read with git show and compared byte-for-byte after reversing this single call change. No workflow
+  file was mutated.

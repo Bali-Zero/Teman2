@@ -97,7 +97,7 @@ def test_required_mouth_typecheck_rejects_disarmed_mutations(mutation: str) -> N
     elif mutation == "success-only-job":
         job["if"] = "${{ success() }}"
     elif mutation == "missing-timeout":
-        job.pop("timeout-minutes")
+        job.pop("timeout-minutes", None)
     elif mutation == "widened-timeout":
         job["timeout-minutes"] = 30
     with pytest.raises(AssertionError):

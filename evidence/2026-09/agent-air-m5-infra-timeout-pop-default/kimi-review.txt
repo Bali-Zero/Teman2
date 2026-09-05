@@ -1,0 +1,12 @@
+• **PASS**
+
+  Static findings:
+
+  - The delta is exactly the stated one line: `job.pop("timeout-minutes")` → `job.pop("timeout-minutes", None)` in the `missing-timeout` branch of `test_required_mouth_typecheck_rejects_disarmed_mutations`. Semantics are correct: `pop` with a default no longer raises `KeyError` when the upstream workflow already lacks the key, so the mutation setup completes and control reaches `_assert_required_mouth_typecheck` inside the `pytest.raises(AssertionError)` block.
+  - The real guard is intact: `_assert_required_mouth_typecheck` still asserts `job.get("timeout-minutes") == 16`. Whether the key was present-then-popped or already absent, the mutated dict yields `None != 16` → `AssertionError`. The mutation is therefore still a *genuine* disarming probe (it fails for the reason the guard exists, not for a setup artifact) and still catches a real timeout removal or absence.
+  - No collateral change: all other mutation branches, the non-mutated positive test, and the unrelated resolver tests are untouched. `deepcopy` + in-memory loader means no workflow file mutation, consistent with the builder proof's stated limit.
+  - No false-green risk introduced: with the default-`pop` form, a hypothetical future `tests.yml` that drops `timeout-minutes` would fail the *positive* test (`test_required_mouth_job_compiles_contract_consumers`) at the `== 16` assertion — so guard strength is unchanged; the parametrize case just stops erroring at setup with `KeyError`.
+
+  Builder proof claims (21 passed, in-memory probe, sha256) treated as claims per instructions; nothing in the static reading contradicts them.
+
+  **Static scope:** I reviewed only the supplied candidate test source and the one-line delta as text. I did not execute the suite, did not read `scripts/ci/required_context_map.py` or `.github/workflows/tests.yml` from disk, and cannot independently confirm that the live workflow currently contains `timeout-minutes: 16`.
