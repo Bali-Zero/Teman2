@@ -266,6 +266,7 @@ def build_command(cand: dict, worktree: Path, task_file: Path, timeout_s: int, o
         return cmd, env
     if cand["door"] == "claude":
         env["CLAUDE_CONFIG_DIR"] = os.path.expanduser(cand["config_dir"])
+        env["NUZ_MAILBOX_OFF"] = "1"  # the repo's fleet-mailbox hook must not inject teammate mail into an exam
         # Headless, edits accepted, shell allowed for tests/inspection, never push/gh/network.
         # Comma-joined lists: the variadic forms would swallow the positional prompt.
         cmd = ["claude", "-p", "--model", cand["model"], "--effort", cand["effort"],
