@@ -98,12 +98,15 @@ def _run(argv: list[str]) -> int:
 
 # ---------------------------------------------------------------- guilt
 
-def test_promotes_the_staged_build_when_production_is_behind():
+def test_promotes_the_staged_build_when_production_is_behind(capsys):
     """The 2026-08-21 shape: a READY build exists, the domains point elsewhere."""
     with _Harness(ready=("dpl_staged", "STAGED"), served=OLD) as h:
         assert _run(["--promote-only"]) == 0
     assert h.promoted == ["dpl_staged"]
     assert not h.created_a_deployment
+    output = capsys.readouterr().out
+    assert "OK — kita.balizero.com serves" in output
+    assert "OK — balizero.com serves" not in output
 
 
 def test_returns_3_and_builds_NOTHING_when_no_ready_build_exists():
