@@ -1,0 +1,70 @@
+brief_ref: evidence/brief.yml
+plan_ref: "Fable consul ruling 2026-09-05T12:1xZ: access to both clients is the approved minimum."
+lanes:
+  - lane: s02b-principal-access
+    role: build
+    seat: OpenAI GPT-6 Codex session; exact backend variant not exposed
+  - lane: s02b-principal-access-review
+    role: review
+    seat: kimi-code/k3 via existing OAuth CLI
+dissent:
+  - seat: kimi-code/k3
+    status: RETRACTED
+    objection:
+      Requested-client denial lacked a supplied principal in its regression test. Added both dependent
+      fields; final delta reviewed PASS.
+pii_scan: clean
+review_status:
+  Kimi K3 PASS on implementation and final test delta; independent Anthropic gate remains with
+  Fable.
+baseline: caa8e9708cad5b18c4c033ab0398982d8d4b8fcc # pragma: allowlist secret - verified source or prompt digest
+verification_scope:
+  host: Pro
+  snapshot: /tmp/s02b-principal-access.GGRCZu
+  venv: /Users/nuzantara/nuzantara/apps/backend-rag/.venv
+  environment: env -i, synthetic database URLs on loopback port 1, mocked repository/client rows only.
+  reproduction:
+    From an isolated apps/backend-rag snapshot, run python <evidence-dir>/verify_principal_access.py
+    <receipt-output-dir> using the existing Pro venv and inert environment.
+  source_identity: M5 source hashes match the restored Pro snapshot byte for byte.
+  file_sha256:
+    backend/app/routers/e33_cases.py: 9714791ebcda1066d33a2633130967c9b51c8c790c8e1c784dc97d62e1e41857 # pragma: allowlist secret - verified source or prompt digest
+    backend/tests/routers/test_e33_cases.py: 55dffa2ae6432e2d357638c00b91842adee28346e5326731e46e401ba4a0e0bc # pragma: allowlist secret - verified source or prompt digest
+receipts:
+  - claim: guilt-no-principal-guard
+    cmd: "python verify_principal_access.py <receipt-output-dir> (guilt phase: python -m pytest backend/tests/routers/test_e33_cases.py)"
+    result: 11 failed, 41 passed, 1 warning in 0.94s
+    exit: 1
+    ts: "2026-09-05T13:29:05.661498+00:00"
+    seat: OpenAI Codex orchestration; Python executed on Pro
+  - claim: innocence-restored
+    cmd: python -m pytest backend/tests/routers/test_e33_cases.py
+    result: 52 passed, 1 warning in 0.64s
+    exit: 0
+    ts: "2026-09-05T13:29:06.821797+00:00"
+    seat: OpenAI Codex orchestration; Python executed on Pro
+  - claim: ruff
+    cmd: python -m ruff check backend/app/routers/e33_cases.py backend/tests/routers/test_e33_cases.py
+    result: All checks passed!
+    exit: 0
+    ts: "2026-09-05T13:29:06.887243+00:00"
+    seat: OpenAI Codex orchestration; Python executed on Pro
+  - claim: Kimi K3 initial review
+    cmd: kimi -m kimi-code/k3 -p <scoped read-only prompt>
+    result: PASS; raw response in review-kimi-initial.txt
+    exit: 0
+    ts: "2026-09-05T13:28:40.124661+00:00"
+    seat: kimi-code/k3 (requested model; existing OAuth CLI)
+    prompt_sha256: b97cd7c95db52a4d325646007b8507fb1f8bacf668c3e72f388d97ad3f6da8bd # pragma: allowlist secret - verified source or prompt digest
+  - claim: Kimi K3 final-delta review
+    cmd: kimi -m kimi-code/k3 -p <scoped read-only prompt>
+    result: PASS; raw response in review-kimi-final-delta.txt
+    exit: 0
+    ts: "2026-09-05T13:29:47.416154+00:00"
+    seat: kimi-code/k3 (requested model; existing OAuth CLI)
+    prompt_sha256: 24f0051204da1b6dd2d8f6fcf9d552458b02c229f29356c8337c9b6a21140ec3 # pragma: allowlist secret - verified source or prompt digest
+residuals:
+  - Access to both client records does not prove kinship; any relationship-evidence requirement is a separate
+    owner business decision.
+  - The insert foreign-key fallback remains for deletion races after lookup. No production behavior or final
+    Anthropic approval is claimed.

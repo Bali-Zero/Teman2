@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import asyncpg
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 import backend.app.routers.e33_cases as e33_cases_module
@@ -95,6 +95,7 @@ class TestCreateCase:
         )
         fake_repo = MagicMock()
         fake_repo.insert = AsyncMock(side_effect=lambda case: case)
+        fake_repo.load = AsyncMock()
 
         with patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo):
             response = client.post(
@@ -110,7 +111,154 @@ class TestCreateCase:
         assert body["stage_history"] == []
         fake_repo.insert.assert_awaited_once()
         assert fake_repo.insert.await_args.args[0].practice_id is None
+        fake_repo.load.assert_not_awaited()
         conn.fetchval.assert_not_awaited()
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize(
+        "scenario, role, principal_client_id, assigned_to, expected_status",
+        [
+            ("different-clients", "team_member", 2, "TEAM@balizero.com", 201),
+            ("admin", "admin", 2, "other@example.com", 201),
+            ("same-client", "team_member", 1, "team@balizero.com", 201),
+            ("missing-principal", "team_member", 2, "team@balizero.com", 422),
+            ("missing-client", "team_member", 2, "team@balizero.com", 422),
+            ("archived-client", "team_member", 2, "team@balizero.com", 422),
+            ("other-staff", "team_member", 2, "other@example.com", 422),
+            ("unassigned", "team_member", 2, None, 422),
+        ],
+        ids=lambda value: str(value),
+    )
+    def test_principal_link_requires_access_to_both_clients(
+        self,
+        mock_db_pool,
+        scenario: str,
+        role: str,
+        principal_client_id: int,
+        assigned_to: str | None,
+        expected_status: int,
+    ) -> None:
+        pool, conn = mock_db_pool
+        user = {"id": "2", "email": "team@balizero.com", "role": role}
+        requested_client = {
+            "full_name": "Synthetic dependent",
+            "assigned_to": user["email"],
+            "deleted_at": None,
+        }
+        principal_client = {
+            "full_name": "Synthetic principal",
+            "assigned_to": assigned_to,
+            "deleted_at": "2026-01-01" if scenario == "archived-client" else None,
+        }
+        rows = [requested_client]
+        if scenario != "missing-principal":
+            rows.append(None if scenario == "missing-client" else principal_client)
+        conn.fetchrow = AsyncMock(side_effect=rows)
+        fake_repo = MagicMock()
+        fake_repo.insert = AsyncMock(side_effect=lambda case: case)
+        principal = (
+            None
+            if scenario == "missing-principal"
+            else _existing_case(client_id=principal_client_id)
+        )
+        fake_repo.load = AsyncMock(return_value=principal)
+        client = TestClient(_make_app(pool, user), raise_server_exceptions=False)
+
+        with patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo):
+            response = client.post(
+                "/api/e33/cases",
+                json={
+                    "client_id": 1,
+                    "basis": "deposit",
+                    "dependent_code": "E31B",
+                    "principal_case_id": "E33-2026-abc123",
+                },
+            )
+
+        assert response.status_code == expected_status
+        fake_repo.load.assert_awaited_once_with("E33-2026-abc123")
+        assert conn.fetchrow.await_count == len(rows)
+        if principal is not None:
+            assert conn.fetchrow.await_args.args[1:] == (principal_client_id,)
+        if expected_status == 201:
+            fake_repo.insert.assert_awaited_once()
+            created = fake_repo.insert.await_args.args[0]
+            assert (created.client_id, created.dependent_code, created.principal_case_id) == (
+                1,
+                "E31B",
+                "E33-2026-abc123",
+            )
+        else:
+            assert response.json() == {"detail": "principal case is not available"}
+            fake_repo.insert.assert_not_awaited()
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize(
+        "access_error",
+        [HTTPException(409, "synthetic conflict"), RuntimeError("synthetic failure")],
+    )
+    def test_unexpected_principal_access_error_is_not_masked(
+        self, mock_db_pool, team_user, access_error: Exception
+    ) -> None:
+        pool, conn = mock_db_pool
+        conn.fetchrow = AsyncMock(
+            return_value={
+                "full_name": "Synthetic client",
+                "assigned_to": team_user["email"],
+                "deleted_at": None,
+            }
+        )
+        fake_repo = MagicMock()
+        fake_repo.load = AsyncMock(return_value=_existing_case(client_id=2))
+        fake_repo.insert = AsyncMock()
+        client = TestClient(_make_app(pool, team_user), raise_server_exceptions=False)
+        with (
+            patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo),
+            patch.object(
+                e33_cases_module, "_assert_client_access", side_effect=[None, access_error]
+            ),
+        ):
+            response = client.post(
+                "/api/e33/cases",
+                json={
+                    "client_id": 1,
+                    "basis": "deposit",
+                    "dependent_code": "E31B",
+                    "principal_case_id": "E33-2026-abc123",
+                },
+            )
+        assert response.status_code == (409 if isinstance(access_error, HTTPException) else 500)
+        fake_repo.insert.assert_not_awaited()
+
+    @pytest.mark.integration
+    def test_configured_crm_admin_can_link_different_clients(self, mock_db_pool, team_user) -> None:
+        pool, conn = mock_db_pool
+        conn.fetchrow = AsyncMock(
+            return_value={"full_name": "Synthetic client", "assigned_to": None, "deleted_at": None}
+        )
+        fake_repo = MagicMock()
+        fake_repo.load = AsyncMock(return_value=_existing_case(client_id=2))
+        fake_repo.insert = AsyncMock(side_effect=lambda case: case)
+        client = TestClient(_make_app(pool, team_user), raise_server_exceptions=False)
+        with (
+            patch.object(e33_cases_module, "E33CaseRepository", return_value=fake_repo),
+            patch(
+                "backend.app.utils.crm_utils._crm_admin_emails",
+                return_value=frozenset({team_user["email"]}),
+            ),
+        ):
+            response = client.post(
+                "/api/e33/cases",
+                json={
+                    "client_id": 1,
+                    "basis": "deposit",
+                    "dependent_code": "E31B",
+                    "principal_case_id": "E33-2026-abc123",
+                },
+            )
+        assert response.status_code == 201
+        fake_repo.load.assert_awaited_once_with("E33-2026-abc123")
+        fake_repo.insert.assert_awaited_once()
 
     @pytest.mark.integration
     @pytest.mark.parametrize("role", ["admin", "team_member"])
@@ -293,7 +441,13 @@ class TestCreateCase:
 
         response = client.post(
             "/api/e33/cases",
-            json={"client_id": 1, "basis": "deposit", "practice_id": 42},
+            json={
+                "client_id": 1,
+                "basis": "deposit",
+                "practice_id": 42,
+                "dependent_code": "E31B",
+                "principal_case_id": "E33-2026-abc123",
+            },
         )
 
         assert response.status_code == 403
