@@ -87,7 +87,7 @@ Pro; all campaign fixtures and shared artifacts are synthetic or non-PII.
 | --- | --- | --- | --- | --- |
 | G-01 | GARUDA | Truthful payment labels and live fulfillment polling | Draft PR #5761; review requested | No paid claim without paid order state; no charge-absence promise on failed/expired; Approved/Blocked transitions keep updating; terminal/unmount cleanup tested |
 | V-01 | Visa Oracle | Route missing-input edits to the current branch | Draft PR #5762; review requested | Shared fact paths choose an editable question in the active history; edit opens it and prevents repeated unchanged evaluation |
-| S-01 | Second Home | Reliable save/copy feedback | Draft PR #5763; review requested | Blocked storage is not reported as saved; clipboard denial offers an actionable fallback |
+| S-01 | Second Home | Reliable save/copy feedback and visible recovery control | Draft PR #5763; includes a measured banner-clearance correction | Blocked storage is not reported as saved; clipboard denial offers an actionable fallback; the fixed consent banner cannot cover that control at maximum scroll |
 | S-02 | Second Home | Reject a practice belonging to another client | Draft PR #5764; review requested | Synthetic mismatched client/practice pair is rejected before case insertion; matching pair passes |
 | V-02 | Visa Oracle | Negative witnesses against actual signed-pack content | Accepted by Fable engine owner | Regression measures highest signed candidate; source-only merge cannot masquerade as signed/live correction |
 | G-02 | GARUDA | Document persistence and DDL integration | Existing PR #5526; do not duplicate | Existing owner decision and migration path, then upload/OCR/persistence/review verification |
@@ -151,10 +151,12 @@ The five draft PRs have passed their scoped regression tests and commit/push hoo
 Exact head SHAs, test receipts and addressed-review timestamps live in the state
 JSON. Those revisions are queued in Fable's single-writer inbox and fleet mailbox;
 the unresolved permission prompt means receipt is not inferred from enqueueing.
-All five PRs have completed their reported GitHub checks without failed or pending
-checks at the recorded observation. Skipped and neutral checks are not execution
-proof. Independent verdicts and production proof remain pending; browser evidence
-is scoped below. No consul may infer these observations from PR creation.
+The five initial PR heads completed their reported GitHub checks without failed
+or pending checks at the recorded observation. S-01 then gained a browser-driven
+layout correction: its earlier green CI must not be reused for the new head.
+The ledger records each revision's actual check state. Skipped and neutral checks
+are not execution proof. Independent verdicts and deployed-production proof remain
+pending; browser evidence is scoped below.
 
 S-02 received an evidence-only follow-up after CI detected public hashes and a
 synthetic DSN as unaudited findings. The corrective commit uses narrow annotations
@@ -162,30 +164,58 @@ on verified public hashes and a credential-free loopback command. That command
 was rerun on Pro (41 tests passed). Unannotated synthetic guilty controls still
 fail the scanner; the new GitHub secret check passed. Python source is unchanged.
 
-S-01 has real Chrome evidence on its exact commit: three denied-storage/clipboard
-conditions recover through a selectable link without horizontal overflow at
-390 px. V-04 has real Chrome evidence at 320/390/1280 px in English and Indonesian,
-including keyboard, focus, consent, QR, unique IDs and print exclusion. These are
-isolated Pro localhost proofs, not production delivery. The second Gemini review
-covered only the four consent files; it did not grade the complete UI or replace
-the required independent Anthropic gate.
+S-01 has real Chrome evidence for three denied-storage/clipboard conditions.
+Further inspection found that the fixed Privacy/Terms banner covered the bottom
+of the fallback input even at maximum scroll. One correction in StudioApp reserves
+the banner's measured height locally. Chrome checks pass at 320/390 px, including
+top/center/bottom hit tests, enlarged banner text, width changes, dismissal and
+print. The same four suites, including StudioApp, passed 180 tests in the parent
+rerun. Exact source hashes and browser receipts live under
+`output/playwright/s01-banner-clearance/`.
+
+V-01 now has real Chrome evidence on exact head 511bf901: REMOTE and INVEST Edit
+reopen their respective questions with focus and without an extra evaluation
+before another answer. The absent-target case offers contact without a dead Edit.
+The engine response is intercepted synthetic JSON; this is frontend interaction
+proof, not backend or deployed-production proof.
+
+V-04 has real Chrome evidence at 320/390/1280 px in English and Indonesian,
+including keyboard, focus, consent, QR, unique IDs and print exclusion. All these
+browser proofs use isolated Pro localhost sessions. A later Gemini review covered
+the complete seven-file integration, with immutable inputs and recorded completion.
+The parent refuted its cross-tab sessionStorage claim using two same-origin Chrome
+tabs with independent synthetic values. No introduced defect was confirmed from
+the advisory review; the mandatory independent Anthropic gate remains pending.
 
 V-04 is committed and pushed as `ff60b29a09cbbf4dbb21eb22b263b8bee6065d40`,
 with a dedicated evidence pack, normal hooks and full mouth TypeScript passing.
 The remote SHA matches the clean local branch. Its V-01 dependency remains
 explicit; the next PR is created after that parent merges and the base is refreshed.
-The Pro browser sessions and temporary servers used for S-01, V-04 and B-04 are
-closed, with ports 3417, 3420 and 3214 free. Source snapshots and receipts remain
+The Pro browser sessions and temporary servers used for S-01, V-01, V-04 and B-04
+are closed, with ports 3214, 3215, 3417, 3418, 3419 and 3420 free. Source snapshots and receipts remain
 available for the independent reviewer.
 
 B-04's rendered HTML exposed a remaining criterion failure despite passing unit
-tests. A single private `robots: null` candidate removed the duplicate from HTTP
-HTML and the Googlebot response, but loaded Chrome still contained two noindex
-tags. No candidate correction was committed. The failure spec and receipts are
-under `output/reviews/b04-robots/`; the current PR body states the limitation.
-The next investigation must distinguish development-mode hydration from a
-production build before defining a further implementation. The one-tag criterion
-has not been weakened or marked passed.
+tests. Full builds of the actual application now reproduce it in production and
+development with aligned Next 16.3.3. The committed semantic fix has two robots tags
+in HTTP and three in loaded Chrome; the same private `robots: null` candidate has
+one in HTTP and two in Chrome. Canonical and already excluded controls retain one
+correct tag. Both full builds passed TypeScript and generated 1,766 static pages.
+No candidate correction was committed. The pinned framework source and browser
+mutations support separate server-error and client-fallback noindex contributions.
+No further fix is justified within child metadata alone. The unchanged one-tag
+criterion remains unmet; the production-build spec and receipts are under
+`output/reviews/b04-robots-production/`, and the PR body states the limitation.
+
+## Runtime provenance correction
+
+The initial Pro root launcher resolved Next 16.3.1 while the application resolved
+16.3.3. That mixed environment caused the first isolated full build to fail during
+unrelated prerendering; changing only to the app-resolved CLI made the same source
+build successfully. Historical browser artifacts are preserved with their runtime
+limitation rather than relabelled. V-01, V-04, S-01 and B-04 received new receipts
+using aligned CLI and app Next 16.3.3. Resolve the launcher from the app's own
+package context before future browser/build proofs, and record both paths.
 
 ## Constructive review disposition
 

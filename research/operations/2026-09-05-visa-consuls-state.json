@@ -42,7 +42,7 @@
         "checks_count": 73,
         "incomplete": [],
         "nonpassing": [],
-        "observed_at": "2026-09-05T07:06:44.420783+00:00"
+        "observed_at": "2026-09-05T07:33:04.646890+00:00"
       }
     },
     {
@@ -59,7 +59,8 @@
       "reviewer": "fable-consul dispatches independent Anthropic gate",
       "proofs": [
         "worker receipt: 80 tests passed across 6 suites",
-        "80 tests across 6 suites; precommit typecheck and prepush passed"
+        "80 tests across 6 suites; precommit typecheck and prepush passed",
+        "Real Chrome on exact 511bf901 with aligned Next 16.3.3: REMOTE/INVEST Edit opens the correct question with focus and no additional request; absent target offers contact; 390px and INVEST 1280px. Receipts: output/playwright/v01-511bf901/."
       ],
       "acceptance_checks": [
         "REMOTE/INVEST missing input Edit opens the visited question; unavailable target offers contact"
@@ -80,7 +81,7 @@
         "checks_count": 74,
         "incomplete": [],
         "nonpassing": [],
-        "observed_at": "2026-09-05T07:06:44.420783+00:00"
+        "observed_at": "2026-09-05T07:33:04.646890+00:00"
       }
     },
     {
@@ -88,8 +89,12 @@
       "owner": "codex-astra",
       "status": "draft_pr_review_requested",
       "proofs": [
-        "180 tests across 4 suites; original sources 10 red/56 pass; hooks passed",
-        "Real Chrome on exact cce13f6e, Pro localhost: storage denied/clipboard denied/clipboard absent recover;390px width; readonly link fully selectable380characters; screenshots+measurements output/playwright/s01-cce13f6e"
+        "Original save/copy source: 10 regressions failed and 56 controls passed; corrected first wave: 180 tests across four suites passed.",
+        "Parent rerun including new StudioApp clearance: 180 tests across four suites passed in 3.52s at 2026-09-05 15:27:39 WITA; React act and styled-jsx warnings remain visible.",
+        "Real Chrome on aligned Next 16.3.3: storage failure and denied/missing clipboard retain an actionable fully selectable link.",
+        "One measured-banner correction passes at 320/390px: full input is above open banner at maximum scroll; pointer hit tests, keyboard selection, resize, enlarged banner text, dismissal and print pass. Source hashes match Air and Pro; output/playwright/s01-banner-clearance/.",
+        "Local clean branch, remote feature branch and GitHub PR all match 99e5fd7312484992b5805ef0df17ecdab962c718.",
+        "Normal commit and push hooks, including full mouth TypeScript, passed on the new revision. Branch evidence validation reports zero violations; PR body describes the final layout correction and current pending CI."
       ],
       "worktree": "/Users/balizero/nuzantara/.worktrees/mouth-studio-save-feedback",
       "files": [
@@ -97,30 +102,51 @@
         "apps/mouth/src/lib/secondhome-studio/__tests__/plan-codec.test.ts",
         "apps/mouth/src/lib/secondhome-studio/copy.ts",
         "apps/mouth/src/app/visa/second-home/studio/components/SavePlanBar.tsx",
-        "apps/mouth/src/app/visa/second-home/studio/components/SavePlanBar.test.tsx"
+        "apps/mouth/src/app/visa/second-home/studio/components/SavePlanBar.test.tsx",
+        "apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx"
       ],
       "acceptance_checks": [
-        "Denied storage never shows Saved; clipboard failure offers selectable fragment URL"
+        "Denied storage never shows Saved; clipboard failure offers selectable fragment URL",
+        "Fallback input remains fully visible with the consent banner open; reservation follows actual height, disappears after dismissal and is excluded from print."
       ],
       "reviewer": "fable-consul dispatches independent Anthropic gate",
       "ownership_acknowledged": true,
       "base_sha": "af949e6eb5d1767454dd788cd7a8e5be4b89967d",
       "pr": "https://github.com/Bali-Zero/Teman2/pull/5763",
-      "head_sha": "cce13f6e3174e65b08c7c420584b6e54fbf5eea5",
-      "review_requested_at": "2026-09-05T06:39:07.638214+00:00",
+      "head_sha": "99e5fd7312484992b5805ef0df17ecdab962c718",
+      "review_requested_at": "2026-09-05T07:33:04.646890+00:00",
       "live_proof": null,
       "github_observation": {
         "autoMergeRequest": null,
-        "headRefOid": "cce13f6e3174e65b08c7c420584b6e54fbf5eea5",
+        "headRefOid": "99e5fd7312484992b5805ef0df17ecdab962c718",
         "isDraft": true,
         "number": 5763,
         "state": "OPEN",
         "reviews_count": 0,
-        "checks_count": 73,
-        "incomplete": [],
+        "checks_count": 50,
+        "incomplete": [
+          "apps/mouth compiles",
+          "antidotes",
+          "Merah Putih DAY palette holds its contrast law",
+          "prettier --check (changed files)",
+          "Bandit SAST (Python)",
+          "Change map (security)",
+          "Change map",
+          "VOA probe organ tests",
+          "R1 gate \u2014 adversarial review present",
+          "prepush-guards",
+          "collision-matrix-case-folding",
+          "PR collision check (advisory)",
+          "ESLint Security (JS/TS)",
+          "guard-pins-pytest (gateway integration tests)",
+          "Vercel"
+        ],
         "nonpassing": [],
-        "observed_at": "2026-09-05T07:06:44.420783+00:00"
-      }
+        "observed_at": "2026-09-05T07:33:04.646890+00:00"
+      },
+      "superseded_heads": [
+        "cce13f6e3174e65b08c7c420584b6e54fbf5eea5"
+      ]
     },
     {
       "id": "S-02",
@@ -159,7 +185,7 @@
         "checks_count": 78,
         "incomplete": [],
         "nonpassing": [],
-        "observed_at": "2026-09-05T07:06:44.420783+00:00"
+        "observed_at": "2026-09-05T07:33:04.646890+00:00"
       }
     },
     {
@@ -208,7 +234,9 @@
         "Parent independently reran 62 tests across 3 suites, 3.20 s, 2026-09-05 at14:59:45 WITA",
         "Pro Chrome 152 on matching seven-file snapshot:320/390/1280px EN/ID,44px control, keyboard/focus/unique IDs/no overflow/print hidden, zero page errors; no WhatsApp opened",
         "Gemini constructive review completed on consent four-file snapshot; no introduced bug confirmed after triage; full Anthropic gate pending",
-        "Normal precommit full mouth TypeScript and prepush passed; exact remote head verified; clean worktree; own Pro server stopped and port3420 free"
+        "Normal precommit full mouth TypeScript and prepush passed; exact remote head verified; clean worktree; own Pro server stopped and port3420 free",
+        "Corrected browser rerun with aligned CLI/app Next 16.3.3 passes the same script and assertions on unchanged source hashes; receipt: output/playwright/v04-persistent-contact-aligned-next/.",
+        "Complete seven-file Gemini advisory review completed. Parent triage refuted its cross-tab sessionStorage claim using real Chrome. No introduced defect confirmed; independent Anthropic gate remains pending."
       ],
       "live_proof": null,
       "head_sha": "ff60b29a09cbbf4dbb21eb22b263b8bee6065d40",
@@ -236,12 +264,13 @@
         "Original8failed/24passed; fixed72pass/3files; hooks with typecheck passed",
         "Committed32c HTTP fixes index contradiction but emits two nonindexing tags",
         "One private robots:null candidate passes HTTP and Googlebot controls, fails loaded Chrome DOM with two noindex tags; no candidate committed or pushed, source restored",
-        "Failure spec and receipts: output/reviews/b04-robots/SPEC.md; production-build investigation remains required before another implementation"
+        "Failure spec and receipts: output/reviews/b04-robots/SPEC.md; production-build investigation remains required before another implementation",
+        "Actual app builds with aligned Next 16.3.3: production/dev share the same counts (committed HTTP 2 / DOM 3; same private null candidate HTTP 1 / DOM 2). Both full builds exit 0 with 1,766 static pages. Sources restored; production-build spec: output/reviews/b04-robots-production/SPEC.md."
       ],
       "reviewer": "independent Anthropic gate via Fable consul",
       "ownership_acknowledged": true,
       "live_proof": null,
-      "remaining_acceptance": "Exactly one robots tag in returned HTTP and loaded browser remains unmet; do not label full B04 complete",
+      "remaining_acceptance": "Exactly one robots tag in the loaded browser remains unmet in the actual production build. No further fix is justified within child metadata alone; a new scope decision is required.",
       "github_observation": {
         "autoMergeRequest": null,
         "headRefOid": "32c9734f8ac0323ca782e50d39d542fcde221895",
@@ -252,14 +281,14 @@
         "checks_count": 74,
         "incomplete": [],
         "nonpassing": [],
-        "observed_at": "2026-09-05T07:06:44.420783+00:00"
+        "observed_at": "2026-09-05T07:33:04.646890+00:00"
       }
     }
   ],
   "agreement": "research/operations/2026-09-05-visa-consuls-agreement.md",
-  "updated_at": "2026-09-05T07:06:44.420783+00:00",
+  "updated_at": "2026-09-05T07:34:02.257826+00:00",
   "coordination_blocker": {
-    "observed_at": "2026-09-05T07:06:44.420783+00:00",
+    "observed_at": "2026-09-05T07:34:02.257826+00:00",
     "session": "7561e9d7-d544-48e5-a211-b3534020394d",
     "status": "waiting",
     "waiting_for": "permission prompt",
@@ -267,5 +296,17 @@
     "tool_requested_at": "2026-09-05T06:31:50.443Z",
     "user_notified": true,
     "impact": "Fable ground/review dispatch is not running; mailbox messages after06:30 remain queued until prompt resolved"
+  },
+  "cleanup": {
+    "observed_at": "2026-09-05T07:34:02.257826+00:00",
+    "pro_ports_free": [
+      3214,
+      3215,
+      3417,
+      3418,
+      3419,
+      3420
+    ],
+    "scope": "Owned browser and server processes closed; source snapshots and evidence retained."
   }
 }
