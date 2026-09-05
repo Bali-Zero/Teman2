@@ -166,7 +166,7 @@ def require_team_member(user: dict[str, Any] = Depends(get_current_user)) -> dic
         HTTPException 403: If user is a client or a service account
     """
     if not is_human_team_member(user.get("role")):
-        logger.warning(f"Access denied to non-human account: {user.get('email')}")
+        logger.warning("Access denied to non-team account")
         raise HTTPException(
             status_code=403,
             detail="Access denied. This endpoint is only accessible to team members.",
