@@ -180,6 +180,25 @@ describe("OrderTracker", () => {
     },
   );
 
+  it("reports a refund without claiming a refund amount the order view does not supply", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, order({ order_state: "refunded" })),
+    );
+    render(<OrderTracker orderId="order-1" />);
+
+    await screen.findByText(/Rp/);
+    expect(screen.getAllByText("This order was refunded.")).toHaveLength(2);
+    expect(document.body.textContent).not.toMatch(/in full|full refund/i);
+    expect(screen.getByText("Order total")).toBeInTheDocument();
+    expect(screen.queryByText("Total paid")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/a consultant can start a new application with you/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /continue on whatsapp/i }),
+    ).toBeInTheDocument();
+  });
+
   it("shows a WhatsApp route when the practice is Blocked", async () => {
     fetchMock.mockResolvedValue(
       jsonResponse(

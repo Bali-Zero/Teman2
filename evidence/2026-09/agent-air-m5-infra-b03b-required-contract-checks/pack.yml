@@ -1,0 +1,66 @@
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+lanes:
+  - lane: b03b-build
+    role: build
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - lane: sol-review
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: kimi-review
+    role: review
+    seat: kimi-code/k3
+pii_scan: clean
+receipts:
+  - claim: 69 change-map tests passed.
+    cmd: python scripts/ci/test_change_map.py
+    exit: 0
+    ts: "2026-09-05T11:45:05.789731+00:00"
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - claim: 19 required-context tests passed, including 11 disarmament cases.
+    cmd: python -m pytest scripts/tests/test_required_context_map.py -q -p no:cacheprovider
+    exit: 0
+    ts: "2026-09-05T11:45:05.789731+00:00"
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - claim: 11 actual workflow mutations each failed the live guard; restored workflow passed.
+    cmd: python .agent/b03b/mutate-workflow.py
+    exit: 0
+    ts: "2026-09-05T11:42:26.511500+00:00"
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - claim: Current generated product types match OpenAPI.
+    cmd:
+      ./node_modules/.bin/openapi-typescript products/garuda-voa/contracts/openapi.yaml --output apps/mouth/src/lib/api/garuda-voa.generated.d.ts
+      --check
+    exit: 0
+    ts: "2026-09-05T11:45:05.789731+00:00"
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - claim: Full mouth TypeScript passes.
+    cmd: cd apps/mouth && npx tsc --noEmit
+    exit: 0
+    ts: "2026-09-05T11:45:05.789731+00:00"
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - claim: Workflow syntax passes.
+    cmd: actionlint -shellcheck= .github/workflows/tests.yml
+    exit: 0
+    ts: "2026-09-05T11:45:05.789731+00:00"
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+dissent:
+  - seat: kimi-code/k3
+    objection: Required mouth CI execution and total duration against the 16-minute timeout remain unmeasured.
+    status: PLAUSIBLE
+    disposition: Keep pending until the PR run completes; no timeout change was made.
+  - seat: codex-gpt-5.6-sol
+    objection: Full tsc completion, backend parity source reference and remote CI need empirical confirmation.
+    status: PLAUSIBLE
+    disposition:
+      Full tsc passed; _CONTRACT_PATH and the actual default shard enumeration confirm backend
+      collection. Remote CI remains pending.
+notes:
+  - Initial-check receipt timestamps record evidence capture time; council and mutation timestamps are actual
+    completion times.
+  - Five source hashes are identical before and after mutation probes and match both council inputs.
+  - TypeScript is declared ^5.9.3, locked at 5.9.3, and resolves locally from mouth to the root node_modules/typescript/bin/tsc.
+  - Kimi low-severity notes concern exact guard names, existing generator-step coverage and directory-wide
+    routing; these match the assigned scope.
+  - No Anthropic verdict, remote CI timing or production proof is claimed.

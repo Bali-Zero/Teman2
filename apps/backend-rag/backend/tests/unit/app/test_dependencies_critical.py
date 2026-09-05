@@ -209,6 +209,21 @@ class TestAuthDependencies:
             require_team_member(user)
         assert exc_info.value.status_code == 403
 
+    def test_require_team_member_rejects_partner(self):
+        """Guilt (ledger L88, 2026-08-19): ``partner`` is a role the platform
+        itself issues to external partners (routers/auth.py::_redirect_for_role
+        sends it to /portal/partner; partners.py::_is_partner_role defines it
+        as "not internal team"). A person, but not a colleague — team-level
+        authority on e33_cases.py and crm_intelligence.py must be refused."""
+        from fastapi import HTTPException
+
+        from backend.app.dependencies import require_team_member
+
+        user = {"email": "partner@example.com", "role": "partner"}
+        with pytest.raises(HTTPException) as exc_info:
+            require_team_member(user)
+        assert exc_info.value.status_code == 403
+
     def test_require_team_member_allows_a_realistic_free_text_role(self):
         """Innocence: this repo's team roles are free-text job titles, not an
         enum — a realistic one must still pass."""

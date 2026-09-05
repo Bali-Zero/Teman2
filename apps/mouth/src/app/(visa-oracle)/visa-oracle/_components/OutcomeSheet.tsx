@@ -402,6 +402,19 @@ export function OutcomeSheet({
     [outcome.sources],
   );
   const rows = answerRows(language, facts);
+  // Collapse repeated fallback copy only in this view. The adapter retains
+  // every missing fact code for SHADOW parity; each editable row stays distinct.
+  const fallbackMessages = new Set<string>();
+  const visibleMissingInputs =
+    outcome.state === "NEEDS_INPUT"
+      ? outcome.missingInputs.filter((input) => {
+          if (input.questionId) return true;
+          const message = localized(input.message, language);
+          if (fallbackMessages.has(message)) return false;
+          fallbackMessages.add(message);
+          return true;
+        })
+      : [];
   const [checkedDocs, setCheckedDocs] = useState<Set<string>>(new Set());
   const [shareState, setShareState] = useState<
     "idle" | "copied" | "shared" | "failed"
@@ -496,7 +509,7 @@ export function OutcomeSheet({
         <section>
           <p>{translate(language, "outcome.needs_input_body" as I18nKey)}</p>
           <ul className="oracle-action-list">
-            {outcome.missingInputs.map((input) => (
+            {visibleMissingInputs.map((input) => (
               <li key={input.code}>
                 <span>{localized(input.message, language)}</span>
                 {input.questionId && onEditMissingInput && (

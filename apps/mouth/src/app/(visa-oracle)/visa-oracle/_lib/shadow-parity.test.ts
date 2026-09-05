@@ -56,6 +56,21 @@ describe("shadow public-contract parity", () => {
     expect(shadowParityMatches(response, outcome)).toBe(false);
   });
 
+  it("distinguishes missing fact sets even when their fallback messages are identical", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = [
+      "work.indonesia_source_compensation",
+      "investment.pt_pma_committed",
+    ];
+    const baseline = buildEngineOutcome(response);
+    expect(shadowParityMatches(response, baseline)).toBe(true);
+    response.decision.missing_facts = [
+      "work.indonesia_source_compensation",
+      "person.birth_date",
+    ];
+    expect(shadowParityMatches(response, baseline)).toBe(false);
+  });
+
   it("does not call the zero-candidate preview harness parity", () => {
     const response = makeVisaOracleResponse("TEMPORARILY_UNAVAILABLE");
     const preview = buildPreviewOutcome({}, new Date("2026-08-03T04:00:00Z"));

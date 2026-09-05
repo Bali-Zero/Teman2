@@ -1,0 +1,9 @@
+--- a/apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx
++++ b/apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx
+@@ -866,5 +866 @@
+-        @media print {
+-          .bz-shs-consent-space {
+-            display: none !important;
+-          }
+-        }
++
