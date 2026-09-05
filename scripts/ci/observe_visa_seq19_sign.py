@@ -42,7 +42,7 @@ def _backend_rag_python() -> str:
 
 def main() -> int:
     python_env = dict(os.environ)
-    python_env["PYTHONPATH"] = "backend"
+    python_env["PYTHONPATH"] = "."
     cmd = [
         _backend_rag_python(),
         "-m",
