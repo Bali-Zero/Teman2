@@ -36,7 +36,7 @@ receipts:
     seat: kimi-code/k3
 dissent: []
 source_identity:
-  parent: 2421a3dd053cf9cab97665114bb4f5496d06ab44
+  parent: 2421a3dd053cf9cab97665114bb4f5496d06ab44 # pragma: allowlist secret - verified public parent Git commit, not credential
   test_sha256: c0e6997a1b27c204de12f123844ff03b820a371bb8e40d6ed9f183105d2e3ac6 # pragma: allowlist secret - verified source or artifact SHA-256, not credential
 review_artifacts:
   committed_answer_sha256: 83171e7439ccbeb815ec080088d068a1d40ba836cc32f3a6435ac8fa1ef26025 # pragma: allowlist secret - verified artifact SHA-256, not credential
@@ -46,7 +46,7 @@ review_artifacts:
 notes:
   - "Parent PR5792 merged before this fresh-main worktree was created. The workflow already has timeout-minutes:
     16."
-  - The reader received source, diff and stated local results; it did not independently execute the tests. Raw
-    stdout is preserved in kimi-review.md.
+  - The reader received source, diff and stated local results; it did not independently execute the tests.
+    The committed review has Markdown formatting; raw stdout remains in the local receipt.
   - The two additions reuse the existing parametrized mutations. No timeout or infrastructure change is proposed.
   - Final Anthropic grading remains separate.
