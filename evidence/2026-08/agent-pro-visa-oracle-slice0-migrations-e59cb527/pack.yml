@@ -81,11 +81,11 @@ receipts:
     seat: "session (Pro)"
   - claim: "NOTHING IS DELETED AT APPLY TIME — the destructive-surface question, answered two independent ways"
     cmd: "grep -nE '(SELECT|PERFORM).*purge_visa_oracle|cron\\.schedule' migrations_v2/29[345]_*.sql ; and after the apply: psql -tAc 'SELECT count(*) FROM public.visa_oracle_consultant_request_retention_batches'"
-    result: "grep: no match — the only DELETE in the diff (294:281) lives inside the purge function's body, and nothing calls it; no pg_cron job is scheduled. Batches table after apply: 0 rows, i.e. no purge ever ran (the function records every batch it deletes)."
+    result: "grep: no match — the only DELETE in the diff (294:318) lives inside the purge function's body, and nothing calls it; no pg_cron job is scheduled. Batches table after apply: 0 rows, i.e. no purge ever ran (the function records every batch it deletes)."
     exit: 0
     ts: "2026-08-26T14:34Z"
     seat: "session (Pro)"
-  - claim: "The purge function is not reachable by PUBLIC — the REVOKE at 294:305 is effective, not decorative"
+  - claim: "The purge function is not reachable by PUBLIC — the REVOKE at 294:342 is effective, not decorative"
     cmd: 'psql -d visa_full_probe -tAc "SELECT has_function_privilege(''public'',''public.purge_visa_oracle_consultant_requests(integer,text)'',''EXECUTE'')"'
     result: "false"
     exit: 0
@@ -260,7 +260,7 @@ dissent:
     note: >-
       The grep pattern was `^-- ROLLBACK`. The marker the W42 lint actually requires — read out of
       `scripts/lint_migration_rollback.py:41` rather than from memory — is `-- === ROLLBACK ===`,
-      and all three files carry it (293:80, 294:372, 295:70). The files were right; the probe was
+      and all three files carry it (293:80, 294:409, 295:127). The files were right; the probe was
       wrong. CI's own `Detect missing ROLLBACK markers` agrees: SUCCESS.
   - seat: "session (Pro), against its own second reading"
     objection: >-

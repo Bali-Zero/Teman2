@@ -23,7 +23,9 @@ FAMILY, not one instance, impossible to regress.
 
 from __future__ import annotations
 
+import io
 import re
+import tokenize
 from pathlib import Path
 
 from backend.db.migration_base import split_migration_sql
@@ -44,7 +46,10 @@ _SCOPE_PREDICATE = re.compile(r"policy_scope\s*(=|IN\b)", re.IGNORECASE)
 # A statement is the text between the previous `;` and the next `;`: SQL
 # statements are semicolon-delimited, so this isolates exactly the query the
 # lookup lives in without assuming anything about its length or shape.
-_TABLE_REF = re.compile(r"(?:FROM|JOIN)\s+(?:public\.)?(\w+)", re.IGNORECASE)
+_TABLE_REF = re.compile(
+    r"(?:FROM|JOIN|UPDATE|INSERT\s+INTO|MERGE\s+INTO)\s+(?:public\.)?(\w+)",
+    re.IGNORECASE,
+)
 _WITH_KEYWORD = re.compile(r"\bWITH\b", re.IGNORECASE)
 # Matches one `<name> AS (` CTE head at the current scan position, optionally
 # preceded by the comma that separates it from a prior CTE in the same
@@ -185,8 +190,63 @@ def _resolve_tables(
     return tables
 
 
+def _line_start_offsets(text: str) -> list[int]:
+    """Return the char offset where each 1-indexed source line begins."""
+
+    offsets = [0]
+    for line in text.splitlines(keepends=True):
+        offsets.append(offsets[-1] + len(line))
+    return offsets
+
+
+def _string_literal_spans(text: str) -> list[tuple[int, int]]:
+    """Return (start, end) char-offset spans for every STRING token in `text`.
+
+    A `.py` candidate is source code, not SQL -- the file-wide statement
+    isolation below (previous `;` to next `;`) is a SQL-only notion and, run
+    over Python source that has no semicolons at all, degenerates to "the
+    whole file is one statement": a scoped query anywhere in the file would
+    then satisfy `_SCOPE_PREDICATE` for an UNRELATED unscoped query elsewhere
+    in the same file, which is exactly the family-#3 UNDER-match this guard
+    exists to prevent. The fix is to resolve the ENTITY a `.py` lookup
+    actually lives in first -- the enclosing Python string literal that
+    carries the SQL text -- and only then apply `;`-delimited statement
+    isolation, bounded to that literal.
+
+    Malformed/incomplete Python (fixtures are sometimes bare snippets) simply
+    yields no spans here; the caller falls back to whole-file bounds in that
+    case, which is never worse than the pre-fix behaviour.
+    """
+
+    spans: list[tuple[int, int]] = []
+    offsets = _line_start_offsets(text)
+    try:
+        for tok in tokenize.generate_tokens(io.StringIO(text).readline):
+            if tok.type != tokenize.STRING:
+                continue
+            start_row, start_col = tok.start
+            end_row, end_col = tok.end
+            start_offset = offsets[start_row - 1] + start_col
+            end_offset = offsets[end_row - 1] + end_col
+            spans.append((start_offset, end_offset))
+    except (tokenize.TokenizeError, SyntaxError, IndentationError, ValueError):
+        return []
+    return spans
+
+
+def _enclosing_span(
+    spans: list[tuple[int, int]], offset: int
+) -> tuple[int, int] | None:
+    for start, end in spans:
+        if start <= offset < end:
+            return start, end
+    return None
+
+
 def _unscoped_lookups(path: Path) -> list[tuple[int, str]]:
     text = _live_text(path)
+    is_python = path.suffix == ".py"
+    string_spans = _string_literal_spans(text) if is_python else []
     offences: list[tuple[int, str]] = []
     for match in _ACTIVE_LOOKUP.finditer(text):
         line_start = text.rfind("\n", 0, match.start()) + 1
@@ -197,18 +257,31 @@ def _unscoped_lookups(path: Path) -> list[tuple[int, str]]:
         if line.lstrip().startswith(("--", "#", "*")):
             continue
 
+        # For `.py` candidates, bound the statement search to the ENCLOSING
+        # STRING LITERAL -- never the whole file (see `_string_literal_spans`
+        # docstring). For `.sql` files there is no enclosing-literal notion,
+        # so the bound is the whole file, matching prior behaviour.
+        if is_python:
+            span = _enclosing_span(string_spans, match.start())
+            bound_start, bound_end = span if span is not None else (0, len(text))
+        else:
+            bound_start, bound_end = 0, len(text)
+
         # Isolate the STATEMENT this lookup lives in -- SQL statements are
         # `;`-delimited, so the text between the previous `;` and the next
-        # one (or the file boundary, for a fixture with no trailing `;`) is
-        # exactly the query to resolve, never a neighbouring statement's.
-        stmt_start = text.rfind(";", 0, match.start()) + 1
-        next_semicolon = text.find(";", match.end())
-        stmt_end = next_semicolon if next_semicolon != -1 else len(text)
+        # one (or the enclosing bound, for a fixture/literal with no
+        # trailing `;`) is exactly the query to resolve, never a
+        # neighbouring statement's -- and, for `.py`, never a neighbouring
+        # string literal's either.
+        found_start = text.rfind(";", bound_start, match.start())
+        stmt_start = found_start + 1 if found_start != -1 else bound_start
+        found_end = text.find(";", match.end(), bound_end)
+        stmt_end = found_end if found_end != -1 else bound_end
         statement = text[stmt_start:stmt_end]
 
         ctes = _extract_ctes(statement)
         tables = _resolve_tables(statement, ctes)
-        if POLICY_TABLE not in tables:
+        if tables and POLICY_TABLE not in tables:
             # This active-policy lookup does not resolve against the shared,
             # multi-scope authority table this tripwire protects -- entity
             # resolution over its OWN statement shows it reads a DIFFERENT
@@ -226,6 +299,12 @@ def _unscoped_lookups(path: Path) -> list[tuple[int, str]]:
             # DIFFERENT statement. A `policy_scope` predicate would not
             # compile there -- the column does not exist -- so this is a
             # false positive, not a defect.
+            #
+            # An EMPTY resolved table set (no `tables`) is deliberately NOT
+            # this branch: a lookup this guard cannot resolve to any table at
+            # all is not evidence of innocence, it is evidence the census
+            # could not see far enough -- fail CLOSED (fall through to the
+            # scope-predicate check below) rather than silently exempt it.
             continue
         if not _SCOPE_PREDICATE.search(statement):
             offences.append((text.count("\n", 0, match.start()) + 1, line.strip()))
@@ -292,6 +371,116 @@ def test_a_lookup_through_a_cte_far_from_its_from_clause_is_still_reported(
         "         WHERE ap.effective_period @> NEW.evaluated_at;\n"
     )
     path = tmp_path / "guilty_cte.sql"
+    path.write_text(guilty, encoding="utf-8")
+    offences = _unscoped_lookups(path)
+    assert len(offences) == 1, offences
+
+
+def test_statement_isolation_on_py_files_does_not_degrade_to_the_whole_file(
+    tmp_path: Path,
+) -> None:
+    """A `.py` file has no `;` between queries -- bounding must be per-literal.
+
+    `services/visa_engine/retention.py` already ships one correctly-scoped
+    query. Appending a SECOND, unscoped query in its own string literal must
+    be reported on its own merits: file-wide `;`-delimited isolation (the
+    SQL-only notion) degenerates on ordinary Python with no semicolons at all
+    to "the whole file is one statement", so the appended lookup would
+    wrongly inherit the FIRST query's `policy_scope` predicate and its own
+    `FROM public.visa_decision_retention_policies` table resolution too --
+    the exact family-#3 UNDER-match this test pins shut.
+    """
+
+    source_path = (
+        BACKEND_ROOT / "services" / "visa_engine" / "retention.py"
+    )
+    original = source_path.read_text(encoding="utf-8")
+    assert "policy_scope = 'VISA_DECISION'" in original
+    assert original.count("effective_period @>") == 1
+
+    appended = original + (
+        "\n\n"
+        "async def _unscoped_extra_lookup(db_pool, *, environment, evaluated_at):\n"
+        "    async with db_pool.acquire() as conn:\n"
+        "        return await conn.fetchval(\n"
+        '            """\n'
+        "            SELECT count(*)\n"
+        "            FROM public.visa_decision_retention_policies\n"
+        "            WHERE environment = $1\n"
+        "              AND effective_period @> $2::timestamptz\n"
+        '            """,\n'
+        "            environment,\n"
+        "            evaluated_at,\n"
+        "        )\n"
+    )
+    path = tmp_path / "retention_copy.py"
+    path.write_text(appended, encoding="utf-8")
+    offences = _unscoped_lookups(path)
+    assert len(offences) == 1, offences
+
+
+def test_a_py_lookup_scoped_within_its_own_string_literal_is_not_reported(
+    tmp_path: Path,
+) -> None:
+    """Innocence case for `.py`: the scoped literal must not be flagged."""
+
+    innocent = (
+        "async def active_policy_available(db_pool, *, environment, evaluated_at):\n"
+        "    async with db_pool.acquire() as conn:\n"
+        "        return await conn.fetchval(\n"
+        '            """\n'
+        "            SELECT count(*)\n"
+        "            FROM public.visa_decision_retention_policies\n"
+        "            WHERE environment = $1\n"
+        "              AND policy_scope = 'VISA_DECISION'\n"
+        "              AND effective_period @> $2::timestamptz\n"
+        '            """,\n'
+        "            environment,\n"
+        "            evaluated_at,\n"
+        "        )\n"
+    )
+    path = tmp_path / "innocent.py"
+    path.write_text(innocent, encoding="utf-8")
+    assert _unscoped_lookups(path) == []
+
+
+def test_table_ref_recognises_update_target_without_from_or_join(
+    tmp_path: Path,
+) -> None:
+    """`UPDATE <table> SET ...` reaches the shared table with no `FROM`/`JOIN`.
+
+    The original `_TABLE_REF` only matched `FROM`/`JOIN`, so an `UPDATE`
+    statement against `POLICY_TABLE` resolved to an EMPTY table set and was
+    exempted by the (then) "no tables => innocent" branch -- a second
+    UNDER-match on the very table this tripwire exists to protect.
+    """
+
+    guilty = (
+        "UPDATE public.visa_decision_retention_policies "
+        "SET effective_period = tstzrange(now(), null) "
+        "WHERE environment = 'prod' AND effective_period @> now();"
+    )
+    path = tmp_path / "update_guilty.sql"
+    path.write_text(guilty, encoding="utf-8")
+    offences = _unscoped_lookups(path)
+    assert len(offences) == 1, offences
+
+
+def test_a_lookup_with_no_resolvable_table_is_reported_by_default(
+    tmp_path: Path,
+) -> None:
+    """Fail-closed: an unresolvable table set is a defect, not an exemption.
+
+    A statement with no `FROM`/`JOIN`/`UPDATE`/`INSERT INTO`/`MERGE INTO`
+    target at all resolves to an EMPTY table set. The pre-fix code treated
+    "no tables" the same as "some OTHER table" and silently exempted it --
+    but an empty set is evidence the census could not see far enough, not
+    evidence of innocence, so the guard must fall through to the ordinary
+    scope-predicate check instead of exempting it outright.
+    """
+
+    guilty = "SELECT effective_period @> now() AS is_active;"
+    path = tmp_path / "no_table_guilty.sql"
     path.write_text(guilty, encoding="utf-8")
     offences = _unscoped_lookups(path)
     assert len(offences) == 1, offences
