@@ -4,9 +4,10 @@ l_level: L2
 gate_class: opus
 # Floor computed this run: `python3 scripts/evidence_pack_lint.py --print-floor
 # --numstat-file ... --changed-files-file ...` returns `size` — the SIGNED
-# bundle (rulepack-prod-019.signed.json) is 10,355 lines (pretty-printed,
-# never hand-authored; the operator's sign_pack.py wrote it byte-for-byte
-# from rulepack-prod-019.source.json). Size alone floors this at Gear 3
+# bundle (rulepack-prod-019.signed.json) is 9,285 lines (pretty-printed by
+# the repo's prettier gate after signing, never hand-authored; content, JCS
+# canonical bytes and signature are identical to the operator's
+# sign_pack.py output from rulepack-prod-019.source.json). Size alone floors this at Gear 3
 # regardless of the change's actual authored-logic footprint (one new ~300
 # line test file + a ~30 line secrets-triage rule).
 objective: >-

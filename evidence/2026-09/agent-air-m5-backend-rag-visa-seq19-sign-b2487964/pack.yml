@@ -11,8 +11,10 @@ lanes:
     seat: claude-sonnet-5 (this worktree session on M5, branch agent/air-m5/backend-rag/visa-seq19-sign)
     note: >-
       Landed the operator's offline-signed rulepack-prod-019.signed.json (sign_pack.py
-      output, kid=prod-2026-07-1) exactly as produced — never modified, re-signed, or
-      regenerated. Added test_seq19_signed_bundle.py, which independently verifies the
+      output, kid=prod-2026-07-1) — unmodified in content, never re-signed or
+      regenerated; the repo's prettier pre-commit gate whitespace-normalised the file
+      after signing (content, JCS canonical bytes and signature all identical). Added
+      test_seq19_signed_bundle.py, which independently verifies the
       bundle with the repo's own bundle.verify_rule_pack against the pinned production
       Ed25519 public key (never trusting the signer's self-reported digest/kid/sequence):
       real cryptographic verification, digest recomputation straight from disk via
@@ -61,9 +63,12 @@ seat_override: >-
   added.
 
 outcome: >-
-  rulepack-prod-019.signed.json is landed byte-for-byte as the operator produced it
-  (sign_pack.py, offline, M5) and independently verified with the repo's own Ed25519
-  code: bundle.verify_rule_pack succeeds against the pinned production trust store
+  rulepack-prod-019.signed.json is landed unmodified in content from what the operator
+  produced (sign_pack.py, offline, M5) — the repo's prettier pre-commit gate
+  whitespace-normalised the file after signing (content, JCS canonical bytes and
+  signature all identical, same state as seq-18 on main) — and independently verified
+  with the repo's own Ed25519 code: bundle.verify_rule_pack succeeds against the pinned
+  production trust store
   (kid=prod-2026-07-1), payload_sha256 recomputed from BOTH the signed envelope and the
   standalone source.json equals bac5da8e4727e7f639c947c50211e6f95e15c1403cf6aef0dd57a92
   014d6e6ea, previous_payload_sha256 equals seq-18's own re-derived digest
@@ -76,7 +81,7 @@ outcome: >-
   is a separate, Zero-only ceremony this PR does not touch.
 diff:
   files: 9
-  net_lines: "10355/0 rulepack-prod-019.signed.json (generated, byte-for-byte the operator's sign_pack.py output — not hand-authored), 295/0 test_seq19_signed_bundle.py, 63/0 scripts/ci/observe_visa_seq19_sign.py (new, bites-observable), 30/0 scripts/detect_secrets_auto_triage.py, 3/2 scripts/tests/test_detect_secrets_auto_triage.py, 88/0 this per-task brief.yml (copy), 248/0 this pack.yml (measured after staging final content, per its own self-reference), 2/0 council-journal.jsonl, 78/101 root evidence/brief.yml (repo convention — one root file, overwritten per PR)"
+  net_lines: "9285/0 rulepack-prod-019.signed.json (generated, content unmodified from the operator's sign_pack.py output — not hand-authored; prettier whitespace-normalised the file after signing), 295/0 test_seq19_signed_bundle.py, 63/0 scripts/ci/observe_visa_seq19_sign.py (new, bites-observable), 30/0 scripts/detect_secrets_auto_triage.py, 3/2 scripts/tests/test_detect_secrets_auto_triage.py, 88/0 this per-task brief.yml (copy), 248/0 this pack.yml (measured after staging final content, per its own self-reference), 2/0 council-journal.jsonl, 78/101 root evidence/brief.yml (repo convention — one root file, overwritten per PR)"
   measured_at: >-
     `git diff f187acea1a0dbe3b1b3482f8341e6306a24379aa --numstat` (f187acea = this branch's
     actual base commit, the seq-19 fold PR's merge; `git merge-base HEAD origin/main` ==

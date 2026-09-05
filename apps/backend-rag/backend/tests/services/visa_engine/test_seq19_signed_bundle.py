@@ -53,12 +53,24 @@ _PACKS_DIR = (
 _SEQ19_SIGNED_PATH = _PACKS_DIR / "rulepack-prod-019.signed.json"
 _SEQ19_SOURCE_PATH = _PACKS_DIR / "rulepack-prod-019.source.json"
 
-pytestmark = pytest.mark.skipif(
-    not _SEQ19_SIGNED_PATH.exists(),
-    reason="rulepack-prod-019.signed.json does not exist on disk — the "
-    "operator's offline signing ceremony (sign_pack.py) has not produced "
-    "it yet",
-)
+
+def test_signed_bundle_is_present_on_disk() -> None:
+    """A deleted/missing artifact must turn this gate RED, never skip it.
+
+    This module previously carried a module-level
+    ``pytestmark = pytest.mark.skipif(not _SEQ19_SIGNED_PATH.exists(), ...)``,
+    which meant an accidentally deleted (or never-landed) signed bundle
+    produced a silent, all-green-looking SKIP rather than a failure — the
+    gate would not have noticed its own consumer disappearing. This hard
+    assertion replaces that skip: no file on disk means this test (and every
+    other test below, which will error out trying to read it) fails loudly.
+    """
+    assert _SEQ19_SIGNED_PATH.exists(), (
+        "rulepack-prod-019.signed.json does not exist on disk — the "
+        "operator's offline signing ceremony (sign_pack.py) has not "
+        "produced it, or it was deleted. This must FAIL, not skip."
+    )
+
 
 #: The pinned production Ed25519 public key — the same one that verifies
 #: seq-17/seq-18 (see ``test_seq18_freshness_window.py``/``test_seq19_pack.py``).
