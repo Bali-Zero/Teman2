@@ -58,7 +58,7 @@ function inspect(
   return { browser, hits };
 }
 
-describe("browser API clients stay on the same-origin proxy", () => {
+describe("src/app browser API clients stay on the same-origin proxy", () => {
   it("checks the real app, including all three GARUDA API clients", () => {
     const inspected = sourceFiles(APP_DIR).map((file) => ({
       file: relative(APP_DIR, file),
@@ -124,7 +124,6 @@ describe("browser API clients stay on the same-origin proxy", () => {
     // Login and calendar proxy upstream requests; continue renders a server-only
     // magic-link preview. None is browser code, so none needs a blanket exemption.
     const source = readFileSync(join(APP_DIR, file), "utf8");
-    expect(source).toContain(`process.env.${FORBIDDEN}`);
     expect(inspect(file, source)).toEqual({ browser: false, hits: [] });
   });
 });
