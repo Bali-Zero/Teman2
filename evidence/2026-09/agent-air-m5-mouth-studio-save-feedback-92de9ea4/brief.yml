@@ -13,8 +13,12 @@ acceptance:
     probe: SavePlanBar.test.tsx
   - text: WHEN the manual link is used it SHALL contain the current relevant plan only in the URL fragment and make no network call.
     probe: SavePlanBar.test.tsx
+  - text: WHEN the consent banner is open the manual link SHALL remain fully visible and keyboard/pointer usable at maximum scroll at 320 and 390 pixels.
+    probe: exercise-320.js
+  - text: The local banner reservation SHALL follow its rendered height and disappear on dismissal, subsequent absent-banner loads and print.
+    probe: exercise-390.js
 consumer_map:
   - Second Home Studio plan save and copy controls at /visa/second-home/studio.
 risks:
-  - Synthetic browser API failures do not prove real-browser behavior or production rollout.
+  - Local Chrome fault injection verifies browser behavior but does not establish production rollout or real client persistence.
 grader: Independent Anthropic review requested from the Fable consul; no verdict asserted here.
