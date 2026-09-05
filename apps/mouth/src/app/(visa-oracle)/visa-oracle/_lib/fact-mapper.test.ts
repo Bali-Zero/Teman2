@@ -1,3 +1,4 @@
+import { APPLICANT_FACT_COUNT } from "@/lib/api/applicant-fact-paths";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -42,7 +43,7 @@ import {
 // on every call like every other key — KNOWN when answered, otherwise an
 // explicit UNKNOWN (NOT_ASKED by default), never omitted. The key is still
 // optional on the wire (models.py keeps a transitional default so older
-// 40-key clients don't 422) but the frontend contract is now the full 41.
+// 40-key clients don't 422) but the frontend emits the complete contract.
 //
 // Widened again 2026-08-23 (owner ruling — Visa Oracle fact vocabulary
 // extension, vocabulary-only, no rule change): three more optional/defaulted
@@ -51,7 +52,7 @@ import {
 // `family.stepchild_birth_certificate_confirmed` and
 // `family.sponsor_permit_basis`. Same posture as `sponsor.type`: this mapper
 // emits all three on every call, KNOWN when answered, otherwise an explicit
-// UNKNOWN, never omitted — the frontend contract is now the full 44.
+// UNKNOWN, never omitted — the frontend emits the complete contract.
 // ---------------------------------------------------------------------------
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -121,8 +122,8 @@ function representativeAnswer(question: OracleQuestion): string {
 describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)", () => {
   const backendPaths = extractApplicantFactPathsFromModelsPy();
 
-  it("sanity: the backend contract has 45 fact paths, sponsor.type included", () => {
-    expect(backendPaths.length).toBe(45);
+  it("sanity: the backend contract matches the generated fact count, sponsor.type included", () => {
+    expect(backendPaths.length).toBe(APPLICANT_FACT_COUNT);
     expect(backendPaths).toContain("sponsor.type");
     expect(backendPaths).toContain(
       "family.stepchild_marriage_certificate_confirmed",
@@ -134,13 +135,13 @@ describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)",
     expect(backendPaths).toContain("immigration.renewal_paid");
   });
 
-  it("emits exactly the 45 backend fact-path keys, sponsor.type included", () => {
+  it("emits exactly the backend fact-path keys, sponsor.type included", () => {
     const result = mapFacts({});
     const actualKeys = Object.keys(result.facts).sort();
     expect(actualKeys).toEqual([...backendPaths].sort());
   });
 
-  it("still emits exactly those 45 keys on a fully-answered interview (no extra keys sneak in)", () => {
+  it("still emits exactly those contract keys on a fully-answered interview (no extra keys sneak in)", () => {
     const result = mapFacts({
       in_indonesia: "yes",
       permit_expiry: "2026-08-01",

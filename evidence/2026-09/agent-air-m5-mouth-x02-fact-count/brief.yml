@@ -1,0 +1,20 @@
+gear: 1
+objective:
+  Replace four copied fact counts with one generated-contract exhaustive
+  witness.
+scope:
+  - apps/mouth/src/lib/api/applicant-fact-paths.ts
+  - apps/mouth/src/lib/api/applicant-fact-paths.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/shadow-client.test.ts
+  - apps/mouth/e2e/visa-oracle-v2.spec.ts
+constraints:
+  - Schema and runtime mapper unchanged; no prices, client data, deployment or schema
+    regeneration.
+acceptance:
+  - 115 focused tests pass; adding one schema fact fails only the central compiler assertion.
+  - Old-head grep finds four numeric assertions; working tree grep finds none.
+consumer_map:
+  - Existing required frontend Vitest includes src/**/*.test.{ts,tsx}, including the
+    compiler witness.
+  - Playwright E2E imports the same exported count.
