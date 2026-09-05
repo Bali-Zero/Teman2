@@ -1,0 +1,54 @@
+brief_ref: evidence/brief.yml
+plan_ref: Owner three-product mandate, delegated S-02 E33 practice-client ownership fix.
+lanes:
+  - lane: s02-e33-practice-owner
+    role: build
+    seat: gpt-6-astra
+dissent: []
+pii_scan: clean
+review_status: pending independent Fable review
+diff:
+  behaviour_change: >-
+    After existing client/RBAC validation, look up the optional practice's owning client.
+    Missing and mismatched practices return identical 422 responses before repository insert.
+    No practice preserves the existing path and performs no additional lookup.
+baseline:
+  commit: af949e6eb5d1767454dd788cd7a8e5be4b89967d
+  regression_result: >-
+    Before the router fix, the expanded suite produced 4 failed and 37 passed in 0.87s:
+    missing/mismatched practices incorrectly returned 201, and valid links had no ownership lookup.
+verification_scope:
+  host: Pro
+  snapshot: /tmp/e33-practice-owner.29PNVE
+  venv: /Users/nuzantara/nuzantara/apps/backend-rag/.venv
+  data: Synthetic fixtures with mock_db_pool; operational databases were not accessed.
+  snapshot_source: git archive of the baseline backend and pytest guards, plus the two changed files.
+  router_sha256: 40888f2c3c3b342f79cf34be6ca5d88e439c0b43860a0f5ae4d7ce8b1475a92c
+  tests_sha256: 0a4ba99acfaf65677bc6a7f631a7a1f981e24468e5d42c72f2aaa4d62e6a0d44
+  hash_check: Both file hashes matched between the M5 worktree and Pro snapshot.
+receipts:
+  - claim: Final router suite covers ownership, authorization, omission and existing lifecycle routes.
+    cmd: >-
+      ssh pro 'cd /tmp/e33-practice-owner.29PNVE/apps/backend-rag;
+      source /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/activate;
+      PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. ENVIRONMENT=test
+      DATABASE_URL=postgresql://test:test@127.0.0.1:1/test
+      TEST_DATABASE_URL=postgresql://test:test@127.0.0.1:1/test
+      INTAKE_TEST_DSN=postgresql://test:test@127.0.0.1:1/test
+      python -m pytest backend/tests/routers/test_e33_cases.py'
+    result: 41 passed, 1 existing LangChain deprecation warning, in 1.74s.
+    exit: 0
+    ts: "2026-09-05T06:34:14Z"
+    seat: gpt-6-astra via Pro existing venv
+  - claim: Ruff lint of both changed Python files.
+    cmd: >-
+      ssh pro 'cd /tmp/e33-practice-owner.29PNVE/apps/backend-rag;
+      source /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/activate;
+      python -m ruff check backend/app/routers/e33_cases.py backend/tests/routers/test_e33_cases.py'
+    result: All checks passed.
+    exit: 0
+    ts: "2026-09-05T06:35:28Z"
+    seat: gpt-6-astra via Pro existing venv
+known_debt:
+  - Ruff format --check is not clean; its nine remaining hunks are inherited and outside this diff.
+  - No deployment or production behavior is claimed; final independent review remains pending.
