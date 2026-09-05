@@ -1,0 +1,83 @@
+recorded_at: "2026-09-05T11:53:45.800807+00:00"
+source_head_before_test_correction: f94d8b2d58c8c7e706b1a82767d8f6b9f082e2b4 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+scope:
+  Synthetic targeted real Chromium tests on a fresh Pro snapshot. Next development runtime, not production
+  or full E2E suite. No real DB or outward message.
+environment:
+  host: Pro
+  snapshot: /tmp/visa-consuls-v04-e2e-f94d8b2d
+  node: v26.5.0
+  next_app_and_launcher: 16.3.3
+  playwright: 1.62.1
+  chromium: 151.0.7922.34
+  url: http://127.0.0.1:3434
+command:
+  PLAYWRIGHT_EXTERNAL_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3434 node ../../node_modules/@playwright/test/cli.js
+  test e2e/visa-oracle-v2.spec.ts --project=chromium --grep "configured WhatsApp handoff|minor handoff" --workers=1
+  --retries=0 --reporter=list,json
+runtime_source_unchanged: true
+local_and_pro_source_sha256:
+  apps/mouth/e2e/visa-oracle-v2.spec.ts: e5c0f19d1296212cdc4fefc6243ee6a2f46adae475d82de64f98d00e32e1b97b # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.test.tsx: 72fb080dfde137405ef5af67c52cbfc7cbf0869b1747d73ce089d8097d1dce2d # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.tsx: f103350977d38e7d68ccea4d83029301b4e8270928bca708330b3a446b63453f # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx: 3a43898b15916ab0676ddb368e9af53bd6cc2b4ce7891f95ac4c69632f10a48e # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.tsx: afb3918500d59832280cf4828591869c648695cae3de48bf2756614918bbc6a4 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/consent-store.test.ts: a4ddc2bfbe39d6ebff523cf64ba8693ac37e1d1a60dea5605f26b8a0f3a3c8da # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/consent-store.ts: d689c6cc3cfc26eee263193ca881e8a2524318905dfd2a1ccfe09c1ec35c0c8e # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/oracle.css: c5afd727dcb9fd7b741738bc745451b4bee3bad4dc8f9065267c6dca1ea625cd # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+runs:
+  - case: corrected
+    start_time: "2026-09-05T11:52:14.396Z"
+    duration_ms: 9234.967
+    passed: 2
+    failed: 0
+    flaky: 0
+    tests:
+      - title: configured WhatsApp handoff creates no link or QR before scoped consent
+        project: chromium
+        status: passed
+        retries: 0
+      - title: minor handoff requires guardian confirmation before separate WhatsApp consent
+        project: chromium
+        status: passed
+        retries: 0
+    log: .agent/v04-e2e-pro-browser.log
+    log_sha256: 613d47ef9fe9e87be8febfd5d08680399883d46037aca1b02ad25299bfae2306 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  - case: guilt_original_test
+    start_time: "2026-09-05T11:52:50.828Z"
+    duration_ms: 12418.038
+    passed: 0
+    failed: 2
+    flaky: 0
+    tests:
+      - title: configured WhatsApp handoff creates no link or QR before scoped consent
+        project: chromium
+        status: failed
+        retries: 0
+      - title: minor handoff requires guardian confirmation before separate WhatsApp consent
+        project: chromium
+        status: failed
+        retries: 0
+    log: .agent/v04-e2e-pro-guilt.log
+    log_sha256: 15b21a79f23573336bafa10c3bfa0b7b03ddf10adb7149545d3e78a5ea033ff4 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  - case: restored
+    start_time: "2026-09-05T11:53:03.627Z"
+    duration_ms: 1991.989
+    passed: 2
+    failed: 0
+    flaky: 0
+    tests:
+      - title: configured WhatsApp handoff creates no link or QR before scoped consent
+        project: chromium
+        status: passed
+        retries: 0
+      - title: minor handoff requires guardian confirmation before separate WhatsApp consent
+        project: chromium
+        status: passed
+        retries: 0
+    log: .agent/v04-e2e-pro-restored.log
+    log_sha256: 915c5b88a7afcd365ace6460ce033e04bbd6d9430efcd69e0eacac77ee993b48 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+typecheck:
+  command: npm run typecheck -w apps/mouth
+  exit: 0
+  log_sha256: fc8b24b2a639c82f55ba80d4ce7226e8c34e84cee2823aff0c6550297aa7298f # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
