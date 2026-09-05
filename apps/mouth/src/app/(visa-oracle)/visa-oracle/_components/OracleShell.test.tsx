@@ -46,9 +46,11 @@ const ANSWERS = [
 ] as const;
 type FixtureState = NonNullable<Parameters<typeof makeVisaOracleResponse>[0]>;
 
-function verdictSnapshot(): ReturnType<typeof createInterviewSnapshot> {
+function verdictSnapshot(
+  answers: readonly (readonly [string, string])[] = ANSWERS,
+): ReturnType<typeof createInterviewSnapshot> {
   let state: FlowState = flowReducer(initialFlowState(), { type: "ADVANCE" });
-  for (const [questionId, value] of ANSWERS) {
+  for (const [questionId, value] of answers) {
     state = flowReducer(state, { type: "ANSWER", questionId, value });
   }
   state = flowReducer(state, { type: "ADVANCE" });
@@ -56,10 +58,12 @@ function verdictSnapshot(): ReturnType<typeof createInterviewSnapshot> {
   return createInterviewSnapshot(state, new Date());
 }
 
-function installVerdictResume(): void {
-  expect(saveInterviewResume(verdictSnapshot(), { now: new Date() })).toBe(
-    true,
-  );
+function installVerdictResume(
+  answers: readonly (readonly [string, string])[] = ANSWERS,
+): void {
+  expect(
+    saveInterviewResume(verdictSnapshot(answers), { now: new Date() }),
+  ).toBe(true);
 }
 
 function engineFetch(
@@ -206,6 +210,90 @@ describe("OracleShell authoritative evaluate integration", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Visit Visa C1")).toBeNull();
+    expect(global.fetch).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    {
+      category: "remote",
+      questionId: "remote_compensation",
+      factPath: "work.indonesia_source_compensation",
+      internalMode: false,
+      details: [
+        ["sponsor_category", "NONE"],
+        ["remote_clients", "foreign"],
+        ["remote_compensation", "no"],
+        ["remote_employer_country", "US"],
+        ["remote_pt_pma", "no"],
+      ],
+    },
+    {
+      category: "invest",
+      questionId: "investment_pt_pma",
+      factPath: "investment.pt_pma_committed",
+      internalMode: true,
+      details: [
+        ["sponsor_category", "NONE"],
+        ["investment_vehicle", "pt_pma"],
+        ["investment_pt_pma", "yes"],
+        ["investment_capital_idr", "10000000000"],
+        ["investment_paid_up_capital_idr", "10000000000"],
+        ["investment_role", "SHAREHOLDER_DIRECTOR"],
+      ],
+    },
+  ] as const)(
+    "missing-input Edit reopens the $category interview question",
+    async ({ category, questionId, factPath, internalMode, details }) => {
+      installVerdictResume([
+        ...ANSWERS.slice(0, 5),
+        ["category", category],
+        ["trip_scope", "single"],
+        ...details,
+        ["stay_days", "30"],
+        ["review_gate", "none"],
+      ]);
+      const response = makeVisaOracleResponse("NEEDS_INPUT");
+      response.mode = internalMode ? "CURATED" : "ENGINE";
+      response.decision.missing_facts = [factPath];
+      global.fetch = vi.fn<typeof fetch>(
+        async () =>
+          new Response(JSON.stringify(response), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+      );
+      render(<OracleShell internalMode={internalMode} />);
+
+      await expectStateHeading("NEEDS_INPUT");
+      fireEvent.click(screen.getByRole("button", { name: /^edit$/i }));
+      expect(
+        await screen.findByRole("heading", {
+          name: translate("en", `q.${questionId}`),
+        }),
+      ).toBeInTheDocument();
+      expect(global.fetch).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("keeps an unavailable missing question actionable through the existing handoff, without a dead Edit", async () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["work.indonesia_source_compensation"];
+    global.fetch = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    render(<OracleShell />);
+
+    await expectStateHeading("NEEDS_INPUT");
+    expect(screen.queryByRole("button", { name: /^edit$/i })).toBeNull();
+    expect(screen.getByText(/Bali Zero can help clarify/)).toBeInTheDocument();
+    expect(screen.getByText("Continue with Bali Zero")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/work\.indonesia_source_compensation/),
+    ).toBeNull();
     expect(global.fetch).toHaveBeenCalledOnce();
   });
 

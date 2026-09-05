@@ -599,6 +599,9 @@ function OracleShellRuntime({
                   assumptions,
                   facts: state.facts,
                   interviewBranchesRemaining,
+                  editableQuestionIds: state.history.flatMap((node) =>
+                    node.kind === "question" ? [node.questionId] : [],
+                  ),
                 });
                 emitVisaOracleTelemetry({
                   event: "visa_oracle_v2_engine_result",
@@ -629,6 +632,9 @@ function OracleShellRuntime({
                 assumptions,
                 facts: state.facts,
                 interviewBranchesRemaining,
+                editableQuestionIds: state.history.flatMap((node) =>
+                  node.kind === "question" ? [node.questionId] : [],
+                ),
               });
               emitVisaOracleTelemetry({
                 event: "visa_oracle_v2_engine_result",
@@ -715,6 +721,7 @@ function OracleShellRuntime({
     retryNonce,
     state.attempt,
     state.facts,
+    state.history,
   ]);
 
   useEffect(() => {
