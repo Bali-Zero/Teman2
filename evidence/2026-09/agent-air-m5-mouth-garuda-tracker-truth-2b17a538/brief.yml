@@ -1,0 +1,21 @@
+task_id: garuda-tracker-truth
+gear: 2
+l_level: L2
+gate_class: opus
+objective: Keep the GARUDA customer tracker truthful about payment and current through fulfillment.
+constraints:
+  - Browser return is not authoritative payment evidence.
+  - Failed or expired checkout does not prove that no money was received.
+  - No backend, pricing, regulatory, credential or production data changes.
+acceptance:
+  - text: WHEN an order is not paid the tracker SHALL not label its amount Total paid.
+    probe: OrderTracker.test.tsx
+  - text: WHEN fulfillment is Approved or Blocked the tracker SHALL continue polling until a terminal state.
+    probe: useOrderTracking.test.ts
+  - text: WHEN the tracker unmounts it SHALL cancel timers and abort the current request.
+    probe: useOrderTracking.test.ts
+consumer_map:
+  - GARUDA customer order tracker at /visa/voa/orders/[orderId].
+risks:
+  - Synthetic frontend regressions do not prove a production staff transition or a real payment.
+grader: Independent Anthropic review requested from the Fable consul; no verdict asserted here.

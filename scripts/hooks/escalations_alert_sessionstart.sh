@@ -157,33 +157,79 @@ high = _dedup
 if not high and normal_pending == 0:
     sys.exit(0)
 
-lines = ["🚨 ESCALATIONS BOARD (injected by SessionStart receptor)"]
-if high:
-    lines.append(f"  — {len(high)} HIGH-priority open (act first):")
-    for src, job, summ in high[:12]:
-        tail = f" — {summ}" if summ else ""
-        lines.append(f"    🔴 [{src}] {job}{tail}")
-    if len(high) > 12:
-        lines.append(f"    … +{len(high) - 12} more HIGH")
-else:
-    lines.append("  — 0 HIGH-priority open.")
-if normal_pending:
-    lines.append(f"  — {normal_pending} NORMAL pending in escalations_pro.jsonl (context).")
-lines.append("")
-lines.append(
+# Output cap (2026-09-04): this receptor injects into EVERY session start on
+# every machine — a board with dozens of HIGH items must not itself become
+# the noise it exists to cut through. SESSIONSTART_HOOK_MAX_BYTES caps the
+# WHOLE stdout payload (the JSON envelope included, since that is what the
+# harness actually injects). Priority, most-detail-first: the HIGH count
+# line and HIGH items are never dropped; the long explanatory paragraph is
+# the first thing to go, then the HIGH item list itself shrinks (still
+# naming how many are hidden); the /escalations pointer always survives —
+# it is the shortest tail and the one line every stage keeps.
+MAX_BYTES = int(os.environ.get("SESSIONSTART_HOOK_MAX_BYTES", "1500"))
+SHORT_POINTER = "Run /escalations for the full board."
+LONG_EXPLANATION = (
     "Run /escalations for the full board. These are surfaced HIGH-first per "
     "CLAUDE.md §2/§14; the receptor is read-only — it never mutates the board. "
     "claude_tasks shown are HIGH within the last "
     f"{fresh_days}d only (the dir is a 500+ file graveyard; surfacing all would "
     "re-create the noise-blindness — SNAPSHOT, not graveyard)."
 )
-ctx = "\n".join(lines)
-print(json.dumps({
-    "hookSpecificOutput": {
-        "hookEventName": "SessionStart",
-        "additionalContext": ctx,
-    }
-}))
+
+
+def _payload(ctx: str) -> str:
+    return json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "SessionStart",
+            "additionalContext": ctx,
+        }
+    })
+
+
+def _build(show_n: int, tail_text: str) -> str:
+    lines = ["🚨 ESCALATIONS BOARD (injected by SessionStart receptor)"]
+    if high:
+        lines.append(f"  — {len(high)} HIGH-priority open (act first):")
+        for src, job, summ in high[:show_n]:
+            tail = f" — {summ}" if summ else ""
+            lines.append(f"    🔴 [{src}] {job}{tail}")
+        if len(high) > show_n:
+            lines.append(f"    … +{len(high) - show_n} more HIGH")
+    else:
+        lines.append("  — 0 HIGH-priority open.")
+    if normal_pending:
+        lines.append(f"  — {normal_pending} NORMAL pending in escalations_pro.jsonl (context).")
+    lines.append("")
+    lines.append(tail_text)
+    return "\n".join(lines)
+
+
+ctx = _build(12, LONG_EXPLANATION)
+if len(_payload(ctx).encode("utf-8")) > MAX_BYTES:
+    ctx = _build(12, SHORT_POINTER)
+show_n = 12
+while len(_payload(ctx).encode("utf-8")) > MAX_BYTES and show_n > 1:
+    show_n -= 1
+    ctx = _build(show_n, SHORT_POINTER)
+
+if len(_payload(ctx).encode("utf-8")) > MAX_BYTES:
+    # Defensive last resort (an unbounded `job` field can still overflow at
+    # show_n=1): hard-truncate at a line boundary and say so.
+    lines = ctx.split("\n")
+    kept: list[str] = []
+    running = 0
+    char_budget = max(MAX_BYTES - 300, 0)  # margin for the JSON envelope + trailer
+    for ln in lines:
+        running += len(ln) + 1
+        if running > char_budget:
+            break
+        kept.append(ln)
+    hidden_lines = len(lines) - len(kept)
+    if hidden_lines > 0:
+        kept.append(f"… (+{hidden_lines} lines, run /escalations for the full board)")
+    ctx = "\n".join(kept) if kept else lines[0]
+
+print(_payload(ctx))
 PYEOF
 
 exit 0

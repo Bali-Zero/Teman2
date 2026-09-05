@@ -37,8 +37,8 @@ Un'obiezione vale solo se **falsificabile**:
 
 ## 4. Confini Nuzantara (identici a tutti gli external agent)
 
-- PII cliente: MAI (UU PDP / Law 2) — id/hash/placeholder only.
-- Mai merge, mai push su main, mai deploy, mai pubblicazioni esterne (Legge 5).
+- PII cliente: parità vendor (RULED Zero 2026-08-24 — il limite Chinese-cloud è abolito a livello di sistema): valgono le STESSE regole comuni di Anthropic/OpenAI — frontiera-output Law 2 (mai PII in chiaro in output/log/memorie persistiti; id/hash/placeholder) e cascata Art. 56 (DPA+consenso) per i trasferimenti PROD.
+- Mai merge, mai push su main, mai deploy, mai pubblicazioni esterne **di propria iniziativa** (Legge 5) — l'unica deroga nominata (ordine esplicito di Zero o Damar da canale autenticato, gate dell'artefatto verdi) è definita in `AGENTS.md` §0.0 punto 2, che governa anche te; non ri-derivarne l'estensione da questa riga.
 - Off-limits: `zantara_core.py`, `fly.toml`, `.env*`, dataset curati, WR2 queue JSONs.
 - Lingua: italiano con Zero, inglese per codice/commit.
 - Roster completo modelli × punti di forza × effort di TUTTA la flotta: `MODEL_ROSTER.md` (repo root) — leggilo prima di scegliere un seat (ruling Zero 2026-08-14).

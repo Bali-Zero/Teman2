@@ -10,11 +10,20 @@ a artefact that claims to be a thin bridge but is secretly carrying full
 TRAUMA/ANTIBODY/GOTCHA paragraphs in its MEMBRI bullet lists instead of
 `cicatrix-scars.md`, where the full corpus lives).
 
+Second diet (2026-09-04, `scripts/memory/mos_recall_sessionstart.py`): the
+bridge went from an 8,192-byte MEMBRI-list edition down to a 2,560-byte
+NUCLEO — one line per family (name, disease, antidote, executable) — because
+the SessionStart recall hook now ALSO indexes `cicatrix-scars.md` and
+`cicatrix-scars-archive.md` by section, so individual scars are recalled by
+pertinence instead of the whole roster being injected wholesale every turn.
+The MEMBRI lists and the Orfane section were dropped from the bridge; their
+bodies still live in the two scar files, unmoved.
+
 This guard is two things, deliberately kept together because they trade off
 against each other — shrinking the file is only safe if nothing fell off
 the truck on the way down:
 
-1. A byte-budget assertion: `cicatrix-superscar.md` stays <=14000 bytes.
+1. A byte-budget assertion: `cicatrix-superscar.md` stays <=2560 bytes.
 2. A completeness assertion: every `W\\d+[a-z]?` token that appears anywhere
    in `cicatrix-superscar.md` resolves to a real body heading in either
    `cicatrix-scars.md` or `cicatrix-scars-archive.md`.
@@ -40,11 +49,17 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RULES_DIR = REPO_ROOT / ".claude" / "rules"
 
-SUPERSCAR = RULES_DIR / "cicatrix-superscar.md"
-SCARS = RULES_DIR / "cicatrix-scars.md"
-ARCHIVE = RULES_DIR / "cicatrix-scars-archive.md"
+SCARS_DIR = REPO_ROOT / "docs" / "scars"
 
-BYTE_BUDGET = 14_000
+SUPERSCAR = RULES_DIR / "cicatrix-superscar.md"
+# The bodies live OUTSIDE `.claude/rules/` since L02-PR1: everything in that
+# directory is auto-injected into every session and every subagent, and the two
+# bodies were 693 KB of it. The bridge stays there on purpose. This guard still
+# reads all three — it just reads them from two places now.
+SCARS = SCARS_DIR / "cicatrix-scars.md"
+ARCHIVE = SCARS_DIR / "cicatrix-scars-archive.md"
+
+BYTE_BUDGET = 2_560
 
 _WNUM_TOKEN_RE = re.compile(r"\bW\d+[a-z]?\b")
 _HEADING_RE = re.compile(r"^#{2,4} ")
@@ -163,14 +178,18 @@ class TestTheRealLedgerIsClean:
         )
 
     def test_all_three_cicatrix_files_are_prettier_ignored(self) -> None:
+        # Asserted by the file's CURRENT path, not by the directory it used to
+        # live in: the bodies moved to docs/scars/ in L02-PR1 and a .prettierignore
+        # entry that still names .claude/rules/ would be an entry protecting
+        # nothing while reading as protection (superscar #2).
         prettierignore = (REPO_ROOT / ".prettierignore").read_text(encoding="utf-8")
-        for name in (
-            "cicatrix-superscar.md",
-            "cicatrix-scars.md",
-            "cicatrix-scars-archive.md",
+        for rel in (
+            ".claude/rules/cicatrix-superscar.md",
+            "docs/scars/cicatrix-scars.md",
+            "docs/scars/cicatrix-scars-archive.md",
         ):
-            assert f".claude/rules/{name}" in prettierignore, (
-                f".claude/rules/{name} is not listed in .prettierignore — Prettier "
+            assert rel in prettierignore, (
+                f"{rel} is not listed in .prettierignore — Prettier "
                 "rewrites literal text inside these scar records as markdown "
                 "emphasis delimiters (cicatrix-scars.md W112) and silently "
                 "corrupts the content."

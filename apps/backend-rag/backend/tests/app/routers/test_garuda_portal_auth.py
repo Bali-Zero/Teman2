@@ -41,6 +41,7 @@ from backend.services.garuda_portal.magic_link import (
     ExchangeOutcome,
     IdempotencyConflict,
     IssueOutcome,
+    PeekOutcome,
     PersistencePolicyUnavailable,
     RateLimited,
 )
@@ -81,6 +82,7 @@ class _FakeStore:
         self._exchanged_key_tokens: dict[str, str] = {}
         self.raise_on_issue: Exception | None = None
         self.raise_on_exchange: Exception | None = None
+        self.raise_on_peek: Exception | None = None
 
     async def issue(
         self,
@@ -102,8 +104,10 @@ class _FakeStore:
         )
         return IssueOutcome(idempotency_replayed=False)
 
-    def seed_token(self, token: str, *, expired: bool, consumed: bool) -> None:
-        self.tokens[token] = {"expired": expired, "consumed": consumed}
+    def seed_token(
+        self, token: str, *, expired: bool, consumed: bool, email: str = "visitor@example.com"
+    ) -> None:
+        self.tokens[token] = {"expired": expired, "consumed": consumed, "email": email}
 
     async def exchange(self, *, idempotency_key: str, token: str) -> ExchangeOutcome:
         if self.raise_on_exchange is not None:
@@ -141,6 +145,14 @@ class _FakeStore:
         self.exchanged_keys[idempotency_key] = outcome
         self._exchanged_key_tokens[idempotency_key] = token
         return outcome
+
+    async def peek(self, *, token: str) -> PeekOutcome:
+        if self.raise_on_peek is not None:
+            raise self.raise_on_peek
+        state = self.tokens.get(token)
+        if state is None or state["expired"] or state["consumed"]:
+            return PeekOutcome(valid=False)
+        return PeekOutcome(valid=True, email=state["email"])
 
 
 class _FakeCheckStore:
@@ -619,6 +631,125 @@ def test_exchange_persistence_unavailable_is_visible_503(fake_store):
     )
     assert resp.status_code == 503
     assert resp.json()["code"] == "PERSISTENCE_POLICY_UNAVAILABLE"
+
+
+# ============================================================
+# previewMagicLink — non-consuming lookup (NOT in the frozen contract; see
+# module docstring)
+# ============================================================
+
+
+def test_preview_valid_token_returns_masked_email_without_idempotency_key(fake_store):
+    fake_store.seed_token(VALID_TOKEN, expired=False, consumed=False, email="johndoe@example.com")
+    client = _client_with_store(fake_store)
+
+    resp = client.post("/api/visa/voa/auth/magic-links/preview", json={"token": VALID_TOKEN})
+
+    assert resp.status_code == 200
+    assert resp.json() == {"masked_email": "jo***@example.com"}
+
+
+def test_preview_never_reveals_the_raw_email(fake_store):
+    fake_store.seed_token(VALID_TOKEN, expired=False, consumed=False, email="johndoe@example.com")
+    client = _client_with_store(fake_store)
+
+    resp = client.post("/api/visa/voa/auth/magic-links/preview", json={"token": VALID_TOKEN})
+
+    assert "johndoe" not in resp.text
+
+
+def test_preview_does_not_consume_the_token_then_exchange_still_succeeds(fake_store):
+    """The load-bearing property this endpoint exists to prove: preview must
+    never spend the credential it describes. Proven end to end -- preview,
+    then a REAL exchange of the SAME token, must still succeed exactly as
+    if preview had never run."""
+    fake_store.seed_token(VALID_TOKEN, expired=False, consumed=False, email="johndoe@example.com")
+    client = _client_with_store(fake_store)
+
+    preview = client.post("/api/visa/voa/auth/magic-links/preview", json={"token": VALID_TOKEN})
+    assert preview.status_code == 200
+
+    exchange = client.post(
+        "/api/visa/voa/auth/sessions",
+        json={"token": VALID_TOKEN},
+        headers={"Idempotency-Key": VALID_IDEMPOTENCY_KEY},
+    )
+    assert exchange.status_code == 204
+    assert "garuda_session" in exchange.cookies
+
+
+def test_preview_expired_link_is_non_enumerating_401(fake_store):
+    fake_store.seed_token(VALID_TOKEN, expired=True, consumed=False)
+    client = _client_with_store(fake_store)
+
+    resp = client.post("/api/visa/voa/auth/magic-links/preview", json={"token": VALID_TOKEN})
+
+    assert resp.status_code == 401
+    assert resp.json()["code"] == "MAGIC_LINK_INVALID"
+
+
+def test_preview_consumed_link_is_indistinguishable_from_unknown(fake_store):
+    """DECISIONS.md Q1 applies to preview exactly as it does to exchange: a
+    consumed and an unknown token must be byte-identical to the caller."""
+    fake_store.seed_token(VALID_TOKEN, expired=False, consumed=True)
+    client = _client_with_store(fake_store)
+
+    consumed_resp = client.post(
+        "/api/visa/voa/auth/magic-links/preview", json={"token": VALID_TOKEN}
+    )
+    unknown_resp = client.post(
+        "/api/visa/voa/auth/magic-links/preview", json={"token": "z" * 43}
+    )
+
+    assert consumed_resp.status_code == unknown_resp.status_code == 401
+    assert consumed_resp.json() == unknown_resp.json()
+
+
+def test_preview_disabled_flag_returns_404(monkeypatch):
+    monkeypatch.setenv("GARUDA_PUBLIC_ENABLED", "false")
+    resp = _client().post(
+        "/api/visa/voa/auth/magic-links/preview", json={"token": VALID_TOKEN}
+    )
+    assert resp.status_code == 404
+    assert resp.json()["code"] == "GARUDA_PUBLIC_DISABLED"
+
+
+def test_preview_persistence_unavailable_is_visible_503(fake_store):
+    fake_store.raise_on_peek = PersistencePolicyUnavailable("no store")
+    client = _client_with_store(fake_store)
+    resp = client.post("/api/visa/voa/auth/magic-links/preview", json={"token": VALID_TOKEN})
+    assert resp.status_code == 503
+    assert resp.json()["code"] == "PERSISTENCE_POLICY_UNAVAILABLE"
+
+
+def test_preview_unexpected_store_exception_is_contract_shaped_500(fake_store):
+    fake_store.raise_on_peek = RuntimeError("boom")
+    client = _client_with_store(fake_store)
+    resp = client.post("/api/visa/voa/auth/magic-links/preview", json={"token": VALID_TOKEN})
+    assert resp.status_code == 500
+    assert resp.json()["code"] == "INTERNAL_ERROR"
+
+
+def test_preview_requires_no_idempotency_key():
+    """Unlike issue/exchange, preview mutates nothing -- no Idempotency-Key
+    header should ever be required."""
+    store = _FakeStore()
+    store.seed_token(VALID_TOKEN, expired=False, consumed=False)
+    client = _client_with_store(store)
+    resp = client.post("/api/visa/voa/auth/magic-links/preview", json={"token": VALID_TOKEN})
+    assert resp.status_code == 200
+
+
+def test_preview_rate_limit_class_matches_its_mounted_siblings():
+    """No store-level throttle (see the handler's own docstring) -- the
+    generic per-IP `/api/` bucket must still cover this path, the same one
+    `/magic-links` and `/sessions` already answer under."""
+    from backend.middleware.rate_limiter import RateLimitMiddleware
+
+    rl = RateLimitMiddleware(app=object())
+    preview_limit = rl._get_rate_limit("/api/visa/voa/auth/magic-links/preview")
+    assert preview_limit == rl._get_rate_limit("/api/visa/voa/auth/sessions")
+    assert preview_limit == (120, 60)
 
 
 # ============================================================

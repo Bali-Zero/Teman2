@@ -517,10 +517,18 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "quoted verbatim in the run's own research report — an integrity "
         "anchor, never a credential",
     ),
-    # APPEND-ONLY from here: scripts/tests/test_detect_secrets_auto_triage.py
-    # indexes this list POSITIONALLY — inserting a rule mid-list shifts every
-    # later index and breaks the per-rule registration tests (measured the
-    # hard way 2026-08-21: 8 red from one mid-list insert).
+    # Not append-only any more (2026-08-23, PRs #4663 + follow-up): this
+    # comment used to require every new rule be appended last, because
+    # scripts/tests/test_detect_secrets_auto_triage.py indexed this list
+    # POSITIONALLY — inserting a rule mid-list shifted every later index
+    # and broke the per-rule registration tests (measured the hard way
+    # 2026-08-21: 8 red from one mid-list insert). Every index-based test
+    # in that file now looks its rule up by a substring of its own reason
+    # string instead (_find_content_keyed_rule()), so this constraint no
+    # longer holds — verified by inserting a dummy rule at the front of
+    # this list (the maximal-shift case) and confirming nothing in that
+    # test file breaks except its own deliberate rule-count guard. A new
+    # rule may be added anywhere below that reads naturally, not only here.
     #
     # lint_google_oauth_credentials.py: KNOWN_COMPROMISED maps 16-hex
     # truncated sha256 fingerprints of the published 2026-08-21 Google OAuth
@@ -721,6 +729,18 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
     (
         re.compile(r"(^|/)\.claude/rules/.*\.md$"),
         ".claude/rules markdown: operator scar notes and guardrail docs, not secrets",
+    ),
+    # The same corpus, at the address it moved to. L02-PR1 took the two scar
+    # BODIES out of `.claude/rules/` (everything in that directory is injected
+    # into every session and every subagent, and the bodies were 693 KB of it);
+    # the bridge stayed. Without this rule the move alone turns `Detect Secrets`
+    # red — the rule above stops matching, and ~700 KB of scar text quoting
+    # rotated credentials reads as newly unaudited. Worth naming how it was
+    # nearly missed: the rule is a REGEX over the DIRECTORY, so it contains no
+    # occurrence of the moved filenames and no grep for them could find it.
+    (
+        re.compile(r"(^|/)docs/scars/.*\.md$"),
+        "docs/scars markdown: the cicatrix corpus relocated from .claude/rules, same nature",
     ),
     # Claude skills markdown (modus PENDING-ARMS ledger, skill docs): proof
     # lines quote curl commands with rotated/revoked key literals and

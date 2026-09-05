@@ -289,8 +289,32 @@ def _error_responses(operation_id: str) -> dict[int | str, dict[str, object]]:
 # only place that noticed this router's schema at all before 2026-08-30 (see
 # that module's own docstring for L3's status-code documentation gap more
 # broadly).
+#
+# `listIntakeDocuments` (L5, `garuda_documents_router.py`) joined this set
+# when that router was mounted: same shape again — `result_id: str` is a
+# bare path capture, ownership checked by hand (`_require_owned_result`)
+# against the session's own actor, never a Pydantic path constraint — so
+# the frozen contract's 5-code set for this GET (200/401/404/500/503, no
+# 422 at all) would otherwise be permanently unmatchable by any live schema.
 _NO_VALIDATION_ERROR_OPERATIONS = frozenset(
-    {"getEligibilityResult", "deleteEligibilityResult", "getOrderAndPractice"}
+    {
+        "getEligibilityResult",
+        "deleteEligibilityResult",
+        "getOrderAndPractice",
+        "listIntakeDocuments",
+        # `listStaffPractices`/`getStaffPractice` (step 8,
+        # `garuda_staff_router.py`) joined the same way: `practice_id` is a
+        # bare path capture (existence/visibility checked by hand against
+        # the actor, never a Pydantic path constraint) and every
+        # `listStaffPractices` query param is a plain `str | None` with no
+        # constrained schema — neither route has any body/path/query shape
+        # a real request can fail Pydantic validation against, so the
+        # frozen contract's 5/6-code sets (no 422 at all) would otherwise
+        # be permanently unmatchable by any live schema, same as the four
+        # operations above.
+        "listStaffPractices",
+        "getStaffPractice",
+    }
 )
 
 

@@ -33,7 +33,7 @@ running."
   confirming the report's number precisely.
 - `scripts/tests/test_superscar_budget.py` [exists] — existing byte-budget (≤14,000 B) +
   completeness (every `W\d+` token resolves to a real heading) guard; PR-3 must keep this green.
-- `.claude/rules/cicatrix-scars.md`, `cicatrix-scars-archive.md` [exist] — the full corpus.
+- `docs/scars/cicatrix-scars.md`, `cicatrix-scars-archive.md` [exist] — the full corpus.
 - `infra/scar-gates/MANIFEST.json`, `scripts/lint_scar_number_collision.py`,
   `scripts/lint_retracted_claims.py` + `infra/retracted-claims/registry.json`,
   `infra/guard-conformance/registry.json` + `check_guard_conformance.py`,

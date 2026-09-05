@@ -246,6 +246,25 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
         process_groups=_API,
         tags=("visa", "garuda", "public", "auth"),
     ),
+    # ── GARUDA VOA documents + OCR hinge (contract-frozen, L5) ──
+    # Same no-mount-time-condition posture as the other three garuda_voa*
+    # routers above. Production store defaults fail-closed (503) until L1's
+    # retention-covered store exists — see garuda_documents_router.py's
+    # module docstring for the full three-blocker chain.
+    RouterEntry(
+        name="garuda_documents_router",
+        process_groups=_API,
+        tags=("visa", "garuda", "documents"),
+    ),
+    # ── GARUDA VOA staff surface (step 8, contract-frozen PR-02..PR-11) ──
+    # Same no-mount-time-condition posture as the other four garuda_voa*
+    # routers above: GARUDA_PUBLIC_ENABLED is re-checked per-request by the
+    # router's own dependency, not gated at mount.
+    RouterEntry(
+        name="garuda_staff_router",
+        process_groups=_API,
+        tags=("visa", "garuda", "staff"),
+    ),
     # ── Google Drive / Integrations ──
     RouterEntry(name="google_drive", process_groups=_API, tags=("integrations",)),
     # ── Guardian ──

@@ -251,6 +251,35 @@ function fallbackForError(
     if (degradedHumanReview) {
       return buildDegradedHumanReviewOutcome({ assumptions });
     }
+    // NON_ENGINE_MODE is not a guard failure and must not borrow the
+    // guard's copy. It means the server answered normally with
+    // `mode: "CURATED"` -- an evaluation genuinely happened, was sealed
+    // and was persisted -- and `requireEngineResponse` declined to render
+    // it as authority because public enforcement is off. Saying "No
+    // evaluation was submitted" to that visitor states the opposite of
+    // what occurred, and blames their interview for a server-side
+    // configuration they cannot see or influence.
+    //
+    // This is the rule `buildDegradedHumanReviewOutcome`'s own comment in
+    // outcome-fallbacks.ts already states: the "no evaluation was
+    // submitted" claim "must stay reserved for
+    // TEMPORARILY_UNAVAILABLE/network/parse failures" -- cases where the
+    // evaluation really did not happen. NON_ENGINE_MODE is not one of
+    // them; MALFORMED_RESPONSE and RESPONSE_INVARIANT are, because there
+    // the payload could not be trusted at all.
+    //
+    // The public rendering boundary is untouched: buildShadowOutcome
+    // returns TEMPORARILY_UNAVAILABLE with no candidates, exactly as the
+    // guard outcome did. A CURATED decision still never becomes visible
+    // authority. Only the sentence the visitor reads changes, from a
+    // false one to a true one -- and to the same sentence the explicit
+    // SHADOW branch below already shows for this identical situation.
+    if (error.code === "NON_ENGINE_MODE") {
+      return buildShadowOutcome({
+        code: "SHADOW_VERIFICATION_ONLY",
+        assumptions,
+      });
+    }
     return buildClientGuardOutcome({ code: error.code, assumptions });
   }
   return buildClientGuardOutcome({
@@ -570,6 +599,9 @@ function OracleShellRuntime({
                   assumptions,
                   facts: state.facts,
                   interviewBranchesRemaining,
+                  editableQuestionIds: state.history.flatMap((node) =>
+                    node.kind === "question" ? [node.questionId] : [],
+                  ),
                 });
                 emitVisaOracleTelemetry({
                   event: "visa_oracle_v2_engine_result",
@@ -600,6 +632,9 @@ function OracleShellRuntime({
                 assumptions,
                 facts: state.facts,
                 interviewBranchesRemaining,
+                editableQuestionIds: state.history.flatMap((node) =>
+                  node.kind === "question" ? [node.questionId] : [],
+                ),
               });
               emitVisaOracleTelemetry({
                 event: "visa_oracle_v2_engine_result",
@@ -686,6 +721,7 @@ function OracleShellRuntime({
     retryNonce,
     state.attempt,
     state.facts,
+    state.history,
   ]);
 
   useEffect(() => {

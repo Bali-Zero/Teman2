@@ -46,9 +46,11 @@ const ANSWERS = [
 ] as const;
 type FixtureState = NonNullable<Parameters<typeof makeVisaOracleResponse>[0]>;
 
-function verdictSnapshot(): ReturnType<typeof createInterviewSnapshot> {
+function verdictSnapshot(
+  answers: readonly (readonly [string, string])[] = ANSWERS,
+): ReturnType<typeof createInterviewSnapshot> {
   let state: FlowState = flowReducer(initialFlowState(), { type: "ADVANCE" });
-  for (const [questionId, value] of ANSWERS) {
+  for (const [questionId, value] of answers) {
     state = flowReducer(state, { type: "ANSWER", questionId, value });
   }
   state = flowReducer(state, { type: "ADVANCE" });
@@ -56,10 +58,12 @@ function verdictSnapshot(): ReturnType<typeof createInterviewSnapshot> {
   return createInterviewSnapshot(state, new Date());
 }
 
-function installVerdictResume(): void {
-  expect(saveInterviewResume(verdictSnapshot(), { now: new Date() })).toBe(
-    true,
-  );
+function installVerdictResume(
+  answers: readonly (readonly [string, string])[] = ANSWERS,
+): void {
+  expect(
+    saveInterviewResume(verdictSnapshot(answers), { now: new Date() }),
+  ).toBe(true);
 }
 
 function engineFetch(
@@ -209,16 +213,121 @@ describe("OracleShell authoritative evaluate integration", () => {
     expect(global.fetch).toHaveBeenCalledOnce();
   });
 
-  it("fails closed for a CURATED response in ENGINE mode", async () => {
+  it.each([
+    {
+      category: "remote",
+      questionId: "remote_compensation",
+      factPath: "work.indonesia_source_compensation",
+      internalMode: false,
+      details: [
+        ["sponsor_category", "NONE"],
+        ["remote_clients", "foreign"],
+        ["remote_compensation", "no"],
+        ["remote_employer_country", "US"],
+        ["remote_pt_pma", "no"],
+      ],
+    },
+    {
+      category: "invest",
+      questionId: "investment_pt_pma",
+      factPath: "investment.pt_pma_committed",
+      internalMode: true,
+      details: [
+        ["sponsor_category", "NONE"],
+        ["investment_vehicle", "pt_pma"],
+        ["investment_pt_pma", "yes"],
+        ["investment_capital_idr", "10000000000"],
+        ["investment_paid_up_capital_idr", "10000000000"],
+        ["investment_role", "SHAREHOLDER_DIRECTOR"],
+      ],
+    },
+  ] as const)(
+    "missing-input Edit reopens the $category interview question",
+    async ({ category, questionId, factPath, internalMode, details }) => {
+      installVerdictResume([
+        ...ANSWERS.slice(0, 5),
+        ["category", category],
+        ["trip_scope", "single"],
+        ...details,
+        ["stay_days", "30"],
+        ["review_gate", "none"],
+      ]);
+      const response = makeVisaOracleResponse("NEEDS_INPUT");
+      response.mode = internalMode ? "CURATED" : "ENGINE";
+      response.decision.missing_facts = [factPath];
+      global.fetch = vi.fn<typeof fetch>(
+        async () =>
+          new Response(JSON.stringify(response), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+      );
+      render(<OracleShell internalMode={internalMode} />);
+
+      await expectStateHeading("NEEDS_INPUT");
+      fireEvent.click(screen.getByRole("button", { name: /^edit$/i }));
+      expect(
+        await screen.findByRole("heading", {
+          name: translate("en", `q.${questionId}`),
+        }),
+      ).toBeInTheDocument();
+      expect(global.fetch).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("keeps an unavailable missing question actionable through the existing handoff, without a dead Edit", async () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["work.indonesia_source_compensation"];
+    global.fetch = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    render(<OracleShell />);
+
+    await expectStateHeading("NEEDS_INPUT");
+    expect(screen.queryByRole("button", { name: /^edit$/i })).toBeNull();
+    expect(screen.getByText(/Bali Zero can help clarify/)).toBeInTheDocument();
+    expect(screen.getByText("Continue with Bali Zero")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/work\.indonesia_source_compensation/),
+    ).toBeNull();
+    expect(global.fetch).toHaveBeenCalledOnce();
+  });
+
+  it("fails closed for a CURATED response in ENGINE mode, and says so honestly", async () => {
     global.fetch = engineFetch("SUPPORTED_CANDIDATES", "CURATED");
     render(<OracleShell />);
 
+    // The load-bearing assertion, unchanged: a CURATED decision never
+    // becomes visible authority. This is what "fails closed" means and it
+    // is what the internal-preview test below cites as its innocence case.
+    expect(screen.queryByText("Visit Visa C1")).toBeNull();
+
+    // What DID change: this visitor used to be told "No evaluation was
+    // submitted", which is false -- the server evaluated, sealed and
+    // persisted a real decision, and only declined to render it as
+    // authority because public enforcement is off. That is the identical
+    // situation the SHADOW-mode test directly above covers, so it now
+    // shows the identical, true headline.
     expect(
       await screen.findByRole("heading", {
-        name: translate("en", "verdict.provenance_headline.CLIENT_GUARD"),
+        name: translate("en", "verdict.provenance_headline.SHADOW"),
       }),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Visit Visa C1")).toBeNull();
+
+    // Guard against regressing to the accusatory copy. Asserted on the
+    // literal sentence rather than on the provenance label, so a future
+    // refactor that reroutes this back into the client-guard bucket fails
+    // here even if it renames the label.
+    expect(screen.queryByText(/No evaluation was submitted/i)).toBeNull();
+    expect(
+      screen.queryByRole("heading", {
+        name: translate("en", "verdict.provenance_headline.CLIENT_GUARD"),
+      }),
+    ).toBeNull();
   });
 
   // The PIN-gated internal preview. Its innocence case is the test directly

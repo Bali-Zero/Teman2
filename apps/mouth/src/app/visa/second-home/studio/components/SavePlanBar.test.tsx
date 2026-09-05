@@ -1,13 +1,183 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { emptyPlan } from "@/lib/secondhome-studio/plan-codec";
+import {
+  decodePlanFragment,
+  emptyPlan,
+  loadPlan,
+} from "@/lib/secondhome-studio/plan-codec";
 import { SavePlanBar } from "./SavePlanBar";
 
 const originalPrintDescriptor = Object.getOwnPropertyDescriptor(
   window,
   "print",
 );
+
+describe("SavePlanBar persistence feedback", () => {
+  const originalClipboard = Object.getOwnPropertyDescriptor(
+    navigator,
+    "clipboard",
+  );
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    window.localStorage.clear();
+    if (originalClipboard) {
+      Object.defineProperty(navigator, "clipboard", originalClipboard);
+    } else {
+      Reflect.deleteProperty(navigator, "clipboard");
+    }
+  });
+
+  it("confirms a save only after the plan is persisted", () => {
+    const plan = emptyPlan();
+    render(<SavePlanBar plan={plan} onClear={vi.fn()} />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save on this device" }),
+    );
+    expect(loadPlan()).toEqual(plan);
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Plan saved on this device",
+    );
+  });
+
+  it.each(["SecurityError", "QuotaExceededError"])(
+    "replaces an earlier save confirmation with recovery instructions when %s prevents saving",
+    (name) => {
+      const plan = emptyPlan();
+      render(<SavePlanBar plan={plan} onClear={vi.fn()} />);
+      const saveButton = screen.getByRole("button", {
+        name: "Save on this device",
+      });
+      fireEvent.click(saveButton);
+      vi.spyOn(window.localStorage, "setItem").mockImplementation(() => {
+        throw new DOMException("Cannot store plan", name);
+      });
+      fireEvent.click(saveButton);
+      expect(screen.getByRole("status")).not.toHaveTextContent(
+        "Plan saved on this device",
+      );
+      expect(screen.getByRole("status")).toHaveTextContent(/couldn't save/i);
+      expect(
+        screen.getByRole("textbox", { name: "Plan link" }),
+      ).toHaveAttribute("readonly");
+    },
+  );
+
+  it.each(["denied", "absent"])(
+    "offers a selectable, branch-sanitized link when the clipboard is %s, without a network call",
+    async (clipboardState) => {
+      const fetch = vi.fn();
+      vi.stubGlobal("fetch", fetch);
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value:
+          clipboardState === "absent"
+            ? undefined
+            : {
+                writeText: vi
+                  .fn()
+                  .mockRejectedValue(
+                    new DOMException("Denied", "NotAllowedError"),
+                  ),
+              },
+      });
+      const plan = {
+        ...emptyPlan(),
+        age: "under_55" as const,
+        route: "property" as const,
+        property: "owns_qualifying_strata" as const,
+        capital: "ready_130k" as const,
+      };
+      const { rerender } = render(
+        <SavePlanBar plan={plan} onClear={vi.fn()} />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Copy plan link" }));
+      const input = (await screen.findByRole("textbox", {
+        name: "Plan link",
+      })) as HTMLInputElement;
+      const url = new URL(input.value);
+      expect(url.pathname).toBe("/visa/second-home/studio");
+      expect(url.search).toBe("");
+      expect(decodePlanFragment(url.hash.slice(3))).toEqual({
+        ...plan,
+        capital: null,
+      });
+      input.focus();
+      expect(input.selectionStart).toBe(0);
+      expect(input.selectionEnd).toBe(input.value.length);
+      expect(screen.getByRole("status")).not.toHaveTextContent(
+        "Plan link copied",
+      );
+      expect(screen.getByRole("status")).toHaveTextContent(/select and copy/i);
+      expect(fetch).not.toHaveBeenCalled();
+      rerender(
+        <SavePlanBar
+          plan={{ ...plan, checklist: { passport_bio_page: true } }}
+          onClear={vi.fn()}
+        />,
+      );
+      expect(
+        decodePlanFragment(new URL(input.value).hash.slice(3))?.checklist,
+      ).toEqual({ passport_bio_page: true });
+    },
+  );
+
+  it("confirms a successful copy and removes the manual fallback on retry", async () => {
+    const writeText = vi
+      .fn()
+      .mockRejectedValueOnce(new DOMException("Denied", "NotAllowedError"))
+      .mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    render(<SavePlanBar plan={emptyPlan()} onClear={vi.fn()} />);
+    const copyButton = screen.getByRole("button", { name: "Copy plan link" });
+    fireEvent.click(copyButton);
+    await screen.findByRole("textbox", { name: "Plan link" });
+    fireEvent.click(copyButton);
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("Plan link copied"),
+    );
+    expect(
+      screen.queryByRole("textbox", { name: "Plan link" }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("SavePlanBar resting-state boundary (WCAG 2.2 SC 1.4.11)", () => {
+  // Regression guard (2026-09-01): Save/Copy-Link/Print share `buttonStyle`,
+  // whose border is their ONLY resting-state boundary (transparent fill).
+  // --color-border-subtle composites to 1.21:1 on carta / 1.31:1 on white —
+  // decorative-only per merahPutihDayVars.ts's own comment, and below the
+  // 3:1 non-text UI floor (WCAG 1.4.11). --border-strong (#7a8093) measures
+  // 3.64:1 on carta / 3.94:1 on white — the same token StudioApp.tsx's
+  // navButtonStyle already uses for its Back button boundary. The "Clear
+  // saved plan" button is deliberately excluded: it owns a separate
+  // treatment via CLEAR_BUTTON_STYLES, pinned by its own tests below.
+  it("gives Save, Copy-Link and Print an AA-clearing resting border, never the decorative hairline", () => {
+    render(<SavePlanBar plan={emptyPlan()} onClear={vi.fn()} />);
+
+    for (const name of [
+      "Save on this device",
+      "Copy plan link",
+      "Print / Save as PDF",
+    ]) {
+      const button = screen.getByRole("button", { name });
+      const inlineStyle = button.getAttribute("style") ?? "";
+      expect(inlineStyle).toContain("border: 1px solid var(--border-strong)");
+      expect(inlineStyle).not.toContain("--color-border-subtle");
+    }
+  });
+});
 
 describe("SavePlanBar print action", () => {
   afterEach(() => {

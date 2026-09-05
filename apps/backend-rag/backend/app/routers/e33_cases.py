@@ -128,6 +128,12 @@ async def _fetch_client_for_create(db_pool: asyncpg.Pool, client_id: int) -> Any
         )
 
 
+async def _fetch_practice_client_id(db_pool: asyncpg.Pool, practice_id: int) -> int | None:
+    """Read only the owning client ID needed to validate the optional practice link."""
+    async with db_pool.acquire() as conn:
+        return await conn.fetchval("SELECT client_id FROM practices WHERE id = $1", practice_id)
+
+
 async def _fetch_client_name_and_owner(
     db_pool: asyncpg.Pool, client_id: int
 ) -> tuple[str | None, str | None]:
@@ -312,7 +318,7 @@ async def create_case(
 
     Property basis is out of V1 scope (pending addendum 007 —
     ``property_validation_standard``). Client existence, archival state and
-    RBAC are checked BEFORE any insert.
+    RBAC and the optional practice's client association are checked BEFORE any insert.
 
     On a case_id collision (``asyncpg.UniqueViolationError``) re-mint once;
     a second collision is a 500 (astronomically unlikely — 6 hex chars).
@@ -337,6 +343,14 @@ async def create_case(
         )
     _assert_client_access(current_user, client_row["assigned_to"])
     client_name = client_row["full_name"]
+
+    if body.practice_id is not None:
+        practice_client_id = await _fetch_practice_client_id(db_pool, body.practice_id)
+        if practice_client_id != body.client_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="practice is not available for this client",
+            )
 
     repo = E33CaseRepository(db_pool)
     today = date.today()

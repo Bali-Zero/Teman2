@@ -1,7 +1,11 @@
 ---
 name: agent-session-discipline
-description: Use at session start when working on a feature/fix that involves code changes. Creates an isolated worktree via L1 broker (scripts/agent_start.py) to prevent sibling-orphan stash and cross-agent collisions. Prerequisite for any commit/push workflow.
+description: "Use at session start for a feature/fix touching code. Creates an isolated worktree via L1 broker (scripts/agent_start.py). Prerequisite for any commit/push workflow."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Prevents sibling-orphan stash and cross-agent collisions.
 
 > **CANON**: repo `.claude/` (vendored 2026-07-17, PR process-toolkit SSOT) — shadows the `~/.claude/` HOME copy. Edit HERE, never in `$HOME`. Pro/Mini shadow it on `git pull`.
 
@@ -69,7 +73,7 @@ git -C ~/nuzantara/.worktrees/<lane>-<task-id> status --short
 
 In the worktree:
 
-1. Read existing code, memory (`mem recent`), cicatrix (`grep` `.claude/rules/cicatrix-scars.md`)
+1. Read existing code, memory (`mem recent`), cicatrix (`grep` `docs/scars/cicatrix-scars.md`)
 2. Plan changes (use Plan tool if architectural, dispatch 4-LLM panel if cross-cutting)
 3. Write/Edit files (all absolute paths starting with worktree path)
 4. Test (pytest scope-relative)

@@ -262,6 +262,26 @@
       "trends": "Économie numérique, industrie tech, nouvelles réglementations et analyses de marché."
     }
   },
+  "portal": {
+    "login": {
+      "forgot_password": "PIN oublié ?",
+      "errors": {
+        "invalid_credentials": "E-mail ou PIN incorrect. Veuillez réessayer.",
+        "account_locked": "Compte verrouillé par sécurité. Contactez team@balizero.com.",
+        "portal_unavailable": "L'accès au portail n'est pas disponible pour ce compte. Contactez team@balizero.com.",
+        "rate_limited": "Trop de tentatives. Réessayez dans {{seconds}} secondes.",
+        "invalid_2fa": "Code 2FA invalide.",
+        "network_error": "Connexion perdue. Vérifiez votre réseau et réessayez.",
+        "email_not_found": "E-mail introuvable.",
+        "server_error": "Erreur du serveur. Réessayez dans quelques minutes.",
+        "maintenance": "Maintenance en cours. Revenez plus tard."
+      }
+    },
+    "forgot_password": {
+      "title": "Récupérer l'accès",
+      "instructions": "Contactez notre équipe pour récupérer l'accès. Aucune demande n'a encore été envoyée."
+    }
+  },
   "book": {
     "stats": {
       "clientsServed": "Clients servis",

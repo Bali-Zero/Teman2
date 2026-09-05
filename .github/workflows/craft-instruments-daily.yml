@@ -16,6 +16,33 @@ name: Craft instruments (advisory)
 # cicatrix W108 applies: a degradation whose only channel is an absent line is
 # indistinguishable from health, which is why the EMPTINESS GATE below emits
 # explicit warnings instead of staying silent.
+#
+# 2026-09-02: closes .claude/skills/modus/PENDING-ARMS.md L1629/L1630. Two gaps
+# found in what this file already claimed to have armed, both empirical, not
+# theoretical — the schedule had run twice (2026-08-30, 2026-09-01) and gone
+# RED both times before either instrument script executed even once:
+#   1. `pip install --quiet pytest` never installed `pyyaml`.
+#      `council_yield_report.py` imports it top-level under `try/except
+#      ImportError` (so import itself does not crash), but its OWN test corpus
+#      does not tolerate the missing module — `ModuleNotFoundError: No module
+#      named 'yaml'` at collection, `pytest ... -q` non-zero, and the
+#      "Run instrument corpora" step's `continue-on-error: false` (correctly)
+#      killed the job before either report step ever ran. Verified against the
+#      real failing runs (33341983998, 33455502574), not assumed from the diff.
+#   2. `correction_tax.py --ledger-append` was never passed, so even a green
+#      run produced a human-readable line in the job summary and nothing else
+#      — no row in the JSONL trend ledger `append_ledger()` exists to build.
+#      L1630's proof-of-armed asks for "a real row in the ledger artifact on
+#      disk"; a step summary is not that artifact.
+# The ledger persists across runs via `actions/cache` (same rolling-key
+# pattern as `cron-fly-restart-detector.yml`'s cooldown state — GitHub cache
+# keys are immutable once written, so a `-${{ github.run_id }}` suffix plus a
+# prefix `restore-keys` is how a scheduled job keeps state across days without
+# committing back to `main`, matching `docs-inventory-refresh.yml`'s own
+# rationale: "the result is an artifact, never a commit... so global drift
+# cannot blame a PR"). Both raw report outputs AND the ledger are also
+# uploaded via `actions/upload-artifact` so "the report artifact on disk"
+# is a downloadable file, not only a step-summary paragraph that scrolls off.
 
 on:
   # Off-minute is deliberate: every scheduled job that asks for "9pm" lands on
@@ -70,8 +97,13 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install pytest
-        run: pip install --quiet pytest
+      - name: Install pytest + pyyaml
+        # pyyaml is not a pytest dependency — it is council_yield_report.py's
+        # own runtime import (evidence-pack YAML parsing) and its test corpus
+        # exercises that import path directly. Without it here, both the
+        # 2026-08-30 and 2026-09-01 scheduled runs died at the corpus step
+        # before either report below ever executed (see header comment).
+        run: pip install --quiet pytest pyyaml
 
       - name: Run instrument corpora
         # If an instrument's own corpus fails, the instrument is broken and
@@ -86,16 +118,71 @@ jobs:
       - name: Council yield report
         # Capture to file as well as the summary so the emptiness gate can
         # distinguish "found nothing" from "never ran".
+        #
+        # `shell: bash` is LOAD-BEARING, not decoration (codex refuter, this PR):
+        # a `run:` step with no `shell:` key gets GitHub's IMPLICIT default,
+        # which is `bash -e {0}` — `-e` only, no `pipefail`. Only an EXPLICIT
+        # `shell: bash` gets `bash --noprofile --norc -eo pipefail {0}`. Without
+        # it, `A | tee B` reports the exit code of `tee` (always 0), so a
+        # crashing report script would print nothing useful yet leave this step
+        # green — silently contradicting the "Emptiness gate" step's own stated
+        # invariant below ("if an instrument CRASHES the job is already red").
+        shell: bash
         run: |
           python3 scripts/council_yield_report.py | tee council_yield_output.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Restore correction-tax ledger
+        # Rolling-cache trick (identical shape to cron-fly-restart-detector.yml's
+        # cooldown state): the save key always includes github.run_id so it is
+        # NEW every run and the cache action's post-step saves it; the
+        # restore-keys prefix picks up the most recent prior save. This is what
+        # lets a JSONL row appended today survive to be read back tomorrow
+        # without committing the ledger file to `main`.
+        #
+        # CAVEAT (codex refuter, this PR): `actions/cache`'s save runs its own
+        # post-step with `post-if: success()`, evaluated against the JOB's
+        # status at that point — a later step failing (the emptiness gate does
+        # not fail the job, but a crashed report step now does, see the
+        # `shell: bash` fix above) skips the save. This is the conservative,
+        # intended direction: a compromised run's ledger state should NOT
+        # propagate to tomorrow's restore, so a failed run simply repeats its
+        # window on the next scheduled tick against the LAST GOOD cache.
+        #
+        # CAVEAT 2 (tp1-qwen3.8-max refuter, this PR): the save key includes
+        # `github.run_id`, so a NEW cache entry is written every scheduled run
+        # rather than one entry being updated in place — the same trade
+        # `cron-fly-restart-detector.yml`'s cooldown-state cache already makes
+        # in this repo (matched here deliberately, not reinvented). Bounded by
+        # GitHub's own cache eviction (oldest-unused entries first past the
+        # repo's 10 GB cap / 7-day unused-entry expiry) rather than by
+        # anything this workflow does — accepted as the established idiom,
+        # not treated as a defect specific to this file.
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/correction-tax-ledger.jsonl
+          key: correction-tax-ledger-v1-${{ github.run_id }}
+          restore-keys: |
+            correction-tax-ledger-v1-
 
       - name: Correction tax report
         # Seven-day sliding window, computed with GNU date on ubuntu-latest.
         # Output is captured to file as well as the summary for the gate.
+        # `--ledger-append` is the one gesture the prior version of this file
+        # left undone (L1630): without it, a green run had a human-readable
+        # line and nothing durable. append_ledger() is itself idempotent on
+        # (since, until, heuristic) — a re-run over an already-recorded window
+        # is a no-op, never a duplicate row (see scripts/correction_tax.py's
+        # own docstring, "LEDGER CONFLICTS FAIL LOUDLY"). `shell: bash` for the
+        # same reason as the step above — without it a `ledger conflict` exit 1
+        # from `append_ledger()` would be masked by `tee`'s own exit 0, and a
+        # run that FAILED to append would still upload as if it had succeeded.
+        shell: bash
         run: |
           since=$(date -u -d '7 days ago' +%F)
           until=$(date -u +%F)
-          python3 scripts/correction_tax.py --since "$since" --until "$until" | tee correction_tax_output.txt >> "$GITHUB_STEP_SUMMARY"
+          python3 scripts/correction_tax.py --since "$since" --until "$until" \
+            --ledger-append "${{ runner.temp }}/correction-tax-ledger.jsonl" \
+            | tee correction_tax_output.txt >> "$GITHUB_STEP_SUMMARY"
 
       - name: Emptiness gate
         # cicatrix W108: a degradation whose only channel is an absent line is
@@ -133,3 +220,42 @@ jobs:
           if ! grep -q 'correction-tax: ' correction_tax_output.txt; then
             echo "::warning::correction-tax produced no verdict line. Its window may be empty, or the GitHub query failed — either way the number below is absent rather than zero, and the two must not be read the same way."
           fi
+
+      - name: Verify ledger row landed
+        # codex refuter (this PR): `upload-artifact`'s `if-no-files-found: warn`
+        # only checks whether the COMBINED glob found at least one file — the
+        # two .txt reports alone satisfy that, so an upload could "succeed"
+        # with the ledger file silently absent or empty, and nobody reading
+        # green would know. This asserts the actual proof-of-armed claim
+        # (L1630: "a real row in the ledger artifact on disk") on the file the
+        # NEXT step is about to upload, before it uploads it.
+        run: |
+          set -euo pipefail
+          LEDGER="${{ runner.temp }}/correction-tax-ledger.jsonl"
+          if [ ! -s "$LEDGER" ]; then
+            echo "::error::correction-tax ledger is missing or empty at $LEDGER — no row was appended this run. See the 'Correction tax report' step above for the real cause."
+            exit 1
+          fi
+          echo "ledger rows on disk: $(wc -l < "$LEDGER")"
+          tail -n 1 "$LEDGER"
+
+      - name: Upload instrument reports
+        # The durable artifact L1629/L1630 both ask for — a job summary
+        # scrolls off; this is a downloadable file that outlives the run.
+        # `if: always()` so a run that only got as far as the emptiness gate
+        # (or warned inside it) still uploads whatever the two report steps
+        # already produced — an instrument that ran and printed something is
+        # worth keeping even if a LATER step in the same job has trouble.
+        # NOT `always()` for the ledger-verify step above: an absent/empty
+        # ledger is exactly the failure this workflow exists to catch, so it
+        # stays a hard red rather than a warning buried in a green run.
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: craft-instruments-${{ github.run_id }}
+          path: |
+            council_yield_output.txt
+            correction_tax_output.txt
+            ${{ runner.temp }}/correction-tax-ledger.jsonl
+          retention-days: 90
+          if-no-files-found: warn

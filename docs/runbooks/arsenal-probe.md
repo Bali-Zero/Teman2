@@ -49,6 +49,8 @@ Credential values are never printed, logged, or reported (scrub layer; scar #4).
 | Seat dead               | Cure (operator unless noted)                                                                                                                                                                                                                                                                                     |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | codex AUTH_DEAD         | interactive `codex login` on that machine                                                                                                                                                                                                                                                                        |
+| codex BALANCE_DEAD      | top up ChatGPT Pro / Codex workspace credits (evidence: "Your workspace is out of credits. Add credits to continue.") — was misclassified `UNKNOWN_ERR` before 2026-08-31, see the note below                                                                                                                    |
+| codex-spark MODEL_ERR   | `gpt-5.3-codex-spark` is rejected on this ChatGPT-account plan ("model is not supported when using Codex with a ChatGPT account") — verify the current model roster (`~/.codex/models_cache.json`) before pinning that slug again; was misclassified `UNKNOWN_ERR` before 2026-08-31                             |
 | claude AUTH/QUOTA       | `claude auth status`; window cap → wait reset or switch slot                                                                                                                                                                                                                                                     |
 | glm AUTH_DEAD           | re-copy token from a live keychain (see memory `discovery_glm_mini_seat_armed_fable_model_leak_2026_07_06`)                                                                                                                                                                                                      |
 | glm MODEL_ERR           | config drift — launch from repo cwd or pin `--model glm-5.2` (fable-5[1m] leak)                                                                                                                                                                                                                                  |
@@ -70,6 +72,15 @@ but the classifier fell through to a bare `UNKNOWN_ERR` for both (the same shape
 providers configured" already had a local override for). Matched locally per-seat now, mirroring
 the existing `kimi` pattern — `scripts/tests/test_arsenal_probe.py` carries the guilt+innocence
 pair for each.
+
+Note (2026-08-31, healer tick, Mini): same disease, two more seats. `codex` ("Your workspace is
+out of credits. Add credits to continue.") and `codex-spark` ("The 'gpt-5.3-codex-spark' model is
+not supported when using Codex with a ChatGPT account.") both fell through to `UNKNOWN_ERR` —
+`_BALANCE_DEAD_PAT`/`_MODEL_ERR_PAT` only matched `402`/`insufficient balance` and
+`1211`/`unknown model`, not either observed phrase. Widened both patterns (`out of credits`,
+`model is not supported`) with guilt+innocence pairs in `scripts/tests/test_arsenal_probe.py` and
+canned entries in `_SELFTEST_CANNED`. Operator-gated either way (top up credits / verify the model
+roster) — this only fixes which cure the board points at.
 
 ## Selftest / CI
 

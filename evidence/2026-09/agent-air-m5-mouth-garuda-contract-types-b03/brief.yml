@@ -1,0 +1,33 @@
+task_id: garuda-contract-types
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  Make the GARUDA staff read models conform to the frozen product OpenAPI contract
+  and enforce generated-type freshness in the existing required frontend CI job.
+constraints:
+  - No frozen OpenAPI, backend, runtime API-client, pricing, lockfile or global schema changes.
+  - Preserve staff type exports and existing UI behavior; only synthetic fixtures are used.
+  - Reuse the installed openapi-typescript generator, with its own formatting and check mode.
+  - External builder prepares a draft PR; independent Anthropic gate and shipping remain pending.
+acceptance:
+  - text: >-
+      A staff detail containing only the contract-required fields SHALL compile and render
+      without optional notes or a resume target; a list response SHALL allow an omitted cursor.
+    probe: apps/mouth/src/app/(workspace)/garuda-voa/[practiceId]/page.test.tsx
+  - text: >-
+      The existing required frontend CI job SHALL reject generated types that are stale,
+      missing, or no longer match a changed product contract, while accepting the current pair.
+    probe: .github/workflows/tests.yml
+  - text: Existing staff tests and full mouth TypeScript SHALL pass with the derived read models.
+    probe: apps/mouth/src/app/(workspace)/garuda-voa/types.ts
+consumer_map:
+  - Staff detail and list callers consume generated read models through existing type exports.
+  - The required frontend mouth CI leg runs the product generator's freshness check.
+risks:
+  - The generated product artifact adds 2866 mechanical lines; authored changes are reported separately.
+  - Contract-only changes currently select frontend tests through the change-map conservative fallback.
+  - This change enforces static contract conformance and does not introduce runtime response validation.
+grader: Independent Anthropic gate via the Fable consul, after cross-model advisory reviews.
+budget: Existing subscriptions and installed dependencies only.
+pii: none

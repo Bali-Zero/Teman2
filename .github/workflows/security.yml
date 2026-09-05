@@ -32,19 +32,14 @@ on:
   workflow_dispatch:
 
 concurrency:
-  # Dependabot addition (Agent PR Contract rule 5, 2026-08-27): ALL Dependabot
-  # PRs share one group per workflow (not per-ref), bounding concurrent
-  # Dependabot runs of this ~20-billed-minute job to <=2 instead of unbounded
-  # parallel. cancel-in-progress:false (below) protects whichever run is
-  # RUNNING; GitHub keeps only one PENDING per group, so a 3rd+
-  # near-simultaneous Dependabot arrival cancels the pending run rather than
-  # queuing behind it — visible in the PR's checks tab (never silent),
-  # recoverable with `gh run rerun` (confirmed: docs.github.com/en/actions/
-  # using-jobs/using-concurrency + kimi-code/k3 refuter round on PR #5043).
-  # The non-Dependabot branch below is the pre-existing expression verbatim —
-  # the comment trail beneath it about main-vs-PR asymmetry and merge_group
-  # safety is untouched and still governs that branch exactly.
-  group: ${{ github.actor == 'dependabot[bot]' && format('dependabot-lockfile-{0}', github.workflow) || format('security-{0}', github.ref) }}
+  # Per-PR/per-ref for every author. A shared per-workflow group keyed on
+  # github.actor was removed 2026-09-02: GitHub keeps only ONE pending run per
+  # group, so a 3rd near-simultaneous arrival was cancelled BEFORE any job
+  # started — no check-run object is created, so a required context sits at
+  # "Expected — waiting for status" with nothing red to see. Concurrency is now
+  # bounded only by the account-level ceiling, which QUEUES past it rather than
+  # dropping: lateness is visible, an absent check-run is not.
+  group: security-${{ github.ref }}
   # Cancel superseded runs on PR branches; NEVER on main.
   #
   # This was a flat `false` since #770 (the bulk "add concurrency groups to 21
@@ -91,7 +86,7 @@ concurrency:
   # onto the existing expression rather than replacing it, so the PR-vs-main
   # asymmetry above is preserved byte-for-byte; only the merge_group case is
   # forced to false.
-  cancel-in-progress: ${{ github.actor != 'dependabot[bot]' && (github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
+  cancel-in-progress: ${{ (github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
 
 jobs:
   # Path-aware gating (2026-08-20). Before this job existed, all 8 jobs below
@@ -306,7 +301,9 @@ jobs:
               )
           lines.append("")
           lines.append(
-              "detect-secrets always runs regardless of this map — see its own job comment."
+              "detect-secrets ignores this map's domain routing entirely (runs on every "
+              "domain) — it has its own, narrower, event-based exception for merge_group; "
+              "see its own job comment for both."
           )
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
               summary.write("\n".join(lines) + "\n")
@@ -327,8 +324,26 @@ jobs:
     # pyproject.toml / uv.lock change, globally, via change_map.py's
     # basename rule), not on backend_python: a code-only change cannot
     # alter the declared dependency set this scanner evaluates.
+    # MERGE-GROUP DEDUP (2026-09-05): Snyk is not a required context (verified
+    # live, `gh api repos/.../branches/main/protection` — 13 required contexts,
+    # this job's name is not among them) and reads only apps/backend-rag's
+    # requirements.txt. NOT claiming that file is byte-identical between a
+    # PR's own head and its later merge_group entry — it isn't provably so (a
+    # merge_group's tree is base tip + any earlier-queued-ahead batchmates +
+    # this PR; base drift or a batchmate touching this same file is a real,
+    # if narrow, possibility). What actually licenses skipping here: this job
+    # is advisory only (not required, never blocks a merge), and IF a
+    # different PR is what changed requirements.txt, THAT PR's own
+    # pull_request-triggered Snyk run already scanned it — the finding still
+    # surfaces, just not doubled up on every subsequent PR's merge_group
+    # entry too. `github.event_name != 'merge_group'` below removes only that
+    # redundant re-scan; pull_request/push/schedule/workflow_dispatch keep
+    # running exactly as before. IF THIS JOB IS EVER MADE REQUIRED for
+    # merge, remove the `github.event_name != 'merge_group'` term above —
+    # the whole argument here depends on advisory-only status.
     if: >-
       !cancelled() &&
+      github.event_name != 'merge_group' &&
       (
         (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
         needs.changes.result != 'success' ||
@@ -376,7 +391,7 @@ jobs:
           CVE_EXCEPTIONS_PATH: .security/exceptions.yaml
 
       - name: Upload Snyk results
-        uses: github/codeql-action/upload-sarif@v4.37.7
+        uses: github/codeql-action/upload-sarif@v4.37.9
         if: always() && hashFiles('snyk.sarif') != ''
         continue-on-error: true
         with:
@@ -392,8 +407,13 @@ jobs:
     # e.g. apps/wa-mirror/package-lock.json, its own lockfile outside the
     # root npm-workspaces tree this job's `npm ci` installs) in addition to
     # security_sensitive.
+    # MERGE-GROUP DEDUP (2026-09-05) — same rationale as snyk-python's own
+    # comment above (not a required context; a different PR's own change to
+    # package.json/package-lock.json is caught by THAT PR's own
+    # pull_request-triggered scan, not claimed to be provably absent here).
     if: >-
       !cancelled() &&
+      github.event_name != 'merge_group' &&
       (
         (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
         needs.changes.result != 'success' ||
@@ -443,7 +463,7 @@ jobs:
           CVE_EXCEPTIONS_PATH: .security/exceptions.yaml
 
       - name: Upload Snyk results
-        uses: github/codeql-action/upload-sarif@v4.37.7
+        uses: github/codeql-action/upload-sarif@v4.37.9
         if: always() && hashFiles('snyk.sarif') != ''
         continue-on-error: true
         with:
@@ -457,6 +477,18 @@ jobs:
     # this job also validates that the production Dockerfile still BUILDS
     # (see the job's own comment below) — application code, not just the
     # Dockerfile or requirements.lock.txt, can break that build.
+    # NOT MERGE-GROUP DEDUPED (considered and reverted, 2026-09-05): a
+    # merge_group's tree is base-branch tip + any earlier-queued-ahead
+    # batchmates + this PR, which is not provably byte-identical to what
+    # this PR's own `pull_request` run built (that run checks out
+    # `refs/pull/N/merge`, a test-merge against whatever the base was AT
+    # THAT RUN'S trigger time — a moving target, not this PR's diff alone).
+    # This job is the one place in this file where that gap is not
+    # theoretical: run 30302472020 (see the job's own comment below) IS a
+    # merge_group run that caught a broken image build the PR-head run had
+    # not. Deduping this job would silently reintroduce that exact blind
+    # spot. Flagged by an adversarial review seat (codex-gpt-5.6-sol) on an
+    # earlier draft that DID dedup this job; see the PR body/evidence pack.
     if: >-
       !cancelled() &&
       (
@@ -643,13 +675,33 @@ jobs:
           (matrix.language == 'javascript' && needs.changes.outputs.run_codeql_js != 'false')
         }}
 
+    # NOT ADDED: a merge_group carry-over that skips Initialize/Autobuild/
+    # Analyze when the PR-head SHA already carries a completed, successful
+    # check-run of the same name. Attempted and REVERTED in this same PR
+    # after two independent adversarial review seats (codex-gpt-5.6-sol,
+    # tp1-qwen3.8-max) both found the same BLOCKER: a merge_group's synthetic
+    # tree is base-branch-tip + any earlier-queued-ahead batchmates + this
+    # PR, which is NOT provably identical to what the PR's own
+    # `pull_request` run analyzed (that run checks out `refs/pull/N/merge`,
+    # a test-merge against whatever the base branch tip was AT THAT RUN'S
+    # trigger time — a moving target). Matching on PR-head SHA + exact
+    # context name proves the PR's OWN diff didn't change; it does not prove
+    # the analyzed TREE didn't change. Closing that gap correctly needs a
+    # closed-loop mechanism (e.g. the pull_request run publishing a tree
+    # hash the merge_group run can independently recompute and compare) —
+    # out of scope for this PR's budget. See the PR body / evidence pack for
+    # the two reviews and the receipt showing this job already reports well
+    # inside the 90-minute merge-queue ceiling as-is (observed worst case
+    # ~15min for the python leg, 3 real merge_group runs on 2026-09-04),
+    # so there is no live correctness gap being left open — only a
+    # latency optimization deferred until it can be done without the flaw.
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Initialize CodeQL
         if: env.RUN_THIS_LANGUAGE == 'true'
-        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
@@ -657,11 +709,11 @@ jobs:
 
       - name: Autobuild
         if: env.RUN_THIS_LANGUAGE == 'true'
-        uses: github/codeql-action/autobuild@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        uses: github/codeql-action/autobuild@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
 
       - name: Perform CodeQL Analysis
         if: env.RUN_THIS_LANGUAGE == 'true'
-        uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           category: "/language:${{matrix.language}}"
 
@@ -806,8 +858,7 @@ jobs:
     # page that change_map.py classifies as docs_content_data — there is no
     # domain a leaked credential is structurally confined to. This is the
     # one scanner in this file where "better ten unnecessary scans than one
-    # skipped wrongly" has no exception, and it always runs on every
-    # pull_request/merge_group/push/schedule trigger, exactly as before.
+    # skipped wrongly" has no DOMAIN exception.
     #
     # Scan WIDTH is a different question from WHETHER the job runs
     # (2026-08-21, token-ceremony CI-critical-path audit, lever L3 —
@@ -820,6 +871,28 @@ jobs:
     # full scan measured 19m34s on run 31312661093; the diff-scoped scan is
     # seconds. The gate semantics are unchanged: any NEW finding in a
     # changed file still arrives unaudited and still fails the job below.
+    #
+    # MERGE-GROUP DEDUP (2026-09-05) — a NARROWER exception than the domain
+    # one above. The diff-scoped scan on `merge_group` reads the same
+    # changed-file SET this PR's own pull_request run just scanned, WITH
+    # this PR's own content in those files (not claiming that set can never
+    # overlap another batchmate's changes — two queue entries CAN both touch
+    # the same file on different lines without conflicting, so this is
+    # explicitly not a byte-identity argument). What licenses the skip: a
+    # secret is a property of one file's content at the lines this PR itself
+    # wrote, and this job is not a required context (verified live,
+    # `gh api repos/.../branches/main/protection` — 13 contexts, this job's
+    # name is not among them), so the residual risk of a same-file batchmate
+    # combination forming a new secret only when concatenated is bounded to
+    # a contrived, non-blocking edge case — not the realistic accidental-
+    # credential-leak shape this scanner exists to catch, which its own
+    # pull_request run (this PR's or the batchmate's) already covers.
+    # `github.event_name != 'merge_group'` below skips only that redundant
+    # re-scan; push/schedule/workflow_dispatch keep running the full-tree
+    # scan exactly as before, and pull_request keeps running the diff-scoped
+    # scan exactly as before. IF THIS JOB IS EVER MADE REQUIRED for merge,
+    # remove that term — the argument here depends on advisory-only status.
+    if: github.event_name != 'merge_group'
     runs-on: ubuntu-latest
     # Run 31312661093 measured 19m34s in the scan alone and was cancelled at
     # the 20m job limit after every gating step had succeeded. Keep this gate
@@ -1052,7 +1125,12 @@ jobs:
               ["CodeQL", "${{ needs.codeql.result }}"],
               ["Bandit", "${{ needs.bandit.result }}"],
               ["Safety", "${{ needs.safety.result }}"],
-              ["Detect Secrets (never skipped)", "${{ needs.detect-secrets.result }}"],
+              // Label corrected 2026-09-05: this job now DOES skip on
+              // merge_group (redundant re-scan of the same PR-head diff, see
+              // its own job comment). This is JavaScript inside github-script:
+              // a "#" line here is a SyntaxError, not a comment — the Security
+              // Summary failed on exactly that on this PR's own run (2026-09-04).
+              ["Detect Secrets", "${{ needs.detect-secrets.result }}"],
             ];
             const icon = (r) => r === "success" ? "✅ ran" : r === "skipped" ? "⏭️ skipped (path-aware gate)" : r === "failure" ? "❌ FAILED" : `⚠️ ${r}`;
             const scanLines = jobs.map(([name, result]) => `- **${name}**: ${icon(result)}`).join("\n            ");

@@ -1,17 +1,11 @@
 ---
 name: modus
-description: >
-  USE FOR EVERY non-trivial mandate — feature, fix, refactor, research, audit, ops, content —
-  coding or not. The master operating loop of the organism: TRIAGE the mandate into a gear
-  (1 liscio / 2 standard / 3 profondo), then drive GROUND → DESIGN → BUILD → VERIFY → SHIP+ARM →
-  PROVE-LIVE → ALIGN-FLEET → CLEAN → CAPTURE, routing the full arsenal at maximum-without-waste
-  (Opus 5 xhigh effort architect+sequential final on-disk gate — Fable 5 out of the workflow,
-  RULED 2026-08-20 — Sonnet 5 implementers,
-  Codex GPT-5.6 red-team+sandbox, Gemini agy constructive width, Kimi K3 permanent refuter,
-  Ollama local for PII, NotebookLM ground-truth). Supersedes opus-mythos
-  (2026-07-02): Fable is native again — the width-surrogate retires; its deep/wide TAC patterns
-  live on as Gear 3. SKIP only true one-liners — and declare it: "GEAR 1: <why>".
+description: "USE FOR EVERY non-trivial mandate — feature, fix, refactor, research, audit, ops, content. TRIAGE into a gear (1/2/3), drive GROUND→BUILD→VERIFY→SHIP→CAPTURE. SKIP true one-liners — declare it."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Full stage list: GROUND → DESIGN → BUILD → VERIFY → SHIP+ARM → PROVE-LIVE → ALIGN-FLEET → CLEAN → CAPTURE. Routes the full arsenal at maximum-without-waste: Opus 5 xhigh effort architect + sequential final on-disk gate (Fable 5 out of the workflow, RULED 2026-08-20), Sonnet 5 implementers, Codex GPT-5.6 red-team+sandbox, Gemini agy constructive width, Kimi K3 permanent refuter, Ollama local for PII, NotebookLM ground-truth. Supersedes opus-mythos (2026-07-02): Fable is native again — the width-surrogate retires; its deep/wide TAC patterns live on as Gear 3. Declare a skip as: "GEAR 1: <why>".
 
 # MODUS — the master loop (request → prod → fleet → clean → learned)
 
@@ -39,11 +33,15 @@ tasks that merely look small is the systematic failure mode. Read the ledgers:
 `.claude/skills/modus/PENDING-ARMS.md` (anything suspended from previous runs that this task
 touches?) — AMENDMENTS.md is maintained at CAPTURE, read by the bench.
 
-Alongside the gear, declare an OPTIONAL `appetite:` block in `evidence/brief.yml` — three
+Before creating an evidence pack, compute its directory; never derive it by hand:
+`python3 scripts/ci/evidence_paths.py --ref "$(git rev-parse --abbrev-ref HEAD)"`.
+Write its sibling `brief.yml`, `pack.yml`, and optional `journal.jsonl` under the emitted
+`evidence/<YYYY-MM>/<slug>/` directory. Alongside the gear, declare an OPTIONAL `appetite:`
+block in that dated `brief.yml` — three
 ceilings, each optional: `wall_clock_hours`, `adversarial_rounds`, `tokens`.
 `scripts/evidence_pack_lint.py`'s `check_appetite_acknowledgment` (rule 14, the ONLY rule in
 the evidence-pack lane that can FAIL — every other rule there is NOTICE-only) compares them
-ex-post against `spend:` in `evidence/pack.yml`; exceeding a declared ceiling with no
+ex-post against `spend:` in that dated `pack.yml`; exceeding a declared ceiling with no
 non-empty `appetite_exceeded: "<reason>"` acknowledgment in the pack is a lint FAIL,
 mirroring `gear_override`'s acknowledgment discipline exactly. This is EX-POST / PR-LIFETIME
 ACCOUNTING, NEVER AN IN-FLIGHT BREAKER: the linter has no clock and no session-runtime
@@ -74,7 +72,7 @@ acknowledgment after the fact. Absence of the block is silent, never a gap.
 - **The FLOOR is enforced by `harness-floor.yml`; the CEILING is enforced too** (`compute_ceiling()`
   in `scripts/evidence_pack_lint.py`, PR #4474): a docs/ledger-only diff, or a ≤2-file/≤60-net-line
   diff outside hot zones, is Gear-1-shaped by construction — declaring it Gear 3 with a council or
-  ≥3 grader dispatches FAILS the lint unless `evidence/pack.yml` carries a `gear_override:` naming
+  ≥3 grader dispatches FAILS the lint unless the dated `pack.yml` carries a `gear_override:` naming
   the reason (then it's a NOTICE, not a fail). The ceiling never overrides the floor — a hot-zone
   hit still floors at Gear 3 regardless of how small the diff looks.
 
@@ -141,9 +139,9 @@ MAX windows are finite, subscriptions are flat; **(c) specialized organs** — s
 | **Refuter (council 3rd seat + general Gear-3 ladder)** | **FLEET_TOPOLOGY v1.2 general Gear-3 chain: codex-sol → glm-5.2 → kimi-k3 → gemini-agy-redteam → deepseek-v4-pro (TP1 reserve).** GLM 5.2 is LIVE through Alibaba TP1 seat `tp1-glm-5.2`; use it for compact refutations when family-exclusion permits. | `no door: line in roster` — probe with `python3 scripts/arsenal_probe.py --seats tp1-glm-5.2`; OpenAI-compatible base `https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`, key loaded by `load_tp1_settings_key()` from `~/.qwen/settings.json`. | **Family-exclusion (hard, spec §3.2):** a family that built OR counter-built on the task is excluded from ITS OWN refuter chain. Two refuters from two different families are required; probe every seat live first. GLM-as-refuter still requires GLM ≠ implementer on the same task. |
 | **Second brain (quota relief)** | **GLM 5.2 via Alibaba TP1 seat `tp1-glm-5.2` — ARMED** | `no door: line in roster`; direct OpenAI-compatible TP1 API, key loaded by `load_tp1_settings_key()` from `~/.qwen/settings.json` | When MAX OAuth windows are cap-exhausted mid-task. Implementation only — never the final gate. |
 | **Cross-family coding + width (flat sub)** | **Kimi K3 «Vivace» / kimi-for-coding 2.7** (Moonshot, Allegro subscription — Zero GO 2026-07-19; «Vivace» designation Zero 2026-07-21 after the 14h PR-queue run: 34 open → 2 drafts, 57 merged, 9 cured directly) | `kimi -p "..." -m kimi-code/k3` (reasoning/refuter) · `-m kimi-code/kimi-for-coding` (coding lanes) · `-m kimi-code/kimi-for-coding-highspeed` (grunt); bin `~/.kimi-code/bin/kimi`; probed by `arsenal_probe.py` (seat `kimi`) | Heterogeneity seat #4 for councils/second-opinion (training prior ≠ Claude/GPT/Gemini/GLM) and flat-quota implementation relief. Armed+PONG-proven on ALL THREE machines 2026-07-19 (Mini device-code authorized same day). Never the final gate. | |
-| **Third strategy voice + non-PII mass engine (TP1)** | **Qwen 3.8 Max** (Alibaba Token Plan, PROBATION) | Qwen Code CLI (`qwen-cloud-code` seat, UNARMED pending Zero's ratification of the 2026-08-08 study) or direct OpenAI/Anthropic-compatible API against `~/.qwen/settings.json` (0600) | 3rd voice in `strategy_panel` (with Opus 5 + Gemini deepthink) and `normative_search` (the Qwen leg needs mandatory NotebookLM/Anthropic-seat verification — documented hallucination weakness on compliance-exact extraction, and our trade IS exact compliance); non-PII doc/video mass engine; fenced GUI-agent. `eligible_for_quorum:false` — adds a 3rd opinion, never counts toward the 2-family refuter quorum until promoted ARMED. |
+| **Third strategy voice + non-PII mass engine (TP1)** | **Qwen 3.8 Max** (Alibaba Token Plan, **ARMED 2026-08-14** — 459 calls / 74.1M tokens measured) | Qwen Code CLI (`qwen-cloud-code` seat, UNARMED pending Zero's ratification of the 2026-08-08 study) or direct OpenAI/Anthropic-compatible API against `~/.qwen/settings.json` (0600) | 3rd voice in `strategy_panel` (with Opus 5 + Gemini deepthink) and `normative_search` (the Qwen leg needs mandatory NotebookLM/Anthropic-seat verification — documented hallucination weakness on compliance-exact extraction, and our trade IS exact compliance); non-PII doc/video mass engine; fenced GUI-agent. **`eligible_for_quorum:true` since the 2026-08-14 ARMED promotion** — it IS one of the three `COUNCIL_REVIEW_SEATS` in `scripts/evidence_pack_lint.py` (R9). This row is the root cause of a contradiction that ran from 2026-08-14 to 2026-09-02: it stated the eligibility as a CONDITIONAL ("never counts ... until promoted ARMED"), the promotion then happened, and nothing walked the flipped condition back to `MODEL_ROSTER.md` or `seat_build_tp1.sh`, both of which went on asserting the pre-promotion answer as a flat fact while the lint counted the seat anyway. A conditional written where only a reader can evaluate it does not update itself — put it where a machine can, or the event that flips it must also edit every doc that restated it. |
 | **Counter-builder** | **GLM 5.2 via Alibaba TP1 seat `tp1-glm-5.2`** | `no door: line in roster`; OpenAI-compatible base `https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`, key loaded by `load_tp1_settings_key()` from `~/.qwen/settings.json` | Counter-implementations for Gear-3 diffs, long-horizon refactors, and spikes. `clear_thinking:false` mandatory in agent use. Never architecture, client-facing output, final gate, or merge. |
-| **Second reasoner (refuter reserve, TP1)** | **DeepSeek v4-pro / v4-flash / v3.2** (Alibaba Token Plan, PROBATION — RE-ADMITTED 2026-08-10) | direct API via TP1 key (`~/.qwen/settings.json`, 0600) | Last hop of the refuter chain (see Refuter row above); reasoning second-opinion, math/logic chains. Re-admission is economics-only — the 2026-07-19 retirement was a dead standalone per-token balance, not a quality verdict; the Token Plan's flat credits remove the death cause. PII boundary unchanged and absolute (Chinese cloud). `eligible_for_quorum:false` until promoted ARMED. |
+| **Second reasoner (refuter reserve, TP1)** | **DeepSeek v4-pro / v4-flash / v3.2** (Alibaba Token Plan, PROBATION — RE-ADMITTED 2026-08-10) | direct API via TP1 key (`~/.qwen/settings.json`, 0600) | Last hop of the refuter chain (see Refuter row above); reasoning second-opinion, math/logic chains. Re-admission is economics-only — the 2026-07-19 retirement was a dead standalone per-token balance, not a quality verdict; the Token Plan's flat credits remove the death cause. PII: vendor-parity (Zero ruling 2026-08-24: Chinese-cloud limit ABOLISHED system-wide — same common rules as Anthropic/OpenAI: Law 2 output boundary + Art. 56 basis for PROD transfers). `eligible_for_quorum:false` until promoted ARMED. |
 | **Grinder (throughput, post-PROBE-4)** | **MiniMax M2.5** (Alibaba Token Plan, PROBATION — gated on PROBE-4) | TP1 direct API | Repetitive tests/docs/mechanical batches; quality gate = a sample of every lot verified by an Anthropic seat. Not usable before PROBE-4 (MiniMax sample lot + Anthropic-seat verification) lands. |
 | **PII / offline / $0** | **Ollama** (Mini-first wrapper; local fallback) | `ollama run qwen3.5:9b`; vision `qwen2.5vl:7b`; embed `bge-m3` | Any transform whose PROMPT would carry client PII. If a cloud model must see the case: redact FIRST to `client_id`/placeholders — the gate is redaction-before-egress, not just model choice (Law 2 output boundary). |
 | **Ground truth** | **NotebookLM** (profile `default`) | `mcp__notebooklm-mcp__*` | Facts/normativa at GROUND and VERIFY: bipolar verifier — NLM verifies, it does not synthesize. Gemini = reasoning width; NLM = retrieval width. |

@@ -326,24 +326,70 @@ async def send_pending_alerts(
 _ACCOUNTING_CC = "asya@balizero.com"
 _INVOICE_EMAIL_TYPES = frozenset({"invoice_client", "invoice", "invoice_team"})
 
+#: RULED by Antonello 2026-09-02, scoped in his own words to "solo per le
+#: pratiche del garuda voa": VOA practice mail copies these three. Nothing
+#: else moves -- every other practice keeps the assigned-lead rule below.
+#: A tuple rather than one address because this is the single email family
+#: with a STANDING copy list instead of one contextual reader.
+_GARUDA_VOA_CC: tuple[str, ...] = (
+    "surya@balizero.com",
+    "vino@balizero.com",
+    "zero@balizero.com",
+)
+
+#: Credential deliveries are NOT correspondence. The body of one of these IS
+#: the recipient's single-use key to their own account, so a copy is not an
+#: audit trail -- it is a second person who can sign in as the customer.
+#: They therefore carry NO Bali Zero copy at all, and any cc/bcc a caller
+#: supplied is STRIPPED rather than merely left un-augmented.
+#:
+#: Membership is a fixed set decided HERE, never a boolean the caller passes:
+#: a bypass anyone can set is not a rule (superscar #3 -- match the entity,
+#: not a flag). An email_type that is absent, misspelled or unknown is NOT a
+#: credential delivery and keeps its copy, so the failure mode of a typo is
+#: an unwanted copy, never a leaked credential.
+_CREDENTIAL_DELIVERY_EMAIL_TYPES = frozenset({"garuda_magic_link"})
+
 
 def _is_balizero(addr: str) -> bool:
     """True iff ``addr`` is on the @balizero.com domain (suffix match,
-    case-insensitive). Never a bare substring — superscar #3: match the
+    case-insensitive). Never a bare substring -- superscar #3: match the
     entity, not the text. So ``x@balizero.com.evil.com`` is NOT a match."""
     return addr.strip().lower().endswith("@balizero.com")
 
 
-def _pick_balizero_cc(email_type: str | None, assigned_to: str | None) -> str:
-    """Choose WHICH Bali Zero address to copy, per Antonello's rule
-    (2026-06-17): invoices → accounting (asya@); everything else → the
-    practice's assigned lead; if no assigned lead is known, fall back to
-    accounting so a client mail is never sent with nobody copied."""
-    if email_type and email_type.strip().lower() in _INVOICE_EMAIL_TYPES:
-        return _ACCOUNTING_CC
+def _normalise_email_type(email_type: str | None) -> str:
+    return (email_type or "").strip().lower()
+
+
+def _is_garuda_voa(email_type: str) -> bool:
+    """True for the GARUDA VOA practice email family.
+
+    A PREFIX test on a controlled internal field, not a substring search of
+    free text: ``garuda_voa`` exactly, or ``garuda_voa_`` followed by the
+    specific message name. ``garuda_voa_order_confirmed`` matches;
+    ``not_garuda_voa`` does not.
+    """
+    return email_type == "garuda_voa" or email_type.startswith("garuda_voa_")
+
+
+def _pick_balizero_cc(email_type: str, assigned_to: str | None) -> list[str]:
+    """Choose WHICH Bali Zero address(es) to copy.
+
+    The order is a precedence, not a preference:
+    - GARUDA VOA practice -> the standing three (Antonello 2026-09-02)
+    - invoices            -> accounting (Antonello 2026-06-17)
+    - otherwise           -> the practice's assigned lead
+    - no assigned lead    -> accounting, so a client mail is never sent
+      with nobody copied.
+    """
+    if _is_garuda_voa(email_type):
+        return list(_GARUDA_VOA_CC)
+    if email_type in _INVOICE_EMAIL_TYPES:
+        return [_ACCOUNTING_CC]
     if assigned_to and _is_balizero(assigned_to):
-        return assigned_to.strip()
-    return _ACCOUNTING_CC
+        return [assigned_to.strip()]
+    return [_ACCOUNTING_CC]
 
 
 def _enforce_balizero_cc(
@@ -352,41 +398,73 @@ def _enforce_balizero_cc(
     bcc_list: list[str] | None,
     email_type: str | None = None,
     assigned_to: str | None = None,
-) -> list[str] | None:
-    """Guarantee at least one @balizero.com address is in the loop.
+) -> tuple[list[str] | None, list[str] | None]:
+    """Decide who else is in the loop on an outbound email.
 
-    HARD RULE (Antonello 2026-06-17): a client must never receive an
-    email without a Bali Zero address copied in. Structural enforcement
-    at the single send choke-point.
+    HARD RULE (Antonello 2026-06-17): a client must never receive an email
+    without a Bali Zero address copied in. Structural enforcement at the
+    single send choke-point.
 
-    Logic:
-    - If the recipient (``to``) is itself ``@balizero.com`` → intra-team
-      mail, nothing to add.
-    - If any existing cc/bcc is already ``@balizero.com`` → compliant,
-      leave untouched (respects the caller's explicit choice).
-    - Otherwise (external recipient, nobody from Bali Zero copied) →
-      append the contextual address from :func:`_pick_balizero_cc`
-      (invoice → asya@, else assigned lead, else asya@) and log it.
+    ONE CATEGORY IS EXEMPT, and the exemption is the point rather than a
+    hole in the rule: a credential delivery (see
+    ``_CREDENTIAL_DELIVERY_EMAIL_TYPES``) has exactly one legitimate
+    recipient, because its body is the key to that recipient's account.
+    Those are stripped of cc AND bcc.
 
-    Returns the (possibly augmented) cc_list.
+    Returns the (possibly rewritten) ``(cc_list, bcc_list)`` pair. It returns
+    BOTH -- an earlier version returned only cc, which left no way to drop a
+    bcc, and a bcc'd login link leaks exactly as much as a cc'd one.
     """
-    if _is_balizero(to):
-        return cc_list
-    existing = (cc_list or []) + (bcc_list or [])
-    if any(_is_balizero(a) for a in existing):
-        return cc_list
+    etype = _normalise_email_type(email_type)
 
-    chosen = _pick_balizero_cc(email_type, assigned_to)
+    if etype in _CREDENTIAL_DELIVERY_EMAIL_TYPES:
+        if cc_list or bcc_list:
+            logger.warning(
+                "send-email: %s is a credential delivery -- dropping %d cc and "
+                "%d bcc recipient(s); a login link has one recipient by design",
+                etype,
+                len(cc_list or []),
+                len(bcc_list or []),
+            )
+        return None, None
+
+    if _is_balizero(to):
+        return cc_list, bcc_list
+
+    existing = (cc_list or []) + (bcc_list or [])
+
+    if _is_garuda_voa(etype):
+        # Deliberately NOT "add one if nobody is copied". The three are a
+        # STANDING list, so they are unioned in even when another Bali Zero
+        # address is already present -- which is what "in cc vanno surya,
+        # vino e zero" asks for. Scoped to this one family on purpose.
+        already = {a.strip().lower() for a in existing}
+        missing = [a for a in _GARUDA_VOA_CC if a.lower() not in already]
+        if not missing:
+            return cc_list, bcc_list
+        augmented = list(cc_list or [])
+        augmented.extend(missing)
+        logger.info(
+            "send-email: GARUDA VOA practice mail (email_type=%s) -- adding %d "
+            "standing recipient(s) to CC",
+            etype,
+            len(missing),
+        )
+        return augmented, bcc_list
+
+    if any(_is_balizero(a) for a in existing):
+        return cc_list, bcc_list
+
+    chosen = _pick_balizero_cc(etype, assigned_to)
     augmented = list(cc_list or [])
-    augmented.append(chosen)
+    augmented.extend(chosen)
     logger.warning(
-        "send-email: no @balizero.com in to/cc/bcc for external recipient %s "
-        "(email_type=%s) — forcing %s into CC (hard rule)",
-        to,
-        email_type,
-        chosen,
+        "send-email: no @balizero.com in to/cc/bcc for external recipient "
+        "(email_type=%s) -- forcing %d address(es) into CC (hard rule)",
+        etype,
+        len(chosen),
     )
-    return augmented
+    return augmented, bcc_list
 
 
 @router.post("/send-email", response_model=SendEmailResponse)
@@ -411,8 +489,11 @@ async def send_direct_email(
     # HARD RULE (Antonello 2026-06-17): a client never receives an email
     # without at least one @balizero.com address in the loop. Enforced
     # here — the single send choke-point — so no caller can bypass it.
-    # Contextual CC: invoice → asya@, else the assigned lead, else asya@.
-    cc_list = _enforce_balizero_cc(
+    # Contextual CC: GARUDA VOA → the standing three, invoice → asya@,
+    # else the assigned lead, else asya@. One exemption, and it is not a
+    # bypass: a credential delivery (magic link) has one recipient by
+    # design, so it is stripped of cc AND bcc.
+    cc_list, bcc_list = _enforce_balizero_cc(
         request.to, cc_list, bcc_list, request.email_type, request.assigned_to
     )
 

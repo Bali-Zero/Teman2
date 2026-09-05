@@ -25,4 +25,13 @@ describe("CTAHandoff", () => {
     expect(links).toHaveLength(1);
     expect(links[0].getAttribute("href")).toMatch(/wa\.me/);
   });
+
+  it("gives the WA anchor a 44px minimum tap target", () => {
+    const { getAllByRole } = render(
+      <CTAHandoff source="kbli" sessionId="xyz" />,
+    );
+    const wa = getAllByRole("link")[0];
+    expect(wa.style.minHeight).toBe("44px");
+    expect(wa.style.display).toBe("inline-flex");
+  });
 });

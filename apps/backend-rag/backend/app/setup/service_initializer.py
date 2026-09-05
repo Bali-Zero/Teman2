@@ -1330,6 +1330,26 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
     else:
         logger.warning("⚠️ GARUDA VOA magic-link wiring skipped: no db_pool (L3/L4 fail closed)")
 
+    # 5.5b GARUDA VOA — staff session verifier wiring (step 8, staff
+    # surface). Unconditional, unlike 5.5 above: `verify_staff_session`
+    # decodes a CRM JWT and checks the token-revocation store — it needs
+    # NO database pool of its own (the revocation check goes through its
+    # own already-wired store, `token_revocation.py`), so there is no
+    # `db_pool is not None` gate here. This is the wiring
+    # `garuda_orders_router.py::_require_staff_actor`'s own docstring names
+    # as "wired nowhere today" — arming it here is what turns that
+    # function's dead 401-always branch into a real staff-session check,
+    # and is also what `garuda_staff_router.py`'s own
+    # `require_garuda_staff` dependency resolves through for a bearer-only
+    # (no cookie) caller.
+    try:
+        from backend.services.garuda_portal.staff_auth import verify_staff_session
+
+        app.state.garuda_staff_session_verifier = verify_staff_session
+        logger.info("✅ GARUDA VOA staff session verifier wired")
+    except Exception as e:
+        logger.warning("⚠️ GARUDA VOA staff session verifier wiring failed (non-critical): %s", e)
+
     # 5.6 GARUDA VOA — CheckStore wiring (L2). Unconditional, unlike the
     # order/payment wiring below: `PostgresCheckStore.create()` runs its
     # OWN pre-check (`retention.active_garuda_check_policy_available`)
@@ -1480,6 +1500,29 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
             db_pool is not None,
             bool(garuda_xendit_secret_key),
         )
+
+    # 5.8 GARUDA VOA — document intake store wiring (L5 hinge, router-owned
+    # sentinel). Unconditional (no db_pool needed): L1's retention-covered
+    # store has not merged for `garuda_documents` (no migration exists —
+    # `garuda_documents/ports.py`'s own docstring says so), and LANES.md is
+    # explicit that a lane must not persist a row before L1 covers it.
+    # `garuda_documents/ports.py` therefore ships only `InMemoryDocumentStore`,
+    # whose own docstring forbids wiring it into a running service (an
+    # in-memory PII store is worse than no endpoint — PR #5120's ledger entry).
+    # Wiring `_UnconfiguredDocumentStore` here — the documents-lane analogue of
+    # `PostgresCheckStore`'s `UnconfiguredCheckStore` fallback at 5.6 above,
+    # minus the Postgres half, which does not exist yet for this table — means
+    # the route mounted by `garuda_documents_router.py` is live and testable
+    # today, and answers 503 PERSISTENCE_POLICY_UNAVAILABLE/SERVICE_UNAVAILABLE
+    # on every real request until L1 ships. Never raises: the sentinel takes no
+    # constructor arguments and touches no pool, so this needs no try/except.
+    from backend.app.routers.garuda_documents_router import _UnconfiguredDocumentStore
+
+    app.state.garuda_document_store = _UnconfiguredDocumentStore()
+    logger.info(
+        "ℹ️ GARUDA VOA document store wired fail-closed (L1 retention-covered store "
+        "not merged yet for garuda_documents — see garuda_documents_router.py docstring)"
+    )
 
 
 async def initialize_services(app: FastAPI) -> None:

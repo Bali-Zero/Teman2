@@ -40,6 +40,19 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_REGISTRY = REPO_ROOT / "scripts" / "verify_the_verifiers_gates.yaml"
 STATE_FILE = Path.home() / ".agent" / "decisions" / "state" / "verify_the_verifiers.json"
 
+#: The registry must not silently shrink to nothing. `Report.ok` used to mean "zero
+#: DISARMED gates", which is trivially true of a report that checked NOTHING: emptying
+#: `gates:` took this from "34/34 gates ARMED" to "0/0 gates ARMED", exit 0, GREEN, and
+#: an alive signal reading `status: "ok"` — no warning printed anywhere. The one organ
+#: whose entire job is to make "a gate went dark" observable was itself the place where
+#: an empty collection read as success. On CI the sha256 pin over script+registry
+#: (.github/workflows/verify-the-verifiers.yml) already catches a silent edit; the
+#: launchd copy at infra/launchagents/com.nuzantara.verify-the-verifiers.plist runs
+#: every 600s from a $HOME path with no such pin, and it is the one that writes the
+#: alive signal. Lowering this number is a diff in THIS file, reviewed apart from the
+#: data file it guards — which is the whole point of it not living in the registry.
+MINIMUM_GATES = 34
+
 # Verdicts
 ARMED = "ARMED"
 DISARMED = "DISARMED"
@@ -94,9 +107,21 @@ class Report:
         return [r for r in self.results if r.verdict == SKIPPED]
 
     @property
+    def checked(self) -> list[GateResult]:
+        """Gates a checker actually ran on. SKIPPED means "not verifiable here"."""
+        return [r for r in self.results if r.verdict != SKIPPED]
+
+    @property
     def ok(self) -> bool:
-        """Green iff zero DISARMED gates. WARN/SKIPPED do not fail the build."""
-        return len(self.disarmed) == 0
+        """Green iff at least one gate was CHECKED and none of them is DISARMED.
+
+        WARN does not fail the build; SKIPPED does not either, but it does not
+        COUNT — a run where every gate was skipped, or where there were no gates
+        at all, verified nothing, and "nothing was found disarmed" is not the same
+        statement as "the gates are armed". Reporting the two identically is the
+        exact disease this script exists to detect, one level up.
+        """
+        return bool(self.checked) and not self.disarmed
 
 
 def _expand(path: str) -> Path:
@@ -436,6 +461,51 @@ def render_json(report: Report) -> str:
     }, indent=2)
 
 
+def _load_registry_strictly(registry_path: Path) -> dict:
+    """Load the gate registry through the shared strict policy loader.
+
+    Loaded by PATH: scripts/lib is not an importable package, and this script is run
+    both from the repo and from a $HOME deploy copy by
+    infra/launchagents/com.nuzantara.verify-the-verifiers.plist. There is no fallback to
+    yaml.safe_load — a meta-verifier that quietly downgrades to the permissive loader
+    when the strict one is missing is the exact shape of the disease it exists to catch.
+    """
+    import importlib.util
+
+    strict_path = REPO_ROOT / "scripts" / "lib" / "yaml_strict.py"
+    module = sys.modules.get("nuzantara_yaml_strict")
+    if module is None:
+        spec = importlib.util.spec_from_file_location("nuzantara_yaml_strict", strict_path)
+        if spec is None or spec.loader is None or not strict_path.is_file():
+            raise RuntimeError(f"strict policy loader not found at {strict_path}")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["nuzantara_yaml_strict"] = module
+        spec.loader.exec_module(module)
+    registry = module.load_policy(registry_path)
+
+    # The same defect one level DOWN. `gates:` is a LIST, so a repeated `id:` produces
+    # two independent results rather than shadowing one — but render_json emits gates
+    # keyed by id, and every consumer that builds a dict from that output silently keeps
+    # the last. "Last one wins in silence" belongs to any keyed collection built without
+    # a collision check, not to YAML; curing it only at the key layer leaves it here.
+    gates = registry.get("gates")
+    if isinstance(gates, list):
+        seen: dict[str, int] = {}
+        for index, gate in enumerate(gates, start=1):
+            if not isinstance(gate, dict):
+                continue
+            gid = gate.get("id")
+            if gid is None:
+                raise RuntimeError(f"gate #{index} has no `id` — it cannot be reported on")
+            if gid in seen:
+                raise RuntimeError(
+                    f"gate #{index} repeats the id `{gid}` first used at gate #{seen[gid]} — "
+                    f"the JSON report is keyed by id, so a consumer would keep only one."
+                )
+            seen[gid] = index
+    return registry
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Meta-verifier — check safety gates are armed (P1 §4).")
     parser.add_argument("--registry", default=str(DEFAULT_REGISTRY),
@@ -461,14 +531,54 @@ def main(argv: list[str] | None = None) -> int:
     if not registry_path.exists():
         print(f"FATAL: registry not found: {registry_path}", file=sys.stderr)
         return 3
+    # The registry is a POLICY document — it decides which safety gates get checked at
+    # all — so it is loaded STRICTLY, not with yaml.safe_load. safe_load lets a duplicate
+    # top-level key win in silence: a second `gates:` appended at the end of the file
+    # replaces the 34 above it and reviews as an added block. MINIMUM_GATES catches that
+    # by COUNT, but only by count — a replacement list of 34 harmless-looking entries
+    # clears the floor and checks nothing real. The strict loader refuses the ambiguity
+    # itself, which is the layer where it is legible.
+    #
+    # NOT converted, deliberately: the yaml.safe_load at check_ci_workflow, which parses a
+    # GitHub Actions workflow to judge whether a gate is armed. That file is the SUBJECT of
+    # a verdict, not a policy governing the judge, and GitHub Actions itself resolves a
+    # duplicate key by last-wins — a checker that refused where the runtime accepts would
+    # be reporting on a file that does not exist. Refusing everything that parses YAML is
+    # the over-match twin of this defect (superscar #3).
     try:
-        registry = yaml.safe_load(registry_path.read_text())
-    except yaml.YAMLError as exc:
-        print(f"FATAL: registry unparseable: {exc}", file=sys.stderr)
+        registry = _load_registry_strictly(registry_path)
+    except Exception as exc:  # noqa: BLE001 — the loader's own error type is path-loaded
+        print(f"FATAL: registry refused: {exc}", file=sys.stderr)
+        return 3
+
+    # A registry that carries no gates is not an empty to-do list, it is a disarmed
+    # meta-verifier: every downstream reading of this run ("0/0 ARMED", exit 0,
+    # status "ok") is indistinguishable from a healthy one. Refuse BEFORE the alive
+    # signal is written, so the dead-man's switch goes stale rather than green.
+    gates = registry.get("gates") if isinstance(registry, dict) else None
+    if not isinstance(gates, list) or not gates:
+        print(
+            f"FATAL: registry {registry_path} carries no `gates:` list — a meta-verifier "
+            f"that iterates nothing cannot report GREEN.",
+            file=sys.stderr,
+        )
+        return 3
+    # The floor applies to the SHIPPED registry only. `--registry` is a test and
+    # development affordance pointed at synthetic files of one or two gates; failing
+    # those would be the over-match twin of the defect above (superscar #3), and would
+    # buy no safety, because the file an attacker or a bad merge edits is this one.
+    if registry_path.resolve() == DEFAULT_REGISTRY.resolve() and len(gates) < MINIMUM_GATES:
+        print(
+            f"FATAL: {registry_path} carries {len(gates)} gates, below the floor of "
+            f"{MINIMUM_GATES} recorded in {Path(__file__).name}. Gates are added, not "
+            f"removed; if a gate was genuinely retired, lower MINIMUM_GATES in the same "
+            f"commit so the removal is reviewed as a removal.",
+            file=sys.stderr,
+        )
         return 3
 
     if args.canary:
-        report = Report(results=[run_canary(g) for g in registry.get("gates", [])])
+        report = Report(results=[run_canary(g) for g in gates])
     else:
         report = evaluate(registry, only_scope=only_scope)
 

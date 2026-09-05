@@ -1727,3 +1727,350 @@ def test_real_ledger_has_zero_malformed():
             for e in malformed
         )
     )
+
+
+# ---------------------------------------------------------------------------
+# operator[secret] ager digest (L13-PR3, rebased onto L10-PR1's ratchet —
+# this file already carries the merged ratchet section above).
+#
+# Fixture carries >=3 open operator[secret] rows, several open rows that
+# must be EXCLUDED (non-secret operator, plain tech-debt, phantom-operator),
+# and one CLOSED operator[secret] row that must never surface at all. Every
+# open row's missing-step/proof text embeds a unique SENTINEL token so any
+# regression that leaks ledger prose into the digest is directly visible in
+# an assertion, not inferred.
+# ---------------------------------------------------------------------------
+
+OPERATOR_SECRET_LEDGER = """\
+# modus — PENDING-ARMS (the W81 ledger: built != armed)
+
+> Format: `opened YYYY-MM-DD | artifact | missing arming step | owner (me|operator[<category>]) | proof-of-armed`
+
+- opened 2026-06-20 | rotate supabase project check SENTINEL-A | rotate the dashboard credential SENTINEL-ENDPOINT-A | operator[secret] | proof recorded SENTINEL-PROOF-A
+- opened 2026-06-25 | rotate google oauth client SENTINEL-B | revoke on cloud console SENTINEL-ENDPOINT-B | operator[secret] | proof recorded SENTINEL-PROOF-B
+- opened 2026-07-01 | rotate tp1 key SENTINEL-C | accept given historical 0644 SENTINEL-ENDPOINT-C | operator[secret] operator[business] | proof recorded SENTINEL-PROOF-C
+- opened 2026-07-04 | non-secret operator artifact | waiting on GUI action | operator[gui] | operator GO recorded
+- opened 2026-06-28 | ordinary tech debt artifact | wire the hook | me | a live session shows the block
+- opened 2026-07-04 | phantom operator artifact | repo work parked behind a human lane that does not exist | operator | never
+
+## closed (proof recorded)
+
+- closed 2026-05-01 | rotated old cell.env key SENTINEL-CLOSED | operator[secret] | PROVEN closed — SENTINEL-CLOSED-PROOF must never appear in the digest
+"""
+
+
+@pytest.fixture()
+def operator_secret_ledger_path(tmp_path: Path) -> Path:
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(OPERATOR_SECRET_LEDGER, encoding="utf-8")
+    return p
+
+
+@pytest.fixture()
+def operator_secret_entries(operator_secret_ledger_path: Path):
+    now = par._parse_now(NOW)
+    return par.load_entries(operator_secret_ledger_path, now)
+
+
+def test_innocence_selects_exactly_the_open_secret_rows(operator_secret_entries):
+    rows = par.build_operator_rotation_digest(operator_secret_entries)
+    assert len(rows) == 3
+    for r in rows:
+        assert set(r.keys()) == {"fingerprint", "age_days", "overdue", "class"}
+        assert r["class"] == "operator[secret]"
+
+
+def test_guilt_non_secret_operator_row_excluded(operator_secret_entries):
+    selected = [e for e in operator_secret_entries if par.is_operator_rotation_entry(e)]
+    selected_artifacts = {e.artifact for e in selected}
+    assert "non-secret operator artifact" not in selected_artifacts
+
+
+def test_guilt_phantom_and_tech_debt_and_closed_rows_excluded(operator_secret_entries):
+    selected = [e for e in operator_secret_entries if par.is_operator_rotation_entry(e)]
+    artifacts = {e.artifact for e in selected}
+    assert "phantom operator artifact" not in artifacts
+    assert "ordinary tech debt artifact" not in artifacts
+    assert not any("SENTINEL-CLOSED" in a for a in artifacts)  # closed row never even parsed
+
+
+def test_guilt_rendered_digest_never_leaks_ledger_prose(operator_secret_entries):
+    now = par._parse_now(NOW)
+    text = par.render_operator_rotation_digest(operator_secret_entries, now)
+    for sentinel in (
+        "SENTINEL-ENDPOINT-A",
+        "SENTINEL-ENDPOINT-B",
+        "SENTINEL-ENDPOINT-C",
+        "SENTINEL-PROOF-A",
+        "SENTINEL-PROOF-B",
+        "SENTINEL-PROOF-C",
+        "SENTINEL-CLOSED",
+        "SENTINEL-CLOSED-PROOF",
+        "dashboard",
+        "cloud console",
+        "0644",
+    ):
+        assert sentinel not in text
+
+
+def test_guilt_json_digest_never_leaks_ledger_prose_and_excludes_closed(operator_secret_ledger_path):
+    now = par._parse_now(NOW)
+    entries = par.load_entries(operator_secret_ledger_path, now)
+    payload = par.build_operator_rotation_digest_json(entries, now)
+    dumped = json.dumps(payload)
+    for sentinel in (
+        "SENTINEL-ENDPOINT-A",
+        "SENTINEL-PROOF-A",
+        "SENTINEL-CLOSED",
+        "SENTINEL-CLOSED-PROOF",
+        "phantom operator artifact",
+        "ordinary tech debt artifact",
+    ):
+        assert sentinel not in dumped
+    assert payload["count"] == 3
+    assert len(payload["rows"]) == 3
+    for row in payload["rows"]:
+        assert set(row.keys()) == {"fingerprint", "age_days", "overdue", "class"}
+    # adversarial review 2026-09-02 (MAJOR): the full report's JSON carries
+    # the ledger's own filesystem path (typically absolute, can leak a local
+    # username/machine layout) — this schema is the digest's narrower
+    # contract and must never include it, at any key.
+    assert set(payload.keys()) == {"now", "count", "rows"}
+
+
+def test_fingerprint_is_stable_nonreversible_and_distinct(operator_secret_entries):
+    selected = [e for e in operator_secret_entries if par.is_operator_rotation_entry(e)]
+    fps = [par.operator_rotation_fingerprint(e) for e in selected]
+    assert len(fps) == len(set(fps))  # distinct rows -> distinct fingerprints
+    for fp in fps:
+        assert len(fp) == 16
+        int(fp, 16)  # must be valid hex
+    # stable across repeated calls on the same entry
+    assert par.operator_rotation_fingerprint(selected[0]) == fps[0]
+    # never merely a slice of the row's own text (the "never reversible" bar)
+    for e, fp in zip(selected, fps):
+        assert fp not in e.artifact
+        assert fp not in e.owner
+
+
+def test_digest_ordering_oldest_first_fingerprint_tiebreak(operator_secret_entries):
+    rows = par.build_operator_rotation_digest(operator_secret_entries)
+    ages = [r["age_days"] for r in rows]
+    assert ages == sorted(ages, reverse=True)
+
+
+def test_multi_tag_owner_still_selected(operator_secret_entries):
+    selected = [e for e in operator_secret_entries if par.is_operator_rotation_entry(e)]
+    assert any("business" in e.owner and "secret" in e.owner for e in selected)
+
+
+def test_innocence_unrecognized_second_tag_correctly_excluded_as_phantom(tmp_path):
+    """Adversarial review 2026-09-02 (MAJOR, DECLINED — documented, not a bug):
+    'operator[secret] operator[typo]' has an unrecognized category alongside
+    a valid one. parse_entry's PRE-EXISTING invariant (untouched by this PR)
+    is that ANY unrecognized tag makes the WHOLE owner PHANTOM-OPERATOR —
+    the module's own docstring: 'Legitimate ONLY if every declared tag names
+    a true-operator category'. This is deliberate, not an oversight this PR
+    introduced: a row this ambiguous cannot be trusted to genuinely mean
+    operator[secret], and it is NOT silently dropped from the ORGANISM — it
+    still surfaces, loudly, in the full report's PHANTOM-OPERATOR section
+    (the loudest bucket, always first). Loosening this for the digest alone
+    would let an ambiguous, mistyped owner tag slip a row into a
+    credential-rotation view on the strength of a typo — the opposite
+    direction of safe. Correctly excluded here.
+    """
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-01 | mixed valid and typo tags artifact | some step "
+        "| operator[secret] operator[typo] | some proof",
+    )
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+    assert not par.is_operator_rotation_entry(e)
+
+
+# ---------------------------------------------------------------------------
+# CLI: --operator-secret-digest
+# ---------------------------------------------------------------------------
+
+
+def test_cli_operator_secret_digest_text(operator_secret_ledger_path, capsys):
+    code = par.main(
+        ["--ledger", str(operator_secret_ledger_path), "--now", NOW, "--operator-secret-digest"]
+    )
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "# operator[secret] ager digest" in out
+    assert "open rotations: 3" in out
+    assert "SENTINEL-PROOF-A" not in out
+    assert "phantom operator artifact" not in out
+
+
+def test_cli_operator_secret_digest_json(operator_secret_ledger_path, capsys):
+    code = par.main(
+        [
+            "--ledger",
+            str(operator_secret_ledger_path),
+            "--now",
+            NOW,
+            "--operator-secret-digest",
+            "--json",
+        ]
+    )
+    assert code == 0
+    out = capsys.readouterr().out
+    payload = json.loads(out)
+    assert payload["count"] == 3
+    assert len(payload["rows"]) == 3
+    dumped = json.dumps(payload)
+    assert "SENTINEL-PROOF-A" not in dumped
+    assert "SENTINEL-CLOSED" not in dumped
+
+
+def test_cli_operator_secret_digest_never_prints_a_realistic_secret_shape(tmp_path, capsys):
+    """CodeQL `py/clear-text-logging-sensitive-data` (found 2026-09-02, PR
+    #5535 CI) flags the two `main()` prints this test exercises — the exact
+    lines the ledger's real-world proof text could carry a live credential
+    fragment (rotation missing-step/proof prose routinely names an endpoint
+    or a partial token). This is the guilt half of that suppression's
+    justification: a ledger row whose proof text is a REALISTIC secret shape
+    (a GitHub PAT pattern) must never reach either digest output, in text or
+    JSON mode — not merely the SENTINEL-token fixture used elsewhere in this
+    file, which proves prose-exclusion in general but does not itself look
+    like credential material.
+    """
+    fake_token = "ghp_FAKE1234567890abcdef1234567890abcd"
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(
+        "# modus — PENDING-ARMS (the W81 ledger: built != armed)\n\n"
+        "> Format: `opened YYYY-MM-DD | artifact | missing arming step | "
+        "owner (me|operator[<category>]) | proof-of-armed`\n\n"
+        f"- opened 2026-06-20 | rotate leaked github token | revoke {fake_token} "
+        f"on github settings | operator[secret] | old value was {fake_token}\n",
+        encoding="utf-8",
+    )
+    for extra_args in ([], ["--json"]):
+        code = par.main(["--ledger", str(p), "--now", NOW, "--operator-secret-digest", *extra_args])
+        assert code == 0
+        out = capsys.readouterr().out
+        assert fake_token not in out
+        assert "github settings" not in out
+
+
+def test_cli_operator_secret_digest_empty_says_none(tmp_path, capsys):
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(
+        "- opened 2026-07-05 | ordinary tech debt only | some step | me | some proof\n\n"
+        "## closed (proof recorded)\n",
+        encoding="utf-8",
+    )
+    code = par.main(["--ledger", str(p), "--now", NOW, "--operator-secret-digest"])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "open rotations: 0" in out
+    assert "none" in out
+
+
+def test_cli_operator_secret_digest_rejects_strict(operator_secret_ledger_path, capsys):
+    """Adversarial review 2026-09-02 (MAJOR): --strict must never be
+    silently ignored by the digest mode — reject the combination loudly,
+    same discipline as the pre-existing --base-ref-without---ratchet guard."""
+    code = par.main(
+        [
+            "--ledger",
+            str(operator_secret_ledger_path),
+            "--now",
+            NOW,
+            "--operator-secret-digest",
+            "--strict",
+        ]
+    )
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "--strict" in err
+
+
+def test_cli_operator_secret_digest_rejects_strict_phantom(operator_secret_ledger_path, capsys):
+    code = par.main(
+        [
+            "--ledger",
+            str(operator_secret_ledger_path),
+            "--now",
+            NOW,
+            "--operator-secret-digest",
+            "--strict-phantom",
+        ]
+    )
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "--strict" in err
+
+
+def test_cli_operator_secret_digest_rejects_ratchet(operator_secret_ledger_path, capsys):
+    """Adversarial review 2026-09-02, round 2 (MAJOR): --ratchet silently WON
+    over --operator-secret-digest (mode precedence in main()'s branch order)
+    — the ratchet ran and printed its own verdict, the digest flag was
+    quietly ignored, and the ratchet's own RED path can print ledger
+    artifact text in the clear. Must reject the combination instead."""
+    code = par.main(
+        [
+            "--ledger",
+            str(operator_secret_ledger_path),
+            "--now",
+            NOW,
+            "--operator-secret-digest",
+            "--ratchet",
+        ]
+    )
+    assert code == 2
+    captured = capsys.readouterr()
+    assert "--ratchet" in captured.err
+    assert captured.out == ""  # neither mode's output leaked
+
+
+def test_cli_operator_secret_digest_rejects_ratchet_selftest(tmp_path, capsys):
+    code = par.main(["--operator-secret-digest", "--ratchet-selftest"])
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "--ratchet-selftest" in err
+
+
+def test_cli_operator_secret_digest_rejects_check_pr_refs(operator_secret_ledger_path, capsys):
+    """Round 2 (MAJOR): --check-pr-refs combined with the digest was a
+    silent no-op (the digest branch returns before annotate_pr_refs ever
+    runs) — a flag with no effect and no error, the exact 'say so instead
+    of doing nothing' defect this file's own --base-ref guard exists to
+    prevent elsewhere."""
+    code = par.main(
+        [
+            "--ledger",
+            str(operator_secret_ledger_path),
+            "--now",
+            NOW,
+            "--operator-secret-digest",
+            "--check-pr-refs",
+        ]
+    )
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "--check-pr-refs" in err
+
+
+def test_cli_operator_secret_digest_has_no_send_side_effect(
+    operator_secret_ledger_path, monkeypatch, capsys
+):
+    """Gear-1 acceptance: 'the report command must have no send side effect'.
+    subprocess.run must never fire for this mode (unlike --check-pr-refs or
+    the freshness check, which legitimately shell out to git/gh) — this mode
+    returns before either of those run."""
+    called: list = []
+
+    def fake_run(*args, **kwargs):
+        called.append(args)
+        raise AssertionError("operator-secret-digest must never invoke subprocess.run")
+
+    monkeypatch.setattr(par.subprocess, "run", fake_run)
+    code = par.main(
+        ["--ledger", str(operator_secret_ledger_path), "--now", NOW, "--operator-secret-digest"]
+    )
+    assert code == 0
+    assert called == []

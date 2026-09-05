@@ -1,7 +1,11 @@
 ---
 name: visaoracle
-description: "Corner for Visa Oracle v2 — the immigration Decision Tree rebuild (Bali Zero flagship). Load FIRST on any Visa Oracle / visa funnel work. Holds live state, established truths, research log, loop protocol."
+description: "Corner for Visa Oracle v2 — the immigration Decision Tree rebuild (Bali Zero flagship). Load FIRST on any Visa Oracle / visa funnel work."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Holds: live state, established truths, research log, loop protocol.
 
 # VISA ORACLE v2 — Decision Tree (corner /visaoracle)
 

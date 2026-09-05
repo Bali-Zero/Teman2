@@ -11,6 +11,16 @@
 > the public CTA on balizero.com is a team member's work line
 > (`WA_NUMBER` in `apps/mouth/src/lib/whatsapp-utm.ts`). Read the architecture
 > here, never the digits.
+>
+> **Amended 2026-09-01.** The two roles now have two NAMES, which is the part this
+> banner could not say before: `SUPPORT_WHATSAPP` is the bot's INBOUND identity —
+> the line Meta delivers webhooks to, that nobody answers — and
+> `CLIENT_CONTACT_WHATSAPP` (added in PR #5486) is the line a client is invited to
+> write to, where a person replies. They are free to differ and today they do. Every
+> client-facing emission in `apps/backend-rag/backend/**` reads the second one, and
+> `test_no_backend_module_hands_a_client_the_bots_inbound_number` fails the build if
+> one drifts back. Anything that reads `SUPPORT_WHATSAPP` to decide what to SHOW a
+> client is a bug, not a config choice.
 
 ---
 

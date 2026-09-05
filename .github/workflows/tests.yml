@@ -96,18 +96,23 @@ on:
 # every other branch (a direct run against main stays false, PR refs and
 # schedule keep cancelling) and forces false only for the new merge_group case.
 concurrency:
-  # Dependabot branch: ALL Dependabot PRs share one group per workflow (not
-  # per-ref), bounding concurrent Dependabot runs of THIS workflow to <=2
-  # (Agent PR Contract rule 5) instead of unbounded parallel.
-  # cancel-in-progress:false protects whichever run is RUNNING; GitHub keeps
-  # only one PENDING per group, so a 3rd+ near-simultaneous arrival cancels
-  # the pending run rather than queuing behind it — visible in the PR's
-  # checks tab (never silent), recoverable with `gh run rerun` (confirmed:
-  # docs.github.com/en/actions/using-jobs/using-concurrency + kimi-code/k3
-  # refuter round on PR #5043). Non-Dependabot branch is byte-for-byte the
-  # pre-existing expression — untouched.
-  group: ${{ github.actor == 'dependabot[bot]' && format('dependabot-lockfile-{0}', github.workflow) || format('tests-{0}', github.event_name == 'schedule' && 'schedule-main' || github.ref) }}
-  cancel-in-progress: ${{ github.actor != 'dependabot[bot]' && (github.event_name == 'schedule' || github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
+  # Per-PR/per-ref for every author. A shared per-workflow group keyed on
+  # github.actor was removed 2026-09-02: GitHub keeps only ONE pending run per
+  # group, so a 3rd near-simultaneous arrival was cancelled BEFORE any job
+  # started — no check-run object is created, so a required context sits at
+  # "Expected — waiting for status" with nothing red to see. Concurrency is now
+  # bounded only by the account-level ceiling, which QUEUES past it rather than
+  # dropping: lateness is visible, an absent check-run is not.
+  group: tests-${{ github.event_name == 'schedule' && 'schedule-main' || github.ref }}
+  cancel-in-progress: ${{ (github.event_name == 'schedule' || github.ref != 'refs/heads/main') && github.event_name != 'merge_group' }}
+  # CHECKED, NOT CHANGED (2026-09-05 audit): for a `pull_request` event,
+  # `github.ref` is `refs/pull/<n>/merge` — never `refs/heads/main` — so the
+  # expression above is already `true` for every PR push (a newer push
+  # supersedes an in-flight run of the same PR). `cancel-in-progress` is only
+  # ever `false` for the two cases the long comment block above this key
+  # explains it must be: a `merge_group` entry and a direct run against
+  # `refs/heads/main`. No PR-triggered idempotent run in this workflow lacks
+  # cancellation.
 
 # S11: the coverage-collection decision lives HERE, once, and nowhere else.
 # It used to be a per-shard step that wrote its answer to a file the fan-in read
@@ -156,6 +161,27 @@ jobs:
       # this lever existed.
       impact_run_all: ${{ steps.impact.outputs.run_all || 'true' }}
       impact_selected_tests: ${{ steps.impact.outputs.selected_tests }}
+      # VISIBILITY (2026-09-05, closes the "corpus dies silently" mask that
+      # let #5070 and #5679 run every job on every PR for 9 and 9 days
+      # respectively, both green throughout): a failure of the extraction or
+      # the corpus is ALREADY fail-open (run_all above) — that was never the
+      # gap. The gap was that fail-open path being indistinguishable from a
+      # genuine "nothing here" recommendation. classifier_trusted is 'true'
+      # ONLY when extraction succeeded AND the corpus itself exited 0 in the
+      # trusted layout; the classifier-corpus-visibility job below turns red
+      # (non-required — it can never block a PR) whenever this is 'false' and
+      # nobody asked for the manual override. Fail-open toward 'false'
+      # (untrusted) on any unset/unexpected value — the unsafe direction here
+      # is silently claiming trust, not silently doubting it.
+      # `== 'true' && 'true' || 'false'`, not a bare `|| 'false'` (codex-gpt-5.6-sol
+      # review, 2026-09-05): `||` only substitutes on an EMPTY left side, so a
+      # bare fallback would pass through any unexpected non-empty value (e.g.
+      # a future typo emitting "True"/"1") unnormalized, silently widening the
+      # output's contract beyond the two literal strings its only consumers
+      # (this job's own steps) actually write today. Explicit normalization
+      # closes that for any FUTURE consumer, not just today's.
+      classifier_trusted: ${{ steps.classify.outputs.classifier_trusted == 'true' && 'true' || 'false' }}
+      override_active: ${{ steps.override.outputs.active == 'true' && 'true' || 'false' }}
 
     steps:
       - name: Checkout code
@@ -228,7 +254,7 @@ jobs:
           CLASSIFIER_DIR="$RUNNER_TEMP/trusted-classifier"
           mkdir -p "$CLASSIFIER_DIR"
           OK=true
-          for f in scripts/ci/change_map.py scripts/ci/test_change_map.py scripts/ci/hotzone_changed_files.sh scripts/ci/impact_map.py scripts/ci/test_impact_map.py; do
+          for f in scripts/ci/change_map.py scripts/ci/test_change_map.py scripts/ci/security_gate_flags.py scripts/ci/hotzone_changed_files.sh scripts/ci/impact_map.py scripts/ci/test_impact_map.py; do
             if ! git show "${BASE_SHA}:${f}" > "$CLASSIFIER_DIR/$(basename "$f")" 2>/dev/null; then
               echo "::warning::could not extract $f from base ref $BASE_SHA — treating classifier as untrusted for this run"
               OK=false
@@ -320,6 +346,18 @@ jobs:
           echo "map=$MAP_JSON" >> "$GITHUB_OUTPUT"
           echo "run_all=$RUN_ALL" >> "$GITHUB_OUTPUT"
 
+          # classifier_trusted: the SAME condition this step already used above
+          # to decide whether to trust hotzone_changed_files.sh's enumeration —
+          # re-published as its own explicit output instead of left implicit in
+          # a warning line, so a consumer (the visibility job below, or a human
+          # reading the step summary) never has to re-derive it from two other
+          # steps' outcomes.
+          if [ "$EXTRACT_OK" = "true" ] && [ "$CLASSIFIER_TEST_OUTCOME" = "success" ]; then
+            echo "classifier_trusted=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "classifier_trusted=false" >> "$GITHUB_OUTPUT"
+          fi
+
           # Per-job explicit booleans (superscar #3 "guard-over-match"): a
           # `contains(map_json, 'job-name')` substring check on the raw JSON
           # would be one classifier bug away from "frontend-tests" silently
@@ -400,14 +438,36 @@ jobs:
           # can run into the hundreds of paths (see the module docstring's
           # app-factory hub example) and belongs in $GITHUB_OUTPUT, not a
           # GitHub Actions annotation.
-          SUMMARY="$(IMPACT_JSON="$IMPACT_JSON" python3 -c '
-          import json, os
+          #
+          # HEREDOC, not `python3 -c '...'` (2026-09-05 fix): the one-liner
+          # version quoted dict keys with `\"run_all\"` INSIDE an f-string
+          # expression — a backslash-escaped quote inside `{...}` is a
+          # SyntaxError on Python < 3.12 ("f-string expression part cannot
+          # include a backslash", lifted by PEP 701). This job has no
+          # `actions/setup-python` step, so it runs on whatever `python3` the
+          # `ubuntu-24.04` image (confirmed live, run 33896943526's "Set up
+          # job" log) ships as default — 3.12, which is why this has not
+          # actually broken a live run yet. It is NOT safe by convention: the
+          # rest of this repo's Python CI surface pins 3.11 explicitly (e.g.
+          # scripts-tests-sweep.yml's `actions/setup-python` with
+          # `python-version: "3.11"`), and anyone reproducing this exact step
+          # against that pin — or against a contributor's local 3.11/3.10 —
+          # hits the SyntaxError immediately. A `python3 - <<'PY'` heredoc
+          # (same pattern already used two steps down, "Publish change-map
+          # decision") passes the script over stdin with no shell-quoting
+          # interaction, so the f-strings need no escaping at all and the bug
+          # class cannot recur here.
+          SUMMARY="$(IMPACT_JSON="$IMPACT_JSON" python3 - <<'PY'
+          import json
+          import os
+
           d = json.loads(os.environ["IMPACT_JSON"])
           print(
-              f"run_all={d[\"run_all\"]} reason={d[\"reason\"]} "
-              f"selected={d.get(\"selected_test_count\", \"-\")}/{d.get(\"total_test_count\", \"-\")}"
+              f"run_all={d['run_all']} reason={d['reason']} "
+              f"selected={d.get('selected_test_count', '-')}/{d.get('total_test_count', '-')}"
           )
-          ')"
+          PY
+          )"
           echo "::notice::test-impact-map: $SUMMARY"
 
       - name: Publish change-map decision
@@ -417,6 +477,7 @@ jobs:
           CLASSIFIER_TEST_OUTCOME: ${{ steps.classifier-tests.outcome }}
           CLASSIFY_OUTCOME: ${{ steps.classify.outcome }}
           OVERRIDE_ACTIVE: ${{ steps.override.outputs.active }}
+          CLASSIFIER_TRUSTED: ${{ steps.classify.outputs.classifier_trusted == 'true' && 'true' || 'false' }}
         run: |
           python3 - <<'PY'
           import json
@@ -462,16 +523,30 @@ jobs:
 
           skipped = result["would_skip"]
 
+          classifier_trusted = os.environ.get("CLASSIFIER_TRUSTED", "false")
+
           lines = [
               "## Change map — enforcing",
               "",
               f"- Classifier corpus: `{os.environ['CLASSIFIER_TEST_OUTCOME']}`",
               f"- Classification step: `{os.environ['CLASSIFY_OUTCOME']}`",
+              f"- Classifier trusted (extraction + corpus both clean): `{classifier_trusted}`",
               f"- Conservative fallback (run everything): `{str(result['run_all']).lower()}`",
               f"- Reason: `{result['reason']}`",
               f"- Ran: `{', '.join(result['suggested_jobs']) or 'none'}`",
               f"- Skipped: `{', '.join(skipped) or 'none'}`",
           ]
+          if classifier_trusted != "true" and os.environ.get("OVERRIDE_ACTIVE") != "true":
+              lines.extend(
+                  [
+                      "",
+                      "**The trusted-classifier corpus did not pass in the flat extraction "
+                      "layout this run** — see the `Classifier corpus trust (visibility "
+                      "only)` job (non-required, exists only when this is true) for the red "
+                      "signal. The fallback above is safe (run_all), but the recommendation "
+                      "for THIS PR was degraded and did not reflect its actual diff.",
+                  ]
+              )
           if result.get("unknown_paths"):
               lines.extend(
                   ["", "Unclassified paths (therefore all jobs):", ""]
@@ -498,6 +573,51 @@ jobs:
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
               summary.write("\n".join(lines) + "\n")
           PY
+
+  # VISIBILITY-ONLY red signal for the corpus mask (2026-09-05). #5070
+  # (2026-08-26) and #5679 (2026-09-04) each killed the trusted-classifier
+  # corpus silently: the fail-open contract correctly forced run_all=true on
+  # every PR for 9 and then 9 more days, and `changes` stayed green
+  # throughout because `classifier-tests`/`classify` are BOTH
+  # `continue-on-error: true` (load-bearing — a hard failure there must never
+  # block a PR whose diff never touched the classifier). Nobody noticed
+  # either incident from CI's own signal; both were found by a human reading
+  # `run_all: true` on an unrelated diff and asking why.
+  #
+  # This job exists ONLY to be seen, never to gate: it fires exclusively when
+  # `changes` itself concluded success (so this is additive information, not
+  # a duplicate of a real `changes` failure, which is already visible) AND
+  # the classifier was genuinely untrusted (extraction or corpus failed) AND
+  # nobody asked for the manual override (which intentionally never consults
+  # the classifier — that is not a defect). It is NOT added to
+  # infra/required.d/contexts.json or branch protection — a red run here can
+  # never block a merge queue entry, only tell a human to go look.
+  classifier-corpus-visibility:
+    name: Classifier corpus trust (visibility only)
+    needs: [changes]
+    if: needs.changes.outputs.override_active != 'true' && needs.changes.outputs.classifier_trusted != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: read
+    # continue-on-error (codex-gpt-5.6-sol review, 2026-09-05): "not in
+    # infra/required.d/contexts.json" only defends against classic
+    # required-status-checks matching this job's exact name — it says nothing
+    # about a repository/organization RULESET that requires every check-run on
+    # a PR to succeed, or merge automation that inspects the raw checks list
+    # rather than the named-required subset. `continue-on-error: true` closes
+    # that regardless of which policy shape is live: the JOB's own check-run
+    # conclusion can still report `failure` (the red signal this job exists
+    # for), but that failure no longer fails the WORKFLOW RUN itself — the
+    # exact split the `npm-audit` job's own "Two-layer advisory design"
+    # comment below already documents and this job now matches.
+    continue-on-error: true
+    steps:
+      - name: Classifier corpus FAILED in the trusted extraction layout
+        run: |
+          echo "::error::classifier corpus FAILED in the trusted layout — recommendation degraded to run-all"
+          echo "See the 'Change map' job's 'Verify change-map guilt and innocence corpus' / 'Extract trusted classifier (base ref)' steps for which one failed, and scripts/ci/test_trusted_extraction_layout.py to reproduce it locally."
+          exit 1
 
   # ── S11 backend-test sharding (2026-08-23) ──────────────────────────────────
   # `Backend Tests (Python)` used to be ONE job, and every code PR paid it twice
@@ -1126,7 +1246,7 @@ jobs:
           python-version: "3.11"
 
       - name: Download shard receipts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: backend-shard-*
           merge-multiple: true
@@ -1607,11 +1727,37 @@ jobs:
     # here: a false job-level condition would again erase the matrix contexts.
     # The first step below keeps the normal path filter and fails open to RUN
     # when `changes` is non-successful or its output is missing.
+    #
+    # DIAGNOSED, NOT A DEFECT (2026-09-05, re: PR #5696 checks showing
+    # "Frontend Tests (Next.js) (mouth, true)"/"(admin-dashboard, false)" as
+    # `pass` in 4-5s on a docs-only diff where the Change map listed
+    # `frontend-tests` in `would_skip`): verified against that PR's actual
+    # job logs (run 33896943526, jobs 101103158988/101103158947). Both legs
+    # spin up a runner and execute exactly ONE step — "Decide whether to
+    # run" below — which read `RUN_FRONTEND_TESTS: false` and correctly set
+    # `run=false`; every subsequent step (checkout, npm install, vitest) was
+    # skipped, matching its own `if: steps.decide.outputs.run == 'true'`
+    # guard. No test ran. The visible difference from the other five heavy
+    # jobs — which report GitHub's `skipping` conclusion at effectively zero
+    # cost — is COSMETIC, not functional: those five use a job-level `if:`
+    # keyed on the classifier, which is exactly the shape the LOAD-BEARING
+    # comment above documents as unsafe FOR THIS JOB (a job-level `if:` that
+    # can evaluate false erases the matrix's required-context names when
+    # `changes` doesn't succeed cleanly — #4706's actual failure mode).
+    # Moving frontend-tests to that shape to buy the cheaper "skipping" badge
+    # would reopen #4706. Left unchanged; the ~5s/leg "Set up job" + decide
+    # cost is the accepted price of keeping the required contexts stable.
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     env:
       HAS_CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN != '' }}
-    timeout-minutes: 10
+    # 10 was the cap while the healthy path measured 9m13s (run 33825884926,
+    # 2026-09-04 01:30Z). When `npm ci` slowed from 1m07s to 4m20s on the same
+    # commit (registry/cache, not code), every run from 01:43Z on — PR runs AND
+    # merge_group runs — reported `cancelled` here and `Test Summary` went red
+    # on a diff that never touched the frontend. A cap one minute above the
+    # healthy path is a cap on the registry, not on the suite.
+    timeout-minutes: 16
 
     strategy:
       matrix:
@@ -1697,6 +1843,15 @@ jobs:
       # extra coverage. Advisory-only now (continue-on-error, non-required)
       # so external advisory churn can never eject this required job from
       # the merge queue for a reason that isn't a code change here.
+      # The staff UI consumes this product contract directly. Run its existing
+      # generator's freshness check in the required mouth leg, including when
+      # only products/ changes (the change map conservatively runs all suites).
+      - name: Check GARUDA generated contract
+        if: matrix.app == 'mouth' && steps.decide.outputs.run == 'true'
+        run: |
+          ./node_modules/.bin/openapi-typescript products/garuda-voa/contracts/openapi.yaml \
+            --output apps/mouth/src/lib/api/garuda-voa.generated.d.ts --check
+
       - name: Run tests (with coverage)
         if: matrix.coverage && steps.decide.outputs.run == 'true'
         run: |
@@ -1838,8 +1993,20 @@ jobs:
     # here is real and worth seeing; it is never grounds to eject a queue
     # entry or block a PR whose diff never touched a dependency.
     needs: [changes]
+    # MERGE-GROUP DEDUP (2026-09-05): unlike Snyk (a static manifest diff),
+    # `npm audit` genuinely CAN find something new on merge_group that wasn't
+    # there on the PR-head run — the advisory database moves independently of
+    # this repo's tree (see the W118 story above). But that extra visibility
+    # is not worth a second full `npm install` + advisory query per queue
+    # entry: this job's own two-layer design (below) already guarantees a
+    # finding NEVER blocks anything, on either event — so the only thing a
+    # merge_group run could add is an earlier sighting of an advisory the
+    # next scheduled/PR run will surface anyway. `github.event_name !=
+    # 'merge_group'` below trades that marginal earlier-sighting for one
+    # fewer redundant job per queue entry.
     if: >-
       !cancelled() &&
+      github.event_name != 'merge_group' &&
       (
         (github.event_name != 'pull_request' && github.event_name != 'merge_group') ||
         needs.changes.result != 'success' ||
@@ -2345,7 +2512,15 @@ jobs:
         needs.changes.outputs.run_e2e_tests != 'false'
       )
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 15 (original, no-retry budget — sized against the steady-state run, not
+    # either hang) + up to 5 (one uv-install retry) + up to 10 (one smoke
+    # retry) = 30. Both retries are scoped to a NAMED hang signature only
+    # (see the two guard steps below, and the uv-install step's own comment
+    # on why detection uses the POSIX `timeout` exit code rather than
+    # GitHub Actions' step outcome) — a real dependency conflict or a real
+    # Playwright assertion failure never retries, so the common-case wall
+    # time is unchanged and this ceiling only matters on the rare hang path.
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -2376,12 +2551,77 @@ jobs:
         with:
           python-version: "3.11"
 
+      # Keyed on the real lock file this repo uses for this install
+      # (`requirements.lock.txt`) — there is no `uv.lock` anywhere in this
+      # repo (checked: `find . -iname uv.lock` is empty), so a key on that
+      # filename would never hit.
+      - name: Cache uv package cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('apps/backend-rag/requirements.lock.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      # continue-on-error is required so the job reaches the retry/guard
+      # steps below at all. It is NOT how the timeout is detected: a GitHub
+      # Actions step-level `timeout-minutes` firing sets `outcome: failure`
+      # here, the SAME value a real `uv`/`pip` resolution error produces —
+      # confirmed independently by two adversarial review seats
+      # (codex-gpt-5.6-sol citing actions/runner's StepsRunner.cs task-result
+      # path; tp1-qwen3.8-max citing the same SIGINT/SIGKILL-then-Failed
+      # behaviour), after this PR's first draft wrongly assumed a timeout
+      # would report `cancelled` (that value is reserved for job/workflow-
+      # level cancellation, e.g. a `concurrency` group's cancel-in-progress —
+      # never a step's own timeout). So detection here uses the POSIX
+      # `timeout` utility's own well-documented exit code 124 instead,
+      # captured explicitly — a signal under this step's own control, not
+      # dependent on GitHub Actions runner internals. `set +e` overrides the
+      # `-e` GitHub Actions' default bash invocation already applies, so the
+      # nonzero exit from a real failure doesn't abort the script before the
+      # classification below runs.
       - name: Install backend dependencies (uv, lock-pinned)
+        id: uv_install
+        continue-on-error: true
+        timeout-minutes: 5
         run: |
           cd apps/backend-rag
-          pip install --upgrade pip uv
-          uv pip install --system -r requirements.lock.txt
-          uv pip install --system -e ../../packages/cell-core
+          set +e
+          timeout --kill-after=10 240 bash -c '
+            set -e
+            pip install --upgrade pip uv
+            uv pip install --system -r requirements.lock.txt
+            uv pip install --system -e ../../packages/cell-core
+          '
+          rc=$?
+          if [ "$rc" -eq 124 ]; then
+            echo "timed_out=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "timed_out=false" >> "$GITHUB_OUTPUT"
+          fi
+          exit "$rc"
+
+      - name: Retry uv install once (timeout only, never a real resolution failure)
+        id: uv_install_retry
+        if: steps.uv_install.outputs.timed_out == 'true'
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          cd apps/backend-rag
+          timeout --kill-after=10 240 bash -c '
+            set -e
+            pip install --upgrade pip uv
+            uv pip install --system -r requirements.lock.txt
+            uv pip install --system -e ../../packages/cell-core
+          '
+
+      - name: Guard — fail the job if uv install (or its one timeout-only retry) did not succeed
+        if: >-
+          steps.uv_install.outcome != 'success' &&
+          steps.uv_install_retry.outcome != 'success'
+        run: |
+          echo "::error::uv install did not succeed (outcome=${{ steps.uv_install.outcome }}, timed_out=${{ steps.uv_install.outputs.timed_out }}, retry=${{ steps.uv_install_retry.outcome }})."
+          exit 1
 
       - name: Install postgresql-client (bounded, fail-closed — scripts/ci/apt_install.sh)
         run: bash scripts/ci/apt_install.sh psql postgresql-client
@@ -2405,7 +2645,25 @@ jobs:
         # actions/cache never persists on a fresh runner VM).
         run: timeout 600 npx playwright install --with-deps chromium
 
+      # 9 = 3 (backend/frontend readiness — fullstack_smoke.py's own internal
+      # _wait_for_http() caps these at 60s/180s, well inside 3min) + 6 (the
+      # smoke itself). The script has no separable GH-Actions-step phase for
+      # "readiness" vs "smoke" — both run inside the same `python -m`
+      # invocation — so this is ONE combined step-level budget, not two; see
+      # the PR body for that judgment call. Hang classification (is_hang)
+      # never trusts GitHub Actions' own step outcome for the reason
+      # documented on the uv-install step above (a step timeout reports
+      # `failure`, indistinguishable there from a real error) — it uses the
+      # POSIX `timeout` utility's exit code 124 for the outer-budget case,
+      # OR the exact string fullstack_smoke.py's internal TimeoutError
+      # raises ("did not become ready") for the inner-readiness-timeout
+      # case, `tee`'d to a log file so it can be grepped after the process
+      # exits. A real Playwright assertion failure produces neither signal,
+      # so it is never classified as a hang and never retried.
       - name: Run the disposable-DB fullstack smoke
+        id: smoke
+        continue-on-error: true
+        timeout-minutes: 10
         env:
           VISA_ORACLE_FULLSTACK: "1"
           VISA_ORACLE_SMOKE_ADMIN_DSN: postgresql://test:test@127.0.0.1:5432/postgres
@@ -2420,7 +2678,40 @@ jobs:
           API_KEYS: test_api_key_1,test_api_key_2
         run: |
           cd apps/backend-rag
-          PYTHONPATH=. python -m backend.scripts.visa_engine.fullstack_smoke
+          set +e
+          timeout --kill-after=10 540 python -u -m backend.scripts.visa_engine.fullstack_smoke 2>&1 | tee "$RUNNER_TEMP/visa-oracle-smoke.log"
+          rc=${PIPESTATUS[0]}
+          if [ "$rc" -eq 124 ]; then
+            echo "is_hang=true" >> "$GITHUB_OUTPUT"
+          elif grep -q "did not become ready" "$RUNNER_TEMP/visa-oracle-smoke.log"; then
+            echo "is_hang=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_hang=false" >> "$GITHUB_OUTPUT"
+          fi
+          exit "$rc"
+
+      - name: Retry the fullstack smoke once (known hang signature only, never a real assertion failure)
+        id: smoke_retry
+        if: steps.smoke.outputs.is_hang == 'true'
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          VISA_ORACLE_FULLSTACK: "1"
+          VISA_ORACLE_SMOKE_ADMIN_DSN: postgresql://test:test@127.0.0.1:5432/postgres
+          PYTHONDONTWRITEBYTECODE: "1"
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
+          API_KEYS: test_api_key_1,test_api_key_2
+        run: |
+          cd apps/backend-rag
+          timeout --kill-after=10 540 python -u -m backend.scripts.visa_engine.fullstack_smoke
+
+      - name: Guard — fail the job if the smoke (or its one hang-only retry) did not succeed
+        if: >-
+          steps.smoke.outcome != 'success' &&
+          steps.smoke_retry.outcome != 'success'
+        run: |
+          echo "::error::Visa Oracle fullstack smoke did not succeed (outcome=${{ steps.smoke.outcome }}, hang=${{ steps.smoke.outputs.is_hang }}, retry=${{ steps.smoke_retry.outcome }})."
+          exit 1
 
   test-summary:
     name: Test Summary

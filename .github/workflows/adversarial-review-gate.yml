@@ -19,20 +19,20 @@ on:
   pull_request:
   merge_group:
 
-# Dependabot branch: ALL Dependabot PRs share one group per workflow (not
-# per-run), bounding concurrent Dependabot runs of THIS workflow to <=2
-# (Agent PR Contract rule 5) instead of unbounded parallel.
-# cancel-in-progress:false protects whichever run is RUNNING; GitHub keeps
-# only one PENDING per group, so a 3rd+ near-simultaneous arrival cancels the
-# pending run rather than queuing behind it — visible in the PR's checks tab
-# (never silent), recoverable with `gh run rerun` (confirmed:
-# docs.github.com/en/actions/using-jobs/using-concurrency + kimi-code/k3
-# refuter round on PR #5043). Non-Dependabot branch is suffixed by
-# github.run_id, which is unique per run and therefore never collides — the
-# prior no-concurrency-block behavior (every run fully independent) is
-# preserved exactly.
+# Suffixed by github.run_id, which is unique per run and therefore never
+# collides — the prior no-concurrency-block behavior (every run fully
+# independent) is preserved exactly. A shared per-workflow group keyed on
+# github.actor was removed 2026-09-02: GitHub keeps only ONE pending run per
+# group, so a 3rd near-simultaneous arrival was cancelled BEFORE any job
+# started — no check-run object is created at all, so a required context sits
+# at "Expected — waiting for status" with nothing red to see. Concurrency is now
+# bounded only by the account-level ceiling, which QUEUES past it rather than
+# dropping: lateness is visible, an absent check-run is not.
+# This block is VESTIGIAL: it did not exist before the removed ternary introduced it, and
+# a github.run_id group with cancel-in-progress:false is unique per run, so it cancels
+# nothing. Kept only to avoid widening this diff; safe to delete in a separate PR.
 concurrency:
-  group: ${{ github.actor == 'dependabot[bot]' && format('dependabot-lockfile-{0}', github.workflow) || format('adversarial-review-gate-{0}-{1}', github.ref, github.run_id) }}
+  group: ${{ format('adversarial-review-gate-{0}-{1}', github.ref, github.run_id) }}
   cancel-in-progress: false
 
 jobs:

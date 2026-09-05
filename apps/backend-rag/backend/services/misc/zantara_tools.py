@@ -6,6 +6,7 @@ Direct execution (no HTTP calls) - faster & more reliable
 import logging
 from typing import Any
 
+from backend.app.core.config import settings
 from backend.services.crm.collaborator_service import CollaboratorService
 from backend.services.pricing.pricing_service import get_pricing_service
 
@@ -87,7 +88,7 @@ class ZantaraTools:
                     "error": "Official prices not loaded",
                     "fallback_contact": {
                         "email": "info@balizero.com",
-                        "whatsapp": "+62 821 3465 159",
+                        "whatsapp": settings.CLIENT_CONTACT_WHATSAPP,
                     },
                 }
 
