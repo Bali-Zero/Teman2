@@ -1,0 +1,99 @@
+brief_ref: evidence/brief.yml
+plan_ref: Owner three-product mandate, V04 persistent consultant contact and consent scope.
+dependency_base: 511bf901c64e10a6eb57bcff6a0c7361f8736a44 # pragma: allowlist secret - verified public V01 commit ID
+publication_gate: Wait for V01 to land on main, then rebase and refresh checks before opening a PR.
+bites: Visa Oracle visitors can open consented consultant contact in every interview phase; synthetic component tests and the Pro browser receipt verify the consumer.
+lanes:
+  - lane: v04-consultant-contact
+    role: build
+    seat: gpt-6-astra
+  - lane: v04-consent-snapshot-review
+    role: review
+    seat: gemini-3.1-pro
+seat_override: >-
+  The visa-oracle path triggers ground-truth review mechanically, but this change only
+  connects existing UI consent and disclosure behavior. It changes no immigration facts,
+  eligibility, prices, legal claims, engine rules or curated data. Ground truth is the
+  existing consent contract and synthetic runtime checks; no new NotebookLM claim is made.
+dissent: []
+pii_scan: clean
+review_status: Full independent Anthropic gate pending; no final approval is claimed.
+diff:
+  behaviour_change: >-
+    One consultant handoff remains mounted behind an accessible disclosure. Consultation
+    consent has no result state or reference. Only the actual displayed verdict supplies
+    assessment state and its opaque reference. Scope changes require fresh consent, including
+    after Edit answers; known minors retain the guardian gate. Legacy result receipts migrate
+    conservatively. No interview answers are placed in a WhatsApp handoff message.
+  size_reason: >-
+    Seven frontend files, 665 additions and 137 deletions, net 528. The single concern includes
+    strict consent migration and phase, guardian and keyboard regressions. Tests are retained
+    rather than removed to meet a nominal line threshold.
+verification_scope:
+  host: Pro for browser and TypeScript; Air-M5 for lightweight scoped Vitest.
+  snapshot: /tmp/v04-persistent-contact-511bf9
+  source: Exact dependency_base frontend archive plus the seven changed files.
+  data: Synthetic fixtures and phone destination only; no client data, database access or messages sent.
+  artifacts: output/playwright/v04-persistent-contact/
+  source_hashes_match: All seven local source hashes matched the tested Pro snapshot.
+  source_sha256:
+    ConsentHandoff.tsx: f103350977d38e7d68ccea4d83029301b4e8270928bca708330b3a446b63453f # pragma: allowlist secret - verified source content hash
+    ConsentHandoff.test.tsx: 72fb080dfde137405ef5af67c52cbfc7cbf0869b1747d73ce089d8097d1dce2d # pragma: allowlist secret - verified test content hash
+    consent-store.ts: d689c6cc3cfc26eee263193ca881e8a2524318905dfd2a1ccfe09c1ec35c0c8e # pragma: allowlist secret - verified source content hash
+    consent-store.test.ts: a4ddc2bfbe39d6ebff523cf64ba8693ac37e1d1a60dea5605f26b8a0f3a3c8da # pragma: allowlist secret - verified test content hash
+    OracleShell.tsx: afb3918500d59832280cf4828591869c648695cae3de48bf2756614918bbc6a4 # pragma: allowlist secret - verified source content hash
+    OracleShell.test.tsx: 3a43898b15916ab0676ddb368e9af53bd6cc2b4ce7891f95ac4c69632f10a48e # pragma: allowlist secret - verified test content hash
+    oracle.css: c5afd727dcb9fd7b741738bc745451b4bee3bad4dc8f9065267c6dca1ea625cd # pragma: allowlist secret - verified stylesheet content hash
+receipts:
+  - claim: >-
+      Combined regressions pass against the unchanged seven files, including
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx and
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.test.tsx.
+    cmd: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      'src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx'
+      'src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.test.tsx'
+      'src/app/(visa-oracle)/visa-oracle/_lib/consent-store.test.ts' --maxWorkers=1
+    result: 62 tests passed in 3 files, 3.22 seconds. Shell alone also passed 33 tests.
+    exit: 0
+    ts: "2026-09-05T06:53:56Z"
+    seat: gpt-6-astra builder
+  - claim: The coordinating session independently reran the same three suites without source changes.
+    cmd: >-
+      cd apps/mouth && ../../node_modules/.bin/vitest run
+      'src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx'
+      'src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.test.tsx'
+      'src/app/(visa-oracle)/visa-oracle/_lib/consent-store.test.ts' --maxWorkers=1
+    result: 62 tests passed in 3 files, 3.20 seconds; receipt supplied by the coordinating session.
+    exit: 0
+    ts: "2026-09-05T06:59:45Z"
+    seat: gpt-6-astra coordinating session, separate execution
+  - claim: The actual Shell and its TypeScript dependency closure type-check on Pro.
+    cmd: >-
+      ssh pro 'export PATH=/opt/homebrew/bin:/Users/nuzantara/.local/bin:$PATH;
+      cd /tmp/v04-persistent-contact-511bf9/apps/mouth;
+      node ../../node_modules/typescript/bin/tsc -p tsconfig.v04-check.json --pretty false'
+    result: No diagnostics, exit 0. The scoped config extends mouth tsconfig and includes next-env.d.ts and OracleShell.tsx, with incremental disabled.
+    exit: 0
+    ts: "2026-09-05T07:02:14Z"
+    seat: gpt-6-astra via Pro installed TypeScript
+  - claim: >-
+      output/playwright/v04-persistent-contact/receipt.json records real browser disclosure,
+      consented link and QR fitting mobile and supporting keyboard and print.
+    cmd: >-
+      ssh pro 'export PATH=/opt/homebrew/bin:/Users/nuzantara/.local/bin:$PATH;
+      node /tmp/v04-persistent-contact-qa.cjs'
+    result: >-
+      Installed Chrome 152.0.7977.82, English and Indonesian, widths 320, 390 and 1280 px.
+      No consultant-panel overflow; toggle height 44 px; Enter, Tab, Escape and Space verified;
+      one handoff instance; control and panel hidden in print; zero page errors. Generic
+      receipt contains no result state or assessment reference. WhatsApp was not opened.
+    exit: 0
+    ts: "2026-09-05T06:57:58Z"
+    seat: gpt-6-astra via Pro installed Chrome and Playwright
+review_notes:
+  - Gemini reviewed an immutable snapshot of the four consent files only. No introduced defect was confirmed after coordinator triage; this is not an executed full-product gate.
+  - The coordinating session inspected the complete source/CSS diff and mobile 320 px screenshot.
+  - ESLint reported zero source errors and two duplicate inherited privacy-link warnings; test files are ignored by that ESLint configuration.
+  - Prettier and git diff --check passed for the owned integration files; no collateral formatting was performed.
+  - No production build, deployment, main merge, arming or final Anthropic approval is claimed.

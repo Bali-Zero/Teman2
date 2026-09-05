@@ -1,5 +1,13 @@
 import { StrictMode } from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const emitVisaOracleTelemetry = vi.hoisted(() => vi.fn());
@@ -290,7 +298,12 @@ describe("OracleShell authoritative evaluate integration", () => {
     await expectStateHeading("NEEDS_INPUT");
     expect(screen.queryByRole("button", { name: /^edit$/i })).toBeNull();
     expect(screen.getByText(/Bali Zero can help clarify/)).toBeInTheDocument();
-    expect(screen.getByText("Continue with Bali Zero")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Talk to a consultant" }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Continue with Bali Zero" }),
+    ).toBeVisible();
     expect(
       screen.queryByText(/work\.indonesia_source_compensation/),
     ).toBeNull();
@@ -621,5 +634,215 @@ describe("OracleShell authoritative evaluate integration", () => {
     expect(nonReversibleHash).toHaveBeenCalledWith(
       expect.stringMatching(/^[0-9a-f-]{36}$/),
     );
+  });
+});
+
+describe("OracleShell persistent consultant contact", () => {
+  const originalFetch = global.fetch;
+  const consultant = "Talk to a consultant";
+
+  function resumeBeforeVerdict(
+    answers: readonly (readonly [string, string])[],
+  ): void {
+    let state = flowReducer(initialFlowState(), { type: "ADVANCE" });
+    for (const [questionId, value] of answers) {
+      state = flowReducer(state, { type: "ANSWER", questionId, value });
+    }
+    expect(
+      saveInterviewResume(createInterviewSnapshot(state, new Date())),
+    ).toBe(true);
+  }
+
+  function whatsappMessage(): string {
+    const link = screen.getByRole("link", { name: "Open WhatsApp" });
+    return new URL(link.getAttribute("href")!).searchParams.get("text")!;
+  }
+
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    window.localStorage.clear();
+    emitVisaOracleTelemetry.mockReset();
+    vi.stubEnv("NEXT_PUBLIC_VISA_ORACLE_MODE", "ENGINE");
+    vi.stubEnv("NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER", "6280000000000");
+    global.fetch = engineFetch();
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it("includes the consultant disclosure in the initial hydration markup", () => {
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(<OracleShell />);
+    expect(
+      container.querySelector("#oracle-consultant-toggle")?.textContent,
+    ).toContain(consultant);
+    expect(container.querySelector("#oracle-consultant-panel")).toHaveAttribute(
+      "hidden",
+    );
+    expect(container.querySelectorAll("#oracle-handoff-title")).toHaveLength(1);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it.each(["framing", "question", "confirmation"] as const)(
+    "offers generic contact during %s without advancing or evaluating",
+    async (stage) => {
+      if (stage !== "framing")
+        resumeBeforeVerdict(
+          stage === "question" ? ANSWERS.slice(0, 7) : ANSWERS,
+        );
+      render(<OracleShell />);
+      const heading = await screen.findByRole("heading", {
+        name: translate(
+          "en",
+          stage === "framing"
+            ? "framing.title"
+            : stage === "question"
+              ? "q.stay_days"
+              : "confirmation.title",
+        ),
+      });
+      if (stage === "question")
+        fireEvent.change(screen.getByRole("spinbutton"), {
+          target: { value: "31" },
+        });
+
+      const toggle = screen.getByRole("button", { name: consultant });
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+      expect(toggle.closest(".oracle-no-print")).not.toBeNull();
+      fireEvent.click(toggle);
+      expect(screen.getByRole("region", { name: consultant })).toBeVisible();
+      fireEvent.click(
+        screen.getByRole("checkbox", {
+          name: /I consent to open WhatsApp to speak/,
+        }),
+      );
+      const message = whatsappMessage();
+      expect(message).toContain("speak with a consultant");
+      expect(message).not.toMatch(
+        /Result state|Assessment reference|1990-01-01|nationalities|stay_days/,
+      );
+      expect(document.querySelectorAll("#oracle-handoff-title")).toHaveLength(
+        1,
+      );
+      fireEvent.click(toggle);
+
+      expect(heading).toBeVisible();
+      if (stage === "question")
+        expect(screen.getByRole("spinbutton")).toHaveValue(31);
+      expect(global.fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it("requires new consent only when an actual verdict replaces generic contact, and clears result context after Edit", async () => {
+    installVerdictResume();
+    let resolveEvaluation!: (response: Response) => void;
+    global.fetch = vi.fn<typeof fetch>(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveEvaluation = resolve;
+        }),
+    );
+    render(<OracleShell />);
+    await screen.findByText("Checking the verified Visa Oracle engine…");
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole("button", { name: consultant }));
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: /I consent to open WhatsApp to speak/,
+      }),
+    );
+    expect(whatsappMessage()).not.toMatch(/Result state|Assessment reference/);
+
+    await act(async () => {
+      resolveEvaluation(
+        new Response(JSON.stringify(makeVisaOracleResponse()), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    });
+    await expectStateHeading("SUPPORTED_CANDIDATES");
+    const resultConsent = screen.getByRole("checkbox", {
+      name: /minimal Visa Oracle receipt/,
+    });
+    expect(resultConsent).not.toBeChecked();
+    expect(screen.queryByRole("link", { name: "Open WhatsApp" })).toBeNull();
+    fireEvent.click(resultConsent);
+    expect(whatsappMessage()).toContain("Result state: SUPPORTED_CANDIDATES");
+    expect(whatsappMessage()).toContain("Assessment reference:");
+    expect(whatsappMessage()).not.toMatch(/1990-01-01|nationalities|stay_days/);
+    expect(document.querySelectorAll("#oracle-handoff-title")).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit answers" }));
+    await screen.findByRole("heading", {
+      name: translate("en", "confirmation.title"),
+    });
+    const genericConsent = screen.getByRole("checkbox", {
+      name: /I consent to open WhatsApp to speak/,
+    });
+    expect(genericConsent).not.toBeChecked();
+    expect(screen.queryByRole("link", { name: "Open WhatsApp" })).toBeNull();
+    fireEvent.click(genericConsent);
+    expect(whatsappMessage()).not.toMatch(/Result state|Assessment reference/);
+    expect(global.fetch).toHaveBeenCalledOnce();
+  });
+
+  it("requires guardian authority for a known minor before any evaluation", async () => {
+    const birthDate = `${new Date().getUTCFullYear() - 10}-01-01`;
+    resumeBeforeVerdict([...ANSWERS.slice(0, 4), ["birth_date", birthDate]]);
+    render(<OracleShell />);
+    fireEvent.click(await screen.findByRole("button", { name: consultant }));
+    const consent = screen.getByRole("checkbox", {
+      name: /I consent to open WhatsApp to speak/,
+    });
+    expect(consent).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /parent or legal guardian/ }),
+    );
+    expect(consent).toBeEnabled();
+    fireEvent.click(consent);
+    expect(whatsappMessage()).not.toContain(birthDate);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("supports keyboard disclosure, Escape focus return and Indonesian without resetting the interview", async () => {
+    const user = userEvent.setup();
+    resumeBeforeVerdict(ANSWERS.slice(0, 7));
+    render(<OracleShell />);
+    const toggle = await screen.findByRole("button", { name: consultant });
+    toggle.focus();
+    await user.keyboard("{Enter}");
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await user.tab();
+    expect(
+      screen.getByRole("checkbox", {
+        name: /I consent to open WhatsApp to speak/,
+      }),
+    ).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(toggle).toHaveFocus();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.keyboard(" ");
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await user.click(
+      screen.getByRole("button", {
+        name: translate("en", "language.option.id.aria"),
+      }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Bicara dengan konsultan" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByRole("checkbox", {
+        name: /Saya setuju membuka WhatsApp untuk berbicara/,
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: translate("id", "q.stay_days") }),
+    ).toBeVisible();
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });

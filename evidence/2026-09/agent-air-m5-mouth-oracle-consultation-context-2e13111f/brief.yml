@@ -1,0 +1,35 @@
+task_id: oracle-consultation-context
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Keep consultant contact available throughout the Visa Oracle interview, with explicit
+  consultation consent before a displayed verdict and fresh assessment consent at a verdict.
+  Preserve interview state and exclude interview answers from the WhatsApp message.
+constraints:
+  - Seven frontend source/test/style files and this task's evidence only.
+  - No engine, decision tree, pricing, eligibility or regulatory claims change.
+  - Synthetic fixtures only; browser and TypeScript verification run on Pro.
+  - Commit and feature push only. PR publication waits for V01 to land and a clean rebase.
+acceptance:
+  - text: >-
+      WHEN the user opens consultant contact in any interview phase, the UI SHALL preserve
+      interview state, avoid triggering evaluation and offer the correct explicit consent.
+    probe: apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx
+  - text: >-
+      WHEN contact scope changes between consultation and a displayed assessment, previous
+      consent SHALL NOT authorize the new scope; a known minor SHALL require guardian authority.
+    probe: apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.test.tsx
+  - text: >-
+      The consultant disclosure SHALL support keyboard focus return, contain one handoff
+      instance, fit mobile viewports in both languages and remain hidden in print.
+    probe: output/playwright/v04-persistent-contact/receipt.json
+consumer_map:
+  - Visa Oracle visitors use the persistent consultant disclosure in every interview phase.
+risks:
+  - This branch depends on the unmerged V01 evaluation and editing baseline.
+  - Browser verification is synthetic development rendering, not a production deployment.
+  - Gemini review covers only the four consent files; the full Anthropic gate remains pending.
+grader: Full independent Anthropic review remains pending; coordinating session inspected the complete diff.
+budget: Existing subscriptions and installed tooling only; no paid API calls.
+pii: none
