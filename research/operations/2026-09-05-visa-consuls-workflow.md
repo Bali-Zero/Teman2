@@ -92,8 +92,8 @@ Pro; all campaign fixtures and shared artifacts are synthetic or non-PII.
 | V-02 | Visa Oracle | Negative witnesses against actual signed-pack content | Accepted by Fable engine owner | Regression measures highest signed candidate; source-only merge cannot masquerade as signed/live correction |
 | G-02 | GARUDA | Document persistence and DDL integration | Existing PR #5526; do not duplicate | Existing owner decision and migration path, then upload/OCR/persistence/review verification |
 | V-03 | Visa Oracle | Consultant request persistence | Existing PR #5037; do not duplicate | Inherit the existing lane and its gate rather than recreate tables |
-| V-04 | Visa Oracle | Consultant available throughout the interview | Consent context tested; Shell integration waits for #5762 | Generic contact contains no invented verdict or interview answers; context-specific consent; visible control on every interview phase |
-| B-04 | Second Home editorial surface | Reject unknown article categories before metadata lookup | Draft PR #5765; review requested | Unknown category cannot inherit an indexable canonical article's metadata; canonical, alias and noIndex controls preserved |
+| V-04 | Visa Oracle | Consultant available throughout the interview | Full UI tested and pushed at ff60b29a09 on exact #5762 dependency; PR waits for parent merge/rebase | Generic contact contains no invented verdict or interview answers; context-specific consent; visible control on every interview phase |
+| B-04 | Second Home editorial surface | Reject unknown article categories before metadata lookup | Draft PR #5765 fixes index contradiction; single-tag criterion remains unmet | Unknown category cannot inherit an indexable canonical article's metadata; canonical, alias and noIndex controls preserved; literal tag-count proof is still open |
 
 ## Completion evidence by product
 
@@ -149,15 +149,43 @@ unresolved. A tested diff is `tested`, an independently reviewed diff is
 
 The five draft PRs have passed their scoped regression tests and commit/push hooks.
 Exact head SHAs, test receipts and addressed-review timestamps live in the state
-JSON. Fable received those revisions in its single-writer inbox and fleet mailbox.
-Independent verdicts, CI completion, browser checks and production proof remain
-separate pending observations. No consul may infer them from PR creation.
+JSON. Those revisions are queued in Fable's single-writer inbox and fleet mailbox;
+the unresolved permission prompt means receipt is not inferred from enqueueing.
+All five PRs have completed their reported GitHub checks without failed or pending
+checks at the recorded observation. Skipped and neutral checks are not execution
+proof. Independent verdicts and production proof remain pending; browser evidence
+is scoped below. No consul may infer these observations from PR creation.
 
 S-02 received an evidence-only follow-up after CI detected public hashes and a
 synthetic DSN as unaudited findings. The corrective commit uses narrow annotations
 on verified public hashes and a credential-free loopback command. That command
 was rerun on Pro (41 tests passed). Unannotated synthetic guilty controls still
 fail the scanner; the new GitHub secret check passed. Python source is unchanged.
+
+S-01 has real Chrome evidence on its exact commit: three denied-storage/clipboard
+conditions recover through a selectable link without horizontal overflow at
+390 px. V-04 has real Chrome evidence at 320/390/1280 px in English and Indonesian,
+including keyboard, focus, consent, QR, unique IDs and print exclusion. These are
+isolated Pro localhost proofs, not production delivery. The second Gemini review
+covered only the four consent files; it did not grade the complete UI or replace
+the required independent Anthropic gate.
+
+V-04 is committed and pushed as `ff60b29a09cbbf4dbb21eb22b263b8bee6065d40`,
+with a dedicated evidence pack, normal hooks and full mouth TypeScript passing.
+The remote SHA matches the clean local branch. Its V-01 dependency remains
+explicit; the next PR is created after that parent merges and the base is refreshed.
+The Pro browser sessions and temporary servers used for S-01, V-04 and B-04 are
+closed, with ports 3417, 3420 and 3214 free. Source snapshots and receipts remain
+available for the independent reviewer.
+
+B-04's rendered HTML exposed a remaining criterion failure despite passing unit
+tests. A single private `robots: null` candidate removed the duplicate from HTTP
+HTML and the Googlebot response, but loaded Chrome still contained two noindex
+tags. No candidate correction was committed. The failure spec and receipts are
+under `output/reviews/b04-robots/`; the current PR body states the limitation.
+The next investigation must distinguish development-mode hydration from a
+production build before defining a further implementation. The one-tag criterion
+has not been weakened or marked passed.
 
 ## Constructive review disposition
 

@@ -31,7 +31,19 @@
       "pr": "https://github.com/Bali-Zero/Teman2/pull/5761",
       "head_sha": "72770a67fb85e78cd08a24a1356a954ea388fe93",
       "review_requested_at": "2026-09-05T06:39:07.638214+00:00",
-      "live_proof": null
+      "live_proof": null,
+      "github_observation": {
+        "autoMergeRequest": null,
+        "headRefOid": "72770a67fb85e78cd08a24a1356a954ea388fe93",
+        "isDraft": true,
+        "number": 5761,
+        "state": "OPEN",
+        "reviews_count": 0,
+        "checks_count": 73,
+        "incomplete": [],
+        "nonpassing": [],
+        "observed_at": "2026-09-05T07:06:44.420783+00:00"
+      }
     },
     {
       "id": "V-01",
@@ -57,14 +69,27 @@
       "pr": "https://github.com/Bali-Zero/Teman2/pull/5762",
       "head_sha": "511bf901c64e10a6eb57bcff6a0c7361f8736a44",
       "review_requested_at": "2026-09-05T06:39:07.638214+00:00",
-      "live_proof": null
+      "live_proof": null,
+      "github_observation": {
+        "autoMergeRequest": null,
+        "headRefOid": "511bf901c64e10a6eb57bcff6a0c7361f8736a44",
+        "isDraft": true,
+        "number": 5762,
+        "state": "OPEN",
+        "reviews_count": 0,
+        "checks_count": 74,
+        "incomplete": [],
+        "nonpassing": [],
+        "observed_at": "2026-09-05T07:06:44.420783+00:00"
+      }
     },
     {
       "id": "S-01",
       "owner": "codex-astra",
       "status": "draft_pr_review_requested",
       "proofs": [
-        "180 tests across 4 suites; original sources 10 red/56 pass; hooks passed"
+        "180 tests across 4 suites; original sources 10 red/56 pass; hooks passed",
+        "Real Chrome on exact cce13f6e, Pro localhost: storage denied/clipboard denied/clipboard absent recover;390px width; readonly link fully selectable380characters; screenshots+measurements output/playwright/s01-cce13f6e"
       ],
       "worktree": "/Users/balizero/nuzantara/.worktrees/mouth-studio-save-feedback",
       "files": [
@@ -83,7 +108,19 @@
       "pr": "https://github.com/Bali-Zero/Teman2/pull/5763",
       "head_sha": "cce13f6e3174e65b08c7c420584b6e54fbf5eea5",
       "review_requested_at": "2026-09-05T06:39:07.638214+00:00",
-      "live_proof": null
+      "live_proof": null,
+      "github_observation": {
+        "autoMergeRequest": null,
+        "headRefOid": "cce13f6e3174e65b08c7c420584b6e54fbf5eea5",
+        "isDraft": true,
+        "number": 5763,
+        "state": "OPEN",
+        "reviews_count": 0,
+        "checks_count": 73,
+        "incomplete": [],
+        "nonpassing": [],
+        "observed_at": "2026-09-05T07:06:44.420783+00:00"
+      }
     },
     {
       "id": "S-02",
@@ -111,7 +148,19 @@
       "live_proof": null,
       "superseded_heads": [
         "59f04d8b60bc05546a857549b8fab5237cfa1d95"
-      ]
+      ],
+      "github_observation": {
+        "autoMergeRequest": null,
+        "headRefOid": "a7bc733f08de11a017fc345786db2f551755a6b6",
+        "isDraft": true,
+        "number": 5764,
+        "state": "OPEN",
+        "reviews_count": 0,
+        "checks_count": 78,
+        "incomplete": [],
+        "nonpassing": [],
+        "observed_at": "2026-09-05T07:06:44.420783+00:00"
+      }
     },
     {
       "id": "V-02",
@@ -134,16 +183,19 @@
     {
       "id": "V-04",
       "owner": "codex-astra",
-      "status": "tested_disjoint_part",
+      "status": "feature_branch_pushed_review_pending_parent_merge",
       "worktree": "/Users/balizero/nuzantara/.worktrees/mouth-oracle-consultation-context",
-      "base_sha": "af949e6eb5d1767454dd788cd7a8e5be4b89967d",
+      "base_sha": "511bf901c64e10a6eb57bcff6a0c7361f8736a44",
       "files": [
         "apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.tsx",
         "apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.test.tsx",
         "apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/consent-store.ts",
-        "apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/consent-store.test.ts"
+        "apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/consent-store.test.ts",
+        "apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.tsx",
+        "apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx",
+        "apps/mouth/src/app/(visa-oracle)/visa-oracle/oracle.css"
       ],
-      "dependency": "OracleShell integration serializes after V-01 PR5762; generic-only helper does not ship without runtime consumer",
+      "dependency": "Based on exact V01 head; V01 untouched. Prepare complete UI now, publish PR only after parent merge and refresh base.",
       "acceptance_checks": [
         "Consultation context never carries fabricated engine outcome or assessment reference",
         "Consent expires, revokes, and cannot cross consultation/result boundaries",
@@ -152,14 +204,22 @@
       "reviewer": "independent Anthropic gate via Fable consul",
       "ownership_acknowledged": true,
       "proofs": [
-        "Worker:52 tests passed across ConsentHandoff, consent-store and OracleShell;21failed/8passed on original sources; scoped TS/ESLint/prettier clean"
+        "Worker:52 tests passed across ConsentHandoff, consent-store and OracleShell;21failed/8passed on original sources; scoped TS/ESLint/prettier clean",
+        "Parent independently reran 62 tests across 3 suites, 3.20 s, 2026-09-05 at14:59:45 WITA",
+        "Pro Chrome 152 on matching seven-file snapshot:320/390/1280px EN/ID,44px control, keyboard/focus/unique IDs/no overflow/print hidden, zero page errors; no WhatsApp opened",
+        "Gemini constructive review completed on consent four-file snapshot; no introduced bug confirmed after triage; full Anthropic gate pending",
+        "Normal precommit full mouth TypeScript and prepush passed; exact remote head verified; clean worktree; own Pro server stopped and port3420 free"
       ],
-      "live_proof": null
+      "live_proof": null,
+      "head_sha": "ff60b29a09cbbf4dbb21eb22b263b8bee6065d40",
+      "branch": "agent/air-m5/mouth/oracle-consultation-context",
+      "pr": null,
+      "evidence": "evidence/2026-09/agent-air-m5-mouth-oracle-consultation-context-2e13111f/pack.yml"
     },
     {
       "id": "B-04",
       "owner": "codex-astra",
-      "status": "draft_pr_review_requested",
+      "status": "draft_semantic_fix_single_tag_criterion_unmet",
       "worktree": "/Users/balizero/nuzantara/.worktrees/mouth-article-category-metadata",
       "base_sha": "af949e6eb5d1767454dd788cd7a8e5be4b89967d",
       "pr": "https://github.com/Bali-Zero/Teman2/pull/5765",
@@ -173,17 +233,33 @@
         "Canonical/alias/noIndex metadata preserved"
       ],
       "proofs": [
-        "Original8failed/24passed; fixed72pass/3files; hooks with typecheck passed"
+        "Original8failed/24passed; fixed72pass/3files; hooks with typecheck passed",
+        "Committed32c HTTP fixes index contradiction but emits two nonindexing tags",
+        "One private robots:null candidate passes HTTP and Googlebot controls, fails loaded Chrome DOM with two noindex tags; no candidate committed or pushed, source restored",
+        "Failure spec and receipts: output/reviews/b04-robots/SPEC.md; production-build investigation remains required before another implementation"
       ],
       "reviewer": "independent Anthropic gate via Fable consul",
       "ownership_acknowledged": true,
-      "live_proof": null
+      "live_proof": null,
+      "remaining_acceptance": "Exactly one robots tag in returned HTTP and loaded browser remains unmet; do not label full B04 complete",
+      "github_observation": {
+        "autoMergeRequest": null,
+        "headRefOid": "32c9734f8ac0323ca782e50d39d542fcde221895",
+        "isDraft": true,
+        "number": 5765,
+        "state": "OPEN",
+        "reviews_count": 0,
+        "checks_count": 74,
+        "incomplete": [],
+        "nonpassing": [],
+        "observed_at": "2026-09-05T07:06:44.420783+00:00"
+      }
     }
   ],
   "agreement": "research/operations/2026-09-05-visa-consuls-agreement.md",
-  "updated_at": "2026-09-05T06:47:13.654223+00:00",
+  "updated_at": "2026-09-05T07:06:44.420783+00:00",
   "coordination_blocker": {
-    "observed_at": "2026-09-05T06:46:52.276753+00:00",
+    "observed_at": "2026-09-05T07:06:44.420783+00:00",
     "session": "7561e9d7-d544-48e5-a211-b3534020394d",
     "status": "waiting",
     "waiting_for": "permission prompt",
