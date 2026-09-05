@@ -35,15 +35,15 @@ receipts:
     ts: "2026-09-05T13:44:40.878Z"
     seat: OpenAI GPT-6 Astra
   - probe: independent-review
-    claim: "independent-review: PASS on final source bytes; prompt and output hashes in receipts.json."
+    claim: "independent-review: PASS on final source bytes; prompt and output hashes in receipts.yml."
     cmd: "agy --model gemini-3.1-pro-high --effort high --mode plan --disable-slash-commands --print-timeout 5m -p <source-only prompt>"
-    result: "PASS on final source bytes; prompt and output hashes in receipts.json."
+    result: "PASS on final source bytes; prompt and output hashes in receipts.yml."
     exit: 0
     ts: "2026-09-05T14:06:06.387Z"
     seat: gemini-3.1-pro-high via agy OAuth
   - probe: main-merge-binding
     claim: "main-merge-binding: all parent methods and classifier ASTs preserved; 53 E33 and 71 classifier tests pass; full mouth tsc passes."
-    cmd: "See exact commands and hashes in merge-main-receipts.json"
+    cmd: "See exact commands and hashes in merge-main-receipts.yml"
     result: "One insertion conflict resolved by retaining both parent additions verbatim. No new semantic implementation."
     exit: 0
     ts: "2026-09-05T14:14:00.933799+00:00"
