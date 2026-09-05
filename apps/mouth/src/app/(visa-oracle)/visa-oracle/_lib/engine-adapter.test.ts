@@ -8,6 +8,8 @@ import {
   buildEngineOutcome,
 } from "./engine-adapter";
 import { TEST_NOW, makeVisaOracleResponse } from "./visa-oracle-test-fixture";
+import { translate, type I18nKey } from "./i18n";
+import { QUESTIONS } from "./tree";
 
 describe("Visa Oracle authoritative outcome adapter", () => {
   it("shows each source's own dates, not the decision's evaluation clock", () => {
@@ -280,7 +282,9 @@ describe("Visa Oracle authoritative outcome adapter", () => {
   });
 
   it("maps missing engine facts back to editable interview questions", () => {
-    const outcome = buildEngineOutcome(makeVisaOracleResponse("NEEDS_INPUT"));
+    const outcome = buildEngineOutcome(makeVisaOracleResponse("NEEDS_INPUT"), {
+      editableQuestionIds: ["stay_days"],
+    });
     expect(outcome.state).toBe("NEEDS_INPUT");
     if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
     expect(outcome.missingInputs[0]).toMatchObject({
@@ -288,6 +292,58 @@ describe("Visa Oracle authoritative outcome adapter", () => {
       questionId: "stay_days",
     });
   });
+
+  it.each([
+    ["work.indonesia_source_compensation", "remote_compensation"],
+    ["work.indonesia_source_compensation", "work_indonesia_compensation"],
+    ["investment.pt_pma_committed", "investment_pt_pma"],
+    ["investment.pt_pma_committed", "remote_pt_pma"],
+    ["immigration.current_status_code", "stay_permit_code"],
+  ] as const)(
+    "routes missing %s to the visited %s question",
+    (factPath, questionId) => {
+      const response = makeVisaOracleResponse("NEEDS_INPUT");
+      response.decision.missing_facts = [factPath];
+      const outcome = buildEngineOutcome(response, {
+        editableQuestionIds: ["category", questionId, "stay_days"],
+      });
+      if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+      expect(outcome.missingInputs[0]).toMatchObject({
+        code: factPath,
+        questionId,
+        message: {
+          en: translate("en", QUESTIONS[questionId].i18nKey as I18nKey),
+          id: translate("id", QUESTIONS[questionId].i18nKey as I18nKey),
+        },
+      });
+    },
+  );
+
+  it.each([
+    { editableQuestionIds: undefined },
+    { editableQuestionIds: [] },
+    { editableQuestionIds: ["stay_days"] },
+    {
+      editableQuestionIds: [
+        "remote_compensation",
+        "work_indonesia_compensation",
+      ],
+    },
+  ])(
+    "offers no arbitrary edit when the target is absent or ambiguous: %j",
+    ({ editableQuestionIds }) => {
+      const response = makeVisaOracleResponse("NEEDS_INPUT");
+      response.decision.missing_facts = ["work.indonesia_source_compensation"];
+      const outcome = buildEngineOutcome(response, { editableQuestionIds });
+      if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+      expect(outcome.missingInputs[0].questionId).toBeUndefined();
+      expect(outcome.missingInputs[0].message.en).toContain("Bali Zero");
+      expect(outcome.missingInputs[0].message.id).toContain("Bali Zero");
+      expect(JSON.stringify(outcome.missingInputs[0].message)).not.toContain(
+        "work.indonesia_source_compensation",
+      );
+    },
+  );
 });
 
 describe("support reasons are sentences, not machine codes", () => {
