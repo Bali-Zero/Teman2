@@ -2,12 +2,10 @@
 file/job resolver shared by scripts/ci/snapshot_required_contexts.py and
 scripts/ci/check_required_workflow_conformance.py.
 
-Not a superscar #3 "guard" (it doesn't accept/reject anything — it resolves a
-name to a location), so it is not registered in
-infra/guard-conformance/registry.json; this is plain regression coverage,
-pinning the one real bug found while writing it (matrix boolean values
-stringify as Python `True`/`False`, not GitHub's lowercase `true`/`false`) so
-it cannot silently return.
+Resolver regressions include GitHub's lowercase rendering of matrix booleans.
+This file also guards the required mouth compiler step in tests.yml and
+rejects workflow variants that remove or disarm it. The required antidotes
+job runs these checks from the candidate checkout.
 
 Run:  python3 -m pytest scripts/tests/test_required_context_map.py -q
 """
@@ -43,7 +41,7 @@ def _assert_required_mouth_typecheck(workflow: dict[str, Any]) -> None:
     step = matches[0]
     assert step["if"] == "matrix.app == 'mouth' && steps.decide.outputs.run == 'true'"
     assert step["working-directory"] == "apps/mouth"
-    assert step["run"].strip() == "npx tsc --noEmit"
+    assert step["run"].strip() == "../../node_modules/.bin/tsc --noEmit"
     assert step.get("continue-on-error", False) is False
     names = [entry.get("name") for entry in steps]
     assert names.index("Check GARUDA generated contract") < steps.index(step)
