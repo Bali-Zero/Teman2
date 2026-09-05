@@ -18,6 +18,15 @@ caller allowed here", and for those a service account genuinely is a
 non-client. See the module-level note in ``services/whatsapp_identity.py`` for
 one such case that is correct as written.
 
+External partners are the third class. A partner is a person — reached through
+the partner portal (``/portal/partner``, see ``routers/auth.py::_redirect_for_role``
+and ``routers/partners.py::_is_partner_role``) — who is not on the team. The
+platform copies ``team_members.role`` verbatim into the JWT, so a ``partner``
+token reaches every gate a colleague's does. :func:`is_human_team_member`
+refuses it; :data:`NON_HUMAN_ROLES` and its SQL renderings deliberately do
+NOT list it, because whether a partner belongs in a roster or a dropdown is a
+product decision, not an authentication one.
+
 This module imports nothing itself, and the package it lives in
 (``backend.app.utils``) is kept free of import-time settings access, so
 importing this module never requires production secrets to be configured.
@@ -36,6 +45,13 @@ SERVICE_ROLES = frozenset({"monitoring"})
 #: Everything that must be excluded from people-shaped artifacts.
 NON_HUMAN_ROLES = CLIENT_ROLES | SERVICE_ROLES
 
+#: Roles held by people who are not on the team: external partners, who log in
+#: through the same door as staff and land on ``/portal/partner``.
+EXTERNAL_ROLES = frozenset({"partner"})
+
+#: Everything an "is this caller a colleague" gate must refuse.
+NON_TEAM_ROLES = NON_HUMAN_ROLES | EXTERNAL_ROLES
+
 
 def normalize_role(role: str | None) -> str:
     """Return a role in the canonical form the comparisons below expect."""
@@ -45,9 +61,9 @@ def normalize_role(role: str | None) -> str:
 def is_human_team_member(role: str | None) -> bool:
     """True when the role belongs to a person on the team.
 
-    Neither clients nor service accounts qualify.
+    Neither clients, service accounts nor external partners qualify.
     """
-    return normalize_role(role) not in NON_HUMAN_ROLES
+    return normalize_role(role) not in NON_TEAM_ROLES
 
 
 def non_human_roles_sql_array() -> list[str]:
