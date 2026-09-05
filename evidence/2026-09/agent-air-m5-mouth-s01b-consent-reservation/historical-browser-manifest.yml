@@ -1,0 +1,24 @@
+status: historical-browser-receipts-not-rerun
+verified_at: "2026-09-05T11:31:59.344751+00:00"
+historical_directory: /Users/balizero/nuzantara/.worktrees/ops-visa-consuls/output/playwright/s01-banner-clearance
+source_path: apps/mouth/src/app/visa/second-home/studio/StudioApp.tsx
+recorded_source_sha256: 9b904e19f3da96203b532998aaa885163da78a62c208ae9d42d103a510951a8a # pragma: allowlist secret - verified artifact SHA-256, not credential
+source_match_verified_before_mutations: true
+records:
+  - width: 320
+    base_commit: cce13f6e3174e65b08c7c420584b6e54fbf5eea5 # pragma: allowlist secret - verified Git commit SHA, not credential
+    recorded_source_sha256: 9b904e19f3da96203b532998aaa885163da78a62c208ae9d42d103a510951a8a # pragma: allowlist secret - verified artifact SHA-256, not credential
+  - width: 390
+    base_commit: cce13f6e3174e65b08c7c420584b6e54fbf5eea5 # pragma: allowlist secret - verified Git commit SHA, not credential
+    recorded_source_sha256: 9b904e19f3da96203b532998aaa885163da78a62c208ae9d42d103a510951a8a # pragma: allowlist secret - verified artifact SHA-256, not credential
+artifacts:
+  - file: exercise-320.js
+    sha256: 29bf383727de01963c30bc9ea3d1c2d749d231a6eb03814779307b4f1516c20f # pragma: allowlist secret - verified artifact SHA-256, not credential
+    bytes: 7698
+  - file: exercise-390.js
+    sha256: 82336e94f1c917796f64a22bed3f922163625a2d0a3bce88a21389aa2aff9dce # pragma: allowlist secret - verified artifact SHA-256, not credential
+    bytes: 7698
+  - file: measurements.json
+    sha256: 92a8ec6bdc2d0fb6b9142b374f6d559c7db18c066c632c3c10d31f9aad39ee13 # pragma: allowlist secret - verified artifact SHA-256, not credential
+    bytes: 7000
+limits: Files remain in the original local receipt directory. This committed manifest identifies them by hash; it does not embed them or claim a current browser rerun.
