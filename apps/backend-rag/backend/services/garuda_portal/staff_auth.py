@@ -74,7 +74,7 @@ from fastapi import Request
 from jose import JWTError, jwt
 
 from backend.app.utils.crm_utils import PRACTICES_EXTRA_VIEW_EMAILS
-from backend.app.utils.service_accounts import NON_HUMAN_ROLES, normalize_role
+from backend.app.utils.service_accounts import is_human_team_member, normalize_role
 from backend.services.security.token_revocation import (
     RevocationStoreUnavailable,
     is_session_revoked_sync,
@@ -123,16 +123,17 @@ def _garuda_practice_admin_emails() -> frozenset[str]:
 
 def _is_staff_role(role: str | None) -> bool:
     """True iff `role` names a real person on the team -- never a client,
-    never a service account (`monitoring`), never empty/missing. Reuses
-    `service_accounts.NON_HUMAN_ROLES` (the same exclusion set
-    `deps/auth.py::require_team_member` already gates access with) rather
-    than inventing a second definition of "staff role" that could drift
-    from it.
+    never a service account (`monitoring`), never an external partner,
+    never empty/missing. Delegates to `service_accounts.is_human_team_member`
+    (the predicate `deps/auth.py::require_team_member` gates access with)
+    rather than keeping a second copy of the exclusion set: the copy this
+    replaced still admitted `partner` after the shared predicate stopped.
+    The empty-role refusal is the one thing this adds on top.
     """
     role = normalize_role(role)
     if not role:
         return False
-    return role not in NON_HUMAN_ROLES
+    return is_human_team_member(role)
 
 
 def can_manage_garuda_practices(user: dict[str, Any] | None) -> bool:
