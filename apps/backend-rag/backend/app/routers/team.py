@@ -9,7 +9,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.dependencies import get_database_pool, require_team_member
 from backend.app.utils.service_accounts import non_human_roles_sql_array
 
 router = APIRouter(prefix="/api/team", tags=["team"])
@@ -30,11 +30,17 @@ class TeamMember(BaseModel):
 
 @router.get("/members", response_model=list[TeamMember])
 async def get_team_members(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_team_member),
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> list[Any]:
     """
     Get list of team members visible to the current user.
+
+    Access: team members only (``require_team_member``). Clients, service
+    accounts and external partners get 403 — no partner-portal page consumes
+    this roster (it is the staff workspace's people list), so a partner JWT
+    previously received 200 with an empty or department-scoped list, which
+    answered "what does the team look like" to a caller who is not on it.
 
     Visibility rules:
     1. User-specific visibility rules (team_member_visibility_rules table)
