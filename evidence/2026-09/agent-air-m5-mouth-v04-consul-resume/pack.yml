@@ -27,11 +27,13 @@ diff:
     reference. Scope changes require fresh consent, including after Edit answers; known minors retain the guardian
     gate. Legacy result receipts migrate conservatively. No interview answers are placed in a WhatsApp handoff message.
   size_reason:
-    Seven frontend files, 665 additions and 137 deletions, net 528. The single concern includes strict
-    consent migration and phase, guardian and keyboard regressions. Tests are retained rather than removed to meet
-    a nominal line threshold.
+    Eight frontend source/test/style files form one concern. The two E2E cases now open the initially
+    closed disclosure and assert its state while preserving all consent, guardian, link and QR assertions. Behavioral
+    regressions are retained despite the nominal size threshold.
 verification_scope:
-  host: "Air-M5: focused Vitest and full apps/mouth TypeScript; historical browser on Pro."
+  host:
+    "Air-M5: focused Vitest and full apps/mouth TypeScript. Pro: current two-case Chromium correction proof
+    and separately labeled historical responsive browser proof."
   source: Prepared commit ff60b29a transplanted cleanly to fresh main after V01 merged.
   data: Synthetic fixtures only; no DB rows or outward messages.
   source_sha256:
@@ -42,7 +44,9 @@ verification_scope:
     consent-store.test.ts: a4ddc2bfbe39d6ebff523cf64ba8693ac37e1d1a60dea5605f26b8a0f3a3c8da # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
     consent-store.ts: d689c6cc3cfc26eee263193ca881e8a2524318905dfd2a1ccfe09c1ec35c0c8e # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
     oracle.css: c5afd727dcb9fd7b741738bc745451b4bee3bad4dc8f9065267c6dca1ea625cd # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+    visa-oracle-v2.spec.ts: e5c0f19d1296212cdc4fefc6243ee6a2f46adae475d82de64f98d00e32e1b97b # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
   historical_browser_manifest: evidence/2026-09/agent-air-m5-mouth-v04-consul-resume/historical-browser-manifest.yml
+  current_targeted_browser: evidence/2026-09/agent-air-m5-mouth-v04-consul-resume/e2e-browser-proof.yml
 receipts:
   - claim:
       Current regression files apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx,
@@ -75,6 +79,19 @@ receipts:
     exit: 0
     ts: "2026-09-05T11:34:21.124925+00:00"
     seat: kimi-code/k3
+  - claim:
+      The two handoff browser cases reproduce the CI failure with original tests and pass after the real disclosure-opening
+      interaction.
+    cmd:
+      PLAYWRIGHT_EXTERNAL_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3434 node ../../node_modules/@playwright/test/cli.js
+      test e2e/visa-oracle-v2.spec.ts --project=chromium --grep "configured WhatsApp handoff|minor handoff" --workers=1
+      --retries=0 --reporter=list,json
+    result:
+      "Current Pro Chromium: corrected 2 pass, original tests 2 fail, exact corrected restoration 2 pass. No
+      retries or flakiness. Full mouth TypeScript exit0. Versioned e2e-browser-proof.yml and E2E Kimi PASS."
+    exit: 0
+    ts: "2026-09-05T11:53:03.627Z"
+    seat: Codex GPT-6 via Pro Playwright; independent test-diff review kimi-code/k3
 review_notes:
   - The prior branch and its historical receipts remain read-only. This pack records current executions without carrying
     forward unverifiable historical model labels.
@@ -86,4 +103,7 @@ review_notes:
     already validates scope; full tsc and 62 tests passed."
   - Loading branch has no known age until hydration and provides only generic contact. Existing effect resets guardian
     on scope changes; extra assertion suggested, no material defect found.
+  - Required mouth unit CI on initial f94 head passed. E2E failed exactly two tests because the new panel starts closed;
+    this test-only correction models the user gesture, with actual Pro guilt and innocence. Fresh CI after this correction
+    remains to observe. Full feature source unchanged since review; additive E2E diff independently reviewed PASS11:48:05Z.
 task_id: v04-consul-resume

@@ -1,0 +1,12 @@
+• **PASS**
+
+  Assessment against the stated criteria:
+
+  - **Root cause match.** The wrapper renders the panel with `hidden={!open}` (initial `open=false`), which removes the panel contents from the accessibility tree, so `getByRole("checkbox", ...)` genuinely resolves to nothing while closed. The E2E failure is fully explained by the intended closed-start behavior, not by an app regression. The correction addresses the cause, not the symptom.
+  - **Models real interaction.** A user cannot consent without first expanding the disclosure. The sequence assert-closed → assert-panel-hidden → click → assert-expanded mirrors exactly what a real user does, and it does so through the same ARIA contract the component exposes (`aria-expanded` ↔ `hidden` ↔ `aria-controls`/`aria-labelledby`). Asserting the negative state *before* clicking also pins the closed-start behavior the feature intends, which the old test never verified.
+  - **No weakening of existing checks.** Every prior assertion is preserved verbatim and in the same order: consent checkbox visibility, zero WhatsApp links, zero QR before consent, `wa.me` href shape, QR/link value equality, guardian-first gating with disabled WhatsApp checkbox, enablement after guardian, and link visibility only after both consents. The insertion is purely additive — new positive assertions (hidden pre-click, expanded post-click) plus the required interaction. Nothing was deleted, relaxed, or reordered.
+  - **Locator soundness.** The `MessageCircle` icon is `aria-hidden`, so the button's accessible name is exactly the copy string — `getByRole("button", { name: "Talk to a consultant", exact: true })` matches the runtime markup. `#oracle-consultant-panel` remains in the DOM with the `hidden` attribute, so `toBeHidden()` is the correct assertion (not `toHaveCount(0)`).
+  - **Consistency.** The identical block in both tests is appropriate duplication for independent test cases; each starts from a fresh page load with `open=false`.
+
+  No material findings. Per instructions, no claims about the synthetic browser run, which is being executed separately.
+

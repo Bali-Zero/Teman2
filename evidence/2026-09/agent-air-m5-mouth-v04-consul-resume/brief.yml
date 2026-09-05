@@ -7,7 +7,7 @@ objective:
   before a displayed verdict and fresh assessment consent at a verdict. Preserve interview state and exclude interview
   answers from the WhatsApp message.
 constraints:
-  - Seven existing frontend source/test/style changes plus lane evidence.
+  - Eight existing frontend source/test/style files plus lane evidence.
   - No engine, eligibility, pricing, regulatory claims or client data.
   - Fresh branch from main after PR5762 merged; original prepared branch remains untouched.
   - Prepare draft PR only; Fable owns independent Anthropic gate and shipping.
@@ -24,11 +24,15 @@ acceptance:
       The consultant disclosure SHALL support keyboard focus return, contain one handoff instance, fit mobile
       viewports in both languages and remain hidden in print.
     probe: apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx
+  - text:
+      WHEN the user requests a WhatsApp handoff, the closed consultant disclosure SHALL open before consent; guardian,
+      link and QR assertions SHALL retain their prior behavior.
+    probe: apps/mouth/e2e/visa-oracle-v2.spec.ts
 consumer_map:
   - Visa Oracle visitors use the persistent consultant disclosure in every interview phase.
 risks:
-  - Historical browser run predates the new main base; seven owned source hashes match, current focused tests and
-    full TypeScript rerun.
+  - Historical responsive browser run predates the new base; seven source hashes match. Current two-case Pro Chromium
+    proof covers the E2E correction on the fresh snapshot, not a production build or entire browser suite.
   - Production deployment and independent Fable gate are pending.
 grader: Kimi K3 PASS on supplied complete diff; independent Fable gate remains pending.
 budget: Existing subscriptions and installed tooling only; no paid API calls.
