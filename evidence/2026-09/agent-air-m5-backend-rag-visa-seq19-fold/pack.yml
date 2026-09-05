@@ -30,6 +30,24 @@ lanes:
       caller), exercised by one pinned-clock witness in `TestFoldObservedAtThreading`.
       Neither `rulepack-prod-019.source.json` nor any `*.signed.json` file was touched — the
       fold's own output digest is unchanged (see receipts below).
+
+      Anthropic-gate PASS-WITH-CONDITIONS round (same PR, spec-driven, verbatim conditions
+      applied): (1) added the GUILT half of `TestFoldObservedAtThreading` — an `observed_at`
+      before seq-18's real `signed_at` trips `bundle.py`'s future-skew guard, surfacing as
+      `fold()`'s own `SystemExit`. (2) `TestOutputCollisionGuard` no longer aims `--output` at
+      the LIVE `rulepack-prod-018.signed.json` at all — every input pack is copied
+      byte-identically into `tmp_path` first (digest pins still hold on the copies), and a
+      second guilt case (`--output` ending in `.signed.json` but matching no input) now
+      exercises the suffix-refusal branch on its own, independent of the collision check. (3)
+      corrected this pack's own stale line-count receipts (`rulepack-prod-019.source.json` is
+      9,152 lines on disk, not the 10,254 an earlier draft carried; this file's own line count
+      is measured post-staging, not asserted). (4) refreshed the PR body's "Tests run" block
+      to the counts measured after this round. (5) added a `detect_secrets_auto_triage.py`
+      content-keyed rule for `fold_pack_seq19.py`'s three chain-of-custody digest constants
+      (`SEQ18_PAYLOAD_SHA256`/`SEQ13_PAYLOAD_SHA256`/`SEQ15_PAYLOAD_SHA256`), matching the
+      fold_pack_seq17/seq18 rule shape. No code path outside the test file, the two evidence
+      files, and the triage script + its own test changed; `fold_pack_seq19.py`'s behavior and
+      `rulepack-prod-019.source.json`'s bytes are unchanged (Gear-3 conclusion unchanged).
   - lane: gear3-council-review-kimi
     role: review
     seat: kimi-code/k3 (`kimi -m kimi-code/k3 -p ...`, non-Anthropic cross-family, agentic file access to this worktree)
@@ -84,21 +102,25 @@ outcome: >-
   signature-freshness check inside `fold()` — both cured with fail-closed code + one
   witness test each; the fold's own output bytes are unchanged.
 diff:
-  files: 6
-  net_lines: "authored across the fold script, the gate suite module and the evidence/brief files; 10,254 generated data (rulepack-prod-019.source.json, copied/transplanted verbatim, not hand-authored) — see measured_at for the real per-file numstat"
+  files: 8
+  net_lines: "authored across the fold script, the gate suite module, the evidence/brief files and the secrets-triage script + its test; 9,152 generated data (rulepack-prod-019.source.json, copied/transplanted verbatim, not hand-authored) — see measured_at for the real per-file numstat"
   measured_at: >-
-    `git -C <worktree> diff --cached --numstat`, final state (post council-review
-    hardening AND the depth-1 codex-terra follow-up below): 614/0 fold_pack_seq19.py
-    (568 + 46 net for the output-collision guard and observed_at threading),
-    10254/0 rulepack-prod-019.source.json (untouched by the follow-up), 889/0
-    test_seq19_pack.py (818 + 71 net for the two new witness classes), 2/0
-    council-journal.jsonl, 305/0 this pack.yml, 81/62 evidence/brief.yml.
+    `git diff origin/main --numstat`, final state (post council-review hardening,
+    the depth-1 codex-terra follow-up, AND the Anthropic-gate PASS-WITH-CONDITIONS
+    round below) — every count re-measured this run, none carried forward from an
+    earlier draft: 614/0 fold_pack_seq19.py, 9152/0 rulepack-prod-019.source.json
+    (untouched by either follow-up), 968/0 test_seq19_pack.py, 2/0
+    council-journal.jsonl, 401/0 this pack.yml (measured after staging the final
+    content, per its own self-reference), 81/62 evidence/brief.yml, 31/0
+    scripts/detect_secrets_auto_triage.py, 4/3 scripts/tests/test_detect_secrets_auto_triage.py.
   shape: >-
     One new fold script, one new generated pack (data, not logic), one new test
-    module, this evidence pack + council journal, and the shared brief.yml
-    rewritten for this task (repo convention — one root file, overwritten per PR).
-    No pre-existing CODE file touched — the size floor comes entirely from the
-    generated pack's line count, not from authored-logic surface area.
+    module, this evidence pack + council journal, the shared brief.yml rewritten
+    for this task (repo convention — one root file, overwritten per PR), and one
+    new content-keyed rule + count bump in the secrets-triage script and its test
+    (this round). No pre-existing visa_engine CODE file touched — the size floor
+    comes entirely from the generated pack's line count, not from authored-logic
+    surface area.
 pii_scan: clean
 receipts:
   - claim: seq-18's payload re-hashes to the pinned chain anchor and its signed envelope declares the same digest
@@ -158,9 +180,12 @@ receipts:
       PYTHONPATH=. pytest --no-header -p no:cacheprovider
       backend/tests/services/visa_engine/test_seq19_pack.py
     result: >-
-      59 passed (57 after adversarial-review hardening, 53 before it — see dissent —
-      plus 2 more from the depth-1 codex-terra follow-up: TestOutputCollisionGuard's
-      guilt+innocence witness and TestFoldObservedAtThreading's pinned-clock witness)
+      61 passed (57 after adversarial-review hardening, 53 before it — see dissent —
+      59 after the depth-1 codex-terra follow-up: TestOutputCollisionGuard's
+      guilt+innocence witness and TestFoldObservedAtThreading's pinned-clock witness;
+      61 after the Anthropic-gate conditions round below added the GUILT half of the
+      observed_at witness and split the collision guard into two guilt cases plus
+      one innocence run)
     ts: "2026-09-05T12:10:00Z"
     seat: claude-sonnet-5 (this worktree session)
     exit: 0
@@ -173,7 +198,9 @@ receipts:
       backend/tests/services/visa_engine/test_seq17_freshness_restamp.py
       backend/tests/services/visa_engine/test_seq18_freshness_window.py
       backend/tests/services/visa_engine/test_seq19_pack.py
-    result: "191 passed (189 before the depth-1 follow-up's +2 new tests)"
+    result: >-
+      193 passed (189 before the depth-1 follow-up's +2 new tests, 191 after it, 193
+      after the Anthropic-gate conditions round below)
     ts: "2026-09-05T12:12:00Z"
     seat: claude-sonnet-5 (this worktree session)
     exit: 0
@@ -193,15 +220,40 @@ receipts:
     ts: "2026-09-05T12:14:00Z"
     seat: claude-sonnet-5 (this worktree session)
     exit: 0
+  - claim: >-
+      Anthropic-gate PASS-WITH-CONDITIONS round — the collision-guard witness now
+      operates only on byte-identical COPIES of the four input packs inside `tmp_path`
+      (never `--output` aimed at the live `rulepack-prod-018.signed.json`), adds a
+      second guilt case (`--output` ending in `.signed.json` but matching no input, to
+      exercise the suffix-refusal branch on its own), and `TestFoldObservedAtThreading`
+      gained the GUILT half (an `observed_at` before seq-18's own `signed_at` trips
+      `bundle.py`'s future-skew guard) — 2 passed, 59 deselected; the live signed
+      anchor's sha256 is unchanged
+    cmd: >-
+      PYTHONPATH=. pytest --no-header -p no:cacheprovider -k TestOutputCollisionGuard
+      backend/tests/services/visa_engine/test_seq19_pack.py; PYTHONPATH=. python3 -m
+      backend.scripts.visa_engine.compile_pack rulepack-prod-019.source.json; shasum -a
+      256 rulepack-prod-018.signed.json
+    result: >-
+      2 passed, 59 deselected; compile_pack unchanged (rule_pack_id=8c09e059-4ab2-5963-
+      b5af-d1363d55e508 sequence=19, OK); sha256 of rulepack-prod-018.signed.json =
+      b8939c4a51709384ace5a7929726e0c35d3afa4ef2d2b26be1fa57d09e77944a — identical
+      before and after; `git status --short` confirms the packs directory untouched
+    ts: "2026-09-05T13:40:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
   - claim: the full visa_engine test directory shows only pre-existing, unrelated, Postgres-schema-drift failures — none touch a file this PR changed
     cmd: "PYTHONPATH=. pytest --no-header -p no:cacheprovider backend/tests/services/visa_engine/"
     result: >-
-      2094 passed, 1 skipped, 1 failed, 39 errors; the 1 failure and all 39 errors are in
-      test_evaluate_endpoint.py / test_shadow_evidence.py / test_shadow_match.py /
+      2111 passed, 1 skipped, 1 failed, 39 errors (re-run at the Anthropic-gate
+      conditions round; 2094 passed pre-round, the delta is unrelated pre-existing
+      tests elsewhere in the directory plus this round's +2 new witnesses); the 1
+      failure and all 39 errors are STILL in test_evaluate_endpoint.py /
+      test_shadow_evidence.py / test_shadow_match.py /
       test_visa_engine_retention_fk_registry.py (asyncpg ExclusionViolationError / a
-      migration-285 schema-drift assertion) — confirmed via `git status --short` that this
-      PR touches only 3 new files, none of them these
-    ts: "2026-09-05T10:55:00Z"
+      migration-285 schema-drift assertion) — confirmed via `git status --short` that
+      this PR's full diff touches 8 files, none of them these
+    ts: "2026-09-05T13:45:00Z"
     seat: claude-sonnet-5 (this worktree session)
     exit: 1
   - claim: the real gold_coverage_replay.py CLI already passes 18/18 on the currently-active signed seq-18 (the floor this fold must not regress)

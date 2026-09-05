@@ -3,8 +3,8 @@ gear: 3
 l_level: L2
 gate_class: opus
 # Floor computed this run: `python3 scripts/evidence_pack_lint.py --print-floor-source`
-# returns `size` — the fold script + test file are ~1,000 lines together, plus the
-# 10,254-line generated `rulepack-prod-019.source.json` data file (not hand-authored;
+# returns `size` — the fold script + test file are ~1,500 lines together, plus the
+# 9,152-line generated `rulepack-prod-019.source.json` data file (not hand-authored;
 # every line is copied verbatim from seq-18 or transplanted verbatim from seq-15). Size
 # alone floors this at Gear 3 regardless of the change's actual authored-logic footprint.
 objective: >-

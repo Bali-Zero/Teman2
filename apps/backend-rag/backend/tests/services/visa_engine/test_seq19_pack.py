@@ -554,6 +554,30 @@ class TestFoldObservedAtThreading:
         )
         assert result == seq19_source
 
+    def test_fold_rejects_an_observed_at_before_the_anchor_was_signed(
+        self,
+        seq18_source: dict[str, Any],
+        seq18_signed: dict[str, Any],
+        seq15_source: dict[str, Any],
+        seq13_source: dict[str, Any],
+        prod_trust_store_env: None,
+    ) -> None:
+        """The GUILT half of the threading witness above: seq-18's own
+        `signed_at` is 2026-08-30T17:18:16Z (module docstring); pinning
+        `observed_at` to a date well BEFORE that must trip `bundle.py`'s
+        future-skew guard (:data:`_SIGNED_AT_FUTURE_TOLERANCE`, ~line 728) —
+        a `signed_at` more than the tolerance ahead of `observed_at` is
+        refused, surfacing here as `fold()`'s own `SystemExit` (superscar
+        #3: never a guard without both guilt and innocence)."""
+        with pytest.raises(SystemExit):
+            fold(
+                seq18_source,
+                seq18_signed,
+                seq15_source,
+                seq13_source,
+                observed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            )
+
 
 class TestOutputCollisionGuard:
     """`main()`'s fail-closed guard against `--output` equalling one of its
@@ -563,42 +587,97 @@ class TestOutputCollisionGuard:
     bytes. Guilt and innocence in one witness (superscar #3: never a guard
     without both): the guilty invocation must be refused without mutating
     the signed file it targeted, and a normal invocation to a fresh path
-    must still go through end to end."""
+    must still go through end to end.
 
-    def test_output_equal_to_seq18_signed_is_refused_but_a_normal_invocation_still_works(
+    Every input is a byte-identical COPY inside `tmp_path`, never the live
+    `--output`-target — this witness must never be able to aim `--output`
+    at the real `rulepack-prod-018.signed.json` on disk (the digest pins in
+    `fold_pack_seq19.py` still hold against the copy, since the bytes are
+    identical)."""
+
+    def test_output_equal_to_the_copied_signed_anchor_is_refused_but_a_normal_invocation_still_works(
         self, tmp_path: Path, prod_trust_store_env: None
     ) -> None:
         from backend.scripts.visa_engine.fold_pack_seq19 import main
 
-        before_bytes = _SEQ18_SIGNED_PATH.read_bytes()
+        copied_seq18_source = tmp_path / _SEQ18_SOURCE_PATH.name
+        copied_seq18_signed = tmp_path / _SEQ18_SIGNED_PATH.name
+        copied_seq15_source = tmp_path / _SEQ15_SOURCE_PATH.name
+        copied_seq13_source = tmp_path / _SEQ13_SOURCE_PATH.name
+        copied_seq18_source.write_bytes(_SEQ18_SOURCE_PATH.read_bytes())
+        copied_seq18_signed.write_bytes(_SEQ18_SIGNED_PATH.read_bytes())
+        copied_seq15_source.write_bytes(_SEQ15_SOURCE_PATH.read_bytes())
+        copied_seq13_source.write_bytes(_SEQ13_SOURCE_PATH.read_bytes())
+
+        # --seq18-signed is deliberately NOT passed: `main()` derives the
+        # signed sibling path by suffix-anchoring off --seq18-source, so
+        # pointing --seq18-source at the COPY makes that derivation resolve
+        # to `copied_seq18_signed` — entirely inside tmp_path.
+        before_bytes = copied_seq18_signed.read_bytes()
         guilty_argv = [
             "--seq18-source",
-            str(_SEQ18_SOURCE_PATH),
+            str(copied_seq18_source),
             "--seq15-source",
-            str(_SEQ15_SOURCE_PATH),
+            str(copied_seq15_source),
             "--seq13-source",
-            str(_SEQ13_SOURCE_PATH),
+            str(copied_seq13_source),
             "--output",
-            str(_SEQ18_SIGNED_PATH),
+            str(copied_seq18_signed),
         ]
         with pytest.raises(SystemExit):
             main(guilty_argv, observed_at=OBSERVED_AT)
-        assert _SEQ18_SIGNED_PATH.read_bytes() == before_bytes
+        assert copied_seq18_signed.read_bytes() == before_bytes
 
         output_path = tmp_path / "rulepack-prod-019.source.json"
         innocent_argv = [
             "--seq18-source",
-            str(_SEQ18_SOURCE_PATH),
+            str(copied_seq18_source),
             "--seq15-source",
-            str(_SEQ15_SOURCE_PATH),
+            str(copied_seq15_source),
             "--seq13-source",
-            str(_SEQ13_SOURCE_PATH),
+            str(copied_seq13_source),
             "--output",
             str(output_path),
         ]
         rc = main(innocent_argv, observed_at=OBSERVED_AT)
         assert rc == 0
         assert output_path.exists()
+
+    def test_output_ending_in_signed_json_but_matching_no_input_is_still_refused(
+        self, tmp_path: Path, prod_trust_store_env: None
+    ) -> None:
+        """Second guilt case, exercising the OTHER branch of
+        `_assert_output_does_not_collide_with_inputs` (fold_pack_seq19.py
+        ~532-537): a `.signed.json`-suffixed `--output` that does not
+        resolve to any of the four inputs is still refused — this script
+        only ever writes an unsigned SOURCE file, so a path that merely
+        LOOKS signed is rejected on its own, independent of the
+        input-collision check above."""
+        from backend.scripts.visa_engine.fold_pack_seq19 import main
+
+        copied_seq18_source = tmp_path / _SEQ18_SOURCE_PATH.name
+        copied_seq18_signed = tmp_path / _SEQ18_SIGNED_PATH.name
+        copied_seq15_source = tmp_path / _SEQ15_SOURCE_PATH.name
+        copied_seq13_source = tmp_path / _SEQ13_SOURCE_PATH.name
+        copied_seq18_source.write_bytes(_SEQ18_SOURCE_PATH.read_bytes())
+        copied_seq18_signed.write_bytes(_SEQ18_SIGNED_PATH.read_bytes())
+        copied_seq15_source.write_bytes(_SEQ15_SOURCE_PATH.read_bytes())
+        copied_seq13_source.write_bytes(_SEQ13_SOURCE_PATH.read_bytes())
+
+        stray_output = tmp_path / "anything.signed.json"
+        guilty_argv = [
+            "--seq18-source",
+            str(copied_seq18_source),
+            "--seq15-source",
+            str(copied_seq15_source),
+            "--seq13-source",
+            str(copied_seq13_source),
+            "--output",
+            str(stray_output),
+        ]
+        with pytest.raises(SystemExit):
+            main(guilty_argv, observed_at=OBSERVED_AT)
+        assert not stray_output.exists()
 
 
 # ---------------------------------------------------------------------------

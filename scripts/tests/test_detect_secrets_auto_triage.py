@@ -317,13 +317,13 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     #
     # 2026-08-21: this branch (#4498) independently added the p2b_score.json
     # rule, but #4422 landed it on main first via a different path — same
-    # rule, registered once, not twice. The count below (22 as of 2026-08-31)
+    # rule, registered once, not twice. The count below (23 as of 2026-09-05)
     # and the comment
     # trail are derived from the live registry post-merge, not summed by
     # hand (team-lead's call: a rule appears once in the trail regardless of
     # how many PRs tried to add it).
-    assert len(CONTENT_KEYED_RULES) == 22, (
-        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 22. "
+    assert len(CONTENT_KEYED_RULES) == 23, (
+        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 23. "
         "If you just ADDED a rule: bump this number AND append a `# +1: <what> "
         "(<date>, PR #NNNN)` line below, matching the existing trail's format — "
         "that comment IS the audit record this assert exists to force. "
@@ -347,6 +347,7 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: evidence/<month>/<slug>/pack.yml diff.measured_at git SHA (2026-08-27, #5054)
     # +1: fold_pack_seq17.py seq-16 chain anchor exact-value pin (2026-08-30, #5311)
     # +1: fold_pack_seq18.py seq-17 chain anchor exact-value pin (2026-08-31, #5333)
+    # +1: fold_pack_seq19.py seq-18/seq-13/seq-15 chain-of-custody exact-value pins (2026-09-05, #5784)
     #
     # Note (2026-08-23): "appended last" is no longer a constraint. It was
     # true only because this test and the two Google-OAuth tests below
