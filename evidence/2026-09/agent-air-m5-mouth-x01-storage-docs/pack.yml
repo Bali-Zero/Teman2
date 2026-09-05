@@ -23,8 +23,8 @@ receipts:
     seat: kimi-code/k3
 source:
   path: apps/mouth/src/lib/api/client.ts
-  blob: 31f5c2881a41ce52d8de0f6b97bcf40eb46abf6a
-  base: 2421a3dd053cf9cab97665114bb4f5496d06ab44
+  blob: 31f5c2881a41ce52d8de0f6b97bcf40eb46abf6a # pragma: allowlist secret - verified public source Git blob, not credential
+  base: 2421a3dd053cf9cab97665114bb4f5496d06ab44 # pragma: allowlist secret - verified public main Git commit, not credential
 limits:
   - The comparison covers the abridged constructor token path; profile and impersonation initialization remain omitted by the existing abridgement.
   - Syntax and isolated constructor smoke do not claim full application typechecking, runtime tests or production behavior.
