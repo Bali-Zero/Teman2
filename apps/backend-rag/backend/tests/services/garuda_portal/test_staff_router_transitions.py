@@ -288,15 +288,15 @@ class TestStaffAuthGuiltAndInnocence:
         app = _make_app(pool)
         transport = ASGITransport(app=app)
         async with AsyncClient(
-            transport=transport, base_url="http://test", cookies={"garuda_session": "customer-session-value"}
+            transport=transport,
+            base_url="http://test",
+            cookies={"garuda_session": "customer-session-value"},
         ) as client:
             resp = await client.get("/api/visa/voa/staff/practices/prc_doesnotmatter0000")
         assert resp.status_code == 401
         assert resp.json()["code"] == "SESSION_REQUIRED"
 
-    async def test_team_member_on_unassigned_practice_is_403(
-        self, pool, order_repository
-    ) -> None:
+    async def test_team_member_on_unassigned_practice_is_403(self, pool, order_repository) -> None:
         order_id = await _create_and_pay_order(
             order_repository, result_id="result-403-0000000000", provider_event_id="evt-403-1"
         )
@@ -306,7 +306,9 @@ class TestStaffAuthGuiltAndInnocence:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get(
                 f"/api/visa/voa/staff/practices/{practice_id}",
-                headers={"Authorization": _bearer(_TEAM_A, "user")},
+                # A colleague carries a role the team allow-list knows; "user" is
+                # the role-less default and is no longer anyone (PENDING-ARMS 88).
+                headers={"Authorization": _bearer(_TEAM_A, "Team Leader")},
             )
         assert resp.status_code == 403
         assert resp.json()["code"] == "ACCESS_DENIED"
@@ -457,7 +459,10 @@ class TestTransitionMatrixAndReplay:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             for practice_id, key_prefix in ((practice_a, "evid-a"), (practice_b, "evid-b")):
                 r02 = await self._post(
-                    client, practice_id, f"{key_prefix}-key-pr02-0000000001", {"transition_id": "PR-02"}
+                    client,
+                    practice_id,
+                    f"{key_prefix}-key-pr02-0000000001",
+                    {"transition_id": "PR-02"},
                 )
                 assert r02.status_code == 200, r02.text
 
@@ -555,9 +560,7 @@ class TestTransitionMatrixAndReplay:
         assert resp.status_code == 409
         assert resp.json()["code"] == "INVALID_STATE_TRANSITION"
 
-    async def test_exact_replay_returns_same_body_and_header(
-        self, pool, order_repository
-    ) -> None:
+    async def test_exact_replay_returns_same_body_and_header(self, pool, order_repository) -> None:
         order_id = await _create_and_pay_order(
             order_repository, result_id="result-replay-0000000000", provider_event_id="evt-replay-1"
         )
@@ -574,9 +577,7 @@ class TestTransitionMatrixAndReplay:
         assert second.headers.get("Idempotency-Replayed") == "true"
         assert "Idempotency-Replayed" not in first.headers
 
-    async def test_exact_replay_enqueues_no_second_outbox_row(
-        self, pool, order_repository
-    ) -> None:
+    async def test_exact_replay_enqueues_no_second_outbox_row(self, pool, order_repository) -> None:
         """`apply_transition` only reaches `journal.enqueue_outbox` inside
         the transaction it runs in -- a replayed command returns from
         `idempotency.reserve`'s replay outcome in the router BEFORE
@@ -676,13 +677,17 @@ class TestIdempotencyCompletionIsAtomicWithTheBusinessTransaction:
             practice_id,
             "PR-02",
         )
-        assert journal_rows == [], "PR-02's journal append must roll back with the rest of the transaction"
+        assert journal_rows == [], (
+            "PR-02's journal append must roll back with the rest of the transaction"
+        )
         outbox_rows = await pool.fetch(
             "SELECT 1 FROM garuda_order_outbox WHERE order_id = $1 AND job_type = $2",
             order_id,
             "practice_in_review_email",
         )
-        assert outbox_rows == [], "PR-02's outbox enqueue must roll back with the rest of the transaction"
+        assert outbox_rows == [], (
+            "PR-02's outbox enqueue must roll back with the rest of the transaction"
+        )
 
         # Restore and prove the SAME command now succeeds cleanly (not
         # permanently wedged by the reservation row from the failed attempt).
@@ -706,7 +711,9 @@ class TestIdempotencyCompletionIsAtomicWithTheBusinessTransaction:
         `assignPractice`'s own idempotency.complete call site."""
         await _seed_team_member(pool, _TEAM_A)
         order_id = await _create_and_pay_order(
-            order_repository, result_id="result-atomic-assign00", provider_event_id="evt-atomic-assign"
+            order_repository,
+            result_id="result-atomic-assign00",
+            provider_event_id="evt-atomic-assign",
         )
         practice_id = await _practice_id_for(pool, order_id)
 
@@ -731,8 +738,7 @@ class TestIdempotencyCompletionIsAtomicWithTheBusinessTransaction:
             "SELECT assigned_to FROM garuda_practices WHERE practice_id = $1", practice_id
         )
         assert row["assigned_to"] is None, (
-            "the assignment write must roll back together with the failed "
-            "idempotency completion"
+            "the assignment write must roll back together with the failed idempotency completion"
         )
 
 
@@ -740,7 +746,9 @@ class TestIdempotencyCompletionIsAtomicWithTheBusinessTransaction:
 class TestAssignmentAndListVisibility:
     async def test_non_admin_cannot_assign(self, pool, order_repository) -> None:
         order_id = await _create_and_pay_order(
-            order_repository, result_id="result-assign-403-000000", provider_event_id="evt-assign-403"
+            order_repository,
+            result_id="result-assign-403-000000",
+            provider_event_id="evt-assign-403",
         )
         practice_id = await _practice_id_for(pool, order_id)
         app = _make_app(pool)
@@ -763,7 +771,9 @@ class TestAssignmentAndListVisibility:
         caller -- an arbitrary string (typo, client email, ex-employee) must
         never silently succeed."""
         order_id = await _create_and_pay_order(
-            order_repository, result_id="result-assign-4220000000", provider_event_id="evt-assign-422"
+            order_repository,
+            result_id="result-assign-4220000000",
+            provider_event_id="evt-assign-422",
         )
         practice_id = await _practice_id_for(pool, order_id)
         app = _make_app(pool)
@@ -780,9 +790,7 @@ class TestAssignmentAndListVisibility:
         assert resp.status_code == 422
         assert resp.json()["code"] == "INVALID_REQUEST"
 
-    async def test_assign_to_inactive_team_member_is_422(
-        self, pool, order_repository
-    ) -> None:
+    async def test_assign_to_inactive_team_member_is_422(self, pool, order_repository) -> None:
         """A `team_members` row with `active = FALSE` (departed staff) must
         never become a valid GARUDA assignment target -- guilt+innocence
         pair for `test_assign_to_unknown_email_is_422` (a row that exists
@@ -797,7 +805,9 @@ class TestAssignmentAndListVisibility:
             inactive_email,
         )
         order_id = await _create_and_pay_order(
-            order_repository, result_id="result-assign-inact0000", provider_event_id="evt-assign-inact"
+            order_repository,
+            result_id="result-assign-inact0000",
+            provider_event_id="evt-assign-inact",
         )
         practice_id = await _practice_id_for(pool, order_id)
         app = _make_app(pool)
@@ -814,9 +824,7 @@ class TestAssignmentAndListVisibility:
         assert resp.status_code == 422
         assert resp.json()["code"] == "INVALID_REQUEST"
 
-    async def test_assign_to_accounting_full_view_role_is_422(
-        self, pool, order_repository
-    ) -> None:
+    async def test_assign_to_accounting_full_view_role_is_422(self, pool, order_repository) -> None:
         """tp1-qwen3.8-max council finding #1 (final-diff review): the
         accounting full-view role (`crm_utils.PRACTICES_EXTRA_VIEW_EMAILS`)
         is READ-only by doctrine, but an ACTIVE `team_members` row with a
@@ -829,7 +837,9 @@ class TestAssignmentAndListVisibility:
         accounting_email = next(iter(PRACTICES_EXTRA_VIEW_EMAILS))
         await _seed_team_member(pool, accounting_email, role="Accounting")
         order_id = await _create_and_pay_order(
-            order_repository, result_id="result-assign-acct00000", provider_event_id="evt-assign-acct"
+            order_repository,
+            result_id="result-assign-acct00000",
+            provider_event_id="evt-assign-acct",
         )
         practice_id = await _practice_id_for(pool, order_id)
         app = _make_app(pool)
@@ -862,7 +872,9 @@ class TestAssignmentAndListVisibility:
 
         accounting_email = next(iter(PRACTICES_EXTRA_VIEW_EMAILS))
         order_id = await _create_and_pay_order(
-            order_repository, result_id="result-acct-transit0000", provider_event_id="evt-acct-transit"
+            order_repository,
+            result_id="result-acct-transit0000",
+            provider_event_id="evt-acct-transit",
         )
         practice_id = await _practice_id_for(pool, order_id)
         await pool.execute(
@@ -884,16 +896,16 @@ class TestAssignmentAndListVisibility:
         assert resp.status_code == 401
         assert resp.json()["code"] == "SESSION_REQUIRED"
 
-    async def test_assigned_to_key_absent_is_422_not_unassign(
-        self, pool, order_repository
-    ) -> None:
+    async def test_assigned_to_key_absent_is_422_not_unassign(self, pool, order_repository) -> None:
         """Cross-family refuter (Gemini) MAJOR finding #2: `body.get(
         "assigned_to")` treats a completely OMITTED key identically to an
         explicit `{"assigned_to": null}` -- both evaluate to `None`. The
         contract's `PracticeAssignmentRequest` declares `assigned_to`
         `required`, so an omitted key must 422, never silently unassign."""
         order_id = await _create_and_pay_order(
-            order_repository, result_id="result-assign-omit0000", provider_event_id="evt-assign-omit"
+            order_repository,
+            result_id="result-assign-omit0000",
+            provider_event_id="evt-assign-omit",
         )
         practice_id = await _practice_id_for(pool, order_id)
         app = _make_app(pool)
@@ -910,15 +922,15 @@ class TestAssignmentAndListVisibility:
         assert resp.status_code == 422
         assert resp.json()["code"] == "INVALID_REQUEST"
 
-    async def test_assigned_to_explicit_null_still_unassigns(
-        self, pool, order_repository
-    ) -> None:
+    async def test_assigned_to_explicit_null_still_unassigns(self, pool, order_repository) -> None:
         """Guilt+innocence pair for the previous test: an EXPLICIT
         `{"assigned_to": null}` is the real unassign command and must still
         succeed with 200 -- only the OMITTED key is a 422."""
         await _seed_team_member(pool, _TEAM_A)
         order_id = await _create_and_pay_order(
-            order_repository, result_id="result-assign-null0000", provider_event_id="evt-assign-null"
+            order_repository,
+            result_id="result-assign-null0000",
+            provider_event_id="evt-assign-null",
         )
         practice_id = await _practice_id_for(pool, order_id)
         app = _make_app(pool)
@@ -949,7 +961,9 @@ class TestAssignmentAndListVisibility:
     ) -> None:
         await _seed_team_member(pool, _TEAM_B)
         order_id = await _create_and_pay_order(
-            order_repository, result_id="result-assign-ok-0000000", provider_event_id="evt-assign-ok"
+            order_repository,
+            result_id="result-assign-ok-0000000",
+            provider_event_id="evt-assign-ok",
         )
         practice_id = await _practice_id_for(pool, order_id)
         app = _make_app(pool)
@@ -1007,9 +1021,7 @@ class TestAssignmentAndListVisibility:
             assert _TEAM_A not in str(record.msg)
             assert _TEAM_A not in str(getattr(record, "assigned_to", ""))
 
-    async def test_list_filters_non_admin_to_assigned_only(
-        self, pool, order_repository
-    ) -> None:
+    async def test_list_filters_non_admin_to_assigned_only(self, pool, order_repository) -> None:
         order_a = await _create_and_pay_order(
             order_repository, result_id="result-list-a-00000000", provider_event_id="evt-list-a"
         )
@@ -1042,9 +1054,7 @@ class TestAssignmentAndListVisibility:
 @pytest.mark.asyncio
 class TestMigration305Idempotent:
     async def test_apply_twice_is_a_no_op(self, pool) -> None:
-        sql_path = (
-            "backend/db/migrations_v2/305_garuda_practices_assignment.sql"
-        )
+        sql_path = "backend/db/migrations_v2/305_garuda_practices_assignment.sql"
         with open(sql_path, encoding="utf-8") as fh:
             content = fh.read()
         forward_sql = content.split("-- === ROLLBACK ===")[0]
@@ -1071,9 +1081,7 @@ class TestEvidenceIdGloballyUnique:
     DIFFERENT practices; only the application's own pre-INSERT SELECT did,
     and that SELECT is a TOCTOU check a genuine race can defeat."""
 
-    async def test_db_constraint_rejects_cross_practice_reuse(
-        self, pool, order_repository
-    ) -> None:
+    async def test_db_constraint_rejects_cross_practice_reuse(self, pool, order_repository) -> None:
         """Proves the NEW global index exists and is enforced at the
         database layer directly, independent of any application code path
         (including the pre-check `apply_transition` itself runs). Uses two
@@ -1128,10 +1136,14 @@ class TestEvidenceIdGloballyUnique:
         async with pool.acquire() as conn:
             await conn.execute(forward_sql)
         order_a = await _create_and_pay_order(
-            order_repository, result_id="result-evid-race-a0000", provider_event_id="evt-evid-race-a"
+            order_repository,
+            result_id="result-evid-race-a0000",
+            provider_event_id="evt-evid-race-a",
         )
         order_b = await _create_and_pay_order(
-            order_repository, result_id="result-evid-race-b0000", provider_event_id="evt-evid-race-b"
+            order_repository,
+            result_id="result-evid-race-b0000",
+            provider_event_id="evt-evid-race-b",
         )
         practice_a = await _practice_id_for(pool, order_a)
         practice_b = await _practice_id_for(pool, order_b)
@@ -1168,6 +1180,11 @@ class TestEvidenceIdGloballyUnique:
             _submit(practice_a, "race-key-a-0000001"), _submit(practice_b, "race-key-b-0000001")
         )
         statuses = sorted([resp_a.status_code, resp_b.status_code])
-        assert statuses == [200, 422], (resp_a.status_code, resp_a.text, resp_b.status_code, resp_b.text)
+        assert statuses == [200, 422], (
+            resp_a.status_code,
+            resp_a.text,
+            resp_b.status_code,
+            resp_b.text,
+        )
         loser = resp_a if resp_a.status_code == 422 else resp_b
         assert loser.json()["code"] == "INVALID_REQUEST"
