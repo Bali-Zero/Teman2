@@ -527,6 +527,36 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "recomputed and checked before the transplant; exact assignment and "
         "value pinned per constant, never a credential",
     ),
+    # test_seq19_signed_bundle.py: pins the SIGNED seq-19 production bundle's
+    # trust anchors — the same pinned Ed25519 PUBLIC verification key already
+    # covered for gold_replay_driver.py above (private key stays off-repo,
+    # offline key ceremony per docs/runbooks/visa-engine-key-ceremony.md),
+    # the seq-18 chain anchor already pinned in fold_pack_seq19.py above, and
+    # the seq-19 payload_sha256 itself — a content-derived digest the test
+    # recomputes independently via bundle.canonicalize_json and cross-checks
+    # against `verify_rule_pack`'s own return value, never trusted from the
+    # signer's print output. Content-keyed (not path-only) to the exact
+    # value per constant, one alternative each, so a real credential typed
+    # onto any other line of this test stays unaudited for human review.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/tests/services/visa_engine/"
+            r"test_seq19_signed_bundle\.py$"
+        ),
+        re.compile(
+            r'^\s*(?:'
+            r'"public_key"\s*:\s*"gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA"\s*,?'
+            r'|SEQ18_PAYLOAD_SHA256\s*=\s*"5a24472d187f85c54628f23d6e37b2a4b814e54762478c099472f0437d255849"'
+            r'|==\s*"bac5da8e4727e7f639c947c50211e6f95e15c1403cf6aef0dd57a92014d6e6ea"'
+            r')\s*$'
+        ),
+        "test_seq19_signed_bundle.py: seq-19 signed-bundle trust anchors — "
+        "the pinned production Ed25519 public verification key (private key "
+        "off-repo), the seq-18 chain-anchor digest, and the seq-19 "
+        "payload_sha256 recomputed and cross-checked in the test itself; "
+        "exact assignment/comparison and value pinned per constant, never a "
+        "credential",
+    ),
     # scripts/kbli_bench/results/p2b_score.json (PR #4422, KBLI Navigator
     # Phase 2b benchmark run): corpus_sha256 is the content-derived sha256 of
     # the frozen benchmark corpus (scripts/kbli_bench/p2b_corpus.json), the
