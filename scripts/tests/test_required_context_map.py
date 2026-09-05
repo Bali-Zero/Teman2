@@ -35,6 +35,7 @@ def _assert_required_mouth_typecheck(workflow: dict[str, Any]) -> None:
     assert job["needs"] == ["changes"]
     assert job["if"] == "${{ !cancelled() }}"
     assert job.get("continue-on-error", False) is False
+    assert job.get("timeout-minutes") == 16
     steps = job["steps"]
     matches = [step for step in steps if step.get("id") == "mouth-typecheck"]
     assert len(matches) == 1
@@ -62,6 +63,7 @@ def test_required_mouth_job_compiles_contract_consumers() -> None:
         "remove", "move-to-advisory", "after-tests", "wrong-matrix",
         "wrong-condition", "wrong-cwd", "step-advisory", "job-advisory",
         "swallow-error", "missing-needs", "success-only-job",
+        "missing-timeout", "widened-timeout",
     ],
 )
 def test_required_mouth_typecheck_rejects_disarmed_mutations(mutation: str) -> None:
@@ -94,6 +96,10 @@ def test_required_mouth_typecheck_rejects_disarmed_mutations(mutation: str) -> N
         job["needs"] = []
     elif mutation == "success-only-job":
         job["if"] = "${{ success() }}"
+    elif mutation == "missing-timeout":
+        job.pop("timeout-minutes")
+    elif mutation == "widened-timeout":
+        job["timeout-minutes"] = 30
     with pytest.raises(AssertionError):
         _assert_required_mouth_typecheck(workflow)
 

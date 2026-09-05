@@ -1,0 +1,12 @@
+gear: 1
+objective: Pin the existing required frontend job timeout at 16 minutes.
+constraints:
+  - Change only the existing context guard test and lane evidence.
+  - Preserve workflow, classifier, required contexts and policy.
+acceptance:
+  - WHEN the real workflow is checked, its existing 16-minute timeout SHALL pass.
+  - WHEN the timeout is missing or widened to 30 minutes, the guard SHALL reject it.
+  - WHEN the new timeout assertion is removed, both new mutation cases SHALL fail.
+consumer_map:
+  - The existing required antidotes job executes scripts/tests/test_required_context_map.py from the candidate
+    checkout.
