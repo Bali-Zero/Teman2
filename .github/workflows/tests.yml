@@ -1856,7 +1856,7 @@ jobs:
         id: mouth-typecheck
         if: matrix.app == 'mouth' && steps.decide.outputs.run == 'true'
         working-directory: apps/mouth
-        run: npx tsc --noEmit
+        run: ../../node_modules/.bin/tsc --noEmit
 
       - name: Run tests (with coverage)
         if: matrix.coverage && steps.decide.outputs.run == 'true'
