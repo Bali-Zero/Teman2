@@ -496,6 +496,37 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "of the active seq-17 RulePack payload, recomputed before folding; "
         "exact assignment and value pinned, never a credential",
     ),
+    # fold_pack_seq19.py: three chain-of-custody digests. SEQ18_PAYLOAD_SHA256
+    # is the chain anchor — the digest of the SIGNED seq-18 payload production
+    # actually serves. SEQ13_PAYLOAD_SHA256 is the drift-check base seq-15's
+    # repair was originally authored against. SEQ15_PAYLOAD_SHA256 is the
+    # repair DONOR's own digest — seq-15 was never itself signed, so this
+    # pinned value is the only chain-of-custody check available for it. The
+    # fold recomputes sha256 over each canonical payload and aborts unless it
+    # equals the matching pinned value before transplanting anything.
+    #
+    # Content-keyed and pinned to the exact assignment AND exact digest, one
+    # alternative per constant name so a name cannot match another
+    # constant's value: this production file stays closed to any other value
+    # or line, and a ride-along statement cannot match because the pattern
+    # is end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq19\.py$"
+        ),
+        re.compile(
+            r'^\s*(?:'
+            r'SEQ18_PAYLOAD_SHA256\s*=\s*"5a24472d187f85c54628f23d6e37b2a4b814e54762478c099472f0437d255849"'
+            r'|SEQ13_PAYLOAD_SHA256\s*=\s*"b9edb809930ab486e49a4af7804fbae7f072caa3b6459b78a94ecb7f6bfe14f8"'
+            r'|SEQ15_PAYLOAD_SHA256\s*=\s*"876100fbce41b1ae2b717ad446d6b359e15c43dc326ef849fb800850632d4153"'
+            r')\s*$'
+        ),
+        "fold_pack_seq19.py: seq-18/seq-13/seq-15 chain-of-custody digests — "
+        "content-derived sha256 of the signed seq-18 anchor, the seq-13 "
+        "drift-check base, and the unsigned seq-15 repair donor, each "
+        "recomputed and checked before the transplant; exact assignment and "
+        "value pinned per constant, never a credential",
+    ),
     # scripts/kbli_bench/results/p2b_score.json (PR #4422, KBLI Navigator
     # Phase 2b benchmark run): corpus_sha256 is the content-derived sha256 of
     # the frozen benchmark corpus (scripts/kbli_bench/p2b_corpus.json), the
