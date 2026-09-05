@@ -1,79 +1,98 @@
-task_id: bites-b-cut-0904
+task_id: visa-seq19-fold
 gear: 3
 l_level: L2
 gate_class: opus
-# CORRECTED 2026-09-05: an earlier draft of this brief declared gear 1, computed
-# by measuring `evidence_pack_lint.py --print-floor` against the diff of THIS
-# PR's contribution on top of #5673's tip (9b4be2bf24) rather than against the
-# actual PR base (main). Against main - what CI's harness-floor.yml actually
-# diffs, merge-base anchored - this branch's diff carries #5673's own
-# `.github/workflows/immune-enforcement.yml` change too (test wiring for the
-# antidotes job, kept: a test nothing runs is scar #5625), which is a hot-zone
-# path regardless of size. Floor is 3. tp1-qwen3.8-max was dispatched as the
-# second council seat (kimi-code/k3 already served as refuter) to satisfy the
-# Gear-3 two-seat requirement honestly instead of narrowing scope to dodge it.
+# Floor computed this run: `python3 scripts/evidence_pack_lint.py --print-floor-source`
+# returns `size` — the fold script + test file are ~1,000 lines together, plus the
+# 10,254-line generated `rulepack-prod-019.source.json` data file (not hand-authored;
+# every line is copied verbatim from seq-18 or transplanted verbatim from seq-15). Size
+# alone floors this at Gear 3 regardless of the change's actual authored-logic footprint.
 objective: >-
-  Answer the line-count question PR #5673 left open. That PR cut bites_parse.py from
-  1,462 to 1,127 lines and reported "target not met — 1,127 is not a few hundred",
-  naming the only lever left: admit fewer binaries or carry fewer guards. RULED
-  2026-09-04 b (Zero, Legge 5, relayed on #5673) answered: option b, fewer binaries,
-  NEVER fewer guards. `observe:` now admits exactly TWO shapes — `python3
-  scripts/<path>.py [literal args]` (in-tree, no `..`, no symlink escape, marked
-  `bites-observable` in its own source) and `fly <read-only subcommand> [args]`
-  (`status`, `releases`, `image show`, `machine list` only, `-a`/`--app` the only
-  flag). `gh`, `curl`, `git` and `python3 -m pytest` are gone entirely — every escape
-  found on this surface so far lived in one of the three binaries, and `python3 -m
-  pytest` imports whatever `conftest.py` an unmerged branch happens to carry.
-
-  This PR supersedes #5673 (kept open until this PR is proven, then closed): same
-  module, same corpus, same test file, cut down to the ruled surface rather than
-  merged as a wider one.
+  Fold RulePack seq-19 from the SIGNED seq-18 payload (the pack the engine actually
+  serves today) and TRANSPLANT — never re-author — seq-15's three E31 fail-open
+  repairs onto it. Ground: `research/operations/2026-09-05-consuls-ground-
+  visaoracle-engine.md` (Q3) and its independently re-run refutation established
+  that seq-15's repair (authored 2026-08-29, never itself signed, closing a BLOCK-DEFECT gold
+  divergence) never reached production — seq-16 re-parented onto seq-13, bypassing
+  the unsigned 14->15 candidate line, and seq-17/seq-18 chain from seq-16. The
+  fail-open E31B/E31D predicate the 2026-08-15 disposition flagged is therefore
+  measurably still live in the pack production serves. This fold re-lands it,
+  chained forward from the current anchor instead of re-parenting again.
 appetite:
   wall_clock_hours: 3
 constraints:
   - >-
-    Fixtures for the removed binaries FLIP from innocence to guilt, never deleted —
-    the corpus is the record of what used to be allowed and now is not.
+    DO NOT SIGN, DO NOT touch any `*.signed.json`, DO NOT activate. The consul runs
+    `sign_pack.py` after the gate; activation is Zero's separate act. Every witness
+    that needs a compiled 019 pack goes through `compile_pack.wrap_as_unsigned_pack`
+    (a placeholder envelope, never a trust claim) instead.
   - >-
-    Keep the lossless discipline PR #5673 established: a differential over the
-    ORIGINAL corpus entries (re-classified by the cut module) must show ONLY
-    removed-binary/narrowed-fly-subcommand entries flipping to malformed — nothing
-    else may change verdict for the same input text.
+    Transplant, never hand-author: every repaired `when`/`required_facts` byte on
+    the ten touched rules must be copied verbatim from `rulepack-prod-015.source.json`,
+    not re-derived from today's catalog (that was seq-15's own method; this fold's
+    job is only to move seq-15's bytes forward, not to re-run seq-15's reasoning).
   - >-
-    Never fewer guards on the two surviving shapes. Cutting a binary must not
-    quietly cut a guard's OWN mutation-proof if that proof's fixture happened to use
-    the removed binary as an incidental example — re-isolate it on an allowed head
-    instead of accepting the loss.
-  - Keep the `_StrictLoader` and its closed top-level key set exactly as is.
-  - No new required context on main; no paid API; no LLM in the executor at all.
+    Chain anchor is seq-18 (the live pack), not seq-13 (seq-15's own anchor) and not
+    a hand-picked digest constant — verified by Ed25519 signature against the real
+    production trust store, exactly as `fold_pack_seq18.py` verifies its own seq-17
+    anchor.
+  - >-
+    Every byte of seq-18's payload not named by the four retirements or the ten
+    transplants must stay identical — enforced by a fail-closed guard on both what
+    changed and what the changed fields' VALUES must equal (the seq-18 review's own
+    lesson: a guard that only names what MAY move is silent on whether it moved to
+    the right thing).
 acceptance:
   - >-
-    A1: `python3 scripts/ci/bites_parse.py --selftest` exits 0 over the full corpus;
-    the count is reported honestly (see receipts), not padded and not pinned to a
-    number future fixtures would turn into a ratchet.
+    A1: `compile_pack.py` on `rulepack-prod-019.source.json` reports 0 compilation
+    errors.
   - >-
-    A2: `python3 infra/guard-conformance/check_guard_conformance.py` reports the
-    bites-parse surface with 0 violations.
+    A2: the rule-set diff 019-vs-018 is EXACTLY the four declared retirements and
+    the ten declared transplants (nine sponsor-terminal rules + the stepchild rule)
+    and nothing else — asserted by rule_id set and by full-payload key diff.
   - >-
-    A3: a mutation check (patch each `_guard_*` to a no-op, one at a time, and ask
-    whether ANY corpus fixture's actual classification then disagrees with its
-    declared one) shows every one of the nine guards still provably necessary
-    against the corpus alone.
+    A3: the fold is byte-invariant across two runs (`canonicalize_json` equality)
+    and its output on disk matches a fresh in-process `fold()` call exactly.
   - >-
-    A4: the differential over the ORIGINAL 121 corpus entries shows only
-    removed-binary/narrowed-fly flips to malformed, zero unintended verdict changes,
-    zero deleted labels.
+    A4: evaluator witnesses through the REAL evaluator on a `CompiledRulePack`
+    built from 019 — guilt (sponsor `NONE` no longer yields E31B, FAMILY intent
+    alone no longer yields E31D, unknown stepchild evidence never supports) and
+    innocence (real-ITAS spouse keeps E31B, evidenced stepchild keeps E31D, gold
+    persona #7 keeps E31A).
   - >-
-    A5: a cross-family refuter dispatched on the cut, two-shape module either finds
-    nothing after checking the flag lists, the path resolution and the fly
-    subcommand table, or its finding is reproduced against the real guard functions
-    before being applied.
+    A5: all 18 gold-coverage corpus personas remain SUPPORTED against 019 (same
+    evaluate path `gold_coverage_eval._evaluate` uses, minus the repository
+    signature-selection step neither script lets a caller override for an
+    unsigned candidate pack).
+  - >-
+    A6: the 20-canonical-persona offline comparison (018's real signed pack vs
+    019's placeholder-enveloped compile) is reported honestly: persona #7's
+    manufactured E31B/E31D candidates are gone; persona #6's divergence — found
+    by this fold's own verification to be UNRELATED to the fail-open bug
+    (`MINOR_GUARDIAN_PRIVACY_REVIEW`, not sponsor-status) — is byte-identical
+    before and after, proving the transplant did not touch it; the overall
+    match SET and COUNT are unchanged end to end (5/20, personas #3/#4/#12/#15/#18).
 dissent_process: >-
-  One refuter seat this time (kimi-code/k3), not the three-plus of #5673 — the
-  surface is narrower by construction (two shapes, nine guards, most of them
-  unchanged). Its pass raised four findings, not one: brace-expansion defeating
-  the observable-marker check, a subcommand-table match that ignored a third
-  leading word, a positional argument hiding after a flag's own value, and the
-  marker check accepting any file (not just a `.py` one) whose bytes happened to
-  carry the marker string. Each was reproduced against the real guard functions
-  before being applied — none taken on the seat's word; see journal.jsonl.
+  The task mandate restricts this session to prepare-only (the consul gates and
+  ships) but does not forbid dispatching a review seat, and the size-floored Gear-3
+  posture (R9) requires two distinct review seats marked ok:true — so two were
+  dispatched: kimi-code/k3 (agentic, direct file access) and tp1-qwen3.8-max
+  (text-only, fed the full fold script), independently, fresh context each,
+  codex-gpt-5.6-sol attempted first and failed on a CLI version mismatch
+  (`codex-cli 0.153.2` rejects `--full-auto` in the wrapper's invocation shape —
+  tooling drift, not content). Both converged independently on the same two core
+  defects — the fold never verified its own stated byte-identity precondition
+  (seq-13 vs seq-18 on the ten edited rule ids), and the `required_facts` guard
+  exclusion was too broad — which is exactly why those two were cured rather than
+  argued. tp1 additionally found the seq-15 donor was authenticated only by a
+  self-declared `sequence: 15` field (no digest pin, no signature) and a
+  non-suffix-anchored path derivation; both cured. Prompted by kimi's review, this
+  session added its own product-catalog drift guard, whose first draft would have
+  wrongly refused the transplant on an unrelated field — caught before commit by
+  running it against the real packs. Full verbatim notes: pack.yml `dissent` +
+  `council-journal.jsonl`. Self-adversarial review during authoring separately
+  surfaced two more findings, also cured (see pack.yml `dissent`): the ground-truth
+  report's framing of gold persona #6 as "an E31 fail-open persona" is imprecise
+  (its actual divergence reason is an unrelated minor-guardian privacy gate); and
+  the value-guard's `after_rules_by_id[rule_id]` lookup raised an unhandled
+  `KeyError` instead of a clean fail when handed an incompletely-edited pack.

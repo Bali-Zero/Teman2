@@ -1,0 +1,308 @@
+task_id: visa-seq19-fold
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+date: 2026-09-05
+machine: M5
+lanes:
+  - lane: seq-19 fold + gate suite
+    role: build
+    seat: claude-sonnet-5 (this worktree session on M5, branch agent/air-m5/backend-rag/visa-seq19-fold)
+    note: >-
+      fold_pack_seq19.py (chain-anchor-by-signature, seq13/seq15 donor authentication,
+      retire+transplant, fail-closed shape+value guards, drift guards), rulepack-prod-019.source.json
+      (generated, not hand-authored), and test_seq19_pack.py (fold integrity, identity/chain,
+      guard guilt+innocence, real-evaluator witnesses, gold-coverage replay, gold-replay-driver
+      comparison).
+  - lane: gear3-council-review-kimi
+    role: review
+    seat: kimi-code/k3 (`kimi -m kimi-code/k3 -p ...`, non-Anthropic cross-family, agentic file access to this worktree)
+    note: >-
+      Adversarial review of the fold script and test file. See council-journal.jsonl for the
+      full verbatim note; findings cured in this diff before commit.
+  - lane: gear3-council-review-tp1
+    role: review
+    seat: tp1-qwen3.8-max (`scripts/tp1_call.py`, DashScope/TP1 gateway, non-Anthropic cross-family, text-only, fed the fold script's full source)
+    note: >-
+      Independent adversarial review, fresh context, no shared prompt with the kimi lane. See
+      council-journal.jsonl for the full verbatim note; findings cured in this diff before commit.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  Both review lanes are non-Anthropic cross-family (kimi-code/k3, tp1-qwen3.8-max), fresh
+  context each, no shared prompt between them — they converged independently on the same two
+  core defects (donor byte-identity precondition never checked; required_facts guard exclusion
+  too broad), which is why those two were cured rather than argued. codex-gpt-5.6-sol was
+  attempted first (`codex-spalla.sh`) and failed with a CLI argument-shape error
+  (`unexpected argument '--full-auto'` against locally installed `codex-cli 0.153.2`) before
+  any review ran — a tooling/version-drift failure, not a quota or content issue; not counted
+  as a seat.
+
+seat_override: >-
+  R8 ground_truth: this diff touches `*/visa_engine/*` (GROUND_TRUTH_PATH_PATTERNS), but the
+  regulatory content itself (the E31 fail-open predicate repair — the closed sponsor-status
+  set, the stepchild conjunction) was already authored and fact-checked against
+  research/visa/2026-08-15-gold-family-refuter.md when seq-15 was first built on 2026-08-29;
+  this PR introduces NO new regulatory claim of its own, it transplants seq-15's exact
+  previously-reviewed bytes forward onto a new chain anchor. Verified byte-for-byte in
+  receipts (the transplanted `when`/`required_facts` match seq-15's on-disk bytes exactly,
+  and the seq-13-vs-seq-18 precondition that makes the transplant valid). No NB query applies
+  to "did this PR author a new immigration rule" when the answer is "no, it moved an existing
+  one forward" — a fresh NB lane would be re-litigating seq-15's own ground-truth check, not
+  checking anything new this diff added.
+
+outcome: >-
+  rulepack-prod-019.source.json chains from the SIGNED seq-18 payload (the pack
+  production actually serves) and transplants seq-15's three E31 fail-open repairs
+  onto it verbatim: 4 rule ids retired, 10 rule ids' `when`/`required_facts` replaced
+  with seq-15's exact bytes, every other byte of seq-18's 111-rule payload untouched.
+  Compiles clean, byte-invariant across two runs, all declared guilt/innocence
+  witnesses pass through the real evaluator, all 18 gold-coverage personas remain
+  supported, and the 20-persona offline comparison against the REAL signed seq-18
+  shows persona #7's manufactured E31B/E31D candidates gone while the match set/count
+  and persona #6's (unrelated) divergence are unchanged end to end. NOT SIGNED, NOT
+  ACTIVATED — signing is the consul's ceremony, activation is Zero's.
+diff:
+  files: 6
+  net_lines: "authored across the fold script, the gate suite module and the evidence/brief files; 10,254 generated data (rulepack-prod-019.source.json, copied/transplanted verbatim, not hand-authored) — see measured_at for the real per-file numstat"
+  measured_at: >-
+    `git -C <worktree> diff --cached --numstat`, final state (post council-review
+    hardening): 568/0 fold_pack_seq19.py, 10254/0 rulepack-prod-019.source.json,
+    818/0 test_seq19_pack.py, 2/0 council-journal.jsonl, 305/0 this pack.yml,
+    81/62 evidence/brief.yml.
+  shape: >-
+    One new fold script, one new generated pack (data, not logic), one new test
+    module, this evidence pack + council journal, and the shared brief.yml
+    rewritten for this task (repo convention — one root file, overwritten per PR).
+    No pre-existing CODE file touched — the size floor comes entirely from the
+    generated pack's line count, not from authored-logic surface area.
+pii_scan: clean
+receipts:
+  - claim: seq-18's payload re-hashes to the pinned chain anchor and its signed envelope declares the same digest
+    cmd: >-
+      python3 -c over canonicalize_json(rulepack-prod-018.source.json) vs
+      rulepack-prod-018.signed.json's payload_sha256
+    result: "both = 5a24472d187f85c54628f23d6e37b2a4b814e54762478c099472f0437d255849"
+    ts: "2026-09-05T10:05:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: the ten repaired rule ids are byte-identical between seq-13 and seq-18 (so seq-15's edit against seq-13 transplants onto seq-18 with zero adaptation)
+    cmd: python3 canon-compare of the 9 sponsor rules + el.e31d-stepchild-support across rulepack-prod-013/018.source.json
+    result: "all 10 rule ids: 18==13 (whole rule)? True"
+    ts: "2026-09-05T10:08:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: seq-15's diff against seq-13, field-by-field, touches ONLY `when` (and `required_facts` on the stepchild rule)
+    cmd: python3 field-level diff of the 10 rule ids across rulepack-prod-013/015.source.json
+    result: "9 rules: diff keys ['when']; el.e31d-stepchild-support: diff keys ['required_facts', 'when']"
+    ts: "2026-09-05T10:10:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: fold_pack_seq19.py produces rulepack-prod-019.source.json from the real anchor and donor
+    cmd: >-
+      PYTHONPATH=. VISA_ENGINE_TRUST_STORE_KEYS_JSON=<prod public key> python3 -m
+      backend.scripts.visa_engine.fold_pack_seq19 --seq18-source ... --seq18-signed ...
+      --seq15-source ... --output rulepack-prod-019.source.json
+    result: >-
+      wrote the file; payload_sha256=b35c9a2a85084e7d15d9d53b59ec765611ba6adf5d588b147a4a3ab97fae5548;
+      retired the 4 declared rule ids; transplanted the 10 declared rule ids
+    ts: "2026-09-05T10:15:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: the fold is byte-invariant across two independent runs
+    cmd: fold_pack_seq19 run twice to separate output paths, `diff` the two files
+    result: "IDENTICAL (byte-invariant across runs)"
+    ts: "2026-09-05T10:17:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: the 019-vs-018 rule diff is exactly the declared retire+transplant set, nothing else
+    cmd: python3 rule-id set diff + top-level key diff, rulepack-prod-018 vs -019.source.json
+    result: >-
+      removed=[el.e31d-sponsor-mixed-marriage, el.e31d-step-parent-relation,
+      review.e23u.requested-product, review.e23v.requested-product]; added=[]; drifted=the
+      10 declared edited ids; rule counts 111->107; only identity top-level keys changed
+    ts: "2026-09-05T10:19:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: compile_pack.py reports 019 clean
+    cmd: "PYTHONPATH=. python3 -m backend.scripts.visa_engine.compile_pack rulepack-prod-019.source.json"
+    result: "rule_pack_id=8c09e059-4ab2-5963-b5af-d1363d55e508 sequence=19; OK — zero compilation errors"
+    ts: "2026-09-05T10:20:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: test_seq19_pack.py is fully green
+    cmd: >-
+      PYTHONPATH=. pytest --no-header -p no:cacheprovider
+      backend/tests/services/visa_engine/test_seq19_pack.py
+    result: "57 passed (after adversarial-review hardening; 53 before it — see dissent)"
+    ts: "2026-09-05T11:40:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: the neighboring seq-pack gates (10/15/17/18 + chain-and-pricing) plus seq-19's own suite together are green — no regression from this addition
+    cmd: >-
+      PYTHONPATH=. pytest --no-header -p no:cacheprovider
+      backend/tests/services/visa_engine/test_seq10_pack.py
+      backend/tests/services/visa_engine/test_pack_chain_and_pricing.py
+      backend/tests/services/visa_engine/test_seq15_e31_failopen_repair.py
+      backend/tests/services/visa_engine/test_seq17_freshness_restamp.py
+      backend/tests/services/visa_engine/test_seq18_freshness_window.py
+      backend/tests/services/visa_engine/test_seq19_pack.py
+    result: "189 passed"
+    ts: "2026-09-05T11:42:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: the full visa_engine test directory shows only pre-existing, unrelated, Postgres-schema-drift failures — none touch a file this PR changed
+    cmd: "PYTHONPATH=. pytest --no-header -p no:cacheprovider backend/tests/services/visa_engine/"
+    result: >-
+      2094 passed, 1 skipped, 1 failed, 39 errors; the 1 failure and all 39 errors are in
+      test_evaluate_endpoint.py / test_shadow_evidence.py / test_shadow_match.py /
+      test_visa_engine_retention_fk_registry.py (asyncpg ExclusionViolationError / a
+      migration-285 schema-drift assertion) — confirmed via `git status --short` that this
+      PR touches only 3 new files, none of them these
+    ts: "2026-09-05T10:55:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 1
+  - claim: the real gold_coverage_replay.py CLI already passes 18/18 on the currently-active signed seq-18 (the floor this fold must not regress)
+    cmd: >-
+      PYTHONPATH=. VISA_ENGINE_TRUST_STORE_KEYS_JSON=<prod public key> python3 -m
+      backend.scripts.visa_engine.gold_coverage_replay --corpus
+      backend/tests/services/visa_engine/gold_coverage/personas --out ...
+    result: '{"failed": 0, "passed": 18, "total": 18}'
+    ts: "2026-09-05T11:00:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: the real gold_replay_driver.py --offline CLI against the REAL signed seq-18 reproduces the ground-truth 5/20 baseline exactly, including personas #6/#7's own root causes
+    cmd: >-
+      PYTHONPATH=. VISA_ENGINE_TRUST_STORE_KEYS_JSON=<prod public key> python3 -m
+      backend.scripts.visa_engine.gold_replay_driver --offline --out /tmp/replay018.json
+    result: >-
+      matches=5/20, matching ids {3,4,12,15,18}; persona #6 differences =
+      candidate_products/review_reason_codes(MINOR_GUARDIAN_PRIVACY_REVIEW)/state;
+      persona #7 differences = candidate_products only, actual
+      [C1,E31A,E31B,E31D] vs expected [E31]
+    ts: "2026-09-05T11:03:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: gold_replay_driver.py and gold_coverage_eval.py cannot be pointed at an unsigned candidate pack — a disk fact, not a design choice made in this PR
+    cmd: "grep -n _REPOSITORY_PRODUCTION_SIGNING_KEYS backend/scripts/visa_engine/gold_replay_driver.py"
+    result: "hardcoded module-level constant, no env override, no packs_dir CLI flag; gold_coverage_eval._evaluate calls select_highest_repository_pack(PACKS_DIR) with no override either"
+    ts: "2026-09-05T11:05:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: after the council-review hardening (donor digest pin, seq13 byte-identity + product-catalog drift guards, narrowed required_facts exclusion, suffix-anchored signed-path derivation), the fold's output is unchanged
+    cmd: fold_pack_seq19 re-run end to end after every fix
+    result: "payload_sha256 unchanged: b35c9a2a85084e7d15d9d53b59ec765611ba6adf5d588b147a4a3ab97fae5548"
+    ts: "2026-09-05T11:38:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 0
+  - claim: an earlier draft of the product-catalog drift guard (whole-product-object comparison) would have wrongly refused this transplant
+    cmd: fold_pack_seq19 run with the whole-`products`-list guard, before narrowing it to the E-prefix code set
+    result: >-
+      refused with "seq-18's product catalog has drifted from seq-13" — root-caused to
+      `E23.covered_purposes` (seq-16's tourism fold), unrelated to the stay-permit CODE set;
+      narrowed the guard to compare code sets only, re-ran clean
+    ts: "2026-09-05T11:36:00Z"
+    seat: claude-sonnet-5 (this worktree session)
+    exit: 1
+dissent:
+  - seat: claude-sonnet-5 (this worktree session), self-caught
+    status: CONFIRMED
+    objection: >-
+      The ground-truth report (Q4) frames gold personas #6 and #7 together as "exactly
+      the E31 fail-open personas Q3's diff explains." Direct measurement against the
+      real signed seq-18 shows this is imprecise for #6: its actual divergence reason is
+      `MINOR_GUARDIAN_PRIVACY_REVIEW` (a minor-guardian privacy gate), unrelated to the
+      sponsor-status-code predicate this fold repairs — confirmed byte-identical before
+      and after the transplant. #7's divergence IS the fail-open class, and its
+      manufactured E31B/E31D candidates are confirmed gone on 019. This refines, and does
+      not invalidate, Q3's own byte-verified rule-diff finding (which never made a claim
+      about persona #6 specifically).
+  - seat: claude-sonnet-5 (this worktree session), self-caught
+    status: CONFIRMED
+    objection: >-
+      `assert_changed_fields_hold_their_expected_values`'s first draft indexed
+      `after_rules_by_id[rule_id]`/`seq15_rules_by_id[rule_id]` without a membership
+      check — a pack missing one of the ten declared edits would raise an unhandled
+      `KeyError` instead of the clean `SystemExit` every other refusal in this module
+      produces. Found while writing the guard's own guilt tests (a minimal pair
+      carrying only one of the ten edited rule ids), fixed with an explicit membership
+      check before the first commit — never reached in the real `fold()` path (which
+      already guarantees full coverage via `_transplant_repairs`), but a guard called
+      directly (as a test, or by a future caller) deserves the same fail-closed shape.
+  - seat: claude-sonnet-5 (this worktree session), self-caught
+    status: PLAUSIBLE
+    objection: >-
+      `FOLD_CREATED_AT` is pinned to `2026-09-05T00:00:00Z` (this fold's authoring
+      date at midnight UTC). `sign_pack.py`'s `assert_created_before_signed` requires
+      `created_at <= signed_at`; this only fails if the consul signs at a wall-clock
+      instant BEFORE that midnight, which would require backdating relative to when
+      this PR is opened. Not reproduced (no signing happens in this PR by design), and
+      exceedingly unlikely given normal ceremony timing, but named for completeness —
+      the consul's signing step is exactly where this would surface, cleanly, as a
+      refusal rather than a silent defect.
+  - seat: kimi-code/k3 and tp1-qwen3.8-max, independently, cross-family, fresh context
+    status: CONFIRMED
+    objection: >-
+      The fold never verified its own stated precondition (module docstring: "all ten of
+      these rule ids are byte-identical between seq-13 and seq-18") — a future base pack
+      that legitimately changed one of these rules would have that change silently
+      overwritten by the transplant. CURED: added `_assert_edited_rules_unchanged_since_seq13`,
+      called before the transplant, refusing loudly if any of the ten rule ids has drifted.
+  - seat: kimi-code/k3 and tp1-qwen3.8-max, independently, cross-family, fresh context
+    status: CONFIRMED
+    objection: >-
+      `assert_only_expected_changes`'s `required_facts` exclusion applied uniformly to all
+      ten edited rule ids, but `_transplant_repairs` only ever writes `required_facts` on
+      the stepchild rule — a drift on one of the nine sponsor rules' `required_facts` would
+      pass both guards silently. CURED: the exclusion is now `{"when"}` for the nine sponsor
+      rules and `{"when", "required_facts"}` only for the stepchild rule.
+  - seat: tp1-qwen3.8-max, cross-family
+    status: CONFIRMED
+    objection: >-
+      seq-15 (the transplant DONOR) was authenticated only by a self-declared
+      `"sequence": 15` field — no digest pin, no signature (seq-15 was never itself signed).
+      Any file merely claiming sequence 15 would be accepted and its bytes transplanted
+      verbatim into a production candidate. CURED: pinned `SEQ15_PAYLOAD_SHA256` and refuse
+      unless `--seq15-source` re-hashes to it — the same chain-of-custody standard already
+      applied to the seq-18/seq-13 anchors, adapted to the fact that seq-15 has no signed
+      envelope to verify against.
+  - seat: tp1-qwen3.8-max, cross-family
+    status: CONFIRMED
+    objection: >-
+      `main()`'s signed-path derivation (`str(seq18_source).replace(".source.json",
+      ".signed.json")`) is not suffix-anchored — `str.replace` substitutes every
+      occurrence, not just the trailing one. CURED: replaced with an explicit
+      suffix check + slice, refusing if the source path does not end in `.source.json`.
+  - seat: kimi-code/k3, self-corrected mid-review before reporting
+    status: CONFIRMED
+    objection: >-
+      Prompted by kimi's review, this session added a product-catalog drift guard (the nine
+      sponsor rules' transplanted `op:"in"` closed set was derived from seq-13's E-prefix
+      product codes at seq-15's fold time) — but the FIRST draft of that guard compared
+      whole `products` objects, and would have wrongly REFUSED this transplant on
+      `E23.covered_purposes` (an unrelated seq-16 change). Caught by running the guard
+      against the real packs before trusting it (own receipts), narrowed to compare only
+      the E-prefix code SET, which is the actual precondition the transplant depends on.
+  - seat: kimi-code/k3 and tp1-qwen3.8-max
+    status: RETRACTED
+    objection: >-
+      Both flagged duplicate `rule_id` entries collapsing silently in this script's
+      `{r["rule_id"]: r for r in rules}` dict comprehensions as a possible bypass. Checked
+      `RulePackPayload`'s own `_check_unique_rule_ids` field_validator (models.py:610):
+      duplicates are rejected at `model_validate` time, and the seq-18 anchor is
+      cryptographically pinned to an already-validated payload — not reachable in practice.
+      Not cured (no code change); recorded as checked-and-retracted, not silently dropped.
+  - seat: tp1-qwen3.8-max
+    status: PLAUSIBLE
+    objection: >-
+      `_canon` (guard comparisons, `json.dumps(sort_keys=True, separators=(",",":"))`) and
+      `canonicalize_json` (the payload digest, RFC 8785/JCS) are two different
+      canonicalizers; they could in principle disagree on floats or unicode escaping. Not
+      cured: this exact pattern is the established convention across `fold_pack_seq15.py`
+      and `fold_pack_seq18.py` (both use a hand-rolled `_canon` for guards, the imported
+      canonicalizer only for the digest) — unifying it here alone would diverge from the
+      family rather than fix it, and this schema (`RulePackPayload`) carries no float
+      fields, so the divergence has no live trigger. Worth a follow-up across all three
+      fold scripts together, not a one-off patch in this PR.
+appetite_exceeded: ""
