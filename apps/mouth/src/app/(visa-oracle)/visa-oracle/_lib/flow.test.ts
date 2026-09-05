@@ -754,6 +754,45 @@ describe("2026-08-23 owner ruling: stepchild evidence questions fire only for fa
 });
 
 describe("editing, pruning and branch projection", () => {
+  it.each(["work_role", "unknown-question"])(
+    "EDIT resets an absent target %s without retaining the previous interview",
+    (questionId) => {
+      const state: FlowState = {
+        ...startOffshore("tourism"),
+        language: "id",
+        attempt: 7,
+        blockedAnswer: {
+          questionId: "application_channel",
+          conflictsWithQuestionId: "wants_onshore_conversion",
+        },
+      };
+      expect(state.history).not.toContainEqual({
+        kind: "question",
+        questionId,
+      });
+      const next = reduce(state, { type: "EDIT", questionId });
+      expect(next).toEqual({
+        language: "id",
+        attempt: 8,
+        history: [{ kind: "framing" }],
+        facts: {},
+        blockedAnswer: null,
+      });
+    },
+  );
+
+  it("EDIT keeps the current visited question in the same attempt", () => {
+    const state: FlowState = {
+      ...startOffshore("tourism"),
+      language: "id",
+      attempt: 7,
+    };
+    expectQuestion(state, "trip_scope");
+    expect(reduce(state, { type: "EDIT", questionId: "trip_scope" })).toEqual(
+      state,
+    );
+  });
+
   it("editing category removes stale descendants from the abandoned branch", () => {
     let state = startOffshore("work");
     state = answer(state, "trip_scope", "single");

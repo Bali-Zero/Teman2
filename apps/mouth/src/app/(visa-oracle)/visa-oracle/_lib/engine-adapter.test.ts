@@ -319,6 +319,28 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     },
   );
 
+  it("retains both missing fact codes when neither has a visited question", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = [
+      "work.indonesia_source_compensation",
+      "investment.pt_pma_committed",
+    ];
+    const outcome = buildEngineOutcome(response, {
+      editableQuestionIds: ["stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs.map((input) => input.code)).toEqual(
+      response.decision.missing_facts,
+    );
+    expect(outcome.missingInputs.map((input) => input.questionId)).toEqual([
+      undefined,
+      undefined,
+    ]);
+    expect(outcome.missingInputs[0].message).toEqual(
+      outcome.missingInputs[1].message,
+    );
+  });
+
   it.each([
     { editableQuestionIds: undefined },
     { editableQuestionIds: [] },
