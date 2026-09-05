@@ -1,0 +1,128 @@
+sealed_at: "2026-09-05T14:06:16.634Z"
+base: 12e3871175e2288bee7bacfceadb84a469450e5d # pragma: allowlist secret - verified artifact digest or Git object
+source_identity:
+  apps/mouth/src/i18n/secondhome-backend-patterns.ts:
+    sha256: f4892034c13dafa562f682f5492ad38ca10a52348e5e36164ee42c7e923888c1 # pragma: allowlist secret - verified artifact digest or Git object
+    git_blob: a18bbbb0552eb854fcdd12f2f3ee3fbba2a79d94 # pragma: allowlist secret - verified artifact digest or Git object
+  apps/mouth/src/i18n/secondhome-backend-patterns.test.ts:
+    sha256: 63234090bbf12b933f2bfa29b4e034cfd8d6adab3003a59770f259b5994beb09 # pragma: allowlist secret - verified artifact digest or Git object
+    git_blob: 11157f985594d01a89b19c12d95e97a4450e9660 # pragma: allowlist secret - verified artifact digest or Git object
+  apps/mouth/src/i18n/secondhome-article-claims.test.ts:
+    sha256: e9b04e0d567a56a502d8375138ce0da6b73290fa394a2d9d0d1786f61a8ce550 # pragma: allowlist secret - verified artifact digest or Git object
+    git_blob: 87fbe19ea1a7d81d327e9eec502c38b383bd49c0 # pragma: allowlist secret - verified artifact digest or Git object
+  apps/mouth/src/i18n/secondhome-article-claims.baseline.json:
+    sha256: 7f2918ae2100a62283900bf5ba60a718e4b72d31ddd885b73788205b188d9100 # pragma: allowlist secret - verified artifact digest or Git object
+    git_blob: 533f15f30ca485bad1fba5e421cc9f11b2abe744 # pragma: allowlist secret - verified artifact digest or Git object
+  scripts/ci/change_map.py:
+    sha256: 9e1027f7a093e451d1ed35bd7db70986233418834099ffb8f03e48ca70ea5d0e # pragma: allowlist secret - verified artifact digest or Git object
+    git_blob: b57d5ab2cebdd1717a178a5c95ecf5d58010e919 # pragma: allowlist secret - verified artifact digest or Git object
+  scripts/ci/test_change_map.py:
+    sha256: 3076a17f25f36d848b27dc9f0c63edf87b3538a7028b847055adad23123b0470 # pragma: allowlist secret - verified artifact digest or Git object
+    git_blob: 7e442ce54d4154d414c0ec165924ba519e1222cb # pragma: allowlist secret - verified artifact digest or Git object
+  apps/backend-rag/backend/services/visa_check/e33_claim_guard.py:
+    sha256: e5b4fc44926e6f63c605fa6ed340936c8fb1d73d01c986b9281130604837b6dd # pragma: allowlist secret - verified artifact digest or Git object
+    git_blob: 733a5b2b69d3d4e2be3ae31693810b28dab8b804 # pragma: allowlist secret - verified artifact digest or Git object
+  apps/mouth/src/i18n/secondhome-forbidden-claims.test.ts:
+    sha256: 9911f5eeb9fe5447c82b44e62ed266588c0f099d021f968d1431549ad9a64f31 # pragma: allowlist secret - verified artifact digest or Git object
+    git_blob: 489bcbb67dcfbcf0ac32d9867b2dccdecb730e95 # pragma: allowlist secret - verified artifact digest or Git object
+unowned_guards_equal_base: true
+corpus:
+  base: 12e3871175e2288bee7bacfceadb84a469450e5d # pragma: allowlist secret - verified artifact digest or Git object
+  selected_articles: 532
+  selected_article_blobs_match_base: true
+  selected_article_manifest_sha256: 0c70ff5f3c352a194605a0d739f80d4a015baf2273d981521bb6b6513687eac5 # pragma: allowlist secret - verified artifact digest or Git object
+  original_keys: 133
+  final_keys: 267
+  added_keys: 134
+  added_occurrences: 134
+  original_keys_unchanged: true
+  final_occurrences: 268
+  backend_family_occurrences:
+    e33f_superseded_income_usd1500: 22
+    second_home_any_bank: 0
+    e33_itap_kitap_automatic_promise: 4
+    e33_permits_local_work: 22
+    bsi_sharia_equivalence: 0
+    split_deposit_accepted: 0
+    lps_full_coverage: 0
+    approval_guaranteed: 6
+    idr_2m_fee_error: 66
+    second_home_first_grant_5_10_years: 14
+  final_files: 106
+vocabulary:
+  patterns: 10
+  node_sources_equal_independent_python_ast_literals: true
+  backend_imported_or_executed: false
+  source_strings_sha256: afd9342d8f2a779afda9467cdc8b830d8db55f3b517313433765a57b264fcf8b # pragma: allowlist secret - verified artifact digest or Git object
+probes_sha256:
+  refresh-baseline.cjs: e3ab93e61f62bb0f65f08c42188a546b6d79a53a4edb0db624dab6d6fb09fcca # pragma: allowlist secret - verified artifact digest or Git object
+  compare-vocabulary.cjs: fe487e33949fdf96ec1f2482ea972d72be7416e40878f9722883419748445fc3 # pragma: allowlist secret - verified artifact digest or Git object
+  compare-vocabulary.py: 616742fb45e599923d5d0e71ba61ab54485a91a6fc736473096e8d70333b1692 # pragma: allowlist secret - verified artifact digest or Git object
+  classifier-guilt.py: 07c6ac9df8022295ab06625da8dd528591164999f406899759f6d03fe9f0025e # pragma: allowlist secret - verified artifact digest or Git object
+  review-probes.cjs: e4a6ccd5471d733003cc15adc9572e44f2c6314c137d559315655de94566867e # pragma: allowlist secret - verified artifact digest or Git object
+  review-probes.json: a3e8d02f69ce03f63bb5326028482f91a4a2ec1e2156b27f14d0fba2d25ec78a # pragma: allowlist secret - verified artifact digest or Git object
+  vitest.log: 18ac301b1d3512fb7765a4e26353d64bfd3a5829fd492e06655b33bd87d3fd6e # pragma: allowlist secret - verified artifact digest or Git object
+  typecheck.log: fc8b24b2a639c82f55ba80d4ce7226e8c34e84cee2823aff0c6550297aa7298f # pragma: allowlist secret - verified artifact digest or Git object
+  change-map.log: 360fc8cc3e4deeaf08728d9a13f0e41a370f1b15e100de29b5ce20f8046e96db # pragma: allowlist secret - verified artifact digest or Git object
+  classifier-guilt.log: aa61bc50228442dd454abeb50dadecffe84449ead82a73ab4b632a19bb0cb3bc # pragma: allowlist secret - verified artifact digest or Git object
+  gemini-prompt.txt: 56fedf7ba1a98e14d7cc04d37c6531424a14e6af08787e57b8743f51acdc51c7 # pragma: allowlist secret - verified artifact digest or Git object
+  gemini-review.txt: 5a0fc05443d39d1a9caa8ad653e4ffc09eddc35a154f9121b0ec577ff4812911 # pragma: allowlist secret - verified artifact digest or Git object
+  gemini-stderr.txt: 3a7f8550106d86abb322e8ed0fb30a0296c0e97c6be03d5a8033b99d16737459 # pragma: allowlist secret - verified artifact digest or Git object
+  gemini-attempt1/gemini-prompt.txt: d27c4a8e3eb2d773c7b9514df4a0e02901a43a5e4867db515e4f7769d5400aba # pragma: allowlist secret - verified artifact digest or Git object
+  gemini-attempt1/gemini-review.txt: d24e910ee02db588ee561d11a2bb715e4109d679fcb03e87eab686e6486bf832 # pragma: allowlist secret - verified artifact digest or Git object
+  kimi-attempt1/review-run.json: 5fad18fde01a72fd3cd104d05c4fabe81bc37cf26d57e461f34b4d629a9c56d4 # pragma: allowlist secret - verified artifact digest or Git object
+  kimi-attempt2/review-run.json: e41ed8210d067a8edebf70835ce84fd15098fad40494ec7f82580ee715cb40a8 # pragma: allowlist secret - verified artifact digest or Git object
+review:
+  model: gemini-3.1-pro-high
+  scope: final delta; prior full PASS separately recorded
+  started: "2026-09-05T14:05:04.762Z"
+  finished: "2026-09-05T14:06:06.386Z"
+  exit: 0
+  prompt_sha256: 56fedf7ba1a98e14d7cc04d37c6531424a14e6af08787e57b8743f51acdc51c7 # pragma: allowlist secret - verified artifact digest or Git object
+  stdout_sha256: 5a0fc05443d39d1a9caa8ad653e4ffc09eddc35a154f9121b0ec577ff4812911 # pragma: allowlist secret - verified artifact digest or Git object
+  stderr_sha256: 3a7f8550106d86abb322e8ed0fb30a0296c0e97c6be03d5a8033b99d16737459 # pragma: allowlist secret - verified artifact digest or Git object
+prior_full_review:
+  model: gemini-3.1-pro-high
+  started: "2026-09-05T13:57:38.799Z"
+  finished: "2026-09-05T14:02:16.466Z"
+  exit: 0
+  prompt_sha256: d27c4a8e3eb2d773c7b9514df4a0e02901a43a5e4867db515e4f7769d5400aba # pragma: allowlist secret - verified artifact digest or Git object
+  stdout_sha256: d24e910ee02db588ee561d11a2bb715e4109d679fcb03e87eab686e6486bf832 # pragma: allowlist secret - verified artifact digest or Git object
+  stderr_sha256: 3a7f8550106d86abb322e8ed0fb30a0296c0e97c6be03d5a8033b99d16737459 # pragma: allowlist secret - verified artifact digest or Git object
+prior_full_review_sources:
+  apps/mouth/src/i18n/secondhome-backend-patterns.ts: 0b21a846575a6fc5b9fbeded17e8f4a7266296e89b44502571733b496a379879 # pragma: allowlist secret - verified artifact digest or Git object
+  apps/mouth/src/i18n/secondhome-backend-patterns.test.ts: 74efce42ec51c70ea1a9276f657002477bd131d9d36172f5d8d66f9175775cf8 # pragma: allowlist secret - verified artifact digest or Git object
+  apps/mouth/src/i18n/secondhome-article-claims.test.ts: e9b04e0d567a56a502d8375138ce0da6b73290fa394a2d9d0d1786f61a8ce550 # pragma: allowlist secret - verified artifact digest or Git object
+  apps/mouth/src/i18n/secondhome-article-claims.baseline.json: 7f2918ae2100a62283900bf5ba60a718e4b72d31ddd885b73788205b188d9100 # pragma: allowlist secret - verified artifact digest or Git object
+  scripts/ci/change_map.py: 9e1027f7a093e451d1ed35bd7db70986233418834099ffb8f03e48ca70ea5d0e # pragma: allowlist secret - verified artifact digest or Git object
+  scripts/ci/test_change_map.py: 3076a17f25f36d848b27dc9f0c63edf87b3538a7028b847055adad23123b0470 # pragma: allowlist secret - verified artifact digest or Git object
+  apps/backend-rag/backend/services/visa_check/e33_claim_guard.py: e5b4fc44926e6f63c605fa6ed340936c8fb1d73d01c986b9281130604837b6dd # pragma: allowlist secret - verified artifact digest or Git object
+  apps/mouth/src/i18n/secondhome-forbidden-claims.test.ts: 9911f5eeb9fe5447c82b44e62ed266588c0f099d021f968d1431549ad9a64f31 # pragma: allowlist secret - verified artifact digest or Git object
+review_disposition:
+  previous_parser_accepts_reordered_factory_arguments: true
+  final_parser_rejects_reordered_factory_arguments: true
+  separate_named_export_statement_is_innocent: true
+previous_review_attempts:
+  - started: "2026-09-05T13:46:45.337Z"
+    finished: "2026-09-05T13:51:47.479Z"
+    exit: 143
+    error: spawnSync /Users/balizero/.local/bin/kimi ETIMEDOUT
+    prompt_sha256: 94d4dec1eb7e02a4c45f9acc3923b57cd26d2a37b7bd7fb9249df702096edff8 # pragma: allowlist secret - verified artifact digest or Git object
+    stdout_sha256: 795a31928d1c48e2402e6f73c8b02353f2822098654db58fc650860e31e6de6d # pragma: allowlist secret - verified artifact digest or Git object
+    stderr_sha256: f0a8e6c33dcff02df23f06da0be8f48b55d5c32cab3652bb8c423520e97cdff8 # pragma: allowlist secret - verified artifact digest or Git object
+  - started: "2026-09-05T13:52:13.349Z"
+    finished: "2026-09-05T13:57:16.389Z"
+    exit: 143
+    error: spawnSync /Users/balizero/.local/bin/kimi ETIMEDOUT
+    prompt_sha256: f402e9d2395278b33c4d39b9bce6eb1b0f860fc6f3c9d279da06e78d899ebca2 # pragma: allowlist secret - verified artifact digest or Git object
+    stdout_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 # pragma: allowlist secret - verified artifact digest or Git object
+    stderr_sha256: a34cf2cc3fe20afc206e6f03f40a7f0e5fe65feea170a6dd487b52462e92d28a # pragma: allowlist secret - verified artifact digest or Git object
+previous_review_note:
+  Both Kimi attempts timed out at 300 seconds without a verdict; neither is counted
+  as review.
+diff:
+  source_additions: 398
+  baseline_additions_in_source: 134
+  evidence_additions: 267
+  total_additions: 665
+  total_deletions: 0

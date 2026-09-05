@@ -1,0 +1,15 @@
+gear: 3
+objective: Invoke the installed mouth compiler directly and accurately describe its required CI guard.
+constraints:
+  - Only the workflow invocation, its existing assertion, the module docstring and lane evidence change.
+  - Preserve routing, required context, matrix, conditions, order and failure behavior.
+acceptance:
+  - text: WHEN the required mouth leg runs, it SHALL use the repository-local tsc from apps/mouth.
+    probe: cd apps/mouth && ../../node_modules/.bin/tsc --noEmit
+  - text: WHEN a compiler step is removed or disarmed, the existing guard cases SHALL still fail.
+    probe: python -m pytest scripts/tests/test_required_context_map.py -q -p no:cacheprovider
+  - text: WHEN the PR describes parent routing, it SHALL state contracts-only run_all narrowed from six to three suggested jobs.
+    probe: python scripts/ci/test_change_map.py
+consumer_map:
+  - Required Frontend Tests (Next.js) (mouth, true) executes the local compiler.
+  - Required antidotes runs test_required_context_map.py from the candidate checkout.

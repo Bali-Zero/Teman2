@@ -1,0 +1,30 @@
+gear: 2
+objective: Extend the article lexical ratchet with the actual backend E33 vocabulary.
+scope:
+  - apps/mouth/src/i18n/secondhome-backend-patterns.ts
+  - apps/mouth/src/i18n/secondhome-backend-patterns.test.ts
+  - apps/mouth/src/i18n/secondhome-article-claims.test.ts
+  - apps/mouth/src/i18n/secondhome-article-claims.baseline.json
+  - scripts/ci/change_map.py
+  - scripts/ci/test_change_map.py
+constraints:
+  - Do not edit backend rules, articles, dictionaries, or dependencies.
+  - Reuse regex source strings only; do not claim backend context or negation parity.
+acceptance:
+  - text: WHEN a new backend-family article hit appears, the ratchet SHALL reject it.
+    probe: article-guilt-innocence
+  - text: WHEN source syntax or dictionary locale keys are unsupported, extraction SHALL fail.
+    probe: article-guilt-innocence
+  - text: The baseline SHALL preserve every existing allowance and use unchanged article blobs.
+    probe: corpus-identity
+  - text: A backend vocabulary edit SHALL select frontend CI, while sibling backend edits SHALL not.
+    probe: classifier-coupling
+  - text: The frontend SHALL typecheck without a Python runtime dependency.
+    probe: mouth-typecheck
+assumptions:
+  - assumption: Backend declarations keep the supported literal and tuple format.
+    status: verified
+    evidence: Independent Python AST comparison of all ten extracted source strings.
+consumer_map:
+  - Required mouth Vitest discovers the article and reader suites.
+  - Exact backend source routing selects frontend-tests through change_map.py.

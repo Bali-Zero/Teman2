@@ -1,0 +1,7 @@
+started: "2026-09-05T11:47:22.256211+00:00"
+finished: "2026-09-05T11:48:05.910491+00:00"
+model: kimi-code/k3
+exit: 0
+prompt_sha256: a753f71c9e5f1978808c3ca2e6956ba8d86d7d0eca10db8ed34867cfb247382a # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+answer_sha256: 055a9585a60a1ff8e74f2387d8f6861399d9f78c6f1ab021962a00176f7aa146 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+scope: Additive correction of two E2E disclosure interactions; full feature review remains in kimi-receipt.yml.

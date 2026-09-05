@@ -294,8 +294,7 @@ apps/mouth/
 ```bash
 # .env.local
 
-# Backend API
-NEXT_PUBLIC_API_URL=https://nuzantara-rag.fly.dev
+# Backend API (server only; src/app browser clients use the same-origin /api proxy)
 NUZANTARA_API_URL=https://nuzantara-rag.fly.dev
 
 # WebSocket
@@ -345,7 +344,8 @@ Or use Vercel dashboard/GitHub integration for automatic deployments.
 
 **Environment Variables (Vercel Dashboard):**
 
-- `NEXT_PUBLIC_API_URL` - Backend API URL (https://nuzantara-rag.fly.dev)
+- `NUZANTARA_API_URL` - Server-side backend URL (https://nuzantara-rag.fly.dev). Browser clients under `src/app` use `/api`, forwarded by `src/app/api/[...path]/route.ts`, to preserve same-origin authentication and CSRF handling. The guard scans `src/app` only; it does not cover browser references in `src/lib`, hooks, or transitive imports.
+- `NEXT_PUBLIC_API_URL` - Legacy fallback in server routes, after `NUZANTARA_API_URL`. Do not use it as a browser API base URL.
 - `NEXT_PUBLIC_FRONTEND_URL` - Frontend URL (https://www.balizero.com)
 - `SENTRY_DSN` - Error tracking
 
@@ -566,15 +566,17 @@ import { Toast } from "@/components/ui/toast";
 
 ### API Client Base
 
+`ApiClientBase` requires an explicit `baseUrl`; the constructor does not supply a default.
+
 ```typescript
-// /lib/api/client.ts
+// src/lib/api/client.ts (abridged)
 
 class ApiClientBase {
   protected baseUrl: string;
   protected token: string | null;
 
-  constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_API_URL;
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl;
     this.token = localStorage.getItem("auth_token");
   }
 

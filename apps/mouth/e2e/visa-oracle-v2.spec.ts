@@ -624,6 +624,12 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     );
     await page.goto("/visa-oracle");
     await expectEngineState(page, "SUPPORTED_CANDIDATES");
+    const contact = page.getByRole("button", {
+      name: "Talk to a consultant",
+      exact: true,
+    });
+    await expect(contact).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator("#oracle-consultant-panel")).toBeVisible();
 
     const consent = page.getByRole("checkbox", {
       name: /i consent to open whatsapp with a minimal visa oracle receipt/i,
@@ -656,6 +662,12 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     );
     await page.goto("/visa-oracle");
     await expectEngineState(page, "HUMAN_REVIEW_REQUIRED");
+    const contact = page.getByRole("button", {
+      name: "Talk to a consultant",
+      exact: true,
+    });
+    await expect(contact).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator("#oracle-consultant-panel")).toBeVisible();
 
     const guardian = page.getByRole("checkbox", {
       name: /i confirm that i am the parent or legal guardian/i,

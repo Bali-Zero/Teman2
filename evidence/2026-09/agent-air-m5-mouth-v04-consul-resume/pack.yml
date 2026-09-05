@@ -1,0 +1,147 @@
+brief_ref: evidence/brief.yml
+plan_ref: Owner three-product mandate, V04 persistent consultant contact and consent scope.
+dependency_base: 58e8b0b027a25f8e213414577f154f16599d7ce6 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+publication_gate: Dependency PR5762 merged; draft only. Fable owns independent gate, ready, arm and shipping.
+bites:
+  After hydration, Oracle visitors can contact a consultant in all interview phases. Actual verdicts start
+  with consent visible; interview stages start collapsed. Current64 component/store tests and four Pro desktop/mobile
+  handoff tests pass; three real mutations fail.
+lanes:
+  - lane: v04-consultant-contact
+    role: build
+    seat: Codex GPT-6 (exact runtime variant not exposed)
+  - lane: v04-current-diff-review
+    role: review
+    seat: kimi-code/k3
+seat_override:
+  The visa-oracle path triggers ground-truth review mechanically, but this change only connects existing
+  UI consent and disclosure behavior. It changes no immigration facts, eligibility, prices, legal claims, engine
+  rules or curated data. Ground truth is the existing consent contract and synthetic runtime checks; no new NotebookLM
+  claim is made.
+dissent: []
+pii_scan: clean
+review_status:
+  Kimi K3 PASS13:30:01Z on depth-1 correction; independent Fable re-gate pending on new corrective
+  head.
+diff:
+  behaviour_change:
+    One consultant handoff is available after hydration. It opens by default at an actual displayed
+    verdict and starts collapsed for consultation stages; users may still toggle it. Switching contexts remounts
+    the disclosure and requires fresh scope-specific consent. No pre-hydration consent is rendered before restored
+    facts are available. The redundant displayedOutcome condition is removed; existing leave/retry handlers clear
+    outcome. Known-minor guardian gating and fact-free WhatsApp messages remain.
+  size_reason:
+    Eight frontend source/test/style files form one concern. The two E2E cases assert the initially
+    open verdict disclosure while preserving all consent, guardian, link and QR assertions. Behavioral
+    regressions are retained despite the nominal size threshold.
+verification_scope:
+  host:
+    Air-M5 focused Vitest and full mouth TypeScript; current four desktop/Mobile Chrome cases on isolated Pro
+    Next16.3.3 development runtime.
+  source: Prepared ff60b29a transplant plus one depth-1 correction from reviewed headc3681053 per Fable12:4x ruling.
+  data: Synthetic fixtures only; no DB rows or outward messages.
+  source_sha256:
+    visa-oracle-v2.spec.ts: 988cb3d3ba91f7bb3ded8a72886c4d068445f92ad25f5257ca83d412a0b3ad4a # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+    ConsentHandoff.test.tsx: 72fb080dfde137405ef5af67c52cbfc7cbf0869b1747d73ce089d8097d1dce2d # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+    ConsentHandoff.tsx: f103350977d38e7d68ccea4d83029301b4e8270928bca708330b3a446b63453f # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+    OracleShell.test.tsx: 7ce8f36e8ba546efadf6ca152bbf430b2383fa014ee428f6928ef89778dafcce # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+    OracleShell.tsx: 99ece5884441cc45fe0938827327e03846de5cee3f8811017f98c21904be25ed # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+    consent-store.test.ts: a4ddc2bfbe39d6ebff523cf64ba8693ac37e1d1a60dea5605f26b8a0f3a3c8da # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+    consent-store.ts: d689c6cc3cfc26eee263193ca881e8a2524318905dfd2a1ccfe09c1ec35c0c8e # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+    oracle.css: c5afd727dcb9fd7b741738bc745451b4bee3bad4dc8f9065267c6dca1ea625cd # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  historical_browser_manifest: evidence/2026-09/agent-air-m5-mouth-v04-consul-resume/historical-browser-manifest.yml
+  current_targeted_browser: evidence/2026-09/agent-air-m5-mouth-v04-consul-resume/rework-probes.yml
+review_notes:
+  - Fable12:4x ruling explicitly restores verdict conversion visibility and removes the pre-hydration consent surface.
+    One corrective commit on the same draft branch.
+  - Original and c368 browser/CI receipts are historical pre-rework observations. Their collapsed-verdict behavior
+    is superseded here; original seven-source hash equality is not asserted for the current rework.
+  - Redundant displayedOutcome condition removed after tracing all outcome setters/leave/retry handlers; Kimi independently
+    agreed. Existing scope invalidation tests plus three real mutation proofs pass.
+  - Current source hashes match the reviewed input and isolated Pro snapshot. No merge, arm, deploy or final Fable
+    approval claimed.
+task_id: v04-consul-resume
+prior_receipts:
+  - claim:
+      Current regression files apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx,
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.test.tsx and apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/consent-store.test.ts
+      pass on fresh main transplant.
+    cmd:
+      cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx' 'src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.test.tsx'
+      'src/app/(visa-oracle)/visa-oracle/_lib/consent-store.test.ts' --maxWorkers=1
+    result: 62 passed in 3 files; .agent/v04-proof/innocence.log.
+    exit: 0
+    ts: "2026-09-05T11:26:05Z"
+    seat: Codex GPT-6 via local Vitest
+  - claim: A scope-comparison defect is caught across store, handoff and Shell.
+    cmd:
+      Temporarily replace sameConsentScope comparison with true; run same three suites; restore exact source and
+      rerun.
+    result: "Guilt: 6 failed, 56 passed; restored innocence: 62 passed. No mutation remains."
+    exit: 0
+    ts: "2026-09-05T11:26:05Z"
+    seat: Codex GPT-6 via local Vitest
+  - claim: Full frontend types compile on fresh main transplant.
+    cmd: npm run typecheck -w apps/mouth
+    result: tsc --noEmit, no diagnostics, exit 0.
+    exit: 0
+    ts: "2026-09-05T11:30:34.844764+00:00"
+    seat: Codex GPT-6 via local TypeScript
+  - claim: Kimi K3 reviewed the complete immutable source/test/style diff and returned PASS.
+    cmd: kimi -m kimi-code/k3 -p <.agent/v04-review-complete/prompt.txt>
+    result: PASS with non-blocking context/coverage notes; versioned kimi-review.txt and kimi-receipt.yml.
+    exit: 0
+    ts: "2026-09-05T11:34:21.124925+00:00"
+    seat: kimi-code/k3
+  - claim:
+      The two handoff browser cases reproduce the CI failure with original tests and pass after the real disclosure-opening
+      interaction.
+    cmd:
+      PLAYWRIGHT_EXTERNAL_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3434 node ../../node_modules/@playwright/test/cli.js
+      test e2e/visa-oracle-v2.spec.ts --project=chromium --grep "configured WhatsApp handoff|minor handoff" --workers=1
+      --retries=0 --reporter=list,json
+    result:
+      "Current Pro Chromium: corrected 2 pass, original tests 2 fail, exact corrected restoration 2 pass. No
+      retries or flakiness. Full mouth TypeScript exit0. Versioned e2e-browser-proof.yml and E2E Kimi PASS."
+    exit: 0
+    ts: "2026-09-05T11:53:03.627Z"
+    seat: Codex GPT-6 via Pro Playwright; independent test-diff review kimi-code/k3
+receipts:
+  - claim:
+      Current apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx,
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.test.tsx
+      and apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/consent-store.test.ts pass with verdict-default-open,
+      hydration and EN/ID guardian assertions.
+    cmd:
+      cd apps/mouth && node ../../node_modules/vitest/vitest.mjs run src/app/\(visa-oracle\)/visa-oracle/_components/OracleShell.test.tsx
+      src/app/\(visa-oracle\)/visa-oracle/_components/ConsentHandoff.test.tsx src/app/\(visa-oracle\)/visa-oracle/_lib/consent-store.test.ts
+      --maxWorkers=1
+    result:
+      64 passed in three suites. Closed verdict mutation3 fail, missing context key3 fail, pre-hydration contact1
+      fail. Restored64 pass. Actual mutation hashes in rework-probes.yml.
+    exit: 0
+    ts: "2026-09-05T13:27:14.575255+00:00"
+    seat: Codex GPT-6 via Vitest
+  - claim: Full frontend TypeScript compiles.
+    cmd: npm run typecheck -w apps/mouth
+    result: tsc --noEmit exit0, current source unchanged since review.
+    exit: 0
+    ts: "2026-09-05T13:29:02.848992+00:00"
+    seat: Codex GPT-6 via TypeScript
+  - claim: apps/mouth/e2e/visa-oracle-v2.spec.ts keeps consent and guardian behavior with no opening gesture at verdict.
+    cmd:
+      PLAYWRIGHT_EXTERNAL_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3436 node ../../node_modules/@playwright/test/cli.js
+      test e2e/visa-oracle-v2.spec.ts --project=chromium --project="Mobile Chrome" --grep "configured WhatsApp handoff|minor
+      handoff" --workers=1 --retries=0 --reporter=list,json
+    result:
+      "Pro: four real browser tests passed, desktop+Mobile Chrome, zero skipped/flaky/retries. Eight source
+      files match local hashes. Development runtime and synthetic API fixtures only."
+    exit: 0
+    ts: "2026-09-05T13:27:56.949Z"
+    seat: Codex GPT-6 via Pro Playwright
+  - claim: Independent review of the complete corrective source and relevant consent implementation.
+    cmd: kimi -m kimi-code/k3 -p <.agent/v04-rework/kimi/prompt.txt>
+    result: PASS, no material findings; rework-kimi-review.txt and receipt bind actual output.
+    exit: 0
+    ts: "2026-09-05T13:30:01.473644+00:00"
+    seat: kimi-code/k3
