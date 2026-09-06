@@ -356,6 +356,19 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "The filing window for this bridging route is tight. We check your dates with one of our advisors.",
     "Jendela pengajuan jalur peralihan ini sempit. Kami memeriksa tanggal Anda bersama konsultan kami.",
   ),
+  // The engine's own OPERATIONAL fallback, emitted when NO_SUPPORTED_PATH is
+  // reached with no named exclusion reason that belongs to this applicant
+  // (evaluator.py `_fallback_no_path_reason`). It used to be unreachable in
+  // practice — before the 2026-09-06 decisiveness reorder no interview walk
+  // ended in NO_SUPPORTED_PATH at all — and would have rendered as the raw
+  // `Verified reason: OPERATIONAL_...` code dump. It is now reachable, so it
+  // gets a sentence. Deliberately NOT phrased as a legal conclusion: it says
+  // no product COVERS the declared purposes, which is what the engine
+  // actually established.
+  OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES: text(
+    "No visa in our verified catalogue covers the purpose you described. Bali Zero can review your case and suggest what to do next.",
+    "Tidak ada visa dalam katalog terverifikasi kami yang mencakup tujuan yang Anda sebutkan. Bali Zero dapat meninjau kasus Anda dan menyarankan langkah selanjutnya.",
+  ),
 };
 
 function reasonMessage(code: string): LocalizedText {
