@@ -131,6 +131,41 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
 
+- 2026-09-06 (M5, consul session — seq-20 SIGNED + ACTIVATED): **SEQ-20 IS THE ACTIVE PRODUCTION
+  PACK, under ENFORCE.** seq-20 = seq-19 + the five decisiveness edits of fold PR #5854
+  (`dc7189f4`): stay-day caps raised to the lawful extendable total on 22 rules,
+  `review.e33g.income-evidence` retired, the eight `family.sponsor_status_code` rules made
+  `NO_EFFECT`, a `known` premise conjoined onto the four BRIDGING rules, and CL-D2-01 compiled as
+  the new EXCLUDE `hf.d2.indonesia-source-compensation`. Signed on M5 (`sign_pack.py` offline, kid
+  `prod-2026-07-1`, `signed_at 2026-09-06T14:59:27.320080Z`, payload_sha256
+  `df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d`, rule_pack_id
+  `ac0a792d-a38d-512e-9ead-54a5d008fb68`, version `2026.9.6`, 109 rules, previous
+  `bac5da8e…`); digest re-verified UNCHANGED after `prettier --write`, and the signed payload is
+  byte-identical to `rulepack-prod-020.source.json` under JCS. **Activated** with
+  `activate_pack.py --yes`, actor `consul-session-m5`, reason `seq20-decisiveness-260906`,
+  `activation_id e08ebea9-d50f-48a6-989e-b7e4698f96ad`; two DISTINCT ephemeral logins
+  (`visa_pack_writer_ceremony_260906c`, `visa_activation_ceremony_260906c`, `VALID UNTIL` +3h)
+  minted and dropped by the session on the PG primary `0801696b541568`, leftover 0, tunnel and
+  `flyctl proxy` closed on both M5 and Pro.
+  **PROVE-LIVE** (`probe_evaluate.py --traffic-source synthetic_driver`, walks replayed from the
+  PR-0 corpus): prod answers `sequence=20 version=2026.9.6 rule_pack_id=ac0a792d…`;
+  `offshore/tourism` and `onshore/tourism` now return `SUPPORTED_CANDIDATES` where seq-19
+  dead-ended; `offshore/business` and `offshore/remote` still `NEEDS_INPUT` — PR-2/PR-3's mandate,
+  not a regression. Walk census re-measured on the signed pack: **36 dead ends / 7 answers →
+  21 / 22**.
+  **ORDER NOTE, recorded because it inverts the wave spec:** the ceremony ran BEFORE the bundle
+  PR landed, on Zero's explicit instruction. The window was closed by verifying that the blob
+  committed in that PR is byte-identical to the artifact already live (same digest, same
+  `rule_pack_id`) — never by assuming it.
+  **CEREMONY GOTCHAS measured this run, all new since seq-19.** (1) The two ephemeral roles
+  CANNOT `SELECT` `visa_ruleset_activations` — least privilege is real, so "exactly one open
+  activation" must be confirmed through the readonly role or through the live probe, never
+  through the ceremony logins. (2) Fly auth lives ONLY on Pro: `flyctl` on M5 is a shell function
+  that proxies over ssh, and the real binary (`/opt/homebrew/bin/flyctl`) has no token on either
+  M5 or Mini — so Pro being offline blocks the whole ceremony. (3) Killing the local `ssh` that
+  started `flyctl proxy` does NOT kill the proxy on Pro; it survived and had to be killed
+  remotely by PID. Check with `ssh pro "pgrep -fl 'flyctl proxy'"` before declaring cleanup done.
+
 - 2026-09-06 (M5, owner decision — ENFORCE + GARUDA VOA public): **this is an owner decision
   recorded by the session, not a session-inferred authorization.** (1) Production evaluate mode
   measured `mode='ENGINE'` at 01:1xZ via `probe_evaluate.py` (was `CURATED`), rule pack seq-19

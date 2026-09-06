@@ -6,18 +6,24 @@ objective: >-
   evaluate_product returned BLOCKED_UNKNOWN from an input-tagged hard-filter/review unknown
   BEFORE it ever asked whether the product could cover the applicant's declared purposes.
   evaluate then picks the globally-asked question with min(blocked, key=len(missing_facts)),
-  so the cheapest blocked proof wins -- and nine seq-19 products carry ZERO SUPPORT rules
+  so the cheapest blocked proof wins -- and nine products carry ZERO SUPPORT rules
   (E23U, E23V, E28B, E28C, E28D, E28F, E33A, E33B, E33C), which makes their one-fact proof
   the cheapest one in the pack for everybody. Hoist the purpose-feasibility test above that
-  block and delete the now-duplicated copy below it. +17 net lines in evaluator.py.
+  block and delete the now-duplicated copy below it.
 
-  Measured offline against the signed rulepack-prod-019 through verify -> compile -> evaluate
-  -> apply_public_policy_adapters, replaying the 43 real interview walks: NEEDS_INPUT 36 -> 13,
-  SUPPORTED 7 -> 7 (byte-identical candidates), NO_SUPPORTED_PATH 0 -> 23. All five sponsor.type
-  dead ends and the intent.requested_product_code dead end vanish with no interview change.
-  The 20 canonical gold personas show ZERO DecisionState and ZERO candidate changes; one field
-  moves, persona #13's missing_facts, from a zero-support product's sponsor.type to the fact
-  #13's own fixture declares as expected_missing.
+  Measured offline through verify -> compile -> evaluate -> apply_public_policy_adapters,
+  replaying the 43 real interview walks against the HIGHEST SIGNED PACK ON DISK, which is now
+  rulepack-prod-020.signed.json (#5867, ACTIVE in production under ENFORCE): NEEDS_INPUT
+  21 -> 11, NO_SUPPORTED_PATH 0 -> 10, SUPPORTED_CANDIDATES 22 -> 22 with the candidate lists
+  BYTE-IDENTICAL. The ten cured walks were blocked on process.wants_onshore_conversion (7),
+  investment.{investment,paid_up}_capital_idr (2) and sponsor.type (1), every one of them on
+  behalf of a product that cannot cover the walk's declared purposes under any fact
+  resolution; the eleven that remain are the nine family.sponsor_confirmed walks (C2 is a
+  product these applicants really are shopping for -- supplying the fact answers all nine) and
+  the two diaspora walks, both PR-3's mandate. The 20 canonical gold personas show ZERO
+  DecisionState and ZERO candidate changes; one field moves, persona #13's missing_facts, from
+  a zero-support product's sponsor.type to the fact #13's own fixture declares as
+  expected_missing.
 
   Spec: research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md section 4 PR-2,
   cure (a), owner-ruled 2026-09-06.
@@ -44,7 +50,21 @@ objective: >-
   unconditionally, so those asserts passed whatever the mutation did.
   (3) The precedence module's skipif no longer disables the hand-built-pack tests, which need
   no pack on disk at all.
-  (4) The census is re-pinned to what this reorder measures on seq-19.
+  (4) The census is re-pinned to what this reorder measures.
+
+  SEQ-20 REBASE, round 3 (2026-09-07). origin/main moved while this PR sat in draft: #5854
+  folded seq-20, #5867 landed the SIGNED seq-20 bundle, and seq-20 is now ACTIVE in production.
+  test_interview_walk_census.py reads "the highest signed pack", so its pin was measured against
+  a pack the tests no longer read. origin/main is MERGED IN (a merge commit, not a rebase) and
+  every number this PR pins is RE-MEASURED against seq-20 with this evaluator change applied.
+  The main side of the census conflict was taken as authoritative and then re-derived; this
+  branch's two structural contributions to that file -- the _scoped_allowlist/_scoped_expectation
+  helpers that cure the PR-0 vacuity finding, and the outcome-pin half of the lost-answer guilt
+  test -- are preserved. Three of the four census guilt tests are RE-ANCHORED because seq-20 plus
+  this reorder cured their previous subjects: a guilt test that passes vacuously is worse than no
+  test, so each now rides a walk that is still a dead end and says why it moved. Nothing is
+  loosened: no count became a range, no assertion was deleted, no skip or xfail was added, and
+  the allowlist shrank by DELETING cured rows rather than by widening a comparison.
 constraints:
   - >-
     The reorder must not be able to fail open, and that must be a measurement rather than an
@@ -76,10 +96,16 @@ constraints:
     says seq-19 must not regress against seq-18 -- test_match_set_and_count_are_unchanged_end_to_end
     -- is untouched and green.
   - >-
-    The real-pack witnesses pin rulepack-prod-019 EXPLICITLY, not "the highest pack on disk".
-    seq-20 legitimately changes what these personas are eligible for (it raises the visit-visa
-    stay-day caps); this file is a witness on the evaluator's ORDERING, not on any pack's content,
-    and must not drift with the active pack.
+    Two files read a pack, and they must read DIFFERENT ones, deliberately.
+    test_evaluator_purpose_feasibility_precedence.py pins rulepack-prod-019 EXPLICITLY, because it
+    is a witness on the evaluator's ORDERING and not on any pack's content: seq-20 legitimately
+    changes what those personas are eligible for (it raises the visit-visa stay-day caps), so
+    following the active pack would let a fold silently rewrite what this file proves.
+    test_interview_walk_census.py is the opposite kind of file -- it measures what the LIVE funnel
+    answers -- so it reads "the highest signed pack on disk" and must be RE-DERIVED, never
+    hand-edited, whenever that pack changes. Both were verified against seq-20 in this round: the
+    precedence file's 21 tests run and pass with none skipped, and the census's four tables were
+    regenerated from a measurement run.
 acceptance:
   - >-
     WHEN a product whose only SUPPORT rule covers STUDY is evaluated for a TOURISM applicant with
@@ -119,8 +145,28 @@ acceptance:
     noise. Measured 2026-09-06 on a scratch copy, restored. probe:
     pytest backend/tests/services/visa_engine/test_interview_walk_census.py
   - >-
-    WHEN rulepack-prod-019.source.json is renamed on disk, THEN the nine hand-built-pack
-    precedence tests still RUN (only the eight seq-19 witnesses skip) -- before this PR all
-    seventeen skipped silently. Measured 2026-09-06 on a scratch copy, restored. probe:
+    WHEN rulepack-prod-019.source.json is renamed on disk, THEN the hand-built-pack
+    precedence tests still RUN (only the seq-19 witnesses skip) -- before this PR the whole
+    module skipped silently. Measured 2026-09-06 on a scratch copy, restored. probe:
     pytest backend/tests/services/visa_engine/test_evaluator_purpose_feasibility_precedence.py
+  - >-
+    WHEN the 43 walks are replayed against rulepack-prod-020.signed.json -- the highest signed
+    pack, and the one ACTIVE in production -- THEN the census is 11 NEEDS_INPUT / 10
+    NO_SUPPORTED_PATH / 22 SUPPORTED_CANDIDATES, and the 22 SUPPORTED rows are byte-identical to
+    what the SAME corpus produces on the SAME pack with this PR's evaluator change reverted
+    (21/0/22, the number #5867 pinned on main). Measured both ways 2026-09-07 by swapping in
+    origin/main's evaluator.py on a backed-up copy and restoring it, hash-verified. That
+    equality is the fail-open floor: the reorder can move a walk DOWN the precedence table and
+    nothing else. probe:
+    pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+  - >-
+    WHEN a census guilt test's subject is cured by this PR, THEN it is RE-ANCHORED onto a walk
+    that still fails rather than left to pass vacuously, and the docstring names both the old
+    anchor and why it died. Three moved this round: the moved-block witness rides
+    offshore/invest/pt_pma + family.sponsor_confirmed=false (block moves to
+    process.wants_onshore_conversion, measured); the stale-row witness rides the LIVE
+    offshore/invest/pt_pma allowlist row through _scoped_allowlist, so PR-3 deleting that row
+    turns this test red instead of leaving a fabricated copy alive; the unlisted-fact witness
+    rides offshore/work, which answers and therefore carries no row -- the branch under test.
+    probe: pytest backend/tests/services/visa_engine/test_interview_walk_census.py
 pii_scan: clean

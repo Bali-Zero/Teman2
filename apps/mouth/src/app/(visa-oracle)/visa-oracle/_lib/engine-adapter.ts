@@ -339,6 +339,15 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "This route requires official proof of the parents' legally registered marriage. Without a registered marriage, this visa is not available.",
     "Jalur ini memerlukan bukti resmi perkawinan orang tua yang tercatat secara sah. Tanpa perkawinan tercatat, visa ini tidak tersedia.",
   ),
+  // EXCLUDE code (hf.d2.indonesia-source-compensation, seq-20). The seq-20
+  // fold compiles CL-D2-01's local-compensation prohibition for the first
+  // time, so this code reaches the NO_SUPPORTED_PATH sheet through the same
+  // `reasonMessage` fallback as every other reason — without this entry the
+  // raw code would render at a real reader.
+  BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED: text(
+    "A business visit visa does not allow payment from an Indonesian source. Paid activity in Indonesia needs a work route.",
+    "Visa kunjungan bisnis tidak mengizinkan pembayaran dari sumber di Indonesia. Aktivitas berbayar di Indonesia memerlukan jalur kerja.",
+  ),
   D12_CUMULATIVE_STAY_ADVISOR_CHECK: text(
     "Long or repeated stays are counted cumulatively. We check your total against the limit with one of our advisors.",
     "Masa tinggal panjang atau berulang dihitung secara kumulatif. Kami memeriksa total Anda terhadap batasnya bersama konsultan kami.",
