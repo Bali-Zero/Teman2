@@ -1,0 +1,90 @@
+task_id: oracle-evaluator-purpose-feasibility
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  evaluate_product returned BLOCKED_UNKNOWN from an input-tagged hard-filter/review unknown
+  BEFORE it ever asked whether the product could cover the applicant's declared purposes.
+  evaluate then picks the globally-asked question with min(blocked, key=len(missing_facts)),
+  so the cheapest blocked proof wins -- and nine seq-19 products carry ZERO SUPPORT rules
+  (E23U, E23V, E28B, E28C, E28D, E28F, E33A, E33B, E33C), which makes their one-fact proof
+  the cheapest one in the pack for everybody. Hoist the purpose-feasibility test above that
+  block and delete the now-duplicated copy below it. +17 net lines in evaluator.py.
+
+  Measured offline against the signed rulepack-prod-019 through verify -> compile -> evaluate
+  -> apply_public_policy_adapters, replaying the 43 real interview walks: NEEDS_INPUT 36 -> 13,
+  SUPPORTED 7 -> 7 (byte-identical candidates), NO_SUPPORTED_PATH 0 -> 23. All five sponsor.type
+  dead ends and the intent.requested_product_code dead end vanish with no interview change.
+  The 20 canonical gold personas show ZERO DecisionState and ZERO candidate changes; one field
+  moves, persona #13's missing_facts, from a zero-support product's sponsor.type to the fact
+  #13's own fixture declares as expected_missing.
+
+  Spec: research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md section 4 PR-2,
+  cure (a), owner-ruled 2026-09-06.
+
+  Gear 2 by SIZE, deterministically: --print-floor returns 2 and --print-floor-source returns
+  "size" on this changed-file list with the numstat supplied (4 files, +656/-47). No hot-zone
+  path is touched. The evaluator change itself is 17 net lines; the size comes from the
+  guilt-and-innocence battery, which is the point -- cure (a) was chosen over the two
+  alternatives precisely because "it cannot fail open" is checkable, and the checks are what
+  make it so.
+constraints:
+  - >-
+    The reorder must not be able to fail open, and that must be a measurement rather than an
+    argument. The hoisted block's only possible return is UNSUPPORTED, so it can neither
+    manufacture a candidate nor silence a gate; every EXCLUDED and REVIEW return -- including
+    the on_unknown=HUMAN_REVIEW escalation, which is review-tagged and resolved further up --
+    already ran above the block it moved past. Four precedence tests pin exactly that, each on
+    a product that IS purpose-infeasible so the hoisted return is reachable and only precedence
+    keeps it from winning.
+  - >-
+    on_unknown=NEEDS_INPUT must not degrade into a no-op. Wherever the product COULD cover the
+    declared purposes the unknown gate still asks -- including the case where the product's own
+    SUPPORT rule is itself UNKNOWN, because naive_potential_coverage is the OPTIMISTIC union and
+    a merely-unproven coverage is not an impossible one.
+  - >-
+    No fact may be invented to remove a blocker. Section 6 R2 refutes a KNOWN sentinel for
+    intent.requested_product_code (it manufactures BRIDGING support through four neq-guarded
+    SUPPORT rules) and R4 refutes defaulting sponsor.type to NONE. This PR removes both blockers
+    without touching either fact, and touches no signed pack content at all.
+  - >-
+    Guilt AND innocence, both directions (superscar #3). Seven of the new tests fail on the
+    unpatched evaluator; ten pass on both. The two seq-9 witnesses whose incidental proof SHAPE
+    moved are REVISED, never deleted: each keeps its own stated safety assertion (is not
+    EXCLUDED / is not REVIEW) as its first line and gains a "no reason code may be manufactured
+    from an UNKNOWN" assertion.
+  - >-
+    The gold baseline moves 5/20 -> 6/20 and the justification in the diff is a NAMED PERSONA
+    with its own fixture quoted, never the new number (generator is never grader). The floor that
+    says seq-19 must not regress against seq-18 -- test_match_set_and_count_are_unchanged_end_to_end
+    -- is untouched and green.
+  - >-
+    The real-pack witnesses pin rulepack-prod-019 EXPLICITLY, not "the highest pack on disk".
+    seq-20 legitimately changes what these personas are eligible for (it raises the visit-visa
+    stay-day caps); this file is a witness on the evaluator's ORDERING, not on any pack's content,
+    and must not drift with the active pack.
+acceptance:
+  - >-
+    WHEN a product whose only SUPPORT rule covers STUDY is evaluated for a TOURISM applicant with
+    an unknown safety-critical sponsor.type gate, THEN the proof is UNSUPPORTED with
+    missing_purposes={TOURISM} and missing_facts empty -- it asks nothing. probe:
+    pytest backend/tests/services/visa_engine/test_evaluator_purpose_feasibility_precedence.py -k Mechanism
+  - >-
+    WHEN the same product is evaluated for a STUDY applicant, THEN it still returns
+    BLOCKED_UNKNOWN naming sponsor.type -- on_unknown=NEEDS_INPUT still asks wherever the product
+    could be recommended. probe: -k still_blocks_on_its_gate_unknown
+  - >-
+    WHEN the gate is TRUE, or is a review rule, or carries on_unknown=HUMAN_REVIEW, THEN the proof
+    is EXCLUDED / REVIEW / REVIEW respectively even though the product is purpose-infeasible.
+    probe: -k SafetyPrecedenceIsUnchanged
+  - >-
+    WHEN a business applicant (BUSINESS_MEETINGS, 121 days, no sponsor) is evaluated against
+    seq-19 with investment capital facts unknown, THEN the decision is NO_SUPPORTED_PATH with no
+    missing facts, and supplying both investment facts yields the same state -- proof the retired
+    question could never have changed the answer. probe: -k SignedSeq19Witnesses
+  - >-
+    WHEN the 20 canonical gold personas are replayed against seq-18 and seq-19, THEN no
+    DecisionState and no candidate set changes, and persona #13 is NEEDS_INPUT on
+    work.serves_indonesian_clients on both packs. probe:
+    pytest backend/tests/services/visa_engine/test_seq19_pack.py backend/tests/services/visa_engine/test_evaluator_gold.py
+pii_scan: clean
