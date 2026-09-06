@@ -4,6 +4,16 @@ Audit basis: immutable seed `687075491cccf496a66da657ed4b16c31d87db41`. The impo
 
 Deletion must follow verified consumer adoption; selector removal is never bundled into the primitive dependency commit.
 
+## Bare shell selectors to narrow before adoption
+
+The seed contains element-wide `header` and `nav` rules that are actually owned by the homepage shell. They must be narrowed before `SectionHeading` can be rendered safely:
+
+- `header` at `globals.css:175`, its mobile override at `globals.css:831`, its background override at `globals.css:1061`, and later responsive overrides at `globals.css:2780` apply an 88px sticky navigation bar to every semantic header;
+- `header .brand img`, `header .account`, `header .account-brand`, and `header nav` are shell descendants and should be rooted at `.site-header`;
+- bare `nav` and `nav a:last-child` at `globals.css:192` and `globals.css:840-844` should target `.entry-navigation` so future route navigation is not restyled accidentally.
+
+`SectionHeading` deliberately renders a semantic `<header>` around its heading group, so resetting these declarations inside the primitive would hide the global ownership error and make CSS order significant. The coordinator-owned fix is to narrow the shell selectors to `.site-header` and `.entry-navigation`; this lane must not edit `globals.css`.
+
 ## Shared selectors to adopt first
 
 | Legacy selector | Current consumers | Adopt with | Coordinator deletion gate |
