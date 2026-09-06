@@ -29,56 +29,141 @@ shared with the CRM clients/partners surfaces, where the read-only accounting
 viewer legitimately belongs and where a partner's own colleagues may need to
 appear. Only the GARUDA assignment dropdown needs the narrower set.
 
+CONTRACT — the two properties this module owes, pinned as an executable
+property test (`test_candidate_selection_is_complete_and_sound`), not as prose:
+
+  C1 COMPLETENESS. For every ACTIVE `team_members` row that
+     `is_valid_garuda_assignment_target` accepts, its normalized email IS
+     offered. Dropping an accepted target is the defect this module exists to
+     end: the picker shows a colleague who cannot be picked, and a practice
+     already assigned to them renders as "not assignable" over an assignment
+     the gate would have accepted.
+  C2 SOUNDNESS. Every offered email is one the validator accepts, so
+     `listed ∩ refused = ∅` and no option in the picker can produce a 422.
+
 **This module does not restate the predicate — it CALLS it**, once per
-candidate row. `listed ∩ refused = ∅` therefore holds by construction, and
-keeps holding when the predicate changes under it (PR #5817 is turning
-`service_accounts.is_human_team_member` from a denylist into a census
-allow-list at the time of writing): an enumeration that copied the rule would
-drift the day the rule moves, one that asks cannot. The same reasoning is why
+candidate row, so C2 holds by construction and keeps holding when the predicate
+changes under it (`is_human_team_member` became a census allow-list in #5817
+while this was being written): an enumeration that copied the rule would drift
+the day the rule moves, one that asks cannot. The same reasoning is why
 `staff_auth._is_staff_role` delegates instead of keeping its own exclusion set.
 
-Cost: one candidate query plus one point query per candidate row (~25 active
-non-client rows against 525 active ``client`` rows, per the census above), on a
-response the UI holds for 5 minutes. Cheap enough not to need a cache of its
-own, and no cache means no second place to invalidate.
+WHY CANDIDATE SELECTION IS PYTHON, NOT SQL. C1 is the property that failed
+twice, both times for the same reason: a `WHERE` clause has its own idea of
+equality and normalization, and it disagreed with the validator's.
+
+* Round 1 (codex Gear-2 grade of 0ead993f3b1b, finding 1 MEDIUM): the query
+  filtered on role alone, but the validator accepts an admin email BEFORE it
+  reads any role — so active admin rows whose role was ``client``/``monitoring``
+  were dropped, and NULL roles were dropped because `role <> ALL(...)` is
+  UNKNOWN in SQL's three-valued logic and `WHERE` discards UNKNOWN.
+* Round 2 (same grader, cure head 2ec67edde2): the arm added to fix that
+  compared `LOWER(email) = ANY($2)`, but `LOWER` does not trim, while the
+  validator normalizes with `.strip().lower()` — so an admin row stored with
+  surrounding spaces was still dropped. Its verdict: the fix-of-a-fix had
+  reached depth 1, so the correction loop was to be suspended and the contract
+  pinned before implementing against it. That is what this file is.
+
+Two rounds, one cause: a second normalization living in SQL. So there is no
+second normalization any more. The query is `WHERE active = TRUE` and nothing
+else — no role predicate, no email predicate, no three-valued logic to model —
+and the narrowing happens in `_candidate_email`, in the same language as the
+validator, reading both authorities (`non_human_roles_sql_array()` and
+`garuda_practice_admin_emails()`) instead of copying either. A test fake now has
+to model one trivial query rather than SQL's comparison semantics, which is what
+let the round-2 divergence hide: the fake stripped emails the way Python does,
+and SQL did not.
+
+Cost, measured against the census above rather than assumed: the query now
+returns every active row (~550, of which 525 are ``client``) instead of ~25, and
+the validator is still called once per surviving candidate, so the round-trip
+count through the Fly proxy is unchanged. The price is transferring a few
+hundred small rows on a response the UI holds for 5 minutes; what it buys is the
+removal of the surface that produced both findings. Skipping the ``client`` rows
+before the validator sees them is still worth that transfer, because asking the
+validator about 525 clients would mean 525 extra round-trips.
 
 Known boundary, stated rather than left silent: candidates come from
-`team_members`, so an email in `staff_auth._garuda_practice_admin_emails()`
-that has NO active row there is accepted by the validator but not offered here.
-The census shows every admin-class role (``founder``, ``ceo``, ``board member``)
-holding an active row, so the set is empty today; widening the candidate query
-to union the admin constant would mean either importing that private helper or
-restating it — a second copy of a policy set, which is the exact drift this
-module exists to avoid.
+`team_members`, so an admin email with NO active row there is accepted by the
+validator but not offered here — there is no name to show and no row to order
+by. The census shows every admin-class role (``founder``, ``ceo``, ``board
+member``) holding an active row, so that set is empty today, and
+`test_admin_boundary_is_the_documented_one` pins the behaviour instead of
+leaving it to chance.
 """
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from typing import Any
 
 import asyncpg
 
 from backend.app.utils.service_accounts import non_human_roles_sql_array
-from backend.services.garuda_portal.staff_auth import is_valid_garuda_assignment_target
+from backend.services.garuda_portal.staff_auth import (
+    garuda_practice_admin_emails,
+    is_valid_garuda_assignment_target,
+)
 
 __all__ = ["list_garuda_assignment_targets"]
 
-#: PERFORMANCE PREFILTER, never the authority. `NON_HUMAN_ROLES`
-#: ({``client``, ``monitoring``}) is a subset of everything
-#: `is_valid_garuda_assignment_target` refuses — both roles are in
-#: `NON_TEAM_ROLES` today, and neither is a team role under the census
-#: allow-list PR #5817 introduces — so dropping them here cannot drop a row the
-#: validator would accept. It exists because `team_members` holds 525 active
-#: `client` rows next to ~25 staff rows, and asking the validator about a
-#: client is a wasted query. The validator still sees every remaining row and
-#: is still the only thing that decides.
-_CANDIDATE_SQL = """
+#: The ONLY query this module makes for candidates, and deliberately the whole
+#: of its SQL semantics: every active row, nothing filtered. See the module
+#: docstring's "WHY CANDIDATE SELECTION IS PYTHON, NOT SQL" — two independent
+#: grade rounds found the validator and a `WHERE` clause disagreeing about
+#: roles and about email normalization, so the narrowing moved to
+#: `_candidate_email`, where the validator's own idiom can be used and tested.
+_ACTIVE_ROSTER_SQL = """
     SELECT email, name, full_name, role
       FROM team_members
      WHERE active = TRUE
-       AND role <> ALL($1::text[])
      ORDER BY name ASC
 """
+
+
+def _normalized_email(value: Any) -> str:
+    """`staff_auth`'s own email idiom — `(email or "").strip().lower()`, the
+    exact expression `is_valid_garuda_assignment_target` opens with — kept in
+    one place in this module because C1 depends on the enumeration and the
+    validator agreeing about what the same stored string MEANS. Round 2 is what
+    happens when they do not: SQL's `LOWER` does not trim, Python's `.strip()`
+    does, and an admin row stored with surrounding spaces vanished from the
+    picker while the validator would have accepted it.
+    """
+    return value.strip().lower() if isinstance(value, str) else ""
+
+
+def _candidate_email(
+    row: Any,
+    admin_emails: Collection[str],
+    excluded_roles: Collection[str],
+) -> str | None:
+    """The normalized email of a row worth asking the validator about, or None.
+
+    Narrowing only, never deciding — the validator still sees every row this
+    returns True for, so an error here can only cost a wasted query (C2 is
+    untouched) while an error in the OTHER direction costs a colleague their
+    place in the picker (C1). Every branch is therefore written to be too
+    generous rather than too strict:
+
+    * an admin email is a candidate whatever its role, mirroring the order the
+      validator itself uses (admin shortcut BEFORE any role or row lookup);
+    * a NULL or empty role is a candidate — `None not in {...}` is False in
+      Python, where the same row was UNKNOWN and dropped in SQL — and the
+      validator refuses it, so nothing is offered that should not be;
+    * a role is compared RAW, exactly as the denylist holds it: ``'Client'`` or
+      ``'client '`` stays a candidate and is refused downstream by the
+      validator's own `normalize_role`. Case-folding here would be a third
+      opinion about what a role string means.
+    """
+    email = _normalized_email(row["email"])
+    if not email:
+        return None
+    if email in admin_emails:
+        return email
+    if row["role"] in excluded_roles:
+        return None
+    return email
 
 
 def _base_label(row: Any, email: str) -> str:
@@ -102,14 +187,18 @@ async def list_garuda_assignment_targets(conn: asyncpg.Connection) -> list[dict[
     person picking one, and picking wrong assigns a practice to the wrong
     colleague.
     """
-    rows = await conn.fetch(_CANDIDATE_SQL, non_human_roles_sql_array())
+    # Both authorities are read at CALL time and never cached here, so this
+    # function and the validator cannot disagree about who is an admin or which
+    # roles are non-human: one source each, read per request, same answer.
+    admin_emails = frozenset(garuda_practice_admin_emails())
+    excluded_roles = frozenset(non_human_roles_sql_array())
+    rows = await conn.fetch(_ACTIVE_ROSTER_SQL)
 
     accepted: list[tuple[str, str]] = []
     seen: set[str] = set()
     for row in rows:
-        raw_email = row["email"]
-        email = raw_email.strip().lower() if isinstance(raw_email, str) else ""
-        if not email or email in seen:
+        email = _candidate_email(row, admin_emails, excluded_roles)
+        if email is None or email in seen:
             continue
         seen.add(email)
         if not await is_valid_garuda_assignment_target(conn, email):
