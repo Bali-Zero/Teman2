@@ -29,7 +29,8 @@
     "validate:visa-oracle-openapi": "node scripts/validate-visa-oracle-openapi.mjs",
     "contract:visa-oracle": "npm run generate:openapi && npm run generate:api && npm run validate:visa-oracle-openapi",
     "lighthouse": "node scripts/lighthouse-ci.mjs",
-    "audit:links": "npx tsx scripts/audit-internal-links.ts"
+    "audit:links": "npx tsx scripts/audit-internal-links.ts",
+    "visa-oracle:walk-corpus": "npx tsx scripts/visa-oracle/generate-walk-corpus.ts"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.69",
