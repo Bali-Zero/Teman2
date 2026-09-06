@@ -184,6 +184,11 @@ while ! ( set -C; : > "$TRANSCRIPT" ) 2>/dev/null; do
 done
 # Empty file now exclusively owned; codex output below appends via >> not >.
 
+# Assistant-only final output, written by codex itself (--output-last-message),
+# derived from the same race-safe base as the transcript. This file — not the
+# combined transcript — is the verdict source (see verdict_present below).
+LAST_MESSAGE="${TRANSCRIPT_BASE}.last.md"
+
 record_telemetry() {
     local exit_code="$1"
     local blocker="${2:-false}"
@@ -198,13 +203,23 @@ record_telemetry() {
 }
 
 # A dispatch only counts as a review when a verdict line landed in the
-# transcript. codex-cli has shipped two "never ran" shapes that both looked
-# clean from outside: a clap usage error at exit 2 (0.149.1, honest) and the
-# same error at exit 0 (0.151.0, silent — every caller judging by return code
-# read it as "clean"; ledger 2026-09-01). The exit code alone cannot
-# distinguish "ran and found nothing" from "never ran"; the verdict line can.
+# assistant's FINAL message. codex-cli has shipped two "never ran" shapes that
+# both looked clean from outside: a clap usage error at exit 2 (0.149.1,
+# honest) and the same error at exit 0 (0.151.0, silent — every caller judging
+# by return code read it as "clean"; ledger 2026-09-01). The exit code alone
+# cannot distinguish "ran and found nothing" from "never ran"; the verdict
+# line can — but only when read from the assistant-only output, not the
+# combined transcript (review loop-20260906-partner-gate-followups, comment
+# 5555186204): the transcript carries diagnostics and an echo of the prompt
+# (which embeds the untrusted diff), so a transcript scan both misses a
+# verdict landing past the first 50 lines (false "never judged") and accepts a
+# verdict-shaped line in the echoed prompt (false "judged" — the
+# never-judged-as-success defect). `--output-last-message` makes codex itself
+# write the final assistant message to $LAST_MESSAGE; that file is the only
+# verdict source. A missing or empty file = never judged, however clean the
+# transcript looks.
 verdict_present() {
-    head -50 "$1" 2>/dev/null | grep -qiE '^[[:space:]]*(BLOCKER|MEDIUM|LOW|LGTM)\b'
+    [[ -s "$1" ]] && grep -qiE '^[[:space:]]*(BLOCKER|MEDIUM|LOW|LGTM)\b' "$1"
 }
 
 # --self-test: liveness probe for the dispatch path itself. The diff guards
@@ -222,9 +237,10 @@ confirming the CLI answered."
     echo "[spalla] self-test: codex exec --sandbox read-only -c model_reasoning_effort=xhigh (trivial prompt)" >&2
     CODEX_EXIT=0
     printf '%s' "$SELFTEST_PROMPT" | codex exec --sandbox read-only \
-        -c model_reasoning_effort=xhigh - >> "$TRANSCRIPT" 2>&1 || CODEX_EXIT=$?
-    if [[ "$CODEX_EXIT" -eq 0 ]] && ! verdict_present "$TRANSCRIPT"; then
-        echo "ERROR: self-test got exit 0 but no verdict line — codex never judged." >&2
+        -c model_reasoning_effort=xhigh --output-last-message "$LAST_MESSAGE" \
+        - >> "$TRANSCRIPT" 2>&1 || CODEX_EXIT=$?
+    if [[ "$CODEX_EXIT" -eq 0 ]] && ! verdict_present "$LAST_MESSAGE"; then
+        echo "ERROR: self-test got exit 0 but no verdict line in the assistant-only output — codex never judged." >&2
         CODEX_EXIT=6
     fi
     if [[ "$CODEX_EXIT" -ne 0 ]]; then
@@ -233,7 +249,7 @@ confirming the CLI answered."
         echo "RESULT_PATH=$TRANSCRIPT"
         exit "$CODEX_EXIT"
     fi
-    grep -iE -m 1 '^[[:space:]]*(BLOCKER|MEDIUM|LOW|LGTM)\b' "$TRANSCRIPT" | sed 's/^/[spalla] self-test verdict: /' >&2
+    grep -iE -m 1 '^[[:space:]]*(BLOCKER|MEDIUM|LOW|LGTM)\b' "$LAST_MESSAGE" | sed 's/^/[spalla] self-test verdict: /' >&2
     record_telemetry 0 false
     echo "RESULT_PATH=$TRANSCRIPT"
     exit 0
@@ -339,27 +355,32 @@ if [[ "$MODE" == "review" ]]; then
     # note); exec mode's old full-auto semantics are spelled out below as an
     # explicit workspace-write sandbox.
     printf '%s' "$PROMPT" | codex exec --sandbox read-only \
-        -c model_reasoning_effort=xhigh - >> "$TRANSCRIPT" 2>&1 || CODEX_EXIT=$?
+        -c model_reasoning_effort=xhigh --output-last-message "$LAST_MESSAGE" \
+        - >> "$TRANSCRIPT" 2>&1 || CODEX_EXIT=$?
 else
     printf '%s' "$PROMPT" | codex exec --sandbox workspace-write \
-        -c model_reasoning_effort=xhigh - >> "$TRANSCRIPT" 2>&1 || CODEX_EXIT=$?
+        -c model_reasoning_effort=xhigh --output-last-message "$LAST_MESSAGE" \
+        - >> "$TRANSCRIPT" 2>&1 || CODEX_EXIT=$?
 fi
 
 # The exit code, not only the transcript, must distinguish "ran and found
 # nothing" from "never ran" (ledger 2026-09-01: codex-cli 0.151.0 printed a
 # clap usage error at exit 0 and every caller read the run as a clean review).
-if [[ "$CODEX_EXIT" -eq 0 ]] && ! verdict_present "$TRANSCRIPT"; then
-    echo "ERROR: codex exited 0 but no verdict line (BLOCKER/MEDIUM/LOW/LGTM) in the first 50 transcript lines — codex never judged this diff." >&2
-    echo "Transcript: $TRANSCRIPT" >&2
+# The verdict is judged from the assistant-only file only — a verdict-shaped
+# line in the echoed prompt or diff is not a judge (loop
+# 20260906-partner-gate-followups, comment 5555186204).
+if [[ "$CODEX_EXIT" -eq 0 ]] && ! verdict_present "$LAST_MESSAGE"; then
+    echo "ERROR: codex exited 0 but no verdict line (BLOCKER/MEDIUM/LOW/LGTM) in its final assistant message — codex never judged this diff." >&2
+    echo "Transcript: $TRANSCRIPT (assistant-only output: $LAST_MESSAGE)" >&2
     CODEX_EXIT=6
 fi
 
 BLOCKER="false"
-# Codex spalla self-review #8: BLOCKER detection scans only the first 50
-# lines (the verdict header per output template). Scanning the entire
-# transcript would false-positive on bullets that quote earlier BLOCKER
-# verdicts (verify-after-fix runs cite previous transcripts).
-if head -50 "$TRANSCRIPT" 2>/dev/null | grep -qiE '^[[:space:]]*BLOCKER\b'; then
+# Codex spalla self-review #8: BLOCKER detection scans only the head of the
+# assistant-only final message (the verdict header per output template).
+# Scanning the whole final message would false-positive on bullets that quote
+# earlier BLOCKER verdicts (verify-after-fix runs cite previous transcripts).
+if head -50 "$LAST_MESSAGE" 2>/dev/null | grep -qiE '^[[:space:]]*BLOCKER\b'; then
     BLOCKER="true"
     REVIEWS_DIR="$REPO_ROOT/docs/codex-reviews"
     mkdir -p "$REVIEWS_DIR"

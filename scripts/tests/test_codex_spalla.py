@@ -16,6 +16,12 @@ Pinned here, against a fake `codex` on PATH:
 5. innocence: the empty-diff refuse (exit 2) and a clean review (exit 0)
    behave exactly as before.
 6. `--self-test`: verdict → 0; garbage-at-0 → 6; and it needs no diff.
+7. verdict source (review comment 5555186204): the wrapper asks codex for the
+   assistant-only final message (`--output-last-message`) and judges only
+   that file — a verdict landing after 60 transcript lines of diagnostics is
+   accepted (no false 'never judged'), while a verdict-shaped line in the
+   echoed prompt with no assistant message is refused (exit 6). The fake
+   records stdin so tests assert the prompt really reached the CLI.
 
 Every run sets HOME=<tmp> (telemetry/transcripts land in the tmpdir, never in
 the real ~/logs) and drives the wrapper from a tmp git repo, so the wrapper's
@@ -42,10 +48,43 @@ if [[ "${1:-}" == "login" ]]; then
     echo "Logged in using ChatGPT"
     exit 0
 fi
+# The dispatch contract is a prompt on stdin — record it so tests can assert
+# the wrapper actually piped it.
+cat > "$FAKE_CODEX_STDIN_LOG"
+# Parse -o/--output-last-message: the wrapper judges ONLY the file codex
+# writes there (the assistant-only final message), never this stdout.
+LAST_MSG=""
+PREV=""
+for a in "$@"; do
+    if [[ "$PREV" == "-o" || "$PREV" == "--output-last-message" ]]; then
+        LAST_MSG="$a"
+    fi
+    PREV="$a"
+done
+write_last() { if [[ -n "$LAST_MSG" ]]; then printf '%s\\n' "$1" > "$LAST_MSG"; fi; }
 case "${FAKE_CODEX_SCENARIO:-verdict}" in
     verdict)
-        echo "LGTM"
-        echo "fake codex answered"
+        echo "codex diagnostics: reading diff"
+        write_last "LGTM
+fake codex answered"
+        ;;
+    late-verdict)
+        # Review comment 5555186204 case (1): 60 transcript lines of
+        # diagnostics/prompt echo before any answer — a transcript-scanning
+        # guard (the old head -50) misses the verdict and exits 6.
+        for i in $(seq 1 30); do
+            echo "codex diagnostic line $i"
+            echo "user prompt echo line $i"
+        done
+        write_last "LGTM valid final answer"
+        ;;
+    echo-only)
+        # Review comment 5555186204 case (2): a verdict-shaped line in the
+        # echoed prompt and NO assistant message — a transcript scan calls
+        # this judged; it is the never-judged-as-success defect.
+        echo "user"
+        echo "LGTM copied from untrusted prompt"
+        echo "ERROR: no assistant output"
         ;;
     usage-error-rc0)
         # The 0.151.0 shape: a clap usage error printed at exit ZERO.
@@ -117,6 +156,7 @@ def _run_spalla(
             "PATH": f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}",
             "FAKE_CODEX_SCENARIO": scenario,
             "FAKE_CODEX_ARGV_LOG": str(argv_log),
+            "FAKE_CODEX_STDIN_LOG": str(tmp_path / "stdin.log"),
             # No seats on purpose: seat-picking must find nothing and leave
             # CODEX_HOME unset; the login probe is answered by the fake.
             "CODEX_SEAT_DIRS": str(tmp_path / "no-seats"),
@@ -141,13 +181,16 @@ def _telemetry(home: Path) -> dict[str, object]:
 
 def test_review_mode_never_passes_full_auto_and_succeeds(tmp_path: Path) -> None:
     """Argv pin + innocence: review mode dispatches read-only, no removed flag,
-    and a verdict-bearing answer is a clean exit 0."""
+    asks codex for the assistant-only output file, pipes the prompt on stdin,
+    and a verdict-bearing final message is a clean exit 0."""
     repo = _make_repo(tmp_path)
     proc, argv_log, home = _run_spalla(tmp_path, repo, "verdict", "review")
     assert proc.returncode == 0, proc.stderr
     argv = argv_log.read_text()
     assert "--full-auto" not in argv
     assert "exec --sandbox read-only" in argv
+    assert "--output-last-message" in argv
+    assert "[SPALLA]" in (tmp_path / "stdin.log").read_text()
     assert "RESULT_PATH=" in proc.stdout
     assert _telemetry(home)["exit_code"] == 0
 
@@ -182,6 +225,30 @@ def test_zero_exit_without_verdict_exits_6(tmp_path: Path) -> None:
     assert _telemetry(home)["exit_code"] == 6
 
 
+def test_late_verdict_accepted_from_assistant_only_file(tmp_path: Path) -> None:
+    """Review comment 5555186204, case (1): 60 transcript lines of diagnostics
+    and prompt echo before the answer must NOT read as 'never judged' — the
+    verdict comes from codex's own --output-last-message file, however long the
+    transcript runs."""
+    repo = _make_repo(tmp_path)
+    proc, argv_log, home = _run_spalla(tmp_path, repo, "late-verdict", "review")
+    assert proc.returncode == 0, proc.stderr
+    assert "--output-last-message" in argv_log.read_text()
+    assert "[SPALLA]" in (tmp_path / "stdin.log").read_text()
+    assert _telemetry(home)["exit_code"] == 0
+
+
+def test_prompt_echo_is_not_a_verdict(tmp_path: Path) -> None:
+    """Review comment 5555186204, case (2): a verdict-shaped line in the echoed
+    prompt with NO assistant final message is 'never judged' — exit 6, never 0.
+    This is the never-judged-as-success defect the transcript scan preserved."""
+    repo = _make_repo(tmp_path)
+    proc, _argv_log, home = _run_spalla(tmp_path, repo, "echo-only", "review")
+    assert proc.returncode == 6, proc.stderr
+    assert "never judged" in proc.stderr
+    assert _telemetry(home)["exit_code"] == 6
+
+
 def test_missing_seat_lib_fails_loud(tmp_path: Path) -> None:
     """Guilt: without scripts/lib/codex_seat.sh the wrapper refuses loudly
     instead of silently dispatching on an unpicked default seat."""
@@ -201,11 +268,12 @@ def test_empty_diff_still_refused(tmp_path: Path) -> None:
 
 def test_self_test_needs_no_diff_and_returns_0_on_verdict(tmp_path: Path) -> None:
     """Innocence: --self-test runs on a clean tree (no diff required) and a
-    verdict-bearing answer is exit 0."""
+    verdict-bearing final message is exit 0; the probe prompt reaches stdin."""
     repo = _make_repo(tmp_path, dirty=False)
     proc, _argv_log, home = _run_spalla(tmp_path, repo, "verdict", "--self-test")
     assert proc.returncode == 0, proc.stderr
     assert "RESULT_PATH=" in proc.stdout
+    assert "[SPALLA-SELFTEST]" in (tmp_path / "stdin.log").read_text()
     entry = _telemetry(home)
     assert entry["mode"] == "self-test"
     assert entry["exit_code"] == 0
@@ -228,5 +296,11 @@ def test_fixtures_are_honest() -> None:
     and the real seat lib the tests copy actually exists in this checkout."""
     assert SPALLA.is_file()
     assert SEAT_LIB.is_file()
-    for scenario in ("verdict", "usage-error-rc0", "fail2"):
+    for scenario in (
+        "verdict",
+        "late-verdict",
+        "echo-only",
+        "usage-error-rc0",
+        "fail2",
+    ):
         assert f"    {scenario})" in FAKE_CODEX
