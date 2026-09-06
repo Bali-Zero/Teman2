@@ -594,11 +594,14 @@ describe("review reasons cover every code the current pack can emit", () => {
     "E28F_IKN_THRESHOLD_MANUAL_CHECK",
     "E33B_EXPERTISE_QUALIFICATION_CHECK",
     "E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP",
-    // E5 increment 3 seq-9 fold (2026-08-19): review.e33g.income-evidence
-    // (OD-1 pattern — the USD 60,000/year income floor is un-modelable, no
-    // work-income FactPath exists, see cure-e33g.md). QW-4b (copy-deck
-    // approval) still owns writing the actual sentence.
-    "E33G_INCOME_EVIDENCE_REVIEW",
+    // `E33G_INCOME_EVIDENCE_REVIEW` was here from the E5 increment 3 seq-9
+    // fold (2026-08-19) until the seq-20 decisiveness fold retired the rule
+    // that emitted it: `review.e33g.income-evidence`'s `when` was a
+    // byte-for-byte copy of `el.e33g.remote-work`'s, so it vetoed E33G on
+    // the product's own success condition and E33G could never be
+    // recommended (2026-09-06 investigation §2.3 L3-b). It is removed here,
+    // not merely left unmapped, because the test below fails on a gap-list
+    // entry naming a code the highest-sequence pack no longer emits.
     "E33_WORK_RANGKAP_KEGIATAN_GATED",
     "GOVT_INVITATION_REQUIRED",
     // Pack-independent (evaluate_path.py):
