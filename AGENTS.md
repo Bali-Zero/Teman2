@@ -823,6 +823,14 @@ Binding roster + corrections: research/operations/2026-08-10-fleet-order-spec.md
 - Client-facing outputs (quotes, comms) remain **Anthropic-interactive-only**. PII remains **local-only**. Legge 5 unchanged.
 - **REVIEW-È-INVOCABILE** (ruling Zero 2026-08-10, `research/operations/2026-08-10-fleet-order-spec.md` §3.2/§4): "serve review" is a dispatch instruction, never a parking state — "chi conduce non aspetta i grader: li convoca". The conductor invokes the grader per the role chains (§17.2 below / `FLEET_TOPOLOGY.json`) the moment a diff exists to judge; a PR is never parked on "waiting for review" without the grader having been dispatched.
 
+### 17.1a Two consuls (RULED Zero 2026-09-06)
+
+- **Fable 5.1** (Anthropic, Zero's interactive seat) and **GPT Astra** (OpenAI, ChatGPT desktop / Codex) are the two consuls of a campaign, with **full and equal powers**: merge, deploy, every authorization. **Each consul's work is reviewed by the other before it ships** — generator≠grader stays, lifted to consul level.
+- Supersedes, for the consul seat only, the 2026-08-20 "Fable out of the workflow" ruling: Fable is still never auto-routed by any script, cron or role chain; Zero opens it by hand. Supersedes, for the Codex consul only, "no external seat ever merges or deploys": ship stays mechanical (PR → required checks → armed auto-merge → `fly-deploy.yml`), "merge" means arming that path, never a hand-merge around checks.
+- Every mechanical required check still runs on consul PRs (CI, harness verdicts, R9 quorum). The cross-consul review is added on top of the machine gates, it does not replace one. Whether the Opus 5 xhigh on-disk gate stays mandatory for consul-shipped work is OPEN (PENDING-ARMS 2026-09-06) — default yes until Zero rules.
+- Zero-only gates unchanged: ENFORCE, pack activation, sales opening, prices, refunds, GARUDA D-vs-E, public claims, budget.
+- Non-consul seats get their fronts from the generals exam (`research/operations/generals-exam/EXAM.md`), never by self-declaration. Coordination protocol between consuls and generals: single-writer board, one append-only outbox per seat with a heartbeat line, TESTAMENT file per seat for succession (the 2026-09-05 consuls session is the precedent: `.worktrees/ops-visa-consuls-claude/.agent/consoli/BOARD.md`).
+
 ### 17.2 Continuity ladder — no line ever stops
 
 When a seat hits quota or dies, escalate IN ORDER and log each hop in the task evidence:
