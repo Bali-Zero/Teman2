@@ -33,6 +33,12 @@ each file carries the walk's ``asked`` question ids and the exact wire
 ``overrides`` that walk produced. The expectations live HERE, in one
 reviewable table, so a wave PR that moves an outcome must state which
 outcome it moved.
+
+Regenerate the corpus with ``npm run visa-oracle:walk-corpus -w apps/mouth``
+(``apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts``, proved byte-for-byte
+reproducible by ``walk-corpus-determinism.test.ts``): a PR that changes the
+interview tree MUST regenerate it and update ``EXPECTED_OUTCOME`` /
+``WALK_DEAD_END_ALLOWLIST`` below in that same PR.
 """
 
 from __future__ import annotations
