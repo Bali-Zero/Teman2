@@ -146,7 +146,7 @@ from backend.services.visa_engine.errors import (
     RulePackCompilationError,
     RulePackVerificationError,
 )
-from backend.services.visa_engine.evaluator import evaluate_with_trace
+from backend.services.visa_engine.evaluator import evaluate_with_trace, merge_reasons_by_code
 from backend.services.visa_engine.fact_registry import DEFAULT_FACT_REGISTRY
 from backend.services.visa_engine.idempotency import (
     IdempotencyConflictError,
@@ -1407,6 +1407,54 @@ PUBLIC_POLICY_ADAPTER_NAMES: tuple[str, ...] = tuple(
 )
 
 
+def _collapse_reader_reasons(decision: Decision) -> Decision:
+    """One entry per reason CODE on the applicant-facing lists, citations
+    UNIONED — the public-shaping half of the 2026-09-06 decisiveness reorder.
+
+    The reorder made ``NO_SUPPORTED_PATH`` reachable (0 of the 43 interview
+    walks before it, 10 after), and with it a defect that had never been
+    visible: two DIFFERENT rules on two different products can carry the same
+    reason code, and ``engine-adapter.ts`` maps the list 1:1 through copy keyed
+    by CODE ALONE, so the applicant is told the same thing twice. Measured on
+    seq-20: six walks rendered ``['AGE_BELOW_55', 'AGE_BELOW_55']``, one entry
+    for ``hf.e33e.age-below-55`` and one for ``hf.e33f.age-below-55``.
+
+    This is the PUBLIC boundary and not the engine on purpose. ``evaluate``
+    keeps one proof per rule, so the trace, the gold harness and anything
+    reading the raw engine output still see that two distinct rules fired; only
+    the payload a person reads is collapsed. The merge UNIONS ``rule_ids`` and
+    ``source_refs``, so the underlying provenance survives the collapse and
+    ``requireDecisiveRefs`` validates more refs, never fewer.
+
+    Applied to both reader-facing lists rather than only ``no_path_reasons``,
+    and the review half is NOT hypothetical. Scanning
+    ``rulepack-prod-020.source.json``: nine reason codes are emitted by more
+    than one rule, so this is a general property of the pack and not an
+    ``AGE_BELOW_55`` quirk. Seven are ``SUPPORT`` codes, which feed no
+    reader-facing reason list — but ``GOVT_INVITATION_REQUIRED`` is emitted by
+    two ``REQUIRE_REVIEW`` rules (``review.e33a`` and ``review.e33c``,
+    central-government-invitation, on two different products), which is the
+    same shape on the review surface. No walk in the 43-walk corpus reaches
+    ``HUMAN_REVIEW_REQUIRED``, so that half is pinned by a hand-built-pack test
+    rather than claimed as a corpus measurement.
+
+    State, candidates and missing facts are untouched by construction: only the
+    two reason tuples are rebuilt, and a merge cannot empty a non-empty list,
+    so ``Decision``'s per-state non-empty invariants still hold.
+    """
+
+    merged_no_path = merge_reasons_by_code(decision.no_path_reasons)
+    merged_review = merge_reasons_by_code(decision.review_reasons)
+    if (
+        merged_no_path == decision.no_path_reasons
+        and merged_review == decision.review_reasons
+    ):
+        return decision
+    payload = decision.model_dump(mode="python")
+    payload.update({"no_path_reasons": merged_no_path, "review_reasons": merged_review})
+    return Decision.model_validate(payload)
+
+
 def apply_public_policy_adapters(
     decision: Decision,
     facts: ApplicantFacts,
@@ -1420,11 +1468,19 @@ def apply_public_policy_adapters(
     from silently drifting away from the endpoint. Runtime-only operations
     such as binding resolution, retention, pricing, sealing, and persistence
     remain outside this helper.
+
+    After the abstention chain, one presentation collapse runs: reasons that
+    render as the same SENTENCE are merged. See ``_collapse_reader_reasons``.
+    It is deliberately NOT a member of ``_PUBLIC_POLICY_ADAPTERS`` — that
+    registry means "deterministic ABSTENTION adapter" and doubles as the
+    offline evidence manifest's ``policy_adapters`` list, and this changes no
+    state, creates no hold and retires no candidate. Running it after the loop
+    also means it sees whatever reasons an abstention adapter itself produced.
     """
 
     for _name, adapter in _PUBLIC_POLICY_ADAPTERS:
         decision = adapter(decision, facts, compiled, disclosed_review_flags)
-    return decision
+    return _collapse_reader_reasons(decision)
 
 
 async def _save_evaluate_decision(

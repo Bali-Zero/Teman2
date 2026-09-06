@@ -1,0 +1,255 @@
+task_id: oracle-evaluator-purpose-feasibility
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+date: 2026-09-07
+machine: M5
+lanes:
+  - lane: >-
+      evaluator purpose-feasibility reorder + purpose-scoped no-path reasons + reader-reason
+      collapse + seq-20 census re-pin
+    role: build
+    seat: >-
+      claude-opus-5 (builder seat in worktree .worktrees/backend-rag-oracle-evaluator-reorder,
+      branch agent/air-m5/backend-rag/oracle-evaluator-purpose-feasibility)
+    note: >-
+      One concern in three layers, all of it downstream of a single reorder in
+      evaluate_product. (a) THE REORDER: purpose-feasibility is tested BEFORE the
+      input-tagged gate-unknown block instead of after, so a product whose ELIGIBILITY
+      rules can never cover the declared purposes stops winning
+      min(blocked, key=len(missing_facts)) and choosing the question every OTHER applicant
+      is asked. Its only possible return is UNSUPPORTED, so it can neither manufacture a
+      candidate nor silence a gate. (b) THE APPLICANT-FACING CONSEQUENCE: the reorder took
+      NO_SUPPORTED_PATH from 0 of the 43 interview walks to 10, which made two latent
+      defects in a near-invisible list reachable under ENFORCE — it aggregated the exclusion
+      reason of products the applicant was never shopping for (cured by a structural,
+      fact-independent ProductProof.purpose_feasible filter) and it rendered the same
+      sentence twice when two rules carry one reason code (cured by a code-keyed collapse
+      that UNIONS rule_ids and source_refs at the PUBLIC boundary). (c) THE MEASUREMENT:
+      the 43-walk census is re-derived against the signed seq-20 pack — 11 NEEDS_INPUT /
+      10 NO_SUPPORTED_PATH / 22 SUPPORTED_CANDIDATES — with ten cured allowlist rows DELETED
+      and three guilt tests RE-ANCHORED because seq-20 plus this reorder cured their previous
+      subjects. NO SIGNED PACK CONTENT IS TOUCHED: no rule, no bound, no reason code is added
+      to any rulepack. This seat holds no private key and signed nothing.
+
+seat_diversity: exempt
+seat_diversity_note: >-
+  One build lane, so D3's seat-diversity requirement does not attach (it binds packs with
+  >= 2 build lanes). No review lane is declared because this is a builder handoff under
+  CLAUDE.md §5: this seat prepares and never ships — it does not merge, arm or deploy — and
+  a separate Consul session reads the diff and grades it. Declaring a review lane here would
+  put the grader inside the generator's own pack, which is the boundary that separation
+  exists to hold.
+
+seat_override: >-
+  R8 ground_truth: this diff hits GROUND_TRUTH_PATH_PATTERNS (`*/visa_engine/*`), but it
+  introduces NO regulatory claim of its own — no rule, no bound, no legal threshold, and no
+  new reason code in any signed pack. Every legal proposition it moves through was authored,
+  ruled and signed BEFORE this PR (seq-19 in its own wave, seq-20 in #5854/#5867). What
+  changes is the ORDER in which the evaluator tests two conditions it already computed, and
+  which already-authored reason text is shown to which applicant. The census numbers are a
+  MEASUREMENT of what those already-ruled rules produce, not a new claim about the law. A
+  fresh NB/ground-truth lane would be re-litigating content this PR does not author.
+  .
+  R9 council_run: no council journal is declared, for the same reason plus one more. This
+  PR compiles no claim to adversarially review, and under CLAUDE.md §5 this seat is a
+  PREPARER that does not merge, arm or deploy. A separate Consul session reads and grades
+  the diff — and has already returned two rounds of findings that are folded in here (the
+  purpose-scoping of no_path_reasons, and the duplicate-reason defect with its measured
+  investigation). Running council seats from inside the generator's own pack would move the
+  adversarial read to the wrong side of the generator-is-never-grader boundary, not add one.
+
+outcome: >-
+  The Visa Oracle stops asking questions on behalf of visas the applicant could never have
+  had, and says so honestly instead. Measured on the 43 real interview walks against
+  rulepack-prod-020.signed.json — the highest signed pack and the one ACTIVE in production
+  under ENFORCE — the census moves 21 NEEDS_INPUT / 0 NO_SUPPORTED_PATH / 22 SUPPORTED to
+  11 / 10 / 22. The ten cured walks were each blocked on behalf of a purpose-infeasible
+  product: seven on process.wants_onshore_conversion, two on
+  investment.{investment,paid_up}_capital_idr, one on sponsor.type — and all three of those
+  blocking-fact shapes leave the census entirely, so their allowlist rows are DELETED rather
+  than left unused. The eleven survivors are real questions about products these applicants
+  genuinely are shopping for, and are PR-3's mandate.
+  .
+  THE FAIL-OPEN FLOOR IS A MEASUREMENT, NOT AN ARGUMENT: the 22 SUPPORTED rows are
+  byte-identical, candidates included, to what the SAME corpus produces on the SAME pack
+  with this PR's evaluator.py swapped back to origin/main's — verified by doing exactly that
+  on a cp-backed-up copy and restoring it hash-verified. The reorder can push a walk DOWN the
+  precedence table and do nothing else.
+  .
+  Two applicant-facing defects that only became reachable BECAUSE of the reorder are cured in
+  the same PR rather than left for the reader to hit: exclusion reasons belonging to products
+  that never claimed the declared purposes are withheld, and a reason code emitted by two
+  different rules now renders ONCE with its rule_ids and citations UNIONED rather than twice.
+  The union is the load-bearing half — the two AGE_BELOW_55 proofs do not carry the same
+  source records, so a naive dedupe on the code would have silently dropped a citation from a
+  surface where requireDecisiveRefs makes citations mandatory.
+
+diff:
+  files: 10
+  net_lines: >-
+    evaluator.py (the reorder, ProductProof.purpose_feasible, and the merge_reasons_by_code
+    helper the public boundary calls), evaluate_path.py (_collapse_reader_reasons on the
+    public-shaping boundary), test_evaluator_purpose_feasibility_precedence.py (new — the
+    mechanism, precedence, decision-level and real-seq-19 witness battery),
+    test_interview_walk_census.py (seq-20 re-pin, ten rows deleted, three guilt tests
+    re-anchored, two new reader-reason guards), test_seq19_pack.py and
+    test_seq9_new_rule_witnesses.py (revised pins, never deleted), test_evaluator_edge_cases.py
+    (a degenerate fixture made non-degenerate), engine-adapter.ts (one locale map entry), and
+    this evidence pack. No total is narrated here on purpose: the grading rounds add commits
+    after any literal is written, so a number in this file is stale the moment the file
+    changes. The shape is stable and is what matters — a small evaluator change carrying a
+    large guilt-and-innocence battery, which is the whole reason cure (a) was selected over
+    the alternatives.
+  measured_at: >-
+    `git diff --numstat origin/main` and `--name-only` in this worktree, fed to
+    scripts/evidence_pack_lint.py --print-floor / --print-floor-source.
+  shape: >-
+    One evaluator reorder, one public-boundary presentation collapse, and the tests that make
+    both falsifiable. NO signed pack content is touched — no rule, no bound, no reason code is
+    added to any rulepack, and no pack file appears in the diff at all. The interview tree is
+    untouched: curing the eleven surviving dead ends needs new QUESTIONS, which is PR-3.
+pii_scan: clean
+
+bites:
+  consumer: >-
+    scripts/ci/observe_visa_seq20_signed.py — the job #5867 shipped to make the signed seq-20
+    bundle observable. It runs test_seq20_signed_bundle.py and test_interview_walk_census.py,
+    and the census half is precisely the module this PR re-derives. Not a future job: it is on
+    main and runs today.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_seq20_signed.py
+  expect: exit0
+bites_note: >-
+  scripts/ci/observe_visa_seq20_signed.py takes NO arguments — every path and command in it is
+  a literal. Run in this worktree on the merge result: 23 passed (signed bundle), 12 passed
+  (walk census), "observe_visa_seq20_signed: both consumers green", exit 0. The census it runs
+  is the one this PR re-derived, and its two new reader-reason guards are inside that 12.
+
+receipts:
+  - claim: >-
+      the census on the ACTIVE signed pack moves 21/0/22 -> 11/10/22 with the 22 SUPPORTED rows
+      byte-identical — the fail-open floor, measured both ways rather than argued
+    cmd: >-
+      a scratch script importing the census module's own _evaluate/_AS_OF and printing
+      (state, candidates, missing_facts) for all 43 walks, run once on this branch and once
+      with `git show origin/main:...evaluator.py` swapped in over a cp backup, then restored
+      and shasum-verified
+    result: >-
+      with this PR {'NEEDS_INPUT': 11, 'NO_SUPPORTED_PATH': 10, 'SUPPORTED_CANDIDATES': 22};
+      with origin/main's evaluator {'NEEDS_INPUT': 21, 'SUPPORTED_CANDIDATES': 22} — matching
+      #5867's pin exactly; diff of the two SUPPORTED blocks empty (22 walks, identical
+      candidates); evaluator.py restored to c35e8bcc4e0687c53541d7102fb7a0a073eb2dbb1a4f105a81cd982105883ebe
+    ts: "2026-09-07T00:10:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the two AGE_BELOW_55 entries are NOT redundant — they carry different rules AND different
+      citation sets, so a dedupe on the code would drop a citation
+    cmd: >-
+      a scratch script printing decision.no_path_reasons (code, rule_ids, source_refs) for every
+      NO_SUPPORTED_PATH walk, through evaluate + apply_public_policy_adapters on
+      rulepack-prod-020.signed.json
+    result: >-
+      offshore/retirement/property — [0] AGE_BELOW_55 ('hf.e33e.age-below-55',) (9248b1d7,);
+      [1] AGE_BELOW_55 ('hf.e33f.age-below-55',) (6f5135f2, 9248b1d7). Six walks carried the
+      duplicate; after the collapse each renders once with rule_ids {hf.e33e, hf.e33f} and both
+      UUIDs
+    ts: "2026-09-07T01:05:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the duplicate-reason shape is GENERAL to the pack, not an AGE_BELOW_55 quirk, and it
+      reaches the review surface too — which is why the collapse covers both reader lists
+    cmd: >-
+      a scratch script grouping rulepack-prod-020.source.json's rules by effect.reason_code and
+      printing every code emitted by more than one rule, with each rule's effect type and stage
+    result: >-
+      109 rules, 76 distinct reason codes, 9 emitted by >1 rule. Seven are SUPPORT
+      (PURPOSE_PRODUCT_MATCH x16, PASSPORT_VALIDITY_6_MONTHS_REQUIRED x6,
+      REQ_SPONSOR_ITAS_ITAP x4, CV_REQUIRED / ITINERARY_REQUIRED / LIVING_COST_USD2000 /
+      SUPPORT_LETTER_REQUIRED x3) and feed no reader-facing list. Two do: AGE_BELOW_55 from two
+      EXCLUDE rules, and GOVT_INVITATION_REQUIRED from two REQUIRE_REVIEW rules
+      (review.e33a.central-government-invitation, review.e33c.central-government-invitation)
+    ts: "2026-09-07T01:40:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the new reader-reason tests are real guilt tests — they go RED without the fix, and the
+      union assertions specifically catch the WRONG (naive first-wins) fix
+    cmd: >-
+      two mutations on cp-backed-up copies, each restored and shasum-verified: (a) disable the
+      collapse at the boundary (`return decision` instead of `_collapse_reader_reasons`);
+      (b) replace the union body of merge_reasons_by_code with first-seen-wins
+    result: >-
+      (a) 2 failed — "AGE_BELOW_55 must render exactly once, got 2 entries" on
+      offshore/retirement/property, and the corpus-wide guard naming all six duplicating walks.
+      (b) 2 failed — "assert {'hf.dupa'} == {'hf.dupa', 'hf.dupb'}" on the hand-built pack and
+      "the merge dropped a rule id" on the real walk, with both innocence halves still green.
+      Unmutated, all 8 reader-reason tests PASS
+    ts: "2026-09-07T02:05:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 1
+  - claim: >-
+      the full visa_engine suite is green apart from a pre-existing local DB-schema set that is
+      identical on origin/main's evaluator
+    cmd: >-
+      PYTHONPATH=. python3 -m pytest backend/tests/services/visa_engine (and the four DB-backed
+      files re-run with origin/main's evaluator.py swapped in)
+    result: >-
+      1 failed, 2306 passed, 1 skipped, 39 errors. The failure
+      (test_visa_engine_retention_fk_registry, "281 must be live in the deployed schema") and
+      all 39 errors (asyncpg undefined-table / dependent-objects / migration-state in
+      test_evaluate_endpoint, test_shadow_evidence, test_shadow_match) reproduce identically on
+      the unpatched evaluator: 1 failed, 267 passed, 39 errors
+    ts: "2026-09-07T02:00:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 1
+  - claim: >-
+      the deterministic gear floor for this changed-file list is 3, sourced from size
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor / --print-floor-source /
+      --print-measured --changed-files-file <paths> --numstat-file <numstat vs origin/main>
+    result: >-
+      "3" / "size" / "9 files, +1831/-189". Churn (adds+deletes, the size term's own formula)
+      is 2020 against SIZE_GEAR3_THRESHOLD 1828. The floor crossed 2 -> 3 when the
+      reader-reason collapse was added in the final round; trimming the brief could not bring
+      it back under, so the pack is declared at 3 rather than the gear lowered under its floor
+    ts: "2026-09-07T02:15:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+
+dissent:
+  - seat: claude-opus-5 (this worktree session), self-caught
+    status: CONFIRMED
+    objection: >-
+      This PR is now TWO concerns, and the gear floor is the machine noticing. The evaluator
+      reorder (decision ORDERING) and the reader-reason collapse (public PRESENTATION) are
+      separable — the collapse touches a different module, at a different boundary, and its
+      defect is reachable-but-independent — and splitting them would put both PRs back under
+      the Gear-2 floor and honour "one PR, one concern, <= ~400 net lines" instead of
+      declaring 2020 lines of churn. The counter-argument, which is why it ships as one: the
+      duplicate is NOT a pre-existing bug this PR inherited, it is a defect this PR's own
+      reorder MAKES REACHABLE under ENFORCE — before the reorder zero walks reached
+      NO_SUPPORTED_PATH — so shipping the reorder without the collapse would knowingly put a
+      sentence-printed-twice in front of a real applicant for the length of one merge cycle.
+      The grading session scoped it into this PR on exactly that reasoning. Recorded here
+      rather than silently resolved because the split remains a live option for the Consul,
+      and because a Gear-3 declaration reached by accretion across five rounds deserves to
+      be named as such rather than presented as if it had been planned.
+  - seat: claude-opus-5 (this worktree session), self-caught
+    status: PLAUSIBLE
+    objection: >-
+      NOT RESOLVED, carried as a known gap for whoever next touches the public adapter chain.
+      The mechanism tests for the collapse call _collapse_reader_reasons DIRECTLY rather than
+      going through the whole apply_public_policy_adapters chain, because on a minimal
+      hand-built pack the chain never reaches the collapse in NO_SUPPORTED_PATH —
+      _apply_decisive_source_authority_hold fires first and rewrites to
+      HUMAN_REVIEW_REQUIRED. That is measured and documented in the helper's own docstring,
+      and the end-to-end IS pinned through the full chain on the real signed pack. But it
+      means no hand-built-pack test would catch a future edit that removed the
+      `_collapse_reader_reasons(decision)` call from apply_public_policy_adapters — only the
+      real-pack census test would, and only while a corpus walk still produces a duplicate.
+      The honest fix is a fixture whose source records satisfy the decisive-authority check,
+      which is a source-applicability problem this PR is not about; left OPEN rather than
+      bent, and flagged for whoever next touches the public adapter chain.

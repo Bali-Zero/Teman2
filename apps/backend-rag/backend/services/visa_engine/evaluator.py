@@ -426,9 +426,16 @@ def _dedupe_reasons(reasons: Iterable[Reason]) -> tuple[Reason, ...]:
     return tuple(seen.values())
 
 
-def _merge_reasons_by_code(reasons: Iterable[Reason]) -> tuple[Reason, ...]:
+def merge_reasons_by_code(reasons: Iterable[Reason]) -> tuple[Reason, ...]:
     """Collapse ``Reason``s that render as the SAME SENTENCE — one entry per
     ``code`` — UNIONING their ``rule_ids`` and ``source_refs``.
+
+    **Not used by ``evaluate``.** This is a PUBLIC-SHAPING transform and its
+    only caller is ``evaluate_path.apply_public_policy_adapters``; the engine's
+    own output keeps one proof per rule so audit, the trace and the gold
+    harness never lose the fact that two distinct rules fired. It lives here
+    beside ``_dedupe_reasons`` because it is the same reason-algebra, not
+    because the evaluator applies it.
 
     Stronger than ``_dedupe_reasons``, which keys on the whole triple and so
     only collapses byte-identical entries. Two DIFFERENT rules on two different
@@ -436,9 +443,9 @@ def _merge_reasons_by_code(reasons: Iterable[Reason]) -> tuple[Reason, ...]:
     sentence twice: the reader-facing copy is keyed by CODE alone
     (``engine-adapter.ts``'s ``SUPPORT_REASON_COPY``), so two entries differing
     only in ``rule_ids`` are two identical paragraphs on one sheet. Measured
-    2026-09-07 on seq-20: five retirement walks and ``onshore/retirement``
-    render ``AGE_BELOW_55`` twice, once for ``hf.e33e.age-below-55`` and once
-    for ``hf.e33f.age-below-55``.
+    2026-09-07 on seq-20: five ``offshore/retirement/*`` walks and
+    ``onshore/retirement`` render ``AGE_BELOW_55`` twice, once for
+    ``hf.e33e.age-below-55`` and once for ``hf.e33f.age-below-55``.
 
     The union is the whole point and is why this is not a dedupe. Those two
     entries do NOT carry the same citations — ``hf.e33f``'s proof cites a
@@ -446,7 +453,10 @@ def _merge_reasons_by_code(reasons: Iterable[Reason]) -> tuple[Reason, ...]:
     keeping the first-seen entry would silently DROP a citation from a surface
     where citations are load-bearing (``engine-adapter.ts``'s
     ``requireDecisiveRefs`` validates every ref on every rendered reason, and
-    still does: unioning gives it MORE to validate, never less).
+    still does: unioning gives it MORE to validate, never less). In the
+    measured pair one ref set happens to be a subset of the other, but nothing
+    in the contract guarantees that for the next pair, so the union is taken
+    unconditionally rather than by picking the longer entry.
 
     First-seen order is preserved for the codes and, within a code, for the
     merged ids — the ordering the determinism gates depend on. Order-preserving
@@ -1561,22 +1571,12 @@ def evaluate_with_trace(
         if proof.status is ProductProofStatus.EXCLUDED and proof.purpose_feasible
     ]
     #
-    # `_merge_reasons_by_code`, not `_dedupe_reasons`: the same reorder that
-    # made this list visible also made it repeat itself. `_dedupe_reasons` keys
-    # on the whole (code, rule_ids, source_refs) triple, so two DIFFERENT rules
-    # carrying one code both survive — and the reader-facing copy is keyed by
-    # code alone, so that is the same paragraph printed twice. Measured on
-    # seq-20: six walks render `AGE_BELOW_55` twice, for `hf.e33e.age-below-55`
-    # and `hf.e33f.age-below-55`. Merging UNIONS the citations rather than
-    # picking a winner, because those two proofs cite different source records.
-    # Applied HERE and not inside `_dedupe_reasons` on purpose: the review-reason
-    # sites above feed a state this PR does not move (the census measures
-    # HUMAN_REVIEW_REQUIRED == 0 before and after), so changing their collapse
-    # semantics would be an unmeasured behaviour change in a surface this PR has
-    # no witness for.
-    no_path_reasons = _merge_reasons_by_code(
-        reason for proof in excluded for reason in proof.reasons
-    )
+    # `_dedupe_reasons` deliberately, NOT `_merge_reasons_by_code`: this is the
+    # ENGINE's output and it keeps per-rule granularity, so two distinct rules
+    # that fired for the same legal reason remain two proofs here. Collapsing
+    # them into one applicant-facing sentence is a PUBLIC-SHAPING concern and
+    # happens at that boundary — `evaluate_path.apply_public_policy_adapters`.
+    no_path_reasons = _dedupe_reasons(reason for proof in excluded for reason in proof.reasons)
     if not no_path_reasons:
         no_path_reasons = (_fallback_no_path_reason(products, compiled_pack),)
     return assemble(state=DecisionState.NO_SUPPORTED_PATH, no_path_reasons=no_path_reasons)

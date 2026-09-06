@@ -79,12 +79,17 @@ from typing import Any
 
 import pytest
 
+from backend.scripts.visa_engine import gold_coverage_eval
 from backend.scripts.visa_engine.gold_coverage_eval import _evaluate
 from backend.scripts.visa_engine.gold_replay_driver import (
     PACKS_DIR,
     _parse_utc,
+    build_persona_request,
     select_highest_repository_pack,
 )
+from backend.services.visa_engine import evaluate_path, evaluator
+from backend.services.visa_engine.enums import DecisionState
+from backend.tests.services.visa_engine.test_evaluator_gold import Persona
 
 CORPUS_DIR = Path(__file__).resolve().parent / "gold_coverage" / "fixtures" / "walks"
 
@@ -340,6 +345,50 @@ def _dead_end_violations(
     return violations
 
 
+def _decide(overrides: dict[str, Any], label: str) -> tuple[Any, Any, Any]:
+    """``(raw_decision, compiled, request)``.
+
+    ``_evaluate`` returns the flattened ``actual`` view (codes only), which
+    cannot witness ``rule_ids``/``source_refs``. This reuses that module's own
+    verified-pack loader and identity provider so the two never diverge on
+    which pack, or which instant, is under test.
+    """
+
+    _pack_path, compiled = gold_coverage_eval._verified_compiled_pack(_AS_OF)
+    persona = Persona(
+        id=0, label=label, overrides=overrides, expected_state=DecisionState.NEEDS_INPUT
+    )
+    request = build_persona_request(persona)
+    decision = evaluator.evaluate(
+        request.applicant_facts(),
+        compiled,
+        effective_at=_AS_OF,
+        observed_at=_AS_OF,
+        identity_provider=gold_coverage_eval._offline_identity_provider,
+    )
+    return decision, compiled, request
+
+
+def _engine_decision(overrides: dict[str, Any], label: str) -> Any:
+    """The RAW ``Decision`` — ``evaluator.evaluate``, no public shaping."""
+
+    decision, _compiled, _request = _decide(overrides, label)
+    return decision
+
+
+def _public_decision(overrides: dict[str, Any], label: str) -> Any:
+    """The applicant-facing ``Decision`` — the same verify → compile →
+    evaluate → ``apply_public_policy_adapters`` path ``_evaluate`` walks."""
+
+    decision, compiled, request = _decide(overrides, label)
+    return evaluate_path.apply_public_policy_adapters(
+        decision,
+        request.applicant_facts(),
+        compiled,
+        disclosed_review_flags=request.effective_review_flags(),
+    )
+
+
 def _scoped_allowlist(*labels: str) -> dict[str, tuple[DeadEnd, ...]]:
     """``WALK_DEAD_END_ALLOWLIST`` restricted to ``labels`` — what a
     single-walk assertion MUST be graded against.
@@ -458,6 +507,59 @@ def test_no_walk_renders_the_same_reason_code_twice(
             if repeated:
                 violations.append(f"{label}: {field} repeats {repeated} — rendered as {codes}")
     assert not violations, "a reason code is rendered more than once:\n  " + "\n  ".join(violations)
+
+
+def test_the_retirement_walk_merges_age_below_55_keeping_both_rules_and_both_refs(
+    walks: dict[str, dict[str, Any]],
+) -> None:
+    """The real-pack witness for the merge, on the walk it was measured on.
+
+    ``offshore/retirement/property`` is excluded by TWO products for the same
+    legal reason — E33E and E33F both say the applicant is under 55 — and
+    before ``_collapse_reader_reasons`` the sheet carried the code twice.
+
+    All three assertions matter, and the last two are the ones that forbid the
+    WRONG fix. A naive dedupe on the code would satisfy the first and fail
+    these: ``_dedupe_reasons`` uses ``setdefault``, so it would have kept
+    ``hf.e33e``'s entry and silently dropped both ``hf.e33f`` and the source
+    record only ``hf.e33f`` cites. Measured 2026-09-07 on
+    ``rulepack-prod-020.signed.json``:
+
+        [0] AGE_BELOW_55  ('hf.e33e.age-below-55',)  (9248b1d7,)
+        [1] AGE_BELOW_55  ('hf.e33f.age-below-55',)  (6f5135f2, 9248b1d7)
+
+    One ref set happens to be a subset of the other in THIS pair; nothing in
+    the contract guarantees that for the next one, which is why the union is
+    asserted as a union rather than as 'the longer entry wins'.
+    """
+
+    label = "offshore/retirement/property"
+    decision = _public_decision(walks[label]["overrides"], label)
+    assert decision.state.value == "NO_SUPPORTED_PATH"
+
+    age_reasons = [reason for reason in decision.no_path_reasons if reason.code == "AGE_BELOW_55"]
+    assert len(age_reasons) == 1, (
+        f"AGE_BELOW_55 must render exactly once, got {len(age_reasons)} entries — "
+        f"{[list(reason.rule_ids) for reason in age_reasons]}"
+    )
+
+    merged = age_reasons[0]
+    assert set(merged.rule_ids) == {"hf.e33e.age-below-55", "hf.e33f.age-below-55"}, (
+        "the merge dropped a rule id — both excluding rules must survive the collapse"
+    )
+
+    raw = _engine_decision(walks[label]["overrides"], label)
+    every_ref = {
+        ref
+        for reason in raw.no_path_reasons
+        if reason.code == "AGE_BELOW_55"
+        for ref in reason.source_refs
+    }
+    assert len(every_ref) == 2, f"expected two distinct citations upstream, got {every_ref}"
+    assert set(merged.source_refs) == every_ref, (
+        "the merge dropped a citation — the union of every AGE_BELOW_55 source_ref "
+        "the ENGINE produced must survive onto the single merged reason"
+    )
 
 
 def test_no_walk_dead_ends_outside_the_allowlist(outcomes: dict[str, dict[str, Any]]) -> None:

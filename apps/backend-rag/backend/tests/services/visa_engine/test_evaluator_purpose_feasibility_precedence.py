@@ -53,7 +53,7 @@ from backend.scripts.visa_engine.gold_replay_driver import (
     _offline_identity_provider,
     build_persona_request,
 )
-from backend.services.visa_engine import compiler
+from backend.services.visa_engine import compiler, evaluate_path
 from backend.services.visa_engine import models as M
 from backend.services.visa_engine.compiler import DEFAULT_FACT_REGISTRY, build_compiled_pack
 from backend.services.visa_engine.enums import DecisionState
@@ -425,7 +425,7 @@ class TestNoPathReasonsAreScopedToPurposeFeasibleProducts:
 
 
 def _same_code_two_sources_pack(
-    *, second_code: str = "SHARED_EXCLUSION"
+    *, second_code: str = "SHARED_EXCLUSION", effect_type: str = "EXCLUDE"
 ) -> tuple[Any, str, str]:
     """Two products that BOTH cover TOURISM and are BOTH excluded, each by its
     own HARD_FILTER rule — with ``second_code`` deciding whether the two
@@ -477,11 +477,11 @@ def _same_code_two_sources_pack(
         rules.append(
             B.rule(
                 rule_id=f"hf.{code.lower()}",
-                stage="HARD_FILTER",
+                stage="HARD_FILTER" if effect_type == "EXCLUDE" else "HUMAN_REVIEW",
                 scope="PRODUCTS",
                 product_version_ids=[pid],
                 when={"op": "eq", "fact": "immigration.currently_in_indonesia", "value": False},
-                effect={"type": "EXCLUDE", "reason_code": reason_code},
+                effect={"type": effect_type, "reason_code": reason_code},
                 source_id=src,
                 required_facts=["immigration.currently_in_indonesia"],
             )
@@ -495,16 +495,59 @@ def _same_code_two_sources_pack(
     return pack, src_a, src_b
 
 
-def _no_path_reasons_on(pack: Any) -> tuple[Any, ...]:
+def _public_no_path_reasons_on(pack: Any) -> tuple[Any, ...]:
+    """The engine's decision put through the PUBLIC collapse.
+
+    Calls ``evaluate_path._collapse_reader_reasons`` directly rather than the
+    whole ``apply_public_policy_adapters`` chain, and the reason is measured,
+    not preference: on a minimal hand-built pack the chain never reaches the
+    collapse in ``NO_SUPPORTED_PATH`` at all. ``_apply_decisive_source_authority_hold``
+    fires first (``DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE`` — a two-line
+    ``B.source_record`` is not a decisive primary source) and rewrites the
+    decision to ``HUMAN_REVIEW_REQUIRED``, so a chain-level assertion here
+    would be measuring that adapter, not this one.
+
+    Bending the fixture until it satisfies an unrelated authority check would
+    make this test depend on source-applicability rules it is not about. The
+    end-to-end through the REAL chain is pinned where it can be pinned
+    honestly — on the real signed pack, in
+    ``test_interview_walk_census.py::test_the_retirement_walk_merges_age_below_55_keeping_both_rules_and_both_refs``,
+    which goes through the whole of ``apply_public_policy_adapters``.
+    """
+
     facts = _facts(
         {
             "intent.purposes": _known(["TOURISM"]),
             "immigration.currently_in_indonesia": _known(False),
             "study.admission_confirmed": _known(False),
+            # Required by `_apply_minor_privacy_hold`, the first public
+            # adapter: an UNKNOWN birth date is itself a NEEDS_INPUT hold, so
+            # without this the decision never reaches the collapse under test.
+            "person.birth_date": _known("1980-01-01"),
         }
     )
     decision = evaluate(facts, pack, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
     assert decision.state is DecisionState.NO_SUPPORTED_PATH
+    decision = evaluate_path._collapse_reader_reasons(decision)
+    assert decision.state is DecisionState.NO_SUPPORTED_PATH
+    return decision.no_path_reasons
+
+
+def _engine_no_path_reasons_on(pack: Any) -> tuple[Any, ...]:
+    """The RAW engine output, before any public shaping."""
+
+    facts = _facts(
+        {
+            "intent.purposes": _known(["TOURISM"]),
+            "immigration.currently_in_indonesia": _known(False),
+            "study.admission_confirmed": _known(False),
+            # Required by `_apply_minor_privacy_hold`, the first public
+            # adapter: an UNKNOWN birth date is itself a NEEDS_INPUT hold, so
+            # without this the decision never reaches the collapse under test.
+            "person.birth_date": _known("1980-01-01"),
+        }
+    )
+    decision = evaluate(facts, pack, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
     return decision.no_path_reasons
 
 
@@ -529,7 +572,7 @@ class TestNoPathReasonsAreMergedByCodeNotRepeated:
         """GUILT: two products, two rules, one code. Before the merge this
         returned the code TWICE."""
         pack, _, _ = _same_code_two_sources_pack()
-        reasons = _no_path_reasons_on(pack)
+        reasons = _public_no_path_reasons_on(pack)
         assert [reason.code for reason in reasons] == ["SHARED_EXCLUSION"]
 
     def test_guilt_the_merge_unions_the_citations_and_drops_none(self) -> None:
@@ -538,7 +581,7 @@ class TestNoPathReasonsAreMergedByCodeNotRepeated:
         collapse that kept the first-seen entry would pass the test above and
         fail this one, having silently dropped ``src_b``."""
         pack, src_a, src_b = _same_code_two_sources_pack()
-        merged = _no_path_reasons_on(pack)
+        merged = _public_no_path_reasons_on(pack)
         assert len(merged) == 1
         assert set(merged[0].rule_ids) == {"hf.dupa", "hf.dupb"}
         assert set(merged[0].source_refs) == {uuid.UUID(src_a), uuid.UUID(src_b)}, (
@@ -553,10 +596,68 @@ class TestNoPathReasonsAreMergedByCodeNotRepeated:
         OWN single citation. A blanket 'one reason per state' collapse would
         fail here, and so would a merge that unioned across codes."""
         pack, src_a, src_b = _same_code_two_sources_pack(second_code="OTHER_EXCLUSION")
-        reasons = _no_path_reasons_on(pack)
+        reasons = _public_no_path_reasons_on(pack)
         assert [reason.code for reason in reasons] == ["SHARED_EXCLUSION", "OTHER_EXCLUSION"]
         assert set(reasons[0].source_refs) == {uuid.UUID(src_a)}
         assert set(reasons[1].source_refs) == {uuid.UUID(src_b)}
+
+    def test_the_engine_itself_does_NOT_merge(self) -> None:
+        """The boundary, pinned from the other side: ``evaluate`` keeps ONE
+        PROOF PER RULE, so the trace, the gold harness and any audit reader of
+        the raw engine output still see that two distinct rules fired. Only
+        ``apply_public_policy_adapters`` collapses.
+
+        This is what stops a later 'simplification' from moving the merge down
+        into the evaluator and quietly destroying per-rule granularity
+        everywhere."""
+        pack, _, _ = _same_code_two_sources_pack()
+        raw = _engine_no_path_reasons_on(pack)
+        assert [reason.code for reason in raw] == ["SHARED_EXCLUSION", "SHARED_EXCLUSION"]
+        assert [reason.rule_ids for reason in raw] == [("hf.dupa",), ("hf.dupb",)]
+
+    def test_guilt_the_review_list_is_collapsed_too(self) -> None:
+        """GUILT on the OTHER reader-facing list, and it is not hypothetical.
+
+        Scanning ``rulepack-prod-020.source.json``: NINE reason codes are
+        emitted by more than one rule, so the shape is general rather than an
+        ``AGE_BELOW_55`` quirk. Seven are ``SUPPORT`` codes, which do not feed
+        a reader-facing reason list — but ``GOVT_INVITATION_REQUIRED`` is
+        emitted by TWO ``REQUIRE_REVIEW`` rules,
+        ``review.e33a.central-government-invitation`` and
+        ``review.e33c.central-government-invitation``, on two different
+        products. That is exactly the ``AGE_BELOW_55`` shape on the review
+        surface, which renders through the same code-keyed copy.
+
+        No walk in the 43-walk corpus reaches ``HUMAN_REVIEW_REQUIRED``, so
+        this is pinned on a hand-built pack rather than claimed as a corpus
+        measurement — but the pack proves the surface is reachable, so the
+        collapse covers both lists rather than only the one that happened to
+        be measured."""
+
+        pack, src_a, src_b = _same_code_two_sources_pack(effect_type="REQUIRE_REVIEW")
+        facts = _facts(
+            {
+                "intent.purposes": _known(["TOURISM"]),
+                "immigration.currently_in_indonesia": _known(False),
+                "study.admission_confirmed": _known(False),
+                "person.birth_date": _known("1980-01-01"),
+            }
+        )
+        raw = evaluate(facts, pack, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
+        assert raw.state is DecisionState.HUMAN_REVIEW_REQUIRED
+        assert [reason.code for reason in raw.review_reasons] == [
+            "SHARED_EXCLUSION",
+            "SHARED_EXCLUSION",
+        ], "the engine must keep one review proof per rule"
+
+        collapsed = evaluate_path._collapse_reader_reasons(raw)
+        assert collapsed.state is DecisionState.HUMAN_REVIEW_REQUIRED
+        assert [reason.code for reason in collapsed.review_reasons] == ["SHARED_EXCLUSION"]
+        assert set(collapsed.review_reasons[0].rule_ids) == {"hf.dupa", "hf.dupb"}
+        assert set(collapsed.review_reasons[0].source_refs) == {
+            uuid.UUID(src_a),
+            uuid.UUID(src_b),
+        }
 
     def test_innocence_the_merge_never_changes_the_state(self) -> None:
         """The merged list feeds the reason TEXT and nothing else — same
