@@ -22,7 +22,7 @@ export function JournalIndex({ articles }: JournalIndexProps) {
         </a>
         <nav aria-label="Journal navigation" className={styles.navigation}>
           <a href="/">Home</a>
-          <a href="/#services">Services</a>
+          <a href="/services">Services</a>
           <a href={myBaliZero.href}>{myBaliZero.label}</a>
         </nav>
       </header>
@@ -51,7 +51,7 @@ export function JournalIndex({ articles }: JournalIndexProps) {
             className={styles.sectionHeading}
             eyebrow="News · Analysis · Guides"
             id="latest-stories-title"
-            title="Latest stories"
+            title="Selected stories"
           />
 
           {articles.length === 0 ? (

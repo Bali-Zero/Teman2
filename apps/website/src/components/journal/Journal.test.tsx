@@ -40,6 +40,13 @@ describe("JournalIndex", () => {
       "href",
       verifiedArticle.finalSourceUrl,
     );
+    expect(screen.getByRole("link", { name: "Services" })).toHaveAttribute(
+      "href",
+      "/services",
+    );
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Selected stories" }),
+    ).toBeInTheDocument();
   });
 
   it("shows an explicit state instead of unverified or dummy cards", () => {
