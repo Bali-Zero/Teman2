@@ -26,7 +26,7 @@ npm run dev
 Open `http://127.0.0.1:3100`.
 
 ```sh
-npm test
+npm test -- --maxWorkers=1 --no-file-parallelism
 npm run typecheck
 npm run build
 ```
@@ -44,10 +44,10 @@ The coordinator repeated installation from the standalone lockfile with npm 11.1
 ## Working behavior
 
 - Mobile navigation with keyboard dismissal and focus restoration.
-- Four explicit service entry paths.
+- Local `/services` overview and four service routes: immigration, company-setup, tax and property.
 - Contextual contact links for service topics, Surya and Ari.
-- Portal feature tabs for documents, applications and messages, including keyboard navigation.
-- Journal previous/next controls with coherent story links and content.
+- Clearly labelled portal interface illustrations with keyboard-accessible tabs and a separate account sign-in link.
+- Local `/journal` index and homepage carousel sharing six verified source records.
 - Local section anchors and a skip link.
 
 The portal is an illustrative feature preview, not a signed-in account. Existing external links open the corresponding service, portal, article or contact destination; their destination workflows are outside this app's smoke test.
@@ -55,21 +55,20 @@ The portal is an illustrative feature preview, not a signed-in account. Existing
 ## Content and integration boundaries
 
 - E-VOA pricing is referred to its service destination, avoiding an unverified fixed price in this app.
-- The Google review count, rating and dated snapshot were inherited from Revision 19 and have not been independently verified against Google.
-- Journal records are static prototype content; there is no CMS integration yet.
+- The stale Google rating snapshot was removed; visitors can open the current Google listing.
+- Journal titles, dates, categories and destinations were checked against their published sources. Full articles open at source; local article bodies and CMS integration remain outside this milestone. Unsupported external filters were removed.
 - No customer data, authentication, backend submission or production API integration is implemented.
 - Faysha and Sahira are excluded from the team presentation.
-- The original paper, green, copper and serif direction is preserved. Imported CSS still contains historical selectors and needs consolidation.
+- The original paper, green, copper and serif direction is preserved. Shared design primitives use scoped CSS. Historical homepage CSS remains; migration is documented in `docs/design-system`.
+- The unrelated Telegram destination is blocked and absent from the UI.
+- External destination and pricing authority evidence lives in `src/content/evidence` and `docs/integrations`; no client workflow or current price is promised by this preview.
 
-## Validation of this milestone
+## Validation and checkpoint
 
-- 12 tests passed across component and whole-page checks.
-- TypeScript validation passed.
-- Next.js production build passed.
-- Local HTTP response returned 200 with the no-index header.
-- Browser smoke checks at observed viewport widths of 812 and 354 CSS pixels found no broken images, unresolved internal anchors or horizontal page overflow.
-- Mobile menu and portal tab changes were exercised in the browser; no browser warnings or errors were observed during that check.
+Run a standalone clean install, serialized tests, typecheck and production build before freezing a candidate. The independent QA suite is `node tests/qa/site-smoke.mjs http://127.0.0.1:3105`; its acceptance matrix is in `docs/qa`. The exact validated commit, outcomes, local preview and evidence paths are recorded by the coordinator in `development-control/integration.json` beside the original R19 source folder.
 
-This is targeted development validation, not a full accessibility audit, cross-browser certification or production readiness approval.
+The initial seed passed 12 tests, typecheck, build and asset-provenance checks. Subsequent integrated checks supersede that baseline; use the exact candidate report rather than extrapolating from the seed. Five concurrent test workers timed out during host saturation; serialized execution avoids that contention.
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for the next implementation lanes.
+This is targeted development validation, not a full accessibility audit, cross-browser certification or production readiness approval. The 22 original assets remain byte-identical (approximately 29 MB); payload optimization is a separate milestone.
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for ownership, routes and the release boundary.

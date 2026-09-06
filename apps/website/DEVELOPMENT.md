@@ -1,32 +1,40 @@
-# Website development plan
+# Website development checkpoint
 
-## Milestone 1 — implemented
+The R19 homepage, five service routes and Journal index are assembled locally under contract `website-v1`. The app remains isolated from the root workspace and production deployment configuration.
 
-The Revision 19 homepage is now a component-based Next.js application in an isolated worktree. Navigation, service entry paths, portal feature tabs and Journal controls have automated coverage. The main checkout and existing deployment configuration are unchanged.
+## Routes
 
-## Milestone 2 — parallel implementation lanes
+| Route                     | Purpose                                                      |
+| ------------------------- | ------------------------------------------------------------ |
+| `/`                       | R19 homepage, team, contacts and compact editorial selection |
+| `/services`               | Four service journeys                                        |
+| `/services/immigration`   | Immigration and residence planning                           |
+| `/services/company-setup` | Company setup discussion                                     |
+| `/services/tax`           | Tax and accounting discussion                                |
+| `/services/property`      | Property and due-diligence discussion                        |
+| `/journal`                | Six source-bound editorial records                           |
 
-Each lane should receive a bounded assignment and exclusive file ownership. Changes to shared page composition, global styles and dependency files stay with the coordinating session. These are planned lanes, not currently running jobs.
+No local article detail route is exposed. The reusable article template has an explicitly excluded development fixture until authorized article content exists. Unknown service slugs return 404.
 
-| Lane             | Responsibility                                                                 | Reviewable result                                                                                        |
-| ---------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| Service journeys | Immigration, company setup, tax and property landing pages                     | A visitor can choose a service, understand the next step and reach a contextual contact or existing tool |
-| Journal          | Article model, listing and article templates                                   | Consistent titles, images, dates, category labels and working article destinations                       |
-| Design system    | Consolidate inherited CSS, responsive rules, typography and shared controls    | Reusable components with keyboard, mobile and visual checks                                              |
-| Integration      | Verify external destinations, review snapshot and authoritative pricing source | A documented content contract with verified sources and explicit fallback behavior                       |
+## Ownership
 
-Start with service journeys and design-system cleanup in separate ownership areas. Integrate each lane into this development branch only after reviewing its diff and tests.
+| Task                                  | Exclusive responsibility                                                      |
+| ------------------------------------- | ----------------------------------------------------------------------------- |
+| WEBSITE 00 — Control room             | Existing homepage, shared configuration and integration ledger                |
+| WEBSITE 01 — Design system            | `components/ui`, `styles`, `docs/design-system`                               |
+| WEBSITE 02 — Service journeys         | Service routes, components and `content/service-pages.ts`                     |
+| WEBSITE 03 — Journal                  | Journal route, components and `content/journal.ts`                            |
+| WEBSITE 04 — Content and integrations | Destination registry, builders, source evidence and integration documentation |
+| WEBSITE 05 — Independent QA           | `docs/qa`, `tests/qa` and independent candidate evidence                      |
 
-## Acceptance checks for the next milestone
+All paths above are relative to `apps/website/src` unless they begin with `docs` or `tests`. Each lane commits in its own local worktree. Only reviewed focused commits enter the coordinator worktree; no whole-worktree merges are used.
 
-1. Each service page has a clear purpose, expected next step and one primary action.
-2. Navigation works between homepage and new local pages without dead ends.
-3. Prices and regulated claims have authoritative sources; unsupported details are omitted.
-4. Desktop, tablet and narrow mobile views are checked for wrapping, clipping and fixed-widget collisions.
-5. Keyboard navigation and visible focus are checked throughout interactive flows.
-6. A clean dependency installation reproduces tests, type checking and build.
-7. Large image payloads and inherited CSS are reduced without changing the approved visual direction.
+## Acceptance and remaining work
+
+The coordinator freezes a clean commit after fresh installation, serialized tests, typecheck, production build and original-asset checksum verification. Independent QA tests that exact commit on port 3105, including all seven routes, five viewport widths, keyboard flows, content caveats, console output and the removal of the overlapping fixed contact action. The user preview stays on port 3100. Final evidence and the disposition belong to `development-control/integration.json` and the independent report.
+
+Original imagery and legacy homepage CSS are preserved deliberately. A subsequent performance milestone can introduce reviewed image derivatives and consolidate historical selectors against the R19 visual baseline. CMS, account authentication, payments, CRM and production API wiring are outside the present scope. Review counts and pricing are not cached as public claims.
 
 ## Release boundary
 
-Keep this application outside the production deployment configuration. Do not push to main, merge, arm auto-merge or deploy as part of development. Production integration requires its own explicit mandate and independent review.
+No push, PR, merge, auto-merge or deploy is authorized by this checkpoint. A local QA pass does not authorize a release. Production integration requires a separate mandate and independent Claude verification under the repository's external-agent contract.
