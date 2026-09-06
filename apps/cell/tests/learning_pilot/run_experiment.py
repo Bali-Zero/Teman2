@@ -366,7 +366,7 @@ class Experiment:
         cases = json.loads((self.root / "fixtures.json").read_text(encoding="utf-8"))
         rubric = json.loads((self.root / "rubric.json").read_text(encoding="utf-8"))
         policy = (self.root / "base_policy.md").read_text(encoding="utf-8")
-        validate_fixture_pack(cases)
+        validate_fixture_pack(cases, rubric)
         return cases, rubric, policy
 
     async def _preflight(self) -> None:
@@ -522,22 +522,53 @@ class Experiment:
                 "Inspect the end-to-end state machine, freeze boundaries, admission rule, safety stop, held-out loop, and audit.",
             ),
         ]
+        covered_paths = [str(path) for _, paths, _ in review_groups for path in paths]
+        if sorted(covered_paths) != sorted(str(path) for path in manifest["files"]):
+            raise RuntimeError("protocol review partitions do not cover the complete manifest")
+        global_contract = {
+            "review_partition_contract": (
+                "Judge only the assigned focus. Do not fail because evidence is assigned to another named part; "
+                "fail contradictions in this global contract or the supplied files."
+            ),
+            "learner_prompt_fields": [
+                "case_id",
+                "summary",
+                "observations",
+                "diagnosis_options",
+                "runbook_options",
+                "decision_options",
+            ],
+            "hidden_from_learner": ["accepted", "split", "group_id", "category"],
+            "forbidden_scan_scope": ["proposal.recommendation", "proposal.rationale"],
+            "learner_model": f"{LEARNER_MODEL}:{LEARNER_EFFORT}",
+            "reviewer_model": f"{REVIEWER_MODEL}:{REVIEWER_EFFORT}",
+            "validation_denominator": 20,
+            "held_out_denominator": 180,
+            "timeout_seconds": TIMEOUT_SECONDS,
+            "budgets": {"preparation": PREPARATION_BUDGET, "total": TOTAL_BUDGET},
+            "freeze_rule": "Protocol files freeze before learning; the admitted bundle freezes before held-out.",
+        }
         reviews: list[dict[str, object]] = []
         all_reviewed_hashes: list[str] = []
         for index, (name, paths, focus) in enumerate(review_groups, start=1):
-            expected = [str(manifest["files"][str(path)]) for path in paths]
+            expected_files = {str(path): str(manifest["files"][str(path)]) for path in paths}
+            expected = list(expected_files.values())
             packet = {
                 "instruction": (
                     "Independently review this contained experiment before learning. FAIL on leakage, mutable gold, "
                     "missing denominator, unsafe execution, unfrozen rules, budget inconsistency, or model ambiguity. "
-                    f"{focus} Echo the supplied expected_hashes exactly in reviewed_hashes."
+                    f"{focus} Review only this assigned focus under review_partition_contract. "
+                    "Echo the supplied expected_hashes exactly in reviewed_hashes."
                 ),
                 "review_part": f"{index}/4:{name}",
+                "global_contract": global_contract,
+                "hash_algorithm": "sha256-bytes",
+                "expected_files": expected_files,
                 "expected_hashes": expected,
                 "files": {str(path): path.read_text(encoding="utf-8") for path in paths},
             }
             result = await self._structured_attempt(
-                trial_id=f"review:protocol:{name}:1",
+                trial_id=f"review:protocol:{name}:2",
                 phase="preparation",
                 adapter=self.reviewer,
                 prompt=_canonical_json(packet),

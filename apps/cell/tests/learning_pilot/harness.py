@@ -101,7 +101,9 @@ def _append_jsonl(path: Path, value: dict[str, object]) -> None:
         os.fsync(handle.fileno())
 
 
-def validate_fixture_pack(cases: list[dict[str, object]]) -> None:
+def validate_fixture_pack(
+    cases: list[dict[str, object]], rubric: dict[str, object] | None = None
+) -> None:
     """Validate frozen counts, identities, coverage and accepted combinations."""
     validate_splits(
         [{"group_id": str(case.get("group_id", "")), "split": str(case.get("split", ""))} for case in cases]
@@ -129,6 +131,68 @@ def validate_fixture_pack(cases: list[dict[str, object]]) -> None:
                 or accepted.get("decision") not in case["decision_options"]
             ):
                 raise ValueError(f"accepted answer is outside options for {case['case_id']}")
+    if rubric is None:
+        return
+
+    seed = rubric.get("option_order_seed")
+    if not isinstance(seed, int):
+        raise ValueError("rubric lacks integer option_order_seed")
+    expected_registries = {
+        "category_registry": sorted({str(case["category"]) for case in cases}),
+        "diagnosis_registry": sorted(
+            {str(value) for case in cases for value in case["diagnosis_options"]}
+        ),
+        "runbook_registry": sorted(
+            {str(value) for case in cases for value in case["runbook_options"]}
+        ),
+        "decision_registry": sorted(
+            {str(value) for case in cases for value in case["decision_options"]}
+        ),
+    }
+    for name, expected in expected_registries.items():
+        if sorted(str(value) for value in rubric.get(name, [])) != expected:
+            raise ValueError(f"{name} does not match fixture options")
+
+    accepted_positions: dict[str, set[int]] = {
+        "diagnosis_options": set(),
+        "runbook_options": set(),
+        "decision_options": set(),
+    }
+    sentinel_options = {
+        "diagnosis_options": {"unknown"},
+        "runbook_options": {
+            "RB-OBSERVABILITY-GAP",
+            "RB-ESCALATE-HUMAN",
+            "RB-HEALTHY-OBSERVE",
+        },
+    }
+    for case in cases:
+        case_id = str(case["case_id"])
+        if not str(case["group_id"]).startswith("cause-") or case["group_id"] == case_id:
+            raise ValueError(f"non-semantic group_id for {case_id}")
+        accepted = case["accepted"][0]
+        for field, answer_field in (
+            ("diagnosis_options", "diagnosis"),
+            ("runbook_options", "runbook"),
+            ("decision_options", "decision"),
+        ):
+            options = [str(value) for value in case[field]]
+            if len(options) != len(set(options)):
+                raise ValueError(f"duplicate options for {case_id}:{field}")
+            missing = sentinel_options.get(field, set()).difference(options)
+            if missing:
+                raise ValueError(f"missing sentinel options for {case_id}:{field}")
+            expected_order = sorted(
+                options,
+                key=lambda option: hashlib.sha256(
+                    f"{seed}:{case_id}:{field}:{option}".encode()
+                ).hexdigest(),
+            )
+            if options != expected_order:
+                raise ValueError(f"unfrozen option order for {case_id}:{field}")
+            accepted_positions[field].add(options.index(str(accepted[answer_field])))
+    if any(len(positions) < 2 for positions in accepted_positions.values()):
+        raise ValueError("accepted option positions are degenerate")
 
 
 def build_case_prompt(

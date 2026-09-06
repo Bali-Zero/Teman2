@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 from pathlib import Path
 
@@ -62,6 +63,34 @@ def test_fixture_pack_requires_counts_groups_and_coverage() -> None:
     invalid[-1]["group_id"] = invalid[-2]["group_id"]
     with pytest.raises(ValueError, match="30 distinct test groups"):
         validate_fixture_pack(invalid)
+
+
+def test_frozen_fixture_pack_rejects_option_shortcuts_and_registry_drift() -> None:
+    cases = _pack()
+    for case in cases:
+        case_id = str(case["case_id"])
+        case["group_id"] = f"cause-{case_id}"
+        case["runbook_options"].append("RB-ESCALATE-HUMAN")
+        for field in ("diagnosis_options", "runbook_options", "decision_options"):
+            case[field] = sorted(
+                set(case[field]),
+                key=lambda option: hashlib.sha256(
+                    f"20260906:{case_id}:{field}:{option}".encode()
+                ).hexdigest(),
+            )
+    rubric = {
+        "option_order_seed": 20260906,
+        "option_order_algorithm": "Sort ascending by SHA-256 of seed:case_id:field:option.",
+        "category_registry": sorted({str(case["category"]) for case in cases}),
+        "diagnosis_registry": sorted({str(value) for case in cases for value in case["diagnosis_options"]}),
+        "runbook_registry": sorted({str(value) for case in cases for value in case["runbook_options"]}),
+        "decision_registry": ["abstain", "diagnose", "escalate"],
+    }
+    validate_fixture_pack(cases, rubric)
+
+    cases[0]["runbook_options"].append("RB-ESCALATE-HUMAN")
+    with pytest.raises(ValueError, match="duplicate options"):
+        validate_fixture_pack(cases, rubric)
 
 
 def test_hidden_answers_never_enter_learner_prompt() -> None:
