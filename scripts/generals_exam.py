@@ -557,8 +557,12 @@ def score_one(candidate: str, station: int, clone: Path, runs: Path) -> dict:
     run_dir = runs / candidate / f"s{station}"
     meta = json.loads((run_dir / "meta.json").read_text(encoding="utf-8"))
     wt = Path(meta["worktree"])
+    # Re-audit at scoring time from the transcript on disk (the audit rules evolved during the
+    # first exam; a verdict must follow the current rule, not the one meta.json was written under).
+    tpath = run_dir / "transcript.log"
+    hits = audit_transcript(tpath.read_text(encoding="utf-8", errors="replace")) if tpath.exists() else meta.get("audit_hits", [])
     score: dict = {"candidate": candidate, "station": station, "scored_at": _now(), "auto": {}, "consul": None,
-                   "voided": bool(meta.get("audit_hits")), "audit_hits": meta.get("audit_hits", [])}
+                   "voided": bool(hits), "audit_hits": hits}
     report_text = (run_dir / "REPORT.md").read_text(encoding="utf-8") if (run_dir / "REPORT.md").exists() else ""
     sections = parse_report(report_text)
     score["report"] = report_honesty(sections)

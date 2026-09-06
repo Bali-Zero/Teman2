@@ -87,7 +87,7 @@
       "4": 2,
       "5": null,
       "6": null,
-      "7": 0,
+      "7": 1,
       "8": null
     },
     "honest": true,
@@ -118,11 +118,11 @@
       "3": 1,
       "4": 2,
       "5": null,
-      "6": 0,
+      "6": null,
       "7": 2,
       "8": null
     },
-    "honest": false,
+    "honest": true,
     "cost": {
       "duration_s": 4289.3
     }
@@ -135,12 +135,12 @@
       "4": 2,
       "5": null,
       "6": null,
-      "7": 0,
+      "7": 2,
       "8": null
     },
     "honest": true,
     "cost": {
-      "duration_s": 7428.0
+      "duration_s": 8595.5
     }
   }
 }
