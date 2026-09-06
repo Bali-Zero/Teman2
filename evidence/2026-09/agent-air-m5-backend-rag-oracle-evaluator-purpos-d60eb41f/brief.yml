@@ -23,11 +23,28 @@ objective: >-
   cure (a), owner-ruled 2026-09-06.
 
   Gear 2 by SIZE, deterministically: --print-floor returns 2 and --print-floor-source returns
-  "size" on this changed-file list with the numstat supplied (4 files, +656/-47). No hot-zone
-  path is touched. The evaluator change itself is 17 net lines; the size comes from the
-  guilt-and-innocence battery, which is the point -- cure (a) was chosen over the two
-  alternatives precisely because "it cannot fail open" is checkable, and the checks are what
-  make it so.
+  "size" on this changed-file list with the numstat supplied (8 files; the line counts are not
+  restated here because this brief is itself one of the eight). No hot-zone
+  path is touched. The evaluator change itself is small; the size comes from the
+  guilt-and-innocence battery and the re-pinned census table, which is the point -- cure (a)
+  was chosen over the two alternatives precisely because "it cannot fail open" is checkable,
+  and the checks are what make it so.
+
+  GATE FOLLOW-UPS, round 2 (2026-09-06). Four items, all inside this same concern:
+  (1) no_path_reasons is scoped to PURPOSE-FEASIBLE products. The reorder made 23 of the 43
+  walks render that list for the first time, and it aggregated the exclusion reason of every
+  EXCLUDED product -- including products no ELIGIBILITY rule in the pack can ever make cover
+  the declared purposes, so a tourist read "your sponsor is not a government body" on behalf
+  of E33A. ProductProof gains a structural, fact-independent purpose_feasible computed above
+  every early return; evaluate_with_trace filters `excluded` by it. State is untouched: the
+  filtered list feeds nothing but the reason text, and Decision's non-empty invariant is still
+  met by _fallback_no_path_reason.
+  (2) The census's three vacuous guilt assertions are scoped. Grading one mutated walk against
+  the whole 36-row allowlist made the helper's trailing "absent from the corpus" loop fire
+  unconditionally, so those asserts passed whatever the mutation did.
+  (3) The precedence module's skipif no longer disables the hand-built-pack tests, which need
+  no pack on disk at all.
+  (4) The census is re-pinned to what this reorder measures on seq-19.
 constraints:
   - >-
     The reorder must not be able to fail open, and that must be a measurement rather than an
@@ -87,4 +104,23 @@ acceptance:
     DecisionState and no candidate set changes, and persona #13 is NEEDS_INPUT on
     work.serves_indonesian_clients on both packs. probe:
     pytest backend/tests/services/visa_engine/test_seq19_pack.py backend/tests/services/visa_engine/test_evaluator_gold.py
+  - >-
+    WHEN onshore/invest is evaluated on seq-19 after the reorder, THEN the applicant-facing
+    no_path_reasons no longer carries D12_NOT_CONVERTIBLE for a TOURISM walk (D12's SUPPORT
+    rules cover INVESTMENT only, so it could never have been that applicant's path), while a
+    purpose-feasible exclusion such as E28A_PAID_CAPITAL_BELOW_MIN on an INVESTMENT walk is
+    still reported. probe: pytest backend/tests/services/visa_engine/test_evaluator_gold.py
+    backend/tests/services/visa_engine/test_evaluator_edge_cases.py
+    backend/tests/services/visa_engine/test_evaluator_state_precedence.py
+  - >-
+    WHEN the `elif missing != allowed` branch is deleted from _dead_end_violations, THEN
+    exactly test_guilt_a_cured_dead_end_that_only_moves_the_block_is_caught goes red -- the
+    scoped guilt assertion is no longer satisfied by the helper's own "absent from the corpus"
+    noise. Measured 2026-09-06 on a scratch copy, restored. probe:
+    pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+  - >-
+    WHEN rulepack-prod-019.source.json is renamed on disk, THEN the nine hand-built-pack
+    precedence tests still RUN (only the eight seq-19 witnesses skip) -- before this PR all
+    seventeen skipped silently. Measured 2026-09-06 on a scratch copy, restored. probe:
+    pytest backend/tests/services/visa_engine/test_evaluator_purpose_feasibility_precedence.py
 pii_scan: clean

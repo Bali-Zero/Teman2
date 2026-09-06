@@ -79,7 +79,13 @@ _SEQ19_SOURCE_PATH = _PACKS_DIR / "rulepack-prod-019.source.json"
 #: wall-clock evaluation is a clock bomb.
 AS_OF = datetime(2026, 9, 5, 0, 30, 0, tzinfo=timezone.utc)
 
-pytestmark = pytest.mark.skipif(
+#: Deliberately NOT a module-level ``pytestmark`` (PR-2 gate condition
+#: SKIPIF SCOPE): only the seq-19 witnesses below need a pack on disk. Every
+#: other test in this file builds its own minimal pack in memory, so a pack
+#: rename or a relocated `packs/` directory used to silently disable the
+#: precedence tests that are this file's actual subject — a green run
+#: proving nothing (cicatrix #2). Applied per-target instead.
+requires_seq19 = pytest.mark.skipif(
     not _SEQ19_SOURCE_PATH.exists(),
     reason="rulepack-prod-019.source.json does not exist on disk",
 )
@@ -272,6 +278,151 @@ class TestSafetyPrecedenceIsUnchanged:
         assert proof.missing_purposes == frozenset({"TOURISM"})
 
 
+def _two_product_excluded_pack() -> compiler.CompiledRulePack:
+    """Two products, each EXCLUDED by its own always-TRUE hard filter, each
+    with ONE ELIGIBILITY rule — ``STUDY_ONLY`` covers STUDY, ``TOURISM_ONLY``
+    covers TOURISM. Whatever the applicant declares, both products are
+    excluded and at most ONE of them ever claimed that purpose.
+    """
+    src_id = B.new_uuid()
+    products = []
+    rules = []
+    for code, purpose in (("STUDYONLY", "STUDY"), ("TOURONLY", "TOURISM")):
+        pid = B.new_uuid()
+        products.append(
+            B.product(
+                product_id=pid,
+                source_id=src_id,
+                product_code=code,
+                covered_purposes=[purpose],
+            )
+        )
+        rules.append(
+            B.rule(
+                rule_id=f"el.{code.lower()}",
+                stage="ELIGIBILITY",
+                scope="PRODUCTS",
+                product_version_ids=[pid],
+                when={"op": "eq", "fact": "study.admission_confirmed", "value": True},
+                effect={
+                    "type": "SUPPORT",
+                    "reason_code": f"{code}_SUPPORT",
+                    "covered_purposes": [purpose],
+                },
+                source_id=src_id,
+                required_facts=["study.admission_confirmed"],
+            )
+        )
+        rules.append(
+            B.rule(
+                rule_id=f"hf.{code.lower()}",
+                stage="HARD_FILTER",
+                scope="PRODUCTS",
+                product_version_ids=[pid],
+                when={"op": "eq", "fact": "immigration.currently_in_indonesia", "value": False},
+                effect={"type": "EXCLUDE", "reason_code": f"{code}_EXCLUDED"},
+                source_id=src_id,
+                required_facts=["immigration.currently_in_indonesia"],
+            )
+        )
+    payload = B.rule_pack_payload(
+        rules=rules, products=products, source_records=[B.source_record(source_id=src_id)]
+    )
+    return build_compiled_pack(M.RulePack.model_validate(B.rule_pack_envelope(payload)))
+
+
+def _no_path_codes(purposes: list[str]) -> list[str]:
+    facts = _facts(
+        {
+            "intent.purposes": _known(purposes),
+            "immigration.currently_in_indonesia": _known(False),
+            "study.admission_confirmed": _known(False),
+        }
+    )
+    decision = evaluate(
+        facts,
+        _two_product_excluded_pack(),
+        effective_at=_EFFECTIVE_AT,
+        observed_at=_EFFECTIVE_AT,
+    )
+    assert decision.state is DecisionState.NO_SUPPORTED_PATH
+    return [reason.code for reason in decision.no_path_reasons]
+
+
+class TestNoPathReasonsAreScopedToPurposeFeasibleProducts:
+    """The applicant-facing half of the reorder (gate follow-up, 2026-09-06).
+
+    ``NO_SUPPORTED_PATH`` went from 0 of the 43 interview walks to 23, so the
+    reason list stopped being a corner case and became the sentence people
+    read. It aggregated every EXCLUDED product's reason, including products
+    whose ELIGIBILITY rules never claimed the declared purpose at all — a
+    true sentence about a visa the applicant was never a candidate for.
+    """
+
+    def test_guilt_a_purpose_mismatched_products_reason_is_withheld(self) -> None:
+        """GUILT: the TOURISM applicant is not told why the STUDY-only
+        product was excluded. Before the scoping both codes appeared."""
+        assert _no_path_codes(["TOURISM"]) == ["TOURONLY_EXCLUDED"]
+
+    def test_innocence_the_purpose_feasible_products_reason_survives(self) -> None:
+        """INNOCENCE, the mirror image on the SAME pack: swap the declared
+        purpose and the surviving code swaps with it. A filter that simply
+        dropped reasons would fail this half."""
+        assert _no_path_codes(["STUDY"]) == ["STUDYONLY_EXCLUDED"]
+
+    def test_when_nothing_purpose_feasible_was_excluded_the_operational_fallback_fires(
+        self,
+    ) -> None:
+        """The empty case, which the scoping newly makes reachable: the
+        applicant declared a purpose NO product ever claimed, so no exclusion
+        reason is theirs. ``Decision`` forbids an empty list for this state,
+        and ``_fallback_no_path_reason`` supplies the honest OPERATIONAL one
+        — WITH citations, since the task bar is zero uncited outputs. The
+        mouth carries copy for this code (engine-adapter.ts
+        ``SUPPORT_REASON_COPY``), added in the same PR, so it renders as a
+        sentence and not as a raw code."""
+        facts = _facts(
+            {
+                "intent.purposes": _known(["EMPLOYMENT"]),
+                "immigration.currently_in_indonesia": _known(False),
+                "study.admission_confirmed": _known(False),
+            }
+        )
+        decision = evaluate(
+            facts,
+            _two_product_excluded_pack(),
+            effective_at=_EFFECTIVE_AT,
+            observed_at=_EFFECTIVE_AT,
+        )
+        assert decision.state is DecisionState.NO_SUPPORTED_PATH
+        assert [reason.code for reason in decision.no_path_reasons] == [
+            "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
+        ]
+        assert decision.no_path_reasons[0].source_refs
+
+    def test_the_scoping_never_changes_the_state(self) -> None:
+        """The filtered list feeds the reason TEXT and nothing else: all
+        three purposes above reach NO_SUPPORTED_PATH with no candidates and
+        no missing facts, exactly as they did before the scoping."""
+        for purposes in (["TOURISM"], ["STUDY"], ["EMPLOYMENT"]):
+            facts = _facts(
+                {
+                    "intent.purposes": _known(purposes),
+                    "immigration.currently_in_indonesia": _known(False),
+                    "study.admission_confirmed": _known(False),
+                }
+            )
+            decision = evaluate(
+                facts,
+                _two_product_excluded_pack(),
+                effective_at=_EFFECTIVE_AT,
+                observed_at=_EFFECTIVE_AT,
+            )
+            assert decision.state is DecisionState.NO_SUPPORTED_PATH, purposes
+            assert decision.candidates == ()
+            assert decision.missing_facts == ()
+
+
 class TestDecisionLevelQuestionChoice:
     """``evaluate``'s ``min(blocked, key=len(missing_facts))`` is where the
     defect actually bit users: the cheapest-to-answer blocked proof wins,
@@ -405,6 +556,7 @@ _BUSINESS_121D: dict[str, Any] = {
 }
 
 
+@requires_seq19
 class TestSignedSeq19Witnesses:
     def test_a_business_applicant_is_not_asked_for_investment_capital(
         self, seq19: compiler.CompiledRulePack
@@ -516,6 +668,7 @@ class TestSignedSeq19Witnesses:
         assert {path.value for path in decision.missing_facts} == {"work.serves_indonesian_clients"}
 
 
+@requires_seq19
 def test_the_pack_under_test_is_the_one_the_census_was_measured_against() -> None:
     """Anti-drift: the numbers in this file's docstrings were measured on
     seq-19's 109 rules / 38 products."""

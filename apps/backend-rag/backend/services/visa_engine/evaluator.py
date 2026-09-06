@@ -201,7 +201,7 @@ import hmac
 import json
 import uuid
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from enum import Enum
 from typing import Literal
@@ -279,6 +279,19 @@ class ProductProof:
     #: Populated for UNSUPPORTED — the declared purposes no TRUE (or
     #: potentially-TRUE-via-an-unresolved-unknown) rule could ever cover.
     missing_purposes: frozenset[str] = frozenset()
+    #: Populated on EVERY status, unlike every field above it. STRUCTURAL and
+    #: fact-independent: whether this product's in-force ELIGIBILITY rules
+    #: even CLAIM to cover the applicant's declared purposes, whatever those
+    #: rules currently evaluate to. ``False`` means the product could not have
+    #: been a candidate for this applicant under any resolution of any fact —
+    #: which is why ``evaluate_with_trace`` drops such a proof's exclusion
+    #: reasons from the applicant-facing ``no_path_reasons``. Deliberately
+    #: NOT the fact-dependent ``naive_potential_coverage`` test that drives
+    #: the UNSUPPORTED return: a product whose SUPPORT rule is definitely
+    #: FALSE right now is still a product this applicant was shopping for,
+    #: and its exclusion reason is still their answer. Defaults to ``True``
+    #: so a hand-built proof in a test is never silently filtered out.
+    purpose_feasible: bool = True
 
 
 # ---------------------------------------------------------------------------
@@ -584,11 +597,32 @@ def evaluate_product(
     review_results = _evaluate_stage(by_stage.get(RuleStage.HUMAN_REVIEW, ()), facts)
     support_results = _evaluate_stage(by_stage.get(RuleStage.ELIGIBILITY, ()), facts)
 
+    # PR-2 gate follow-up (2026-09-06): the STRUCTURAL purpose-coverage claim
+    # of this product, computed above every early return so that
+    # `purpose_feasible` rides on EVERY proof this function can produce —
+    # including the EXCLUDED and REVIEW ones that return long before the
+    # fact-dependent `naive_potential_coverage` test further down. It is the
+    # union of `covered_purposes` over ALL in-force ELIGIBILITY rules
+    # regardless of truth value (`STAGE_EFFECT_TYPE` guarantees every
+    # ELIGIBILITY rule carries an `EffectSupport`), so a product with zero
+    # ELIGIBILITY rules — E33A/B/C, E23U/V, E28B/C/D/F under seq-19 — claims
+    # nothing and is feasible for nobody. Pure: no rule is evaluated here
+    # that `_evaluate_stage` did not already evaluate above.
+    declared_coverage: frozenset[str] = (
+        frozenset[str]().union(
+            *(frozenset(rule.effect.covered_purposes) for rule, _ in support_results)  # type: ignore[union-attr]
+        )
+        if support_results
+        else frozenset()
+    )
+    purpose_feasible = purposes <= declared_coverage
+
     def finish(
         proof: ProductProof,
         *,
         applied_rule_ids: frozenset[str],
     ) -> ProductProof:
+        proof = replace(proof, purpose_feasible=purpose_feasible)
         if _trace_sink is not None:
             for rule, result in hard_results + review_results + support_results:
                 _trace_sink.append(
@@ -1442,7 +1476,31 @@ def evaluate_with_trace(
         missing = tuple(sorted(smallest.missing_facts, key=lambda path: path.value))
         return assemble(state=DecisionState.NEEDS_INPUT, missing_facts=missing)
 
-    excluded = [proof for proof in proofs if proof.status is ProductProofStatus.EXCLUDED]
+    # PR-2 gate follow-up (2026-09-06): scope the applicant-facing reasons to
+    # products that ever CLAIMED to cover the declared purposes. Before the
+    # decisiveness reorder this list was near-invisible — 0 of the 43 real
+    # interview walks reached NO_SUPPORTED_PATH — and it aggregated the
+    # exclusion reason of every EXCLUDED product, including products the
+    # applicant was never shopping for: a tourist was told "your sponsor is
+    # not a government body" on behalf of E33A/B/C, products that carry ZERO
+    # ELIGIBILITY rules and so can never cover TOURISM under any sponsor.
+    # That sentence is not false, it is about a product this applicant could
+    # not have had, and after the reorder 23 walks render this list.
+    #
+    # `purpose_feasible` is False for exactly those products and is STRUCTURAL
+    # (see `evaluate_product`), so a product that did claim the purposes and
+    # was then excluded on the facts keeps its reason — that is the
+    # applicant's real blocker. This narrows the reason TEXT only: `excluded`
+    # feeds nothing else, the state is `NO_SUPPORTED_PATH` either way, and
+    # `Decision`'s non-empty invariant is still met by
+    # `_fallback_no_path_reason`, whose OPERATIONAL code says exactly what is
+    # true once the filter empties the list — no product in this pack covers
+    # the declared purposes.
+    excluded = [
+        proof
+        for proof in proofs
+        if proof.status is ProductProofStatus.EXCLUDED and proof.purpose_feasible
+    ]
     no_path_reasons = _dedupe_reasons(reason for proof in excluded for reason in proof.reasons)
     if not no_path_reasons:
         no_path_reasons = (_fallback_no_path_reason(products, compiled_pack),)
