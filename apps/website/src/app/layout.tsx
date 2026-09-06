@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   description:
     "Immigration, company setup, tax and property guidance in Indonesia.",
   robots: { index: false, follow: false },
+  icons: { icon: "/assets/logo.png" },
 };
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
