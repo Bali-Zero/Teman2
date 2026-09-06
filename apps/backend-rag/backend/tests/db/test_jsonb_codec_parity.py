@@ -110,6 +110,7 @@ import pytest
 
 from backend.app.core import database as database_module
 from backend.app.setup import service_initializer as service_initializer_module
+from backend.core import pg_json_codec
 from backend.services.garuda_orders import idempotency as garuda_orders_idempotency
 from backend.services.garuda_orders import journal as garuda_orders_journal
 from backend.services.garuda_portal import idempotency as garuda_portal_idempotency
@@ -128,6 +129,7 @@ _live_only = pytest.mark.skipif(
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
 _CANONICAL_CODEC_FILES = (
+    BACKEND_ROOT / "core" / "pg_json_codec.py",
     BACKEND_ROOT / "app" / "core" / "database.py",
     BACKEND_ROOT / "app" / "setup" / "service_initializer.py",
     BACKEND_ROOT / "tests" / "fixtures" / "prod_shaped_pool.py",
@@ -160,6 +162,8 @@ def test_jsonb_encoder_is_json_dumps_with_default_str() -> None:
     different serializer, and not bare `json.dumps` re-exported under a new
     name (either of which would silently reintroduce the disease)."""
     encoder = database_module.JSONB_ENCODER
+    assert encoder is pg_json_codec.JSONB_ENCODER
+    assert database_module.init_asyncpg_connection is pg_json_codec.init_asyncpg_connection
     assert isinstance(encoder, functools.partial)
     assert encoder.func is json.dumps
     assert encoder.keywords.get("default") is str

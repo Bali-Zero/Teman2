@@ -17,7 +17,13 @@ from typing import AsyncIterator, Callable
 
 from scripts.conductor.app_server_rpc import AppServerRPC
 
-QUALIFIED_VERSION = "codex-cli 0.147.0"
+# Qualification is specific to these observed native binaries and this profile.
+# Pro/Mini evidence covers strict config and catalog, not served Astra or effects.
+QUALIFIED_BINARY_SHA256 = {
+    "codex-cli 0.147.0": "19c4f144c5226a9f17c58e6f0fa854843b0f77a6eb420f40e2745a12f10f5d37",
+    "codex-cli 0.148.0": "b0308517b20543012fa2171aa3d46ce455a7456c4eb2a552ab9468ba4eeb1e50",
+    "codex-cli 0.149.0": "f4a74117b8142cda581c95ff753abf4508b5636d89682c1ed77e4a9249af8963",
+}
 DISABLED_FEATURES = (
     "apps",
     "browser_use",
@@ -68,7 +74,7 @@ ignore_default_excludes = false
 
 
 def native_binary() -> Path:
-    """Resolve the installed npm native binary without the node wrapper's PATH."""
+    """Resolve observed native installs without executing a Node wrapper."""
     import platform
 
     arch = {"arm64": "aarch64", "x86_64": "x86_64"}.get(platform.machine())
@@ -81,9 +87,20 @@ def native_binary() -> Path:
         / "lib/node_modules/@openai/codex/node_modules"
         / f"@openai/codex-darwin-{package_arch}/vendor/{arch}-apple-darwin/bin/codex"
     )
-    if not binary.is_file() or not os.access(binary, os.X_OK):
-        raise RuntimeError("native_binary_unavailable")
-    return binary.resolve()
+    # Mini's observed 0.148.0 install is a native Homebrew Cask, not npm.
+    cask = prefix / "Caskroom/codex/0.148.0/bin/codex"
+    for candidate in (binary, cask):
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return candidate.resolve()
+    raise RuntimeError("native_binary_unavailable")
+
+
+def validate_runtime_binding(version: str, binary_hash: str) -> None:
+    """A familiar version string cannot admit different executable bytes."""
+    if version not in QUALIFIED_BINARY_SHA256:
+        raise PermissionError("native_version_unqualified")
+    if QUALIFIED_BINARY_SHA256[version] != binary_hash:
+        raise PermissionError("native_binary_unqualified")
 
 
 def prepare_auth(source: Path, destination: Path) -> None:
@@ -126,6 +143,10 @@ async def launch_shadow(
     import asyncio
 
     binary = native_binary()
+    binary_hash = sha256(binary.read_bytes()).hexdigest()
+    # Refuse unknown code before executing even --version or copying auth state.
+    if binary_hash not in QUALIFIED_BINARY_SHA256.values():
+        raise PermissionError("native_binary_unqualified")
     # These files are runtime state, not evidence or shared memory. No global
     # HOME, env.set, MCP, hook, shell startup file or inherited env enters them.
     with tempfile.TemporaryDirectory(prefix="dual-consul-shadow-") as directory:
@@ -157,11 +178,12 @@ async def launch_shadow(
             await process.wait()
             raise
         version = output.decode().strip()
-        if process.returncode or version != QUALIFIED_VERSION:
+        if process.returncode:
             raise PermissionError("native_version_unqualified")
+        validate_runtime_binding(version, binary_hash)
         metadata = {
             "runtime_version": version,
-            "binary_hash": sha256(binary.read_bytes()).hexdigest(),
+            "binary_hash": binary_hash,
             "profile_hash": sha256(PROFILE.encode()).hexdigest(),
         }
         async with AppServerRPC(

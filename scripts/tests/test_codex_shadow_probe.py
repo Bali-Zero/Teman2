@@ -204,9 +204,10 @@ async def test_default_discovery_still_admits_model_and_binds_producer(
     assert "EXCLUDED" not in json.dumps(result)
 
 
-def test_manifest_binds_exact_six_source_bytes(source_tree: Path) -> None:
+def test_manifest_binds_producer_and_shared_budget_bytes(source_tree: Path) -> None:
     binding = consumer.source_producer()
-    assert len(binding["files"]) == 6
+    assert len(binding["files"]) == 7
+    assert "scripts/conductor/native_canary_contract.py" in binding["files"]
     for relative, value in binding["files"].items():
         assert sha256((source_tree / relative).read_bytes()).hexdigest() == value
     canonical = json.dumps(

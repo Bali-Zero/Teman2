@@ -24,6 +24,7 @@ from scripts.conductor.adapter_contracts import (
 from scripts.conductor.app_server_rpc import AppServerRPC, AppServerError
 from scripts.conductor.contracts import TaskClass, TaskIntent
 from scripts.conductor.codex_shadow_launch import DISABLED_FEATURES
+from scripts.conductor.native_canary_contract import TURN_TIMEOUT_SECONDS
 
 
 def digest(value: object) -> str:
@@ -178,11 +179,15 @@ class CodexShadow:
         model: str,
         effort: str,
         requirements: Requirements = Requirements(),
-        timeout: float = 60,
+        timeout: float = TURN_TIMEOUT_SECONDS,
     ) -> NativeResult:
         if self._busy or self._cancelled:
             raise PermissionError("mission_busy_or_cancelled")
-        if not text or len(text.encode()) > 32768 or not 0 < timeout <= 60:
+        if (
+            not text
+            or len(text.encode()) > 32768
+            or not 0 < timeout <= TURN_TIMEOUT_SECONDS
+        ):
             raise ValueError("bounded_input_and_timeout_required")
         self._busy = True
         try:
@@ -254,11 +259,14 @@ class CodexShadow:
             if self._binding and binding.thread_id != self._binding.thread_id:
                 raise PermissionError("native_thread_changed")
             self._binding = binding
-            await self.authorize(binding, "turn")
             # Re-read native config/account immediately before spending a turn.
             current, _ = await self.discover(model)
             if current.key != binding.discovery_key or self._cancelled:
                 raise PermissionError("native_binding_changed")
+            # The authoritative fence follows discovery, directly before spend.
+            await self.authorize(binding, "turn")
+            if self._cancelled:
+                raise PermissionError("mission_cancelled")
             turn = await self.rpc.call(
                 "turn/start",
                 {
@@ -314,7 +322,7 @@ class CodexShadow:
                     usage = p.get("tokenUsage", {})
                 elif event["method"] == "turn/completed":
                     status = p["turn"]["status"]
-                    if status == "completed" and not text:
+                    if status == "completed" and not "".join(text).strip():
                         status = "incomplete"
                     return NativeResult(
                         binding, self._active_turn or "", status, "\n".join(text), usage
