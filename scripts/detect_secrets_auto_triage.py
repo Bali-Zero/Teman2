@@ -580,6 +580,44 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "exact assignment/comparison and value pinned per constant, never a "
         "credential",
     ),
+    # test_seq20_signed_bundle.py: the seq-19 rule's twin, one sequence on.
+    # Same two entity classes: the pinned Ed25519 PUBLIC verification key
+    # already covered for gold_replay_driver.py above (private key stays
+    # off-repo, offline key ceremony per docs/runbooks/visa-engine-key-
+    # ceremony.md), and the seq-20 payload_sha256 — a content-derived digest
+    # the test recomputes independently via bundle.canonicalize_json and
+    # cross-checks against `verify_rule_pack`'s own return value, never
+    # trusted from the signer's print output.
+    #
+    # TWO alternatives here where the seq-19 rule has three: that module
+    # RETYPED its predecessor's chain anchor as a local SEQ18_PAYLOAD_SHA256
+    # literal, while this one IMPORTS `SEQ19_PAYLOAD_SHA256` from
+    # fold_pack_seq20 instead — so the seq-19 anchor is not a literal in this
+    # file and is already covered by fold_pack_seq20.py's own rule above. A
+    # third alternative would be regex that can never match, which is exactly
+    # the pre-authorisation of an unwritten line this list must not carry.
+    # Content-keyed (not path-only) to the exact value per constant, one
+    # alternative each, so a real credential typed onto any other line of
+    # this test stays unaudited for human review.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/tests/services/visa_engine/"
+            r"test_seq20_signed_bundle\.py$"
+        ),
+        re.compile(
+            r'^\s*(?:'
+            r'"public_key"\s*:\s*"gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA"\s*,?'
+            r'|SEQ20_PAYLOAD_SHA256\s*=\s*"df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d"'
+            r')\s*$'
+        ),
+        "test_seq20_signed_bundle.py: seq-20 signed-bundle trust anchors — "
+        "the pinned production Ed25519 public verification key (private key "
+        "off-repo) and the seq-20 payload_sha256 recomputed and cross-checked "
+        "in the test itself; the seq-19 chain anchor is imported from "
+        "fold_pack_seq20, not retyped, so it is covered by that module's own "
+        "rule; exact assignment and value pinned per constant, never a "
+        "credential",
+    ),
     # scripts/kbli_bench/results/p2b_score.json (PR #4422, KBLI Navigator
     # Phase 2b benchmark run): corpus_sha256 is the content-derived sha256 of
     # the frozen benchmark corpus (scripts/kbli_bench/p2b_corpus.json), the

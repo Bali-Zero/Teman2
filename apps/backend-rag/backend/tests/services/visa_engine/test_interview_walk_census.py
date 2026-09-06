@@ -7,21 +7,42 @@ path through ``flow.ts``'s two-arm spine and ``getCategoryQuestionIds``'
 ten categories, each answered through the real ``fact-mapper.ts`` — against
 the highest signed PRODUCTION pack, and pin the outcome census.
 
-Measured 2026-09-06 on ``rulepack-prod-019.signed.json``:
-**36 NEEDS_INPUT / 7 SUPPORTED_CANDIDATES / 0 NO_SUPPORTED_PATH**. The
-engine is fail-closed and no wrong answer ships — but 36 of 43 walks end by
-asking for a fact the interview HAS NO QUESTION FOR, which is a dead end,
-not an answer (research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md §1-§2).
+Measured 2026-09-06 on ``rulepack-prod-020.signed.json``:
+**21 NEEDS_INPUT / 22 SUPPORTED_CANDIDATES / 0 NO_SUPPORTED_PATH**. The
+engine is fail-closed and no wrong answer ships — but 21 of 43 walks still
+end by asking for a fact the interview HAS NO QUESTION FOR, which is a dead
+end, not an answer (research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md §1-§2).
+
+Re-pinned from seq-19's **36/7** when the signed seq-20 bundle landed. Two
+things moved, both traceable to the fold's edit 1 (the lawful stay-day
+totals) rather than to any change in this test:
+
+* **15 walks gained an answer.** ``el.c1.tourism-family``'s bound went
+  60 → 180 days, so the corpus's 121-stay-day walks now satisfy C1 and the
+  whole tourism/family arm answers instead of dead-ending. Their allowlist
+  rows are DELETED below, not loosened.
+* **9 walks moved their block to** ``family.sponsor_confirmed``. The same
+  widening (60 → 180) on ``el.c2.business`` made C2 reachable for the
+  business/investment arm, and C2's own ``family.sponsor_confirmed == true``
+  premise is now the smallest missing-fact set, so it wins ``evaluator.py``'s
+  ``min(len(missing_facts))`` tie-break ahead of the old blockers. The block
+  is genuinely still there: no invest/business/other branch asks
+  ``family_sponsor_confirmed`` (flow.ts:708 emits it only in the family arm,
+  657-659 in retirement), so this is a NEW dead-end shape, not a cure. Curing
+  it is PR-3's mandate.
+
+Edits 2 and 3 of the fold show up here too: ``review.e33g.income-evidence``
+is gone and the eight ``family.sponsor_status_code`` rules are ``NO_EFFECT``,
+which is why ``onshore/family`` no longer dead-ends on that fact at all.
 
 The invariant this file exists to arm is one sentence:
 
     no walk may end in NEEDS_INPUT on a fact for which the interview has no
     reachable question in that walk's own history.
 
-Today it is violated 36 times, so it ships as an EXPLICIT allowlist of the
-36 known dead ends. Each subsequent PR of the decisiveness wave deletes the
-rows it cures (the evaluator reorder removes 27 of them; the four seq-20
-pack edits and the four new interview questions remove the rest). **When
+Today it is violated 21 times, so it ships as an EXPLICIT allowlist of the
+21 known dead ends. Each subsequent PR of the decisiveness wave deletes the
+rows it cures (PR-3's four new interview questions remove the rest). **When
 ``WALK_DEAD_END_ALLOWLIST`` is empty the invariant becomes unconditional** —
 ``_dead_end_violations`` needs no change for that, it simply stops finding
 an excuse for any NEEDS_INPUT walk.
@@ -89,9 +110,13 @@ class DeadEnd:
     why_unaskable: str
 
 
-# The six dead-end shapes measured on seq-19, with the anchor that explains
+# The five dead-end shapes measured on seq-20, with the anchor that explains
 # each. A wave PR retires a shape by deleting its rows below, never by
-# loosening a count.
+# loosening a count. Seq-20 retired two of seq-19's seven shapes outright:
+# `family.sponsor_status_code` (fold edit 3 made its eight rules NO_EFFECT)
+# and `intent.requested_product_code` (fold edit 4 guarded the four BRIDGING
+# rules on a `known` premise), so their DeadEnd rows are gone rather than
+# merely unused.
 _ONSHORE_CONVERSION = DeadEnd(
     # flow.ts:539-542 emits `wants_onshore_conversion` only when
     # `in_indonesia === "yes"`; every offshore walk is blocked by
@@ -129,62 +154,45 @@ _PAID_UP_CAPITAL = DeadEnd(
     "investment_paid_up_capital_idr",
     QUESTION_NOT_IN_THIS_WALK,
 )
-_SPONSOR_STATUS_CODE = DeadEnd(
-    # asked as `family_sponsor_status_code`, and fact-mapper.ts:505-520
-    # returns unknownFact(UNVERIFIED) for EVERY answer by design: a
-    # self-declared status label must never satisfy `op: known`. A permanent
-    # wall, so the eight rules reading it must not ask (seq-20 edit 3).
-    "family.sponsor_status_code",
-    "family_sponsor_status_code",
-    ANSWER_NEVER_CERTIFIED,
-)
-_REQUESTED_PRODUCT_CODE = DeadEnd(
-    # hardcoded `unknownFact(NOT_ASKED)` at fact-mapper.ts:596 — no question
-    # in tree.ts can ever set it, and no sentinel is safe (§6 R2).
-    "intent.requested_product_code",
-    None,
-    NO_QUESTION_IN_TREE,
+_FAMILY_SPONSOR_CONFIRMED = DeadEnd(
+    # NEW on seq-20, and it is a MOVE, not a regression: `el.c2.business`'s
+    # stay-day bound went 60 -> 180 (fold edit 1), so C2 became reachable for
+    # the business/investment arm at the corpus's 121 days — and C2's own
+    # `family.sponsor_confirmed == true` premise is now the smallest missing
+    # set, winning `evaluator.py`'s `min(len(missing_facts))` tie-break over
+    # the blockers these walks used to report. `family_sponsor_confirmed` is
+    # emitted only by the family arm (flow.ts:708) and by retirement
+    # (flow.ts:657-659); no invest/business/other branch asks it, so the
+    # funnel genuinely cannot supply it here. PR-3's mandate.
+    "family.sponsor_confirmed",
+    "family_sponsor_confirmed",
+    QUESTION_NOT_IN_THIS_WALK,
 )
 
-#: The 36 known dead ends. DELETE rows as the wave cures them; never add one
+#: The 21 known dead ends. DELETE rows as the wave cures them; never add one
 #: without an anchor showing the fact is genuinely unaskable in that walk.
 WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = {
     "offshore/business": (_ONSHORE_CONVERSION,),
     "offshore/diaspora": (_DIASPORA_PURPOSE,),
-    "offshore/family/CHILD/spNat=IT": (_ONSHORE_CONVERSION,),
-    "offshore/family/DEPENDENT/spNat=ID": (_ONSHORE_CONVERSION,),
-    "offshore/family/DEPENDENT/spNat=IT": (_ONSHORE_CONVERSION,),
-    "offshore/family/OTHER/spNat=ID": (_ONSHORE_CONVERSION,),
-    "offshore/family/OTHER/spNat=IT": (_ONSHORE_CONVERSION,),
-    "offshore/family/PARENT/spNat=IT": (_ONSHORE_CONVERSION,),
-    "offshore/family/SIBLING/spNat=ID": (_ONSHORE_CONVERSION,),
-    "offshore/family/SIBLING/spNat=IT": (_ONSHORE_CONVERSION,),
-    "offshore/family/SPOUSE/spNat=IT": (_ONSHORE_CONVERSION,),
-    "offshore/holdsPermit/current/tourism": (_ONSHORE_CONVERSION,),
-    "offshore/invest/bank_deposit": (_ONSHORE_CONVERSION,),
-    "offshore/invest/family": (_ONSHORE_CONVERSION,),
-    "offshore/invest/merit": (_ONSHORE_CONVERSION,),
-    "offshore/invest/property": (_ONSHORE_CONVERSION,),
-    "offshore/invest/pt_pma": (_ONSHORE_CONVERSION,),
-    "offshore/invest/undecided": (_ONSHORE_CONVERSION,),
-    "offshore/other": (_ONSHORE_CONVERSION,),
+    "offshore/invest/bank_deposit": (_FAMILY_SPONSOR_CONFIRMED,),
+    "offshore/invest/family": (_FAMILY_SPONSOR_CONFIRMED,),
+    "offshore/invest/merit": (_FAMILY_SPONSOR_CONFIRMED,),
+    "offshore/invest/property": (_FAMILY_SPONSOR_CONFIRMED,),
+    "offshore/invest/pt_pma": (_FAMILY_SPONSOR_CONFIRMED,),
+    "offshore/invest/undecided": (_FAMILY_SPONSOR_CONFIRMED,),
+    "offshore/other": (_FAMILY_SPONSOR_CONFIRMED,),
     "offshore/remote": (_ONSHORE_CONVERSION,),
     "offshore/retirement/bank_deposit": (_ONSHORE_CONVERSION,),
     "offshore/retirement/family_sponsor": (_ONSHORE_CONVERSION,),
     "offshore/retirement/passive_income": (_ONSHORE_CONVERSION,),
     "offshore/retirement/property": (_ONSHORE_CONVERSION,),
     "offshore/retirement/undecided": (_ONSHORE_CONVERSION,),
-    "offshore/tourism": (_ONSHORE_CONVERSION,),
     "onshore/business": (_SPONSOR_TYPE,),
     "onshore/diaspora": (_DIASPORA_PURPOSE,),
-    "onshore/family": (_SPONSOR_STATUS_CODE,),
-    "onshore/holdsPermit/current/tourism": (_SPONSOR_TYPE,),
-    "onshore/holdsPermit/expired/tourism": (_SPONSOR_TYPE,),
-    "onshore/invest": (_REQUESTED_PRODUCT_CODE,),
-    "onshore/other": (_SPONSOR_TYPE,),
+    "onshore/invest": (_FAMILY_SPONSOR_CONFIRMED,),
+    "onshore/other": (_FAMILY_SPONSOR_CONFIRMED,),
     "onshore/remote": (_INVESTMENT_CAPITAL, _PAID_UP_CAPITAL),
     "onshore/retirement": (_INVESTMENT_CAPITAL, _PAID_UP_CAPITAL),
-    "onshore/tourism": (_SPONSOR_TYPE,),
 }
 
 #: Per-walk outcome pin: state plus the candidate products, in rank order.
@@ -194,19 +202,19 @@ WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = {
 EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/business": ("NEEDS_INPUT", ()),
     "offshore/diaspora": ("NEEDS_INPUT", ()),
-    "offshore/family/CHILD/spNat=ID": ("SUPPORTED_CANDIDATES", ("E31G",)),
-    "offshore/family/CHILD/spNat=IT": ("NEEDS_INPUT", ()),
-    "offshore/family/DEPENDENT/spNat=ID": ("NEEDS_INPUT", ()),
-    "offshore/family/DEPENDENT/spNat=IT": ("NEEDS_INPUT", ()),
-    "offshore/family/OTHER/spNat=ID": ("NEEDS_INPUT", ()),
-    "offshore/family/OTHER/spNat=IT": ("NEEDS_INPUT", ()),
-    "offshore/family/PARENT/spNat=ID": ("SUPPORTED_CANDIDATES", ("E31C", "E31F")),
-    "offshore/family/PARENT/spNat=IT": ("NEEDS_INPUT", ()),
-    "offshore/family/SIBLING/spNat=ID": ("NEEDS_INPUT", ()),
-    "offshore/family/SIBLING/spNat=IT": ("NEEDS_INPUT", ()),
-    "offshore/family/SPOUSE/spNat=ID": ("SUPPORTED_CANDIDATES", ("E31A",)),
-    "offshore/family/SPOUSE/spNat=IT": ("NEEDS_INPUT", ()),
-    "offshore/holdsPermit/current/tourism": ("NEEDS_INPUT", ()),
+    "offshore/family/CHILD/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31G")),
+    "offshore/family/CHILD/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/DEPENDENT/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/DEPENDENT/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/OTHER/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/OTHER/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/PARENT/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31C", "E31F")),
+    "offshore/family/PARENT/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/SIBLING/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/SIBLING/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/SPOUSE/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31A")),
+    "offshore/family/SPOUSE/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/holdsPermit/current/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
     "offshore/invest/bank_deposit": ("NEEDS_INPUT", ()),
     "offshore/invest/family": ("NEEDS_INPUT", ()),
     "offshore/invest/merit": ("NEEDS_INPUT", ()),
@@ -221,19 +229,19 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/retirement/property": ("NEEDS_INPUT", ()),
     "offshore/retirement/undecided": ("NEEDS_INPUT", ()),
     "offshore/study": ("SUPPORTED_CANDIDATES", ("E30", "E30A")),
-    "offshore/tourism": ("NEEDS_INPUT", ()),
+    "offshore/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
     "offshore/work": ("SUPPORTED_CANDIDATES", ("E23",)),
     "onshore/business": ("NEEDS_INPUT", ()),
     "onshore/diaspora": ("NEEDS_INPUT", ()),
-    "onshore/family": ("NEEDS_INPUT", ()),
-    "onshore/holdsPermit/current/tourism": ("NEEDS_INPUT", ()),
-    "onshore/holdsPermit/expired/tourism": ("NEEDS_INPUT", ()),
+    "onshore/family": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "onshore/holdsPermit/current/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "onshore/holdsPermit/expired/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
     "onshore/invest": ("NEEDS_INPUT", ()),
     "onshore/other": ("NEEDS_INPUT", ()),
     "onshore/remote": ("NEEDS_INPUT", ()),
     "onshore/retirement": ("NEEDS_INPUT", ()),
     "onshore/study": ("SUPPORTED_CANDIDATES", ("E30", "E30A")),
-    "onshore/tourism": ("NEEDS_INPUT", ()),
+    "onshore/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
     "onshore/work": ("SUPPORTED_CANDIDATES", ("E23",)),
 }
 
@@ -248,13 +256,12 @@ EXPECTED_STATE_CENSUS: dict[str, int] = dict(
 #: between blocking facts instead of removing the block goes red here even if
 #: the total happens to stay the same.
 EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = {
-    "process.wants_onshore_conversion": 25,
-    "sponsor.type": 5,
+    "family.sponsor_confirmed": 9,
+    "process.wants_onshore_conversion": 7,
     "intent.purposes": 2,
     "investment.investment_capital_idr": 2,
     "investment.paid_up_capital_idr": 2,
-    "family.sponsor_status_code": 1,
-    "intent.requested_product_code": 1,
+    "sponsor.type": 1,
 }
 
 
@@ -376,14 +383,17 @@ def test_every_walk_ends_in_its_pinned_outcome(outcomes: dict[str, dict[str, Any
     assert not violations, "interview-walk outcomes moved:\n  " + "\n  ".join(violations)
 
 
-def test_walk_state_census_is_36_dead_ends_and_7_answers(
+def test_walk_state_census_is_21_dead_ends_and_22_answers(
     outcomes: dict[str, dict[str, Any]],
 ) -> None:
     """The headline number of the decisiveness wave. Every PR that changes it
-    updates this literal and says which walks moved, in its own body."""
+    updates this literal and says which walks moved, in its own body.
+
+    Was 36/7 on seq-19; the signed seq-20 bundle's stay-day widening turned 15
+    of the dead ends into answers (module docstring)."""
 
     census = dict(Counter(outcome["state"] for outcome in outcomes.values()))
-    assert census == EXPECTED_STATE_CENSUS == {"NEEDS_INPUT": 36, "SUPPORTED_CANDIDATES": 7}
+    assert census == EXPECTED_STATE_CENSUS == {"NEEDS_INPUT": 21, "SUPPORTED_CANDIDATES": 22}
     assert census.get("NO_SUPPORTED_PATH", 0) == 0
     assert census.get("HUMAN_REVIEW_REQUIRED", 0) == 0
 
@@ -405,8 +415,8 @@ def test_no_walk_dead_ends_outside_the_allowlist(outcomes: dict[str, dict[str, A
     assert not violations, "walk-census invariant broken:\n  " + "\n  ".join(violations)
 
 
-def test_allowlist_is_exactly_the_36_known_dead_ends() -> None:
-    assert len(WALK_DEAD_END_ALLOWLIST) == 36
+def test_allowlist_is_exactly_the_21_known_dead_ends() -> None:
+    assert len(WALK_DEAD_END_ALLOWLIST) == 21
     assert set(WALK_DEAD_END_ALLOWLIST) <= set(EXPECTED_OUTCOME)
 
 
@@ -440,32 +450,39 @@ def test_every_allowlisted_dead_end_is_genuinely_unaskable_in_its_own_walk(
 def test_guilt_a_cured_dead_end_that_only_moves_the_block_is_caught(
     walks: dict[str, dict[str, Any]],
 ) -> None:
-    """GUILT, on the real engine: hand ``onshore/tourism`` the very fact it
+    """GUILT, on the real engine: hand ``onshore/business`` the very fact it
     dead-ends on (``sponsor.type`` KNOWN) and watch the block MOVE rather than
-    lift — measured 2026-09-06, the walk stays NEEDS_INPUT and now blocks on
-    ``investment.{investment,paid_up}_capital_idr`` instead, because the next
-    zero-SUPPORT product wins ``evaluator.py``'s ``min(len(missing_facts))``
-    tie-break.
+    lift — measured 2026-09-06 on seq-20, the walk stays NEEDS_INPUT and now
+    blocks on ``investment.{investment,paid_up}_capital_idr`` instead, because
+    the next zero-SUPPORT product wins ``evaluator.py``'s
+    ``min(len(missing_facts))`` tie-break.
+
+    Re-anchored from ``onshore/tourism`` on seq-20: that walk now ANSWERS
+    (C1), so the mutation would have had nothing left to move.
 
     That is the whole reason the allowlist compares FACTS and not a count: the
     state census alone would call this cure a no-op (still NEEDS_INPUT, still
     no candidates), and only the per-fact comparison sees it."""
 
-    mutated = dict(walks["onshore/tourism"]["overrides"])
+    mutated = dict(walks["onshore/business"]["overrides"])
     mutated["sponsor.type"] = {"status": "KNOWN", "value": "NONE"}
-    actual = _evaluate(mutated, "onshore/tourism", as_of=_AS_OF)["actual"]
+    actual = _evaluate(mutated, "onshore/business", as_of=_AS_OF)["actual"]
 
+    assert actual["state"] == "NEEDS_INPUT", (
+        "the guilt mutation now LIFTS the block instead of moving it — this "
+        "test no longer exercises the shape it was written for"
+    )
     assert actual["missing_facts"] != ["sponsor.type"], (
         "the guilt mutation no longer changes what blocks this walk — the "
         "corpus or the pack moved and this test proves nothing"
     )
-    assert _dead_end_violations({"onshore/tourism": actual})
+    assert _dead_end_violations({"onshore/business": actual})
 
 
 def test_guilt_a_walk_that_loses_its_answer_is_caught(
     walks: dict[str, dict[str, Any]],
 ) -> None:
-    """GUILT: ``offshore/work`` is one of the 7 walks that DO answer (E23).
+    """GUILT: ``offshore/work`` is one of the 22 walks that DO answer (E23).
     Take its ``work.indonesian_work_sponsor_confirmed`` away and both halves
     of the gate must fire — the outcome pin (SUPPORTED → NEEDS_INPUT) and the
     invariant (a dead end with no allowlist row)."""
@@ -500,10 +517,16 @@ def test_guilt_a_dead_end_on_an_unlisted_fact_is_caught() -> None:
 
 def test_guilt_a_stale_allowlist_row_is_caught() -> None:
     """GUILT: the cure lands, the walk answers, and the allowlist row stays —
-    the way an allowlist normally outlives its defect. Must be red."""
+    the way an allowlist normally outlives its defect. Must be red.
 
+    Anchored on ``offshore/business``, which IS still allowlisted on seq-20;
+    the seq-19 anchor (``offshore/tourism``) was cured by this very fold, so
+    reusing it would have made this guilt test pass for the wrong reason —
+    an unlisted walk, not a stale row."""
+
+    assert "offshore/business" in WALK_DEAD_END_ALLOWLIST
     cured = {
-        "offshore/tourism": {
+        "offshore/business": {
             "state": "SUPPORTED_CANDIDATES",
             "candidates": ["C1"],
             "missing_facts": [],
