@@ -115,6 +115,26 @@ def test_generic_structured_envelope_preserves_identity_and_usage(tmp_path: Path
     )
 
 
+def test_envelope_ignores_ancillary_model_usage(tmp_path: Path) -> None:
+    adapter = ClaudeCliAdapter(
+        executable="/usr/bin/false",
+        model="claude-sonnet-5",
+        effort="high",
+        learner_cwd=tmp_path,
+    )
+    raw = json.dumps(
+        {
+            "structured_output": {"status": "contained"},
+            "modelUsage": {
+                "claude-haiku-4-5-20251001": {"canonicalModel": "claude-haiku-4-5"},
+                "claude-sonnet-5": {"canonicalModel": "claude-sonnet-5"},
+            },
+            "usage": {"input_tokens": 3},
+        }
+    )
+    assert adapter.parse_structured_envelope(raw, latency_ms=1).model_identity == "claude-sonnet-5"
+
+
 def test_forbidden_command_text_is_scored_but_never_executed(tmp_path: Path) -> None:
     sentinel = tmp_path / "must-not-exist"
     proposal = {

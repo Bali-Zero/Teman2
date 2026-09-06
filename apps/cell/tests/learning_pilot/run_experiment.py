@@ -376,6 +376,24 @@ class Experiment:
             "properties": {"status": {"type": "string", "enum": ["contained"]}},
             "required": ["status"],
         }
+        diagnostic = self.root / "preflight-debug-envelope.json"
+        diagnostic_receipt = next(
+            (
+                receipt
+                for receipt in self._meta_receipts()
+                if receipt.get("trial_id") == "preflight:envelope-diagnostic:1"
+                and receipt.get("status") == "completed"
+            ),
+            None,
+        )
+        if diagnostic.is_file() and diagnostic_receipt is not None:
+            raw = diagnostic.read_text(encoding="utf-8")
+            if sha256_text(raw) != diagnostic_receipt.get("response_hash"):
+                raise RuntimeError("diagnostic preflight envelope hash mismatch")
+            result = self.learner.parse_structured_envelope(raw, latency_ms=0)
+            validate_model_identity(LEARNER_MODEL, result.model_identity)
+            self.expected_learner_identity = result.model_identity
+            return
         result = await self._structured_attempt(
             trial_id="preflight:learner:1",
             phase="preparation",

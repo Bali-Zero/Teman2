@@ -487,9 +487,19 @@ class ClaudeCliAdapter:
             result_text = envelope.get("result", "")
             value = json.loads(result_text) if isinstance(result_text, str) else result_text
         model_usage = envelope.get("modelUsage", {})
-        if not isinstance(model_usage, dict) or len(model_usage) != 1:
+        if not isinstance(model_usage, dict):
             raise ValueError("missing or ambiguous model identity")
-        model_identity = next(iter(model_usage))
+        if self.model in model_usage:
+            model_identity = self.model
+        else:
+            matching = [
+                key
+                for key, details in model_usage.items()
+                if isinstance(details, dict) and details.get("canonicalModel") == self.model
+            ]
+            if len(matching) != 1:
+                raise ValueError("missing or ambiguous model identity")
+            model_identity = matching[0]
         usage = {
             key: int(item)
             for key, item in envelope.get("usage", {}).items()
