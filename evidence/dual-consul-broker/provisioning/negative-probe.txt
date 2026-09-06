@@ -1,0 +1,21 @@
+import contextlib, io, json, os, pathlib, runpy, sys
+root = pathlib.Path(sys.argv[1]).resolve()
+sys.argv = [str(root / "entry.py")]
+events = []
+def audit(event, args):
+    if event in {"socket.connect", "subprocess.Popen", "os.exec", "os.posix_spawn", "os.system"}:
+        events.append(event)
+        raise PermissionError("offline_probe_effect_forbidden")
+sys.addaudithook(audit)
+sys.stdin = io.TextIOWrapper(io.BytesIO(b"{}"), encoding="utf-8")
+output = io.StringIO()
+with contextlib.redirect_stdout(output):
+    try:
+        runpy.run_path(str(root / "entry.py"), run_name="__main__")
+        code = 0
+    except SystemExit as exc:
+        code = exc.code
+reply = json.loads(output.getvalue())
+assert reply == {"version": 1, "ok": False, "error": "request_refused"}
+assert code == 1 and not events
+print(json.dumps({"probe": "invalid_ungranted_stdin", "reply": reply, "exit_code": code, "network_or_process_audit_events": events, "uid": os.getuid(), "environment_keys": sorted(os.environ)}))
