@@ -114,6 +114,21 @@ Usage::
 verified by SIGNATURE, never by a digest constant alone.
 ``VISA_ENGINE_TRUST_STORE_KEYS_JSON`` (the production PUBLIC key) must be
 exported — its absence is a refusal, not a skipped check.
+
+The ceremony is fold-THEN-prettier: after this script writes the source file,
+run ``npx prettier --write`` on it FROM THE REPO ROOT (so the project's own
+``.prettierignore``/config resolution applies rather than whatever a stray cwd
+would pick up), because that is the shape every pack on ``main`` already
+carries — ``rulepack-prod-018.source.json`` and ``rulepack-prod-019.source.json``
+are both prettier-clean. It is safe because the payload digest is the SHA-256 of
+:func:`~backend.services.visa_engine.bundle.canonicalize_json` over the PARSED
+document and prettier's JSON printer is semantics-preserving, so reformatting
+the bytes does not move it. That is a contingent invariant, not a mathematical
+one, so it is CHECKED rather than trusted:
+``test_seq20_pack.py::TestIdentity::test_payload_digest_survives_reformatting_of_the_file``
+pins the digest, and ``test_fold_is_deterministic_and_matches_disk`` compares
+the fold's output to the PARSED file, so a reformat that changed content fails
+loudly instead of surfacing at signing time.
 """
 
 from __future__ import annotations

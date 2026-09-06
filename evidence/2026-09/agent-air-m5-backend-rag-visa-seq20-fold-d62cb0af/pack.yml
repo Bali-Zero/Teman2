@@ -1,0 +1,427 @@
+task_id: visa-seq20-fold
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+date: 2026-09-06
+machine: M5
+lanes:
+  - lane: seq-20 pack fold + gate suite + gate follow-ups
+    role: build
+    seat: claude-opus-5 (this worktree session on M5, branch agent/air-m5/backend-rag/visa-seq20-fold)
+    note: >-
+      Authored fold_pack_seq20.py, the SOURCE pack it produces
+      (rulepack-prod-020.source.json — unsigned, unactivated), the gate suite
+      test_seq20_pack.py and the bites-observable scripts/ci/observe_visa_seq20_fold.py.
+      Five edits addressed by RULE ID: 22 stay-day caps raised to the lawful extendable
+      total, review.e33g.income-evidence retired, eight family.sponsor_status_code readers
+      moved to on_unknown NO_EFFECT, four BRIDGING SUPPORT rules given an explicit `known`
+      premise, and one new HARD_FILTER/EXCLUDE compiling CL-D2-01. This revision then
+      closed the three mechanical conditions the independent gate raised on head
+      d63a1bc895: (a) prettier --write on the pack file so it carries the same shape as
+      rulepack-prod-018/019.source.json on main, with the JCS payload digest recomputed
+      before and after and PINNED in a committed test; (b) this Gear-3 evidence pack;
+      (c) BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED added to apps/mouth's
+      SUPPORT_REASON_COPY — the map the NO_SUPPORTED_PATH sheet actually reads via
+      reason() -> reasonMessage() — plus a test that reads the code OUT of the
+      highest-sequence pack on disk and asserts it renders as prose in en and id.
+  - lane: independent gate read of head d63a1bc895
+    role: review
+    seat: claude-opus-5 (independent gate reader, reasoning effort xhigh, separate session, generator-is-never-grader)
+    note: >-
+      Read the first head as an independent gate and returned BLOCK with three mechanical
+      conditions, all recorded verbatim under `dissent` and all closed by this revision:
+      the pack file was not prettier-shaped while every other pack on main is; the PR
+      carried no Gear-3 evidence pack though its size floors it at Gear 3; and the new
+      EXCLUDE reason code had no entry in the frontend reason-copy map, so a real reader
+      hitting the new hard filter would have seen the bare machine code. The gate also
+      correctly named SUPPORT_REASON_COPY as the map to check — verified independently
+      here before editing, because reason-copy lives in TWO maps and the review one is
+      the wrong door for an EXCLUDE code.
+    verdict: BLOCK (all three conditions closed in this revision)
+  - lane: adversarial review of the SPEC (the decisiveness investigation)
+    role: review
+    seat: gemini-3.1-pro (via `agy`, non-Anthropic cross-family, fed the investigation document, fresh context)
+    note: >-
+      Adversarial read of research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md
+      BEFORE this PR was built, returning 8 numbered findings. Findings 5 and 6 shaped the
+      implementation: the fold now carries a fold-time stay-day census that makes
+      el.a1.tourism's exemption explicit rather than accidental, and edit 3's NO_EFFECT
+      move is proved fail-CLOSED (the eight rules are SUPPORT, not EXCLUDE — NO_EFFECT
+      keeps E31B/E31E/E31H/E31J out of the candidate set) with the 18-persona gold
+      coverage replay as the floor that would catch a fail-open. Finding 3 (BRIDGING) is
+      recorded under `dissent` with its disposition and the empirical evidence it asked for.
+    verdict: MAJOR findings, dispositions recorded
+  - lane: gear3-council-review-kimi
+    role: review
+    seat: kimi-code/k3 (`kimi -m kimi-code/k3`, non-Anthropic cross-family, agentic file access to this worktree)
+    note: >-
+      Adversarial review of the rework diff with real file access. Independently
+      recomputed BOTH chain digests from the packs on disk
+      (seq-19 bac5da8e…e6ea, seq-20 df02287b…1a4d), independently recomputed the rule-set
+      delta (1 removed, 1 added, 34 drifted, no non-identity key moved), independently ran
+      `prettier --check` on all three packs (exit 0) and read reasonMessage/reason through
+      to the NO_SUPPORTED_PATH branch to confirm SUPPORT_REASON_COPY is the map the
+      no-path sheet reads. See council-journal.jsonl for the verbatim note.
+    verdict: OK
+  - lane: gear3-council-review-tp1
+    role: review
+    seat: tp1-qwen3.8-max (`scripts/tp1_call.py`, DashScope/TP1 gateway, non-Anthropic cross-family, text-only, fresh context, no shared prompt with the kimi lane)
+    note: >-
+      Independent adversarial review of the rework diff. Confirmed SUPPORT_REASON_COPY is
+      the correct map and that the new test proves the plumbing end to end rather than
+      assuming it, confirmed the test is non-vacuous (three distinct throw paths in
+      excludeReasonCodeOfRule, so it cannot silently return undefined), and reviewed the
+      copy text for legal accuracy on the C2/D1/D2 family. Three MINOR findings, two of
+      them cured before this pack was written — see `dissent`.
+    verdict: OK
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane (claude-opus-5), four review lanes, three of them non-Anthropic
+  cross-family: gemini-3.1-pro on the SPEC before the build, then kimi-code/k3 and
+  tp1-qwen3.8-max on the rework diff with fresh context and no shared prompt between
+  them. The fourth review lane is the independent claude-opus-5 gate read that produced
+  the BLOCK this revision answers — a different session from the builder, which is the
+  generator-is-never-grader boundary this repo requires.
+
+seat_override: >-
+  R8 ground_truth: this diff hits GROUND_TRUTH_PATH_PATTERNS (`*/visa_engine/*`), but it
+  introduces no new regulatory claim of its own. Every legal proposition it compiles was
+  authored and ruled BEFORE this PR: the stay-day totals and the local-compensation
+  prohibition are owner decisions 1 and 2, RULED 2026-09-06 in the investigation's §5,
+  and the prohibition's source of authority is CL-D2-01 in
+  research/visa/doctrine-factory/claims/e2a-claim-ledger.md, already fact-checked in the
+  doctrine factory. The frontend sentence added in this revision is a RENDERING of that
+  same already-ruled claim into en/id, reviewed for accuracy by tp1-qwen3.8-max on this
+  diff. A fresh NB/ground-truth lane would be re-litigating the ledger's own reviewed
+  content, not checking anything this diff added.
+
+outcome: >-
+  seq-20 is folded as SOURCE ONLY and gated. Nothing was signed, nothing was activated,
+  no key material was read and `--yes` was passed to nothing. The pack now carries the
+  same prettier shape as every other pack on main (9,230 lines, down from 10,348) and the
+  reformat is PROVEN inert: the JCS payload digest recomputed with the repo's own
+  canonicalize_json over the parsed document is
+  df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d before the prettier
+  pass and the same value after it, reproduced independently by kimi-code/k3, and now
+  pinned in a committed test so a future reformat that moved it fails loudly instead of
+  surfacing at signing time. The engine's decisiveness improves without a single
+  regression: 18 gold-coverage personas still score 18/18, the 45-persona complete-fact
+  census moves 25/10/9/1 to 32/5/7/1 with zero candidates lost, and the 43 real interview
+  walks move 36 NEEDS_INPUT / 7 SUPPORTED to 21 / 22 with zero regressions. The new
+  EXCLUDE reason code now renders as a sentence in both locales on the no-path sheet
+  instead of leaking a machine code at a reader.
+diff:
+  files: 12
+  net_lines: >-
+    9230/0 rulepack-prod-020.source.json (GENERATED by the fold, prettier-shaped, not
+    review surface — this one file is the entire Gear-3 size floor), 899/0
+    fold_pack_seq20.py, 1064/0 test_seq20_pack.py, 107/0 scripts/ci/observe_visa_seq20_fold.py
+    (new, bites-observable), 87/5 apps/mouth engine-adapter.test.ts, 9/0 apps/mouth
+    engine-adapter.ts, 10/1 research/visa/doctrine-factory/claims/e2a-claim-ledger.md,
+    23/0 scripts/detect_secrets_auto_triage.py, 3/2 scripts/tests/test_detect_secrets_auto_triage.py,
+    118/0 this per-task brief.yml, 427/0 this pack.yml (measured after staging final
+    content, per its own self-reference), 3/0 council-journal.jsonl. Net non-generated
+    authored surface excluding evidence: +2,202.
+  measured_at: >-
+    `git diff $(git merge-base HEAD origin/main) --numstat`, merge-base
+    92a721ebe979a9852bf92b7056e7e4f3c8100828 — the commit this branch was cut from.
+    origin/main has advanced to 6d0afdb875 with unrelated PRs since; anchoring on the
+    merge-base rather than on the moving tip is what keeps these numbers this PR's own
+    diff instead of inflated by drift.
+  shape: >-
+    One new fold script, the generated pack it writes, one new gate suite, one new
+    bites-observable CI wrapper, one nine-line frontend copy entry with its test, one
+    claim-ledger backlink, and one content-keyed secrets-triage rule with its count-bump
+    test. No pre-existing visa_engine CODE file is touched: the engine, the evaluator and
+    the interview are untouched by design — those are PR-2 and PR-3 of this wave.
+pii_scan: clean
+bites:
+  consumer: >-
+    apps/backend-rag's test_seq20_pack.py (the gate suite for this pack) AND apps/mouth's
+    engine-adapter.test.ts (the cross-app consumer that reads the HIGHEST-sequence
+    rulepack-prod-*.source.json on disk and renders its reason codes). Both ship in this
+    PR; neither is a future job.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_seq20_fold.py
+  expect: exit0
+bites_note: >-
+  scripts/ci/observe_visa_seq20_fold.py takes NO arguments — every path and command in it
+  is a literal, the bar scripts/ci/bites_parse.py::_guard_observable_script sets. Run in
+  this worktree at the rework head: 109 passed (backend), 36 passed (mouth), "both
+  consumers green", exit 0. The mouth consumer is not decorative: it went RED on the first
+  head when review.e33g.income-evidence was retired without the same-PR known-gap update
+  ("expected [ 'E33G_INCOME_EVIDENCE_REVIEW' ] to deeply equal []"), which is the concrete
+  proof that a pack edit made in Python is observed by the TypeScript app that renders its
+  reason codes. The same consumer now also carries the guard for this revision's new code.
+receipts:
+  - claim: the gear floor for this PR's changed-file list is Gear 3, sourced from size
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source
+      --numstat-file <numstat of the 12 changed files> --changed-files-file <their paths>
+    result: "3 / size"
+    ts: "2026-09-06T09:40:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the JCS payload digest of rulepack-prod-020.source.json is UNCHANGED by the prettier
+      pass — the file bytes move, the parsed document does not
+    cmd: >-
+      hashlib.sha256(canonicalize_json(json.load(open('rulepack-prod-020.source.json')))).hexdigest()
+      run immediately before and immediately after
+      `npx --no-install prettier --write .../rulepack-prod-020.source.json`
+    result: >-
+      before df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d
+      (file sha256 f677b68e…f306, 275,708 bytes);
+      after  df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d
+      (file sha256 69befe0c…73b6, 264,124 bytes) — payload digest equal, file bytes not
+    ts: "2026-09-06T09:31:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the pack is now prettier-clean exactly as rulepack-prod-018/019.source.json on main
+      already are — the shape gap the gate named is closed
+    cmd: >-
+      npx --no-install prettier --check .../rulepack-prod-018.source.json
+      .../rulepack-prod-019.source.json .../rulepack-prod-020.source.json
+    result: >-
+      before the write: only 020 warned ("[warn] rulepack-prod-020.source.json");
+      after the write: "All matched files use Prettier code style!"
+    ts: "2026-09-06T09:32:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: test_seq20_pack.py is fully green, including the newly pinned digest test
+    cmd: >-
+      PYTHONPATH=. python3 -m pytest -p no:cacheprovider
+      backend/tests/services/visa_engine/test_seq20_pack.py
+    result: "109 passed (108 before this revision added the digest pin)"
+    ts: "2026-09-06T09:44:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the coverage floor holds on the prettier-shaped seq-20 source — 18 of 18 gold
+      personas still reach their own product, the one gate that would catch a fail-open
+      introduced by edit 3's NO_EFFECT move
+    cmd: >-
+      PYTHONPATH=. python3 -m pytest -p no:cacheprovider
+      backend/tests/services/visa_engine/test_seq20_pack.py -k GoldCoverageReplay
+    result: >-
+      19 passed, 90 deselected — 18 parametrized personas plus
+      test_corpus_has_eighteen_personas, which is the guard that stops the parametrization
+      from passing vacuously on an empty corpus
+    ts: "2026-09-06T09:39:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the edit-5 witness still holds after the reformat — a declared Indonesian-source
+      compensation at 60 days (INSIDE seq-19's own cap, so it cannot be confused with the
+      stay-day defect the same fold repairs) loses D2 and gains the new no-path reason
+    cmd: >-
+      PYTHONPATH=. python3 -m pytest -p no:cacheprovider
+      backend/tests/services/visa_engine/test_seq20_pack.py -k LocalCompensation
+    result: >-
+      green inside the 109 — seq-19 returns SUPPORTED_CANDIDATES [D2] with review_reasons
+      [], seq-20 drops D2 and emits BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED in
+      no_path_reason_codes
+    ts: "2026-09-06T09:44:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the new frontend copy test is a real guard, not a tautology — it FAILS when the copy
+      entry is removed and passes when it is present (guilt half, superscar #3)
+    cmd: >-
+      removed the BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED entry from SUPPORT_REASON_COPY on
+      a scratch copy of engine-adapter.ts, ran
+      `npx vitest run .../engine-adapter.test.ts`, then restored the file from the backup
+      and re-ran
+    result: >-
+      without the entry: "1 failed | 35 passed (36)" —
+      "explains the seq-20 local-compensation exclusion in prose, in every locale"
+      AssertionError: expected false to be true.
+      with the entry restored: 36 passed (36)
+    ts: "2026-09-06T09:35:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      apps/mouth typechecks and the A6 probe file
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts is green
+    cmd: >-
+      cd apps/mouth && npx tsc --noEmit; npm run test -- engine-adapter; npx vitest run
+      "src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts" (the same file, named
+      relative to apps/mouth because that is vitest's root here)
+    result: >-
+      tsc: 4 errors, ALL pre-existing and in files this PR does not touch
+      (recharts missing in FunnelChart.tsx / OwnerCashoutCharts.tsx, zod v3/v4 `config`
+      drift in src/lib/zod.ts and its test) — zero errors in either engine-adapter file.
+      vitest: 36 passed (36).
+    ts: "2026-09-06T09:34:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 1
+  - claim: every file this revision touched is prettier-clean
+    cmd: >-
+      npx --no-install prettier --check rulepack-prod-020.source.json engine-adapter.ts
+      engine-adapter.test.ts e2a-claim-ledger.md
+    result: "All matched files use Prettier code style!"
+    ts: "2026-09-06T09:36:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the evidence path resolves unambiguously for THIS PR's changed-file list — one
+      brief.yml candidate and one pack.yml candidate, no guessing
+    cmd: >-
+      python3 scripts/ci/evidence_paths.py --resolve brief --changed-files-file <changed>;
+      python3 scripts/ci/evidence_paths.py --resolve pack --changed-files-file <changed>
+    result: >-
+      evidence/2026-09/agent-air-m5-backend-rag-visa-seq20-fold-d62cb0af/brief.yml and
+      .../pack.yml — matching `evidence_paths.py --ref
+      agent/air-m5/backend-rag/visa-seq20-fold`'s own suggested write path
+    ts: "2026-09-06T09:40:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the bites observe target drives BOTH named consumers and exits 0 only when both are
+      green
+    cmd: python3 scripts/ci/observe_visa_seq20_fold.py
+    result: >-
+      "109 passed" (backend), "Tests 36 passed (36)" (mouth),
+      "observe_visa_seq20_fold: both consumers green"
+    ts: "2026-09-06T09:47:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      the evidence produced for gemini-3.1-pro's finding 3 settles it — the `neq BRIDGING`
+      conjunct is the DESTINATION check, not a guard against granting bridging, and it does
+      refuse bridging-to-bridging
+    cmd: >-
+      evaluated the §6 R2 onshore/OTHER persona against the compiled seq-20 pack with
+      intent.requested_product_code set to UNKNOWN, "BRIDGING", "C1" and "E23" in turn
+    result: >-
+      UNKNOWN -> BRIDGING not a candidate and no longer a blocking fact;
+      "BRIDGING" -> BRIDGING not a candidate (bridging-to-bridging refused);
+      "C1" -> SUPPORTED_CANDIDATES [BRIDGING]; "E23" -> SUPPORTED_CANDIDATES [BRIDGING]
+    ts: "2026-09-06T09:42:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+  - claim: >-
+      kimi-code/k3's cross-family review ran for real with file access and independently
+      reproduced both chain digests and the rule-set delta
+    cmd: "kimi -m kimi-code/k3 -p <review brief on stdin>"
+    result: >-
+      "seq19 digest: bac5da8e…e6ea; seq20 digest: df02287b…1a4d;
+      removed: ['review.e33g.income-evidence']; added: ['hf.d2.indonesia-source-compensation'];
+      drifted count: 34; non-identity keys moved: []"; prettier --check on all three packs
+      exit 0; VERDICT OK
+    ts: "2026-09-06T09:50:00Z"
+    seat: kimi-code/k3
+    exit: 0
+  - claim: >-
+      tp1-qwen3.8-max's independent cross-family review (fresh context, no shared prompt
+      with the kimi lane) returned VERDICT OK with three MINOR findings
+    cmd: >-
+      python3 scripts/tp1_call.py --model qwen3.8-max --task-file <review brief>
+      --effort medium --no-stream
+    result: >-
+      "VERDICT: OK" — SUPPORT_REASON_COPY confirmed as the correct map, the new test
+      confirmed non-vacuous, the copy text confirmed legally accurate for the C2/D1/D2
+      family; three MINOR findings, two cured before this pack was written
+    ts: "2026-09-06T09:45:00Z"
+    seat: tp1-qwen3.8-max
+    exit: 0
+  - claim: >-
+      nothing was signed and nothing was activated — the only pack artifact this branch
+      writes is the UNSIGNED source
+    cmd: "git diff $(git merge-base HEAD origin/main) --name-only | grep -c 'signed.json'"
+    result: >-
+      0 — rulepack-prod-020.signed.json does not exist on this branch; sign_pack.py and
+      activate_pack.py were never invoked and `--yes` was passed to nothing
+    ts: "2026-09-06T09:48:00Z"
+    seat: claude-opus-5 (this worktree session)
+    exit: 0
+dissent:
+  - seat: claude-opus-5 (independent gate reader, xhigh, separate session)
+    status: CONFIRMED
+    objection: >-
+      BLOCK on head d63a1bc895, three mechanical conditions, all three correct and all three
+      closed here. (1) SHAPE: rulepack-prod-020.source.json was not prettier-formatted while
+      rulepack-prod-018/019.source.json on main are — a house-workflow gap the fold's
+      docstring never named, so the next fold would have repeated it. CURED: prettier --write
+      run, the JCS payload digest recomputed before and after and proven identical, the
+      constant pinned in a committed test, and the fold-then-prettier ceremony written into
+      the fold's docstring so the next sequence inherits it. (2) EVIDENCE: no Gear-3
+      evidence pack, though the pack JSON's own line count floors the PR at Gear 3. CURED:
+      this pack. (3) SUPPORT_REASON_COPY: the new EXCLUDE code
+      BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED had no entry in the frontend reason-copy map,
+      so the first real reader to declare Indonesian-source compensation would have been
+      shown "Verified reason: BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED" on the no-path sheet.
+      CURED, and the gate's own instinct to say "verify WHICH map" was right: engine-adapter.ts
+      carries two maps and the review one is the wrong door for an EXCLUDE code —
+      NO_SUPPORTED_PATH maps no_path_reasons through reason() -> reasonMessage() ->
+      SUPPORT_REASON_COPY, confirmed by reading the branch before editing and again by both
+      cross-family review seats.
+  - seat: gemini-3.1-pro (via agy, cross-family, adversarial review of the SPEC)
+    status: RETRACTED
+    objection: >-
+      Status note first, because the vocabulary here is narrow: the seat did not itself
+      withdraw this finding — it was a one-shot review with no second round. RETRACTED is
+      recorded because the seat named the exact experiment that would settle it, the
+      experiment was run, and it came back against the finding. Read it as "settled by the
+      evidence the objector asked for", not as "the objector changed its mind".
+      Finding 3, MAJOR: "the fix is tautological — requiring intent.requested_product_code to
+      be `known` does not neutralize the hazard, because a user who asks for C1 satisfies both
+      `known` and `neq BRIDGING`, so the rule will still falsely grant BRIDGING support."
+      DISPOSITION: rejected on semantics, with the evidence gemini itself asked for produced
+      and recorded above. `neq BRIDGING` is not a guard against granting bridging — it is the
+      DESTINATION check: the BRIDGING product IS the onshore status-conversion route, and the
+      rule fires when the applicant is onshore, purposes include OTHER, and the destination
+      product they want to convert TO is something other than bridging itself. A stated C1 is
+      a valid destination, so SUPPORTED [BRIDGING] is the intended answer, not a fail-open;
+      bridging-to-bridging is what `neq BRIDGING` refuses, and the measured matrix confirms it
+      (requested="BRIDGING" -> not a candidate). The `known` conjunct fixes a different,
+      real defect: without it el.bridging.destination-stated blocked on a fact the interview
+      never supplies, which is one of the 36 dead ends this whole fold exists to remove.
+      Where gemini WAS right and was acted on: finding 5 (document-sibling caps) drove the
+      fold-time stay-day census that makes el.a1.tourism's exemption explicit rather than
+      accidental, and finding 6 (NO_EFFECT fail-open) was checked and is fail-CLOSED — the
+      eight rules are SUPPORT, not EXCLUDE, so NO_EFFECT keeps E31B/E31E/E31H/E31J out of the
+      candidate set, with the 18/18 gold coverage replay as the floor that would catch it if
+      that reading were wrong.
+  - seat: tp1-qwen3.8-max (cross-family, on the rework diff)
+    status: CONFIRMED
+    objection: >-
+      Two MINOR findings on the new docstring paragraph, both cured before this pack was
+      written. (a) "safe by construction" overstated the guarantee: the digest invariant is
+      contingent on prettier's JSON printer being semantics-preserving, not mathematical —
+      a printer that rounded a number token beyond 2^53 would move it. Reworded to say
+      exactly that, and the docstring now points at the two committed tests that CHECK the
+      invariant rather than trusting it. (b) the ceremony said "run npx prettier --write"
+      without pinning the working directory, so a contributor running from an unrelated cwd
+      could get different config resolution. Reworded to "FROM THE REPO ROOT".
+  - seat: tp1-qwen3.8-max (cross-family, on the rework diff)
+    status: PLAUSIBLE
+    objection: >-
+      Third MINOR finding, NOT cured: excludeReasonCodeOfRule returns the FIRST rule whose
+      rule_id matches, so a pack containing duplicate rule_ids would silently use the first
+      one instead of failing loudly. Left as-is deliberately — the fold already refuses to
+      emit a pack with duplicate rule ids and test_seq20_pack.py's rule-set delta check
+      compares rule-id SETS, so a duplicate cannot reach this test without failing several
+      louder gates first. Recorded rather than fixed because adding a second enumeration
+      here would put the duplicate-id contract in a TypeScript test in a different app from
+      the Python that owns it, which is the wrong home for it.
+  - seat: claude-opus-5 (this worktree session), self-caught
+    status: PLAUSIBLE
+    objection: >-
+      The frontend now has copy for exactly TWO of the pack's 24 EXCLUDE reason codes
+      (REQ_PARENTS_MARRIAGE_REGISTERED and this revision's new one); the other 22 still fall
+      through to "Verified reason: <CODE>" on the no-path sheet. The SUPPORT exhaustiveness
+      tripwire in engine-adapter.test.ts walks `effect.type === "SUPPORT"` only, so nothing
+      fails when an EXCLUDE code has no copy — which is exactly why the gate had to catch
+      this one by reading rather than by a red check. Deliberately NOT fixed here: writing
+      22 legal sentences and extending the tripwire to EXCLUDE codes is a copy-deck task
+      with its own review surface, not a line item inside a pack fold, and folding it in
+      would break the one-PR-one-concern contract. Stated plainly so it is a known gap on
+      the record and not a silence.
+spend:
+  wall_clock_hours: 3.5
+  adversarial_rounds: 3
+appetite_exceeded: ""

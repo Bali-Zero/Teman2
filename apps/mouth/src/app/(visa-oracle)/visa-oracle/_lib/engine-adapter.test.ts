@@ -474,6 +474,85 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(codes.length).toBeGreaterThanOrEqual(13);
     expect(codes.filter((code) => !(code in SUPPORT_REASON_COPY))).toEqual([]);
   });
+
+  /**
+   * The tripwire above walks SUPPORT effects only, but an EXCLUDE code reaches
+   * a reader through the SAME `reasonMessage` fallback: `NO_SUPPORTED_PATH`
+   * maps `no_path_reasons` through `reason()`. So a new hard filter can print
+   * a machine code on the no-path sheet without failing anything above. seq-20
+   * adds exactly one such rule — `hf.d2.indonesia-source-compensation`,
+   * CL-D2-01's local-compensation prohibition — and its code is read OUT of
+   * the highest-sequence pack on disk rather than typed here, so a rename in
+   * the fold moves this test with it instead of leaving it quietly stale.
+   */
+  function highestSequencePack(): { rules?: Array<Record<string, unknown>> } {
+    let best: {
+      payload: { sequence: number; rules?: Array<Record<string, unknown>> };
+      sequence: number;
+    } | null = null;
+    for (const full of productionPackFiles()) {
+      const payload = JSON.parse(fs.readFileSync(full, "utf-8")) as {
+        sequence?: unknown;
+        rules?: Array<Record<string, unknown>>;
+      };
+      // A pack without a numeric `sequence` cannot be compared — skip it
+      // rather than let it win via a sentinel default.
+      if (typeof payload.sequence !== "number") continue;
+      if (best === null || payload.sequence > best.sequence) {
+        best = {
+          payload: payload as {
+            sequence: number;
+            rules?: Array<Record<string, unknown>>;
+          },
+          sequence: payload.sequence,
+        };
+      }
+    }
+    if (best === null) {
+      throw new Error(`no pack under ${PACKS_DIR} had a numeric sequence`);
+    }
+    return best.payload;
+  }
+
+  function excludeReasonCodeOfRule(ruleId: string): string {
+    for (const rule of highestSequencePack().rules ?? []) {
+      if (rule.rule_id !== ruleId) continue;
+      const effect = rule.effect as Record<string, unknown> | undefined;
+      if (
+        effect &&
+        effect.type === "EXCLUDE" &&
+        typeof effect.reason_code === "string"
+      ) {
+        return effect.reason_code;
+      }
+      throw new Error(`${ruleId} is no longer an EXCLUDE rule`);
+    }
+    throw new Error(`${ruleId} is absent from the highest-sequence pack`);
+  }
+
+  function firstNoPathReason(code: string) {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons[0].code = code;
+    const outcome = buildEngineOutcome(response);
+    if (outcome.state !== "NO_SUPPORTED_PATH")
+      throw new Error("unexpected state");
+    return outcome.noPathReasons[0].message;
+  }
+
+  it("explains the seq-20 local-compensation exclusion in prose, in every locale", () => {
+    const code = excludeReasonCodeOfRule("hf.d2.indonesia-source-compensation");
+    expect(code).toBe("BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED");
+    expect(code in SUPPORT_REASON_COPY).toBe(true);
+
+    const message = firstNoPathReason(code);
+    expect(message.en).not.toMatch(/^Verified reason: /);
+    expect(message.en).not.toContain(code);
+    expect(message.en).toMatch(/Indonesian source/i);
+    expect(message.en).toMatch(/work route/i);
+    expect(message.id).not.toContain(code);
+    expect(message.id).toMatch(/sumber di Indonesia/i);
+    expect(message.id).toMatch(/jalur kerja/i);
+  });
 });
 
 describe("review reasons cover every code the current pack can emit", () => {

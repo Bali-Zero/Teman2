@@ -15,16 +15,12 @@
       "rule_id": "hf.citizen",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "e76bf823-2b36-522f-b2f7-e51eb7715e44"
-      ],
+      "source_refs": ["e76bf823-2b36-522f-b2f7-e51eb7715e44"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "derived.has_indonesian_citizenship"
-      ],
+      "required_facts": ["derived.has_indonesian_citizenship"],
       "explanation_key": "explain.hf.citizen",
       "safety_critical": true,
       "product_version_ids": null
@@ -44,16 +40,12 @@
       "rule_id": "hf.overstay-exceeds-60-days",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "e76bf823-2b36-522f-b2f7-e51eb7715e44"
-      ],
+      "source_refs": ["e76bf823-2b36-522f-b2f7-e51eb7715e44"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "immigration.overstay_days"
-      ],
+      "required_facts": ["immigration.overstay_days"],
       "explanation_key": "explain.hf.overstay-exceeds-60-days",
       "safety_critical": true,
       "product_version_ids": null
@@ -62,14 +54,7 @@
       "when": {
         "op": "intersects",
         "fact": "person.nationalities",
-        "values": [
-          "AF",
-          "IL",
-          "KP",
-          "LR",
-          "NG",
-          "SO"
-        ]
+        "values": ["AF", "IL", "KP", "LR", "NG", "SO"]
       },
       "scope": "GLOBAL",
       "stage": "HUMAN_REVIEW",
@@ -80,16 +65,12 @@
       "rule_id": "review.calling-visa",
       "priority": 100,
       "on_unknown": "HUMAN_REVIEW",
-      "source_refs": [
-        "bc309fa9-d14e-5625-b914-72fe4a68c19d"
-      ],
+      "source_refs": ["bc309fa9-d14e-5625-b914-72fe4a68c19d"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "person.nationalities"
-      ],
+      "required_facts": ["person.nationalities"],
       "explanation_key": "explain.review.calling-visa",
       "safety_critical": true,
       "product_version_ids": null
@@ -109,16 +90,12 @@
       "rule_id": "review.active-overstay",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "e76bf823-2b36-522f-b2f7-e51eb7715e44"
-      ],
+      "source_refs": ["e76bf823-2b36-522f-b2f7-e51eb7715e44"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "immigration.overstay_days"
-      ],
+      "required_facts": ["immigration.overstay_days"],
       "explanation_key": "explain.review.active-overstay",
       "safety_critical": true,
       "product_version_ids": null
@@ -161,21 +138,15 @@
       "rule_id": "hf.a1.not-bvk-nationality",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "808d691c-374e-5581-8186-9eb54d0ca7ab"
-      ],
+      "source_refs": ["808d691c-374e-5581-8186-9eb54d0ca7ab"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "person.nationalities"
-      ],
+      "required_facts": ["person.nationalities"],
       "explanation_key": "explain.hf.a1.not-bvk-nationality",
       "safety_critical": false,
-      "product_version_ids": [
-        "aee1a12d-3285-526e-8a6f-3d8467fe5d72"
-      ]
+      "product_version_ids": ["aee1a12d-3285-526e-8a6f-3d8467fe5d72"]
     },
     {
       "when": {
@@ -184,10 +155,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "TOURISM",
-              "TRANSIT"
-            ]
+            "values": ["TOURISM", "TRANSIT"]
           },
           {
             "op": "intersects",
@@ -226,17 +194,12 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "A1_BVK_ELIGIBLE",
-        "covered_purposes": [
-          "TOURISM",
-          "TRANSIT"
-        ]
+        "covered_purposes": ["TOURISM", "TRANSIT"]
       },
       "rule_id": "el.a1.tourism",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "808d691c-374e-5581-8186-9eb54d0ca7ab"
-      ],
+      "source_refs": ["808d691c-374e-5581-8186-9eb54d0ca7ab"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
@@ -248,9 +211,7 @@
       ],
       "explanation_key": "explain.el.a1.tourism",
       "safety_critical": false,
-      "product_version_ids": [
-        "aee1a12d-3285-526e-8a6f-3d8467fe5d72"
-      ]
+      "product_version_ids": ["aee1a12d-3285-526e-8a6f-3d8467fe5d72"]
     },
     {
       "when": {
@@ -259,9 +220,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "TOURISM"
-            ]
+            "values": ["TOURISM"]
           },
           {
             "op": "lte",
@@ -378,9 +337,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "B1_VOA_ELIGIBLE",
-        "covered_purposes": [
-          "TOURISM"
-        ]
+        "covered_purposes": ["TOURISM"]
       },
       "rule_id": "el.b1.tourism",
       "priority": 100,
@@ -400,9 +357,7 @@
       ],
       "explanation_key": "explain.el.b1.tourism",
       "safety_critical": false,
-      "product_version_ids": [
-        "4e30cbe0-c4bf-59be-9bf8-513e66946e44"
-      ]
+      "product_version_ids": ["4e30cbe0-c4bf-59be-9bf8-513e66946e44"]
     },
     {
       "when": {
@@ -411,10 +366,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "TOURISM",
-              "FAMILY"
-            ]
+            "values": ["TOURISM", "FAMILY"]
           },
           {
             "op": "lte",
@@ -428,30 +380,20 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "C1_VISIT_ELIGIBLE",
-        "covered_purposes": [
-          "TOURISM",
-          "FAMILY"
-        ]
+        "covered_purposes": ["TOURISM", "FAMILY"]
       },
       "rule_id": "el.c1.tourism-family",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.stay_days"
-      ],
+      "required_facts": ["intent.purposes", "intent.stay_days"],
       "explanation_key": "explain.el.c1.tourism-family",
       "safety_critical": false,
-      "product_version_ids": [
-        "7a07cbb0-564f-5c3f-9720-6ad62c4789cd"
-      ]
+      "product_version_ids": ["7a07cbb0-564f-5c3f-9720-6ad62c4789cd"]
     },
     {
       "when": {
@@ -460,10 +402,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "BUSINESS_MEETINGS",
-              "INVESTMENT"
-            ]
+            "values": ["BUSINESS_MEETINGS", "INVESTMENT"]
           },
           {
             "op": "eq",
@@ -482,17 +421,12 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "C2_BUSINESS_ELIGIBLE",
-        "covered_purposes": [
-          "BUSINESS_MEETINGS",
-          "INVESTMENT"
-        ]
+        "covered_purposes": ["BUSINESS_MEETINGS", "INVESTMENT"]
       },
       "rule_id": "el.c2.business",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
@@ -504,9 +438,7 @@
       ],
       "explanation_key": "explain.el.c2.business",
       "safety_critical": false,
-      "product_version_ids": [
-        "de433757-f7af-5762-ad65-41bc16bc2ae1"
-      ]
+      "product_version_ids": ["de433757-f7af-5762-ad65-41bc16bc2ae1"]
     },
     {
       "when": {
@@ -515,9 +447,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "OTHER"
-            ]
+            "values": ["OTHER"]
           },
           {
             "op": "eq",
@@ -536,16 +466,12 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "C6_SOCIAL_ELIGIBLE",
-        "covered_purposes": [
-          "OTHER"
-        ]
+        "covered_purposes": ["OTHER"]
       },
       "rule_id": "el.c6.social",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
@@ -557,9 +483,7 @@
       ],
       "explanation_key": "explain.el.c6.social",
       "safety_critical": false,
-      "product_version_ids": [
-        "8cf5e09b-6e02-536f-aeca-4aaecaca09c7"
-      ]
+      "product_version_ids": ["8cf5e09b-6e02-536f-aeca-4aaecaca09c7"]
     },
     {
       "when": {
@@ -576,21 +500,15 @@
       "rule_id": "hf.e28a.paid-capital-below-min",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "investment.paid_up_capital_idr"
-      ],
+      "required_facts": ["investment.paid_up_capital_idr"],
       "explanation_key": "explain.hf.e28a.paid-capital-below-min",
       "safety_critical": false,
-      "product_version_ids": [
-        "c8277316-c29d-5fde-bf9f-2611099a0029"
-      ]
+      "product_version_ids": ["c8277316-c29d-5fde-bf9f-2611099a0029"]
     },
     {
       "when": {
@@ -607,21 +525,15 @@
       "rule_id": "hf.e28a.total-investment-below-min",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "investment.investment_capital_idr"
-      ],
+      "required_facts": ["investment.investment_capital_idr"],
       "explanation_key": "explain.hf.e28a.total-investment-below-min",
       "safety_critical": false,
-      "product_version_ids": [
-        "c8277316-c29d-5fde-bf9f-2611099a0029"
-      ]
+      "product_version_ids": ["c8277316-c29d-5fde-bf9f-2611099a0029"]
     },
     {
       "when": {
@@ -630,9 +542,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "INVESTMENT"
-            ]
+            "values": ["INVESTMENT"]
           },
           {
             "op": "eq",
@@ -642,10 +552,7 @@
           {
             "op": "in",
             "fact": "investment.proposed_role",
-            "values": [
-              "SHAREHOLDER_DIRECTOR",
-              "SHAREHOLDER_COMMISSIONER"
-            ]
+            "values": ["SHAREHOLDER_DIRECTOR", "SHAREHOLDER_COMMISSIONER"]
           },
           {
             "op": "gte",
@@ -664,16 +571,12 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "E28A_INVESTMENT_ELIGIBLE",
-        "covered_purposes": [
-          "INVESTMENT"
-        ]
+        "covered_purposes": ["INVESTMENT"]
       },
       "rule_id": "el.e28a.investment",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
@@ -687,9 +590,7 @@
       ],
       "explanation_key": "explain.el.e28a.investment",
       "safety_critical": false,
-      "product_version_ids": [
-        "c8277316-c29d-5fde-bf9f-2611099a0029"
-      ]
+      "product_version_ids": ["c8277316-c29d-5fde-bf9f-2611099a0029"]
     },
     {
       "when": {
@@ -698,9 +599,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "INVESTMENT"
-            ]
+            "values": ["INVESTMENT"]
           },
           {
             "op": "eq",
@@ -718,22 +617,15 @@
       "rule_id": "review.e28b.usd-threshold-manual",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.requested_product_code"
-      ],
+      "required_facts": ["intent.purposes", "intent.requested_product_code"],
       "explanation_key": "explain.review.e28b.usd-threshold-manual",
       "safety_critical": false,
-      "product_version_ids": [
-        "ca8c1177-ad94-5261-82a6-68bc912d31bb"
-      ]
+      "product_version_ids": ["ca8c1177-ad94-5261-82a6-68bc912d31bb"]
     },
     {
       "when": {
@@ -742,9 +634,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "INVESTMENT"
-            ]
+            "values": ["INVESTMENT"]
           },
           {
             "op": "eq",
@@ -762,22 +652,15 @@
       "rule_id": "review.e28c.usd-threshold-manual",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.requested_product_code"
-      ],
+      "required_facts": ["intent.purposes", "intent.requested_product_code"],
       "explanation_key": "explain.review.e28c.usd-threshold-manual",
       "safety_critical": false,
-      "product_version_ids": [
-        "b074270f-fa7c-598b-a728-81ca89432364"
-      ]
+      "product_version_ids": ["b074270f-fa7c-598b-a728-81ca89432364"]
     },
     {
       "when": {
@@ -786,9 +669,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "INVESTMENT"
-            ]
+            "values": ["INVESTMENT"]
           },
           {
             "op": "eq",
@@ -806,22 +687,15 @@
       "rule_id": "review.e28d.usd-threshold-turnover-manual",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.requested_product_code"
-      ],
+      "required_facts": ["intent.purposes", "intent.requested_product_code"],
       "explanation_key": "explain.review.e28d.usd-threshold-turnover-manual",
       "safety_critical": false,
-      "product_version_ids": [
-        "ee4fef98-3497-507c-8486-225932364e26"
-      ]
+      "product_version_ids": ["ee4fef98-3497-507c-8486-225932364e26"]
     },
     {
       "when": {
@@ -830,9 +704,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "INVESTMENT"
-            ]
+            "values": ["INVESTMENT"]
           },
           {
             "op": "eq",
@@ -850,22 +722,15 @@
       "rule_id": "review.e28f.ikn-threshold-manual",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.requested_product_code"
-      ],
+      "required_facts": ["intent.purposes", "intent.requested_product_code"],
       "explanation_key": "explain.review.e28f.ikn-threshold-manual",
       "safety_critical": false,
-      "product_version_ids": [
-        "2df6f723-7fc3-585a-b26f-0e8c060a2d8d"
-      ]
+      "product_version_ids": ["2df6f723-7fc3-585a-b26f-0e8c060a2d8d"]
     },
     {
       "when": {
@@ -874,9 +739,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "SECOND_HOME"
-            ]
+            "values": ["SECOND_HOME"]
           },
           {
             "op": "gte",
@@ -900,10 +763,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "E33_DEPOSIT_BASIS_ELIGIBLE",
-        "covered_purposes": [
-          "SECOND_HOME",
-          "TOURISM"
-        ]
+        "covered_purposes": ["SECOND_HOME", "TOURISM"]
       },
       "rule_id": "el.e33.deposit-basis",
       "priority": 100,
@@ -924,9 +784,7 @@
       ],
       "explanation_key": "explain.el.e33.deposit-basis",
       "safety_critical": false,
-      "product_version_ids": [
-        "cf4d7f3d-1253-5036-8953-79ab3d3e7009"
-      ]
+      "product_version_ids": ["cf4d7f3d-1253-5036-8953-79ab3d3e7009"]
     },
     {
       "when": {
@@ -935,9 +793,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "SECOND_HOME"
-            ]
+            "values": ["SECOND_HOME"]
           },
           {
             "op": "gte",
@@ -951,10 +807,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "E33_PROPERTY_BASIS_ELIGIBLE",
-        "covered_purposes": [
-          "SECOND_HOME",
-          "TOURISM"
-        ]
+        "covered_purposes": ["SECOND_HOME", "TOURISM"]
       },
       "rule_id": "el.e33.property-basis",
       "priority": 100,
@@ -973,9 +826,7 @@
       ],
       "explanation_key": "explain.el.e33.property-basis",
       "safety_critical": false,
-      "product_version_ids": [
-        "cf4d7f3d-1253-5036-8953-79ab3d3e7009"
-      ]
+      "product_version_ids": ["cf4d7f3d-1253-5036-8953-79ab3d3e7009"]
     },
     {
       "when": {
@@ -987,9 +838,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "SECOND_HOME"
-                ]
+                "values": ["SECOND_HOME"]
               },
               {
                 "op": "gte",
@@ -1007,9 +856,7 @@
                   {
                     "op": "intersects",
                     "fact": "intent.purposes",
-                    "values": [
-                      "SECOND_HOME"
-                    ]
+                    "values": ["SECOND_HOME"]
                   },
                   {
                     "op": "gte",
@@ -1034,9 +881,7 @@
                   {
                     "op": "intersects",
                     "fact": "intent.purposes",
-                    "values": [
-                      "SECOND_HOME"
-                    ]
+                    "values": ["SECOND_HOME"]
                   },
                   {
                     "op": "gte",
@@ -1054,10 +899,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "E33_PROPERTY_QUALIFICATION_ADVISOR_CHECK",
-        "covered_purposes": [
-          "SECOND_HOME",
-          "TOURISM"
-        ]
+        "covered_purposes": ["SECOND_HOME", "TOURISM"]
       },
       "rule_id": "el.e33.property-qualification",
       "priority": 100,
@@ -1079,9 +921,7 @@
       ],
       "explanation_key": "explain.el.e33.property-qualification",
       "safety_critical": false,
-      "product_version_ids": [
-        "cf4d7f3d-1253-5036-8953-79ab3d3e7009"
-      ]
+      "product_version_ids": ["cf4d7f3d-1253-5036-8953-79ab3d3e7009"]
     },
     {
       "when": {
@@ -1093,9 +933,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "SECOND_HOME"
-                ]
+                "values": ["SECOND_HOME"]
               },
               {
                 "op": "any",
@@ -1123,9 +961,7 @@
                   {
                     "op": "intersects",
                     "fact": "intent.purposes",
-                    "values": [
-                      "SECOND_HOME"
-                    ]
+                    "values": ["SECOND_HOME"]
                   },
                   {
                     "op": "gte",
@@ -1150,9 +986,7 @@
                   {
                     "op": "intersects",
                     "fact": "intent.purposes",
-                    "values": [
-                      "SECOND_HOME"
-                    ]
+                    "values": ["SECOND_HOME"]
                   },
                   {
                     "op": "gte",
@@ -1170,10 +1004,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "GUARANTEE_VALUE_MUST_BE_MAINTAINED",
-        "covered_purposes": [
-          "SECOND_HOME",
-          "TOURISM"
-        ]
+        "covered_purposes": ["SECOND_HOME", "TOURISM"]
       },
       "rule_id": "el.e33.guarantee-maintenance",
       "priority": 100,
@@ -1195,9 +1026,7 @@
       ],
       "explanation_key": "explain.el.e33.guarantee-maintenance",
       "safety_critical": false,
-      "product_version_ids": [
-        "cf4d7f3d-1253-5036-8953-79ab3d3e7009"
-      ]
+      "product_version_ids": ["cf4d7f3d-1253-5036-8953-79ab3d3e7009"]
     },
     {
       "when": {
@@ -1206,16 +1035,12 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "SECOND_HOME"
-            ]
+            "values": ["SECOND_HOME"]
           },
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "EMPLOYMENT"
-            ]
+            "values": ["EMPLOYMENT"]
           }
         ]
       },
@@ -1228,21 +1053,15 @@
       "rule_id": "review.e33.work-rangkap-kegiatan",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes"
-      ],
+      "required_facts": ["intent.purposes"],
       "explanation_key": "explain.review.e33.work-rangkap-kegiatan",
       "safety_critical": false,
-      "product_version_ids": [
-        "cf4d7f3d-1253-5036-8953-79ab3d3e7009"
-      ]
+      "product_version_ids": ["cf4d7f3d-1253-5036-8953-79ab3d3e7009"]
     },
     {
       "when": {
@@ -1251,9 +1070,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "EMPLOYMENT"
-            ]
+            "values": ["EMPLOYMENT"]
           },
           {
             "op": "eq",
@@ -1271,22 +1088,15 @@
       "rule_id": "review.e33a.central-government-invitation",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.requested_product_code"
-      ],
+      "required_facts": ["intent.purposes", "intent.requested_product_code"],
       "explanation_key": "explain.review.e33a.central-government-invitation",
       "safety_critical": false,
-      "product_version_ids": [
-        "5c18e265-ddb2-5010-8d24-a2f19df89850"
-      ]
+      "product_version_ids": ["5c18e265-ddb2-5010-8d24-a2f19df89850"]
     },
     {
       "when": {
@@ -1295,9 +1105,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "EMPLOYMENT"
-            ]
+            "values": ["EMPLOYMENT"]
           },
           {
             "op": "eq",
@@ -1315,22 +1123,15 @@
       "rule_id": "review.e33b.expertise-qualification",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.requested_product_code"
-      ],
+      "required_facts": ["intent.purposes", "intent.requested_product_code"],
       "explanation_key": "explain.review.e33b.expertise-qualification",
       "safety_critical": false,
-      "product_version_ids": [
-        "32b6fb5f-5a24-5763-95f9-0b77be18353c"
-      ]
+      "product_version_ids": ["32b6fb5f-5a24-5763-95f9-0b77be18353c"]
     },
     {
       "when": {
@@ -1339,9 +1140,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "INVESTMENT"
-            ]
+            "values": ["INVESTMENT"]
           },
           {
             "op": "eq",
@@ -1359,22 +1158,15 @@
       "rule_id": "review.e33c.central-government-invitation",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.requested_product_code"
-      ],
+      "required_facts": ["intent.purposes", "intent.requested_product_code"],
       "explanation_key": "explain.review.e33c.central-government-invitation",
       "safety_critical": false,
-      "product_version_ids": [
-        "9cc14fee-49dc-5549-8bc8-90bdaf52d1f3"
-      ]
+      "product_version_ids": ["9cc14fee-49dc-5549-8bc8-90bdaf52d1f3"]
     },
     {
       "when": {
@@ -1391,21 +1183,15 @@
       "rule_id": "hf.e33e.age-below-55",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "9248b1d7-9172-54d9-ad61-251e83a2285b"
-      ],
+      "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "derived.age_years"
-      ],
+      "required_facts": ["derived.age_years"],
       "explanation_key": "explain.hf.e33e.age-below-55",
       "safety_critical": false,
-      "product_version_ids": [
-        "796d09bd-3220-5c91-a6ce-e3a99a9b0ddb"
-      ]
+      "product_version_ids": ["796d09bd-3220-5c91-a6ce-e3a99a9b0ddb"]
     },
     {
       "when": {
@@ -1417,9 +1203,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "RETIREMENT"
-                ]
+                "values": ["RETIREMENT"]
               },
               {
                 "op": "between",
@@ -1435,9 +1219,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "RETIREMENT"
-                ]
+                "values": ["RETIREMENT"]
               },
               {
                 "op": "gte",
@@ -1478,12 +1260,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "E33E_AGE_55_59_ADVISOR_CHECK",
-        "covered_purposes": [
-          "FAMILY",
-          "RETIREMENT",
-          "SECOND_HOME",
-          "TOURISM"
-        ]
+        "covered_purposes": ["FAMILY", "RETIREMENT", "SECOND_HOME", "TOURISM"]
       },
       "rule_id": "el.e33e.age-55-59-disputed-band",
       "priority": 100,
@@ -1506,9 +1283,7 @@
       ],
       "explanation_key": "explain.el.e33e.age-55-59-disputed-band",
       "safety_critical": false,
-      "product_version_ids": [
-        "796d09bd-3220-5c91-a6ce-e3a99a9b0ddb"
-      ]
+      "product_version_ids": ["796d09bd-3220-5c91-a6ce-e3a99a9b0ddb"]
     },
     {
       "when": {
@@ -1517,9 +1292,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "RETIREMENT"
-            ]
+            "values": ["RETIREMENT"]
           },
           {
             "op": "gte",
@@ -1558,12 +1331,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "E33E_RETIREMENT_ELIGIBLE",
-        "covered_purposes": [
-          "RETIREMENT",
-          "SECOND_HOME",
-          "TOURISM",
-          "FAMILY"
-        ]
+        "covered_purposes": ["RETIREMENT", "SECOND_HOME", "TOURISM", "FAMILY"]
       },
       "rule_id": "el.e33e.retirement",
       "priority": 100,
@@ -1586,9 +1354,7 @@
       ],
       "explanation_key": "explain.el.e33e.retirement",
       "safety_critical": false,
-      "product_version_ids": [
-        "796d09bd-3220-5c91-a6ce-e3a99a9b0ddb"
-      ]
+      "product_version_ids": ["796d09bd-3220-5c91-a6ce-e3a99a9b0ddb"]
     },
     {
       "when": {
@@ -1605,21 +1371,15 @@
       "rule_id": "hf.e33f.sponsor-required",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "family.sponsor_confirmed"
-      ],
+      "required_facts": ["family.sponsor_confirmed"],
       "explanation_key": "explain.hf.e33f.sponsor-required",
       "safety_critical": false,
-      "product_version_ids": [
-        "7c1da88f-f7cd-571a-95c2-7da32463d3e6"
-      ]
+      "product_version_ids": ["7c1da88f-f7cd-571a-95c2-7da32463d3e6"]
     },
     {
       "when": {
@@ -1628,9 +1388,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "RETIREMENT"
-            ]
+            "values": ["RETIREMENT"]
           },
           {
             "op": "gte",
@@ -1674,9 +1432,7 @@
       ],
       "explanation_key": "explain.el.e33f.retirement",
       "safety_critical": false,
-      "product_version_ids": [
-        "7c1da88f-f7cd-571a-95c2-7da32463d3e6"
-      ]
+      "product_version_ids": ["7c1da88f-f7cd-571a-95c2-7da32463d3e6"]
     },
     {
       "when": {
@@ -1693,21 +1449,15 @@
       "rule_id": "hf.e33g.indonesian-employer",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "9248b1d7-9172-54d9-ad61-251e83a2285b"
-      ],
+      "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "work.employer_is_indonesian_entity"
-      ],
+      "required_facts": ["work.employer_is_indonesian_entity"],
       "explanation_key": "explain.hf.e33g.indonesian-employer",
       "safety_critical": false,
-      "product_version_ids": [
-        "51e023ea-3229-5233-b88f-cb204b5df713"
-      ]
+      "product_version_ids": ["51e023ea-3229-5233-b88f-cb204b5df713"]
     },
     {
       "when": {
@@ -1724,21 +1474,15 @@
       "rule_id": "hf.e33g.indonesian-source-compensation",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "9248b1d7-9172-54d9-ad61-251e83a2285b"
-      ],
+      "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "work.indonesia_source_compensation"
-      ],
+      "required_facts": ["work.indonesia_source_compensation"],
       "explanation_key": "explain.hf.e33g.indonesian-source-compensation",
       "safety_critical": false,
-      "product_version_ids": [
-        "51e023ea-3229-5233-b88f-cb204b5df713"
-      ]
+      "product_version_ids": ["51e023ea-3229-5233-b88f-cb204b5df713"]
     },
     {
       "when": {
@@ -1747,9 +1491,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "REMOTE_WORK"
-            ]
+            "values": ["REMOTE_WORK"]
           },
           {
             "op": "eq",
@@ -1767,22 +1509,15 @@
       "rule_id": "review.e33g.local-market",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "9248b1d7-9172-54d9-ad61-251e83a2285b"
-      ],
+      "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "work.serves_indonesian_clients"
-      ],
+      "required_facts": ["intent.purposes", "work.serves_indonesian_clients"],
       "explanation_key": "explain.review.e33g.local-market",
       "safety_critical": false,
-      "product_version_ids": [
-        "51e023ea-3229-5233-b88f-cb204b5df713"
-      ]
+      "product_version_ids": ["51e023ea-3229-5233-b88f-cb204b5df713"]
     },
     {
       "when": {
@@ -1791,9 +1526,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "REMOTE_WORK"
-            ]
+            "values": ["REMOTE_WORK"]
           },
           {
             "op": "eq",
@@ -1811,22 +1544,15 @@
       "rule_id": "review.e33g.local-company-ownership",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "9248b1d7-9172-54d9-ad61-251e83a2285b"
-      ],
+      "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "investment.pt_pma_committed"
-      ],
+      "required_facts": ["intent.purposes", "investment.pt_pma_committed"],
       "explanation_key": "explain.review.e33g.local-company-ownership",
       "safety_critical": false,
-      "product_version_ids": [
-        "51e023ea-3229-5233-b88f-cb204b5df713"
-      ]
+      "product_version_ids": ["51e023ea-3229-5233-b88f-cb204b5df713"]
     },
     {
       "when": {
@@ -1835,9 +1561,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "REMOTE_WORK"
-            ]
+            "values": ["REMOTE_WORK"]
           },
           {
             "op": "eq",
@@ -1861,18 +1585,12 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "REMOTE_WORK_ELIGIBLE",
-        "covered_purposes": [
-          "REMOTE_WORK",
-          "TOURISM",
-          "FAMILY"
-        ]
+        "covered_purposes": ["REMOTE_WORK", "TOURISM", "FAMILY"]
       },
       "rule_id": "el.e33g.remote-work",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "9248b1d7-9172-54d9-ad61-251e83a2285b"
-      ],
+      "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
@@ -1885,9 +1603,7 @@
       ],
       "explanation_key": "explain.el.e33g.remote-work",
       "safety_critical": false,
-      "product_version_ids": [
-        "51e023ea-3229-5233-b88f-cb204b5df713"
-      ]
+      "product_version_ids": ["51e023ea-3229-5233-b88f-cb204b5df713"]
     },
     {
       "when": {
@@ -1904,21 +1620,15 @@
       "rule_id": "hf.bridging.offshore",
       "priority": 100,
       "on_unknown": "HUMAN_REVIEW",
-      "source_refs": [
-        "9248b1d7-9172-54d9-ad61-251e83a2285b"
-      ],
+      "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "immigration.currently_in_indonesia"
-      ],
+      "required_facts": ["immigration.currently_in_indonesia"],
       "explanation_key": "explain.hf.bridging.offshore",
       "safety_critical": false,
-      "product_version_ids": [
-        "760025cf-d51d-5687-9e98-b921010b9018"
-      ]
+      "product_version_ids": ["760025cf-d51d-5687-9e98-b921010b9018"]
     },
     {
       "when": {
@@ -1951,14 +1661,10 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "immigration.current_status_code"
-      ],
+      "required_facts": ["immigration.current_status_code"],
       "explanation_key": "explain.hf.bridging.from-visit-itk",
       "safety_critical": false,
-      "product_version_ids": [
-        "760025cf-d51d-5687-9e98-b921010b9018"
-      ]
+      "product_version_ids": ["760025cf-d51d-5687-9e98-b921010b9018"]
     },
     {
       "when": {
@@ -1975,21 +1681,15 @@
       "rule_id": "hf.bridging.to-bridging",
       "priority": 100,
       "on_unknown": "HUMAN_REVIEW",
-      "source_refs": [
-        "9248b1d7-9172-54d9-ad61-251e83a2285b"
-      ],
+      "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "immigration.current_status_code"
-      ],
+      "required_facts": ["immigration.current_status_code"],
       "explanation_key": "explain.hf.bridging.to-bridging",
       "safety_critical": false,
-      "product_version_ids": [
-        "760025cf-d51d-5687-9e98-b921010b9018"
-      ]
+      "product_version_ids": ["760025cf-d51d-5687-9e98-b921010b9018"]
     },
     {
       "when": {
@@ -2015,9 +1715,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "OTHER"
-                ]
+                "values": ["OTHER"]
               },
               {
                 "op": "neq",
@@ -2037,16 +1735,12 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "BRIDGING_T3_WINDOW_ADVISOR_CHECK",
-        "covered_purposes": [
-          "OTHER"
-        ]
+        "covered_purposes": ["OTHER"]
       },
       "rule_id": "el.bridging.t3-window-manual",
       "priority": 100,
       "on_unknown": "NO_EFFECT",
-      "source_refs": [
-        "9248b1d7-9172-54d9-ad61-251e83a2285b"
-      ],
+      "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
@@ -2059,9 +1753,7 @@
       ],
       "explanation_key": "explain.el.bridging.t3-window-manual",
       "safety_critical": false,
-      "product_version_ids": [
-        "760025cf-d51d-5687-9e98-b921010b9018"
-      ]
+      "product_version_ids": ["760025cf-d51d-5687-9e98-b921010b9018"]
     },
     {
       "when": {
@@ -2087,9 +1779,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "OTHER"
-                ]
+                "values": ["OTHER"]
               },
               {
                 "op": "neq",
@@ -2109,16 +1799,12 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "BRIDGING_OVERSTAY_SHIELD_PAYMENT_CHECK",
-        "covered_purposes": [
-          "OTHER"
-        ]
+        "covered_purposes": ["OTHER"]
       },
       "rule_id": "el.bridging.overstay-shield-payment",
       "priority": 100,
       "on_unknown": "NO_EFFECT",
-      "source_refs": [
-        "9248b1d7-9172-54d9-ad61-251e83a2285b"
-      ],
+      "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
@@ -2131,9 +1817,7 @@
       ],
       "explanation_key": "explain.el.bridging.overstay-shield-payment",
       "safety_critical": false,
-      "product_version_ids": [
-        "760025cf-d51d-5687-9e98-b921010b9018"
-      ]
+      "product_version_ids": ["760025cf-d51d-5687-9e98-b921010b9018"]
     },
     {
       "when": {
@@ -2159,9 +1843,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "OTHER"
-                ]
+                "values": ["OTHER"]
               },
               {
                 "op": "neq",
@@ -2181,16 +1863,12 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "BRIDGING_SOURCE_STATUS_VERIFY",
-        "covered_purposes": [
-          "OTHER"
-        ]
+        "covered_purposes": ["OTHER"]
       },
       "rule_id": "el.bridging.source-status-verify",
       "priority": 100,
       "on_unknown": "NO_EFFECT",
-      "source_refs": [
-        "9248b1d7-9172-54d9-ad61-251e83a2285b"
-      ],
+      "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
@@ -2203,9 +1881,7 @@
       ],
       "explanation_key": "explain.el.bridging.source-status-verify",
       "safety_critical": false,
-      "product_version_ids": [
-        "760025cf-d51d-5687-9e98-b921010b9018"
-      ]
+      "product_version_ids": ["760025cf-d51d-5687-9e98-b921010b9018"]
     },
     {
       "when": {
@@ -2237,9 +1913,7 @@
       "rule_id": "review.bridging.adverse-history",
       "priority": 100,
       "on_unknown": "HUMAN_REVIEW",
-      "source_refs": [
-        "9248b1d7-9172-54d9-ad61-251e83a2285b"
-      ],
+      "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
@@ -2250,9 +1924,7 @@
       ],
       "explanation_key": "explain.review.bridging.adverse-history",
       "safety_critical": false,
-      "product_version_ids": [
-        "760025cf-d51d-5687-9e98-b921010b9018"
-      ]
+      "product_version_ids": ["760025cf-d51d-5687-9e98-b921010b9018"]
     },
     {
       "when": {
@@ -2261,9 +1933,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "OTHER"
-            ]
+            "values": ["OTHER"]
           },
           {
             "op": "neq",
@@ -2281,29 +1951,20 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "BRIDGING_DESTINATION_STATED",
-        "covered_purposes": [
-          "OTHER"
-        ]
+        "covered_purposes": ["OTHER"]
       },
       "rule_id": "el.bridging.destination-stated",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "9248b1d7-9172-54d9-ad61-251e83a2285b"
-      ],
+      "source_refs": ["9248b1d7-9172-54d9-ad61-251e83a2285b"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.requested_product_code"
-      ],
+      "required_facts": ["intent.purposes", "intent.requested_product_code"],
       "explanation_key": "explain.el.bridging.destination-stated",
       "safety_critical": false,
-      "product_version_ids": [
-        "760025cf-d51d-5687-9e98-b921010b9018"
-      ]
+      "product_version_ids": ["760025cf-d51d-5687-9e98-b921010b9018"]
     },
     {
       "when": {
@@ -2312,9 +1973,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "EMPLOYMENT"
-            ]
+            "values": ["EMPLOYMENT"]
           },
           {
             "op": "eq",
@@ -2333,17 +1992,12 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PURPOSE_PRODUCT_MATCH",
-        "covered_purposes": [
-          "EMPLOYMENT",
-          "TOURISM"
-        ]
+        "covered_purposes": ["EMPLOYMENT", "TOURISM"]
       },
       "rule_id": "el.e23-employment-support",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "e3572ad2-08a9-55bd-b818-353b3e9db715"
-      ],
+      "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
@@ -2355,9 +2009,7 @@
       ],
       "explanation_key": "explain.el.e23-employment-support",
       "safety_critical": false,
-      "product_version_ids": [
-        "e1d761e9-56c5-57c3-9c01-986d3c333157"
-      ]
+      "product_version_ids": ["e1d761e9-56c5-57c3-9c01-986d3c333157"]
     },
     {
       "when": {
@@ -2369,17 +2021,12 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "EMPLOYMENT"
-                ]
+                "values": ["EMPLOYMENT"]
               },
               {
                 "op": "in",
                 "fact": "investment.proposed_role",
-                "values": [
-                  "SHAREHOLDER_DIRECTOR",
-                  "SHAREHOLDER_COMMISSIONER"
-                ]
+                "values": ["SHAREHOLDER_DIRECTOR", "SHAREHOLDER_COMMISSIONER"]
               }
             ]
           },
@@ -2389,9 +2036,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "EMPLOYMENT"
-                ]
+                "values": ["EMPLOYMENT"]
               },
               {
                 "op": "eq",
@@ -2412,17 +2057,12 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "E23_REQUIRED_FOR_OPERATIONAL_WORK_EVEN_IF_DIRECTOR",
-        "covered_purposes": [
-          "EMPLOYMENT",
-          "TOURISM"
-        ]
+        "covered_purposes": ["EMPLOYMENT", "TOURISM"]
       },
       "rule_id": "el.e23-operational-work-boundary",
       "priority": 100,
       "on_unknown": "NO_EFFECT",
-      "source_refs": [
-        "e3572ad2-08a9-55bd-b818-353b3e9db715"
-      ],
+      "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
@@ -2435,9 +2075,7 @@
       ],
       "explanation_key": "explain.el.e23-operational-work-boundary",
       "safety_critical": false,
-      "product_version_ids": [
-        "e1d761e9-56c5-57c3-9c01-986d3c333157"
-      ]
+      "product_version_ids": ["e1d761e9-56c5-57c3-9c01-986d3c333157"]
     },
     {
       "when": {
@@ -2446,9 +2084,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "FAMILY"
-            ]
+            "values": ["FAMILY"]
           },
           {
             "op": "eq",
@@ -2458,9 +2094,7 @@
           {
             "op": "intersects",
             "fact": "family.sponsor_nationalities",
-            "values": [
-              "ID"
-            ]
+            "values": ["ID"]
           },
           {
             "op": "eq",
@@ -2474,9 +2108,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PURPOSE_PRODUCT_MATCH",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31a-spouse-wni-support",
       "priority": 100,
@@ -2497,9 +2129,7 @@
       ],
       "explanation_key": "explain.el.e31a-spouse-wni-support",
       "safety_critical": false,
-      "product_version_ids": [
-        "e2a49f0f-74af-5a15-ab0b-6273fbcd40ce"
-      ]
+      "product_version_ids": ["e2a49f0f-74af-5a15-ab0b-6273fbcd40ce"]
     },
     {
       "when": {
@@ -2511,9 +2141,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "FAMILY"
-                ]
+                "values": ["FAMILY"]
               },
               {
                 "op": "eq",
@@ -2523,9 +2151,7 @@
               {
                 "op": "intersects",
                 "fact": "family.sponsor_nationalities",
-                "values": [
-                  "ID"
-                ]
+                "values": ["ID"]
               }
             ]
           },
@@ -2535,9 +2161,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "FAMILY"
-                ]
+                "values": ["FAMILY"]
               },
               {
                 "op": "eq",
@@ -2547,9 +2171,7 @@
               {
                 "op": "intersects",
                 "fact": "family.sponsor_nationalities",
-                "values": [
-                  "ID"
-                ]
+                "values": ["ID"]
               },
               {
                 "op": "eq",
@@ -2565,9 +2187,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "REQ_FUNDS_2000",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31a-funds-2000",
       "priority": 100,
@@ -2588,9 +2208,7 @@
       ],
       "explanation_key": "explain.el.e31a-funds-2000",
       "safety_critical": false,
-      "product_version_ids": [
-        "e2a49f0f-74af-5a15-ab0b-6273fbcd40ce"
-      ]
+      "product_version_ids": ["e2a49f0f-74af-5a15-ab0b-6273fbcd40ce"]
     },
     {
       "when": {
@@ -2602,9 +2220,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "FAMILY"
-                ]
+                "values": ["FAMILY"]
               },
               {
                 "op": "eq",
@@ -2614,9 +2230,7 @@
               {
                 "op": "intersects",
                 "fact": "family.sponsor_nationalities",
-                "values": [
-                  "ID"
-                ]
+                "values": ["ID"]
               }
             ]
           },
@@ -2626,9 +2240,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "FAMILY"
-                ]
+                "values": ["FAMILY"]
               },
               {
                 "op": "eq",
@@ -2638,9 +2250,7 @@
               {
                 "op": "intersects",
                 "fact": "family.sponsor_nationalities",
-                "values": [
-                  "ID"
-                ]
+                "values": ["ID"]
               },
               {
                 "op": "eq",
@@ -2656,16 +2266,12 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "SPOUSAL_WORK_ARTICLE_61_CONTEXT",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31a-spousal-work-article-61",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "5a0d367b-bf64-535d-83e4-f40c45de2008"
-      ],
+      "source_refs": ["5a0d367b-bf64-535d-83e4-f40c45de2008"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
@@ -2678,9 +2284,7 @@
       ],
       "explanation_key": "explain.el.e31a-spousal-work-article-61",
       "safety_critical": false,
-      "product_version_ids": [
-        "e2a49f0f-74af-5a15-ab0b-6273fbcd40ce"
-      ]
+      "product_version_ids": ["e2a49f0f-74af-5a15-ab0b-6273fbcd40ce"]
     },
     {
       "when": {
@@ -2697,9 +2301,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "FAMILY"
-                ]
+                "values": ["FAMILY"]
               },
               {
                 "op": "eq",
@@ -2709,9 +2311,7 @@
               {
                 "op": "intersects",
                 "fact": "family.sponsor_nationalities",
-                "values": [
-                  "ID"
-                ]
+                "values": ["ID"]
               },
               {
                 "op": "eq",
@@ -2727,16 +2327,12 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "KITAP_TWO_YEAR_MARRIAGE_AND_INTEGRATION_NOT_VERIFIED",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31a-kitap-prerequisites",
       "priority": 100,
       "on_unknown": "NO_EFFECT",
-      "source_refs": [
-        "5a0d367b-bf64-535d-83e4-f40c45de2008"
-      ],
+      "source_refs": ["5a0d367b-bf64-535d-83e4-f40c45de2008"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
@@ -2750,9 +2346,7 @@
       ],
       "explanation_key": "explain.el.e31a-kitap-prerequisites",
       "safety_critical": false,
-      "product_version_ids": [
-        "e2a49f0f-74af-5a15-ab0b-6273fbcd40ce"
-      ]
+      "product_version_ids": ["e2a49f0f-74af-5a15-ab0b-6273fbcd40ce"]
     },
     {
       "when": {
@@ -2761,9 +2355,7 @@
           {
             "fact": "intent.purposes",
             "op": "intersects",
-            "values": [
-              "FAMILY"
-            ]
+            "values": ["FAMILY"]
           },
           {
             "fact": "family.relation_to_sponsor",
@@ -2817,9 +2409,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PURPOSE_PRODUCT_MATCH",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31b-spouse-itas-support",
       "priority": 100,
@@ -2840,9 +2430,7 @@
       ],
       "explanation_key": "explain.el.e31b-spouse-itas-support",
       "safety_critical": false,
-      "product_version_ids": [
-        "5d5f9bd4-349b-54d7-841a-784c0afba068"
-      ]
+      "product_version_ids": ["5d5f9bd4-349b-54d7-841a-784c0afba068"]
     },
     {
       "when": {
@@ -2854,9 +2442,7 @@
               {
                 "fact": "intent.purposes",
                 "op": "intersects",
-                "values": [
-                  "FAMILY"
-                ]
+                "values": ["FAMILY"]
               },
               {
                 "fact": "family.relation_to_sponsor",
@@ -2871,9 +2457,7 @@
               {
                 "fact": "intent.purposes",
                 "op": "intersects",
-                "values": [
-                  "FAMILY"
-                ]
+                "values": ["FAMILY"]
               },
               {
                 "fact": "family.relation_to_sponsor",
@@ -2929,9 +2513,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "REQ_SPONSOR_ITAS_ITAP",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31b-sponsor-itas-itap",
       "priority": 100,
@@ -2952,9 +2534,7 @@
       ],
       "explanation_key": "explain.el.e31b-sponsor-itas-itap",
       "safety_critical": false,
-      "product_version_ids": [
-        "5d5f9bd4-349b-54d7-841a-784c0afba068"
-      ]
+      "product_version_ids": ["5d5f9bd4-349b-54d7-841a-784c0afba068"]
     },
     {
       "when": {
@@ -2963,9 +2543,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "FAMILY"
-            ]
+            "values": ["FAMILY"]
           },
           {
             "op": "eq",
@@ -2975,9 +2553,7 @@
           {
             "op": "intersects",
             "fact": "family.sponsor_nationalities",
-            "values": [
-              "ID"
-            ]
+            "values": ["ID"]
           }
         ]
       },
@@ -2986,9 +2562,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PURPOSE_PRODUCT_MATCH",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31c-child-mixed-marriage-support",
       "priority": 100,
@@ -3008,9 +2582,7 @@
       ],
       "explanation_key": "explain.el.e31c-child-mixed-marriage-support",
       "safety_critical": false,
-      "product_version_ids": [
-        "62ab2d13-1d7e-5048-9cf7-9622c0098439"
-      ]
+      "product_version_ids": ["62ab2d13-1d7e-5048-9cf7-9622c0098439"]
     },
     {
       "when": {
@@ -3019,9 +2591,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "FAMILY"
-            ]
+            "values": ["FAMILY"]
           },
           {
             "op": "eq",
@@ -3031,9 +2601,7 @@
           {
             "op": "intersects",
             "fact": "family.sponsor_nationalities",
-            "values": [
-              "ID"
-            ]
+            "values": ["ID"]
           },
           {
             "op": "eq",
@@ -3047,9 +2615,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "REQ_MIXED_MARRIAGE_PARENTS",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31c-mixed-marriage-parents",
       "priority": 100,
@@ -3070,9 +2636,7 @@
       ],
       "explanation_key": "explain.el.e31c-mixed-marriage-parents",
       "safety_critical": false,
-      "product_version_ids": [
-        "62ab2d13-1d7e-5048-9cf7-9622c0098439"
-      ]
+      "product_version_ids": ["62ab2d13-1d7e-5048-9cf7-9622c0098439"]
     },
     {
       "when": {
@@ -3081,9 +2645,7 @@
           {
             "fact": "intent.purposes",
             "op": "intersects",
-            "values": [
-              "FAMILY"
-            ]
+            "values": ["FAMILY"]
           },
           {
             "fact": "family.relation_to_sponsor",
@@ -3112,9 +2674,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PURPOSE_PRODUCT_MATCH",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31d-stepchild-support",
       "priority": 100,
@@ -3136,9 +2696,7 @@
       ],
       "explanation_key": "explain.el.e31d-stepchild-support",
       "safety_critical": false,
-      "product_version_ids": [
-        "3204e973-59da-5da1-bad0-06a7172e5b2c"
-      ]
+      "product_version_ids": ["3204e973-59da-5da1-bad0-06a7172e5b2c"]
     },
     {
       "when": {
@@ -3155,21 +2713,15 @@
       "rule_id": "hf.e31e-adult-excluded",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"
-      ],
+      "source_refs": ["c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "derived.age_years"
-      ],
+      "required_facts": ["derived.age_years"],
       "explanation_key": "explain.hf.e31e-adult-excluded",
       "safety_critical": true,
-      "product_version_ids": [
-        "1266d5cb-84a3-51f7-b82d-c6b756254074"
-      ]
+      "product_version_ids": ["1266d5cb-84a3-51f7-b82d-c6b756254074"]
     },
     {
       "when": {
@@ -3186,21 +2738,15 @@
       "rule_id": "hf.e31e-married-excluded",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"
-      ],
+      "source_refs": ["c9e6f0e4-5e84-572d-b1ca-e4e11ab50c24"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "person.marital_status"
-      ],
+      "required_facts": ["person.marital_status"],
       "explanation_key": "explain.hf.e31e-married-excluded",
       "safety_critical": true,
-      "product_version_ids": [
-        "1266d5cb-84a3-51f7-b82d-c6b756254074"
-      ]
+      "product_version_ids": ["1266d5cb-84a3-51f7-b82d-c6b756254074"]
     },
     {
       "when": {
@@ -3209,9 +2755,7 @@
           {
             "fact": "intent.purposes",
             "op": "intersects",
-            "values": [
-              "FAMILY"
-            ]
+            "values": ["FAMILY"]
           },
           {
             "fact": "family.relation_to_sponsor",
@@ -3270,9 +2814,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PURPOSE_PRODUCT_MATCH",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31e-child-itas-support",
       "priority": 100,
@@ -3294,9 +2836,7 @@
       ],
       "explanation_key": "explain.el.e31e-child-itas-support",
       "safety_critical": false,
-      "product_version_ids": [
-        "1266d5cb-84a3-51f7-b82d-c6b756254074"
-      ]
+      "product_version_ids": ["1266d5cb-84a3-51f7-b82d-c6b756254074"]
     },
     {
       "when": {
@@ -3308,9 +2848,7 @@
               {
                 "fact": "intent.purposes",
                 "op": "intersects",
-                "values": [
-                  "FAMILY"
-                ]
+                "values": ["FAMILY"]
               },
               {
                 "fact": "family.relation_to_sponsor",
@@ -3325,9 +2863,7 @@
               {
                 "fact": "intent.purposes",
                 "op": "intersects",
-                "values": [
-                  "FAMILY"
-                ]
+                "values": ["FAMILY"]
               },
               {
                 "fact": "family.relation_to_sponsor",
@@ -3388,9 +2924,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "REQ_SPONSOR_ITAS_ITAP",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31e-sponsor-itas-itap",
       "priority": 100,
@@ -3412,9 +2946,7 @@
       ],
       "explanation_key": "explain.el.e31e-sponsor-itas-itap",
       "safety_critical": false,
-      "product_version_ids": [
-        "1266d5cb-84a3-51f7-b82d-c6b756254074"
-      ]
+      "product_version_ids": ["1266d5cb-84a3-51f7-b82d-c6b756254074"]
     },
     {
       "when": {
@@ -3423,9 +2955,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "FAMILY"
-            ]
+            "values": ["FAMILY"]
           },
           {
             "op": "eq",
@@ -3435,9 +2965,7 @@
           {
             "op": "intersects",
             "fact": "family.sponsor_nationalities",
-            "values": [
-              "ID"
-            ]
+            "values": ["ID"]
           }
         ]
       },
@@ -3446,9 +2974,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PURPOSE_PRODUCT_MATCH",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31f-child-wni-parent-support",
       "priority": 100,
@@ -3468,9 +2994,7 @@
       ],
       "explanation_key": "explain.el.e31f-child-wni-parent-support",
       "safety_critical": false,
-      "product_version_ids": [
-        "3f7f6a94-32c8-54d7-b1d4-4d89082edbcc"
-      ]
+      "product_version_ids": ["3f7f6a94-32c8-54d7-b1d4-4d89082edbcc"]
     },
     {
       "when": {
@@ -3482,9 +3006,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "FAMILY"
-                ]
+                "values": ["FAMILY"]
               },
               {
                 "op": "eq",
@@ -3494,9 +3016,7 @@
               {
                 "op": "intersects",
                 "fact": "family.sponsor_nationalities",
-                "values": [
-                  "ID"
-                ]
+                "values": ["ID"]
               },
               {
                 "op": "gte",
@@ -3511,9 +3031,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "FAMILY"
-                ]
+                "values": ["FAMILY"]
               },
               {
                 "op": "eq",
@@ -3523,9 +3041,7 @@
               {
                 "op": "intersects",
                 "fact": "family.sponsor_nationalities",
-                "values": [
-                  "ID"
-                ]
+                "values": ["ID"]
               }
             ]
           }
@@ -3536,9 +3052,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "E31F_ADULT_AGE_ADVISOR_CHECK",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31f-adult-age-review",
       "priority": 100,
@@ -3559,9 +3073,7 @@
       ],
       "explanation_key": "explain.el.e31f-adult-age-review",
       "safety_critical": false,
-      "product_version_ids": [
-        "3f7f6a94-32c8-54d7-b1d4-4d89082edbcc"
-      ]
+      "product_version_ids": ["3f7f6a94-32c8-54d7-b1d4-4d89082edbcc"]
     },
     {
       "when": {
@@ -3570,9 +3082,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "FAMILY"
-            ]
+            "values": ["FAMILY"]
           },
           {
             "op": "eq",
@@ -3582,9 +3092,7 @@
           {
             "op": "intersects",
             "fact": "family.sponsor_nationalities",
-            "values": [
-              "ID"
-            ]
+            "values": ["ID"]
           }
         ]
       },
@@ -3593,9 +3101,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PURPOSE_PRODUCT_MATCH",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31g-parent-wni-child-support",
       "priority": 100,
@@ -3615,9 +3121,7 @@
       ],
       "explanation_key": "explain.el.e31g-parent-wni-child-support",
       "safety_critical": false,
-      "product_version_ids": [
-        "fbc980d5-47b6-5f16-974d-25158dfffc06"
-      ]
+      "product_version_ids": ["fbc980d5-47b6-5f16-974d-25158dfffc06"]
     },
     {
       "when": {
@@ -3626,9 +3130,7 @@
           {
             "fact": "intent.purposes",
             "op": "intersects",
-            "values": [
-              "FAMILY"
-            ]
+            "values": ["FAMILY"]
           },
           {
             "fact": "family.relation_to_sponsor",
@@ -3677,9 +3179,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PURPOSE_PRODUCT_MATCH",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31h-parent-itas-child-support",
       "priority": 100,
@@ -3699,9 +3199,7 @@
       ],
       "explanation_key": "explain.el.e31h-parent-itas-child-support",
       "safety_critical": false,
-      "product_version_ids": [
-        "1185c36d-833c-5e41-8e0d-6e4f7c8f7378"
-      ]
+      "product_version_ids": ["1185c36d-833c-5e41-8e0d-6e4f7c8f7378"]
     },
     {
       "when": {
@@ -3713,9 +3211,7 @@
               {
                 "fact": "intent.purposes",
                 "op": "intersects",
-                "values": [
-                  "FAMILY"
-                ]
+                "values": ["FAMILY"]
               },
               {
                 "fact": "family.relation_to_sponsor",
@@ -3730,9 +3226,7 @@
               {
                 "fact": "intent.purposes",
                 "op": "intersects",
-                "values": [
-                  "FAMILY"
-                ]
+                "values": ["FAMILY"]
               },
               {
                 "fact": "family.relation_to_sponsor",
@@ -3783,9 +3277,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "REQ_SPONSOR_ITAS_ITAP",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31h-sponsor-itas-itap",
       "priority": 100,
@@ -3805,9 +3297,7 @@
       ],
       "explanation_key": "explain.el.e31h-sponsor-itas-itap",
       "safety_critical": false,
-      "product_version_ids": [
-        "1185c36d-833c-5e41-8e0d-6e4f7c8f7378"
-      ]
+      "product_version_ids": ["1185c36d-833c-5e41-8e0d-6e4f7c8f7378"]
     },
     {
       "when": {
@@ -3816,9 +3306,7 @@
           {
             "fact": "intent.purposes",
             "op": "intersects",
-            "values": [
-              "FAMILY"
-            ]
+            "values": ["FAMILY"]
           },
           {
             "fact": "family.relation_to_sponsor",
@@ -3867,9 +3355,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PURPOSE_PRODUCT_MATCH",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31j-sibling-itas-support",
       "priority": 100,
@@ -3889,9 +3375,7 @@
       ],
       "explanation_key": "explain.el.e31j-sibling-itas-support",
       "safety_critical": false,
-      "product_version_ids": [
-        "4a4a0f7c-a6a0-5835-acd6-8a096342ef68"
-      ]
+      "product_version_ids": ["4a4a0f7c-a6a0-5835-acd6-8a096342ef68"]
     },
     {
       "when": {
@@ -3903,9 +3387,7 @@
               {
                 "fact": "intent.purposes",
                 "op": "intersects",
-                "values": [
-                  "FAMILY"
-                ]
+                "values": ["FAMILY"]
               },
               {
                 "fact": "family.relation_to_sponsor",
@@ -3920,9 +3402,7 @@
               {
                 "fact": "intent.purposes",
                 "op": "intersects",
-                "values": [
-                  "FAMILY"
-                ]
+                "values": ["FAMILY"]
               },
               {
                 "fact": "family.relation_to_sponsor",
@@ -3973,9 +3453,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "REQ_SPONSOR_ITAS_ITAP",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31j-sponsor-itas-itap",
       "priority": 100,
@@ -3995,9 +3473,7 @@
       ],
       "explanation_key": "explain.el.e31j-sponsor-itas-itap",
       "safety_critical": false,
-      "product_version_ids": [
-        "4a4a0f7c-a6a0-5835-acd6-8a096342ef68"
-      ]
+      "product_version_ids": ["4a4a0f7c-a6a0-5835-acd6-8a096342ef68"]
     },
     {
       "when": {
@@ -4009,9 +3485,7 @@
               {
                 "fact": "intent.purposes",
                 "op": "intersects",
-                "values": [
-                  "FAMILY"
-                ]
+                "values": ["FAMILY"]
               },
               {
                 "fact": "family.relation_to_sponsor",
@@ -4031,9 +3505,7 @@
               {
                 "fact": "intent.purposes",
                 "op": "intersects",
-                "values": [
-                  "FAMILY"
-                ]
+                "values": ["FAMILY"]
               },
               {
                 "fact": "family.relation_to_sponsor",
@@ -4084,9 +3556,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "E31J_DEPENDENCY_AGE_ADVISOR_CHECK",
-        "covered_purposes": [
-          "FAMILY"
-        ]
+        "covered_purposes": ["FAMILY"]
       },
       "rule_id": "el.e31j-dependency-age",
       "priority": 100,
@@ -4107,9 +3577,7 @@
       ],
       "explanation_key": "explain.el.e31j-dependency-age",
       "safety_critical": false,
-      "product_version_ids": [
-        "4a4a0f7c-a6a0-5835-acd6-8a096342ef68"
-      ]
+      "product_version_ids": ["4a4a0f7c-a6a0-5835-acd6-8a096342ef68"]
     },
     {
       "when": {
@@ -4121,12 +3589,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "TOURISM",
-                  "FAMILY",
-                  "TRANSIT",
-                  "BUSINESS_MEETINGS"
-                ]
+                "values": ["TOURISM", "FAMILY", "TRANSIT", "BUSINESS_MEETINGS"]
               },
               {
                 "op": "lte",
@@ -4172,9 +3635,7 @@
       ],
       "explanation_key": "explain.el.d1-multi-entry-support",
       "safety_critical": false,
-      "product_version_ids": [
-        "374e79e0-f0bf-5291-8cba-974e794e210a"
-      ]
+      "product_version_ids": ["374e79e0-f0bf-5291-8cba-974e794e210a"]
     },
     {
       "when": {
@@ -4186,12 +3647,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "TOURISM",
-                  "FAMILY",
-                  "TRANSIT",
-                  "BUSINESS_MEETINGS"
-                ]
+                "values": ["TOURISM", "FAMILY", "TRANSIT", "BUSINESS_MEETINGS"]
               },
               {
                 "op": "eq",
@@ -4262,9 +3718,7 @@
       ],
       "explanation_key": "explain.el.d1-passport-validity",
       "safety_critical": false,
-      "product_version_ids": [
-        "374e79e0-f0bf-5291-8cba-974e794e210a"
-      ]
+      "product_version_ids": ["374e79e0-f0bf-5291-8cba-974e794e210a"]
     },
     {
       "when": {
@@ -4276,12 +3730,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "TOURISM",
-                  "FAMILY",
-                  "TRANSIT",
-                  "BUSINESS_MEETINGS"
-                ]
+                "values": ["TOURISM", "FAMILY", "TRANSIT", "BUSINESS_MEETINGS"]
               },
               {
                 "op": "eq",
@@ -4352,9 +3801,7 @@
       ],
       "explanation_key": "explain.el.d1-funds-usd-2000",
       "safety_critical": false,
-      "product_version_ids": [
-        "374e79e0-f0bf-5291-8cba-974e794e210a"
-      ]
+      "product_version_ids": ["374e79e0-f0bf-5291-8cba-974e794e210a"]
     },
     {
       "when": {
@@ -4366,12 +3813,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "TOURISM",
-                  "FAMILY",
-                  "TRANSIT",
-                  "BUSINESS_MEETINGS"
-                ]
+                "values": ["TOURISM", "FAMILY", "TRANSIT", "BUSINESS_MEETINGS"]
               },
               {
                 "op": "eq",
@@ -4442,9 +3884,7 @@
       ],
       "explanation_key": "explain.el.d1-cv-required",
       "safety_critical": false,
-      "product_version_ids": [
-        "374e79e0-f0bf-5291-8cba-974e794e210a"
-      ]
+      "product_version_ids": ["374e79e0-f0bf-5291-8cba-974e794e210a"]
     },
     {
       "when": {
@@ -4456,12 +3896,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "TOURISM",
-                  "FAMILY",
-                  "TRANSIT",
-                  "BUSINESS_MEETINGS"
-                ]
+                "values": ["TOURISM", "FAMILY", "TRANSIT", "BUSINESS_MEETINGS"]
               },
               {
                 "op": "eq",
@@ -4532,9 +3967,7 @@
       ],
       "explanation_key": "explain.el.d1-itinerary-required",
       "safety_critical": false,
-      "product_version_ids": [
-        "374e79e0-f0bf-5291-8cba-974e794e210a"
-      ]
+      "product_version_ids": ["374e79e0-f0bf-5291-8cba-974e794e210a"]
     },
     {
       "when": {
@@ -4546,12 +3979,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "TOURISM",
-                  "FAMILY",
-                  "TRANSIT",
-                  "BUSINESS_MEETINGS"
-                ]
+                "values": ["TOURISM", "FAMILY", "TRANSIT", "BUSINESS_MEETINGS"]
               },
               {
                 "op": "eq",
@@ -4622,9 +4050,7 @@
       ],
       "explanation_key": "explain.el.d1-support-letter",
       "safety_critical": false,
-      "product_version_ids": [
-        "374e79e0-f0bf-5291-8cba-974e794e210a"
-      ]
+      "product_version_ids": ["374e79e0-f0bf-5291-8cba-974e794e210a"]
     },
     {
       "when": {
@@ -4633,9 +4059,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "BUSINESS_MEETINGS"
-            ]
+            "values": ["BUSINESS_MEETINGS"]
           },
           {
             "op": "lte",
@@ -4649,9 +4073,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PURPOSE_PRODUCT_MATCH",
-        "covered_purposes": [
-          "BUSINESS_MEETINGS"
-        ]
+        "covered_purposes": ["BUSINESS_MEETINGS"]
       },
       "rule_id": "el.d2-multi-entry-support",
       "priority": 100,
@@ -4664,15 +4086,10 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.stay_days"
-      ],
+      "required_facts": ["intent.purposes", "intent.stay_days"],
       "explanation_key": "explain.el.d2-multi-entry-support",
       "safety_critical": false,
-      "product_version_ids": [
-        "306725c1-7269-5c45-a4b8-188265fcf4d8"
-      ]
+      "product_version_ids": ["306725c1-7269-5c45-a4b8-188265fcf4d8"]
     },
     {
       "when": {
@@ -4681,9 +4098,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "BUSINESS_MEETINGS"
-            ]
+            "values": ["BUSINESS_MEETINGS"]
           },
           {
             "op": "all",
@@ -4691,9 +4106,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "BUSINESS_MEETINGS"
-                ]
+                "values": ["BUSINESS_MEETINGS"]
               },
               {
                 "op": "lte",
@@ -4709,9 +4122,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PASSPORT_VALIDITY_6_MONTHS_REQUIRED",
-        "covered_purposes": [
-          "BUSINESS_MEETINGS"
-        ]
+        "covered_purposes": ["BUSINESS_MEETINGS"]
       },
       "rule_id": "el.d2-passport-validity",
       "priority": 100,
@@ -4724,15 +4135,10 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.stay_days"
-      ],
+      "required_facts": ["intent.purposes", "intent.stay_days"],
       "explanation_key": "explain.el.d2-passport-validity",
       "safety_critical": false,
-      "product_version_ids": [
-        "306725c1-7269-5c45-a4b8-188265fcf4d8"
-      ]
+      "product_version_ids": ["306725c1-7269-5c45-a4b8-188265fcf4d8"]
     },
     {
       "when": {
@@ -4741,9 +4147,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "BUSINESS_MEETINGS"
-            ]
+            "values": ["BUSINESS_MEETINGS"]
           },
           {
             "op": "all",
@@ -4751,9 +4155,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "BUSINESS_MEETINGS"
-                ]
+                "values": ["BUSINESS_MEETINGS"]
               },
               {
                 "op": "lte",
@@ -4769,9 +4171,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PROOF_OF_FUNDS_D2",
-        "covered_purposes": [
-          "BUSINESS_MEETINGS"
-        ]
+        "covered_purposes": ["BUSINESS_MEETINGS"]
       },
       "rule_id": "el.d2-funds-usd-2000",
       "priority": 100,
@@ -4784,15 +4184,10 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.stay_days"
-      ],
+      "required_facts": ["intent.purposes", "intent.stay_days"],
       "explanation_key": "explain.el.d2-funds-usd-2000",
       "safety_critical": false,
-      "product_version_ids": [
-        "306725c1-7269-5c45-a4b8-188265fcf4d8"
-      ]
+      "product_version_ids": ["306725c1-7269-5c45-a4b8-188265fcf4d8"]
     },
     {
       "when": {
@@ -4801,9 +4196,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "BUSINESS_MEETINGS"
-            ]
+            "values": ["BUSINESS_MEETINGS"]
           },
           {
             "op": "all",
@@ -4811,9 +4204,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "BUSINESS_MEETINGS"
-                ]
+                "values": ["BUSINESS_MEETINGS"]
               },
               {
                 "op": "lte",
@@ -4829,9 +4220,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "CV_REQUIRED",
-        "covered_purposes": [
-          "BUSINESS_MEETINGS"
-        ]
+        "covered_purposes": ["BUSINESS_MEETINGS"]
       },
       "rule_id": "el.d2-cv-required",
       "priority": 100,
@@ -4844,15 +4233,10 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.stay_days"
-      ],
+      "required_facts": ["intent.purposes", "intent.stay_days"],
       "explanation_key": "explain.el.d2-cv-required",
       "safety_critical": false,
-      "product_version_ids": [
-        "306725c1-7269-5c45-a4b8-188265fcf4d8"
-      ]
+      "product_version_ids": ["306725c1-7269-5c45-a4b8-188265fcf4d8"]
     },
     {
       "when": {
@@ -4861,9 +4245,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "BUSINESS_MEETINGS"
-            ]
+            "values": ["BUSINESS_MEETINGS"]
           },
           {
             "op": "all",
@@ -4871,9 +4253,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "BUSINESS_MEETINGS"
-                ]
+                "values": ["BUSINESS_MEETINGS"]
               },
               {
                 "op": "lte",
@@ -4889,9 +4269,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "ITINERARY_REQUIRED",
-        "covered_purposes": [
-          "BUSINESS_MEETINGS"
-        ]
+        "covered_purposes": ["BUSINESS_MEETINGS"]
       },
       "rule_id": "el.d2-itinerary-required",
       "priority": 100,
@@ -4904,15 +4282,10 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.stay_days"
-      ],
+      "required_facts": ["intent.purposes", "intent.stay_days"],
       "explanation_key": "explain.el.d2-itinerary-required",
       "safety_critical": false,
-      "product_version_ids": [
-        "306725c1-7269-5c45-a4b8-188265fcf4d8"
-      ]
+      "product_version_ids": ["306725c1-7269-5c45-a4b8-188265fcf4d8"]
     },
     {
       "when": {
@@ -4921,9 +4294,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "BUSINESS_MEETINGS"
-            ]
+            "values": ["BUSINESS_MEETINGS"]
           },
           {
             "op": "all",
@@ -4931,9 +4302,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "BUSINESS_MEETINGS"
-                ]
+                "values": ["BUSINESS_MEETINGS"]
               },
               {
                 "op": "lte",
@@ -4949,9 +4318,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "SUPPORT_LETTER_REQUIRED",
-        "covered_purposes": [
-          "BUSINESS_MEETINGS"
-        ]
+        "covered_purposes": ["BUSINESS_MEETINGS"]
       },
       "rule_id": "el.d2-support-letter",
       "priority": 100,
@@ -4964,15 +4331,10 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.stay_days"
-      ],
+      "required_facts": ["intent.purposes", "intent.stay_days"],
       "explanation_key": "explain.el.d2-support-letter",
       "safety_critical": false,
-      "product_version_ids": [
-        "306725c1-7269-5c45-a4b8-188265fcf4d8"
-      ]
+      "product_version_ids": ["306725c1-7269-5c45-a4b8-188265fcf4d8"]
     },
     {
       "when": {
@@ -4981,9 +4343,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "INVESTMENT"
-            ]
+            "values": ["INVESTMENT"]
           },
           {
             "op": "lte",
@@ -4997,9 +4357,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PURPOSE_PRODUCT_MATCH",
-        "covered_purposes": [
-          "INVESTMENT"
-        ]
+        "covered_purposes": ["INVESTMENT"]
       },
       "rule_id": "el.d12-multi-entry-support",
       "priority": 100,
@@ -5012,15 +4370,10 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.stay_days"
-      ],
+      "required_facts": ["intent.purposes", "intent.stay_days"],
       "explanation_key": "explain.el.d12-multi-entry-support",
       "safety_critical": false,
-      "product_version_ids": [
-        "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
-      ]
+      "product_version_ids": ["63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"]
     },
     {
       "when": {
@@ -5029,9 +4382,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "INVESTMENT"
-            ]
+            "values": ["INVESTMENT"]
           },
           {
             "op": "lte",
@@ -5045,9 +4396,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PASSPORT_VALIDITY_6_MONTHS_REQUIRED",
-        "covered_purposes": [
-          "INVESTMENT"
-        ]
+        "covered_purposes": ["INVESTMENT"]
       },
       "rule_id": "el.d12-passport-validity",
       "priority": 100,
@@ -5060,15 +4409,10 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.stay_days"
-      ],
+      "required_facts": ["intent.purposes", "intent.stay_days"],
       "explanation_key": "explain.el.d12-passport-validity",
       "safety_critical": false,
-      "product_version_ids": [
-        "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
-      ]
+      "product_version_ids": ["63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"]
     },
     {
       "when": {
@@ -5077,9 +4421,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "INVESTMENT"
-            ]
+            "values": ["INVESTMENT"]
           },
           {
             "op": "lte",
@@ -5093,9 +4435,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PROOF_OF_FUNDS_D12",
-        "covered_purposes": [
-          "INVESTMENT"
-        ]
+        "covered_purposes": ["INVESTMENT"]
       },
       "rule_id": "el.d12-funds-usd-5000",
       "priority": 100,
@@ -5108,15 +4448,10 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.stay_days"
-      ],
+      "required_facts": ["intent.purposes", "intent.stay_days"],
       "explanation_key": "explain.el.d12-funds-usd-5000",
       "safety_critical": false,
-      "product_version_ids": [
-        "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
-      ]
+      "product_version_ids": ["63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"]
     },
     {
       "when": {
@@ -5125,9 +4460,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "INVESTMENT"
-            ]
+            "values": ["INVESTMENT"]
           },
           {
             "op": "lte",
@@ -5141,9 +4474,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "CV_REQUIRED",
-        "covered_purposes": [
-          "INVESTMENT"
-        ]
+        "covered_purposes": ["INVESTMENT"]
       },
       "rule_id": "el.d12-cv-required",
       "priority": 100,
@@ -5156,15 +4487,10 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.stay_days"
-      ],
+      "required_facts": ["intent.purposes", "intent.stay_days"],
       "explanation_key": "explain.el.d12-cv-required",
       "safety_critical": false,
-      "product_version_ids": [
-        "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
-      ]
+      "product_version_ids": ["63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"]
     },
     {
       "when": {
@@ -5173,9 +4499,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "INVESTMENT"
-            ]
+            "values": ["INVESTMENT"]
           },
           {
             "op": "lte",
@@ -5189,9 +4513,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "ITINERARY_REQUIRED",
-        "covered_purposes": [
-          "INVESTMENT"
-        ]
+        "covered_purposes": ["INVESTMENT"]
       },
       "rule_id": "el.d12-itinerary-required",
       "priority": 100,
@@ -5204,15 +4526,10 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.stay_days"
-      ],
+      "required_facts": ["intent.purposes", "intent.stay_days"],
       "explanation_key": "explain.el.d12-itinerary-required",
       "safety_critical": false,
-      "product_version_ids": [
-        "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
-      ]
+      "product_version_ids": ["63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"]
     },
     {
       "when": {
@@ -5221,9 +4538,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "INVESTMENT"
-            ]
+            "values": ["INVESTMENT"]
           },
           {
             "op": "lte",
@@ -5237,9 +4552,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "SUPPORT_LETTER_REQUIRED",
-        "covered_purposes": [
-          "INVESTMENT"
-        ]
+        "covered_purposes": ["INVESTMENT"]
       },
       "rule_id": "el.d12-support-letter",
       "priority": 100,
@@ -5252,15 +4565,10 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.stay_days"
-      ],
+      "required_facts": ["intent.purposes", "intent.stay_days"],
       "explanation_key": "explain.el.d12-support-letter",
       "safety_critical": false,
-      "product_version_ids": [
-        "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
-      ]
+      "product_version_ids": ["63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"]
     },
     {
       "when": {
@@ -5277,21 +4585,15 @@
       "rule_id": "hf.d12-onshore-conversion-excluded",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "5e64ec6b-8fcc-5518-b70f-87bf22aa5e29"
-      ],
+      "source_refs": ["5e64ec6b-8fcc-5518-b70f-87bf22aa5e29"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "process.wants_onshore_conversion"
-      ],
+      "required_facts": ["process.wants_onshore_conversion"],
       "explanation_key": "explain.hf.d12-onshore-conversion-excluded",
       "safety_critical": true,
-      "product_version_ids": [
-        "63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"
-      ]
+      "product_version_ids": ["63f64a7e-2bff-5a48-8c3b-7ad5349e8c91"]
     },
     {
       "when": {
@@ -5300,9 +4602,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "STUDY"
-            ]
+            "values": ["STUDY"]
           },
           {
             "op": "eq",
@@ -5321,9 +4621,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PURPOSE_PRODUCT_MATCH",
-        "covered_purposes": [
-          "STUDY"
-        ]
+        "covered_purposes": ["STUDY"]
       },
       "rule_id": "el.e30-student-support",
       "priority": 100,
@@ -5356,9 +4654,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "STUDY"
-            ]
+            "values": ["STUDY"]
           },
           {
             "op": "all",
@@ -5366,9 +4662,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "STUDY"
-                ]
+                "values": ["STUDY"]
               },
               {
                 "op": "eq",
@@ -5389,9 +4683,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "LIVING_COST_USD2000",
-        "covered_purposes": [
-          "STUDY"
-        ]
+        "covered_purposes": ["STUDY"]
       },
       "rule_id": "el.e30-living-cost-2000.e30",
       "priority": 100,
@@ -5413,9 +4705,7 @@
       ],
       "explanation_key": "explain.el.e30-living-cost-2000.e30",
       "safety_critical": false,
-      "product_version_ids": [
-        "94d26bed-b3ba-5b9a-9c6c-9c137854293c"
-      ]
+      "product_version_ids": ["94d26bed-b3ba-5b9a-9c6c-9c137854293c"]
     },
     {
       "when": {
@@ -5424,9 +4714,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "STUDY"
-            ]
+            "values": ["STUDY"]
           },
           {
             "op": "all",
@@ -5434,9 +4722,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "STUDY"
-                ]
+                "values": ["STUDY"]
               },
               {
                 "op": "eq",
@@ -5457,9 +4743,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "LIVING_COST_USD2000",
-        "covered_purposes": [
-          "STUDY"
-        ]
+        "covered_purposes": ["STUDY"]
       },
       "rule_id": "el.e30-living-cost-2000.e30a",
       "priority": 100,
@@ -5481,9 +4765,7 @@
       ],
       "explanation_key": "explain.el.e30-living-cost-2000.e30a",
       "safety_critical": false,
-      "product_version_ids": [
-        "5028908f-25be-5ef1-91b9-0d6bccfc0e1f"
-      ]
+      "product_version_ids": ["5028908f-25be-5ef1-91b9-0d6bccfc0e1f"]
     },
     {
       "when": {
@@ -5492,9 +4774,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "STUDY"
-            ]
+            "values": ["STUDY"]
           },
           {
             "op": "all",
@@ -5502,9 +4782,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "STUDY"
-                ]
+                "values": ["STUDY"]
               },
               {
                 "op": "eq",
@@ -5525,9 +4803,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "LIVING_COST_USD2000",
-        "covered_purposes": [
-          "STUDY"
-        ]
+        "covered_purposes": ["STUDY"]
       },
       "rule_id": "el.e30-living-cost-2000.e30b",
       "priority": 100,
@@ -5549,9 +4825,7 @@
       ],
       "explanation_key": "explain.el.e30-living-cost-2000.e30b",
       "safety_critical": false,
-      "product_version_ids": [
-        "904d99ec-d198-5eb8-9dc4-0b2047e49137"
-      ]
+      "product_version_ids": ["904d99ec-d198-5eb8-9dc4-0b2047e49137"]
     },
     {
       "when": {
@@ -5560,9 +4834,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "STUDY"
-            ]
+            "values": ["STUDY"]
           },
           {
             "op": "all",
@@ -5570,9 +4842,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "STUDY"
-                ]
+                "values": ["STUDY"]
               },
               {
                 "op": "eq",
@@ -5593,9 +4863,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PASSPORT_VALIDITY_6_MONTHS_REQUIRED",
-        "covered_purposes": [
-          "STUDY"
-        ]
+        "covered_purposes": ["STUDY"]
       },
       "rule_id": "el.e30-passport-validity.e30",
       "priority": 100,
@@ -5617,9 +4885,7 @@
       ],
       "explanation_key": "explain.el.e30-passport-validity.e30",
       "safety_critical": false,
-      "product_version_ids": [
-        "94d26bed-b3ba-5b9a-9c6c-9c137854293c"
-      ]
+      "product_version_ids": ["94d26bed-b3ba-5b9a-9c6c-9c137854293c"]
     },
     {
       "when": {
@@ -5628,9 +4894,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "STUDY"
-            ]
+            "values": ["STUDY"]
           },
           {
             "op": "all",
@@ -5638,9 +4902,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "STUDY"
-                ]
+                "values": ["STUDY"]
               },
               {
                 "op": "eq",
@@ -5661,9 +4923,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PASSPORT_VALIDITY_6_MONTHS_REQUIRED",
-        "covered_purposes": [
-          "STUDY"
-        ]
+        "covered_purposes": ["STUDY"]
       },
       "rule_id": "el.e30-passport-validity.e30a",
       "priority": 100,
@@ -5685,9 +4945,7 @@
       ],
       "explanation_key": "explain.el.e30-passport-validity.e30a",
       "safety_critical": false,
-      "product_version_ids": [
-        "5028908f-25be-5ef1-91b9-0d6bccfc0e1f"
-      ]
+      "product_version_ids": ["5028908f-25be-5ef1-91b9-0d6bccfc0e1f"]
     },
     {
       "when": {
@@ -5696,9 +4954,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "STUDY"
-            ]
+            "values": ["STUDY"]
           },
           {
             "op": "all",
@@ -5706,9 +4962,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "STUDY"
-                ]
+                "values": ["STUDY"]
               },
               {
                 "op": "eq",
@@ -5729,9 +4983,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PASSPORT_VALIDITY_6_MONTHS_REQUIRED",
-        "covered_purposes": [
-          "STUDY"
-        ]
+        "covered_purposes": ["STUDY"]
       },
       "rule_id": "el.e30-passport-validity.e30b",
       "priority": 100,
@@ -5753,9 +5005,7 @@
       ],
       "explanation_key": "explain.el.e30-passport-validity.e30b",
       "safety_critical": false,
-      "product_version_ids": [
-        "904d99ec-d198-5eb8-9dc4-0b2047e49137"
-      ]
+      "product_version_ids": ["904d99ec-d198-5eb8-9dc4-0b2047e49137"]
     },
     {
       "when": {
@@ -5764,17 +5014,12 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "STUDY"
-            ]
+            "values": ["STUDY"]
           },
           {
             "op": "not_in",
             "fact": "study.level",
-            "values": [
-              "PRIMARY",
-              "SECONDARY"
-            ]
+            "values": ["PRIMARY", "SECONDARY"]
           }
         ]
       },
@@ -5787,22 +5032,15 @@
       "rule_id": "hf.e30a-level-band",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "e3572ad2-08a9-55bd-b818-353b3e9db715"
-      ],
+      "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "study.level"
-      ],
+      "required_facts": ["intent.purposes", "study.level"],
       "explanation_key": "explain.hf.e30a-level-band",
       "safety_critical": true,
-      "product_version_ids": [
-        "5028908f-25be-5ef1-91b9-0d6bccfc0e1f"
-      ]
+      "product_version_ids": ["5028908f-25be-5ef1-91b9-0d6bccfc0e1f"]
     },
     {
       "when": {
@@ -5811,18 +5049,12 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "STUDY"
-            ]
+            "values": ["STUDY"]
           },
           {
             "op": "not_in",
             "fact": "study.level",
-            "values": [
-              "VOCATIONAL",
-              "UNDERGRADUATE",
-              "POSTGRADUATE"
-            ]
+            "values": ["VOCATIONAL", "UNDERGRADUATE", "POSTGRADUATE"]
           }
         ]
       },
@@ -5835,22 +5067,15 @@
       "rule_id": "hf.e30b-level-band",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "e3572ad2-08a9-55bd-b818-353b3e9db715"
-      ],
+      "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "study.level"
-      ],
+      "required_facts": ["intent.purposes", "study.level"],
       "explanation_key": "explain.hf.e30b-level-band",
       "safety_critical": true,
-      "product_version_ids": [
-        "904d99ec-d198-5eb8-9dc4-0b2047e49137"
-      ]
+      "product_version_ids": ["904d99ec-d198-5eb8-9dc4-0b2047e49137"]
     },
     {
       "when": {
@@ -5859,9 +5084,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "STUDY"
-            ]
+            "values": ["STUDY"]
           },
           {
             "op": "all",
@@ -5869,9 +5092,7 @@
               {
                 "op": "intersects",
                 "fact": "intent.purposes",
-                "values": [
-                  "STUDY"
-                ]
+                "values": ["STUDY"]
               },
               {
                 "op": "eq",
@@ -5892,9 +5113,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "STUDY_PERMIT_KEMDIKBUD",
-        "covered_purposes": [
-          "STUDY"
-        ]
+        "covered_purposes": ["STUDY"]
       },
       "rule_id": "el.e30b-izin-belajar",
       "priority": 100,
@@ -5915,9 +5134,7 @@
       ],
       "explanation_key": "explain.el.e30b-izin-belajar",
       "safety_critical": false,
-      "product_version_ids": [
-        "904d99ec-d198-5eb8-9dc4-0b2047e49137"
-      ]
+      "product_version_ids": ["904d99ec-d198-5eb8-9dc4-0b2047e49137"]
     },
     {
       "when": {
@@ -6035,21 +5252,15 @@
       "rule_id": "hf.b1.not-voa-nationality",
       "priority": 100,
       "on_unknown": "HUMAN_REVIEW",
-      "source_refs": [
-        "38a6cb08-041f-51e4-86e4-9e73243acd3a"
-      ],
+      "source_refs": ["38a6cb08-041f-51e4-86e4-9e73243acd3a"],
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "person.nationalities"
-      ],
+      "required_facts": ["person.nationalities"],
       "explanation_key": "explain.hf.b1.not-voa-nationality",
       "safety_critical": true,
-      "product_version_ids": [
-        "4e30cbe0-c4bf-59be-9bf8-513e66946e44"
-      ]
+      "product_version_ids": ["4e30cbe0-c4bf-59be-9bf8-513e66946e44"]
     },
     {
       "when": {
@@ -6327,14 +5538,7 @@
               {
                 "op": "intersects",
                 "fact": "person.nationalities",
-                "values": [
-                  "AF",
-                  "IL",
-                  "KP",
-                  "LR",
-                  "NG",
-                  "SO"
-                ]
+                "values": ["AF", "IL", "KP", "LR", "NG", "SO"]
               },
               {
                 "op": "intersects",
@@ -6606,9 +5810,7 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "person.nationalities"
-      ],
+      "required_facts": ["person.nationalities"],
       "explanation_key": "explain.review.citizenship-conflict",
       "safety_critical": true,
       "product_version_ids": null
@@ -6638,17 +5840,12 @@
       "rule_id": "review.minor-without-guardian",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "38242587-f4da-5c31-b0ea-662f7fdc475c"
-      ],
+      "source_refs": ["38242587-f4da-5c31-b0ea-662f7fdc475c"],
       "valid_period": {
         "to": null,
         "from": "2026-08-09T00:00:00Z"
       },
-      "required_facts": [
-        "derived.is_minor",
-        "family.sponsor_confirmed"
-      ],
+      "required_facts": ["derived.is_minor", "family.sponsor_confirmed"],
       "explanation_key": "explain.review.minor-without-guardian",
       "safety_critical": true,
       "product_version_ids": null
@@ -6676,14 +5873,10 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "required_facts": [
-        "derived.age_years"
-      ],
+      "required_facts": ["derived.age_years"],
       "explanation_key": "explain.hf.e33f.age-below-55",
       "safety_critical": false,
-      "product_version_ids": [
-        "7c1da88f-f7cd-571a-95c2-7da32463d3e6"
-      ]
+      "product_version_ids": ["7c1da88f-f7cd-571a-95c2-7da32463d3e6"]
     },
     {
       "when": {
@@ -6692,9 +5885,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "STUDY"
-            ]
+            "values": ["STUDY"]
           },
           {
             "op": "eq",
@@ -6709,10 +5900,7 @@
           {
             "op": "in",
             "fact": "sponsor.type",
-            "values": [
-              "EDUCATION",
-              "INDIVIDUAL"
-            ]
+            "values": ["EDUCATION", "INDIVIDUAL"]
           }
         ]
       },
@@ -6721,9 +5909,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PURPOSE_PRODUCT_MATCH",
-        "covered_purposes": [
-          "STUDY"
-        ]
+        "covered_purposes": ["STUDY"]
       },
       "rule_id": "el.e30e-student-support",
       "priority": 100,
@@ -6745,9 +5931,7 @@
       ],
       "explanation_key": "explain.el.e30e-student-support",
       "safety_critical": false,
-      "product_version_ids": [
-        "19e3ea6c-95c6-5998-b9d7-efc77f583589"
-      ]
+      "product_version_ids": ["19e3ea6c-95c6-5998-b9d7-efc77f583589"]
     },
     {
       "when": {
@@ -6756,9 +5940,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "STUDY"
-            ]
+            "values": ["STUDY"]
           },
           {
             "op": "eq",
@@ -6782,9 +5964,7 @@
       "effect": {
         "type": "SUPPORT",
         "reason_code": "PURPOSE_PRODUCT_MATCH",
-        "covered_purposes": [
-          "STUDY"
-        ]
+        "covered_purposes": ["STUDY"]
       },
       "rule_id": "el.e30f-student-support",
       "priority": 100,
@@ -6805,9 +5985,7 @@
       ],
       "explanation_key": "explain.el.e30f-student-support",
       "safety_critical": false,
-      "product_version_ids": [
-        "235f5dfc-2feb-5d5b-ab09-0f4e4122819e"
-      ]
+      "product_version_ids": ["235f5dfc-2feb-5d5b-ab09-0f4e4122819e"]
     },
     {
       "when": {
@@ -6832,23 +6010,16 @@
         "to": null,
         "from": "2026-08-19T00:00:00Z"
       },
-      "required_facts": [
-        "sponsor.type"
-      ],
+      "required_facts": ["sponsor.type"],
       "explanation_key": "explain.hf.e33a.sponsor-not-government",
       "safety_critical": true,
-      "product_version_ids": [
-        "5c18e265-ddb2-5010-8d24-a2f19df89850"
-      ]
+      "product_version_ids": ["5c18e265-ddb2-5010-8d24-a2f19df89850"]
     },
     {
       "when": {
         "op": "not_in",
         "fact": "sponsor.type",
-        "values": [
-          "GOVERNMENT",
-          "NONE"
-        ]
+        "values": ["GOVERNMENT", "NONE"]
       },
       "scope": "PRODUCTS",
       "stage": "HARD_FILTER",
@@ -6867,23 +6038,16 @@
         "to": null,
         "from": "2026-08-19T00:00:00Z"
       },
-      "required_facts": [
-        "sponsor.type"
-      ],
+      "required_facts": ["sponsor.type"],
       "explanation_key": "explain.hf.e33b.sponsor-not-government-or-none",
       "safety_critical": true,
-      "product_version_ids": [
-        "32b6fb5f-5a24-5763-95f9-0b77be18353c"
-      ]
+      "product_version_ids": ["32b6fb5f-5a24-5763-95f9-0b77be18353c"]
     },
     {
       "when": {
         "op": "not_in",
         "fact": "sponsor.type",
-        "values": [
-          "GOVERNMENT",
-          "NONE"
-        ]
+        "values": ["GOVERNMENT", "NONE"]
       },
       "scope": "PRODUCTS",
       "stage": "HARD_FILTER",
@@ -6902,14 +6066,10 @@
         "to": null,
         "from": "2026-08-19T00:00:00Z"
       },
-      "required_facts": [
-        "sponsor.type"
-      ],
+      "required_facts": ["sponsor.type"],
       "explanation_key": "explain.hf.e33c.sponsor-not-government-or-none",
       "safety_critical": true,
-      "product_version_ids": [
-        "9cc14fee-49dc-5549-8bc8-90bdaf52d1f3"
-      ]
+      "product_version_ids": ["9cc14fee-49dc-5549-8bc8-90bdaf52d1f3"]
     },
     {
       "when": {
@@ -6918,9 +6078,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "EMPLOYMENT"
-            ]
+            "values": ["EMPLOYMENT"]
           },
           {
             "op": "eq",
@@ -6938,22 +6096,15 @@
       "rule_id": "review.e23u.requested-product",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
         "from": "2026-08-19T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.requested_product_code"
-      ],
+      "required_facts": ["intent.purposes", "intent.requested_product_code"],
       "explanation_key": "explain.review.e23u.requested-product",
       "safety_critical": false,
-      "product_version_ids": [
-        "fa143e97-b444-5ae4-9b05-6365f15e3ec7"
-      ]
+      "product_version_ids": ["fa143e97-b444-5ae4-9b05-6365f15e3ec7"]
     },
     {
       "when": {
@@ -6962,9 +6113,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "EMPLOYMENT"
-            ]
+            "values": ["EMPLOYMENT"]
           },
           {
             "op": "eq",
@@ -6982,22 +6131,15 @@
       "rule_id": "review.e23v.requested-product",
       "priority": 100,
       "on_unknown": "NEEDS_INPUT",
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "valid_period": {
         "to": null,
         "from": "2026-08-19T00:00:00Z"
       },
-      "required_facts": [
-        "intent.purposes",
-        "intent.requested_product_code"
-      ],
+      "required_facts": ["intent.purposes", "intent.requested_product_code"],
       "explanation_key": "explain.review.e23v.requested-product",
       "safety_critical": false,
-      "product_version_ids": [
-        "e8a1d738-daa7-5c99-a0c6-800b25579129"
-      ]
+      "product_version_ids": ["e8a1d738-daa7-5c99-a0c6-800b25579129"]
     },
     {
       "when": {
@@ -7006,9 +6148,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "FAMILY"
-            ]
+            "values": ["FAMILY"]
           },
           {
             "op": "eq",
@@ -7046,9 +6186,7 @@
       ],
       "explanation_key": "explain.hf.e31c-marriage-not-registered",
       "safety_critical": true,
-      "product_version_ids": [
-        "62ab2d13-1d7e-5048-9cf7-9622c0098439"
-      ]
+      "product_version_ids": ["62ab2d13-1d7e-5048-9cf7-9622c0098439"]
     },
     {
       "when": {
@@ -7057,9 +6195,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "FAMILY"
-            ]
+            "values": ["FAMILY"]
           },
           {
             "op": "eq",
@@ -7071,9 +6207,7 @@
             "arg": {
               "op": "intersects",
               "fact": "family.sponsor_nationalities",
-              "values": [
-                "ID"
-              ]
+              "values": ["ID"]
             }
           }
         ]
@@ -7102,9 +6236,7 @@
       ],
       "explanation_key": "explain.hf.e31c-sponsor-not-indonesian",
       "safety_critical": true,
-      "product_version_ids": [
-        "62ab2d13-1d7e-5048-9cf7-9622c0098439"
-      ]
+      "product_version_ids": ["62ab2d13-1d7e-5048-9cf7-9622c0098439"]
     },
     {
       "when": {
@@ -7113,9 +6245,7 @@
           {
             "op": "intersects",
             "fact": "intent.purposes",
-            "values": [
-              "BUSINESS_MEETINGS"
-            ]
+            "values": ["BUSINESS_MEETINGS"]
           },
           {
             "op": "eq",
@@ -7167,9 +6297,7 @@
         "category": "kitas_permits",
         "item_key": "Investor KITAS 2 Years (Offshore)"
       },
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "stay_policy": {
         "kind": "FIXED_DAYS",
         "maximum_days": 730,
@@ -7183,22 +6311,16 @@
       "entry_policy": {
         "entry_count": "MULTIPLE"
       },
-      "legacy_codes": [
-        "B211"
-      ],
+      "legacy_codes": ["B211"],
       "legacy_slugs": [],
       "product_code": "E28A",
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "INVESTMENT"
-      ],
+      "sponsor_types": ["INVESTMENT"],
       "public_catalog": true,
-      "covered_purposes": [
-        "INVESTMENT"
-      ],
+      "covered_purposes": ["INVESTMENT"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -7219,9 +6341,7 @@
       "status": "ACTIVE",
       "category": "LIMITED_STAY",
       "pricing_key": null,
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "stay_policy": {
         "kind": "FIXED_DAYS",
         "maximum_days": 3650,
@@ -7242,13 +6362,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "INVESTMENT"
-      ],
+      "sponsor_types": ["INVESTMENT"],
       "public_catalog": true,
-      "covered_purposes": [
-        "INVESTMENT"
-      ],
+      "covered_purposes": ["INVESTMENT"],
       "extension_policy": {
         "status": "UNKNOWN",
         "allowed": false,
@@ -7257,9 +6373,7 @@
         "maximum_extensions": 0
       },
       "product_version_id": "ca8c1177-ad94-5261-82a6-68bc912d31bb",
-      "prohibited_activities": [
-        "operational_work"
-      ]
+      "prohibited_activities": ["operational_work"]
     },
     {
       "names": {
@@ -7293,13 +6407,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "NONE"
-      ],
+      "sponsor_types": ["NONE"],
       "public_catalog": true,
-      "covered_purposes": [
-        "INVESTMENT"
-      ],
+      "covered_purposes": ["INVESTMENT"],
       "extension_policy": {
         "status": "UNKNOWN",
         "allowed": false,
@@ -7308,10 +6418,7 @@
         "maximum_extensions": 0
       },
       "product_version_id": "b074270f-fa7c-598b-a728-81ca89432364",
-      "prohibited_activities": [
-        "operational_work",
-        "corporate_establishment"
-      ]
+      "prohibited_activities": ["operational_work", "corporate_establishment"]
     },
     {
       "names": {
@@ -7321,9 +6428,7 @@
       "status": "ACTIVE",
       "category": "LIMITED_STAY",
       "pricing_key": null,
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "stay_policy": {
         "kind": "FIXED_DAYS",
         "maximum_days": 3650,
@@ -7344,13 +6449,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "INVESTMENT"
-      ],
+      "sponsor_types": ["INVESTMENT"],
       "public_catalog": true,
-      "covered_purposes": [
-        "INVESTMENT"
-      ],
+      "covered_purposes": ["INVESTMENT"],
       "extension_policy": {
         "status": "UNKNOWN",
         "allowed": false,
@@ -7359,9 +6460,7 @@
         "maximum_extensions": 0
       },
       "product_version_id": "ee4fef98-3497-507c-8486-225932364e26",
-      "prohibited_activities": [
-        "operational_work_outside_managing_subsidiary"
-      ]
+      "prohibited_activities": ["operational_work_outside_managing_subsidiary"]
     },
     {
       "names": {
@@ -7371,9 +6470,7 @@
       "status": "ACTIVE",
       "category": "LIMITED_STAY",
       "pricing_key": null,
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "stay_policy": {
         "kind": "FIXED_DAYS",
         "maximum_days": 3650,
@@ -7394,13 +6491,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "INVESTMENT"
-      ],
+      "sponsor_types": ["INVESTMENT"],
       "public_catalog": true,
-      "covered_purposes": [
-        "INVESTMENT"
-      ],
+      "covered_purposes": ["INVESTMENT"],
       "extension_policy": {
         "status": "UNKNOWN",
         "allowed": false,
@@ -7409,9 +6502,7 @@
         "maximum_extensions": 0
       },
       "product_version_id": "2df6f723-7fc3-585a-b26f-0e8c060a2d8d",
-      "prohibited_activities": [
-        "operational_work"
-      ]
+      "prohibited_activities": ["operational_work"]
     },
     {
       "names": {
@@ -7448,14 +6539,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "NONE"
-      ],
+      "sponsor_types": ["NONE"],
       "public_catalog": true,
-      "covered_purposes": [
-        "SECOND_HOME",
-        "TOURISM"
-      ],
+      "covered_purposes": ["SECOND_HOME", "TOURISM"],
       "extension_policy": {
         "status": "UNKNOWN",
         "allowed": false,
@@ -7503,15 +6589,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "GOVERNMENT"
-      ],
+      "sponsor_types": ["GOVERNMENT"],
       "public_catalog": true,
-      "covered_purposes": [
-        "EMPLOYMENT",
-        "TOURISM",
-        "FAMILY"
-      ],
+      "covered_purposes": ["EMPLOYMENT", "TOURISM", "FAMILY"],
       "extension_policy": {
         "status": "UNKNOWN",
         "allowed": false,
@@ -7558,9 +6638,7 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "NONE"
-      ],
+      "sponsor_types": ["NONE"],
       "public_catalog": true,
       "covered_purposes": [
         "EMPLOYMENT",
@@ -7615,9 +6693,7 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "GOVERNMENT"
-      ],
+      "sponsor_types": ["GOVERNMENT"],
       "public_catalog": true,
       "covered_purposes": [
         "INVESTMENT",
@@ -7667,25 +6743,16 @@
       "entry_policy": {
         "entry_count": "MULTIPLE"
       },
-      "legacy_codes": [
-        "E311A"
-      ],
+      "legacy_codes": ["E311A"],
       "legacy_slugs": [],
       "product_code": "E33E",
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "NONE"
-      ],
+      "sponsor_types": ["NONE"],
       "public_catalog": true,
-      "covered_purposes": [
-        "RETIREMENT",
-        "SECOND_HOME",
-        "TOURISM",
-        "FAMILY"
-      ],
+      "covered_purposes": ["RETIREMENT", "SECOND_HOME", "TOURISM", "FAMILY"],
       "extension_policy": {
         "status": "UNKNOWN",
         "allowed": false,
@@ -7729,18 +6796,14 @@
       "entry_policy": {
         "entry_count": "MULTIPLE"
       },
-      "legacy_codes": [
-        "E311A"
-      ],
+      "legacy_codes": ["E311A"],
       "legacy_slugs": [],
       "product_code": "E33F",
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "INDIVIDUAL"
-      ],
+      "sponsor_types": ["INDIVIDUAL"],
       "public_catalog": true,
       "covered_purposes": [
         "RETIREMENT",
@@ -7797,15 +6860,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "NONE"
-      ],
+      "sponsor_types": ["NONE"],
       "public_catalog": true,
-      "covered_purposes": [
-        "REMOTE_WORK",
-        "TOURISM",
-        "FAMILY"
-      ],
+      "covered_purposes": ["REMOTE_WORK", "TOURISM", "FAMILY"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -7832,9 +6889,7 @@
         "category": "single_entry_visas",
         "item_key": "A1 Visa-Free Tourism"
       },
-      "source_refs": [
-        "808d691c-374e-5581-8186-9eb54d0ca7ab"
-      ],
+      "source_refs": ["808d691c-374e-5581-8186-9eb54d0ca7ab"],
       "stay_policy": {
         "kind": "FIXED_DAYS",
         "maximum_days": 30,
@@ -7855,14 +6910,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "NONE"
-      ],
+      "sponsor_types": ["NONE"],
       "public_catalog": true,
-      "covered_purposes": [
-        "TOURISM",
-        "TRANSIT"
-      ],
+      "covered_purposes": ["TOURISM", "TRANSIT"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": false,
@@ -7889,9 +6939,7 @@
         "category": "single_entry_visas",
         "item_key": "B1 Visa on Arrival (VOA)"
       },
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "stay_policy": {
         "kind": "FIXED_DAYS",
         "maximum_days": 30,
@@ -7905,22 +6953,16 @@
       "entry_policy": {
         "entry_count": "SINGLE"
       },
-      "legacy_codes": [
-        "B213"
-      ],
+      "legacy_codes": ["B213"],
       "legacy_slugs": [],
       "product_code": "B1",
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "NONE"
-      ],
+      "sponsor_types": ["NONE"],
       "public_catalog": true,
-      "covered_purposes": [
-        "TOURISM"
-      ],
+      "covered_purposes": ["TOURISM"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -7947,9 +6989,7 @@
         "category": "single_entry_visas",
         "item_key": "C1 Tourism"
       },
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "stay_policy": {
         "kind": "FIXED_DAYS",
         "maximum_days": 60,
@@ -7963,25 +7003,16 @@
       "entry_policy": {
         "entry_count": "SINGLE"
       },
-      "legacy_codes": [
-        "B211A"
-      ],
+      "legacy_codes": ["B211A"],
       "legacy_slugs": [],
       "product_code": "C1",
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "NONE",
-        "INDIVIDUAL",
-        "EMPLOYER"
-      ],
+      "sponsor_types": ["NONE", "INDIVIDUAL", "EMPLOYER"],
       "public_catalog": true,
-      "covered_purposes": [
-        "TOURISM",
-        "FAMILY"
-      ],
+      "covered_purposes": ["TOURISM", "FAMILY"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -8007,9 +7038,7 @@
         "category": "single_entry_visas",
         "item_key": "C2 Business"
       },
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "stay_policy": {
         "kind": "FIXED_DAYS",
         "maximum_days": 60,
@@ -8023,24 +7052,16 @@
       "entry_policy": {
         "entry_count": "SINGLE"
       },
-      "legacy_codes": [
-        "B211B",
-        "B211A"
-      ],
+      "legacy_codes": ["B211B", "B211A"],
       "legacy_slugs": [],
       "product_code": "C2",
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "EMPLOYER"
-      ],
+      "sponsor_types": ["EMPLOYER"],
       "public_catalog": true,
-      "covered_purposes": [
-        "BUSINESS_MEETINGS",
-        "INVESTMENT"
-      ],
+      "covered_purposes": ["BUSINESS_MEETINGS", "INVESTMENT"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -8049,9 +7070,7 @@
         "maximum_extensions": 2
       },
       "product_version_id": "de433757-f7af-5762-ad65-41bc16bc2ae1",
-      "prohibited_activities": [
-        "paid_employment"
-      ]
+      "prohibited_activities": ["paid_employment"]
     },
     {
       "names": {
@@ -8064,9 +7083,7 @@
         "category": "single_entry_visas",
         "item_key": "C6 Social Activity"
       },
-      "source_refs": [
-        "6f5135f2-1f77-571f-88ed-26d1d2b9efba"
-      ],
+      "source_refs": ["6f5135f2-1f77-571f-88ed-26d1d2b9efba"],
       "stay_policy": {
         "kind": "FIXED_DAYS",
         "maximum_days": 60,
@@ -8080,23 +7097,16 @@
       "entry_policy": {
         "entry_count": "SINGLE"
       },
-      "legacy_codes": [
-        "B211A"
-      ],
+      "legacy_codes": ["B211A"],
       "legacy_slugs": [],
       "product_code": "C6",
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "INDIVIDUAL",
-        "EMPLOYER"
-      ],
+      "sponsor_types": ["INDIVIDUAL", "EMPLOYER"],
       "public_catalog": true,
-      "covered_purposes": [
-        "OTHER"
-      ],
+      "covered_purposes": ["OTHER"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -8105,10 +7115,7 @@
         "maximum_extensions": 2
       },
       "product_version_id": "8cf5e09b-6e02-536f-aeca-4aaecaca09c7",
-      "prohibited_activities": [
-        "paid_employment",
-        "business_meetings"
-      ]
+      "prohibited_activities": ["paid_employment", "business_meetings"]
     },
     {
       "names": {
@@ -8146,13 +7153,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "NONE"
-      ],
+      "sponsor_types": ["NONE"],
       "public_catalog": false,
-      "covered_purposes": [
-        "OTHER"
-      ],
+      "covered_purposes": ["OTHER"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": false,
@@ -8177,9 +7180,7 @@
         "category": "kitas_permits",
         "item_key": "Working KITAS (Offshore)"
       },
-      "source_refs": [
-        "e3572ad2-08a9-55bd-b818-353b3e9db715"
-      ],
+      "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
       "stay_policy": {
         "kind": "FIXED_DAYS",
         "maximum_days": 365,
@@ -8200,14 +7201,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "EMPLOYER"
-      ],
+      "sponsor_types": ["EMPLOYER"],
       "public_catalog": true,
-      "covered_purposes": [
-        "EMPLOYMENT",
-        "TOURISM"
-      ],
+      "covered_purposes": ["EMPLOYMENT", "TOURISM"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -8230,9 +7226,7 @@
       "status": "ACTIVE",
       "category": "LIMITED_STAY",
       "pricing_key": null,
-      "source_refs": [
-        "e3572ad2-08a9-55bd-b818-353b3e9db715"
-      ],
+      "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
       "stay_policy": {
         "kind": "FIXED_DAYS",
         "maximum_days": 365,
@@ -8253,13 +7247,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "INDIVIDUAL"
-      ],
+      "sponsor_types": ["INDIVIDUAL"],
       "public_catalog": true,
-      "covered_purposes": [
-        "EMPLOYMENT"
-      ],
+      "covered_purposes": ["EMPLOYMENT"],
       "extension_policy": {
         "status": "UNKNOWN",
         "allowed": false,
@@ -8268,9 +7258,7 @@
         "maximum_extensions": 0
       },
       "product_version_id": "fa143e97-b444-5ae4-9b05-6365f15e3ec7",
-      "prohibited_activities": [
-        "work_for_non_diplomat_employer"
-      ]
+      "prohibited_activities": ["work_for_non_diplomat_employer"]
     },
     {
       "names": {
@@ -8280,9 +7268,7 @@
       "status": "ACTIVE",
       "category": "LIMITED_STAY",
       "pricing_key": null,
-      "source_refs": [
-        "e3572ad2-08a9-55bd-b818-353b3e9db715"
-      ],
+      "source_refs": ["e3572ad2-08a9-55bd-b818-353b3e9db715"],
       "stay_policy": {
         "kind": "FIXED_DAYS",
         "maximum_days": 365,
@@ -8303,13 +7289,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "GOVERNMENT"
-      ],
+      "sponsor_types": ["GOVERNMENT"],
       "public_catalog": true,
-      "covered_purposes": [
-        "EMPLOYMENT"
-      ],
+      "covered_purposes": ["EMPLOYMENT"],
       "extension_policy": {
         "status": "UNKNOWN",
         "allowed": false,
@@ -8318,9 +7300,7 @@
         "maximum_extensions": 0
       },
       "product_version_id": "e8a1d738-daa7-5c99-a0c6-800b25579129",
-      "prohibited_activities": [
-        "work_for_standard_corporate_employers"
-      ]
+      "prohibited_activities": ["work_for_standard_corporate_employers"]
     },
     {
       "names": {
@@ -8351,22 +7331,16 @@
       "entry_policy": {
         "entry_count": "MULTIPLE"
       },
-      "legacy_codes": [
-        "C317"
-      ],
+      "legacy_codes": ["C317"],
       "legacy_slugs": [],
       "product_code": "E31A",
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "INDIVIDUAL"
-      ],
+      "sponsor_types": ["INDIVIDUAL"],
       "public_catalog": true,
-      "covered_purposes": [
-        "FAMILY"
-      ],
+      "covered_purposes": ["FAMILY"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -8406,22 +7380,16 @@
       "entry_policy": {
         "entry_count": "MULTIPLE"
       },
-      "legacy_codes": [
-        "C318"
-      ],
+      "legacy_codes": ["C318"],
       "legacy_slugs": [],
       "product_code": "E31B",
       "valid_period": {
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "INDIVIDUAL"
-      ],
+      "sponsor_types": ["INDIVIDUAL"],
       "public_catalog": true,
-      "covered_purposes": [
-        "FAMILY"
-      ],
+      "covered_purposes": ["FAMILY"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -8430,9 +7398,7 @@
         "maximum_extensions": 5
       },
       "product_version_id": "5d5f9bd4-349b-54d7-841a-784c0afba068",
-      "prohibited_activities": [
-        "paid_employment"
-      ]
+      "prohibited_activities": ["paid_employment"]
     },
     {
       "names": {
@@ -8470,13 +7436,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "INDIVIDUAL"
-      ],
+      "sponsor_types": ["INDIVIDUAL"],
       "public_catalog": true,
-      "covered_purposes": [
-        "FAMILY"
-      ],
+      "covered_purposes": ["FAMILY"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -8485,9 +7447,7 @@
         "maximum_extensions": 5
       },
       "product_version_id": "62ab2d13-1d7e-5048-9cf7-9622c0098439",
-      "prohibited_activities": [
-        "paid_employment"
-      ]
+      "prohibited_activities": ["paid_employment"]
     },
     {
       "names": {
@@ -8525,13 +7485,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "INDIVIDUAL"
-      ],
+      "sponsor_types": ["INDIVIDUAL"],
       "public_catalog": true,
-      "covered_purposes": [
-        "FAMILY"
-      ],
+      "covered_purposes": ["FAMILY"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -8540,9 +7496,7 @@
         "maximum_extensions": 5
       },
       "product_version_id": "3204e973-59da-5da1-bad0-06a7172e5b2c",
-      "prohibited_activities": [
-        "paid_employment"
-      ]
+      "prohibited_activities": ["paid_employment"]
     },
     {
       "names": {
@@ -8580,13 +7534,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "INDIVIDUAL"
-      ],
+      "sponsor_types": ["INDIVIDUAL"],
       "public_catalog": true,
-      "covered_purposes": [
-        "FAMILY"
-      ],
+      "covered_purposes": ["FAMILY"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -8595,9 +7545,7 @@
         "maximum_extensions": 5
       },
       "product_version_id": "1266d5cb-84a3-51f7-b82d-c6b756254074",
-      "prohibited_activities": [
-        "paid_employment"
-      ]
+      "prohibited_activities": ["paid_employment"]
     },
     {
       "names": {
@@ -8635,13 +7583,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "INDIVIDUAL"
-      ],
+      "sponsor_types": ["INDIVIDUAL"],
       "public_catalog": true,
-      "covered_purposes": [
-        "FAMILY"
-      ],
+      "covered_purposes": ["FAMILY"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -8650,9 +7594,7 @@
         "maximum_extensions": 5
       },
       "product_version_id": "3f7f6a94-32c8-54d7-b1d4-4d89082edbcc",
-      "prohibited_activities": [
-        "paid_employment"
-      ]
+      "prohibited_activities": ["paid_employment"]
     },
     {
       "names": {
@@ -8690,13 +7632,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "INDIVIDUAL"
-      ],
+      "sponsor_types": ["INDIVIDUAL"],
       "public_catalog": true,
-      "covered_purposes": [
-        "FAMILY"
-      ],
+      "covered_purposes": ["FAMILY"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -8705,9 +7643,7 @@
         "maximum_extensions": 5
       },
       "product_version_id": "fbc980d5-47b6-5f16-974d-25158dfffc06",
-      "prohibited_activities": [
-        "paid_employment"
-      ]
+      "prohibited_activities": ["paid_employment"]
     },
     {
       "names": {
@@ -8745,13 +7681,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "INDIVIDUAL"
-      ],
+      "sponsor_types": ["INDIVIDUAL"],
       "public_catalog": true,
-      "covered_purposes": [
-        "FAMILY"
-      ],
+      "covered_purposes": ["FAMILY"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -8760,9 +7692,7 @@
         "maximum_extensions": 5
       },
       "product_version_id": "1185c36d-833c-5e41-8e0d-6e4f7c8f7378",
-      "prohibited_activities": [
-        "paid_employment"
-      ]
+      "prohibited_activities": ["paid_employment"]
     },
     {
       "names": {
@@ -8800,13 +7730,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "INDIVIDUAL"
-      ],
+      "sponsor_types": ["INDIVIDUAL"],
       "public_catalog": true,
-      "covered_purposes": [
-        "FAMILY"
-      ],
+      "covered_purposes": ["FAMILY"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -8815,9 +7741,7 @@
         "maximum_extensions": 5
       },
       "product_version_id": "4a4a0f7c-a6a0-5835-acd6-8a096342ef68",
-      "prohibited_activities": [
-        "paid_employment"
-      ]
+      "prohibited_activities": ["paid_employment"]
     },
     {
       "names": {
@@ -8854,16 +7778,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "NONE"
-      ],
+      "sponsor_types": ["NONE"],
       "public_catalog": true,
-      "covered_purposes": [
-        "TOURISM",
-        "FAMILY",
-        "TRANSIT",
-        "BUSINESS_MEETINGS"
-      ],
+      "covered_purposes": ["TOURISM", "FAMILY", "TRANSIT", "BUSINESS_MEETINGS"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -8912,15 +7829,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "NONE"
-      ],
+      "sponsor_types": ["NONE"],
       "public_catalog": true,
-      "covered_purposes": [
-        "BUSINESS_MEETINGS",
-        "TOURISM",
-        "FAMILY"
-      ],
+      "covered_purposes": ["BUSINESS_MEETINGS", "TOURISM", "FAMILY"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -8970,15 +7881,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "NONE"
-      ],
+      "sponsor_types": ["NONE"],
       "public_catalog": true,
-      "covered_purposes": [
-        "INVESTMENT",
-        "TOURISM",
-        "FAMILY"
-      ],
+      "covered_purposes": ["INVESTMENT", "TOURISM", "FAMILY"],
       "extension_policy": {
         "status": "VERIFIED",
         "allowed": true,
@@ -9024,14 +7929,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "EDUCATION",
-        "INDIVIDUAL"
-      ],
+      "sponsor_types": ["EDUCATION", "INDIVIDUAL"],
       "public_catalog": false,
-      "covered_purposes": [
-        "STUDY"
-      ],
+      "covered_purposes": ["STUDY"],
       "extension_policy": {
         "status": "UNKNOWN",
         "allowed": false,
@@ -9083,14 +7983,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "EDUCATION",
-        "INDIVIDUAL"
-      ],
+      "sponsor_types": ["EDUCATION", "INDIVIDUAL"],
       "public_catalog": true,
-      "covered_purposes": [
-        "STUDY"
-      ],
+      "covered_purposes": ["STUDY"],
       "extension_policy": {
         "status": "UNKNOWN",
         "allowed": false,
@@ -9143,14 +8038,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "EDUCATION",
-        "INDIVIDUAL"
-      ],
+      "sponsor_types": ["EDUCATION", "INDIVIDUAL"],
       "public_catalog": true,
-      "covered_purposes": [
-        "STUDY"
-      ],
+      "covered_purposes": ["STUDY"],
       "extension_policy": {
         "status": "UNKNOWN",
         "allowed": false,
@@ -9198,13 +8088,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "EDUCATION"
-      ],
+      "sponsor_types": ["EDUCATION"],
       "public_catalog": true,
-      "covered_purposes": [
-        "STUDY"
-      ],
+      "covered_purposes": ["STUDY"],
       "extension_policy": {
         "status": "UNKNOWN",
         "allowed": false,
@@ -9252,13 +8138,9 @@
         "to": null,
         "from": "2026-07-24T00:00:00Z"
       },
-      "sponsor_types": [
-        "EDUCATION"
-      ],
+      "sponsor_types": ["EDUCATION"],
       "public_catalog": true,
-      "covered_purposes": [
-        "STUDY"
-      ],
+      "covered_purposes": ["STUDY"],
       "extension_policy": {
         "status": "UNKNOWN",
         "allowed": false,

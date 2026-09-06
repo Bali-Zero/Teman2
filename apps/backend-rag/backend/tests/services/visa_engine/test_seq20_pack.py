@@ -232,6 +232,21 @@ class TestIdentity:
     ) -> None:
         assert seq19_signed["payload_sha256"] == SEQ19_PAYLOAD_SHA256
 
+    def test_payload_digest_survives_reformatting_of_the_file(
+        self, seq20_source: dict[str, Any]
+    ) -> None:
+        """The pack's identity is JCS over the PARSED document, never the file
+        bytes, so the repo's prettier gate can reshape the file freely — this
+        pins that invariant instead of leaving it to be rediscovered. The
+        constant below is the digest the owner will sign and the digest
+        `previous_payload_sha256` of seq-21 will have to name; it was measured
+        BEFORE the prettier pass and re-measured after it, unchanged. A future
+        reformat that moved it would mean the reformatter edited content."""
+        import hashlib
+
+        digest = hashlib.sha256(canonicalize_json(seq20_source)).hexdigest()
+        assert digest == "df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d"
+
     def test_version_is_the_fold_date(self, seq20_source: dict[str, Any]) -> None:
         assert seq20_source["version"] == "2026.9.6"
 
