@@ -1,0 +1,11 @@
+{
+  "observed_model": "claude-fable-5-1",
+  "native_session": "9db691ab-8167-459b-a921-54857dde0d49",
+  "timestamp": "2026-09-06T01:56:44.217Z",
+  "finish_reason": "end_turn",
+  "head_sha": "d48f57d38d365b52b16eeac99b70a3615f877e2a",
+  "verdict": "PASS",
+  "input_sha256": "a4137b1741f993ce20fb9a028871468bea5cb9e4b650bb010cfd03329e1b5f1a",
+  "response_sha256": "4b19f689dfb28938563e0e16ec0cd9aa9431e4db3c062343126415fb6acb239e",
+  "scope": "Parent synthetic PR5825 only; no native adapter review or deployment"
+}

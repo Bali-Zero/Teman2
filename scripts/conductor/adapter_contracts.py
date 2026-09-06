@@ -30,6 +30,8 @@ class Surface:
 # Qualification belongs to each surface, never to a compatible protocol/family.
 SURFACES = {
     "codex_app_server": Surface(None),
+    # Text-only shadow qualification; never promotes the operational surface.
+    "codex_app_server_shadow": Surface(None, True),
     "claude_interactive_text": Surface("claude-fable-5-1", True),
     "kimi_text": Surface("k3", True, "max"),
     "kimi_native": Surface("k3"),

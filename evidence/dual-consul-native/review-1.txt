@@ -1,0 +1,76 @@
+**Verdict: PASS-WITH-CONDITIONS** for the nine-file manifest and the stated shadow scope. I found no blocking correctness, concurrency or authorization defect in the source. The conditions concern evidence provenance and contract vocabulary, not code behaviour.
+
+## Conditions to close before this increment is cited as evidence
+
+**1. Discovery artifact has no bound producer.**
+File: `evidence/dual-consul-native/discovery.json` versus `scripts/conductor/codex_shadow_probe.py:probe`.
+Trigger: the artifact carries `host`, `models[].hidden`, `astra_admitted` and `inference_calls`. The probe's discovery mode emits a different shape and, for an absent model, raises `model_unavailable` before any output. No manifest-bound file can emit this artifact.
+Consequence: the "Astra absent from catalog, including hidden models" observation is not reproducible from the frozen manifest, which the native-shadow doc presents as binding the evidence.
+Smallest fix: add a catalog mode to the probe that emits exactly this shape, regenerate the artifact under the manifest, or relabel the artifact as produced outside the bound sources.
+
+**2. Turn receipts do not bind consumer source.**
+File: `scripts/conductor/codex_shadow_probe.py:probe` and `codex_shadow.py:NativeResult.checkpoint`.
+Trigger: receipts record binary hash and profile hash, but not the adapter or launcher source. The doc states earlier runs used a refreshing snapshot before the correction.
+Consequence: whether `native-invoke.json` and `native-cancel.json` were produced by the corrected `prepare_auth` rests on the builder's assertion, not on the artifact.
+Smallest fix: include the source manifest hash in the probe output and regenerate, or state in the evidence README which source revision produced each artifact.
+
+**3. Undefined identity vocabulary.**
+File: `scripts/conductor/codex_shadow.py:NativeResult.checkpoint`.
+Trigger: `identity_evidence` is `runtime_configuration`, which is not one of the three contract levels. The same adapter reports `request_observed` to `admit`.
+Consequence: receipts use a level the common contract does not define, so a consumer cannot map it to the exact-model rule.
+Smallest fix: emit `request_observed` in the checkpoint, or add the new level to the contract table with its exact-model consequence stated as insufficient.
+
+## Non-blocking findings
+
+- **Self-referential context check.** `codex_shadow.py:invoke` passes `obs.key` as `expected_key` to `admit`, so `discovery_context_mismatch` can never fire on the first turn. External pinning is limited to runtime version and profile hash from the launcher, plus `validate_shadow_config`. Continuity across turns is enforced by `NativeBinding`, which is sound.
+- **Commentary text is retained.** `codex_shadow.py:_collect` appends every `agentMessage` regardless of `phase`. A model that emits commentary before its final answer would produce a joined text whose hash does not represent the final answer alone. The phase is already projected by `_notification`; keep only `final_answer` or record phases.
+- **Uncaught `KeyError` in the probe.** `codex_shadow_probe.py:main` does not catch `KeyError`, which `discover` can raise on a missing `config` or `data` key. Consequence is a traceback on stderr instead of the receipt-safe JSON. No secret is exposed. Add `KeyError` to the caught tuple.
+- **Absent `networkAccess` is treated as disabled.** `codex_shadow.py:invoke` uses `sandbox.get("networkAccess", False)`. Under a read-only sandbox this is acceptable, but an explicit `is False` check would be fail-closed.
+- **Integer ids only.** `app_server_rpc.py:_read_loop` looks up pending futures by the raw id. A server that echoes ids as strings would produce `rpc_timeout` rather than a match. Fail-closed, and the real server matched.
+- **Event dropped on failure race.** `app_server_rpc.py:next_notification` raises the failure even when the queue task completed first, losing that event. Fail-closed and acceptable.
+
+## Concurrency assessment
+
+- Lock order is consistent: `CodexShadow._cancel_lock` then `AppServerRPC._close_lock`. `_write_lock` is independent. No cycle.
+- Server requests are answered inside the reader under a bounded timeout, so a stalled child stdin degrades to `protocol_error` rather than a hang.
+- The inner exception handler in `invoke` runs before the `finally` that clears `_active_turn`, so the interrupt is attempted with the correct turn id. The timeout test confirms this.
+- Cancellation after a caught `CancelledError` still completes `close()` because `asyncio.timeout` accounts for the pre-existing cancel count, and the launcher's context manager closes the process regardless.
+- Late responses to expired ids are discarded, and a cancelled `call` cannot be satisfied by a later reply.
+
+## Authorization and isolation assessment
+
+- Authorization runs before start or resume, before the turn, and after the reply. A revoked `complete` discards a collected reply. Changed mission, input, account, config, model, effort, runtime or host refuses reuse. Cancelled adapters are permanently refused.
+- Config and account are re-read immediately before `turn/start`. `account/read` never refreshes.
+- Approvals are declined or aborted, unknown server requests are rejected, tool and delegation item types fail the transport, and stderr and provider error text are discarded.
+- The child environment is fully explicit. The credential snapshot copies id, access and account id fields, blanks the refresh token, preserves `last_refresh`, and never writes the source.
+
+## Material limits, as declared or observed
+
+- Same caller UID. No PostgreSQL broker binding. No effect authority.
+- The cancel artifact shows `interrupt_error_code: rpc_error`. The synthetic reply likely completed before the interrupt arrived, so in-flight interruption is not demonstrated. Only local process-group stop is shown.
+- With `ephemeral: false`, native history including prompt and reply text exists on disk in the temporary home until cleanup. If the group fails to stop, cleanup still removes the directory while the process may hold tokens in memory. The probe then fails, which is correct.
+- Catalog is cached five minutes. Effort support is not rechecked before the turn.
+- Token usage reflects the last update before `turn/completed`. A later update for the same turn is not captured.
+- Input and response byte limits and the 60 second wait are local bounds, not provider caps. Missions requiring hard caps or response-observed identity are refused.
+- The `--version` subprocess inherits the caller's stdin. Harmless, but not fully explicit.
+- Receipt input hashes cover the literal text only, not native system context or thread history.
+
+## Binding
+
+Reviewed bytes as supplied. I did not recompute any digest. This verdict binds to the supplied SOURCE MANIFEST:
+
+```
+adapter_contracts.py        a17c922a4d29d7817c3999c600cc4c4084510cb7b81693a7ba96c29ffc05a1ea
+app_server_rpc.py           46c94e71dc0f8c7dacec011ecc63ff81c27e15072afb2abf6645e30d65c02538
+codex_shadow.py             a2b447d5cb9b23b56dc6b78324042ded1f3dc5625881f72197435a74f0e1e306
+codex_shadow_launch.py      a249d222ecf070ebbd09cf72b45ec8e891c4d38da20c207603653178f64b2948
+codex_shadow_probe.py       2b60f0e5b22dcc4681c82d221fbf678771db346f15fcfe2937e117b865caf0a2
+test_conductor_adapter_contracts.py  0f31732407dba4995acc938faca73388a6df146c28d8bde0a714473377bac0af
+test_conductor_app_server_rpc.py     fa4ad9489392c431119d3e63ec5615fa3aa6ae5b9ca4d494cef0ed73eabbcec7
+test_codex_shadow.py        38fa46b92ae4a68d7c9d6d4f4fa767561812416b9a7ce19162ab51dcb96269a9
+test_codex_shadow_launch.py c312bc24192aff68ada9438ef7e7ad1e4f96f103a267d68c3cc0c9448227f68d
+```
+
+Supporting artifacts read as supplied: `contracts.py` 4cab11a9…, `native-shadow.md` 0a3406d6…, `native-invoke.json` bebcc038…, `native-cancel.json` 4f161355…, `discovery.json` d0f56f9a…, `validation.json` 8edc818e…. The three conditions above apply to the artifacts, not to the nine bound sources.
+
+END_DUAL_CONSUL_REVIEW
