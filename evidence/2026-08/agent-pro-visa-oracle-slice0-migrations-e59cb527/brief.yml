@@ -1,0 +1,68 @@
+task_id: visa-oracle-slice0-migrations-0826
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Land the three visa-oracle migrations FIRST and ALONE, ahead of the rest of a 94-commit
+  branch, because the service code in the next slice reads tables that do not exist yet.
+
+  The slice also carries a defect fix that is the real reason it could not simply ride along
+  with the code: two of the three migrations collided by NUMBER with migrations already on
+  main — `281_visa_oracle_consultant_requests.sql` against `281_garuda_voa_retention.sql`,
+  and `283_visa_oracle_sessions_retention_30d.sql` against `283_wa_reply_claims.sql`. That is
+  scar W40, and it is not cosmetic: `migration_manager.py:59` raises MigrationError on a
+  duplicate prefix, and its own message explains the alternative — the runner "applies one and
+  silently skips the other". The files were renamed with `git mv` to 293/294/295, which is the
+  first genuinely free ordinal: main tops out at 288, the NAGA slice has claimed 289, and the
+  due-bot lane has claimed 290 (daemon) plus 291/292.
+
+  Gear 3 by PATH, deterministically: `apps/backend-rag/backend/db/migrations_v2/**` is hot-zone,
+  so the floor is 3 regardless of the diff being 3 files and +570/-0. Recomputed from the actual
+  changed-file list rather than assumed — receipt below.
+constraints:
+  - "No behaviour change to any shipped Python. This slice is three .sql files and nothing else;
+    the service code, tests and signed packs that consume these tables land in later slices."
+  - "Do not weaken any check. The one red this PR drew (`Harness floor recompute`, hot-zone diff
+    with no evidence/brief.yml) is answered by supplying this pack, never by touching the gate."
+  - "Retention machinery may be INSTALLED but must not RUN. Nothing in the diff may delete a row
+    that exists in production today."
+acceptance:
+  - "The forward halves of 293/294/295 apply cleanly, in order, on top of the real main migration
+    chain — not on an empty database, which would not have the prerequisites."
+  - "The rollback halves apply cleanly in reverse order and leave the schema in its prior state,
+    including restoring `visa_oracle_sessions.expires_at`'s 90-day DEFAULT rather than dropping it."
+  - "No row is deleted at apply time: `purge_visa_oracle_consultant_requests` is defined but never
+    invoked, and is not EXECUTE-able by PUBLIC."
+  - "`Detect duplicate prefixes` and `Detect missing ROLLBACK markers` both green in CI."
+  - "Nothing already on main references the old 281/282/283 visa filenames."
+consumer_map:
+  - "`apps/backend-rag/backend/db/migration_manager.py` — the runner that applies these files,
+    sorts them by numeric prefix, and refuses duplicates (line 59)."
+  - "`public.visa_oracle_sessions` — EXISTS in production; 295 changes only its `expires_at`
+    column DEFAULT. Created by the legacy Python system (`backend/migrations/migration_080a_visa_oracle_sessions.py`),
+    not by migrations_v2 — which is why a from-scratch replay does not have it."
+  - "`public.reject_visa_write_substrate_mutation()` — created by `252_visa_engine_write_substrate.sql`,
+    already on main and present in production. 294 depends on it and does NOT create it."
+  - "`backend/services/visa_engine/consultant_assignment_service.py` and its tests — the consumers
+    of these tables. They land in slice 1 and are NOT on main today (verified per-file), so this
+    slice cannot break them."
+risks:
+  - "A migration PR is auto-merge-OFF class per CLAUDE.md §2. It is merged by the session after
+    its gates are green, never left to the codeowner and never armed with --auto."
+  - "294 is not self-contained: it references a function created by 252. Accepted — 252 is on main
+    and the function is present in production (measured, receipt below). A from-empty replay of
+    migrations_v2 is not this repo's model: 43 of main's 170 files fail that way, because the base
+    tables come from the pre-v2 Python migration system."
+  - "The probe database is Postgres 17.8 (Homebrew) against production's 17.7. Same major; no
+    17.8-only syntax is used."
+grader: |
+  Independent verification by this session against a scratch database. An adversarial subagent
+  (generator != grader) was dispatched to attack the same three files on six axes — rollback
+  markers, Squawk locking hazards, idempotency, destructive surface, dependencies, PII — without
+  seeing this brief; its verdict is recorded in the pack's `dissent` block and this PR is not
+  merged before it lands. Two of the session's own early readings were WRONG and were corrected
+  by measurement, not by argument: a grep for `^-- ROLLBACK` reported zero markers (the real marker
+  is `-- === ROLLBACK ===`, and all three carry it), and the first apply probe reported FORWARD
+  ROTTO when the failure was a zsh word-splitting bug in the probe harness itself.
+budget: 1 build lane + 1 adversarial refuter lane, no council — a 3-file DDL diff
+pii: none

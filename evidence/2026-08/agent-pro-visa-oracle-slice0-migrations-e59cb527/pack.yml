@@ -1,0 +1,401 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: "PR #5037 (agent/pro/visa-oracle/slice0-migrations) — slice 0 of 4 for the visa-oracle landing, 2026-08-26. Governing mandate: docs/plans/2026-08-24-visa-oracle-live/MANDATE.md."
+lanes:
+  - lane: visa-oracle-slice0
+    role: build
+    seat: "claude-opus-5 (conducting session — renumbered the three migrations, sliced them out of the 94-commit branch, authored this pack)"
+  - lane: visa-oracle-slice0-refute
+    role: review
+    seat: "claude-sonnet-5 (adversarial subagent, dispatched WITHOUT this brief; told to find reasons the migrations are unsafe, not to bless them)"
+  - lane: visa-oracle-slice0-council-sol
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (titolare per COUNCIL_REVIEW_SEATS), dispatched read-only
+      (`codex exec -m gpt-5.6-sol -c model_reasoning_effort="high" --sandbox read-only
+      --skip-git-repo-check`) with a fresh-context defeating-input task covering the three
+      migration files only (no brief, no this pack). Returned a judgement (not a non-judgement);
+      verdict FAIL, recorded verbatim in council-journal.jsonl and summarized in dissent below.
+  - lane: visa-oracle-slice0-council-qwen
+    role: review
+    seat: >-
+      tp1-qwen3.8-max (titolare per COUNCIL_REVIEW_SEATS, DashScope/TP1 via
+      scripts/tp1_call.py, effort medium), dispatched with the identical fresh-context task as
+      the sol lane, independently and without sight of sol's answer. Returned a judgement;
+      verdict FINDING (not PASS), recorded verbatim in council-journal.jsonl and summarized in
+      dissent below.
+seat_diversity: satisfied
+seat_diversity_note: >-
+  The build lane and the claude-sonnet-5 refute lane are both Anthropic seats — declared rather
+  than left to read as satisfied, per the original note's own reasoning: a 3-file DDL diff whose
+  safety question is settled by an actual apply/rollback against a real schema does not gain from
+  cross-family breadth on BUILD. Cross-family pressure sits on the two council REVIEW lanes added
+  for the R9 Gear-3 quorum instead: codex-gpt-5.6-sol (OpenAI family) and tp1-qwen3.8-max
+  (Alibaba/DashScope family) are both non-Anthropic, dispatched independently, fresh-context, and
+  both returned a real judgement rather than a non-judgement.
+diff:
+  net_lines: >-
+    Not restated as a count here (the rule permits dropping it — a self-declared number went
+    stale across two prior cure rounds on this same file, and re-chasing it a third time is not
+    the fix). Measure fresh with `git diff --numstat $(git merge-base origin/main HEAD)..HEAD` if
+    a count is needed. Shape: three new .sql files under
+    `apps/backend-rag/backend/db/migrations_v2/`, this task's own evidence-pack files
+    (`brief.yml`, `pack.yml`, `council-journal.jsonl`), and
+    `backend/tests/test_retention_policy_scope_family_tripwire.py` — touched twice post-open,
+    first (superseded) to narrow `_unscoped_lookups` with a ±12-line text window around a match
+    (SCAR family #3: a substring/proximity heuristic, not an entity judgment — the REWORK-BUILD
+    verdict on this PR named exactly that), then again (see the receipt below) to resolve entity
+    membership per-STATEMENT instead: a lookup requires the `policy_scope` predicate iff its own
+    statement's resolved FROM/JOIN table set — walked through any CTE indirection — contains the
+    shared `visa_decision_retention_policies` table, never by how close a comment or an unrelated
+    FROM sits to it. Renumbering from 281/282/283 is invisible — names never landed.
+  behaviour_change: >-
+    Three new tables plus two functions and four triggers are created. One pre-existing production
+    table is altered, in its catalog only: `visa_oracle_sessions.expires_at`'s DEFAULT moves from
+    `now() + '90 days'` to `now() + '30 days'`. SET DEFAULT rewrites no rows, takes no long lock,
+    and does not change the expiry of sessions already issued. No row is deleted.
+receipts:
+  - claim: "Deterministic gear floor recomputed from THIS PR's actual changed-file list is 3 — matching the declared gear and the `Harness floor recompute` FAIL message that demanded this pack"
+    cmd: "git diff --name-only origin/main...HEAD > /tmp/slice0-changed.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/slice0-changed.txt"
+    result: "3 (migrations_v2/** is hot-zone by path)"
+    exit: 0
+    ts: "2026-08-26T14:20Z"
+    seat: "session (Pro)"
+  - claim: "THE CENTRAL RECEIPT — forward halves apply cleanly, in order, on top of the REAL main migration chain (all 170 numbered files from origin/main replayed first), not on an empty database"
+    cmd: "createdb visa_full_probe; for f in $(git ls-tree origin/main --name-only .../migrations_v2/ | grep -E '/[0-9]{3}_.*\\.sql$' | sort -V); do git show origin/main:$f | awk '/=== ROLLBACK ===/{exit}{print}' | psql -d visa_full_probe -v ON_ERROR_STOP=1; done; then the same for 293, 294, 295"
+    result: "293 rc=0 · 294 rc=0 · 295 rc=0 — but SEE THE CORRECTION RECEIPT BELOW: this probe hand-created a stand-in for `visa_oracle_sessions`, so it proved 295 works GIVEN a precondition CI does not have, and it missed the defect that turned all three CI shards red. Superseded by the CI-shaped probe. (The main chain itself reports 43/170 failures on a from-empty replay: migrations_v2 is not a from-scratch schema, its base tables come from the pre-v2 Python migration system. Those failures are pre-existing and unrelated — the prerequisite this slice actually needs, reject_visa_write_substrate_mutation(), IS present after the chain: to_regprocedure -> true.)"
+    exit: 0
+    ts: "2026-08-26T14:34Z"
+    seat: "session (Pro, Postgres 17.8 Homebrew vs production 17.7)"
+  - claim: "All five objects the three files promise are actually created — verified by catalog lookup, not by the absence of an error"
+    cmd: 'psql -d visa_full_probe -tA -c "SELECT to_regclass(''public.visa_oracle_consultant_requests'') IS NOT NULL" (and the same for the two retention tables, purge_visa_oracle_consultant_requests(integer,text), visa_oracle_consultant_requests_retention_evidence())'
+    result: "consultant_requests=true · retention_policies=true · retention_batches=true · purge_fn=true · evidence_fn=true"
+    exit: 0
+    ts: "2026-08-26T14:34Z"
+    seat: "session (Pro)"
+  - claim: "295 actually moves the DEFAULT — read back out of information_schema after the apply, not assumed from the SQL text"
+    cmd: 'psql -d visa_full_probe -tA -c "SELECT column_default FROM information_schema.columns WHERE table_name=''visa_oracle_sessions'' AND column_name=''expires_at''"'
+    result: "(now() + '30 days'::interval) — was (now() + '90 days'::interval) before the apply, which is also the value production reports today"
+    exit: 0
+    ts: "2026-08-26T14:34Z"
+    seat: "session (Pro)"
+  - claim: "NOTHING IS DELETED AT APPLY TIME — the destructive-surface question, answered two independent ways"
+    cmd: "grep -nE '(SELECT|PERFORM).*purge_visa_oracle|cron\\.schedule' migrations_v2/29[345]_*.sql ; and after the apply: psql -tAc 'SELECT count(*) FROM public.visa_oracle_consultant_request_retention_batches'"
+    result: "grep: no match — the only DELETE in the diff (294:318) lives inside the purge function's body, and nothing calls it; no pg_cron job is scheduled. Batches table after apply: 0 rows, i.e. no purge ever ran (the function records every batch it deletes)."
+    exit: 0
+    ts: "2026-08-26T14:34Z"
+    seat: "session (Pro)"
+  - claim: "The purge function is not reachable by PUBLIC — the REVOKE at 294:342 is effective, not decorative"
+    cmd: 'psql -d visa_full_probe -tAc "SELECT has_function_privilege(''public'',''public.purge_visa_oracle_consultant_requests(integer,text)'',''EXECUTE'')"'
+    result: "false"
+    exit: 0
+    ts: "2026-08-26T14:34Z"
+    seat: "session (Pro)"
+  - claim: "ROLLBACK halves apply cleanly in reverse order AND are symmetric — the schema returns to its prior state, including restoring the 90-day default rather than dropping it"
+    cmd: "for n in 295 294 293; do awk 'f{print} /=== ROLLBACK ===/{f=1}' <file> | psql -d visa_full_probe -v ON_ERROR_STOP=1; done; then re-read the catalog"
+    result: "295 rc=0 · 294 rc=0 · 293 rc=0 — ROLLBACK PULITO. After: consultant_requests=false, retention_batches=false, expires_at default back to (now() + '90 days'::interval)."
+    exit: 0
+    ts: "2026-08-26T14:34Z"
+    seat: "session (Pro)"
+  - claim: "294's undeclared dependency EXISTS in production — the one thing that could have made a green local probe a lie"
+    cmd: 'psql (read-only role, live nuzantara_rag via proxy) -tAc "SELECT to_regprocedure(''public.reject_visa_write_substrate_mutation()'') IS NOT NULL"'
+    result: "true — created by 252_visa_engine_write_substrate.sql, already on main. 294 references it and does not create it."
+    exit: 0
+    ts: "2026-08-26T14:27Z"
+    seat: "session (Pro, read-only production role)"
+  - claim: "The three tables this slice creates do NOT already exist in production, so `CREATE TABLE` without IF NOT EXISTS cannot collide"
+    cmd: 'psql (read-only, live) -tAc "SELECT to_regclass(''public.visa_oracle_consultant_requests'') IS NOT NULL" and the two retention tables; and "SELECT to_regclass(''public.visa_oracle_sessions'') IS NOT NULL"'
+    result: "consultant_requests=false · retention_policies=false · retention_batches=false · visa_oracle_sessions=TRUE (the one table 295 alters — it exists, so the ALTER has a target)"
+    exit: 0
+    ts: "2026-08-26T14:15Z"
+    seat: "session (Pro, read-only production role)"
+  - claim: "W40 IS REAL, not a tidy-up — the runner refuses duplicate prefixes by raising, and its own comment names the failure mode"
+    cmd: "sed -n '45,62p' apps/backend-rag/backend/db/migration_manager.py"
+    result: "raise MigrationError('Duplicate migration numbers in migrations_v2/: ... Two files cannot share a prefix — the runner applies one and silently skips the other.') Both `Detect duplicate prefixes` and `Detect missing ROLLBACK markers` are SUCCESS on this PR."
+    exit: 0
+    ts: "2026-08-26T14:12Z"
+    seat: "session (Pro)"
+  - claim: "Nothing already on main names the old 281/282/283 visa filenames, and the three test modules that DO name the new numbers are not on main — so the renumbering cannot break anything that is currently green"
+    cmd: "git grep -l -E '28[123]_visa_oracle' origin/main ; git cat-file -e origin/main:<each of the 3 test files>"
+    result: "grep: no matches on main. All three test modules absent from main (they land in slice 1)."
+    exit: 0
+    ts: "2026-08-26T14:19Z"
+    seat: "session (Pro)"
+  - claim: "Forward SQL runs inside a transaction — this is what makes the absence of IF NOT EXISTS safe, and it was the refuter's one open idempotency question"
+    cmd: "grep -n 'conn.transaction()' apps/backend-rag/backend/db/migration_base.py && sed -n '505,515p' apps/backend-rag/backend/db/migration_base.py"
+    result: "line 511: `async with conn.transaction():`, preceded by the comment `# Use transaction for atomicity`. A mid-file failure rolls the whole file back; there is no partial-apply state for a re-run to collide with. Re-grepped in this session rather than trusted from the subagent's citation."
+    exit: 0
+    ts: "2026-08-26T14:48Z"
+    seat: "session (Pro)"
+  - claim: "forward -> rollback -> FORWARD AGAIN is clean on the same database — reversibility proven by repetition, not by reading the rollback block"
+    cmd: "re-applied the three forward halves to the same visa_full_probe database that had already been taken forward and rolled back once"
+    result: "293 rc=0 · 294 rc=0 · 295 rc=0"
+    exit: 0
+    ts: "2026-08-26T14:49Z"
+    seat: "session (Pro)"
+  - claim: "SECOND, INDEPENDENT LAYER against deletion: the retention policy table is seeded EMPTY, so the purge function's JOIN matches nothing even if someone with rights called it"
+    cmd: "psql -d visa_full_probe -tAc 'SELECT count(*) FROM public.visa_oracle_consultant_request_retention_policies' and the same for the batches table, after a clean forward apply"
+    result: "policy_rows=0 · batch_rows=0. The purge deletes only rows matched against a policy row; with none seeded there are zero candidates. This sits on top of the REVOKE — two independent reasons nothing is deleted, not one."
+    exit: 0
+    ts: "2026-08-26T14:49Z"
+    seat: "session (Pro)"
+  - claim: "PII CONTEXT the refuter surfaced and this session measured on production: the table 295 alters carries free-text JSONB, so shortening its retention REDUCES exposure rather than creating it"
+    cmd: "psql (read-only, live nuzantara_rag) — SELECT column_name, data_type FROM information_schema.columns WHERE table_name='visa_oracle_sessions'"
+    result: "id uuid · session_id varchar · quiz_answers jsonb · recommended_visas jsonb · messages jsonb · language_detected varchar · handoff_triggered bool · ip_hash varchar · created_at · expires_at. `messages` and `quiz_answers` are free-text JSONB and pre-date this PR; `ip_hash` is already hashed. Cutting the default retention from 90d to 30d shortens how long that free text is retained by default. 295 adds and removes no column. No data was read — only the column list."
+    exit: 0
+    ts: "2026-08-26T14:47Z"
+    seat: "session (Pro, read-only production role)"
+  - claim: 'CORRECTION TO THE CENTRAL RECEIPT — the first probe was weaker than this pack presented it, and CI proved it. It hand-created a stand-in for `visa_oracle_sessions` and then verified 295 against that fabricated precondition. All three CI backend shards died at `python -m backend.db.migrate apply-all`, before pytest collected anything: `relation "public.visa_oracle_sessions" does not exist`. The evidence was already in the pack — the word "stand-in" — and the consequence was not drawn: if the probe had to create the table by hand, so does CI.'
+    cmd: "gh run view --job <shard job> --log (run 32980900718, head 4d6da4e39); identical failure line in Shard 1, 2 and 3"
+    result: 'Failed to apply migration 295: SQL execution failed: relation "public.visa_oracle_sessions" does not exist. 293 applied in 9ms and 294 in 12ms — they CREATE their own tables; only 295 assumed one. Root cause: the table is created by the LEGACY Python system (backend/migrations/migration_080a_visa_oracle_sessions.py) and `migration_base.py:66` states the automated loader "only reads db/migrations_v2/*.sql"; it is also not a SQLModel table=True class, so scripts/ci_bootstrap_schema.py misses it too.'
+    exit: 1
+    ts: "2026-08-26T14:44Z"
+    seat: "CI (GitHub Actions) — found what the local probe structurally could not"
+  - claim: "THE REPLACEMENT CENTRAL RECEIPT — 293/294/295 apply cleanly on a CI-SHAPED database: main's full chain replayed and NO hand-made stand-in, with the table's absence asserted before the run rather than assumed"
+    cmd: "createdb visa_ci_shape; replay every numbered migration from origin/main; assert to_regclass('public.visa_oracle_sessions') IS NULL; then apply the three forward halves"
+    result: "precondition check: false (table absent, exactly as in CI) · 293 rc=0 · 294 rc=0 · 295 rc=0 — FORWARD PULITO"
+    exit: 0
+    ts: "2026-08-26T14:57Z"
+    seat: "session (Pro)"
+  - claim: "The table 295 now creates converges on PRODUCTION, not on the legacy file — diffed column-by-column including varchar lengths, nullability and defaults"
+    cmd: "identical information_schema.columns query run against live nuzantara_rag and against visa_ci_shape after the forward apply; `diff` of the two outputs"
+    result: "exactly ONE differing line out of ten: `expires_at ... (now() + '90 days')` on production vs `(now() + '30 days')` on the probe — which is the single change this migration exists to make. Every other column matches on name, type, length, nullability and default."
+    exit: 0
+    ts: "2026-08-26T14:58Z"
+    seat: "session (Pro, read-only production role + local probe)"
+  - claim: "NO DUPLICATE INDEX IS BUILT ON A LIVE TABLE — the trap this fix had to avoid, because production's index names do NOT match the legacy migration's"
+    cmd: "SELECT indexname FROM pg_indexes WHERE tablename='visa_oracle_sessions' — run against production and against the probe, then diffed"
+    result: "identical: idx_vo_sessions_created_at, idx_vo_sessions_session_id, visa_oracle_sessions_pkey. Note the legacy file 080a names them `idx_visa_oracle_sessions_*` — had 295 used THOSE names, IF NOT EXISTS would have matched nothing on production and built a second, duplicate index on a live table."
+    exit: 0
+    ts: "2026-08-26T14:58Z"
+    seat: "session (Pro)"
+  - claim: "The rollback still does NOT drop `visa_oracle_sessions`, deliberately — the table predates this migration in production and a rollback that removed it would destroy live data this file never created"
+    cmd: "apply the three rollback halves in reverse order against visa_ci_shape, then re-check the table and its default"
+    result: "295 rc=0 · 294 rc=0 · 293 rc=0 · table still present (true) · expires_at default back to (now() + '90 days'::interval)"
+    exit: 0
+    ts: "2026-08-26T14:58Z"
+    seat: "session (Pro)"
+  - claim: "The local test reproduction was structurally incapable of catching this, and is recorded so the next session does not mistake it for coverage"
+    cmd: "PYTHONPATH=. pytest backend/tests/services/visa_engine/ backend/tests/scripts/visa_engine/ backend/tests/db/ against the slice-0 tree"
+    result: "exit 0 — green. The failing step (`migrate apply-all` against a fresh database) is a CI job step, not a pytest test, so no local pytest invocation could ever have reached it. A green local suite said nothing about this defect."
+    exit: 0
+    ts: "2026-08-26T14:52Z"
+    seat: "session (Pro)"
+  - claim: >-
+      `test_no_shipped_active_policy_lookup_is_missing_its_scope_predicate` failed CI (Backend
+      Shard 3) on this PR's head, naming 294's two `effective_period @>` lookups (lines 301, 377)
+      as unscoped. Both join `visa_oracle_consultant_request_retention_policies` -- a table with
+      no `policy_scope` column, created by 294 itself, governing exactly one data class with its
+      own EXCLUDE constraint on `effective_period` alone. The census only pulled 294 in because
+      its header (line 88) mentions `visa_decision_retention_policies` in prose, explaining why
+      that shared table is deliberately NOT reused. Mirroring migration 289's fix (`AND
+      policy_scope = 'VISA_DECISION'`) here would reference a column that does not exist and
+      fail at apply time -- the correct cure is the test's file-selection-vs-resolution-target
+      gap, not the migration. FIRST cure attempt exempted 294 with a ±12-line text window around
+      the match -- an Anthropic REWORK-BUILD verdict on this PR correctly named that a scar #3
+      substring/proximity guard, not an entity judgment, and pointed out that none of the six
+      tripwire tests called `_unscoped_lookups` directly, so mutating it to always return `[]`
+      would have left all six green.
+    cmd: >-
+      PYTHONPATH=backend /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python3 -m pytest
+      backend/tests/test_retention_policy_scope_family_tripwire.py -vv (before either fix,
+      against the merged origin/main base)
+    result: >-
+      Before: 1 failed, 4 passed (the false-positive offence above).
+    exit: 1
+    ts: "2026-09-05T00:00Z"
+    seat: "session (M5, cure PR #5037, first round)"
+  - claim: >-
+      SECOND cure round, entity-based per the Anthropic REWORK-BUILD spec: `_unscoped_lookups`
+      now isolates the SQL STATEMENT around each `effective_period @>` match (text between the
+      surrounding `;`s), resolves every table that statement's `FROM`/`JOIN` clauses read
+      (recursing into any same-statement CTE body so a lookup several CTE layers away from the
+      table it ultimately reads is still caught, regardless of source-line distance), and
+      requires the `policy_scope` predicate iff that resolved set contains
+      `visa_decision_retention_policies`. The ±12-line window is gone. Mutation-tested: with
+      `_unscoped_lookups` temporarily forced to return `[]`, 3 of 8 tests go red (the two direct
+      guilt cases plus the CTE-distance guilt case) -- so the suite exercises the real function,
+      not a fixture that would stay green under that mutation. Two of the eight tests are NEW
+      relative to the first cure round: a guilt case where the shared table is read through a CTE
+      whose own FROM sits ~20 lines above the predicate it feeds (proving statement-wide
+      resolution, not a wider window, is what closes the gap), and a guilt case built from a
+      hand-edited copy of 294 itself (one JOIN target swapped onto the shared table, no
+      `policy_scope` added) proving 294's exemption is earned by the TABLE a given lookup reads,
+      not by which FILE it lives in.
+    cmd: >-
+      PYTHONPATH=backend /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python3 -m pytest
+      backend/tests/test_retention_policy_scope_family_tripwire.py (green run, then the same
+      command after in-place mutating `_unscoped_lookups` to `return []` as its first line, then
+      restored from a pre-mutation copy and re-run green)
+    result: >-
+      Green run: 8 passed. Mutated run: 3 failed, 5 passed
+      (`test_the_probe_can_actually_see_the_defect_it_guards_against`,
+      `test_a_lookup_through_a_cte_far_from_its_from_clause_is_still_reported`,
+      `test_a_294_lookup_rewritten_onto_the_shared_table_is_reported`). Restored run: 8 passed
+      again, confirming the restore was exact.
+    exit: 0
+    ts: "2026-09-05T00:20Z"
+    seat: "session (M5, cure PR #5037, second round)"
+pii_scan: clean
+pii_note: >-
+  The consultant-requests table stores `client_id` and an evaluation reference, not names,
+  passports or contact details. No production data was read, copied or transcribed while
+  producing this pack — every production query above returns a boolean or a column default.
+dissent:
+  - seat: "Harness floor recompute (CI, deterministic)"
+    objection: >-
+      PR #5037 touches migrations_v2/**, hot-zone by path, floors at Gear 3 regardless of being
+      3 files and +570/-0, and shipped with no evidence/brief.yml — so the check FAILED with
+      "hot-zone diff with no evidence/brief.yml".
+    status: CONFIRMED
+    note: >-
+      Verified independently rather than accepted on the message alone: recomputed the floor from
+      the actual changed-file list and got 3. Answered by supplying brief+pack, never by touching
+      the gate.
+  - seat: "session (Pro), against its own first reading"
+    objection: >-
+      An early grep reported ZERO ROLLBACK markers across all three files and was one step away
+      from being written up as a blocker.
+    status: RETRACTED
+    note: >-
+      The grep pattern was `^-- ROLLBACK`. The marker the W42 lint actually requires — read out of
+      `scripts/lint_migration_rollback.py:41` rather than from memory — is `-- === ROLLBACK ===`,
+      and all three files carry it (293:80, 294:409, 295:127). The files were right; the probe was
+      wrong. CI's own `Detect missing ROLLBACK markers` agrees: SUCCESS.
+  - seat: "session (Pro), against its own second reading"
+    objection: >-
+      The first apply probe printed "FORWARD ROTTO" for all three migrations, which read as the
+      migrations being broken.
+    status: RETRACTED
+    note: >-
+      rc=127, "command not found" — zsh does not word-split an unquoted parameter, so `$PSQL`
+      holding a command line was treated as a single command NAME. The harness was broken, not the
+      migrations. Re-run with a shell function: rc=0 on all three. This is why the receipts above
+      capture rc directly rather than judging by a pipeline's exit status.
+  - seat: "visa-oracle-slice0-refute (adversarial subagent, no sight of this brief)"
+    objection: >-
+      Dispatched to find reasons these three migrations are UNSAFE across six axes — rollback
+      markers, Squawk locking hazards, idempotency, destructive surface, dependencies, PII — and
+      told not to bless them. On the destructive axis it found no blocker; on idempotency it
+      returned PARTIAL/UNKNOWN, because 293's CREATE TABLE / CREATE TRIGGER carry no IF NOT EXISTS
+      and it could not find a runner-level "already applied, skip" guard in the files it read. It
+      also raised one dependency UNKNOWN it was not permitted to close: whether
+      migration_080a_visa_oracle_sessions — the legacy Python migration that creates the table 295
+      alters — has actually RUN in production, as opposed to merely existing in the repo.
+    status: RETRACTED
+    note: >-
+      Both open points are closed by measurement, not by argument. IDEMPOTENCY: the forward SQL of
+      every migration runs inside `async with conn.transaction()` (migration_base.py:511, comment
+      "Use transaction for atomicity") — re-grepped in this session rather than taken from the
+      refuter's citation — so a mid-file failure rolls back entirely and cannot leave the
+      partial-apply state a bare CREATE TABLE would be vulnerable to. Confirmed empirically: the
+      probe database was taken forward, rolled back, and taken FORWARD AGAIN on the same database,
+      rc=0 each time. DEPENDENCY: visa_oracle_sessions was measured present in production
+      (to_regclass -> true) with expires_at defaulting to (now() + '90 days'::interval), which is
+      exactly the value 080a sets — that is the evidence 080a did run. Retracted because both
+      objections were legitimate from a read-only vantage and both are now answered.
+  - seat: "CI (GitHub Actions, tests.yml Backend Shards 1/2/3)"
+    objection: >-
+      Migration 295 could not be applied to a fresh database at all: `relation
+      "public.visa_oracle_sessions" does not exist`, killing the job before pytest
+      collected a test. The pack's central receipt had reported the forward apply as clean.
+    status: CONFIRMED
+    note: >-
+      Confirmed and CURED, not argued away. The receipt was true of the probe and false of the
+      world: the probe fabricated the missing precondition by hand. 295 now creates the table it
+      alters (production-faithful DDL, production's index names) so migrations_v2 owns its
+      existence; re-proven on a CI-shaped database with the table's absence asserted first. This
+      is the pack's own retracted-dissent discipline applied to the strongest claim it made: the
+      first probe was believed because it was green, and green only meant probe and object agreed.
+  - seat: "codex-gpt-5.6-sol (R9 council, review lane visa-oracle-slice0-council-sol)"
+    objection: >-
+      Verdict FAIL, not PASS. (1) 294's purge/retention-evidence join is not policy-unique: a
+      single request whose `requested_at` and `created_at` fall under two different-anchor
+      retention policies can match BOTH — the shared `EXCLUDE (effective_period WITH &&)`
+      constraint on the policy table does not prevent this because each policy compares a
+      different anchor column. Consequence: `retention_evidence()` can double-count one request as
+      two `expired_rows`, and the purge's `DELETE ... RETURNING candidates.policy_id` attributes
+      the deletion to a non-deterministic policy when both match; the duplicate row also consumes
+      `p_limit`. (2) 295's rollback does not restore the pre-forward state on a fresh database:
+      it recreates `visa_oracle_sessions` plus its two indexes on forward-apply, but the rollback
+      section only restores the 90-day `DEFAULT`, leaving the table and indexes in place; if 294
+      created the `btree_gist` extension, rollback does not drop it either — the PR's "each
+      rollback is symmetric with its forward half" claim does not hold for every initial state the
+      forward halves support. (3) 295's `CREATE INDEX IF NOT EXISTS` / `ALTER TABLE ... SET
+      DEFAULT` acquire their locks BEFORE checking whether the object already exists — "rewrites
+      no rows" does not imply "takes no long lock"; under concurrent DML on the live
+      `visa_oracle_sessions` table both statements can block and then fail on `lock_timeout=5s`.
+      (4) `REVOKE ALL ... FROM PUBLIC` on the purge function does not stop the table/function
+      OWNER (or a role with inherited EXECUTE via `ALTER DEFAULT PRIVILEGES`) from calling it —
+      the PR's "application role cannot reach it by accident" claim depends on an owner/role
+      separation the diff itself does not establish. (5) `requested_at`/`created_at` =
+      `'infinity'::timestamptz` satisfies 293's constraints and, under either retention anchor,
+      never becomes a purge candidate — a row can be made permanently retention-exempt.
+    status: PLAUSIBLE
+    note: >-
+      Not independently reproduced by this session against a live Postgres — per the ship
+      lifecycle, verifying/curing this is the gate's call, not something the council-journal task
+      is authorized to fix. Recorded as PLAUSIBLE rather than CONFIRMED because this session did
+      not itself run the migrations to observe the described failures; it is not a bare opinion
+      either — finding (2) above converges, independently and without shared context, with
+      tp1-qwen3.8-max's dissent entry below, and finding (3) converges with that same entry's
+      secondary point, which is the strongest signal this session has that both are real rather
+      than one seat's hallucination.
+  - seat: "tp1-qwen3.8-max (R9 council, review lane visa-oracle-slice0-council-qwen)"
+    objection: >-
+      Verdict FINDING, not PASS. Primary (converges with codex-gpt-5.6-sol's objection (2) above,
+      reached independently, no shared context): 295's rollback is asymmetric with its forward
+      half on any database where 295 itself creates `visa_oracle_sessions` (a fresh CI database, a
+      new environment, a DR replay) — the forward `CREATE TABLE IF NOT EXISTS` plus its two
+      `CREATE INDEX IF NOT EXISTS` are never dropped by the rollback section, which only restores
+      the 90-day `DEFAULT`; the table and both indexes are left behind. This directly contradicts
+      the PR body's "Each rollback is symmetric with its forward half" gate for that path.
+      Secondary (converges with codex-gpt-5.6-sol's objection (3) above): on production, where the
+      table already exists, 295's `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS`
+      still acquire catalog/table locks BEFORE checking existence, so the migration's own claim
+      that these statements are inert "no-ops" on production is true in effect but not in locking
+      — under concurrent write load to the live `visa_oracle_sessions` table the "no-op" can still
+      fail on `lock_timeout=5s`. Tertiary, lower-confidence notes: a legacy-named-index
+      environment (one built from the old migration_080a rather than from production) would get a
+      second, duplicate index rather than a no-op, because `IF NOT EXISTS` matches by name, not by
+      definition; no independent REVOKE on the two guard/trigger functions (flagged as
+      low-severity, since they only RAISE).
+    status: PLAUSIBLE
+    note: >-
+      Same caveat as the codex-gpt-5.6-sol entry above: not independently reproduced by this
+      session against a live Postgres. Recorded PLAUSIBLE, not CONFIRMED. Both of this entry's
+      main points converge with codex-gpt-5.6-sol's own dissent items (2) and (3) above — two
+      independent, no-shared-context seats naming the same two defects from each seat's own read
+      of the diff.
+tests:
+  - "No pytest in this slice — it is three .sql files. The three test modules that exercise these
+    tables (test_consultant_request_retention.py, test_consultant_assignment_router.py,
+    test_consultant_assignment_service.py) land in slice 1; they were run during the renumbering
+    and reported 25 passed, 0 failed, 1 error (a DependentObjectsStillExistError teardown against
+    the local test database, pre-existing and unrelated). Declared rather than omitted: this slice
+    ships DDL whose Python consumers are not in it."
+  - "The apply/rollback probe above IS this slice's test, and it is stronger than a unit test would
+    be: it runs the real SQL against a real Postgres carrying main's real schema."
+static:
+  - "Detect duplicate prefixes -> SUCCESS"
+  - "Detect missing ROLLBACK markers -> SUCCESS"
+  - "Squawk lint runs automatically on migrations_v2/*.sql (PR #306)"
+  - "prepush-guards, Lint, P3 static validation -> SUCCESS on the same head"
+notes:
+  - >-
+    This slice exists BECAUSE of an ordering constraint, not for tidiness: the consultant
+    assignment service in slice 1 reads tables these files create. Landing them together would
+    have made a green slice-1 CI depend on migrations that had not run yet.
+  - >-
+    Migrations are auto-merge-OFF per CLAUDE.md §2 / feedback_arm_automerge_default_not_leave_to_operator.
+    This PR is therefore NOT armed with `--auto`; the session merges it once its gates are green
+    and the refuter verdict is in. That is not a hand-off to the codeowner.
+  - >-
+    ADVERSARIAL LANE, VERDICT IN: the refuter returned SAFE-TO-OPEN on all six axes and is recorded
+    as a dissent entry above. It did NOT merely agree — it produced two findings this session did
+    not have (the per-file transaction wrapping, and the empty-policy-table second layer) and one
+    UNKNOWN it could not close from files alone. Both findings were independently re-verified here
+    before being relied on, and the UNKNOWN was closed with a production measurement the refuter was
+    not permitted to make. An earlier revision of this pack recorded the lane with status PENDING;
+    the lint correctly rejected that — `dissent.status` is a closed vocabulary and a prose stand-in
+    would have detached the rule rather than satisfied it.
