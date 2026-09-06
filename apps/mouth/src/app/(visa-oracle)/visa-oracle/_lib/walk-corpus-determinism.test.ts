@@ -19,11 +19,11 @@
  * updating `EXPECTED_OUTCOME` / `WALK_DEAD_END_ALLOWLIST` in the census test.
  */
 
-import { mkdtempSync, readFileSync, readdirSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
   DEFAULT_OUT_DIR,
@@ -50,6 +50,11 @@ describe("interview-walk corpus is regenerable byte-for-byte", () => {
     await writeWalkCorpus(generatedDir);
     generated = jsonFilesIn(generatedDir);
   }, 60_000);
+
+  afterAll(() => {
+    // Only ever the mkdtemp dir this file created — never the committed corpus.
+    if (generatedDir) rmSync(generatedDir, { recursive: true, force: true });
+  });
 
   it(`commits ${EXPECTED_WALK_COUNT} walks`, () => {
     expect(committed).toHaveLength(EXPECTED_WALK_COUNT);
