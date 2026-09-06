@@ -11,6 +11,7 @@
     "sponsor_category",
     "remote_clients",
     "remote_compensation",
+    "work_payer",
     "remote_employer_country",
     "remote_pt_pma",
     "stay_days",
@@ -45,10 +46,7 @@
       "reason": "NOT_ASKED"
     },
     "work.employer_country_code": { "status": "KNOWN", "value": "IT" },
-    "work.employer_is_indonesian_entity": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
-    },
+    "work.employer_is_indonesian_entity": { "status": "KNOWN", "value": true },
     "work.serves_indonesian_clients": { "status": "KNOWN", "value": false },
     "work.indonesia_source_compensation": { "status": "KNOWN", "value": true },
     "work.indonesian_work_sponsor_confirmed": {
