@@ -41,7 +41,9 @@ def admin_user() -> dict[str, str]:
 
 @pytest.fixture
 def team_user() -> dict[str, str]:
-    return {"id": "2", "email": "team@balizero.com", "role": "team_member"}
+    # "team" is a role production issues; "team_member" never was one, and the
+    # team gate is an allow-list now (service_accounts.py::TEAM_ROLES).
+    return {"id": "2", "email": "team@balizero.com", "role": "team"}
 
 
 @pytest.fixture
@@ -118,14 +120,14 @@ class TestCreateCase:
     @pytest.mark.parametrize(
         "scenario, role, principal_client_id, assigned_to, expected_status",
         [
-            ("different-clients", "team_member", 2, "TEAM@balizero.com", 201),
+            ("different-clients", "team", 2, "TEAM@balizero.com", 201),
             ("admin", "admin", 2, "other@example.com", 201),
-            ("same-client", "team_member", 1, "team@balizero.com", 201),
-            ("missing-principal", "team_member", 2, "team@balizero.com", 422),
-            ("missing-client", "team_member", 2, "team@balizero.com", 422),
-            ("archived-client", "team_member", 2, "team@balizero.com", 422),
-            ("other-staff", "team_member", 2, "other@example.com", 422),
-            ("unassigned", "team_member", 2, None, 422),
+            ("same-client", "team", 1, "team@balizero.com", 201),
+            ("missing-principal", "team", 2, "team@balizero.com", 422),
+            ("missing-client", "team", 2, "team@balizero.com", 422),
+            ("archived-client", "team", 2, "team@balizero.com", 422),
+            ("other-staff", "team", 2, "other@example.com", 422),
+            ("unassigned", "team", 2, None, 422),
         ],
         ids=lambda value: str(value),
     )
@@ -261,7 +263,7 @@ class TestCreateCase:
         fake_repo.insert.assert_awaited_once()
 
     @pytest.mark.integration
-    @pytest.mark.parametrize("role", ["admin", "team_member"])
+    @pytest.mark.parametrize("role", ["admin", "team"])
     def test_practice_for_requested_client_is_linked(
         self, mock_db_pool, admin_user, role: str
     ) -> None:
@@ -612,9 +614,7 @@ class TestGetCase:
         assert response.status_code == 403
 
     @pytest.mark.integration
-    def test_get_case_success_includes_allowed_next_stages(
-        self, mock_db_pool, admin_user
-    ) -> None:
+    def test_get_case_success_includes_allowed_next_stages(self, mock_db_pool, admin_user) -> None:
         pool, conn = mock_db_pool
         client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
 
@@ -727,9 +727,7 @@ class TestAdvanceCase:
         assert conn.execute.call_count == 1  # lock only, save() never reached
 
     @pytest.mark.integration
-    def test_same_stage_advance_returns_409_and_never_saves(
-        self, mock_db_pool, admin_user
-    ) -> None:
+    def test_same_stage_advance_returns_409_and_never_saves(self, mock_db_pool, admin_user) -> None:
         pool, conn = mock_db_pool
         client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
         case = _existing_case(stage=E33Stage.ITAS_ACTIVE)
@@ -991,9 +989,7 @@ class TestSummary:
         assert body["guarantee_due_30d"] == 0
 
     @pytest.mark.integration
-    def test_summary_active_total_excludes_terminal_stages(
-        self, mock_db_pool, admin_user
-    ) -> None:
+    def test_summary_active_total_excludes_terminal_stages(self, mock_db_pool, admin_user) -> None:
         pool, conn = mock_db_pool
         client = TestClient(_make_app(pool, admin_user), raise_server_exceptions=False)
         conn.fetch = AsyncMock(

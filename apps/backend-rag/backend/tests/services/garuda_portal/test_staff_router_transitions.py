@@ -306,7 +306,9 @@ class TestStaffAuthGuiltAndInnocence:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get(
                 f"/api/visa/voa/staff/practices/{practice_id}",
-                headers={"Authorization": _bearer(_TEAM_A, "user")},
+                # A colleague carries a role the team allow-list knows; "user" is
+                # the role-less default and is no longer anyone (PENDING-ARMS 88).
+                headers={"Authorization": _bearer(_TEAM_A, "Team Leader")},
             )
         assert resp.status_code == 403
         assert resp.json()["code"] == "ACCESS_DENIED"
@@ -749,7 +751,8 @@ class TestAssignmentAndListVisibility:
             resp = await client.post(
                 f"/api/visa/voa/staff/practices/{practice_id}/assignment",
                 headers={
-                    "Authorization": _bearer(_TEAM_A, "user"),
+                    # non-admin COLLEAGUE: a census role, not the role-less default
+                    "Authorization": _bearer(_TEAM_A, "Team Leader"),
                     "Idempotency-Key": "assign-403-key-00000000001",
                 },
                 json={"assigned_to": _TEAM_A},
@@ -876,7 +879,9 @@ class TestAssignmentAndListVisibility:
             resp = await client.post(
                 f"/api/visa/voa/staff/practices/{practice_id}/transitions",
                 headers={
-                    "Authorization": _bearer(accounting_email, "user"),
+                    # the REAL accounting role: refused at eligibility by the registry,
+                    # not by being role-less (that would prove the wrong thing)
+                    "Authorization": _bearer(accounting_email, "Accounting"),
                     "Idempotency-Key": "acct-transit-key-000000001",
                 },
                 json={"transition_id": "PR-02"},
@@ -968,13 +973,13 @@ class TestAssignmentAndListVisibility:
 
             assignee_resp = await client.get(
                 f"/api/visa/voa/staff/practices/{practice_id}",
-                headers={"Authorization": _bearer(_TEAM_B, "user")},
+                headers={"Authorization": _bearer(_TEAM_B, "Team Leader")},
             )
             assert assignee_resp.status_code == 200
 
             other_resp = await client.get(
                 f"/api/visa/voa/staff/practices/{practice_id}",
-                headers={"Authorization": _bearer(_TEAM_A, "user")},
+                headers={"Authorization": _bearer(_TEAM_A, "Team Leader")},
             )
             assert other_resp.status_code == 403
 
@@ -1031,7 +1036,7 @@ class TestAssignmentAndListVisibility:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.get(
                 "/api/visa/voa/staff/practices",
-                headers={"Authorization": _bearer(_TEAM_A, "user")},
+                headers={"Authorization": _bearer(_TEAM_A, "Team Leader")},
             )
         assert resp.status_code == 200
         ids = {row["practice_id"] for row in resp.json()["items"]}
