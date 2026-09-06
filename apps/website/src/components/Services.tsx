@@ -9,7 +9,10 @@ export function Services() {
       >
         <span className="eyebrow">Advice, with people behind it</span>
         <h2 id="services-title">A team for your next step.</h2>
-        <p>Explore the tools below, or talk to us about the help you need.</p>
+        <p>Explore our services, or talk to us about the help you need.</p>
+        <a className="textlink" href="/services">
+          Explore all services →
+        </a>
       </section>
       <section className="tools" id="tools" aria-label="Services and tools">
         {services.map((service, index) => (
@@ -33,6 +36,9 @@ export function Services() {
             <div className="tool-ui">
               <p>{service.detail}</p>
             </div>
+            <a className="textlink" href={service.route}>
+              Explore {service.title} <span aria-hidden="true">→</span>
+            </a>
             <a className="textlink" href={service.href}>
               {service.action} <span aria-hidden="true">↗</span>
             </a>

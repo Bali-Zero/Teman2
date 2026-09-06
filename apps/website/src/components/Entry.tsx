@@ -5,8 +5,8 @@ import "./entry.css";
 
 const navigation = [
   { label: "Explore", href: "#tools" },
-  { label: "Services", href: "#services" },
-  { label: "Journal", href: "#journal" },
+  { label: "Services", href: "/services" },
+  { label: "Journal", href: "/journal" },
   { label: "Our team", href: "#team" },
 ];
 
@@ -85,10 +85,10 @@ export function SiteHeader() {
 }
 
 const categories = [
-  { label: "Visas & residence", href: "#visa-tool" },
-  { label: "Business & company", href: "#business-tool" },
-  { label: "Tax", href: "#tax-tool" },
-  { label: "Property", href: "#property-tool" },
+  { label: "Visas & residence", href: "/services/immigration" },
+  { label: "Business & company", href: "/services/company-setup" },
+  { label: "Tax", href: "/services/tax" },
+  { label: "Property", href: "/services/property" },
 ];
 
 export function Hero() {

@@ -26,8 +26,8 @@ describe("SiteHeader", () => {
     expect(navigation.getAttribute("data-open")).toBe("true");
     for (const [name, href] of [
       ["Explore", "#tools"],
-      ["Services", "#services"],
-      ["Journal", "#journal"],
+      ["Services", "/services"],
+      ["Journal", "/journal"],
       ["Our team", "#team"],
       ["My account", "https://my.balizero.com/"],
     ]) {
@@ -72,16 +72,16 @@ describe("SiteHeader", () => {
 });
 
 describe("Hero", () => {
-  it("offers explicit category links to the matching tool sections", () => {
+  it("offers explicit category links to the matching local service journeys", () => {
     render(<Hero />);
     const startingPoints = screen.getByRole("list", {
       name: "Choose where to start",
     });
     const destinations = [
-      ["Visas & residence", "#visa-tool"],
-      ["Business & company", "#business-tool"],
-      ["Tax", "#tax-tool"],
-      ["Property", "#property-tool"],
+      ["Visas & residence", "/services/immigration"],
+      ["Business & company", "/services/company-setup"],
+      ["Tax", "/services/tax"],
+      ["Property", "/services/property"],
     ];
     expect(within(startingPoints).getAllByRole("link")).toHaveLength(
       destinations.length,

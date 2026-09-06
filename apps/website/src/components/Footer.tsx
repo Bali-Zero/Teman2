@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 export function Footer() {
   return (
     <footer>
@@ -19,14 +18,14 @@ export function Footer() {
           <div className="footer-col">
             <span className="eyebrow">{"Explore"}</span>
             <a href="#tools">{"Our tools"}</a>
-            <a href="#services">{"Our services"}</a>
+            <a href="/services">{"Our services"}</a>
             <a href="#evoa">{"E-VOA"}</a>
-            <a href="https://balizero.com/news">{"The Bali Zero Journal"}</a>
+            <a href="/journal">{"The Bali Zero Journal"}</a>
           </div>
           <div className="footer-col">
             <span className="eyebrow">{"Bali Zero"}</span>
             <a href="https://balizero.com/v2/company/about">{"Our story"}</a>
-            <a href="https://balizero.com/team">{"Our team"}</a>
+            <a href="#team">{"Our team"}</a>
             <a href="https://maps.app.goo.gl/whiMUTNchcDR5naz8">
               {"Client reviews"}
             </a>
