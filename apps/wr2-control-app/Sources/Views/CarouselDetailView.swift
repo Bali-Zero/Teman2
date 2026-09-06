@@ -29,6 +29,7 @@ struct CarouselDetailView: View {
     @State private var publishCaption = ""
     @State private var captionIsLoading = false
     @State private var captionLoadError: String?
+    @State private var publishDryRunPassed = false
     // Live console: tail of <carousel>/.run.log, refreshed while a run is in flight.
     @State private var logTail: [String] = []
     @State private var showConsole = false
@@ -600,6 +601,7 @@ struct CarouselDetailView: View {
                 publishCaption = ""
                 captionLoadError = nil
                 captionIsLoading = true
+                publishDryRunPassed = false
                 state.loadInstagramCaption(slug: carousel.slug) { result in
                     captionIsLoading = false
                     switch result {
@@ -686,6 +688,9 @@ struct CarouselDetailView: View {
                         RoundedRectangle(cornerRadius: 8)
                             .strokeBorder(Theme.hairline, lineWidth: 1)
                     )
+                    .onChange(of: publishCaption) { _ in
+                        publishDryRunPassed = false
+                    }
 
                 HStack(spacing: 8) {
                     if publishCaption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -708,9 +713,15 @@ struct CarouselDetailView: View {
             HStack(spacing: 10) {
                 // Dry-run: exercises upload + backend validation, posts NOTHING.
                 Button {
+                    let checkedCaption = publishCaption
                     state.publishToInstagram(
-                        slug: carousel.slug, caption: publishCaption, lang: lang, confirm: false
-                    )
+                        slug: carousel.slug,
+                        caption: checkedCaption,
+                        lang: lang,
+                        confirm: false
+                    ) { passed in
+                        publishDryRunPassed = passed && publishCaption == checkedCaption
+                    }
                 } label: {
                     Text(lang.t("detail.publishIGCheck"))
                         .font(.system(size: 13, weight: .semibold))
@@ -745,6 +756,7 @@ struct CarouselDetailView: View {
                         || InstagramCaption.isPublishable(publishCaption) == false
                         || state.isPublishingSlug != nil
                         || carousel.isPublishEligible == false
+                        || publishDryRunPassed == false
                 )
 
                 Button(lang.t("detail.publishIGCancel")) { showPublishIGConfirm = false }

@@ -182,11 +182,24 @@ class RegisterNotificationRequest(BaseModel):
     title: str = Field("", description="Article title for display")
 
 
-class PublishToSiteRequest(BaseModel):
-    """Optional request body for publish with homepage position."""
+HomepagePosition = Literal[
+    "latest",
+    "hero_main",
+    "hero_2",
+    "hero_3",
+    "hero_4",
+    "hero_5",
+    "insight_1",
+    "insight_2",
+    "insight_3",
+]
 
-    position: str = Field(
-        default="latest",
+
+class PublishToSiteRequest(BaseModel):
+    """Explicit homepage position for a publication request."""
+
+    position: HomepagePosition = Field(
+        ...,
         description="Homepage position: hero_main, hero_2-5, insight_1-3, or latest",
     )
 
@@ -195,7 +208,7 @@ class WorkspaceNewsPublishRequest(BaseModel):
     """Explicit authorization carried by the Damar workspace agent."""
 
     confirmation: Literal["DAMAR_CONFIRMED"]
-    position: Literal["latest", "hero_main", "hero_2", "hero_3", "hero_4", "hero_5"] = "latest"
+    position: HomepagePosition
 
 
 class WorkspaceNewsUpdateRequest(BaseModel):
