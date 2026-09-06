@@ -56,6 +56,12 @@ _GHOST_ADMIN_EMAIL = "ghost-admin@example.test"
 _ADMIN_CLIENT_EMAIL = "admin-client@example.test"
 _ADMIN_MONITORING_EMAIL = "admin-monitoring@example.test"
 _ADMIN_NULL_ROLE_EMAIL = "admin-null-role@example.test"
+#: Admin addresses as the VALIDATOR normalizes them. The corpus below stores
+#: them padded with spaces / a tab / a newline and in upper case, because round
+#: 2 of the grade found exactly that shape disappearing: SQL's `LOWER` does not
+#: trim, the validator's `.strip().lower()` does.
+_PADDED_ADMIN_EMAIL = "padded-admin@example.test"
+_TAB_ADMIN_EMAIL = "tab-admin@example.test"
 
 #: Pinned in ONE place: the fixture below patches
 #: `staff_auth._garuda_practice_admin_emails` with this set, and both the
@@ -68,6 +74,8 @@ _ADMIN_SET = frozenset(
         _ADMIN_CLIENT_EMAIL,
         _ADMIN_MONITORING_EMAIL,
         _ADMIN_NULL_ROLE_EMAIL,
+        _PADDED_ADMIN_EMAIL,
+        _TAB_ADMIN_EMAIL,
     }
 )
 
@@ -146,20 +154,17 @@ def _roster() -> list[dict[str, Any]]:
 
 
 class _FakeConn:
-    """The two queries this code path issues, emulated from the bind parameters
-    actually passed AND from SQL's three-valued logic — never from a restatement
-    of what the SQL is for.
+    """The two queries this code path issues.
 
-    * `fetch(_CANDIDATE_SQL, denylist, admins)` stands for
-      `WHERE active = TRUE AND (role <> ALL($1::text[]) OR LOWER(email) =
-      ANY($2::text[]))`. A NULL `role` makes the first comparison UNKNOWN, so
-      the row survives only when the admin arm is TRUE; `UNKNOWN OR FALSE` is
-      UNKNOWN and `WHERE` drops it. The role comparison is on the RAW value, as
-      SQL does it — no lowercasing, no trimming. Grade finding 2 (LOW, codex on
-      0ead993f3b1b): the first version of this fake coerced NULL to `""` and
-      lowercased before comparing, i.e. it was MORE GENEROUS than the SQL it
-      stands in for, and that generosity is exactly what masked the admin
-      under-match. A fake may be less generous than the real thing; never more.
+    * `fetch(_ACTIVE_ROSTER_SQL)` stands for `WHERE active = TRUE` and nothing
+      else, because that is now the whole of the SQL this module asks for. There
+      is deliberately no comparison semantics left to emulate: round 1 (codex
+      grade of 0ead993f3b1b) found a NULL role surviving the fake but not SQL's
+      three-valued `role <> ALL(...)`, and round 2 (cure head 2ec67edde2) found
+      the fake stripping stored emails the way Python does while SQL's `LOWER`
+      does not — in both cases the fake was MORE GENEROUS than the query it
+      stood in for, which is precisely how an under-match hides. A fake that
+      models one predicate cannot be kinder than it.
     * `fetchrow(... WHERE LOWER(email) = $1 AND active = TRUE)` is the
       validator's own role lookup, which does lowercase — so this one does too.
 
@@ -177,18 +182,7 @@ class _FakeConn:
     async def fetch(self, _sql: str, *args: Any) -> list[dict[str, Any]]:
         self.fetch_calls += 1
         self.fetch_args = args
-        excluded = tuple(args[0]) if args else ()
-        admins = {str(email).strip().lower() for email in (args[1] if len(args) > 1 else ())}
-        candidates: list[dict[str, Any]] = []
-        for row in self._rows:
-            if not row["active"]:
-                continue
-            admin_arm = str(row["email"] or "").strip().lower() in admins
-            role = row["role"]
-            role_arm: bool | None = None if role is None else (role not in excluded)
-            if admin_arm or role_arm is True:
-                candidates.append(row)
-        return candidates
+        return [row for row in self._rows if row["active"]]
 
     async def fetchrow(self, _sql: str, *args: Any) -> dict[str, Any] | None:
         self.fetchrow_calls += 1
@@ -347,33 +341,119 @@ async def test_active_admin_row_is_offered_whatever_its_role(email: str, role: s
     assert [item["email"] for item in listed] == [email]
 
 
-async def test_non_admin_null_role_is_dropped_by_the_query_not_by_the_predicate() -> None:
-    """Grade finding 2 (LOW): the fake must not be more generous than the SQL it
-    stands in for. A NULL role makes `role <> ALL(...)` UNKNOWN, so WHERE drops
-    the row and the validator is never asked — asserted through the fake's own
-    call counter, because "not offered" alone would also pass with an unfaithful
-    fake that handed the row over and let the predicate refuse it."""
+async def test_padded_and_upper_case_admin_rows_are_offered_normalized() -> None:
+    """Round 2's exact shape, as its own case: the STORED value is padded and
+    upper case, the validator normalizes and accepts, so the picker must offer
+    the NORMALIZED address — the one `assignPractice` will be called with. A
+    comparison that lowercases without trimming offers nothing here, which is
+    what the cure head 2ec67edde2 did."""
+    rows = [
+        _row("  Padded-Admin@Example.Test ", "client"),
+        _row("\tTab-Admin@Example.Test\n", "monitoring"),
+    ]
+    listed = await assignment_targets.list_garuda_assignment_targets(_FakeConn(rows))
+    assert [item["email"] for item in listed] == [_PADDED_ADMIN_EMAIL, _TAB_ADMIN_EMAIL]
+
+
+async def test_non_admin_null_role_is_refused_by_the_validator_not_by_a_prefilter() -> None:
+    """A NULL role is now a CANDIDATE — Python's `None not in {...}` is False,
+    where SQL's `role <> ALL(...)` was UNKNOWN and `WHERE` dropped the row — and
+    the validator refuses it, which is the decision that actually matters.
+    Asserted on the fake's own call counter so the row is provably ASKED ABOUT:
+    "not offered" alone would also pass if a prefilter had silently discarded it,
+    and that silent discard is exactly what round 1's finding was."""
     rows = [_row("null-role@example.test", None)]
     conn = _FakeConn(rows)
 
     assert await assignment_targets.list_garuda_assignment_targets(conn) == []
-    assert conn.fetchrow_calls == 0, "a NULL-role non-admin reached the validator's query"
+    assert conn.fetchrow_calls == 1, "the validator was never asked about the NULL-role row"
     assert not await staff_auth.is_valid_garuda_assignment_target(
         _FakeConn(rows), "null-role@example.test"
     )
 
 
-async def test_candidate_query_is_fed_the_admin_set_not_a_copy_of_it() -> None:
-    """The second bind parameter IS the admin set as `staff_auth` currently
-    defines it, read through the public accessor: a hardcoded list inside the
-    enumeration fails here the day the set moves, and the query's two arms cannot
-    drift apart from the shortcut they exist to match."""
-    conn = _FakeConn(_roster())
-    await assignment_targets.list_garuda_assignment_targets(conn)
+async def test_candidate_selection_reads_the_admin_set_from_its_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The admin set used for narrowing is whatever `staff_auth` publishes NOW:
+    no bind parameter, no module constant, no copy. Move the authority between
+    two calls and the candidate set moves with it — a remembered list would keep
+    the first answer. This is the other half of round 2's contract: the
+    enumeration READS the validator's inputs instead of restating them."""
+    late_admin = "late-admin@example.test"
+    rows = [_row(_ADMIN_CLIENT_EMAIL, "client"), _row(late_admin, "client")]
 
-    assert len(conn.fetch_args) == 2, "the candidate query must carry denylist AND admin set"
-    assert set(conn.fetch_args[1]) == set(_ADMIN_SET)
-    assert set(conn.fetch_args[1]) == set(staff_auth.garuda_practice_admin_emails())
+    first = await assignment_targets.list_garuda_assignment_targets(_FakeConn(rows))
+    assert [item["email"] for item in first] == [_ADMIN_CLIENT_EMAIL]
+
+    monkeypatch.setattr(
+        staff_auth, "_garuda_practice_admin_emails", lambda: _ADMIN_SET | {late_admin}
+    )
+    second = await assignment_targets.list_garuda_assignment_targets(_FakeConn(rows))
+    assert [item["email"] for item in second] == [_ADMIN_CLIENT_EMAIL, late_admin]
+
+
+async def test_candidate_selection_is_complete_and_sound() -> None:
+    """THE CONTRACT, as an executable property rather than a list of cases.
+
+    C1 COMPLETENESS — every ACTIVE row the validator accepts is offered.
+    C2 SOUNDNESS — every offered email is one the validator accepts.
+
+    This is the specification the round-2 verdict asked for before another
+    implementation attempt ("suspend the correction loop and pin the
+    email-normalization/candidate-completeness contract"). Per-case assertions
+    would have to anticipate the next way a stored value can differ from its
+    normalized form, and twice now that difference was the thing nobody
+    anticipated: first SQL's three-valued NULL, then `LOWER` without `TRIM`. A
+    property does not have to guess. The corpus below therefore carries the
+    shapes that broke it — padded, tabbed and upper-case stored emails for both
+    admins and ordinary staff, roles NULL / empty / case-varied / spaced /
+    denylisted / census-real, an inactive row, and the read-only viewer.
+    """
+    rows = [
+        _row("  Padded-Admin@Example.Test ", "client"),
+        _row(f"\t{_TAB_ADMIN_EMAIL.replace('tab-admin', 'Tab-Admin')}\n", None),
+        _row(_ADMIN_CLIENT_EMAIL, "client"),
+        _row(_ADMIN_MONITORING_EMAIL, "monitoring"),
+        _row(_ADMIN_NULL_ROLE_EMAIL, None),
+        _row("Padded-Staff@Example.Test", "founder"),
+        _row("Client@Example.Test", "Client"),
+        _row("spaced-role@example.test", " client "),
+        _row("empty-role@example.test", ""),
+        _row("null-role@example.test", None),
+        _row("partner-row@example.test", "partner"),
+        _row(_READONLY_VIEWER_EMAIL, "board member"),
+        _row("inactive-staff@example.test", "founder", active=False),
+        *[_row(f"{_slug(role)}@example.test", role) for role in _CENSUS_ROLES],
+    ]
+
+    listed = {
+        item["email"]
+        for item in await assignment_targets.list_garuda_assignment_targets(_FakeConn(rows))
+    }
+
+    accepted: set[str] = set()
+    for row in rows:
+        if not row["active"]:
+            continue
+        email = str(row["email"] or "").strip().lower()
+        if not email:
+            continue
+        if await staff_auth.is_valid_garuda_assignment_target(_FakeConn(rows), email):
+            accepted.add(email)
+
+    # anchors: neither half may pass vacuously, and the padded shapes must be in
+    # play — a corpus that never exercises the normalization cannot police it
+    assert accepted, "the corpus accepts nobody: C1 would prove nothing"
+    assert len(rows) > len(accepted), "the corpus refuses nobody: C2 would prove nothing"
+    assert _PADDED_ADMIN_EMAIL in accepted and _TAB_ADMIN_EMAIL in accepted
+
+    missing = accepted - listed
+    offered_but_refused = listed - accepted
+    assert not missing, f"C1 COMPLETENESS broken — accepted targets not offered: {sorted(missing)}"
+    assert not offered_but_refused, (
+        f"C2 SOUNDNESS broken — offered but the validator refuses: {sorted(offered_but_refused)}"
+    )
 
 
 async def test_label_prefers_full_name_then_name_then_email() -> None:
