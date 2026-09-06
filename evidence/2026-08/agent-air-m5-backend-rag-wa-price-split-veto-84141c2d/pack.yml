@@ -1,0 +1,161 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref:
+  "PR #5337 (agent/air-m5/backend-rag/wa-price-split-veto). Governing rule: Zero 2026-07-17 —
+  one all-inclusive client-facing price, never a PNBP-vs-fee split. Loop protocol:
+  ~/Desktop/live-bot-test-loop/LOOP-PROTOCOL-v1.md. Sequencing spec: PR #5352
+  (research/operations/2026-08-30-wa-price-operand-typed-contract.md)."
+lanes:
+  - lane: wa-price-split-veto
+    role: build
+    seat:
+      claude-opus-5 (conducting session — fired the live battery that produced row 379, wrote the veto,
+      the reason code, migration 299 and the tests)
+  - lane: wa-price-split-refute
+    role: review
+    seat:
+      codex gpt-5.6-sol at xhigh (cross-family, dispatched on the diff WITHOUT the brief and told to
+      break the guard; returned BLOCK with 15 findings)
+seat_diversity: satisfied
+seat_diversity_note:
+  "ONE build lane, and it is Anthropic: this PR was built by the conducting session. D3 asks for a
+  non-Anthropic BUILDER only once a pack declares two or more build lanes, so the count exempts this
+  pack — it is not a waiver. An earlier revision declared a second build lane for the coupled PR #5346;
+  that was wrong bookkeeping, because #5346 is a different pull request with its own pack, and citing
+  its build here inflated this pack's lane count without adding a builder. Its role in THIS change is
+  sequencing, which is where it now lives: plan_ref, the sequencing receipt, and the third dissent
+  entry. What diversity this pack does carry is on the REVIEW side: the refuter is a different vendor
+  family from the builder (OpenAI gpt-5.6-sol vs Anthropic Opus 5) and never saw the brief, and a
+  second cross-family seat (Moonshot kimi-code/k3) reviewed the coupled PR and is recorded in
+  journal.jsonl."
+diff:
+  files: 7
+  net_lines: 910
+  hot_zone: "apps/backend-rag/backend/db/migrations_v2/300_*.sql — floor 3 by path"
+receipts:
+  - claim:
+      Deterministic gear floor recomputed from THIS PR's actual changed-file list is 3, matching the
+      declared gear and the `Harness floor recompute` failure that demanded this pack
+    cmd:
+      git -C <worktree> diff --name-only origin/main...HEAD > /tmp/split-changed.txt && python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/split-changed.txt
+    result: 3 (migrations_v2/** is hot-zone by path); 7 files, net 910 lines
+    exit: 0
+    ts: 2026-08-31T05:35Z
+    seat: session (M5)
+  - claim:
+      THE DEFECT IS REAL AND WAS OBSERVED IN PRODUCTION, not constructed — wa_outbox row 379 answered a
+      client price question by splitting the government levy out of the Bali Zero price
+    cmd:
+      _grade.py against the prod container (read-only, via run_remote.sh) — reads the OUTBOUND body,
+      which is the client surface after scaffold strip, rich-text format and the 4096 cut
+    result:
+      "row 379, route=codex, done@1 — 'biaya layanan kami: offshore Rp17.000.000 [...] PNBP pemerintah
+      Rp9.500.000 untuk 2 tahun'; grader G1b=['pnbp_split']"
+    exit: 0
+    ts: 2026-08-30T18:40Z
+    seat: session (M5 -> prod container, read-only)
+  - claim:
+      The anchoring veto CANNOT catch it — the 9.5M figure is present in a retrieved chunk, so that veto
+      passes the split presentation by design
+    cmd: price_tokens_outside_sources(<row 379 text>, <package sources>)
+    result: "[] — no offender; the split price is invisible to the existing guard"
+    exit: 0
+    ts: 2026-08-30T19:15Z
+    seat: session (M5)
+  - claim:
+      The guilt case and every innocence case hold on the SHIPPED code, including two texts taken
+      verbatim from live production answers
+    cmd: PYTHONPATH=. ./.venv/bin/python -m pytest backend/tests/unit/services/integrations/test_wa_finalize.py backend/tests/unit/services/test_wa_codex_leg.py
+    result: 181 passed
+    exit: 0
+    ts: 2026-08-30T20:31Z
+    seat: session (M5, worktree merged onto post-#5346 main)
+  - claim:
+      "THE SEQUENCING RECEIPT — with this veto and the anchoring veto BOTH live, a correct answer now has
+      a shape that passes, and the defect does not. Before #5346 this was false, which is why this PR was
+      deliberately disarmed rather than merged"
+    cmd: price_split_offenders(t) and price_tokens_outside_sources(t, SRC) over six answer shapes
+    result:
+      "split price (the defect) -> VETO · all-in full digits (what the ruling asks) -> PASS · all-in
+      'IDR 26.5m' -> PASS · all-in '26.5 million' -> PASS · row 385 verbatim -> PASS · invented total
+      Rp31.000.000 -> VETO"
+    exit: 0
+    ts: 2026-08-30T20:29Z
+    seat: session (M5, both guards on one tree)
+  - claim: Pre-deploy sequence per CLAUDE.md section 11 is green on the coupled change
+    cmd:
+      import chain (backend.app.dependencies.get_current_user) + pytest test_kg_langgraph.py
+      test_kg_subgraphs.py test_confidence.py
+    result: import OK; 91 passed
+    exit: 0
+    ts: 2026-08-30T20:10Z
+    seat: backend-verifier subagent (independent of the author)
+pii_scan: clean
+pii_scan_note:
+  "The veto returns marker NAMES only — never the matched text, never the amount — and the DB stores the
+  single code `finalize_price_split_fee` regardless of which marker fired (same discipline as
+  scan_text_for_secret_egress). Every test fixture is synthetic or a de-identified production answer
+  about PRICES; no client name, number or document appears in this PR, its tests, or its log lines."
+dissent:
+  - seat: codex gpt-5.6-sol xhigh (refuter, dispatched on the diff without the brief)
+    objection:
+      "BLOCK, 15 findings. The decisive class: sentence segmentation. An Indonesian abbreviation
+      ('PP No. 28') severed a marker from its amount; a full-width stop failed to segment at all, letting
+      one sentence's inclusion wording exempt another sentence's split levy; a WhatsApp bullet with the
+      label and the amount on separate LINES was cut by the newline rule. Separately, ANY inclusion wording
+      in a sentence exempted it, so 'tidak termasuk' — a NEGATED inclusion — read as an inclusion."
+    status: CONFIRMED
+    resolution:
+      "14 of the 15 were re-run against the code and reproduced verbatim; the 15th (EUR already fires) did
+      NOT and is pinned by an innocence test so it is never 'fixed' again. The segmenter was DELETED rather
+      than patched — association is now a 140-char proximity window, which dissolves five findings as one
+      class — and the exemption logic was inverted so that an explicit 'paid separately' statement is
+      checked FIRST and beats any inclusion wording."
+  - seat: claude-opus-5 (same session, acting on a live measurement rather than a review)
+    objection:
+      "The widened exemption list would have VETOED wa_outbox row 385, which is a CORRECT answer: one
+      all-in total followed by 'This includes our service fee plus the IDR 9.5m government fee'. The list
+      knew 'is included' but not 'all-in' nor the bare verb 'includes'."
+    status: CONFIRMED
+    resolution:
+      "Both live texts added as innocence tests. Then adding bare 'mencakup' to cover them REGRESSED the
+      guilt case — row 379 says the PNBP 'mencakup visa, ITAS', which describes what the levy BUYS, not
+      that it sits inside the price — and the reproduced-defect test went red and caught it. Only the bound
+      form 'sudah mencakup' survives. This is the entire reason a guard ships with a guilt case."
+  - seat: "codex gpt-5.6-sol xhigh (refuter, on the coupled PR #5346)"
+    objection:
+      "The two guards together leave a client price question with almost no legal answer: the split shape
+      fails this veto, the all-in shape fails the anchoring veto, and the only survivor passes because
+      'IDR 26.5m' canonicalizes to 265 — under the veto floor. It passes by blindness."
+    status: CONFIRMED
+    resolution:
+      "This PR was DISARMED for six hours rather than merged, #5346 was built, refuted three times and
+      merged first (2026-08-30T20:26:41Z), and the sequencing receipt above re-measures the matrix with
+      both guards live. Merging this alone would have converted a wrong answer into no answer."
+  - seat: "kimi-code/k3 (refuter, dispatched on this diff, no brief)"
+    objection:
+      "FIX-FIRST, 12 findings. The decisive pair are both false POSITIVES on COMPLIANT answers, and they
+      are one defect twice: the separation list mixed already-negative forms (`tidak termasuk`,
+      `not included` — they contain their own negator and MEAN separation) with positively-asserted
+      claims (`terpisah`, `billed separately` — they reverse when negated). Since separation is checked
+      before inclusion and beats it, the most natural compliant sentence in the bot's register was the
+      one shape guaranteed to fail: `tidak perlu membayar PNBP secara terpisah - total Rp15.000.000
+      sudah mencakup semua biaya pemerintah`, and its English twin `you will not be billed separately
+      ... already included`."
+    status: CONFIRMED
+    resolution:
+      "Both reproduced by direct measurement on the shipped code — they returned ['pnbp',
+      'biaya_pemerintah'] and ['pnbp']. Cured by splitting the separation list in two and
+      negation-testing only the positive forms, within 40 characters AND within the same sentence; the
+      sentence bound is what keeps `Kami tidak bisa memberikan diskon. PNBP Rp9.500.000 dibayar
+      terpisah.` guilty, because that negator belongs to the discount. Four tests added in both
+      directions, and the guilt case (row 379) and innocence case (row 385) — both real production
+      answers rather than fixtures — are unchanged. The reviewer's remaining ten findings are COVERAGE
+      GAPS this change inherits rather than defects it introduces: bare `termasuk`/`included` absent
+      from the inclusion list, `di luar paket` and `payable directly` absent from separation, marker
+      inflection, non-ASCII space variants past U+00A0. A measurement pass on the four cheapest of them
+      showed two TRADE one error class for another — bare `termasuk` alone cures a false positive and
+      opens a false negative, and `dibayar langsung` added to separation is itself negation-blind — so
+      they go to the typed operand contract (PR #5352), not a fifth predicate round here. Agent PR
+      Contract rule 8."
