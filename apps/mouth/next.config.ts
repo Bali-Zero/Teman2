@@ -231,6 +231,36 @@ const nextConfig: NextConfig = {
   // Redirect legacy /kbli-navigator to new Next.js /kbli app
   async redirects() {
     return [
+      // Newsroom deduplication (2026-09-06): preserve inbound links while
+      // consolidating duplicate articles created with truncated slugs.
+      {
+        source:
+          "/business/bali-vs-koh-samui-where-your-property-money-actually-works-h",
+        destination:
+          "/business/bali-vs-koh-samui-where-your-property-money-actually-works-harder",
+        permanent: true,
+      },
+      {
+        source:
+          "/business/rupiah-under-pressure-what-bank-indonesias-intervention-mean",
+        destination:
+          "/business/rupiah-under-pressure-what-bank-indonesias-intervention-means-for-you",
+        permanent: true,
+      },
+      {
+        source:
+          "/taxes/indonesia-gives-tax-authority-power-to-override-your-interco",
+        destination:
+          "/taxes/indonesia-gives-tax-authority-power-to-override-your-intercompany-prices",
+        permanent: true,
+      },
+      {
+        source:
+          "/trends/indonesias-data-law-now-covers-us-transfers-what-expats-and-",
+        destination:
+          "/trends/indonesias-data-law-now-covers-us-transfers-what-expats-and-businesses-must-know",
+        permanent: true,
+      },
       // Category renames (2026-03-23) — keep for 12+ months
       { source: "/immigration", destination: "/visas", permanent: true },
       // SEO redirect: freelancer tax guide (2026-05-28)
