@@ -375,7 +375,12 @@ main() {
             MODEL="pending"  # finalized below, after the pro/flash ctx+role gate (R4)
             ;;
         qwen)
-            binary_name="qwen"; MODEL="qwen-default"
+            binary_name="qwen"; MODEL="${QWEN_MODEL:-qwen-default}"
+            # QWEN_MODEL (generals exam, 2026-09-06): the `qwen` CLI drives every
+            # coding-plan model that PONGed 26/26 on all three machines
+            # (qwen3.8-max, deepseek-v4-pro, glm-5.2, ...); without a passthrough
+            # the seat could only ever sit the account default. Report shows the
+            # slug actually requested.
             # unchanged: no tiers. Clear (not just ignore) a --tier the caller
             # passed anyway, so the report never claims a tier qwen never used
             # (codex-sol adversarial review, PR #5044: a stray --tier value
@@ -412,7 +417,7 @@ main() {
             TIER=flash
         fi
         case "$TIER" in
-            flash) MODEL="gemini-3.5-flash" ;;
+            flash) MODEL="${AGY_FLASH_MODEL:-gemini-3.5-flash}" ;;  # agy lists 3.6/3.7/3.8 Flash too (2026-09-06)
             pro) MODEL="gemini-3.1-pro" ;;
         esac
     fi
@@ -449,9 +454,23 @@ main() {
                 -m "$MODEL" -c "model_reasoning_effort=$EFFORT" "$task_text")
             task_index=9
             ;;
-        kimi) seat_argv=("$seat_binary" -p "$task_text" -m "$MODEL"); task_index=2 ;;
-        agy) seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --print-timeout 8m); task_index=2 ;;
-        qwen) seat_argv=("$seat_binary" -p "$task_text"); task_index=2 ;;  # unchanged
+        kimi) seat_argv=("$seat_binary" -p "$task_text" -m "$MODEL"); task_index=2 ;;  # kimi -p has tools live by default; --auto/-y are refused with --prompt
+        agy)
+            # agy refuses a slug without --effort ("--model gemini-3.1-pro requires --effort") and
+            # accepts only low|medium|high (pro: low|high) — clamp our 5-level scale onto it.
+            local agy_effort
+            case "$EFFORT" in xhigh|max) agy_effort=high ;; medium) [ "$TIER" = pro ] && agy_effort=high || agy_effort=medium ;; *) agy_effort="$EFFORT" ;; esac
+            seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --effort "$agy_effort" --print-timeout "$((TIMEOUT_SECS / 60))m"); task_index=2  # print-timeout was a hardcoded 8m
+            [ "${SEAT_AUTONOMOUS:-0}" = 1 ] && seat_argv+=(--dangerously-skip-permissions)  # same flag agy_code_dispatch.py uses by default
+            ;;
+        qwen)
+            seat_argv=("$seat_binary" -p "$task_text"); task_index=2
+            [ -n "${QWEN_MODEL:-}" ] && seat_argv+=(--model "$QWEN_MODEL")
+            # Headless qwen cannot run a shell without -y (measured 2026-09-06: "requires
+            # user approval but cannot execute in non-interactive mode"). Opt-in only, for
+            # lanes whose worktree is disposable (the generals exam) — never the default.
+            [ "${SEAT_AUTONOMOUS:-0}" = 1 ] && seat_argv+=(-y)
+            ;;
         tp1) seat_argv=("$seat_binary" -p "$task_text" --model "$MODEL" --effort "$EFFORT"); task_index=2 ;;
     esac
     strip_env_args=()

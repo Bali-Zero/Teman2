@@ -1,0 +1,377 @@
+commit 2268fd34c2d284204ed560c16e1097df08e3dc07
+Author: Bali Zero <zero@balizero.com>
+Date:   Sat Sep 5 11:12:44 2026 +0000
+
+    fix(garuda): keep customer order status truthful and current (#5761)
+    
+    Only label the amount paid for an authoritative paid order, avoid charge
+    absence claims for failed or expired checkout, and continue refreshing
+    Approved and Blocked fulfillment states. Pin payment truth, transition
+    updates, and unmount cleanup with synthetic UI regressions.
+    
+    Co-authored-by: Balizero (Air-M5) <antonellosiano@gmail.com>
+    Co-authored-by: Codex Opus 4.8 (1M context) <noreply@anthropic.com>
+
+diff --git a/apps/mouth/src/app/visa/voa/orders/OrderTracker.test.tsx b/apps/mouth/src/app/visa/voa/orders/OrderTracker.test.tsx
+index 1726e68797..91cd98da93 100644
+--- a/apps/mouth/src/app/visa/voa/orders/OrderTracker.test.tsx
++++ b/apps/mouth/src/app/visa/voa/orders/OrderTracker.test.tsx
+@@ -1,7 +1,7 @@
+-import { render, screen, waitFor } from "@testing-library/react";
+-import { beforeEach, describe, expect, it, vi } from "vitest";
++import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+ import { OrderTracker } from "./OrderTracker";
+-import type { OrderView } from "./types";
++import type { OrderState, OrderView } from "./types";
+ 
+ const fetchMock = global.fetch as unknown as ReturnType<typeof vi.fn>;
+ 
+@@ -30,6 +30,11 @@ describe("OrderTracker", () => {
+     vi.useRealTimers();
+   });
+ 
++  afterEach(() => {
++    cleanup();
++    vi.useRealTimers();
++  });
++
+   it("never renders a price breakdown — only the single all-inclusive footer line", async () => {
+     fetchMock.mockResolvedValue(jsonResponse(200, order({})));
+     render(<OrderTracker orderId="order-1" />);
+@@ -42,6 +47,31 @@ describe("OrderTracker", () => {
+     expect(bodyText).toMatch(/never billed separately from this figure/i);
+   });
+ 
++  it.each<OrderState>([
++    "created",
++    "awaiting_payment",
++    "paid",
++    "failed",
++    "expired",
++    "refunded",
++  ])(
++    "labels the amount using the authoritative %s order state",
++    async (state) => {
++      fetchMock.mockResolvedValue(
++        jsonResponse(200, order({ order_state: state })),
++      );
++      render(<OrderTracker orderId="order-1" />);
++
++      await screen.findByText(/Rp/);
++      expect(
++        screen.getByText(state === "paid" ? "Total paid" : "Order total"),
++      ).toBeInTheDocument();
++      if (state !== "paid") {
++        expect(screen.queryByText("Total paid")).not.toBeInTheDocument();
++      }
++    },
++  );
++
+   it("never claims paid/success from a browser-return observation alone", async () => {
+     fetchMock.mockResolvedValue(
+       jsonResponse(
+@@ -55,6 +85,7 @@ describe("OrderTracker", () => {
+     render(<OrderTracker orderId="order-1" />);
+ 
+     await screen.findByText(/confirming your payment/i);
++    expect(screen.queryByText("Total paid")).not.toBeInTheDocument();
+     // "Payment confirmed" appears only as a pending step LABEL (ParcelSteps) here —
+     // the claim this test guards against is a stated confirmation, never the label.
+     expect(
+@@ -91,18 +122,64 @@ describe("OrderTracker", () => {
+     ).toBeInTheDocument();
+   });
+ 
+-  it("shows a WhatsApp route on a failed order — the exception path is never a dead end", async () => {
+-    fetchMock.mockResolvedValue(
+-      jsonResponse(200, order({ order_state: "failed" })),
+-    );
++  it("shows delivery when an approved practice advances while the page stays open", async () => {
++    vi.useFakeTimers();
++    const approved = order({
++      order_state: "paid",
++      practice: {
++        practice_id: "practice-1",
++        state: "Approved",
++        artifact_available: false,
++      },
++    });
++    const delivered = order({
++      order_state: "paid",
++      practice: {
++        practice_id: "practice-1",
++        state: "Delivered",
++        artifact_available: true,
++      },
++    });
++    fetchMock
++      .mockResolvedValueOnce(jsonResponse(200, approved))
++      .mockResolvedValue(jsonResponse(200, delivered));
+     render(<OrderTracker orderId="order-1" />);
+ 
+-    await screen.findByText(/didn't go through/i);
+-    expect(
+-      screen.getByRole("link", { name: /continue on whatsapp/i }),
+-    ).toBeInTheDocument();
++    await act(async () => {
++      await vi.advanceTimersByTimeAsync(0);
++    });
++    expect(screen.getByText("Total paid")).toBeInTheDocument();
++    expect(screen.queryByLabelText(/visa delivered/i)).not.toBeInTheDocument();
++
++    await act(async () => {
++      await vi.advanceTimersByTimeAsync(5000);
++    });
++    expect(screen.getByLabelText(/visa delivered/i)).toBeInTheDocument();
+   });
+ 
++  it.each(["failed", "expired"] as const)(
++    "offers payment verification for %s without claiming no money was charged",
++    async (state) => {
++      // OP-F05 keeps the terminal state even after a valid late paid webhook.
++      // OrderView therefore cannot establish whether the customer was charged.
++      fetchMock.mockResolvedValue(
++        jsonResponse(200, order({ order_state: state })),
++      );
++      render(<OrderTracker orderId="order-1" />);
++
++      await screen.findByText(/Rp/);
++      expect(document.body.textContent).not.toMatch(
++        /nothing was charged|no payment was taken|didn't go through/i,
++      );
++      expect(
++        screen.getByText(/verify your payment status before you try again/i),
++      ).toBeInTheDocument();
++      expect(
++        screen.getByRole("link", { name: /continue on whatsapp/i }),
++      ).toBeInTheDocument();
++    },
++  );
++
+   it("shows a WhatsApp route when the practice is Blocked", async () => {
+     fetchMock.mockResolvedValue(
+       jsonResponse(
+diff --git a/apps/mouth/src/app/visa/voa/orders/OrderTracker.tsx b/apps/mouth/src/app/visa/voa/orders/OrderTracker.tsx
+index 717a1bf08c..e9834c0ba7 100644
+--- a/apps/mouth/src/app/visa/voa/orders/OrderTracker.tsx
++++ b/apps/mouth/src/app/visa/voa/orders/OrderTracker.tsx
+@@ -92,7 +92,7 @@ function OrderTrackerReady({ order }: { order: OrderView }) {
+         }}
+       >
+         <span style={{ fontSize: "0.85rem", color: "var(--color-text-muted)" }}>
+-          Total paid
++          {order.order_state === "paid" ? "Total paid" : "Order total"}
+         </span>
+         <span style={{ fontSize: "1.6rem", fontWeight: 600 }}>
+           {formatIDR(order.price_idr)}
+@@ -109,10 +109,10 @@ function OrderTrackerReady({ order }: { order: OrderView }) {
+         <ExceptionPanel
+           heading={
+             order.order_state === "failed"
+-              ? "This payment didn't go through."
++              ? "This checkout couldn't be completed."
+               : "This checkout session expired."
+           }
+-          body="Nothing was charged. A consultant can open a fresh checkout for you right away."
++          body="A consultant can verify your payment status before you try again."
+         />
+       ) : null}
+ 
+@@ -151,7 +151,7 @@ function subtitleFor(order: OrderView): string {
+     }
+     return "Payment confirmed — here's where your application stands.";
+   }
+-  if (order.order_state === "failed") return "Payment didn't complete.";
++  if (order.order_state === "failed") return "Checkout couldn't be completed.";
+   if (order.order_state === "expired") return "Checkout session expired.";
+   if (order.order_state === "refunded") return "This order was refunded.";
+   return "Tracking your Visa on Arrival application.";
+diff --git a/apps/mouth/src/app/visa/voa/orders/useOrderTracking.test.ts b/apps/mouth/src/app/visa/voa/orders/useOrderTracking.test.ts
+new file mode 100644
+index 0000000000..198bc76db7
+--- /dev/null
++++ b/apps/mouth/src/app/visa/voa/orders/useOrderTracking.test.ts
+@@ -0,0 +1,108 @@
++import { act, cleanup, renderHook } from "@testing-library/react";
++import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
++import { useOrderTracking } from "./useOrderTracking";
++import type { OrderView, PracticeState } from "./types";
++
++const fetchMock = global.fetch as unknown as ReturnType<typeof vi.fn>;
++
++function order(practiceState: PracticeState): OrderView {
++  return {
++    order_id: "order-1",
++    order_state: "paid",
++    price_idr: 850000,
++    browser_observation: "browser_not_returned",
++    practice: {
++      practice_id: "practice-1",
++      state: practiceState,
++      artifact_available: practiceState === "Delivered",
++    },
++  };
++}
++
++function jsonResponse(body: OrderView): Response {
++  return { ok: true, status: 200, json: async () => body } as Response;
++}
++
++async function advance(ms: number): Promise<void> {
++  await act(async () => {
++    await vi.advanceTimersByTimeAsync(ms);
++  });
++}
++
++describe("useOrderTracking", () => {
++  beforeEach(() => {
++    fetchMock.mockReset();
++    vi.useFakeTimers();
++  });
++
++  afterEach(() => {
++    cleanup();
++    vi.useRealTimers();
++  });
++
++  it.each<[PracticeState, PracticeState]>([
++    ["Approved", "Delivered"],
++    ["Blocked", "In review"],
++    ["Blocked", "Submitted"],
++  ])("refreshes %s to %s without a manual reload", async (from, to) => {
++    const next = order(to);
++    fetchMock
++      .mockResolvedValueOnce(jsonResponse(order(from)))
++      .mockResolvedValue(jsonResponse(next));
++    const { result } = renderHook(() => useOrderTracking("order-1"));
++
++    await advance(0);
++    expect(result.current.state).toEqual({ step: "ready", order: order(from) });
++    await advance(5000);
++
++    expect(fetchMock).toHaveBeenCalledTimes(2);
++    expect(result.current.state).toEqual({ step: "ready", order: next });
++    if (to === "Delivered") {
++      await advance(15000);
++      expect(fetchMock).toHaveBeenCalledTimes(2);
++    }
++  });
++
++  it.each<OrderView>([
++    { ...order("Received"), order_state: "failed", practice: null },
++    { ...order("Received"), order_state: "expired", practice: null },
++    { ...order("Received"), order_state: "refunded", practice: null },
++    order("Delivered"),
++    order("Rejected"),
++  ])("stops polling for terminal order/practice %j", async (terminal) => {
++    fetchMock.mockResolvedValue(jsonResponse(terminal));
++    const { result } = renderHook(() => useOrderTracking("order-1"));
++
++    await advance(0);
++    await advance(15000);
++
++    expect(fetchMock).toHaveBeenCalledTimes(1);
++    expect(result.current.state).toEqual({ step: "ready", order: terminal });
++  });
++
++  it("cancels a scheduled refresh on unmount", async () => {
++    fetchMock.mockResolvedValue(jsonResponse(order("Approved")));
++    const { unmount } = renderHook(() => useOrderTracking("order-1"));
++    await advance(0);
++
++    unmount();
++    await advance(15000);
++
++    expect(fetchMock).toHaveBeenCalledTimes(1);
++  });
++
++  it("aborts an in-flight refresh on unmount", async () => {
++    fetchMock
++      .mockResolvedValueOnce(jsonResponse(order("Approved")))
++      .mockImplementationOnce(() => new Promise<Response>(() => {}));
++    const { unmount } = renderHook(() => useOrderTracking("order-1"));
++    await advance(0);
++    await advance(5000);
++
++    expect(fetchMock).toHaveBeenCalledTimes(2);
++    const init = fetchMock.mock.calls[1][1] as RequestInit;
++    expect(init.signal?.aborted).toBe(false);
++    unmount();
++    expect(init.signal?.aborted).toBe(true);
++  });
++});
+diff --git a/apps/mouth/src/app/visa/voa/orders/useOrderTracking.ts b/apps/mouth/src/app/visa/voa/orders/useOrderTracking.ts
+index 3f53261603..157e608338 100644
+--- a/apps/mouth/src/app/visa/voa/orders/useOrderTracking.ts
++++ b/apps/mouth/src/app/visa/voa/orders/useOrderTracking.ts
+@@ -29,7 +29,9 @@ function isStillMoving(order: OrderView): boolean {
+     practiceState === undefined ||
+     practiceState === "Received" ||
+     practiceState === "In review" ||
+-    practiceState === "Submitted"
++    practiceState === "Submitted" ||
++    practiceState === "Approved" ||
++    practiceState === "Blocked"
+   );
+ }
+ 
+diff --git a/evidence/2026-09/agent-air-m5-mouth-garuda-tracker-truth-2b17a538/brief.yml b/evidence/2026-09/agent-air-m5-mouth-garuda-tracker-truth-2b17a538/brief.yml
+new file mode 100644
+index 0000000000..9c1b590572
+--- /dev/null
++++ b/evidence/2026-09/agent-air-m5-mouth-garuda-tracker-truth-2b17a538/brief.yml
+@@ -0,0 +1,21 @@
++task_id: garuda-tracker-truth
++gear: 2
++l_level: L2
++gate_class: opus
++objective: Keep the GARUDA customer tracker truthful about payment and current through fulfillment.
++constraints:
++  - Browser return is not authoritative payment evidence.
++  - Failed or expired checkout does not prove that no money was received.
++  - No backend, pricing, regulatory, credential or production data changes.
++acceptance:
++  - text: WHEN an order is not paid the tracker SHALL not label its amount Total paid.
++    probe: OrderTracker.test.tsx
++  - text: WHEN fulfillment is Approved or Blocked the tracker SHALL continue polling until a terminal state.
++    probe: useOrderTracking.test.ts
++  - text: WHEN the tracker unmounts it SHALL cancel timers and abort the current request.
++    probe: useOrderTracking.test.ts
++consumer_map:
++  - GARUDA customer order tracker at /visa/voa/orders/[orderId].
++risks:
++  - Synthetic frontend regressions do not prove a production staff transition or a real payment.
++grader: Independent Anthropic review requested from the Fable consul; no verdict asserted here.
+diff --git a/evidence/2026-09/agent-air-m5-mouth-garuda-tracker-truth-2b17a538/pack.yml b/evidence/2026-09/agent-air-m5-mouth-garuda-tracker-truth-2b17a538/pack.yml
+new file mode 100644
+index 0000000000..77d0770649
+--- /dev/null
++++ b/evidence/2026-09/agent-air-m5-mouth-garuda-tracker-truth-2b17a538/pack.yml
+@@ -0,0 +1,26 @@
++brief_ref: evidence/brief.yml
++lanes:
++  - lane: customer-order-state
++    role: build
++    seat: gpt-6-astra
++dissent: []
++pii_scan: clean
++seat_override: >-
++  R8 applicability only: this visa-route UI change authors no immigration rule or price. It displays
++  the backend order state faithfully and follows existing fulfillment states.
++  Synthetic prices in tests are fixtures, not a catalogue update.
++receipts:
++  - claim: Payment-copy, transition-polling and cleanup regressions pass.
++    cmd: >-
++      cd apps/mouth && ../../node_modules/.bin/vitest run
++      src/app/visa/voa/orders/OrderTracker.test.tsx
++      src/app/visa/voa/orders/useOrderTracking.test.ts
++      --maxWorkers=1 --reporter=dot
++    result: "2 test files passed; 24 tests passed. Parent rerun: 941 ms."
++    exit: 0
++    ts: "2026-09-05T06:29:54Z"
++    seat: codex-astra-parent
++notes:
++  - Worker observed 12 failing new regressions before the fix; parent reran the final suite.
++  - Independent review, CI and production proof are pending and are not claimed by these receipts.
++  - Fable consul owns the controlled review and shipping path.
