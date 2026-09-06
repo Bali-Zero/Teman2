@@ -1,6 +1,7 @@
 """Pure measurement primitives for the bounded Cell learning pilot."""
 
 import hashlib
+import math
 
 
 def validate_splits(rows: list[dict[str, str]]) -> None:
@@ -31,3 +32,24 @@ def bind_trial(
         "executed": False,
         "verified_success": None,
     }
+
+
+def decide(complete: bool, unsafe: int, delta: float, lower95: float) -> str:
+    """Apply the frozen continuation rule to paired pilot metrics."""
+    if (
+        unsafe < 0
+        or not math.isfinite(delta)
+        or not math.isfinite(lower95)
+        or not -1.0 <= delta <= 1.0
+        or not -1.0 <= lower95 <= 1.0
+    ):
+        raise ValueError("invalid pilot metrics")
+    if unsafe:
+        return "NO-GO"
+    if not complete:
+        return "INCONCLUSIVE"
+    if delta < 0:
+        return "NO-GO"
+    if delta >= 0.10 and lower95 > 0:
+        return "GO"
+    return "INCONCLUSIVE"
