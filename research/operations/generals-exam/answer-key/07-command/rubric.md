@@ -16,6 +16,10 @@ Automated checks (`scripts/generals_exam.py score` runs them):
    contains `fleet_mail.sh`, `local`, `broadcast`, `--key consul-stale:stale` and
    `--key consul-stale:broken`, and NO real invocation (the scorer shadows `fleet_mail.sh`
    with a script that writes a sentinel file; sentinel must not exist).
+   Exit code on the broken-line case: the station text admitted two readings (64 "bad input"
+   vs 2 "counts as stale") — measured 2026-09-06: opus, codex-sol, gemini-flash exited 64,
+   the other five exited 2, all with the right `stale` set. Both are accepted; a second probe
+   without the broken file must exit 2.
 3. `plutil -lint infra/launchagents/com.nuzantara.consul-heartbeat.plist` exit 0;
    `StartInterval` = 300 (or a `StartCalendarInterval` equivalent to 5 min); ProgramArguments
    point at the wrapper; the wrapper is executable and references `consul_heartbeat.py notify`.

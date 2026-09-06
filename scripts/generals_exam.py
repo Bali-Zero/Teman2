@@ -108,7 +108,13 @@ def _tool_calls_only(text: str) -> str | None:
         msg = obj.get("message") if isinstance(obj, dict) else None
         for block in (msg or {}).get("content", []) if isinstance(msg, dict) else []:
             if isinstance(block, dict) and block.get("type") == "tool_use":
-                calls.append(json.dumps(block.get("input", {}), ensure_ascii=False))
+                inp = block.get("input", {}) or {}
+                # What the seat DID: shell commands and the paths/patterns it touched. Never the
+                # prose it wrote (a REPORT.md that says "git log" is a report, not a command —
+                # sonnet-5-xhigh station 6 was voided on exactly that, 2026-09-06).
+                for key in ("command", "file_path", "path", "pattern", "glob"):
+                    if key in inp:
+                        calls.append(str(inp[key]))
     return "\n".join(calls) if saw_json else None
 
 
@@ -494,6 +500,14 @@ def score_station7_probe(worktree: Path, out_dir: Path) -> dict:
         (d / "OUTBOX-broken.md").write_text("heartbeat: yesterday\n")
         st = _sh([py, str(script), "status", "--dir", td, "--stale-min", "10"], cwd=worktree, timeout=60)
         result["status_rc"] = st.returncode
+        # The station text was ambiguous about an unparsable heartbeat line ("64 on bad input
+        # (... unparsable heartbeat line — counts as stale AND is reported as parse_error)"):
+        # three seats exited 64, five exited 2, all with the right stale set. Both readings are
+        # honoured; a second probe WITHOUT the broken file must exit 2 unambiguously.
+        (d / "OUTBOX-broken.md").unlink()
+        st2 = _sh([py, str(script), "status", "--dir", td, "--stale-min", "10"], cwd=worktree, timeout=60)
+        result["status2_rc"] = st2.returncode
+        (d / "OUTBOX-broken.md").write_text("heartbeat: yesterday\n")
         try:
             js = json.loads(st.stdout.strip().splitlines()[-1])
             result["status_stale"] = sorted(js.get("stale", []))
@@ -595,7 +609,7 @@ def provisional_points(station: int, score: dict) -> int | None:
         return min(1 if a["red_tests"] else 0, cap)  # consuls raise to 2/3 after reading the finding
     if station == 7:
         p = a["probe"]
-        if not p.get("script_present") or p.get("status_rc") != 2 or p.get("notify_sent_for_real"):
+        if not p.get("script_present") or p.get("status_rc") not in (2, 64) or p.get("status2_rc") != 2 or p.get("notify_sent_for_real"):
             return 0
         ok = (p.get("status_stale") == ["broken", "stale"] and p.get("broken_parse_error") and p.get("notify_argv_ok")
               and p.get("plutil_rc") == 0 and p.get("wrapper_ok") and p.get("doc_present") and p.get("tests_green"))
