@@ -27,9 +27,6 @@ export default function Home() {
         <Contact />
       </main>
       <Footer />
-      <a className="assist button" href="#contact">
-        Talk to Bali Zero
-      </a>
     </>
   );
 }

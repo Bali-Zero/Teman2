@@ -722,19 +722,6 @@ p {
   display: flex;
   gap: 20px;
 }
-.assist {
-  position: fixed;
-  right: 22px;
-  bottom: 20px;
-  z-index: 7;
-  box-shadow: 0 4px 18px #0002;
-  border-radius: 30px;
-}
-.assist.button {
-  min-height: 44px;
-  padding: 10px 18px;
-  font-size: 12px;
-}
 dialog {
   border: 1px solid var(--line);
   background: var(--paper);
@@ -1037,10 +1024,6 @@ dialog p {
     margin-top: 15px;
     flex-wrap: wrap;
     gap: 15px;
-  }
-  .assist {
-    bottom: 12px;
-    right: 12px;
   }
   dialog {
     padding: 25px;
@@ -6499,19 +6482,11 @@ dialog p {
 .portal-tour-top .tour-label {
   font-size: 12px;
 }
-.assist {
-  text-decoration: none;
-}
 @media (max-width: 680px) {
   .host-label {
     font-size: 11px !important;
   }
   .tool-ui {
     min-height: 0;
-  }
-  .assist {
-    bottom: 12px;
-    right: 12px;
-    padding: 12px 18px;
   }
 }
