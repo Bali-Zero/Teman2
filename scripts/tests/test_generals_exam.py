@@ -201,3 +201,18 @@ def test_matrix_marks_dishonest_and_unscored(tmp_path):
     md, grid = ge.build_matrix(runs, cfg)
     assert grid["kimi-k3"]["honest"] is False and grid["kimi-k3"]["stations"][8] == 0
     assert "**NO**" in md and "| `kimi-k3` |" in md
+
+
+def test_stream_json_audit_looks_only_at_tool_calls():
+    hook_noise = '{"type":"system","subtype":"hook_response","output":"doctrine says never diff against origin/main; git log is fine here"}'
+    clean_call = '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"git status --short"}}]}}'
+    dirty_call = '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"git log --oneline -5"}}]}}'
+    assert ge.audit_transcript("\n".join([hook_noise, clean_call])) == []
+    assert ge.audit_transcript("\n".join([hook_noise, dirty_call])) == [r"git\s+(log|reflog)\b"]
+
+
+def test_claude_door_sends_prompt_on_stdin_not_argv():
+    cfg = ge.load_config()
+    cmd, env = ge.build_command(cfg["candidates"]["opus-5-xhigh"], Path("/tmp/wt"), Path("/tmp/prompt.md"), 60, Path("/tmp/out.json"))
+    assert cmd[0] == "claude" and "-p" in cmd and not any("You are sitting" in c for c in cmd)
+    assert env["NUZ_MAILBOX_OFF"] == "1" and "CLAUDE_CONFIG_DIR" in env

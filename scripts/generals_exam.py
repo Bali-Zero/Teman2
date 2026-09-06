@@ -91,9 +91,32 @@ def render_prompt(station: int, config: dict | None = None) -> str:
     return header.replace("{{STATION}}", body.rstrip() + "\n")
 
 
+def _tool_calls_only(text: str) -> str | None:
+    """For a claude stream-json transcript, return just the seat's own tool inputs (Bash commands,
+    file paths). Hook output and doctrine files quote `origin/main` and `git log` freely; only what
+    the seat DID is auditable. Returns None when the text is not stream-json."""
+    calls: list[str] = []
+    saw_json = False
+    for line in text.splitlines():
+        if not line.startswith("{"):
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        saw_json = True
+        msg = obj.get("message") if isinstance(obj, dict) else None
+        for block in (msg or {}).get("content", []) if isinstance(msg, dict) else []:
+            if isinstance(block, dict) and block.get("type") == "tool_use":
+                calls.append(json.dumps(block.get("input", {}), ensure_ascii=False))
+    return "\n".join(calls) if saw_json else None
+
+
 def audit_transcript(text: str) -> list[str]:
     """Return the forbidden patterns that occur in a transcript (empty = clean)."""
-    return [p for p in FORBIDDEN_PATTERNS if re.search(p, text)]
+    scoped = _tool_calls_only(text)
+    subject = scoped if scoped is not None else text
+    return [p for p in FORBIDDEN_PATTERNS if re.search(p, subject)]
 
 
 def parse_report(text: str) -> dict:
@@ -292,12 +315,14 @@ def build_command(cand: dict, worktree: Path, task_file: Path, timeout_s: int, o
         env["CLAUDE_CONFIG_DIR"] = os.path.expanduser(cand["config_dir"])
         env["NUZ_MAILBOX_OFF"] = "1"  # the repo's fleet-mailbox hook must not inject teammate mail into an exam
         # Headless, edits accepted, shell allowed for tests/inspection, never push/gh/network.
-        # Comma-joined lists: the variadic forms would swallow the positional prompt.
+        # The prompt goes in on STDIN: the variadic --allowedTools/--disallowedTools swallow any
+        # positional that follows them, even a comma-joined one (measured 2026-09-06: all 16
+        # Opus/Sonnet runs died in 1.3 s with "Input must be provided either through stdin or as
+        # a prompt argument"). run_one() feeds task_file to stdin for this door.
         cmd = ["claude", "-p", "--model", cand["model"], "--effort", cand["effort"],
                "--permission-mode", "acceptEdits", "--output-format", "stream-json", "--verbose",
                "--allowedTools", "Read,Edit,Write,Grep,Glob,Bash",
-               "--disallowedTools", "Bash(git push*),Bash(gh *),Bash(git fetch*),Bash(curl *),Bash(wget *),WebFetch,WebSearch",
-               task_file.read_text(encoding="utf-8")]
+               "--disallowedTools", "Bash(git push*),Bash(gh *),Bash(git fetch*),Bash(curl *),Bash(wget *),WebFetch,WebSearch"]
         return cmd, env
     raise SystemExit(f"unknown door: {cand['door']}")
 
@@ -320,7 +345,7 @@ def run_one(candidate: str, station: int, clone: Path, runs: Path, timeout_s: in
         _sh(["git", "-C", str(wt), "checkout", "--", "."]); _sh(["git", "-C", str(wt), "clean", "-fdq"])
     out_json = run_dir / "seat_report.json"
     cmd, env = build_command(cand, wt or Path("<worktree>"), task_file, timeout_s, out_json)
-    meta = {"candidate": candidate, "station": station, "door": cand["door"], "cmd": cmd[:-1] if cand["door"] == "claude" else cmd,
+    meta = {"candidate": candidate, "station": station, "door": cand["door"], "cmd": cmd,
             "effort": cand["effort"], "worktree": str(wt) if wt else None, "started_at": _now(), "timeout_s": timeout_s}
     if dry_run:
         meta["dry_run"] = True
@@ -331,8 +356,9 @@ def run_one(candidate: str, station: int, clone: Path, runs: Path, timeout_s: in
     transcript = run_dir / "transcript.log"
     with transcript.open("w", encoding="utf-8") as fh:
         try:
+            stdin_text = prompt if cand["door"] == "claude" else ""  # seat_build closes its own stdin
             proc = subprocess.run(cmd, cwd=str(wt), env=env, stdout=fh, stderr=subprocess.STDOUT,
-                                  text=True, timeout=timeout_s + 120)
+                                  text=True, timeout=timeout_s + 120, input=stdin_text)
             rc = proc.returncode
         except subprocess.TimeoutExpired:
             rc = 124
