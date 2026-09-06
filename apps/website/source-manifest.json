@@ -1,0 +1,116 @@
+{
+  "source": "/Users/balizero/Desktop/BALI-ZERO-EXPERIENCE-2026-09-06/refinement-19",
+  "source_html_sha256": "559e75c13e7f94f5a418a379ae1bd0b413e47551e344eda6f199e692861efa5e",
+  "assets": [
+    {
+      "file": "public/assets/adit-site-bg.png",
+      "sha256": "5defeaea5a2caf74b157773d2bd0b2d86e3b427596da7ba3fd39da9598653c4a",
+      "bytes": 1442350
+    },
+    {
+      "file": "public/assets/ari-cutout-v19.png",
+      "sha256": "b952fb62f6462fb83ea7a451bc8efe7e541023885a95306685eb4b92f32f4a0e",
+      "bytes": 941937
+    },
+    {
+      "file": "public/assets/brand-3.png",
+      "sha256": "5ee23fc2dc9a539ef6e54ff766fca766aebd0e866114a568d5fc1e76c422631c",
+      "bytes": 378344
+    },
+    {
+      "file": "public/assets/evoa-panorama.png",
+      "sha256": "4070e2dcbae9c0df30483cb608fde14de05b0836ecf81ec438e4d172ec675534",
+      "bytes": 2395957
+    },
+    {
+      "file": "public/assets/hero-sunset-future.png",
+      "sha256": "17442a9936b18f1cc54028ba707821968333ee81c5d116f65e53b8f12c40c9f1",
+      "bytes": 3191901
+    },
+    {
+      "file": "public/assets/heru-komisaris.jpg",
+      "sha256": "675fa5dc5ce0445898f539dad80a44a524834292c3d984bdc59e76ae8bdd1dbb",
+      "bytes": 415656
+    },
+    {
+      "file": "public/assets/immigration.jpg",
+      "sha256": "ac2f6d26a90b7151dcb89ce7a8fd178a85a96eec2777a8b2553537bbb2413560",
+      "bytes": 75655
+    },
+    {
+      "file": "public/assets/it.png",
+      "sha256": "b6a5e7d8b1fa7beaaedb7983c0b38502290690133b63d5811f88a4a026c130ca",
+      "bytes": 2255465
+    },
+    {
+      "file": "public/assets/kbli.jpg",
+      "sha256": "e363e8820cafd604ef97602d244adb7c8e9e5a253fcfe9b6e5d5eba996564a2a",
+      "bytes": 65229
+    },
+    {
+      "file": "public/assets/logo.png",
+      "sha256": "5c0788ef967e72ec8f9033333a3c7b8d76c9cfee6d651efe6e9f53c56053756f",
+      "bytes": 245522
+    },
+    {
+      "file": "public/assets/nib.jpg",
+      "sha256": "b53e5b7b12feda6dd01002643ee2e21cd5eb91b437c707f8fc4cf084027a6d29",
+      "bytes": 728412
+    },
+    {
+      "file": "public/assets/ruslana.jpg",
+      "sha256": "9f1f14e99d04ee7c6681cb8dddfeccd1048ab2886feca2fc3b05263555e0e3b0",
+      "bytes": 87064
+    },
+    {
+      "file": "public/assets/second-home-book.png",
+      "sha256": "8556e5ce439bb32bf69812c1d597ce7ee4bb9d9fa2c4ef9be8f4d970cc7b21e1",
+      "bytes": 2413747
+    },
+    {
+      "file": "public/assets/surya-cutout-v19.png",
+      "sha256": "40766b223b4ee51bac161d0abeb94ab4d24e74906a408961eb8f5a7e32ac40fc",
+      "bytes": 981390
+    },
+    {
+      "file": "public/assets/team-ivory-atlas.png",
+      "sha256": "c05137dfcf0d3f2c15321e2c38f5aa05f0aa7749ac8dc62469602ce82adfb90d",
+      "bytes": 1629965
+    },
+    {
+      "file": "public/assets/tool-kbli-illustration.png",
+      "sha256": "a468710cece26b1183c95dbf2952ffbd6e772e487404f8b4107d8a2cffc0a1ef",
+      "bytes": 2572045
+    },
+    {
+      "file": "public/assets/tool-property-illustration.png",
+      "sha256": "f44c9d54d33e06a6a06be0f7139780ab20228d73c743a9bd0cfd5fd76f72afa0",
+      "bytes": 2296284
+    },
+    {
+      "file": "public/assets/tool-tax-illustration.png",
+      "sha256": "db2fe739de1a25d3413c77ecb8a9c1fd0b28edb61e6bdc384b491ff24d45f6e4",
+      "bytes": 2062329
+    },
+    {
+      "file": "public/assets/tool-visa-traveler.png",
+      "sha256": "66f6dc63f5deee3e22153af623419a73624b1aa7be5323cbbf72797cc3537191",
+      "bytes": 2260248
+    },
+    {
+      "file": "public/assets/villa-wall.png",
+      "sha256": "6590170de655f4d5ceb534eac2492ebde21a562c0715ddcf7cb3bc8f878ab770",
+      "bytes": 2190604
+    },
+    {
+      "file": "public/assets/villa.jpg",
+      "sha256": "64c566adebb51a438c54e4cbf0b025a4a60af7e89883be7d4f642fb50b3b93d5",
+      "bytes": 48307
+    },
+    {
+      "file": "public/assets/zainal-ceo.jpg",
+      "sha256": "c798a2937eea1fea534db08386d4774c5829a866b1fbff8fa348dc4a1808a3f3",
+      "bytes": 340895
+    }
+  ]
+}

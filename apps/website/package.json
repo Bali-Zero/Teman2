@@ -1,0 +1,33 @@
+{
+  "name": "@balizero/website-development",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack --hostname 127.0.0.1 --port 3100",
+    "build": "next build --webpack",
+    "start": "next start --hostname 127.0.0.1 --port 3100",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "next": "16.3.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10",
+    "@testing-library/react": "16.3.0",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/user-event": "14.6.4",
+    "jsdom": "30.0.1"
+  },
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=11"
+  },
+  "packageManager": "npm@11.19.0"
+}
