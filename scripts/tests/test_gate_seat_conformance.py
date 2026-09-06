@@ -270,7 +270,19 @@ def test_workflow_triggers_on_the_doctrine_file_this_guard_reads() -> None:
     """
     wf = REPO_ROOT / ".github" / "workflows" / "worker-plane-review-tests.yml"
     assert wf.is_file(), f"{wf} is missing — this pin cannot verify anything"
-    src = wf.read_text(encoding="utf-8")
+    # Comments are stripped before matching. A path named only in a `#` line
+    # documents a trigger, it does not create one, and a pin that cannot tell
+    # the two apart would go green on a diff that deleted the trigger and left
+    # the comment (raised by kimi-code/k3 on this PR). The remaining honest
+    # limit, recorded rather than hidden: this reads TEXT, so re-quoting the
+    # entry with single quotes would go red on a change that is semantically
+    # inert. Every workflow in this repo is prettier-shaped with double quotes,
+    # and a false red here is a five-second fix, whereas the false green this
+    # replaces cost a red main.
+    src = "\n".join(
+        line for line in wf.read_text(encoding="utf-8").splitlines()
+        if not line.lstrip().startswith("#")
+    )
     rel = DOCTRINE.relative_to(REPO_ROOT).as_posix()
 
     missing = [
@@ -286,4 +298,16 @@ def test_workflow_triggers_on_the_doctrine_file_this_guard_reads() -> None:
         f"worker-plane-review-tests.yml does not trigger on it in: {missing}. "
         "The PR that moves or rewords the ruling would stay green and main "
         "would go red later, which is how run 33994100645 happened."
+    )
+
+    # A RENAME is a move too, and it is the one shape the sentinel misses by
+    # default: `git diff --name-only` with rename detection on prints only the
+    # DESTINATION path, so renaming the doctrine file away shows a name this
+    # regex does not know and the suite never runs on that PR. Verified in a
+    # scratch repo: one path printed by default, two with --no-renames.
+    assert "--no-renames" in src, (
+        "the pull_request sentinel's `git diff --name-only` no longer passes "
+        "--no-renames, so a pure RENAME of the doctrine file prints only its "
+        "new path, misses the relevant-paths regex, and the PR that moved the "
+        "ruling runs this guard nowhere."
     )
