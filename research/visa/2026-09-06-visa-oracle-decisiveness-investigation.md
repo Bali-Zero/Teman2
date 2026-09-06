@@ -769,6 +769,14 @@ Six calls. Everything else in §4 is mechanical and needs no ruling.
 
 ---
 
+### Rulings (2026-09-06, Zero: "seguo le tue raccomandazioni, go")
+
+All six calls are RULED with the recommended defaults: (1) caps encode the lawful
+extendable total; (2) CL-D2-01 compiled as EXCLUDE; (3) a `second_home` category emitting
+`SECOND_HOME` alone; (4) diaspora maps to FAMILY; (5) no browser certification of the
+ITAS-sponsor status — the eight blocking rules become `NO_EFFECT`; (6) `work_role` is no
+longer flagged and the question is removed. The wave in §4 is GO in its fixed order.
+
 ## 6. What was refuted, and why (do not re-investigate)
 
 **R1 — "Derive `process.wants_onshore_conversion = false` when offshore with no permit."**
