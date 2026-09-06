@@ -1426,17 +1426,31 @@ def _collapse_reader_reasons(decision: Decision) -> Decision:
     ``source_refs``, so the underlying provenance survives the collapse and
     ``requireDecisiveRefs`` validates more refs, never fewer.
 
-    Applied to both reader-facing lists rather than only ``no_path_reasons``,
-    and the review half is NOT hypothetical. Scanning
-    ``rulepack-prod-020.source.json``: nine reason codes are emitted by more
-    than one rule, so this is a general property of the pack and not an
-    ``AGE_BELOW_55`` quirk. Seven are ``SUPPORT`` codes, which feed no
-    reader-facing reason list — but ``GOVT_INVITATION_REQUIRED`` is emitted by
-    two ``REQUIRE_REVIEW`` rules (``review.e33a`` and ``review.e33c``,
-    central-government-invitation, on two different products), which is the
-    same shape on the review surface. No walk in the 43-walk corpus reaches
-    ``HUMAN_REVIEW_REQUIRED``, so that half is pinned by a hand-built-pack test
-    rather than claimed as a corpus measurement.
+    Applied to both reader-facing lists, but the two halves have DIFFERENT
+    standing and the difference is stated rather than blurred:
+
+    * ``no_path_reasons`` — a MEASURED cure. Six real walks rendered
+      ``AGE_BELOW_55`` twice.
+    * ``review_reasons`` — DEFENSIVE only, on seq-20. No duplicate is reachable
+      on this surface today, and the reason is structural, not incidental.
+
+    Scanning ``rulepack-prod-020.source.json``: nine reason codes are emitted
+    by more than one rule, so the shape is a general property of the pack and
+    not an ``AGE_BELOW_55`` quirk. Seven are ``SUPPORT`` codes, which feed no
+    reader-facing list. The only ``REQUIRE_REVIEW`` one is
+    ``GOVT_INVITATION_REQUIRED``, from ``review.e33a`` (E33A) and
+    ``review.e33c`` (E33C) — and those two CANNOT CO-FIRE. Each conjoins
+    ``{"op": "eq", "fact": "intent.requested_product_code"}`` against its own
+    product code, and that fact is a ``StringFact`` (scalar), so it cannot be
+    both ``"E33A"`` and ``"E33C"`` for one applicant. They also cite the SAME
+    source record, so even hypothetically the union would merge rule ids and
+    rescue no citation.
+
+    The review half therefore ships as a symmetry guard: it costs one call,
+    it cannot change today's output, and it means a future pack that puts two
+    co-firable rules on one review code does not reintroduce the defect. It is
+    pinned by a hand-built-pack test and must NOT be described as a cure for
+    anything users are hitting.
 
     State, candidates and missing facts are untouched by construction: only the
     two reason tuples are rebuilt, and a merge cannot empty a non-empty list,

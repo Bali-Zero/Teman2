@@ -615,24 +615,32 @@ class TestNoPathReasonsAreMergedByCodeNotRepeated:
         assert [reason.code for reason in raw] == ["SHARED_EXCLUSION", "SHARED_EXCLUSION"]
         assert [reason.rule_ids for reason in raw] == [("hf.dupa",), ("hf.dupb",)]
 
-    def test_guilt_the_review_list_is_collapsed_too(self) -> None:
-        """GUILT on the OTHER reader-facing list, and it is not hypothetical.
+    def test_the_review_list_is_collapsed_too_DEFENSIVE_not_a_measured_cure(
+        self,
+    ) -> None:
+        """The review surface, labelled honestly: this is a SYMMETRY GUARD, not
+        a cure for anything a user can hit on seq-20.
 
-        Scanning ``rulepack-prod-020.source.json``: NINE reason codes are
-        emitted by more than one rule, so the shape is general rather than an
-        ``AGE_BELOW_55`` quirk. Seven are ``SUPPORT`` codes, which do not feed
-        a reader-facing reason list — but ``GOVT_INVITATION_REQUIRED`` is
-        emitted by TWO ``REQUIRE_REVIEW`` rules,
-        ``review.e33a.central-government-invitation`` and
-        ``review.e33c.central-government-invitation``, on two different
-        products. That is exactly the ``AGE_BELOW_55`` shape on the review
-        surface, which renders through the same code-keyed copy.
+        Scanning ``rulepack-prod-020.source.json``: nine reason codes are
+        emitted by more than one rule. Seven are ``SUPPORT`` codes, which feed
+        no reader-facing list. The only ``REQUIRE_REVIEW`` one is
+        ``GOVT_INVITATION_REQUIRED``, from
+        ``review.e33a.central-government-invitation`` (E33A) and
+        ``review.e33c.central-government-invitation`` (E33C) — and those two
+        **cannot co-fire**. Each conjoins
+        ``{"op": "eq", "fact": "intent.requested_product_code"}`` against its
+        own product code, and that fact is a ``StringFact`` (a scalar, not a
+        set), so no applicant can satisfy both. They also cite the SAME source
+        record, so even hypothetically the union would merge rule ids and
+        rescue no citation.
 
-        No walk in the 43-walk corpus reaches ``HUMAN_REVIEW_REQUIRED``, so
-        this is pinned on a hand-built pack rather than claimed as a corpus
-        measurement — but the pack proves the surface is reachable, so the
-        collapse covers both lists rather than only the one that happened to
-        be measured."""
+        So no duplicate is reachable on the review surface today, and this test
+        pins a CONTRACT rather than witnessing a defect: the collapse is keyed
+        on the code and applies to whichever reader-facing list carries it, so
+        a future pack that puts two co-firable rules on one review code does
+        not reintroduce the ``AGE_BELOW_55`` shape somewhere nobody is looking.
+        Named for what it is — presenting it as a measured cure would be a
+        false claim about live behaviour."""
 
         pack, src_a, src_b = _same_code_two_sources_pack(effect_type="REQUIRE_REVIEW")
         facts = _facts(

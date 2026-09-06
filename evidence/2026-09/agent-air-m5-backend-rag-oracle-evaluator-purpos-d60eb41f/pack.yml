@@ -168,9 +168,14 @@ receipts:
       109 rules, 76 distinct reason codes, 9 emitted by >1 rule. Seven are SUPPORT
       (PURPOSE_PRODUCT_MATCH x16, PASSPORT_VALIDITY_6_MONTHS_REQUIRED x6,
       REQ_SPONSOR_ITAS_ITAP x4, CV_REQUIRED / ITINERARY_REQUIRED / LIVING_COST_USD2000 /
-      SUPPORT_LETTER_REQUIRED x3) and feed no reader-facing list. Two do: AGE_BELOW_55 from two
-      EXCLUDE rules, and GOVT_INVITATION_REQUIRED from two REQUIRE_REVIEW rules
-      (review.e33a.central-government-invitation, review.e33c.central-government-invitation)
+      SUPPORT_LETTER_REQUIRED x3) and feed no reader-facing list. Two reach a reader:
+      AGE_BELOW_55 from two EXCLUDE rules, and GOVT_INVITATION_REQUIRED from two REQUIRE_REVIEW
+      rules (review.e33a.central-government-invitation,
+      review.e33c.central-government-invitation) -- but those two CANNOT CO-FIRE: each conjoins
+      eq(intent.requested_product_code) against its own product code and that fact is a
+      StringFact (scalar), so no applicant satisfies both, and they cite the same source record
+      besides. The no_path half is a measured cure; the review half is DEFENSIVE only, and is
+      labelled that way in the code, the test name and the brief
     ts: "2026-09-07T01:40:00Z"
     seat: claude-opus-5 (this worktree session)
     exit: 0

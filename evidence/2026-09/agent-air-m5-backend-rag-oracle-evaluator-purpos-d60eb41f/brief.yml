@@ -82,11 +82,22 @@ objective: >-
 
   THE SHAPE IS GENERAL, measured on the pack rather than special-cased.
   rulepack-prod-020.source.json: 109 rules, 76 distinct reason codes, NINE emitted by more than
-  one rule. Seven are SUPPORT codes that feed no reader-facing list. Two do: AGE_BELOW_55 from
-  two EXCLUDE rules (the measured defect) and GOVT_INVITATION_REQUIRED from two REQUIRE_REVIEW
-  rules (review.e33a, review.e33c). The collapse therefore covers BOTH reader-facing lists. No
-  corpus walk reaches HUMAN_REVIEW_REQUIRED, so the review half is pinned by a hand-built-pack
-  test and stated as such, never claimed as a corpus measurement.
+  one rule. Seven are SUPPORT codes that feed no reader-facing list. Two reach a reader:
+  AGE_BELOW_55 from two EXCLUDE rules, and GOVT_INVITATION_REQUIRED from two REQUIRE_REVIEW
+  rules (review.e33a, review.e33c).
+
+  THE TWO HALVES HAVE DIFFERENT STANDING, and the difference is stated rather than blurred.
+  no_path_reasons is a MEASURED cure -- six real walks rendered AGE_BELOW_55 twice.
+  review_reasons is DEFENSIVE ONLY: review.e33a and review.e33c CANNOT CO-FIRE, because each
+  conjoins {"op": "eq", "fact": "intent.requested_product_code"} against its own product code and
+  that fact is a StringFact (scalar, not a set), so no applicant can satisfy both; they also cite
+  the SAME source record, so even hypothetically the union would merge rule ids and rescue no
+  citation. No duplicate is reachable on the review surface on seq-20. The review half therefore
+  ships as a symmetry guard -- one call, cannot change today's output, and keeps a future pack
+  that puts two co-firable rules on one review code from reintroducing the defect somewhere
+  nobody is looking. It is pinned on a hand-built pack and named
+  test_the_review_list_is_collapsed_too_DEFENSIVE_not_a_measured_cure, never presented as a cure
+  for live behaviour.
 constraints:
   - >-
     The reorder must not be able to fail open, and that must be a measurement rather than an
