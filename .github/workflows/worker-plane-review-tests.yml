@@ -59,6 +59,12 @@ on:
       # red is superscar #2 (esiste != armato); a cross-family refuter found
       # this one that way.
       - "scripts/tests/test_gate_seat_conformance.py"
+      # Added 2026-09-06: the doctrine file test_gate_seat_conformance.py reads
+      # its retired-model name FROM. Without it, the PR that edits §5 routing is
+      # green (no worker-plane surface changed → sentinel success) and main goes
+      # red hours later on an unrelated push — which is literally run
+      # 33994100645, after the 2026-09-04 context diet moved §5 out of CLAUDE.md.
+      - "docs/rules/RULINGS.md"
       - ".github/workflows/worker-plane-review-tests.yml"
 
 permissions:
@@ -89,8 +95,17 @@ jobs:
             exit 0
           fi
           base="${{ github.event.pull_request.base.sha }}"
-          if git diff --name-only "$base"...HEAD | grep -qE \
-            '^(scripts/check_worker_plane_review\.py|scripts/launch_worker_plane_review_panel\.py|scripts/freeze_worker_plane_review\.py|scripts/detect_secrets_auto_triage\.py|scripts/tests/test_check_worker_plane_review\.py|scripts/tests/test_launch_worker_plane_review_panel\.py|scripts/tests/test_worker_plane_review_packet\.py|scripts/tests/test_v3_final_gate_parity\.py|scripts/tests/test_detect_secrets_auto_triage\.py|scripts/tests/test_gate_seat_conformance\.py|\.github/workflows/worker-plane-review-tests\.yml)$'; then
+          # --no-renames is load-bearing, not decoration (cross-family review,
+          # codex-gpt-5.6-sol, on the PR that added docs/rules/RULINGS.md above).
+          # With rename detection ON, `git diff --name-only` prints only the
+          # DESTINATION path, so renaming docs/rules/RULINGS.md to some other
+          # file shows only the new name, misses this regex, and the PR that
+          # moved the ruling is green again — the exact failure this PR exists to
+          # close, one indirection further out. --no-renames prints both sides,
+          # so the old path still matches. Measured, not reasoned: a scratch repo
+          # renaming that file prints one path by default and two with the flag.
+          if git diff --name-only --no-renames "$base"...HEAD | grep -qE \
+            '^(scripts/check_worker_plane_review\.py|scripts/launch_worker_plane_review_panel\.py|scripts/freeze_worker_plane_review\.py|scripts/detect_secrets_auto_triage\.py|scripts/tests/test_check_worker_plane_review\.py|scripts/tests/test_launch_worker_plane_review_panel\.py|scripts/tests/test_worker_plane_review_packet\.py|scripts/tests/test_v3_final_gate_parity\.py|scripts/tests/test_detect_secrets_auto_triage\.py|scripts/tests/test_gate_seat_conformance\.py|docs/rules/RULINGS\.md|\.github/workflows/worker-plane-review-tests\.yml)$'; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
