@@ -135,7 +135,7 @@ langsmith>=0.11.0  # Observability: @traceable on RAG nodes + KG nodes
 # production even with LANGFUSE_*_KEY secrets set on Fly).
 # Phase 0 of OpenLLMetry expansion. See docs/oss-injections-2026-04-26.md.
 langfuse>=4.14.4,<5.0.0  # LLM observability, OTEL-based v2+
-openinference-instrumentation-anthropic>=1.1.2  # Anthropic SDK auto-trace
+openinference-instrumentation-anthropic>=2.1.1  # Anthropic SDK auto-trace
 openinference-instrumentation-google-genai>=1.4.0  # Auto-trace Gemini SDK
 openinference-instrumentation-openai>=0.1.54  # Auto-trace OpenAI-compat (DeepSeek, Ollama)
 
