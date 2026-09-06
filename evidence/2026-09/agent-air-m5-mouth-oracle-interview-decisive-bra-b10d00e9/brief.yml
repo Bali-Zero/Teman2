@@ -1,14 +1,19 @@
 task_id: oracle-interview-decisive-branches
-gear: 2
+gear: 3
 l_level: L2
 gate_class: opus
 # Floor computed this run: `python3 scripts/evidence_pack_lint.py --print-floor
-# --changed-files-file ... --numstat-file ...` returns 2 via the SIZE term.
-# The change is ~950 net lines and roughly two thirds of that is test and
-# comment: eleven files, all under
-# apps/mouth/src/app/(visa-oracle)/visa-oracle/. No backend, no rulepack, no
-# migration, no secret — the authored logic is a question list, a reducer
-# action and a copy string. Size alone floors it at Gear 2.
+# --print-floor-source --changed-files-file ... --numstat-file ...` returns
+# 3, source `size`. RAISED from 2 when the walk corpus was regenerated and the
+# backend census re-pinned in this same PR (the rule PR-0 set: a PR that
+# changes the interview regenerates the corpus and re-pins the census with
+# it). No total is narrated here — it goes stale on the next commit and this
+# file would then lie about its own diff. The SHAPE is stable and is what the
+# floor reads: the churn is the interview branch logic plus its unit tests
+# plus one backend test module; the 61 generated walk fixtures live under a
+# `fixtures/` directory and are excluded from the size term by
+# `_is_size_term_excluded`, so they are not what floors this.
+# Still no rulepack, no migration, no signed artifact, no secret.
 objective: >-
   Make the Visa Oracle interview ask the facts the signed seq-19 engine
   still needs, so a walk ends on a verdict instead of a question list. Spec
@@ -31,9 +36,16 @@ objective: >-
   identify no restricted position and which no rule in the pack reads.
 constraints:
   - >-
-    FRONTEND ONLY. No file outside
-    apps/mouth/src/app/(visa-oracle)/visa-oracle/ is touched. No rulepack,
-    no backend evaluator, no migration, no signed artifact.
+    NO ENGINE CHANGE. The rulepack, the evaluator, every signed artifact and
+    every migration are untouched: the only backend file in this diff is the
+    walk-census TEST module, re-pinned to what the unchanged
+    rulepack-prod-020.signed.json produces once the interview supplies the
+    facts. Outside apps/mouth/src/app/(visa-oracle)/visa-oracle/ the diff is
+    exactly the corpus generator, the generated walk fixtures it emits, and
+    that census module. (This constraint said "FRONTEND ONLY, no file
+    outside the visa-oracle tree" while the corpus regeneration was still
+    expected to ride a separate PR; PR-0's rule puts it here instead, so the
+    constraint is restated to the boundary that is actually held.)
   - >-
     NEVER derive wants_onshore_conversion. It is forward-looking intent, so
     inferring false from "offshore and holding no permit" is a measured
@@ -113,5 +125,24 @@ acceptance:
       error inside the visa-oracle tree.
     probe: >-
       apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/gold-oracle-baseline.test.ts
+  - text: >-
+      A10: WHEN the interview tree changes, the walk corpus SHALL be
+      regenerated in the SAME PR by the generator, the generator's scenario
+      enumeration SHALL cover every branch getCategoryQuestionIds gained
+      (second_home bases, STEPCHILD, diaspora crossed like family), any
+      fixture the generator no longer emits SHALL be deleted, and the
+      committed corpus SHALL remain byte-for-byte reproducible.
+    probe: >-
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts
+  - text: >-
+      A11: WHEN the regenerated corpus is replayed against the highest signed
+      pack, EXPECTED_OUTCOME, the state census and the blocking-fact census
+      SHALL be re-pinned to the MEASURED values, every allowlist row the new
+      questions cure SHALL be DELETED (not restated, not loosened into a
+      range), and any guilt test whose subject the cure removed SHALL be
+      re-anchored onto a case that still fails rather than left to pass
+      vacuously.
+    probe: >-
+      apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py
 appetite:
   wall_clock_hours: 3
