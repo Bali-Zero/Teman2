@@ -203,14 +203,14 @@ const en = {
 
   "q.business_activity": "What will you mainly do on the business trip?",
   "q.business_activity.hint":
-    "Describe the activity, not a visa name. This is context for a human reviewer only.",
+    "Describe the activity, not a visa name. Meetings, negotiation and conferences are decided here; training or another activity is sent to a human reviewer.",
   "q.business_activity.opt.meetings": "Meetings or site visits",
   "q.business_activity.opt.negotiation": "Negotiation or signing",
   "q.business_activity.opt.conference": "Conference or trade event",
   "q.business_activity.opt.training": "Giving or receiving training",
   "q.business_activity.opt.other": "Another business activity",
   "why.business_activity":
-    "The engine has no matching fact for this activity detail, so it is never used to manufacture a recommendation.",
+    "The engine has no matching fact for this activity detail, so it is never used to manufacture a recommendation. It only decides whether a human reviewer has to look at your trip — training and “another business activity” do, the other three answers do not.",
 
   "q.work_payer":
     "Will an Indonesian-registered company employ and pay you here?",
@@ -1022,14 +1022,14 @@ const id: Record<Keys, string> = {
 
   "q.business_activity": "Apa kegiatan utama Anda dalam perjalanan bisnis?",
   "q.business_activity.hint":
-    "Jelaskan kegiatannya, bukan nama visa. Ini hanya konteks bagi peninjau manusia.",
+    "Jelaskan kegiatannya, bukan nama visa. Rapat, negosiasi, dan konferensi diputuskan di sini; pelatihan atau kegiatan lain dikirim ke peninjau manusia.",
   "q.business_activity.opt.meetings": "Rapat atau kunjungan lokasi",
   "q.business_activity.opt.negotiation": "Negosiasi atau penandatanganan",
   "q.business_activity.opt.conference": "Konferensi atau pameran dagang",
   "q.business_activity.opt.training": "Memberi atau menerima pelatihan",
   "q.business_activity.opt.other": "Kegiatan bisnis lainnya",
   "why.business_activity":
-    "Mesin tidak memiliki fakta yang tepat untuk rincian kegiatan ini, sehingga tidak pernah dipakai untuk membuat rekomendasi.",
+    "Mesin tidak memiliki fakta yang tepat untuk rincian kegiatan ini, sehingga tidak pernah dipakai untuk membuat rekomendasi. Rincian ini hanya menentukan apakah peninjau manusia perlu melihat perjalanan Anda — pelatihan dan “kegiatan bisnis lainnya” perlu, tiga jawaban lainnya tidak.",
 
   "q.work_payer":
     "Apakah perusahaan berbadan hukum Indonesia yang mempekerjakan dan menggaji Anda di sini?",
