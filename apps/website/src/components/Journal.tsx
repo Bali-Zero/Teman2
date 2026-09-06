@@ -1,9 +1,14 @@
 "use client";
 import { useState } from "react";
 import { stories } from "../content/stories";
+import {
+  getPublicJournalArticles,
+  type JournalArticle,
+} from "../content/journal";
 export function Journal() {
   const [index, setIndex] = useState(0);
   const current = stories[index];
+  const [lead, archive, ...side] = getPublicJournalArticles().slice(2);
   function move(delta: number) {
     setIndex((value) => (value + delta + stories.length) % stories.length);
   }
@@ -39,148 +44,134 @@ export function Journal() {
           </h2>
         </div>
         <div className="journal-sub">
-          <p>{"Daily news and practical insight from Indonesia."}</p>
-          <a className="textlink" href="https://balizero.com/news">
+          <p>{"News and practical insight from Indonesia."}</p>
+          <a className="textlink" href="/journal">
             {"Explore the Journal "}
             <span aria-hidden="true">{"↗"}</span>
           </a>
         </div>
         <div className="editorial-grid">
-          <article
-            aria-label="Featured editorial stories"
-            aria-roledescription="carousel"
-            onKeyDown={(event) => {
-              if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
-                event.preventDefault();
-                move(event.key === "ArrowRight" ? 1 : -1);
-              }
-            }}
-            className="feature"
-            tabIndex={0}
-          >
-            <img
-              alt={current.title}
-              id="feature-image"
-              src={current.image}
-              loading="lazy"
-            />
-            <div className="feature-copy">
-              <span className="eyebrow" id="feature-category">
-                {current.category}
-              </span>
-              <h3>
-                <a href={current.url} id="feature-link">
-                  {current.title}
-                </a>
-              </h3>
-              <p id="feature-date">{current.date}</p>
-            </div>
-            <div className="carousel-controls">
-              <button
-                aria-label="Previous editorial story"
-                id="previous-story"
-                onClick={() => move(-1)}
-              >
-                {"←"}
-              </button>
-              <span aria-live="polite" id="story-counter">
-                {String(index + 1).padStart(2, "0") + " / 02"}
-              </span>
-              <button
-                aria-label="Next editorial story"
-                id="next-story"
-                onClick={() => move(1)}
-              >
-                {"→"}
-              </button>
-            </div>
-          </article>
-          <div className="news-main">
-            <article>
-              <a href="https://balizero.com/business/indonesias-kbli-2025-shake-up-the-transition-rules-every-business-must-know">
-                <img
-                  alt="Published cover for the KBLI 2025 transition story"
-                  loading="lazy"
-                  src="/assets/kbli.jpg"
-                />
-                <p className="article-category">{"Business / What changes"}</p>
-                <h3>
-                  {
-                    "Indonesia’s KBLI 2025 Shake-Up: The Transition Rules Every Business Must Know"
-                  }
-                </h3>
-              </a>
-              <p className="article-meta">{"04 September 2026 · 3 min read"}</p>
-            </article>
-            <a
-              className="archive-pick"
-              href="https://balizero.com/business/the-it-escape-route"
+          {current ? (
+            <article
+              aria-label="Featured editorial stories"
+              aria-roledescription="carousel"
+              onKeyDown={(event) => {
+                if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+                  event.preventDefault();
+                  move(event.key === "ArrowRight" ? 1 : -1);
+                }
+              }}
+              className="feature"
+              tabIndex={0}
             >
               <img
-                alt="The IT Escape Route editorial cover"
+                alt={current.image.alt}
+                id="feature-image"
+                src={current.image.src}
                 loading="lazy"
-                src="/assets/it.png"
               />
-              <div>
-                <p className="article-category">{"From the archive"}</p>
-                <h3>{"The IT Escape Route"}</h3>
-                <p className="article-meta">{"23 June 2026"}</p>
+              <div className="feature-copy">
+                <span className="eyebrow" id="feature-category">
+                  {current.category}
+                </span>
+                <h3>
+                  <a
+                    href={current.finalSourceUrl ?? current.sourceUrl}
+                    id="feature-link"
+                  >
+                    {current.title}
+                  </a>
+                </h3>
+                {current.date ? (
+                  <time id="feature-date" dateTime={current.date.iso}>
+                    {current.date.label}
+                  </time>
+                ) : null}
               </div>
-            </a>
+              <div className="carousel-controls">
+                <button
+                  aria-label="Previous editorial story"
+                  id="previous-story"
+                  onClick={() => move(-1)}
+                >
+                  {"←"}
+                </button>
+                <span aria-live="polite" id="story-counter">
+                  {String(index + 1).padStart(2, "0") +
+                    " / " +
+                    String(stories.length).padStart(2, "0")}
+                </span>
+                <button
+                  aria-label="Next editorial story"
+                  id="next-story"
+                  onClick={() => move(1)}
+                >
+                  {"→"}
+                </button>
+              </div>
+            </article>
+          ) : (
+            <p role="status">No stories are available at the moment.</p>
+          )}
+          <div className="news-main">
+            {lead ? (
+              <article>
+                <StoryLink article={lead} />
+                <StoryDate article={lead} />
+              </article>
+            ) : null}
+            {archive ? (
+              <a
+                className="archive-pick"
+                href={archive.finalSourceUrl ?? archive.sourceUrl}
+              >
+                <img
+                  alt={archive.image.alt}
+                  loading="lazy"
+                  src={archive.image.src}
+                />
+                <div>
+                  <p className="article-category">{archive.category}</p>
+                  <h3>{archive.title}</h3>
+                  <StoryDate article={archive} />
+                </div>
+              </a>
+            ) : null}
           </div>
           <div className="news-side">
-            <span className="eyebrow">{"On our radar"}</span>
-            <article>
-              <span aria-hidden="true" className="story-index">
-                {"01"}
-              </span>
-              <a href="https://balizero.com/visas/bali-immigration-brings-permit-services-to-discovery-mall">
-                <img
-                  alt="Published cover of the Discovery Mall immigration story"
-                  loading="lazy"
-                  src="/assets/immigration.jpg"
-                />
-                <p className="article-category">{"Immigration"}</p>
-                <h3>
-                  {"Bali Immigration Brings Permit Services to Discovery Mall"}
-                </h3>
-              </a>
-              <p className="article-meta">{"11 July 2026"}</p>
-            </article>
-            <article>
-              <span aria-hidden="true" className="story-index">
-                {"02"}
-              </span>
-              <a href="https://balizero.com/business/indonesias-nib-the-one-business-id-every-investor-must-have">
-                <img
-                  alt="Published NIB business registration story cover"
-                  loading="lazy"
-                  src="/assets/nib.jpg"
-                />
-                <p className="article-category">{"Business essentials"}</p>
-                <h3>
-                  {
-                    "Indonesia’s NIB: The One Business ID Every Investor Must Have"
-                  }
-                </h3>
-              </a>
-              <p className="article-meta">{"11 July 2026"}</p>
-            </article>
+            {side.length ? <span className="eyebrow">On our radar</span> : null}
+            {side.map((article, position) => (
+              <article key={article.slug}>
+                <span aria-hidden="true" className="story-index">
+                  {String(position + 1).padStart(2, "0")}
+                </span>
+                <StoryLink article={article} />
+                <StoryDate article={article} />
+              </article>
+            ))}
           </div>
-        </div>
-        <div className="interests">
-          <span className="eyebrow">{"Follow your interests"}</span>
-          <a href="https://balizero.com/news?category=trends">{"AI & Tech"}</a>
-          <a href="https://balizero.com/news?category=visas">{"Visas"}</a>
-          <a href="https://balizero.com/news?q=pt+pma">{"PT PMA"}</a>
-          <a href="https://balizero.com/news?category=taxes">{"Tax"}</a>
-          <a href="https://balizero.com/news?q=kitas">{"KITAS"}</a>
-          <a href="https://balizero.com/news?category=property">{"Property"}</a>
-          <a href="https://balizero.com/news?q=digital+nomad">
-            {"Digital nomads"}
-          </a>
         </div>
       </section>
     </div>
   );
+}
+
+function StoryLink({ article }: { article: JournalArticle }) {
+  return (
+    <a href={article.finalSourceUrl ?? article.sourceUrl}>
+      <img alt={article.image.alt} loading="lazy" src={article.image.src} />
+      {article.category ? (
+        <p className="article-category">{article.category}</p>
+      ) : null}
+      <h3>{article.title}</h3>
+    </a>
+  );
+}
+
+function StoryDate({ article }: { article: JournalArticle }) {
+  return article.date ? (
+    <p className="article-meta">
+      <time dateTime={article.date.iso}>{article.date.label}</time>
+    </p>
+  ) : null;
 }

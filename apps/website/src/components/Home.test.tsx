@@ -65,7 +65,11 @@ describe("editorial carousel", () => {
       "src",
       "/assets/villa-wall.png",
     );
-    expect(feature).toHaveTextContent("23 June 2026 · 4 min read");
+    expect(feature).toHaveTextContent("23 June 2026");
+    expect(feature).not.toHaveTextContent(/min read/);
+    expect(
+      screen.getByRole("link", { name: /Explore the Journal/ }),
+    ).toHaveAttribute("href", "/journal");
     expect(feature).toHaveTextContent("02 / 02");
     feature.focus();
     await user.keyboard("{ArrowRight}");
