@@ -30,11 +30,12 @@ export const services = [
     route: "/services/tax",
     title: "Tax & accounting",
     description: "Discuss your personal or company tax and reporting needs.",
-    tool: "Tax Intelligence",
-    detail: "Explore personal tax, company obligations and reporting topics.",
+    tool: destinations.taxIntelligence.label,
+    detail:
+      "Explore the tax compliance calendar and discuss your reporting needs.",
     image: "tool-tax-illustration.png",
     href: destinations.taxIntelligence.href,
-    action: "Explore tax guidance",
+    action: "Open tax calendar",
   },
   {
     id: "property",
