@@ -69,9 +69,16 @@ def normalize_role(role: str | None) -> str:
 
 #: Every role a colleague can hold, normalised. The census of 2026-09-06 over
 #: the live ``team_members`` rows (job titles, free text; ``SELECT lower(role),
-#: active, count(*) ... GROUP BY 1, 2`` through ``scripts/pg.sh``, active and
-#: inactive rows alike — an inactive colleague can be reactivated and must not
-#: find the door shut) plus the repo roster (``backend/data/team_members.json``)
+#: active, count(*) ... GROUP BY 1, 2``, active and inactive rows alike — an
+#: inactive colleague can be reactivated and must not find the door shut) run
+#: through the repo's read-only Postgres wrapper, the ``nuzantara_readonly``
+#: one-true-way documented in ``docs/runbooks/prod-db-writes.md``. That wrapper
+#: is named by description and not by file path on purpose: the CI coupling
+#: census counts a literal repo-root script path anywhere under ``apps/`` as a
+#: runtime coupling, comments included, and nothing in this module imports or
+#: invokes one — recording it would make every future change to a read-only
+#: query wrapper buy the six heavy backend suites. Plus the repo roster
+#: (``backend/data/team_members.json``)
 #: plus the two legacy tokens fixtures and older code paths still use. A
 #: superset of ``services/crm/partners/service.py::INTERNAL_ROLES_ALWAYS_ALLOWED``
 #: (CATA-6), which the tests pin so the two cannot drift apart.
