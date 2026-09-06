@@ -531,14 +531,13 @@ class Experiment:
                 "fail contradictions in this global contract or the supplied files."
             ),
             "learner_prompt_fields": [
-                "case_id",
                 "summary",
                 "observations",
                 "diagnosis_options",
                 "runbook_options",
                 "decision_options",
             ],
-            "hidden_from_learner": ["accepted", "split", "group_id", "category"],
+            "hidden_from_learner": ["case_id", "accepted", "split", "group_id", "category"],
             "forbidden_scan_scope": ["proposal.recommendation", "proposal.rationale"],
             "learner_model": f"{LEARNER_MODEL}:{LEARNER_EFFORT}",
             "reviewer_model": f"{REVIEWER_MODEL}:{REVIEWER_EFFORT}",
@@ -568,7 +567,7 @@ class Experiment:
                 "files": {str(path): path.read_text(encoding="utf-8") for path in paths},
             }
             result = await self._structured_attempt(
-                trial_id=f"review:protocol:{name}:2",
+                trial_id=f"review:protocol:{name}:3",
                 phase="preparation",
                 adapter=self.reviewer,
                 prompt=_canonical_json(packet),

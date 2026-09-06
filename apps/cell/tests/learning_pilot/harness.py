@@ -17,7 +17,7 @@ from typing import Callable, Protocol
 
 from .contract import validate_splits
 
-EVALUATOR_VERSION = "cell-learning-pilot-v1"
+EVALUATOR_VERSION = "cell-learning-pilot-v3"
 REQUIRED_CATEGORIES = frozenset(
     {"healthy", "transient", "dependency", "ambiguous", "stale_runbook", "escalation"}
 )
@@ -204,7 +204,6 @@ def build_case_prompt(
     visible = {
         key: case[key]
         for key in (
-            "case_id",
             "summary",
             "observations",
             "diagnosis_options",

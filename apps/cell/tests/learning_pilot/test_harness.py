@@ -95,9 +95,11 @@ def test_frozen_fixture_pack_rejects_option_shortcuts_and_registry_drift() -> No
 
 def test_hidden_answers_never_enter_learner_prompt() -> None:
     case = _case()
+    case["case_id"] = "TEST_SPLIT_SENTINEL"
     case["accepted"][0]["diagnosis"] = "GOLD_SENTINEL"
     prompt = build_case_prompt(case, "STATIC POLICY", ())
     assert "GOLD_SENTINEL" not in prompt
+    assert "TEST_SPLIT_SENTINEL" not in prompt
     assert '"accepted"' not in prompt
     assert "STATIC POLICY" in prompt
 
