@@ -1,0 +1,136 @@
+{
+  "run_at": "2026-09-07T07:07:40+08:00",
+  "today": "2026-09-07",
+  "yesterday_seen_count": 24,
+  "yesterday_file_used": "2026-09-06-delta.json",
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "http_403",
+      "note": "WAF/Cloudflare challenge (HTTP 403), persisted after 1 retry with Mozilla UA"
+    },
+    {
+      "url": "https://ortax.org/news",
+      "reason": "empty_shell",
+      "note": "HTTP 200 but body is soft-404 \"Artikel tidak ditemukan\""
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "empty_shell",
+      "note": "HTTP 200 client-side SPA shell (\"Memuat artikel perpajakan...\"), no static entries"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "empty_shell",
+      "note": "Next.js client-side SPA shell, no pre-rendered regulation entries in static HTML"
+    },
+    {
+      "url": "https://jdih.kemenkumham.go.id",
+      "reason": "timeout",
+      "note": "Domain unreachable / DNS resolution failed"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "Newest articles cover PMK 55/2026 (already in seen_citations), Coretax GloBE registration, and general fiscal news; no new reg in 48h"
+    },
+    {
+      "url": "https://ortax.org/berita/",
+      "reason": "checked_no_new",
+      "note": "Articles cover PMK 55/2026 requirements, DJP enforcement/surveys, and KKP compliance; no new regulation in 48h window"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "checked_no_new",
+      "note": "Newest articles cover NTT earthquake relief and general tax topics; no new regulation citations in 48h window"
+    },
+    {
+      "url": "https://peraturan.go.id",
+      "reason": "outside_window",
+      "note": "Newest entries (BPKP 4/2026, BIM 1/2026, BPH Migas 2/2026, BNPT 3/2026) predate 48h window"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "checked_no_new",
+      "note": "Search returned zero new PMK entries in 48h window"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "Newest items are general immigration info/releases, no new visa regulation in 48h window"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "Newest filtered entries KEP-185/PJ/2026 (2026-09-02) and PER-8/PJ/2026 predate 48h window"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "checked_no_new",
+      "note": "Newest visible entry UU Nomor 2 Tahun 2026; no Permenaker in 48h window"
+    },
+    {
+      "url": "https://jdih.kemenkum.go.id/dokumen/peraturan",
+      "reason": "checked_no_new",
+      "note": "Newest visible entries are Peraturan Menteri Hukum Nomor 10 Tahun 2026 and earlier; no Permenkum in 48h window"
+    },
+    {
+      "url": "https://jdih.bkpm.go.id/",
+      "reason": "outside_window",
+      "note": "Newest BKPM regulations (Peraturan BKPM No. 5/2026 and No. 6/2026 dated July 2026) predate 48h window"
+    }
+  ],
+  "nb_query_errors": [
+    {
+      "nb": "NB-INTEL-Regulation — Daily Regulatory Intelligence",
+      "reason": "auth_expired",
+      "note": "nlm auth expired (needs manual nlm login)"
+    },
+    {
+      "nb": "NB-INTEL-Press — Daily Press Intelligence",
+      "reason": "auth_expired",
+      "note": "nlm auth expired (needs manual nlm login)"
+    },
+    {
+      "nb": "NB-INTEL-Immigration — Daily Immigration Intelligence",
+      "reason": "auth_expired",
+      "note": "nlm auth expired (needs manual nlm login)"
+    },
+    {
+      "nb": "NB-INTEL-Tax — Daily Tax/Fiscal Intelligence",
+      "reason": "auth_expired",
+      "note": "nlm auth expired (needs manual nlm login)"
+    }
+  ],
+  "deltas": [],
+  "seen_citations": [
+    "PMK Nomor 28 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 44 Tahun 2026",
+    "PMK Nomor 55 Tahun 2026",
+    "PMK Nomor 57 Tahun 2026",
+    "PMK Nomor 61 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Peraturan Direktur Jenderal Pajak Nomor PER-8/PJ/2026",
+    "Peraturan Menteri Hukum Nomor 13 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "Permenaker No. 12 Tahun 2026; BN 2026 (598)",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026"
+  ]
+}
