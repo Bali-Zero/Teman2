@@ -10,6 +10,8 @@ scope:
   - apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py
   - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/*.json
   - apps/backend-rag/backend/scripts/visa_engine/gold_coverage_eval.py
+  - apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts
 constraints:
   - Test-only behaviour. No engine, no signed pack, no frontend, no production call, no signing key.
   - The one non-test edit memoizes verify+compile per evaluation instant; the evaluated decision is
@@ -33,6 +35,11 @@ acceptance:
       WHEN an allowlist row claims a question is not asked in that walk THEN the claim SHALL be
       checked against that walk's own `asked` history, never taken on trust.
     probe: "test_every_allowlisted_dead_end_is_genuinely_unaskable_in_its_own_walk"
+  - text: >-
+      WHEN the committed walk corpus and the committed generator disagree by a single byte — a
+      hand-edited fixture, an added or removed walk, or a tree change nobody regenerated for —
+      THEN the mouth vitest suite SHALL fail and name the offending file.
+    probe: "apps/mouth src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts"
 consumer_map:
   - The `backend-shard` pytest job in .github/workflows/tests.yml collects backend/tests/** — the
     module ships in this PR, so the corpus has a reader from the first run.
