@@ -173,12 +173,14 @@ describe("question registry -> wire coverage", () => {
     }
   });
 
+  // Re-stated 2026-09-06 (spec §4 PR-4 + owner ruling decision 6): the flag is
+  // raised for an ANSWER the signed vocabulary cannot decide, never for the
+  // fact that a question was answered. The pairs that must NOT flag are pinned
+  // directly below — guilt and innocence of the same table.
   it.each([
     ["trip_scope", "multiple", "MULTI_PURPOSE_TRIP"],
-    ["business_activity", "meetings", "ACTIVITY_BOUNDARY"],
-    ["work_role", "specialist", "ACTIVITY_BOUNDARY"],
-    ["tourism_duration", "short", "ACTIVITY_BOUNDARY"],
-    ["remote_income", "above", "ACTIVITY_BOUNDARY"],
+    ["business_activity", "training", "ACTIVITY_BOUNDARY"],
+    ["business_activity", "other", "ACTIVITY_BOUNDARY"],
     ["investment_vehicle", "property", "ACTIVITY_BOUNDARY"],
     ["retirement_basis", "property", "ACTIVITY_BOUNDARY"],
     ["family_sponsor_status_code", "FOO", "AMBIGUOUS_SPONSOR"],
@@ -188,9 +190,26 @@ describe("question registry -> wire coverage", () => {
     ["other_purpose", "medical", "ACTIVITY_BOUNDARY"],
     ["other_paid_activity", "yes", "ACTIVITY_BOUNDARY"],
   ])(
-    "maps HUMAN_CONTEXT %s to a conservative review flag",
+    "maps an undecidable HUMAN_CONTEXT answer (%s=%s) to a conservative review flag",
     (id, value, flag) => {
       expect(mapFacts({ [id]: value }).disclosed_review_flags).toContain(flag);
+    },
+  );
+
+  it.each([
+    ["business_activity", "meetings"],
+    ["business_activity", "negotiation"],
+    ["business_activity", "conference"],
+    ["investment_vehicle", "pt_pma"],
+    ["retirement_basis", "bank_deposit"],
+    ["retirement_basis", "passive_income"],
+    // Engine-inert: no rule reads a work role (owner ruling, decision 6).
+    // All five options are swept in `activity-boundary.test.ts`.
+    ["work_role", "specialist"],
+  ])(
+    "leaves a decidable answer (%s=%s) unflagged — it must not veto a proven candidate",
+    (id, value) => {
+      expect(mapFacts({ [id]: value }).disclosed_review_flags).toEqual([]);
     },
   );
 });
@@ -745,15 +764,17 @@ describe("family sponsor status — unverified human context", () => {
   });
 });
 
-describe("remote_income — no FactPath exists, never invented", () => {
-  it("does not invent a FactPath and instead adds a monotone review hold", () => {
+describe("remote_income — a dead question id, never invented", () => {
+  it("does not invent a FactPath, and no longer holds on a question tree.ts does not have", () => {
+    // One of the 2 dead legacy nodes (pinned absent by `tree.test.ts`), so its
+    // ACTIVITY_BOUNDARY clause was unreachable code, not a live guard.
     const base: OracleFacts = { category: "remote", remote_clients: "foreign" };
     const withIncome: OracleFacts = { ...base, remote_income: "above" };
     const before = mapFacts(base);
     const after = mapFacts(withIncome);
     expect(after.facts).toEqual(before.facts);
     expect(before.disclosed_review_flags).toEqual([]);
-    expect(after.disclosed_review_flags).toEqual(["ACTIVITY_BOUNDARY"]);
+    expect(after.disclosed_review_flags).toEqual([]);
   });
 
   it("is never one of the 40 emitted keys", () => {

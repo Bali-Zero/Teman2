@@ -399,6 +399,52 @@ const REVIEW_FLAG_MAP: Readonly<
   activity_boundary: "ACTIVITY_BOUNDARY",
 };
 
+/**
+ * ACTIVITY_BOUNDARY is a HOLD, not a label: any disclosed flag makes the
+ * backend rewrite the decision to HUMAN_REVIEW_REQUIRED with `candidates=()`
+ * (`evaluate_path.py::_apply_disclosed_review_flags`), and `models.py` forbids
+ * a non-empty candidate list in any other state — so raising it DELETES a
+ * product the signed pack had already proven. It may be raised only for an
+ * answer the signed vocabulary cannot decide, never for the mere fact that a
+ * question was answered.
+ *
+ * Keyed by question id (`tree.ts`), listing per question the answers the pack
+ * decides on its own. Every OTHER answer holds, including an option added to
+ * `tree.ts` later without revisiting this table — fail-closed on purpose. A
+ * question absent from the table never raises this flag at all. Rationale per
+ * row, and the rows deliberately NOT here (`work_role`, engine-inert per the
+ * owner ruling of 2026-09-06 decision 6; `tourism_duration`/`remote_income`,
+ * question ids that exist nowhere in `tree.ts`): research/visa/
+ * 2026-09-06-visa-oracle-decisiveness-investigation.md §4 PR-4 and §6 R3.
+ * Guilt, innocence and the per-walk census: `activity-boundary.test.ts`.
+ */
+export const ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS = {
+  business_activity: ["meetings", "negotiation", "conference"],
+  investment_vehicle: ["pt_pma"],
+  retirement_basis: ["bank_deposit", "passive_income"],
+  diaspora_connection: [],
+  diaspora_documents: [],
+  other_purpose: [],
+  other_paid_activity: [],
+} as const satisfies Readonly<Record<string, readonly string[]>>;
+
+/** Question ids the ACTIVITY_BOUNDARY table classifies. */
+export type ActivityBoundaryQuestionId =
+  keyof typeof ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS;
+
+/** True when this interview answered a classified question with a value the
+ * signed pack cannot decide. Unanswered questions never hold. */
+function hasUndecidableActivityAnswer(facts: OracleFacts): boolean {
+  for (const [questionId, decidable] of Object.entries(
+    ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS,
+  ) as [ActivityBoundaryQuestionId, readonly string[]][]) {
+    const answer = facts[questionId];
+    if (answer === undefined) continue;
+    if (!decidable.includes(answer)) return true;
+  }
+  return false;
+}
+
 export function mapDisclosedReviewFlags(
   facts: OracleFacts,
 ): DisclosedReviewFlagWire[] {
@@ -409,25 +455,10 @@ export function mapDisclosedReviewFlags(
   }
   if (Object.values(facts).includes("unsure")) flags.add("NOT_CERTAIN");
   if (facts.trip_scope === "multiple") flags.add("MULTI_PURPOSE_TRIP");
-  // Human-context answers that cannot be represented by a signed FactPath
-  // may only lower the result to review. They must never be silently ignored
-  // while a broader generic purpose still produces a candidate.
-  if (
-    facts.category === "diaspora" ||
-    facts.business_activity !== undefined ||
-    facts.work_role !== undefined ||
-    facts.tourism_duration !== undefined ||
-    facts.remote_income !== undefined ||
-    facts.diaspora_connection !== undefined ||
-    facts.diaspora_documents !== undefined ||
-    facts.other_purpose !== undefined ||
-    facts.other_paid_activity !== undefined ||
-    facts.retirement_basis === "property" ||
-    (facts.investment_vehicle !== undefined &&
-      facts.investment_vehicle !== "pt_pma") ||
-    facts.retirement_basis === "family_sponsor" ||
-    facts.retirement_basis === "undecided"
-  ) {
+  // Human-context answers the signed vocabulary cannot decide may only lower
+  // the result to review. An answer it CAN decide must not: this flag is a
+  // hold that deletes candidates, never a label (see the table above).
+  if (facts.category === "diaspora" || hasUndecidableActivityAnswer(facts)) {
     flags.add("ACTIVITY_BOUNDARY");
   }
   if (
