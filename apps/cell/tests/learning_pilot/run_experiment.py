@@ -9,7 +9,6 @@ import json
 import os
 import shutil
 import sys
-import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -217,9 +216,13 @@ class Experiment:
         self.source_root = source_root.resolve()
         self.executable = executable.resolve()
         self.resume_path = self.root / "resume.json"
-        self.started = time.monotonic()
         self.deadline_seconds = 8 * 60 * 60
         self.root.mkdir(parents=True, exist_ok=True)
+        if self.resume_path.exists():
+            prior = json.loads(self.resume_path.read_text(encoding="utf-8"))
+            self.started_at = datetime.fromisoformat(str(prior["started_at"]))
+        else:
+            self.started_at = datetime.now(timezone.utc)
         self.ledger = AttemptLedger(
             self.root,
             total_limit=TOTAL_BUDGET,
@@ -252,7 +255,7 @@ class Experiment:
         self.expected_reviewer_identity: str | None = None
 
     def _ensure_time(self) -> None:
-        if time.monotonic() - self.started >= self.deadline_seconds:
+        if (datetime.now(timezone.utc) - self.started_at).total_seconds() >= self.deadline_seconds:
             raise TimeoutError("eight-hour experiment wall-time exhausted")
 
     def _resume(self, stage: str, status: str, **extra: object) -> None:
@@ -261,6 +264,7 @@ class Experiment:
         preparation = sum(event.get("phase") != "held_out" for event in dispatches)
         payload = {
             "run_id": self.root.name,
+            "artifact_dir": str(self.root),
             "stage": stage,
             "status": status,
             "updated_at": _now(),
@@ -272,6 +276,20 @@ class Experiment:
                 "total_used": len(dispatches),
                 "preparation_used": preparation,
                 "held_out_used": len(dispatches) - preparation,
+                "interactive_orchestration_usage": "not_available_from_host_session",
+                "wall_time_limit_seconds": self.deadline_seconds,
+                "per_invocation_timeout_seconds": TIMEOUT_SECONDS,
+                "max_concurrent_inference": 1,
+            },
+            "predeclared_schedule": {
+                "adapter_preflight": 1,
+                "development_trials": 20,
+                "candidate_generation": 1,
+                "validation_trials": 20,
+                "protocol_review": 1,
+                "admission_review": 1,
+                "final_audit": 1,
+                "held_out_trials": 180,
             },
             **extra,
         }
@@ -282,6 +300,7 @@ class Experiment:
             payload.setdefault("base_commit", original.get("base_commit"))
             payload.setdefault("branch", original.get("branch"))
             payload.setdefault("worktree", original.get("worktree"))
+        payload.setdefault("started_at", self.started_at.isoformat())
         atomic_write_json(self.resume_path, payload)
 
     def _meta_receipts(self) -> list[dict[str, object]]:
@@ -453,7 +472,7 @@ class Experiment:
             *archived,
         ]
         manifest = freeze_manifest(
-            self.root / "protocol_manifest.json",
+            self.root / "manifest.json",
             frozen_files,
             metadata={"run_id": self.root.name, "stage": "pre-learning"},
         )
@@ -636,7 +655,7 @@ class Experiment:
         selected: list[dict[str, object]],
         pretest_manifest: dict[str, object],
     ) -> list[dict[str, object]]:
-        protocol_manifest = json.loads((self.root / "protocol_manifest.json").read_text(encoding="utf-8"))
+        protocol_manifest = json.loads((self.root / "manifest.json").read_text(encoding="utf-8"))
         verify_manifest(protocol_manifest)
         verify_manifest(pretest_manifest)
         schedule = json.loads((self.root / "trial_order.json").read_text(encoding="utf-8"))["held_out"]
@@ -669,7 +688,15 @@ class Experiment:
                 break
         return receipts
 
-    async def _audit(self, receipts: list[dict[str, object]], metrics: dict[str, object]) -> dict[str, object]:
+    async def _audit(
+        self,
+        receipts: list[dict[str, object]],
+        metrics: dict[str, object],
+        protocol_manifest: dict[str, object],
+        pretest_manifest: dict[str, object],
+    ) -> dict[str, object]:
+        verify_manifest(protocol_manifest)
+        verify_manifest(pretest_manifest)
         trial_ids = [str(receipt["trial_id"]) for receipt in receipts]
         deterministic = {
             "completed_trials": len(receipts),
@@ -689,6 +716,12 @@ class Experiment:
             "receipts": receipts,
             "metrics": metrics,
             "deterministic_audit": deterministic,
+            "manifest_verification": {
+                "protocol_manifest": "PASS",
+                "pretest_manifest": "PASS",
+                "protocol_manifest_hash": sha256_file(self.root / "manifest.json"),
+                "pretest_manifest_hash": sha256_file(self.root / "pretest_manifest.json"),
+            },
         }
         result = await self._structured_attempt(
             trial_id="review:final-audit:1",
@@ -714,6 +747,7 @@ class Experiment:
         metrics: dict[str, object],
         audit: dict[str, object] | None,
         selected: list[dict[str, object]],
+        receipts: list[dict[str, object]],
     ) -> Path:
         verdict = str(metrics["scientific_verdict"])
         recommendation = {
@@ -721,6 +755,43 @@ class Experiment:
             "NO-GO": "Do not integrate the learned bundle; investigate the measured safety or regression failure.",
             "INCONCLUSIVE": "Do not integrate the learned bundle; retain the evidence and redesign a new protocol.",
         }[verdict]
+        by_case: dict[str, dict[str, list[dict[str, object]]]] = {}
+        for receipt in receipts:
+            case = by_case.setdefault(str(receipt["case_id"]), {"A": [], "B": []})
+            case[str(receipt["arm"])].append(receipt)
+        example_rows: list[tuple[float, str]] = []
+        unstable = 0
+        for case_id, arms in by_case.items():
+            a_mean = sum(float(row["success"]) for row in arms["A"]) / len(arms["A"]) if arms["A"] else 0.0
+            b_mean = sum(float(row["success"]) for row in arms["B"]) / len(arms["B"]) if arms["B"] else 0.0
+            if any(len({float(row["success"]) for row in rows}) > 1 for rows in arms.values()):
+                unstable += 1
+            skill_ids = sorted({skill for row in arms["B"] for skill in row["selected_skill_ids"]})
+            line = (
+                f"- `{case_id}`: A={a_mean:.3f}, B={b_mean:.3f}, delta={b_mean - a_mean:+.3f}; "
+                f"skills={skill_ids or ['none']}."
+            )
+            example_rows.append((abs(b_mean - a_mean), line))
+        examples = "\n".join(line for _, line in sorted(example_rows, reverse=True)[:3])
+        attempts = self.ledger.events()
+        dispatches = [event for event in attempts if event["status"] == "dispatched"]
+        prep_calls = sum(event["phase"] != "held_out" for event in dispatches)
+        held_out_calls = sum(event["phase"] == "held_out" for event in dispatches)
+        all_trial_receipts = [
+            json.loads(line)
+            for line in (self.root / "receipts.jsonl").read_text(encoding="utf-8").splitlines()
+            if line
+        ]
+        total_usage: dict[str, int] = {}
+        for row in [*all_trial_receipts, *self._meta_receipts()]:
+            for key, value in dict(row.get("usage", {})).items():
+                if isinstance(value, (int, float)):
+                    total_usage[str(key)] = total_usage.get(str(key), 0) + int(value)
+        reproduction = (
+            f"cd {self.source_root.parents[1]} && PYTHONPATH=. "
+            f"/Users/nuzantara/nuzantara/apps/cell/.venv/bin/python -m tests.learning_pilot.run_experiment "
+            f"--run-root {self.root} --source-root {self.source_root} --claude {self.executable}"
+        )
         text = f"""# Cell Learning Pilot Results — {self.root.name}
 
 ## Status and scientific verdict
@@ -744,17 +815,33 @@ class Experiment:
 - Forbidden recommendations: {metrics["safety_failures"]}
 - Status counts: `{json.dumps(metrics["statuses"], sort_keys=True)}`
 - Correct abstention rate: `{json.dumps(metrics["correct_abstention_rate"], sort_keys=True)}`
+- Incident/arm combinations with repeat instability: {unstable}
 - Median inference latency: {metrics["latency_ms_median"]} ms
 - Observed model identities: `{json.dumps(metrics["model_identities"])}`
-- Token usage: `{json.dumps(metrics["usage"], sort_keys=True)}`
+- Preparation calls: {prep_calls}/{PREPARATION_BUDGET}
+- Held-out calls: {held_out_calls}/{HELD_OUT_BUDGET}
+- Total experiment calls: {len(dispatches)}/{TOTAL_BUDGET}
+- Total available token usage: `{json.dumps(total_usage, sort_keys=True)}`
+
+## Concrete held-out examples
+
+{examples}
 
 ## Frozen evidence
 
-- Protocol manifest: `{self.root / "protocol_manifest.json"}`
+- Protocol manifest: `{self.root / "manifest.json"}`
 - Pre-test manifest: `{self.root / "pretest_manifest.json"}`
 - Attempt ledger: `{self.root / "attempts.jsonl"}`
 - Trial receipts: `{self.root / "receipts.jsonl"}`
 - Independent reviews: `{self.root / "reviews"}`
+
+## Reproduction and environment pin
+
+- Command: `{reproduction}`
+- Learner: `{LEARNER_MODEL}`, effort `{LEARNER_EFFORT}`, observed `{self.expected_learner_identity}`
+- Reviewer: `{REVIEWER_MODEL}`, effort `{REVIEWER_EFFORT}`, observed `{self.expected_reviewer_identity}`
+- Adapter: `claude-cli-contained-v1`; executable SHA-256 `{sha256_file(self.executable)}`
+- Timeout: {TIMEOUT_SECONDS}s; concurrency: 1; learner tools: none; session persistence: disabled
 
 ## Recommendation
 
@@ -762,7 +849,7 @@ class Experiment:
 
 No production service, daemon, model, client data, or operational state was changed. Recommendations were scored as text and never executed.
 """
-        result_path = self.root / "results.md"
+        result_path = self.root / "report.md"
         result_path.write_text(text, encoding="utf-8")
         desktop_path = Path.home() / "Desktop" / f"cell-learning-pilot-results-{self.root.name}.md"
         shutil.copy2(result_path, desktop_path)
@@ -779,7 +866,7 @@ No production service, daemon, model, client data, or operational state was chan
         candidates = await self._development_and_learning(cases, rubric, policy)
         selected = await self._validate_and_admit(cases, rubric, policy, candidates)
         pretest_files = [
-            self.root / "protocol_manifest.json",
+            self.root / "manifest.json",
             self.root / "candidate_skills.json",
             self.root / "admission_decision.json",
             self.root / "reviews" / "admission_review.json",
@@ -795,8 +882,8 @@ No production service, daemon, model, client data, or operational state was chan
         metrics = compute_metrics(receipts, decision_function=decide)
         atomic_write_json(self.root / "metrics.json", metrics)
         self._resume("VERIFY_RECEIPTS", "in_progress")
-        audit = await self._audit(receipts, metrics)
-        report = self._report(metrics, audit, selected)
+        audit = await self._audit(receipts, metrics, manifest, pretest_manifest)
+        report = self._report(metrics, audit, selected, receipts)
         self._resume(
             "REPORT",
             "complete",
