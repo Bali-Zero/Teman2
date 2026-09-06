@@ -1,0 +1,92 @@
+brief_ref: evidence/brief.yml
+recorded_at: "2026-09-06T02:25:43Z"
+timestamp_semantics: recorded_at and receipt ts below record evidence preparation; native JSON observed_at fields record probe start. No exact unit-test start is claimed.
+scope_status: prepare-only-native-shadow
+gate_status: source-review-passed; release-gate-not-published
+final_test_status: passed for corrected source commit c03b182fcd
+final_cancellation_status: local process-group stop verified; native interrupt unacknowledged; remote cancellation unknown
+review:
+  status: PASS
+  evidence: evidence/dual-consul-native/review-2.json
+  previous_conditional_evidence: evidence/dual-consul-native/review-1.json
+  observed_model: claude-fable-5-1
+  final_delta_status: PASS
+  note: The native delta review closes all three conditions and binds the eleven-file source manifest and selected evidence. The reviewer did not execute tests or recompute hashes; conductor and evidence-author checks are separate. No operational qualification or release status is implied.
+seat_override: The owner's accepted v4 mandate uses one lead and the other consul for a narrow frozen-artifact review, without a duplicated routine council. Native Fable review 2 returns PASS and closes review 1's three conditions. This schema exception supplies no verdict, merge, or deployment authority.
+lanes:
+  - lane: native-app-server
+    role: build
+    seat: codex (OpenAI root conductor)
+  - lane: native-shadow-evidence
+    role: build
+    seat: codex (OpenAI selected evidence and documentation)
+diff:
+  scope: Native App Server RPC, isolated launcher, synthetic consumer, shared adapter admission registration, and focused tests and evidence.
+  base: Stacked on the preceding Dual Consul implementation branch at d48f57d38d365b52b16eeac99b70a3615f877e2a. Only the new native increment belongs to this diff; the preceding evidence pair is unchanged.
+  authority_boundary: The caller supplies a trusted host callback. The bundled callback only scopes the synthetic probe; no operational PostgreSQL authorization or distinct executor identity is enabled.
+pii_scan: clean
+pii_scan_scope: The selected native JSON contains synthetic mission identifiers, digests, runtime and lifecycle fields, and native usage counters; no credential values, account email, client data, or raw reasoning is selected.
+receipts:
+  - claim: Corrected source c03b182fcd passed native adapter, launcher, RPC transport, shared admission, and probe tests.
+    cmd: /Users/balizero/nuzantara/.venv/bin/python -m pytest scripts/tests/test_codex_shadow.py scripts/tests/test_codex_shadow_launch.py scripts/tests/test_conductor_app_server_rpc.py scripts/tests/test_conductor_adapter_contracts.py scripts/tests/test_codex_shadow_probe.py -q
+    cwd: /Users/balizero/nuzantara/.worktrees/infra-consul-app-server
+    exit: 0
+    result: 125 passed in 2.22s; Ruff passed separately as recorded in validation.json
+    ts: "2026-09-06T02:21:27.949220+00:00"
+    seat: codex root conductor (actual result recorded in validation.json and read by evidence author)
+    evidence: evidence/dual-consul-native/validation.json
+  - claim: The manifest-bound catalog producer returned a complete hidden-inclusive catalog with Astra unavailable and zero inference calls.
+    cmd: /Users/balizero/nuzantara/.venv/bin/python -m scripts.conductor.codex_shadow_probe --auth-home /Users/balizero/.codex --model gpt-6-astra --catalog > /tmp/dual-consul-native-catalog-bound.json
+    exit: 0
+    ts: "2026-09-06T02:21:50Z"
+    seat: codex root conductor (actual separate invocation and exit relayed; selected output inspected by evidence author)
+    evidence: evidence/dual-consul-native/discovery.json
+    producer_verification: All three native probes declare source_verification unchanged and bind the same six producer modules.
+  - claim: The regenerated invocation produced two completed Terra medium turns on the same thread with distinct turn IDs and native cumulative totalTokens 15945.
+    cmd: /Users/balizero/nuzantara/.venv/bin/python -m scripts.conductor.codex_shadow_probe --auth-home /Users/balizero/.codex --model gpt-5.6-terra --invoke > /tmp/dual-consul-native-invoke-bound.json
+    exit: 0
+    ts: "2026-09-06T02:21:50Z"
+    seat: codex root conductor (actual separate invocation and exit relayed; selected output inspected by evidence author)
+    evidence: evidence/dual-consul-native/native-invoke.json
+    identity: request_observed; model_evidence_source native_thread_configuration; inference_model null
+  - claim: evidence/dual-consul-native/native-cancel.json records local stop true, interrupt acknowledgment false, rpc_error, and remote cancellation unknown.
+    cmd: /Users/balizero/nuzantara/.venv/bin/python -m scripts.conductor.codex_shadow_probe --auth-home /Users/balizero/.codex --model gpt-5.6-terra --cancel > /tmp/dual-consul-native-cancel-bound.json
+    exit: 0
+    ts: "2026-09-06T02:21:50Z"
+    seat: codex root conductor (actual separate invocation and exit relayed; selected output inspected by evidence author)
+    evidence: evidence/dual-consul-native/native-cancel.json
+  - claim: Historical first native source review returned PASS-WITH-CONDITIONS.
+    cmd: cat evidence/dual-consul-native/review-1.json evidence/dual-consul-native/review-1.txt
+    exit: 0
+    ts: "2026-09-06T02:14:55.311Z"
+    seat: claude-fable-5-1 (native model metadata and selected response read by evidence author)
+    evidence: evidence/dual-consul-native/review-1.json
+  - claim: evidence/dual-consul-native/review-2.json records native delta PASS and closes all three conditions for the bound source and selected evidence.
+    cmd: cat evidence/dual-consul-native/review-2.json evidence/dual-consul-native/review-2.txt
+    exit: 0
+    ts: "2026-09-06T02:24:52.410Z"
+    seat: claude-fable-5-1 (native model and end_turn metadata; requested effort medium)
+    evidence: evidence/dual-consul-native/review-2.json
+    limitation: Reviewer inspected the supplied delta; it did not run tests or recompute digests. Independent conductor/evidence-author checks verify those separately.
+dissent:
+  - seat: claude-fable-5-1 (native review 1)
+    status: CONFIRMED
+    objection: Catalog observation lacked a manifest-bound producer; turn receipts lacked consumer-source binding; runtime_configuration was outside the shared identity vocabulary. Reproducible catalog mode, producer manifests, and request_observed checkpoints are implemented with regenerated proofs and passing tests; native review 2 closes all three conditions.
+  - seat: codex root conductor (native configuration diagnostic)
+    status: CONFIRMED
+    objection: Empty map overrides retained lower-layer environment values. The launcher now isolates HOME and CODEX_HOME and validates the actual shell_environment_policy field; an env field is invalid under strict configuration.
+  - seat: codex root conductor (native continuity diagnostic)
+    status: CONFIRMED
+    objection: Ephemeral native threads rejected thread/resume. The probe uses persisted native history only inside a private temporary home; cleanup removes it, so only same-process continuity is established.
+  - seat: codex native-shadow-evidence (selected JSON and source inspection)
+    status: CONFIRMED
+    objection: Terra runtime configuration and successful text cannot establish served Astra identity. The selected receipts expose no inference model identifier, and exact response-identity requirements remain inadmissible.
+  - seat: codex native-shadow-evidence (selected cancellation JSON and source inspection)
+    status: CONFIRMED
+    objection: Native turn/interrupt returned rpc_error and was not acknowledged. Local process-group termination does not certify remote cancellation or final remote consumption. The receipt retains remote_cancelled null.
+remaining:
+  - Native interrupt acknowledgment and remote cancellation remain unqualified.
+  - Exact final commit release status is not published; the source-review PASS does not publish it.
+  - Qualification of the required model and each distinct host/runtime binding.
+  - Operational broker wiring, distinct executor identity, remote effects, and persistent recovery remain outside this increment.
+  - Staging, canary, production deployment, and operational reliability remain unqualified.
