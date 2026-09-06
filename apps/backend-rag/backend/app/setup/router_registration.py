@@ -239,7 +239,7 @@ def include_routers(api: FastAPI) -> None:
 
     from backend.app.routers import garuda_assignment_targets
 
-    api.include_router(garuda_assignment_targets.router)  # GET /api/crm/garuda/assignment-targets — the staff surface's assignee picker, kept CRM-side of the frozen /api/visa/voa contract prefix; same actor resolution and admin test as assignPractice
+    api.include_router(garuda_assignment_targets.router)  # GARUDA assignee picker (CRM-side)
 
     # CRM routers
     api.include_router(crm_clients.router)
@@ -701,7 +701,7 @@ def include_light_routers(api: FastAPI) -> None:
 
     from backend.app.routers import garuda_assignment_targets
 
-    api.include_router(garuda_assignment_targets.router)  # GET /api/crm/garuda/assignment-targets — the staff surface's assignee picker, kept CRM-side of the frozen /api/visa/voa contract prefix; same actor resolution and admin test as assignPractice
+    api.include_router(garuda_assignment_targets.router)  # GARUDA assignee picker (CRM-side)
 
     # Genome-backed registries (light: SQLite via cell-core, no ML deps)
     api.include_router(experience.router)  # [EXP] Experience Library (PR #54)

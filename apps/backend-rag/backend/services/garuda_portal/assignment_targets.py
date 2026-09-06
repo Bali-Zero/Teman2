@@ -42,14 +42,25 @@ non-client rows against 525 active ``client`` rows, per the census above), on a
 response the UI holds for 5 minutes. Cheap enough not to need a cache of its
 own, and no cache means no second place to invalidate.
 
+Admins are candidates whatever their role says.
+`is_valid_garuda_assignment_target` accepts an email in
+`staff_auth.garuda_practice_admin_emails()` BEFORE it reads any role or any
+row, so a role-only prefilter silently drops accepted targets: an ACTIVE admin
+row whose role is ``client`` or ``monitoring``, and any row whose role is NULL —
+where SQL's three-valued `role <> ALL(...)` is UNKNOWN and `WHERE` discards it.
+`_CANDIDATE_SQL` therefore carries an `OR LOWER(email) = ANY($2)` arm fed from
+that accessor: the set is READ, never restated, and the decision still belongs
+to the validator, which every surviving row is put through. (Codex Gear-2 grade
+of 0ead993f3b1b, finding 1 MEDIUM — the first candidate query had no such arm
+and dropped exactly those rows.)
+
 Known boundary, stated rather than left silent: candidates come from
-`team_members`, so an email in `staff_auth._garuda_practice_admin_emails()`
-that has NO active row there is accepted by the validator but not offered here.
-The census shows every admin-class role (``founder``, ``ceo``, ``board member``)
-holding an active row, so the set is empty today; widening the candidate query
-to union the admin constant would mean either importing that private helper or
-restating it — a second copy of a policy set, which is the exact drift this
-module exists to avoid.
+`team_members`, so an admin email with NO active row there is accepted by the
+validator but not offered here — there is no name to show and no row to order
+by. The census shows every admin-class role (``founder``, ``ceo``, ``board
+member``) holding an active row, so that set is empty today, and
+`test_admin_boundary_is_the_documented_one` pins the behaviour instead of
+leaving it to chance.
 """
 
 from __future__ import annotations
@@ -59,24 +70,38 @@ from typing import Any
 import asyncpg
 
 from backend.app.utils.service_accounts import non_human_roles_sql_array
-from backend.services.garuda_portal.staff_auth import is_valid_garuda_assignment_target
+from backend.services.garuda_portal.staff_auth import (
+    garuda_practice_admin_emails,
+    is_valid_garuda_assignment_target,
+)
 
 __all__ = ["list_garuda_assignment_targets"]
 
-#: PERFORMANCE PREFILTER, never the authority. `NON_HUMAN_ROLES`
-#: ({``client``, ``monitoring``}) is a subset of everything
-#: `is_valid_garuda_assignment_target` refuses — both roles are in
+#: PERFORMANCE PREFILTER, never the authority — and safe only because it has
+#: TWO arms. `NON_HUMAN_ROLES` ({``client``, ``monitoring``}) is a subset of
+#: what `is_valid_garuda_assignment_target` refuses BY ROLE (both are in
 #: `NON_TEAM_ROLES` today, and neither is a team role under the census
-#: allow-list PR #5817 introduces — so dropping them here cannot drop a row the
-#: validator would accept. It exists because `team_members` holds 525 active
-#: `client` rows next to ~25 staff rows, and asking the validator about a
-#: client is a wasted query. The validator still sees every remaining row and
-#: is still the only thing that decides.
+#: allow-list PR #5817 introduces), but that validator accepts an admin email
+#: BEFORE reading any role. So arm 1 alone would drop accepted rows — an active
+#: admin whose role is ``client``/``monitoring``, and any NULL role, where
+#: `role <> ALL(...)` is UNKNOWN — and arm 2 (`OR LOWER(email) = ANY($2)`, fed
+#: from `staff_auth.garuda_practice_admin_emails()`) keeps exactly those. What
+#: the two arms together exclude is therefore only what the validator refuses
+#: for the same reason; every surviving row is still put through the validator,
+#: which remains the only thing that decides.
+#:
+#: The prefilter exists because `team_members` holds 525 active ``client`` rows
+#: next to ~25 staff rows (read-only census 2026-09-06), and each candidate costs
+#: one round-trip through the Fly proxy: asking the validator about a client is
+#: a wasted query. Note the comparison is SQL's, on the RAW role value — a
+#: ``'Client'`` or ``'client '`` row stays a candidate and is refused later by
+#: the validator's own `normalize_role`. Over-inclusion is safe here by design;
+#: under-inclusion is the bug arm 2 closes.
 _CANDIDATE_SQL = """
     SELECT email, name, full_name, role
       FROM team_members
      WHERE active = TRUE
-       AND role <> ALL($1::text[])
+       AND (role <> ALL($1::text[]) OR LOWER(email) = ANY($2::text[]))
      ORDER BY name ASC
 """
 
@@ -102,7 +127,11 @@ async def list_garuda_assignment_targets(conn: asyncpg.Connection) -> list[dict[
     person picking one, and picking wrong assigns a practice to the wrong
     colleague.
     """
-    rows = await conn.fetch(_CANDIDATE_SQL, non_human_roles_sql_array())
+    # The admin set is read at CALL time and never cached here, so the candidate
+    # query and the validator's own admin shortcut cannot disagree about who is
+    # an admin — one source, read twice per request, same answer.
+    admin_emails = sorted(garuda_practice_admin_emails())
+    rows = await conn.fetch(_CANDIDATE_SQL, non_human_roles_sql_array(), admin_emails)
 
     accepted: list[tuple[str, str]] = []
     seen: set[str] = set()
