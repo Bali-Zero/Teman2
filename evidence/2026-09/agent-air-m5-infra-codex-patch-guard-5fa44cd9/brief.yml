@@ -1,0 +1,19 @@
+task_id: codex-patch-guard
+gear: 1
+l_level: L2
+gate_class: opus
+objective: Recognize canonical Codex apply_patch events in the existing worktree guard.
+constraints:
+  - Preserve existing Claude event behavior and worktree admission policy.
+  - Check every Add, Update, Delete and Move source/destination against event cwd.
+  - Refuse ambiguous patches without echoing input content or paths.
+  - Do not change global hook registration or shipping authority.
+acceptance:
+  - text: All 85 innocence/guilt cases pass through the actual CI entry point.
+    probe: PYTHONPATH=. python infra/claude-hooks/test_hook_innocence.py
+  - text: Installed registration and official canonical hook schema agree.
+    probe: >-
+      Confirm Edit|Write matcher aliases apply_patch and that tool_input.command
+      carries the patch in the current OpenAI hook reference before local installation.
+appetite:
+  wall_clock_hours: 1
