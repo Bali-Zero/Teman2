@@ -313,10 +313,33 @@ _DB_TOUCHED = "the gate must refuse before the database is touched"
 class _UntouchablePool:
     """Any attribute access is a test failure (same idiom as
     `test_crm_intelligence_partner_gate.py`): a 401/403 proves the gate fired
-    before any roster row could be read."""
+    before any roster row could be read.
+
+    Dunder lookups are exempt and raise `AttributeError`, exactly as that
+    precedent does — pytest/httpx introspection and the copy/pickle protocol
+    probe `__*__` attributes, and answering those with an `AssertionError`
+    reports a confusing failure instead of the intended one. The first push of
+    this branch omitted the exemption and CodeQL named it (alert 8994,
+    "non-standard exception raised in special method"); the cure is the
+    repo's own idiom, not a new one.
+    """
 
     def __getattr__(self, name: str) -> Any:
+        if name.startswith("__"):
+            raise AttributeError(name)
         raise AssertionError(f"{_DB_TOUCHED} (accessed .{name})")
+
+
+def test_untouchable_pool_fails_loud_on_use_and_honest_on_protocol_probes() -> None:
+    """Both arms of the helper the two gate tests below rely on: real pool use
+    is an `AssertionError` carrying the reason, a protocol/introspection probe
+    is a plain `AttributeError`. Without this pair the exemption above is
+    incidental rather than decided (superscar #3: a guard with one arm)."""
+    pool = _UntouchablePool()
+    with pytest.raises(AssertionError, match=_DB_TOUCHED):
+        pool.acquire()
+    with pytest.raises(AttributeError):
+        pool.__deepcopy__  # noqa: B018 — the lookup itself is the assertion
 
 
 class _Acquire:
