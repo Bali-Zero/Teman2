@@ -173,10 +173,48 @@ describe("question registry -> wire coverage", () => {
     }
   });
 
+  // 2026-09-06, owner ruling 6. `work_role` sat fifth in the fixed `work`
+  // sequence, so it was ALWAYS answered, so this presence-triggered flag
+  // was ALWAYS attached — and any disclosed flag is terminal backend-side
+  // (`_apply_disclosed_review_flags` rewrites the decision with zero
+  // candidates). E23, the one product seq-19 answers cleanly for an
+  // employment interview, was therefore never shown to anybody. Measured
+  // offline against the signed seq-19 pack, this exact fact set: with the
+  // flag `HUMAN_REVIEW_REQUIRED` / 0 candidates, without it
+  // `SUPPORTED_CANDIDATES [E23]`.
+  it("guilt: a completed work interview attaches NO disclosed review flag", () => {
+    expect(
+      mapFacts({
+        category: "work",
+        sponsor_category: "EMPLOYER",
+        work_payer: "yes",
+        work_indonesia_compensation: "yes",
+        work_sponsor_confirmed: "yes",
+        stay_days: "365",
+        trip_scope: "single",
+        review_gate: "none",
+      }).disclosed_review_flags,
+    ).toEqual([]);
+  });
+
+  it("innocence: the other presence-triggered clauses are untouched by that deletion", () => {
+    // PR-4 of the decisiveness wave owns these, and only AFTER the seq-20
+    // fold compiles the D2 local-compensation prohibition — removing the
+    // `business_activity` clause before that is a measured fail-open.
+    for (const [id, value] of [
+      ["business_activity", "meetings"],
+      ["other_purpose", "medical"],
+      ["diaspora_connection", "former_wni"],
+    ] as const) {
+      expect(mapFacts({ [id]: value }).disclosed_review_flags).toContain(
+        "ACTIVITY_BOUNDARY",
+      );
+    }
+  });
+
   it.each([
     ["trip_scope", "multiple", "MULTI_PURPOSE_TRIP"],
     ["business_activity", "meetings", "ACTIVITY_BOUNDARY"],
-    ["work_role", "specialist", "ACTIVITY_BOUNDARY"],
     ["tourism_duration", "short", "ACTIVITY_BOUNDARY"],
     ["remote_income", "above", "ACTIVITY_BOUNDARY"],
     ["investment_vehicle", "property", "ACTIVITY_BOUNDARY"],
@@ -396,14 +434,27 @@ describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
   it("is reachable (and answers KNOWN) on every category branch that asks it", () => {
     // The categories where the sponsor discriminates (design choice, see
     // FIXED_CATEGORY_QUESTIONS/getCategoryQuestionIds in flow.ts): work,
-    // remote, study, invest, retirement, family. Derived from the flow
+    // remote, study, invest, retirement, family — and, since 2026-09-06,
+    // diaspora, which now serves the FAMILY question set verbatim (owner
+    // ruling 4) and therefore inherits its `sponsor_category`. `second_home`
+    // deliberately does NOT ask it: no E33 rule reads `sponsor.type`, and
+    // every question carries `notSure: { mode: "human-review" }`, so a
+    // ceremonial one could only add review volume. Derived from the flow
     // graph itself, not hardcoded, so this test breaks if a branch's
     // question list changes without this describe block being revisited.
     const categoriesAsking = CATEGORY_KEYS.filter((category) =>
       getCategoryQuestionIds({ category }).includes("sponsor_category"),
     );
     expect([...categoriesAsking].sort()).toEqual(
-      ["family", "invest", "remote", "retirement", "study", "work"].sort(),
+      [
+        "diaspora",
+        "family",
+        "invest",
+        "remote",
+        "retirement",
+        "study",
+        "work",
+      ].sort(),
     );
     for (const category of categoriesAsking) {
       const result = mapFacts({ category, sponsor_category: "EMPLOYER" });
@@ -418,7 +469,7 @@ describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
     for (const category of [
       "tourism",
       "business",
-      "diaspora",
+      "second_home",
       "other",
     ] as const) {
       expect(getCategoryQuestionIds({ category })).not.toContain(
@@ -429,7 +480,7 @@ describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
 });
 
 describe("mapPurposes — category -> intent.purposes", () => {
-  it("maps every tile with a clean VisaPurpose match (all except diaspora)", () => {
+  it("maps every tile with a clean VisaPurpose match", () => {
     for (const [tile, purpose] of Object.entries(CATEGORY_TO_PURPOSE)) {
       expect(mapPurposes({ category: tile })).toEqual({
         status: "KNOWN",
@@ -438,23 +489,43 @@ describe("mapPurposes — category -> intent.purposes", () => {
     }
   });
 
-  it("diaspora has no clean VisaPurpose match -> UNKNOWN NOT_APPLICABLE", () => {
+  // Owner ruling 4 (2026-09-06) reversed the previous "diaspora is
+  // represented only by request_category" design. It was not a
+  // simplification: `mapPurposes` returned UNKNOWN(NOT_APPLICABLE), so
+  // every diaspora interview dead-ended in NEEDS_INPUT on `intent.purposes`
+  // — a fact the interview HAD collected — no matter what else the
+  // applicant answered.
+  it("diaspora maps to FAMILY, the purpose of the products it actually reaches (E31C/E31F)", () => {
     expect(mapPurposes({ category: "diaspora" })).toEqual({
-      status: "UNKNOWN",
-      reason: "NOT_APPLICABLE",
+      status: "KNOWN",
+      value: ["FAMILY"],
     });
   });
 
-  it("every one of the 10 CATEGORY_KEYS tiles is handled (mapped or explicitly diaspora)", () => {
+  // Owner ruling 3: SECOND_HOME must be the ONLY declared purpose. The
+  // pack's `hit_policy.eligibility = COVER_ALL_DECLARED_PURPOSES` drops
+  // E33 the moment a second purpose rides along, so a second_home tile
+  // that also emitted RETIREMENT would be a silent no-path.
+  it("second_home emits SECOND_HOME alone, never joined to RETIREMENT", () => {
+    expect(mapPurposes({ category: "second_home" })).toEqual({
+      status: "KNOWN",
+      value: ["SECOND_HOME"],
+    });
+  });
+
+  it("every one of the CATEGORY_KEYS tiles now yields a KNOWN purpose", () => {
     for (const tile of CATEGORY_KEYS) {
       const result = mapPurposes({ category: tile });
       assertValidFactValue(result);
-      if (tile === "diaspora") {
-        expect(result).toEqual({ status: "UNKNOWN", reason: "NOT_APPLICABLE" });
-      } else {
-        expect(result.status).toBe("KNOWN");
-      }
+      expect(result.status, `${tile} must map to a purpose`).toBe("KNOWN");
     }
+  });
+
+  it("guilt: a category outside CATEGORY_KEYS is UNKNOWN, never guessed into a purpose", () => {
+    expect(mapPurposes({ category: "not-a-tile" })).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_APPLICABLE",
+    });
   });
 
   it("category never asked -> UNKNOWN NOT_ASKED", () => {

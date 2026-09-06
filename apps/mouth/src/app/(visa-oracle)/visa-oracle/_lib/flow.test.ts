@@ -100,7 +100,6 @@ const CATEGORY_CASES: ReadonlyArray<{
       ["work_payer", "yes"],
       ["work_indonesia_compensation", "yes"],
       ["work_sponsor_confirmed", "yes"],
-      ["work_role", "specialist"],
       ["stay_days", "365"],
     ],
   },
@@ -113,6 +112,10 @@ const CATEGORY_CASES: ReadonlyArray<{
       ["investment_capital_idr", "1000000000"],
       ["investment_paid_up_capital_idr", "500000000"],
       ["investment_role", "SHAREHOLDER_DIRECTOR"],
+      ["family_sponsor_confirmed", "no"],
+      // `startOffshore` drives every CATEGORY_CASES walk, so the invest
+      // branch's offshore-only `wants_onshore_conversion` is asked here.
+      ["wants_onshore_conversion", "no"],
       ["stay_days", "730"],
     ],
   },
@@ -122,6 +125,7 @@ const CATEGORY_CASES: ReadonlyArray<{
       ["sponsor_category", "NONE"],
       ["remote_clients", "foreign"],
       ["remote_compensation", "no"],
+      ["work_payer", "no"],
       ["remote_employer_country", "US"],
       ["remote_pt_pma", "no"],
       ["stay_days", "365"],
@@ -150,6 +154,14 @@ const CATEGORY_CASES: ReadonlyArray<{
     ],
   },
   {
+    category: "second_home",
+    branch: [
+      ["secondhome_basis", "property"],
+      ["secondhome_property_value_usd", "2000000"],
+      ["stay_days", "1825"],
+    ],
+  },
+  {
     category: "study",
     branch: [
       ["sponsor_category", "EDUCATION"],
@@ -164,6 +176,15 @@ const CATEGORY_CASES: ReadonlyArray<{
     branch: [
       ["diaspora_connection", "former_wni"],
       ["diaspora_documents", "yes"],
+      // Diaspora now serves the FAMILY question set verbatim (owner
+      // ruling 4) — `getCategoryQuestionIds` composes the two
+      // diaspora-context questions with `familyQuestionIds`.
+      ["sponsor_category", "INDIVIDUAL"],
+      ["family_relation", "PARENT"],
+      ["marital_status", "MARRIED"],
+      ["family_sponsor_nationalities", "ID"],
+      ["family_marriage_registered", "yes"],
+      ["family_sponsor_confirmed", "yes"],
       ["stay_days", "365"],
     ],
   },
@@ -172,13 +193,14 @@ const CATEGORY_CASES: ReadonlyArray<{
     branch: [
       ["other_purpose", "medical"],
       ["other_paid_activity", "no"],
+      ["family_sponsor_confirmed", "yes"],
       ["stay_days", "30"],
       ["entry_pattern", "SINGLE"],
     ],
   },
 ];
 
-describe("the ten behavioral interview branches", () => {
+describe("the eleven behavioral interview branches", () => {
   it.each(CATEGORY_CASES)(
     "$category reaches review and confirmation without a dead end",
     ({ category, branch }) => {
@@ -199,7 +221,7 @@ describe("the ten behavioral interview branches", () => {
     },
   );
 
-  it("covers exactly the ten category keys", () => {
+  it("covers exactly the eleven category keys", () => {
     expect(CATEGORY_CASES.map(({ category }) => category)).toEqual(
       CATEGORY_KEYS,
     );
@@ -754,7 +776,12 @@ describe("2026-08-23 owner ruling: stepchild evidence questions fire only for fa
 });
 
 describe("editing, pruning and branch projection", () => {
-  it.each(["work_role", "unknown-question"])(
+  // `study_level` is a REGISTERED question that this tourism interview never
+  // asked (was `work_role`, deleted from the registry 2026-09-06 — an
+  // unregistered id no longer exercises the "registered but off-path"
+  // half of this assertion). `unknown-question` covers the unregistered
+  // half.
+  it.each(["study_level", "unknown-question"])(
     "EDIT resets an absent target %s without retaining the previous interview",
     (questionId) => {
       const state: FlowState = {
@@ -777,6 +804,7 @@ describe("editing, pruning and branch projection", () => {
         history: [{ kind: "framing" }],
         facts: {},
         blockedAnswer: null,
+        pendingFollowUp: null,
       });
     },
   );
@@ -1219,5 +1247,321 @@ describe("attempt and verdict navigation", () => {
     expect(state.facts.sponsor_category).toBeUndefined();
     expect(state.facts.work_payer).toBeUndefined();
     expectQuestion(state, "trip_scope");
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────
+// 2026-09-06 decisiveness wave (PR-3): the +1 questions that supply the
+// facts the engine still asks for, and the follow-up loop that asks a
+// modelled-but-unasked question instead of rendering a dead row.
+// ────────────────────────────────────────────────────────────────────────
+
+describe("PR-3 · wants_onshore_conversion is asked OFFSHORE in the invest branch only", () => {
+  it("guilt: the offshore invest branch asks it exactly once, immediately before stay_days", () => {
+    const ids = getCategoryQuestionIds({
+      category: "invest",
+      investment_vehicle: "pt_pma",
+      in_indonesia: "no",
+    });
+    expect(ids.filter((id) => id === "wants_onshore_conversion")).toHaveLength(
+      1,
+    );
+    expect(ids[ids.indexOf("wants_onshore_conversion") + 1]).toBe("stay_days");
+  });
+
+  it("innocence: the ONSHORE invest branch does not repeat the spine question", () => {
+    // Onshore, `computeNextNode`'s `overstay_days` case already routes
+    // through it — asking again in the branch would be a duplicate node.
+    const ids = getCategoryQuestionIds({
+      category: "invest",
+      investment_vehicle: "pt_pma",
+      in_indonesia: "yes",
+    });
+    expect(ids).not.toContain("wants_onshore_conversion");
+  });
+
+  it("innocence: no other category asks it, onshore or offshore", () => {
+    for (const category of CATEGORY_KEYS) {
+      if (category === "invest") continue;
+      for (const inIndonesia of ["yes", "no"]) {
+        expect(
+          getCategoryQuestionIds({ category, in_indonesia: inIndonesia }),
+        ).not.toContain("wants_onshore_conversion");
+      }
+    }
+  });
+
+  it("guilt: answering it offshore continues the invest branch, never the onshore spine", () => {
+    // The regression this guards: `computeNextNode` matches by question id
+    // BEFORE falling through to the category sequence, so the offshore
+    // occurrence used to route to `application_channel` — an onshore-only
+    // question the applicant had already skipped past.
+    const facts: OracleFacts = {
+      in_indonesia: "no",
+      category: "invest",
+      investment_vehicle: "pt_pma",
+    };
+    expect(
+      computeNextNode(
+        { kind: "question", questionId: "wants_onshore_conversion" },
+        facts,
+      ),
+    ).toEqual({ kind: "question", questionId: "stay_days" });
+  });
+
+  it("innocence: the onshore spine still routes it to application_channel", () => {
+    expect(
+      computeNextNode(
+        { kind: "question", questionId: "wants_onshore_conversion" },
+        { in_indonesia: "yes", category: "invest" },
+      ),
+    ).toEqual({ kind: "question", questionId: "application_channel" });
+  });
+});
+
+describe("PR-3 · family_sponsor_confirmed reaches the invest and other branches", () => {
+  it.each(["invest", "other", "family", "retirement", "diaspora"] as const)(
+    "guilt: %s asks it exactly once",
+    (category) => {
+      const ids = getCategoryQuestionIds({
+        category,
+        investment_vehicle: "pt_pma",
+        retirement_basis: "passive_income",
+      });
+      expect(
+        ids.filter((id) => id === "family_sponsor_confirmed"),
+      ).toHaveLength(1);
+    },
+  );
+
+  it("innocence: the branches whose covering rules do not read it are untouched", () => {
+    for (const category of ["tourism", "business", "work", "study"] as const) {
+      expect(getCategoryQuestionIds({ category })).not.toContain(
+        "family_sponsor_confirmed",
+      );
+    }
+  });
+});
+
+describe("PR-3 · work_payer reaches the remote branch", () => {
+  it("guilt: remote asks it exactly once, right before the employer country", () => {
+    const ids = getCategoryQuestionIds({ category: "remote" });
+    expect(ids.filter((id) => id === "work_payer")).toHaveLength(1);
+    expect(ids[ids.indexOf("work_payer") + 1]).toBe("remote_employer_country");
+  });
+
+  it("innocence: work still asks it once and no third branch picked it up", () => {
+    expect(
+      getCategoryQuestionIds({ category: "work" }).filter(
+        (id) => id === "work_payer",
+      ),
+    ).toHaveLength(1);
+    const others = CATEGORY_KEYS.filter(
+      (category) => category !== "work" && category !== "remote",
+    );
+    for (const category of others) {
+      expect(getCategoryQuestionIds({ category })).not.toContain("work_payer");
+    }
+  });
+});
+
+describe("PR-3 · work_role is gone from every live sequence (owner ruling 6)", () => {
+  it("guilt: no category sequence names it and the registry has no entry", () => {
+    for (const category of CATEGORY_KEYS) {
+      expect(getCategoryQuestionIds({ category })).not.toContain("work_role");
+    }
+    expect(Object.prototype.hasOwnProperty.call(QUESTIONS, "work_role")).toBe(
+      false,
+    );
+  });
+
+  it("innocence: the work branch still collects every fact E23 reads", () => {
+    // `el.e23-employment-support` requires `intent.purposes`,
+    // `work.employer_is_indonesian_entity` and
+    // `work.indonesian_work_sponsor_confirmed` — deleting the role
+    // question must not have taken any of them with it.
+    const ids = getCategoryQuestionIds({ category: "work" });
+    expect(ids).toContain("work_payer");
+    expect(ids).toContain("work_sponsor_confirmed");
+    expect(ids).toContain("work_indonesia_compensation");
+  });
+});
+
+describe("PR-3 · the second_home branch (owner ruling 3)", () => {
+  it("guilt: each basis serves exactly the evidence its E33 support rule reads", () => {
+    expect(
+      getCategoryQuestionIds({
+        category: "second_home",
+        secondhome_basis: "property",
+      }),
+    ).toEqual([
+      "secondhome_basis",
+      "secondhome_property_value_usd",
+      "stay_days",
+    ]);
+    expect(
+      getCategoryQuestionIds({
+        category: "second_home",
+        secondhome_basis: "bank_deposit",
+      }),
+    ).toEqual([
+      "secondhome_basis",
+      "secondhome_deposit_usd",
+      "secondhome_state_bank",
+      "secondhome_own_name",
+      "stay_days",
+    ]);
+  });
+
+  it("innocence: before the basis is answered no evidence question is asked", () => {
+    expect(getCategoryQuestionIds({ category: "second_home" })).toEqual([
+      "secondhome_basis",
+      "stay_days",
+    ]);
+  });
+
+  it("innocence: the retirement branch is unchanged by the new tile", () => {
+    expect(
+      getCategoryQuestionIds({
+        category: "retirement",
+        retirement_basis: "property",
+      }),
+    ).toEqual([
+      "sponsor_category",
+      "retirement_basis",
+      "secondhome_property_value_usd",
+      "stay_days",
+    ]);
+  });
+});
+
+describe("PR-3 · diaspora serves the FAMILY question set (owner ruling 4)", () => {
+  it("guilt: the diaspora sequence is its two context questions plus the family branch verbatim", () => {
+    const facts: OracleFacts = {
+      family_relation: "PARENT",
+      family_sponsor_nationalities: "ID",
+    };
+    expect(getCategoryQuestionIds({ ...facts, category: "diaspora" })).toEqual([
+      "diaspora_connection",
+      "diaspora_documents",
+      ...getCategoryQuestionIds({ ...facts, category: "family" }),
+    ]);
+  });
+
+  it("guilt: a diaspora STEPCHILD interview reaches the stepchild evidence questions", () => {
+    const ids = getCategoryQuestionIds({
+      category: "diaspora",
+      family_relation: "STEPCHILD",
+    });
+    expect(ids).toContain("family_stepchild_marriage_certificate_confirmed");
+    expect(ids).toContain("family_stepchild_birth_certificate_confirmed");
+  });
+
+  it("innocence: the family tile keeps its own sequence, with no diaspora questions", () => {
+    const ids = getCategoryQuestionIds({ category: "family" });
+    expect(ids).not.toContain("diaspora_connection");
+    expect(ids).not.toContain("diaspora_documents");
+    expect(ids[0]).toBe("sponsor_category");
+  });
+});
+
+describe("PR-3 · ASK_FOLLOW_UP appends, and never destroys the interview", () => {
+  function atVerdict(): FlowState {
+    let state = startOffshore("tourism");
+    state = answer(state, "trip_scope", "single");
+    state = answer(state, "stay_days", "30");
+    state = answer(state, "entry_pattern", "SINGLE");
+    state = answer(state, "review_gate", "none");
+    state = reduce(state, { type: "ADVANCE" });
+    expect(state.history[state.history.length - 1]).toEqual({
+      kind: "verdict",
+    });
+    return state;
+  }
+
+  it("guilt: appends the never-asked question and keeps every fact already answered", () => {
+    const before = atVerdict();
+    const after = reduce(before, {
+      type: "ASK_FOLLOW_UP",
+      questionId: "study_level",
+    });
+    expect(after.history).toEqual([
+      ...before.history,
+      { kind: "question", questionId: "study_level" },
+    ]);
+    expect(after.facts).toEqual(before.facts);
+    expect(after.attempt).toBe(before.attempt);
+    expect(after.pendingFollowUp).toBe("study_level");
+  });
+
+  it("guilt: EDIT on the same absent target would have wiped the interview — the contrast is the point", () => {
+    const before = atVerdict();
+    const wiped = reduce(before, { type: "EDIT", questionId: "study_level" });
+    expect(wiped.facts).toEqual({});
+    expect(wiped.attempt).toBe(before.attempt + 1);
+  });
+
+  it("guilt: answering the follow-up returns to the verdict, never into another branch's sequence", () => {
+    let state = reduce(atVerdict(), {
+      type: "ASK_FOLLOW_UP",
+      questionId: "study_level",
+    });
+    state = reduce(state, {
+      type: "ANSWER",
+      questionId: "study_level",
+      value: "POSTGRADUATE",
+    });
+    expect(state.history[state.history.length - 1]).toEqual({
+      kind: "verdict",
+    });
+    expect(state.facts.study_level).toBe("POSTGRADUATE");
+    expect(state.facts.stay_days).toBe("30");
+    expect(state.pendingFollowUp).toBeNull();
+  });
+
+  it("guilt: SKIP on the follow-up also returns to the verdict, recording the unsure sentinel", () => {
+    let state = reduce(atVerdict(), {
+      type: "ASK_FOLLOW_UP",
+      questionId: "study_level",
+    });
+    state = reduce(state, { type: "SKIP", questionId: "study_level" });
+    expect(state.history[state.history.length - 1]).toEqual({
+      kind: "verdict",
+    });
+    expect(state.facts.study_level).toBe("unsure");
+  });
+
+  it("innocence: an unregistered id is a no-op, not a reset", () => {
+    const before = atVerdict();
+    expect(
+      reduce(before, { type: "ASK_FOLLOW_UP", questionId: "not-a-question" }),
+    ).toBe(before);
+  });
+
+  it("innocence: an ALREADY-ASKED question is a no-op — reopening it is EDIT's job", () => {
+    const before = atVerdict();
+    expect(
+      reduce(before, { type: "ASK_FOLLOW_UP", questionId: "stay_days" }),
+    ).toBe(before);
+  });
+
+  it("innocence: BACK from a follow-up returns to the verdict and clears the pending marker", () => {
+    const before = atVerdict();
+    const asked = reduce(before, {
+      type: "ASK_FOLLOW_UP",
+      questionId: "study_level",
+    });
+    const back = reduce(asked, { type: "BACK" });
+    expect(back.history).toEqual(before.history);
+    expect(back.facts).toEqual(before.facts);
+    expect(back.pendingFollowUp).toBeNull();
+  });
+
+  it("innocence: an ordinary in-sequence answer is unaffected by the follow-up machinery", () => {
+    let state = startOffshore("tourism");
+    state = answer(state, "trip_scope", "single");
+    state = answer(state, "stay_days", "30");
+    expectQuestion(state, "entry_pattern");
+    expect(state.pendingFollowUp).toBeNull();
   });
 });

@@ -231,6 +231,7 @@ describe("OracleShell authoritative evaluate integration", () => {
         ["sponsor_category", "NONE"],
         ["remote_clients", "foreign"],
         ["remote_compensation", "no"],
+        ["work_payer", "no"],
         ["remote_employer_country", "US"],
         ["remote_pt_pma", "no"],
       ],
@@ -247,6 +248,8 @@ describe("OracleShell authoritative evaluate integration", () => {
         ["investment_capital_idr", "10000000000"],
         ["investment_paid_up_capital_idr", "10000000000"],
         ["investment_role", "SHAREHOLDER_DIRECTOR"],
+        ["family_sponsor_confirmed", "no"],
+        ["wants_onshore_conversion", "no"],
       ],
     },
   ] as const)(
@@ -282,6 +285,45 @@ describe("OracleShell authoritative evaluate integration", () => {
       expect(global.fetch).toHaveBeenCalledOnce();
     },
   );
+
+  // 2026-09-06 decisiveness wave (PR-3): the follow-up loop. Before it, a
+  // NEEDS_INPUT naming a fact whose question exists but was never asked on
+  // this walk rendered a row with no affordance at all — the funnel's
+  // dead end. The interview now ASKS it.
+  it("guilt: a NEEDS_INPUT on a modelled-but-unasked fact ADVANCES the interview instead of dead-ending", async () => {
+    // Offshore tourism never reaches `wants_onshore_conversion` (the spine
+    // asks it only when `in_indonesia === "yes"`), yet it is a registered
+    // question mapping exactly one FactPath.
+    installVerdictResume();
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["process.wants_onshore_conversion"];
+    global.fetch = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    render(<OracleShell />);
+
+    await expectStateHeading("NEEDS_INPUT");
+    // The affordance is "Answer this", NOT "Edit" — an edit would truncate
+    // history back to a node that is not there and reset the interview.
+    expect(screen.queryByRole("button", { name: /^edit$/i })).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: translate("en", "outcome.answer_missing_input"),
+      }),
+    );
+    expect(
+      await screen.findByRole("heading", {
+        name: translate("en", "q.wants_onshore_conversion"),
+      }),
+    ).toBeInTheDocument();
+    // Innocence: the interview was appended to, not restarted — the
+    // framing screen's Start button is nowhere on the page.
+    expect(screen.queryByRole("button", { name: /^start$/i })).toBeNull();
+  });
 
   it("keeps an unavailable missing question actionable through the existing handoff, without a dead Edit", async () => {
     const response = makeVisaOracleResponse("NEEDS_INPUT");

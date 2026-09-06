@@ -639,19 +639,42 @@ function price(
   };
 }
 
+/**
+ * The one question that collects `path`, plus whether this interview has
+ * already asked it.
+ *
+ * Two-layer lookup, strictly additive (2026-09-06). Layer 1 is the
+ * pre-existing rule verbatim: exactly one question IN THIS INTERVIEW'S
+ * HISTORY collects the fact → reopen it (`followUp: false`); more than one
+ * → ambiguous, fall back to the human handoff. Layer 2 only runs when
+ * history holds NONE of them: if the whole registry has exactly one
+ * question for the fact, the interview can simply ASK it
+ * (`followUp: true`) instead of rendering a row the user cannot act on.
+ * Three fact paths are collected by two questions each
+ * (`immigration.current_status_code`, `work.indonesia_source_compensation`,
+ * `investment.pt_pma_committed`) and are therefore never followed up —
+ * guessing which branch's question to splice in would be exactly the kind
+ * of inference this adapter is forbidden to make.
+ */
 function questionForFact(
   path: string,
   editableQuestionIds: readonly string[] = [],
-): string | undefined {
-  const matches = Object.values(QUESTIONS).filter(
+): { questionId: string; followUp: boolean } | undefined {
+  const collecting = Object.values(QUESTIONS).filter(
     (question) =>
-      editableQuestionIds.includes(question.id) &&
       question.decisionMapping.kind !== "HUMAN_CONTEXT" &&
       question.decisionMapping.factPaths.includes(path),
   );
-  // Several branches can collect the same fact. Only offer an Edit that
-  // identifies one question in this interview's current history.
-  return matches.length === 1 ? matches[0].id : undefined;
+  const asked = collecting.filter((question) =>
+    editableQuestionIds.includes(question.id),
+  );
+  if (asked.length === 1) {
+    return { questionId: asked[0].id, followUp: false };
+  }
+  if (asked.length > 1) return undefined;
+  return collecting.length === 1
+    ? { questionId: collecting[0].id, followUp: true }
+    : undefined;
 }
 
 function nonEmpty<T>(values: T[]): [T, ...T[]] {
@@ -799,11 +822,8 @@ function buildValidatedOutcome(
         pathsRemaining: Math.max(1, options.interviewBranchesRemaining ?? 1),
         missingInputs: nonEmpty(
           response.decision.missing_facts.map((path) => {
-            const questionId = questionForFact(
-              path,
-              options.editableQuestionIds,
-            );
-            const question = questionId ? QUESTIONS[questionId] : undefined;
+            const match = questionForFact(path, options.editableQuestionIds);
+            const question = match ? QUESTIONS[match.questionId] : undefined;
             return {
               code: path,
               message: question
@@ -816,7 +836,8 @@ function buildValidatedOutcome(
                     "Bali Zero dapat membantu memperjelas detail tambahan yang diperlukan untuk penilaian ini.",
                   ),
               sourceIds: [],
-              ...(questionId ? { questionId } : {}),
+              ...(match ? { questionId: match.questionId } : {}),
+              ...(match?.followUp ? { followUp: true as const } : {}),
             };
           }),
         ),
