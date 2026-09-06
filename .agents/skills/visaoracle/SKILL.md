@@ -60,11 +60,16 @@ until all of the following are true:
 - Zero explicitly authorizes the ENFORCE flip after the preceding blockers
   close.
 
-**Current status: 🔴 NO-GO / SHADOW.** `CURRENT_STATE.md` records the DPIA,
-analytics-TTL proof and explicit ENFORCE authorization as open. Gold-persona
-divergences must also be resolved or accepted in writing against the active
-pack. No agent may deploy, activate a RulePack or change evaluation mode merely
-because this list appears green; each is a separate controlled action.
+**Current status: 🟢 ENFORCE IN PRODUCTION since 2026-09-06T01:1xZ — OWNER
+OVERRIDE.** Zero flipped `VISA_ENGINE_EVALUATE_MODE=ENFORCE` on Fly
+(`nuzantara-rag`) by his own explicit instruction ("accendi tutto",
+2026-09-06, after being told the DPIA v2 §8 text still reads "DO NOT
+ENFORCE" with two High residual risks open — analytics destination,
+cross-border processor register — and that gold-persona divergences were
+not re-measured on seq-19). The seven preconditions below remain the
+documented standard; the ones still open are now RESIDUAL RISKS to close
+in production, not blockers. Rollback is one command:
+`fly secrets set VISA_ENGINE_EVALUATE_MODE=SHADOW -a nuzantara-rag`.
 
 Traffic provenance must stay explicit while evidence is collected. Only
 requests deliberately labelled `traffic_source=real` are organic evidence;
@@ -125,6 +130,24 @@ hook-enforced — RULED 2026-08-20: Fable is out of the workflow, CLAUDE.md §5)
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
+
+- 2026-09-06 (M5, owner decision — ENFORCE + GARUDA VOA public): **this is an owner decision
+  recorded by the session, not a session-inferred authorization.** (1) Production evaluate mode
+  measured `mode='ENGINE'` at 01:1xZ via `probe_evaluate.py` (was `CURATED`), rule pack seq-19
+  v2026.9.5, backend healthy — visitors of `/visa-oracle` now see real verdicts (the frontend's
+  `requireEngineResponse` boundary in `_lib/engine-response.ts` passes ENGINE envelopes; in
+  SHADOW it withheld every decision). (2) The same Fly command also set
+  `GARUDA_PUBLIC_ENABLED=true` on the backend, and Zero added `GARUDA_PUBLIC_ENABLED=true` to
+  the Vercel `mouth` Production environment (Vercel marks Production vars sensitive by default,
+  so `vercel env pull` shows `""` — not empty); `/visa/voa` proven LIVE in headless Chromium at
+  02:4xZ (h1 "Visa on Arrival", step 1 of 4, 0 console errors) after the alias moved to a
+  deployment built after the var, and re-proven after promoting `mouth-f4mditqo6` at 02:55Z;
+  gotcha: `vercel ls` "Ready" is not the same as aliased — the truth is
+  `vercel inspect https://balizero.com --scope nuzantara-2026`, and production deployments were
+  NOT auto-promoted (used `vercel promote`). (3) What stays open as residual risk: DPIA v2 two
+  High rows, gold replay on seq-19, team manual sign-off. (4) Rollback commands for both
+  switches — mode: `fly secrets set VISA_ENGINE_EVALUATE_MODE=SHADOW -a nuzantara-rag`; VOA
+  public: `vercel env rm GARUDA_PUBLIC_ENABLED production` + redeploy/promote.
 
 - 2026-09-05 (M5, two-consul lane — seq-19 SIGNED + ACTIVATED): **SEQ-19 IS THE ACTIVE PRODUCTION
   PACK (SHADOW; activation ≠ ENFORCE, `VISA_ENGINE_EVALUATE_MODE` untouched).** Chain as MEASURED in
