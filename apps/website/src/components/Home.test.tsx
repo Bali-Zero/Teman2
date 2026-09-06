@@ -15,14 +15,14 @@ describe("client portal feature preview", () => {
     const tabs = screen.getAllByRole("tab");
     expect(screen.getAllByRole("tabpanel")).toHaveLength(1);
     expect(screen.getByRole("tabpanel")).toHaveTextContent(
-      "Your document vault.",
+      "Document organisation.",
     );
     tabs[0].focus();
     await user.keyboard("{ArrowRight}");
     expect(tabs[1]).toHaveFocus();
     expect(tabs[1]).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tabpanel")).toHaveTextContent(
-      "Your applications, in view.",
+      "Application updates.",
     );
     await user.keyboard("{End}");
     expect(tabs[2]).toHaveFocus();
@@ -34,7 +34,7 @@ describe("client portal feature preview", () => {
     expect(tabs[0]).toHaveFocus();
     await user.click(tabs[2]);
     expect(screen.getByRole("tabpanel")).toHaveTextContent(
-      "Your team, a message away.",
+      "Team conversations.",
     );
     expect(screen.getAllByRole("tabpanel")).toHaveLength(1);
   });

@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 export function Reviews() {
   return (
     <section
@@ -71,12 +70,8 @@ export function Reviews() {
           </svg>
           <strong>{"Google Reviews"}</strong>
         </span>
-        <p className="rating-number">
-          {"4.9"}
-          <span>{"/ 5"}</span>
-        </p>
-        <p className="rating-count">{"693 reviews"}</p>
-        <p className="rating-date">{"Rating snapshot · 14 August 2026"}</p>
+        <p className="rating-count">Read our clients’ experiences.</p>
+        <p className="rating-date">Latest ratings and feedback on Google.</p>
         <a
           className="textlink"
           href="https://maps.app.goo.gl/whiMUTNchcDR5naz8"

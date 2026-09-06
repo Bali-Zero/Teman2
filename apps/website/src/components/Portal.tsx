@@ -34,7 +34,7 @@ export function Portal() {
           <em>{"client portal."}</em>
         </h2>
         <p>
-          {"Find your documents. Follow your applications. Talk to your "}
+          {"Open your existing "}
           <span
             aria-label="Bali Zero"
             className="inline-brand-accessible"
@@ -53,7 +53,9 @@ export function Portal() {
               </span>
             </span>
           </span>
-          {" team."}
+          {
+            " client account. Your team can help with access and confirm available features."
+          }
         </p>
         <a
           className="portal-enter"
@@ -70,9 +72,13 @@ export function Portal() {
       </div>
       <div className="portal-tour">
         <div className="portal-tour-top">
-          <span>{"INSIDE MY BALI ZERO"}</span>
+          <span>{"INTERFACE ILLUSTRATION"}</span>
           <span className="tour-label">{"Feature preview"}</span>
         </div>
+        <p className="portal-entry-note">
+          Illustrative preview only. These panels do not establish which
+          features are available in your account.
+        </p>
         <div
           className="portal-tabs"
           role="tablist"
@@ -108,8 +114,8 @@ export function Portal() {
           <span className="portal-pane-label">
             {"KEEP EVERYTHING TOGETHER"}
           </span>
-          <h3>{"Your document vault."}</h3>
-          <p>{"Find the files you need, when you need them."}</p>
+          <h3>{"Document organisation."}</h3>
+          <p>{"An example of how document categories could be presented."}</p>
           <ul className="portal-file-list">
             <li>
               <span aria-hidden="true" className="portal-file-icon"></span>
@@ -134,30 +140,32 @@ export function Portal() {
           tabIndex={0}
         >
           <span className="portal-pane-label">{"KNOW WHAT HAPPENS NEXT"}</span>
-          <h3>{"Your applications, in view."}</h3>
+          <h3>{"Application updates."}</h3>
           <p>
-            {"See where each application stands and what needs your attention."}
+            {
+              "An illustrative sequence for discussing an application with your team."
+            }
           </p>
           <ol className="portal-step-list">
             <li>
               <span aria-hidden="true">{"01"}</span>
               <div>
                 <strong>{"Documents"}</strong>
-                <span>{"See what is needed for your application."}</span>
+                <span>{"Discuss the documents needed."}</span>
               </div>
             </li>
             <li>
               <span aria-hidden="true">{"02"}</span>
               <div>
                 <strong>{"Progress"}</strong>
-                <span>{"Follow updates from your team."}</span>
+                <span>{"Ask your team for an update."}</span>
               </div>
             </li>
             <li>
               <span aria-hidden="true">{"03"}</span>
               <div>
                 <strong>{"Next step"}</strong>
-                <span>{"Know what to do next."}</span>
+                <span>{"Agree the next step with your team."}</span>
               </div>
             </li>
           </ol>
@@ -171,9 +179,11 @@ export function Portal() {
           tabIndex={0}
         >
           <span className="portal-pane-label">{"STAY IN TOUCH"}</span>
-          <h3>{"Your team, a message away."}</h3>
+          <h3>{"Team conversations."}</h3>
           <p>
-            {"Keep your questions and your team's replies in one conversation."}
+            {
+              "An illustration of a conversation area; messaging availability is not confirmed."
+            }
           </p>
           <div className="portal-message-example">
             <span aria-hidden="true" className="portal-message-mark">
@@ -183,7 +193,7 @@ export function Portal() {
               <strong>{"Your Bali Zero team"}</strong>
               <span>
                 {
-                  "Questions about a document or your next step? Continue the conversation here."
+                  "Questions about a document or your next step? Contact your team using the options below."
                 }
               </span>
             </div>

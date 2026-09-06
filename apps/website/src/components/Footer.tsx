@@ -36,7 +36,6 @@ export function Footer() {
             <a href="https://wa.me/628213454721">{"WhatsApp"}</a>
             <a href="mailto:zantara@balizero.com">{"zantara@balizero.com"}</a>
             <a href="tel:+628213454721">{"+62 821 3454 721"}</a>
-            <a href="https://t.me/Balizerobot">{"Zantara on Telegram"}</a>
           </div>
         </div>
         <div className="footer-base">
