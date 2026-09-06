@@ -347,6 +347,15 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "This route requires official proof of the parents' legally registered marriage. Without a registered marriage, this visa is not available.",
     "Jalur ini memerlukan bukti resmi perkawinan orang tua yang tercatat secara sah. Tanpa perkawinan tercatat, visa ini tidak tersedia.",
   ),
+  // EXCLUDE code (hf.d2.indonesia-source-compensation, seq-20). The seq-20
+  // fold compiles CL-D2-01's local-compensation prohibition for the first
+  // time, so this code reaches the NO_SUPPORTED_PATH sheet through the same
+  // `reasonMessage` fallback as every other reason — without this entry the
+  // raw code would render at a real reader.
+  BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED: text(
+    "A business visit visa does not allow payment from an Indonesian source. Paid activity in Indonesia needs a work route.",
+    "Visa kunjungan bisnis tidak mengizinkan pembayaran dari sumber di Indonesia. Aktivitas berbayar di Indonesia memerlukan jalur kerja.",
+  ),
   D12_CUMULATIVE_STAY_ADVISOR_CHECK: text(
     "Long or repeated stays are counted cumulatively. We check your total against the limit with one of our advisors.",
     "Masa tinggal panjang atau berulang dihitung secara kumulatif. Kami memeriksa total Anda terhadap batasnya bersama konsultan kami.",
@@ -354,6 +363,19 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   BRIDGING_T3_WINDOW_ADVISOR_CHECK: text(
     "The filing window for this bridging route is tight. We check your dates with one of our advisors.",
     "Jendela pengajuan jalur peralihan ini sempit. Kami memeriksa tanggal Anda bersama konsultan kami.",
+  ),
+  // The engine's own OPERATIONAL fallback, emitted when NO_SUPPORTED_PATH is
+  // reached with no named exclusion reason that belongs to this applicant
+  // (evaluator.py `_fallback_no_path_reason`). It used to be unreachable in
+  // practice — before the 2026-09-06 decisiveness reorder no interview walk
+  // ended in NO_SUPPORTED_PATH at all — and would have rendered as the raw
+  // `Verified reason: OPERATIONAL_...` code dump. It is now reachable, so it
+  // gets a sentence. Deliberately NOT phrased as a legal conclusion: it says
+  // no product COVERS the declared purposes, which is what the engine
+  // actually established.
+  OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES: text(
+    "No visa in our verified catalogue covers the purpose you described. Bali Zero can review your case and suggest what to do next.",
+    "Tidak ada visa dalam katalog terverifikasi kami yang mencakup tujuan yang Anda sebutkan. Bali Zero dapat meninjau kasus Anda dan menyarankan langkah selanjutnya.",
   ),
 };
 

@@ -1,0 +1,216 @@
+task_id: oracle-evaluator-purpose-feasibility
+gear: 3
+l_level: L1
+gate_class: opus
+objective: >-
+  evaluate_product returned BLOCKED_UNKNOWN from an input-tagged hard-filter/review unknown
+  BEFORE it ever asked whether the product could cover the applicant's declared purposes.
+  evaluate then picks the globally-asked question with min(blocked, key=len(missing_facts)),
+  so the cheapest blocked proof wins -- and nine products carry ZERO SUPPORT rules (E23U,
+  E23V, E28B, E28C, E28D, E28F, E33A, E33B, E33C), which makes their one-fact proof the
+  cheapest in the pack for everybody. Hoist the purpose-feasibility test above that block and
+  delete the now-duplicated copy below it.
+
+  Measured through verify -> compile -> evaluate -> apply_public_policy_adapters, replaying the
+  43 real interview walks against rulepack-prod-020.signed.json (the highest signed pack, ACTIVE
+  in production under ENFORCE): NEEDS_INPUT 21 -> 11, NO_SUPPORTED_PATH 0 -> 10,
+  SUPPORTED_CANDIDATES 22 -> 22 with candidate lists BYTE-IDENTICAL. The ten cured walks were
+  blocked on process.wants_onshore_conversion (7), investment.{investment,paid_up}_capital_idr
+  (2) and sponsor.type (1), every one on behalf of a product that cannot cover the walk's
+  declared purposes under any fact resolution. The eleven that remain are the nine
+  family.sponsor_confirmed walks (C2 genuinely covers their purposes -- supplying the fact
+  answers all nine) and the two diaspora walks, both PR-3's mandate. The 20 canonical gold
+  personas show ZERO DecisionState and ZERO candidate changes.
+
+  Spec: research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md section 4 PR-2,
+  cure (a), owner-ruled 2026-09-06.
+
+  Gear 3 by SIZE: --print-floor returns 3 and --print-floor-source returns "size" on this
+  changed-file list with the numstat supplied -- churn (adds+deletes, the size term's own
+  formula) is 2020 against SIZE_GEAR3_THRESHOLD 1828. No hot-zone path is touched; the floor is
+  blast radius alone. It crossed 2 -> 3 when the reader-reason collapse landed in the final
+  round, and trimming this brief could not bring it back under (code and tests alone are ~1849),
+  so the gear is RAISED to the floor rather than the floor talked down. The evaluator change
+  itself is small; the size is the guilt-and-innocence battery and the re-derived census, which
+  is the point -- cure (a) was chosen over the alternatives precisely because "it cannot fail
+  open" is checkable, and the checks are what make it so.
+
+  ROUND 2 -- gate follow-ups. (1) no_path_reasons scoped to PURPOSE-FEASIBLE products:
+  ProductProof gains a structural, fact-independent purpose_feasible computed above every early
+  return, and evaluate_with_trace filters `excluded` by it, so a tourist is no longer told "your
+  sponsor is not a government body" on behalf of E33A. State untouched -- the filtered list feeds
+  only reason text, and Decision's non-empty invariant is still met by _fallback_no_path_reason.
+  (2) three vacuous census guilt assertions scoped through _scoped_allowlist/_scoped_expectation:
+  grading one mutated walk against the whole table made the helpers' trailing "absent from the
+  corpus" loop fire unconditionally. (3) the precedence module's skipif no longer disables the
+  hand-built-pack tests, which need no pack on disk. (4) census re-pinned to what the reorder
+  measures.
+
+  ROUND 3 -- seq-20 rebase. origin/main moved while this PR sat in draft (#5854 folded seq-20,
+  #5867 landed the SIGNED bundle, seq-20 went ACTIVE). test_interview_walk_census.py reads "the
+  highest signed pack", so its pin had been measured against a pack the tests no longer read.
+  origin/main is MERGED IN (merge commit, not rebase) and every pinned number is RE-MEASURED.
+  The main side of the census conflict was taken as authoritative and re-derived; this branch's
+  scoping helpers and the outcome-pin half of the lost-answer guilt test are preserved. Three of
+  four census guilt tests are RE-ANCHORED because seq-20 plus this reorder cured their previous
+  subjects -- a guilt test that passes vacuously is worse than no test. Nothing loosened: no
+  count became a range, no assertion deleted, no skip/xfail, and the allowlist shrank by DELETING
+  cured rows.
+
+  ROUND 4/5 -- duplicate reader-facing reason. A NO_SUPPORTED_PATH sheet rendered the same
+  sentence twice: six walks carried no_path_reason_codes ['AGE_BELOW_55', 'AGE_BELOW_55'], and
+  engine-adapter.ts maps that list 1:1 through copy keyed by CODE ALONE. In scope for this PR and
+  not inherited -- before the reorder ZERO walks reached NO_SUPPORTED_PATH.
+
+  INVESTIGATED BEFORE FIXING, and it changed the fix: the two entries are NOT redundant. Entry
+  one is hf.e33e.age-below-55 citing one source record; entry two is hf.e33f.age-below-55 citing
+  TWO, one of which entry one lacks. _dedupe_reasons keys on the whole (code, rule_ids,
+  source_refs) triple and uses setdefault, so a blind collapse on the code would keep the
+  first-seen entry and SILENTLY DROP a citation from a surface where citations are load-bearing
+  (requireDecisiveRefs validates every ref on every rendered reason). merge_reasons_by_code
+  collapses on the code and UNIONS rule_ids and source_refs, first-seen order preserved.
+
+  LOCATION: the PUBLIC boundary -- evaluate_path.apply_public_policy_adapters, after the
+  abstention chain -- and NOT evaluator.evaluate. The engine keeps one proof per rule so the
+  trace and the gold harness never lose that two distinct rules fired; only the payload a person
+  reads is collapsed. Sealing runs AFTER the adapters (evaluate_with_trace ->
+  apply_public_policy_adapters -> _attach_price_quotes -> seal_decision), so the HMAC covers the
+  collapsed payload and nothing is re-signed. Deliberately NOT a member of
+  _PUBLIC_POLICY_ADAPTERS: that registry means "deterministic ABSTENTION adapter" and doubles as
+  the offline evidence manifest's policy_adapters list, and this changes no state, creates no
+  hold and retires no candidate.
+
+  THE SHAPE IS GENERAL, measured on the pack rather than special-cased.
+  rulepack-prod-020.source.json: 109 rules, 76 distinct reason codes, NINE emitted by more than
+  one rule. Seven are SUPPORT codes that feed no reader-facing list. Two reach a reader:
+  AGE_BELOW_55 from two EXCLUDE rules, and GOVT_INVITATION_REQUIRED from two REQUIRE_REVIEW
+  rules (review.e33a, review.e33c).
+
+  THE TWO HALVES HAVE DIFFERENT STANDING, and the difference is stated rather than blurred.
+  no_path_reasons is a MEASURED cure -- six real walks rendered AGE_BELOW_55 twice.
+  review_reasons is DEFENSIVE ONLY: review.e33a and review.e33c CANNOT CO-FIRE, because each
+  conjoins {"op": "eq", "fact": "intent.requested_product_code"} against its own product code and
+  that fact is a StringFact (scalar, not a set), so no applicant can satisfy both; they also cite
+  the SAME source record, so even hypothetically the union would merge rule ids and rescue no
+  citation. No duplicate is reachable on the review surface on seq-20. The review half therefore
+  ships as a symmetry guard -- one call, cannot change today's output, and keeps a future pack
+  that puts two co-firable rules on one review code from reintroducing the defect somewhere
+  nobody is looking. It is pinned on a hand-built pack and named
+  test_the_review_list_is_collapsed_too_DEFENSIVE_not_a_measured_cure, never presented as a cure
+  for live behaviour.
+constraints:
+  - >-
+    The reorder must not be able to fail open, and that must be a measurement rather than an
+    argument. The hoisted block's only possible return is UNSUPPORTED, so it can neither
+    manufacture a candidate nor silence a gate; every EXCLUDED and REVIEW return -- including the
+    on_unknown=HUMAN_REVIEW escalation -- already ran above the block it moved past. Four
+    precedence tests pin exactly that, each on a product that IS purpose-infeasible so the
+    hoisted return is reachable and only precedence keeps it from winning.
+  - >-
+    on_unknown=NEEDS_INPUT must not degrade into a no-op. Wherever the product COULD cover the
+    declared purposes the unknown gate still asks -- including where the product's own SUPPORT
+    rule is itself UNKNOWN, because naive_potential_coverage is the OPTIMISTIC union and a
+    merely-unproven coverage is not an impossible one.
+  - >-
+    No fact may be invented to remove a blocker. Section 6 R2 refutes a KNOWN sentinel for
+    intent.requested_product_code and R4 refutes defaulting sponsor.type to NONE. This PR removes
+    both blockers without touching either fact, and touches no signed pack content at all.
+  - >-
+    Guilt AND innocence, both directions (superscar #3). Tests that fail on the unpatched
+    evaluator are paired with tests that pass on both. The two seq-9 witnesses whose incidental
+    proof SHAPE moved are REVISED, never deleted: each keeps its own stated safety assertion
+    (is not EXCLUDED / is not REVIEW) as its first line and gains a "no reason code may be
+    manufactured from an UNKNOWN" assertion.
+  - >-
+    The gold baseline moves 5/20 -> 6/20 and the justification in the diff is a NAMED PERSONA
+    with its own fixture quoted, never the new number (generator is never grader). The floor that
+    says seq-19 must not regress against seq-18 --
+    test_match_set_and_count_are_unchanged_end_to_end -- is untouched and green.
+  - >-
+    Two files read a pack, and they must read DIFFERENT ones, deliberately.
+    test_evaluator_purpose_feasibility_precedence.py pins rulepack-prod-019 EXPLICITLY, because it
+    is a witness on the evaluator's ORDERING and not on any pack's content: seq-20 legitimately
+    changes what those personas are eligible for, so following the active pack would let a fold
+    silently rewrite what this file proves. test_interview_walk_census.py measures what the LIVE
+    funnel answers, so it reads "the highest signed pack" and must be RE-DERIVED, never
+    hand-edited, whenever that pack changes.
+  - >-
+    The collapse must not be reachable-only-in-theory on the surface it claims to fix. On a
+    minimal hand-built pack the full adapter chain never reaches the collapse in
+    NO_SUPPORTED_PATH -- _apply_decisive_source_authority_hold fires first
+    (DECISIVE_PRIMARY_SOURCE_NOT_APPLICABLE) and rewrites to HUMAN_REVIEW_REQUIRED -- so the
+    mechanism tests call _collapse_reader_reasons directly and say why, and the end-to-end
+    through the WHOLE chain is pinned on the real signed pack instead. Bending the fixture until
+    it satisfied an unrelated authority check would have made those tests depend on
+    source-applicability rules they are not about.
+acceptance:
+  - >-
+    WHEN a product whose only SUPPORT rule covers STUDY is evaluated for a TOURISM applicant with
+    an unknown safety-critical sponsor.type gate, THEN the proof is UNSUPPORTED with
+    missing_purposes={TOURISM} and missing_facts empty -- it asks nothing. probe:
+    pytest backend/tests/services/visa_engine/test_evaluator_purpose_feasibility_precedence.py -k Mechanism
+  - >-
+    WHEN the same product is evaluated for a STUDY applicant, THEN it still returns
+    BLOCKED_UNKNOWN naming sponsor.type -- on_unknown=NEEDS_INPUT still asks wherever the product
+    could be recommended. probe: -k still_blocks_on_its_gate_unknown
+  - >-
+    WHEN the gate is TRUE, or is a review rule, or carries on_unknown=HUMAN_REVIEW, THEN the proof
+    is EXCLUDED / REVIEW / REVIEW respectively even though the product is purpose-infeasible.
+    probe: -k SafetyPrecedenceIsUnchanged
+  - >-
+    WHEN a business applicant (BUSINESS_MEETINGS, 121 days, no sponsor) is evaluated against
+    seq-19 with investment capital facts unknown, THEN the decision is NO_SUPPORTED_PATH with no
+    missing facts, and supplying both investment facts yields the same state -- proof the retired
+    question could never have changed the answer. probe: -k SignedSeq19Witnesses
+  - >-
+    WHEN the 20 canonical gold personas are replayed against seq-18 and seq-19, THEN no
+    DecisionState and no candidate set changes, and persona #13 is NEEDS_INPUT on
+    work.serves_indonesian_clients on both packs. probe:
+    pytest backend/tests/services/visa_engine/test_seq19_pack.py backend/tests/services/visa_engine/test_evaluator_gold.py
+  - >-
+    WHEN a walk reaches NO_SUPPORTED_PATH, THEN the applicant-facing no_path_reasons carries only
+    products whose ELIGIBILITY rules ever claimed the declared purposes -- no D12_NOT_CONVERTIBLE
+    on a tourism walk -- while a purpose-feasible exclusion is still reported. probe:
+    pytest backend/tests/services/visa_engine/test_evaluator_edge_cases.py
+    backend/tests/services/visa_engine/test_evaluator_state_precedence.py
+  - >-
+    WHEN the `elif missing != allowed` branch is deleted from _dead_end_violations, THEN
+    exactly test_guilt_a_cured_dead_end_that_only_moves_the_block_is_caught goes red -- the
+    scoped guilt assertion is no longer satisfied by the helper's own "absent from the corpus"
+    noise. Measured on a scratch copy, restored. probe:
+    pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+  - >-
+    WHEN rulepack-prod-019.source.json is renamed on disk, THEN the hand-built-pack precedence
+    tests still RUN (only the seq-19 witnesses skip) -- before this PR the whole module skipped
+    silently. Measured on a scratch copy, restored. probe:
+    pytest backend/tests/services/visa_engine/test_evaluator_purpose_feasibility_precedence.py
+  - >-
+    WHEN the 43 walks are replayed against rulepack-prod-020.signed.json, THEN the census is
+    11 NEEDS_INPUT / 10 NO_SUPPORTED_PATH / 22 SUPPORTED_CANDIDATES, and the 22 SUPPORTED rows are
+    byte-identical to what the SAME corpus produces on the SAME pack with this PR's evaluator
+    change reverted (21/0/22, the number #5867 pinned on main). Measured both ways by swapping in
+    origin/main's evaluator.py on a backed-up copy and restoring it hash-verified. That equality
+    is the fail-open floor. probe:
+    pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+  - >-
+    WHEN a census guilt test's subject is cured by this PR, THEN it is RE-ANCHORED onto a walk
+    that still fails rather than left to pass vacuously, and the docstring names both the old
+    anchor and why it died. Three moved: the moved-block witness rides offshore/invest/pt_pma +
+    family.sponsor_confirmed=false; the stale-row witness rides the LIVE offshore/invest/pt_pma
+    allowlist row through _scoped_allowlist, so PR-3 deleting that row turns it red; the
+    unlisted-fact witness rides offshore/work, which answers and carries no row. probe:
+    pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+  - >-
+    WHEN two products are excluded by two DIFFERENT rules carrying the SAME reason code and
+    citing DIFFERENT source records, THEN the applicant-facing list renders that code ONCE, on an
+    entry carrying BOTH rule_ids and the UNION of both source_ref sets. WHEN the two codes differ,
+    both survive in engine order, each keeping its own single citation. AND the raw engine output
+    still carries BOTH proofs, one per rule. On the real pack: offshore/retirement/property
+    renders AGE_BELOW_55 once with rule_ids {hf.e33e, hf.e33f} and both UUIDs, and no walk in the
+    43 renders any repeated reason code. Disabling the collapse turns those real-pack tests red;
+    replacing the union with a first-wins collapse turns the rule_id/citation assertions red on
+    both the hand-built pack and the real walk. Measured on backed-up copies, restored
+    hash-verified. probe:
+    pytest backend/tests/services/visa_engine/test_evaluator_purpose_feasibility_precedence.py
+    backend/tests/services/visa_engine/test_interview_walk_census.py
+pii_scan: clean

@@ -1,89 +1,61 @@
-task_id: visa-seq19-sign
-gear: 3
+task_id: oracle-decisiveness-spec
+gear: 2
 l_level: L2
 gate_class: opus
-# Floor computed this run: `python3 scripts/evidence_pack_lint.py --print-floor
-# --numstat-file ... --changed-files-file ...` returns `size` — the SIGNED
-# bundle (rulepack-prod-019.signed.json) is 9,285 lines (pretty-printed by
-# the repo's prettier gate after signing, never hand-authored; content, JCS
-# canonical bytes and signature are identical to the operator's
-# sign_pack.py output from rulepack-prod-019.source.json). Size alone floors this at Gear 3
-# regardless of the change's actual authored-logic footprint (one new ~300
-# line test file + a ~30 line secrets-triage rule).
+# Floor computed for this diff: `python3 scripts/evidence_pack_lint.py --print-floor
+# --changed-files-file ... --numstat-file ...` returns 2 via the SIZE term alone —
+# one research document of ~930 lines (research/visa/2026-09-06-visa-oracle-
+# decisiveness-investigation.md) plus this brief. Zero code, zero workflow, zero
+# hot-zone path. Gear 2 declared to match the floor exactly; no pack is required
+# below Gear 3.
 objective: >-
-  Land the operator's just-signed seq-19 production RulePack bundle
-  (rulepack-prod-019.signed.json, kid=prod-2026-07-1, sequence=19,
-  environment=PRODUCTION) and independently VERIFY it with the repo's own
-  Ed25519 verification code — never trusting the signer's self-reported
-  digest/kid/sequence. seq-19's unsigned source
-  (rulepack-prod-019.source.json) was folded and gated in the prior PR
-  (#5784, visa-seq19-fold); this task's only job is the signed artifact plus
-  the gate that proves the signature is real, chains from seq-18, and
-  matches the source bytes exactly.
+  Land the Visa Oracle decisiveness investigation as ONE intervention spec
+  (research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md): the
+  measured root causes of the "This needs a human" dead-end on the public
+  funnel (blanket ACTIVITY_BOUNDARY flag, NEEDS_INPUT chains for never-asked
+  facts, evaluator gate-unknown blocking ahead of purpose feasibility, pack
+  caps at the initial grant, E33G review rule duplicate, eight unaskable
+  ITAS-sponsor gates), the 43-walk census (36 dead-end / 7 supported / 0
+  no-path today), the five-PR wave in fixed order (PR-0 census gate, PR-1
+  seq-20 fold, PR-2 evaluator reorder, PR-3 interview, PR-4 flag narrowing),
+  the six owner rulings recorded on 2026-09-06, and the refuted proposals
+  that must not be re-investigated.
 constraints:
   - >-
-    DO NOT modify, re-sign, or regenerate rulepack-prod-019.signed.json —
-    the operator's Ed25519 private key ceremony happened offline on M5,
-    outside this session, and this PR only lands and verifies its output.
+    Documentation only. This PR changes no engine code, no interview code,
+    no signed pack and no workflow; every change it describes ships in its
+    own PR of the wave, each with its own tests and its own gate.
   - >-
-    NEVER read or print the private signing key, and never touch
-    ~/.config/nuzantara/visa-signing — this repo's FIREBREAK (bundle.py's
-    own module docstring) is that no code path here ever holds key
-    material; verification is Ed25519 PUBLIC-key-only, via
-    StaticTrustStore.from_env().
+    The six rulings are recorded verbatim as the owner's decision
+    ("seguo le tue raccomandazioni, go", 2026-09-06) and are not to be
+    re-litigated in the wave PRs; a builder that disagrees writes the
+    disagreement into its PR body, not into the code.
   - >-
-    ACTIVATION IS OUT OF SCOPE. activate_pack.py needs a live Postgres DSN
-    even in its own default dry-run mode (asyncpg.create_pool calls before
-    the dry-run branch) — this task never invokes it. Promoting this bundle
-    into the active production sequence is a separate, Zero-only ceremony.
+    No client PII: every walk, persona and probe in the document is
+    synthetic; the three production probes carry no identifying fact.
   - >-
-    Verification must be independent of the signer's print output: recompute
-    payload_sha256 via bundle.canonicalize_json from the SOURCE file on disk
-    and cross-check it against verify_rule_pack's own return value, not
-    against a value copied from a terminal transcript.
+    The R1 adversarial review is by a non-Anthropic seat (Gemini 3.1 Pro via
+    `agy`), briefed to refute the diagnosis, the rulings, the wave order and
+    the measurements; its findings are recorded in the document's own
+    "Adversarial review" section together with the disposition of each.
 acceptance:
   - text: >-
-      A1: WHEN rulepack-prod-019.signed.json is loaded and passed through
-      bundle.verify_rule_pack against the pinned production trust store
-      (kid=prod-2026-07-1), SHALL verify without raising
-      RulePackVerificationError, and SHALL report unsigned_dev=False.
-    probe: >-
-      backend/tests/services/visa_engine/test_seq19_signed_bundle.py
+      A1: WHEN the document is checked by scripts/check_adversarial_review.py
+      SHALL pass — frontmatter `adversarial_review:` names a known seat and
+      the body carries an "Adversarial review" section.
+    probe: scripts/check_adversarial_review.py --files research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md
   - text: >-
-      A2: WHEN the payload_sha256 is recomputed via
-      hashlib.sha256(canonicalize_json(payload)).hexdigest() from BOTH the
-      signed envelope's own payload and the standalone source.json file, SHALL
-      equal bac5da8e4727e7f639c947c50211e6f95e15c1403cf6aef0dd57a92014d6e6ea
-      on both, and SHALL equal the envelope's own declared payload_sha256
-      field.
-    probe: >-
-      backend/tests/services/visa_engine/test_seq19_signed_bundle.py
+      A2: WHEN prettier checks the document SHALL report no violation (no
+      inline code span crosses a line break).
+    probe: npx --no-install prettier --check research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md
   - text: >-
-      A3: WHEN the verified payload's previous_payload_sha256 is compared
-      against seq-18's own re-derived payload digest, SHALL be equal
-      (5a24472d187f85c54628f23d6e37b2a4b814e54762478c099472f0437d255849) —
-      the chain anchor is correct.
-    probe: >-
-      backend/tests/services/visa_engine/test_seq19_signed_bundle.py
+      A3: WHERE §4 names a PR of the wave, SHALL name its files, its exact
+      change, its guilt and innocence tests, its size bound and its
+      prove-live observation — the builder needs nothing outside the spec.
+    probe: grep -c "^### PR-" research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md
   - text: >-
-      A4: WHERE the signed payload's rules list is inspected, SHALL contain
-      exactly 109 rules including both review.e23u.requested-product and
-      review.e23v.requested-product.
-    probe: >-
-      backend/tests/services/visa_engine/test_seq19_signed_bundle.py
-  - text: >-
-      A5: IF one byte of the signature or the payload is flipped on an
-      in-memory copy, THEN verify_rule_pack SHALL raise
-      RulePackVerificationError — guilt half of the guard (superscar #3).
-    probe: >-
-      backend/tests/services/visa_engine/test_seq19_signed_bundle.py
-  - text: >-
-      A6: WHEN scripts/detect_secrets_check_unaudited.py runs after
-      detect-secrets scans the new/changed files and
-      detect_secrets_auto_triage.py --apply runs, SHALL report zero residue —
-      the new CONTENT_KEYED_RULES entry auto-approves this test file's three
-      trust-anchor literals (public key, seq-18 chain digest, seq-19 payload
-      digest), never anything else.
-    probe: scripts/detect_secrets_check_unaudited.py
+      A4: WHEN the deterministic floor is recomputed from this PR's changed
+      files SHALL be 2, and the declared gear SHALL equal it.
+    probe: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <changed> --numstat-file <numstat>
 appetite:
-  wall_clock_hours: 1.5
+  wall_clock_hours: 1

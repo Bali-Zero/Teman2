@@ -1,0 +1,118 @@
+task_id: visa-seq20-fold
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor computed this run: `python3 scripts/evidence_pack_lint.py --print-floor
+# --print-floor-source --numstat-file <numstat> --changed-files-file <changed>`
+# returns `3` / `size`. The size comes almost entirely from the GENERATED pack
+# JSON: rulepack-prod-020.source.json is 9,230 lines after the prettier pass
+# this rework adds (10,348 before it). That one file floors the PR at Gear 3
+# regardless of the authored-logic footprint, which is
+# fold_pack_seq20.py (892) + test_seq20_pack.py (1,049) + the observe wrapper
+# (107) + a 9-line frontend copy entry.
+objective: >-
+  Fold sequence 20 of the Visa Oracle production RulePack — SOURCE ONLY — so the
+  engine stops being correct-but-mute. `research/visa/
+  2026-09-06-visa-oracle-decisiveness-investigation.md` measured the live funnel
+  on the signed seq-19 pack and found 36 of 43 real interview walks ending in
+  NEEDS_INPUT on a fact the interview has no question for. §2.3 isolates the
+  layer that lives in the PACK; this PR is that layer's repair and nothing else.
+  Five edits, addressed by rule id, never by line number: stay-day caps raised to
+  the lawful EXTENDABLE total (22 rules), the E33G income-evidence review rule
+  retired because its `when` was a byte-copy of the product's own success
+  condition, eight `family.sponsor_status_code` readers moved to
+  `on_unknown: NO_EFFECT`, four BRIDGING SUPPORT rules given an explicit
+  `known` premise, and CL-D2-01's local-compensation prohibition compiled for
+  the first time as a new HARD_FILTER/EXCLUDE. This revision additionally closes
+  the three mechanical conditions an independent Opus gate raised on the first
+  head (d63a1bc895): the pack file is now prettier-shaped like every other pack
+  on main, this evidence pack exists, and the new EXCLUDE reason code has
+  human-readable no-path copy in the frontend.
+constraints:
+  - >-
+    NO SIGNING AND NO ACTIVATION IN THIS PR. The fold writes only the unsigned
+    SOURCE file. `sign_pack.py` is the owner's offline Ed25519 ceremony on M5
+    and `activate_pack.py` is a separate later act by a separate session; this
+    seat runs neither, reads no key material, and never passes `--yes` to
+    anything.
+  - >-
+    The prettier pass must not be able to move the payload. The pack's identity
+    is `sha256(canonicalize_json(parsed_payload))` — JCS over the PARSED
+    document, never over the file bytes — so reformatting is safe by
+    construction, but the claim is PROVEN by recomputation with the repo's own
+    canonicalizer, not asserted.
+  - >-
+    Every edit is addressed by RULE ID and every census is derived from the pack
+    at fold time. No line-number anchors: the spec's own `origin/main` anchors
+    had already moved by the time this branch was cut.
+  - >-
+    `el.a1.tourism` is DELIBERATELY NOT moved by edit 1. A1 is the
+    visa-exemption (BVK) entry whose 30 days are non-extendable, so its cap
+    already IS the lawful total. The exemption is named in
+    `STAY_DAY_CAP_EXEMPT_RULE_IDS` and enforced by a fold-time census, never
+    left implicit.
+  - >-
+    Frontend copy is a RENDERING of an already-ruled claim, not a new
+    regulatory claim. The prohibition itself is CL-D2-01 in
+    `research/visa/doctrine-factory/claims/e2a-claim-ledger.md`, compiled under
+    owner decision 2 (RULED 2026-09-06).
+acceptance:
+  - text: >-
+      A1: WHEN `fold()` runs against the SIGNED seq-19 anchor, SHALL verify that
+      anchor by Ed25519 SIGNATURE before editing a single byte, and SHALL refuse
+      outright if `VISA_ENGINE_TRUST_STORE_KEYS_JSON` is absent — the chain is
+      never trusted on a digest constant alone.
+    probe: >-
+      backend/tests/services/visa_engine/test_seq20_pack.py
+  - text: >-
+      A2: WHERE the folded pack is compared to seq-19 key by key, SHALL differ
+      ONLY in the 34 edited rules, the 1 removed rule and the 1 added rule —
+      `products`, `source_records`, `hit_policy`, `valid_period` and the other
+      74 rules SHALL be byte-identical, enforced by universal equality rather
+      than by an allow-list.
+    probe: >-
+      backend/tests/services/visa_engine/test_seq20_pack.py
+  - text: >-
+      A3: FOR EACH of the five edits, SHALL carry a NAMED witness with both a
+      guilt assertion (the defect reproduced on seq-19) and an innocence
+      assertion (a neighbouring persona that must not move) —
+      TestStayDayCapWitnesses, TestE33GWitnesses, TestSponsorStatusWitnesses,
+      TestBridgingWitnesses, TestLocalCompensationWitnesses.
+    probe: >-
+      backend/tests/services/visa_engine/test_seq20_pack.py
+  - text: >-
+      A4: WHEN the 18-persona gold corpus is replayed against seq-20, SHALL
+      score 18/18 — the same coverage floor seq-19 scores. This is the one gate
+      that would catch a fail-open introduced by edit 3's NO_EFFECT move.
+    probe: >-
+      backend/tests/services/visa_engine/test_seq20_pack.py
+  - text: >-
+      A5: WHEN `prettier --write` is run on rulepack-prod-020.source.json, the
+      JCS payload digest recomputed with
+      `hashlib.sha256(canonicalize_json(json.load(f))).hexdigest()` SHALL still
+      equal df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d.
+      The pinned constant lives in a committed test
+      (TestIdentity::test_payload_digest_survives_reformatting_of_the_file), so
+      any future reformat that moved the digest fails loudly instead of being
+      rediscovered at signing time; `prettier --check` passing on the pack, as
+      it already passes on rulepack-prod-018/019.source.json, is recorded as a
+      receipt in pack.yml rather than asserted from Python.
+    probe: >-
+      backend/tests/services/visa_engine/test_seq20_pack.py
+  - text: >-
+      A6: WHEN the engine returns NO_SUPPORTED_PATH carrying seq-20's new
+      BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED code, the frontend SHALL render a
+      sentence in every locale the adapter carries (en, id) and SHALL NOT render
+      the bare machine code. The code SHALL be read out of the highest-sequence
+      pack on disk rather than typed into the test, so a rename in the fold
+      moves the test with it.
+    probe: >-
+      apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+  - text: >-
+      A7: WHEN `scripts/ci/observe_visa_seq20_fold.py` runs with no arguments,
+      SHALL drive both named consumers — apps/backend-rag's test_seq20_pack.py
+      and apps/mouth's engine-adapter.test.ts — and SHALL exit 0 only when both
+      are green.
+    probe: scripts/ci/observe_visa_seq20_fold.py
+appetite:
+  wall_clock_hours: 4

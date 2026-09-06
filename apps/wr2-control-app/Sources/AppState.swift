@@ -451,18 +451,26 @@ final class AppState: ObservableObject {
     /// in, uploads the slides, and POSTs the operator-approved caption.
     /// The completion is surfaced via the same `ioNotice` banner as Re-render.
     func publishToInstagram(
-        slug: String, caption: String, lang: LanguageManager, confirm: Bool
+        slug: String,
+        caption: String,
+        lang: LanguageManager,
+        confirm: Bool,
+        completion: @escaping (Bool) -> Void = { _ in }
     ) {
         let s = slug.trimmingCharacters(in: .whitespaces)
         guard s.isEmpty == false,
               InstagramCaption.isPublishable(caption),
-              isPublishingSlug == nil else { return }
+              isPublishingSlug == nil else {
+            completion(false)
+            return
+        }
 
         let captionFile: URL
         do {
             captionFile = try InstagramCaption.writeTemporaryFile(caption)
         } catch {
             notice("⚠︎ \(error.localizedDescription)")
+            completion(false)
             return
         }
 
@@ -512,6 +520,7 @@ final class AppState: ObservableObject {
                         .map(String.init) ?? "exit \(code)"
                     self.notice("⚠︎ " + lastLine)
                 }
+                completion(code == 0)
             }
         }
 
@@ -521,6 +530,7 @@ final class AppState: ObservableObject {
             try? FileManager.default.removeItem(at: captionFile)
             isPublishingSlug = nil
             notice("⚠︎ \(error.localizedDescription)")
+            completion(false)
         }
     }
 

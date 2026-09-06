@@ -1,0 +1,48 @@
+task_id: oracle-walk-census-gate
+gear: 2
+objective: >-
+  Pin what the PUBLIC Visa Oracle funnel actually answers — replay the 43 real interview walks
+  against the highest signed PRODUCTION pack and arm the invariant "no walk may end in NEEDS_INPUT
+  on a fact the interview has no reachable question for", with the 36 known dead ends as an
+  explicit allowlist the decisiveness wave empties. PR-0 of the wave in
+  research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md §4.
+scope:
+  - apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks/*.json
+  - apps/backend-rag/backend/scripts/visa_engine/gold_coverage_eval.py
+  - apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts
+constraints:
+  - Test-only behaviour. No engine, no signed pack, no frontend, no production call, no signing key.
+  - The one non-test edit memoizes verify+compile per evaluation instant; the evaluated decision is
+    byte-identical (302 offline visa-engine tests stay green, gold-coverage floor 18/18).
+  - Walk corpus is synthetic; no client data, no PII.
+  - The gear floor reads this diff as ~542 churned lines because the 43 generated walk fixtures sit
+    under a `fixtures/` path segment — a genuine generated-corpus directory, declared in the PR body,
+    not a floor dodge.
+acceptance:
+  - text: >-
+      WHEN the 43 interview walks are replayed against the highest signed pack THEN the census SHALL
+      be exactly 36 NEEDS_INPUT / 7 SUPPORTED_CANDIDATES / 0 NO_SUPPORTED_PATH, per-walk state AND
+      candidates pinned.
+    probe: "test_interview_walk_census.py::test_walk_state_census_is_36_dead_ends_and_7_answers"
+  - text: >-
+      WHEN a walk ends in NEEDS_INPUT on a fact that carries no allowlist row — or an allowlisted
+      walk stops dead-ending — THEN the gate SHALL fail, and with an EMPTY allowlist every
+      NEEDS_INPUT SHALL fail.
+    probe: "test_no_walk_dead_ends_outside_the_allowlist + the three guilt tests"
+  - text: >-
+      WHEN an allowlist row claims a question is not asked in that walk THEN the claim SHALL be
+      checked against that walk's own `asked` history, never taken on trust.
+    probe: "test_every_allowlisted_dead_end_is_genuinely_unaskable_in_its_own_walk"
+  - text: >-
+      WHEN the committed walk corpus and the committed generator disagree by a single byte — a
+      hand-edited fixture, an added or removed walk, or a tree change nobody regenerated for —
+      THEN the mouth vitest suite SHALL fail and name the offending file.
+    probe: "apps/mouth src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts"
+consumer_map:
+  - The `backend-shard` pytest job in .github/workflows/tests.yml collects backend/tests/** — the
+    module ships in this PR, so the corpus has a reader from the first run.
+  - Wave PR-1 (seq-20 fold) and PR-2 (evaluator reorder) update the pinned numbers and delete
+    allowlist rows in their own PRs; measured here, PR-2's evaluator turns this gate red with 23
+    outcome and 27 dead-end violations (census 13/23/7).
