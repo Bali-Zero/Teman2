@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "scope": "synthetic_local_and_disposable_postgresql_only",
+  "checks": [
+    {
+      "name": "lab",
+      "cmd": ". /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/activate\nPYTHONPATH=apps/backend-rag python -m pytest apps/backend-rag/backend/tests/unit/services/autonomous_lab/ --tb=short --color=no",
+      "started_at": "2026-09-05 23:37:54 UTC",
+      "finished_at": "2026-09-05 23:38:10 UTC",
+      "exit": 0,
+      "stdout": "........................................................................ [ 31%]\n........................................................................ [ 62%]\n........................................................................ [ 93%]\n...............                                                          [100%]\n============================= slowest 10 durations =============================\n0.15s call     backend/tests/unit/services/autonomous_lab/test_mass_invariants.py::test_planner_reviewer_and_receipt_store_mass_invariants\n0.07s call     backend/tests/unit/services/autonomous_lab/test_draft_cli.py::test_cli_blocks_workspace_write_requests\n0.07s call     backend/tests/unit/services/autonomous_lab/test_draft_cli.py::test_cli_invalid_input_returns_receipt_safe_json_error\n0.07s call     backend/tests/unit/services/autonomous_lab/test_draft_cli.py::test_cli_writes_receipt_and_omits_raw_text\n0.01s call     backend/tests/unit/services/autonomous_lab/test_router.py::test_draft_endpoint_can_persist_orchestration_receipt\n0.01s call     backend/tests/unit/services/autonomous_lab/test_router.py::test_draft_endpoint_can_persist_lab_ui_receipt\n0.01s call     backend/tests/unit/services/autonomous_lab/test_router.py::test_draft_endpoint_returns_receipt_safe_agent_fleet\n0.01s call     backend/tests/unit/services/autonomous_lab/test_router.py::test_run_detail_endpoint_returns_receipt_safe_persisted_run\n0.01s call     backend/tests/unit/services/autonomous_lab/test_router.py::test_draft_endpoint_accepts_lab_ui_target_paths\n0.01s call     backend/tests/unit/services/autonomous_lab/test_router.py::test_draft_endpoint_refuses_persistence_when_flag_disabled\n231 passed in 1.03s\n"
+    },
+    {
+      "name": "conductor",
+      "cmd": ". /Users/balizero/nuzantara/.venv/bin/activate\npython -m pytest scripts/tests/test_conductor_model_registry.py scripts/tests/test_conductor_host_identity.py scripts/tests/test_conductor_host_seat_maps.py scripts/tests/test_conductor_calibration.py scripts/tests/test_conductor_adapter_contracts.py -q --tb=short",
+      "started_at": "2026-09-05 23:37:54 UTC",
+      "finished_at": "2026-09-05 23:38:10 UTC",
+      "exit": 0,
+      "stdout": ".................................................................. [ 74%]\n.......................                                                  [100%]\n89 passed, 798 subtests passed in 4.41s\n"
+    },
+    {
+      "name": "postgres",
+      "cmd": "ssh pro 'cd /Users/nuzantara/nuzantara/.worktrees/infra-dual-consul-proof/apps/backend-rag && source .venv/bin/activate && PGHOST=/tmp/dual-consul-pg.aoqbxz PGPORT=55487 DUAL_CONSUL_TEST_DSN=postgresql:///dual_consul_test PYTHONPATH=. python -m pytest backend/tests/integration/test_dual_consul_postgres.py --tb=short --color=no'",
+      "observed_running_at": "2026-09-05 23:47:46 UTC",
+      "finished_at": "2026-09-05 23:47:57 UTC",
+      "exit": 0,
+      "stdout": "..................                                                       [100%]\n============================= slowest 10 durations =============================\n0.07s setup    backend/tests/integration/test_dual_consul_postgres.py::test_lapsed_authority_never_reaches_effect[grant_expired]\n0.07s setup    backend/tests/integration/test_dual_consul_postgres.py::test_revoked_approval_cannot_return_after_new_grant\n0.06s setup    backend/tests/integration/test_dual_consul_postgres.py::test_migration_306_bootstraps_absent_lab_and_preserves_rows_on_rollback\n0.06s call     backend/tests/integration/test_dual_consul_postgres.py::test_migration_306_bootstraps_absent_lab_and_preserves_rows_on_rollback\n0.06s setup    backend/tests/integration/test_dual_consul_postgres.py::test_takeover_fences_old_generation_even_when_owner_name_is_reused[consul-astra]\n0.06s setup    backend/tests/integration/test_dual_consul_postgres.py::test_takeover_fences_old_generation_even_when_owner_name_is_reused[consul-fable]\n0.06s setup    backend/tests/integration/test_dual_consul_postgres.py::test_concurrent_takeover_waits_for_guard_then_fences_it\n0.06s setup    backend/tests/integration/test_dual_consul_postgres.py::test_lapsed_authority_never_reaches_effect[lease_expired]\n0.05s setup    backend/tests/integration/test_dual_consul_postgres.py::test_migration_306_reuses_every_canonical_124_statement\n0.05s setup    backend/tests/integration/test_dual_consul_postgres.py::test_worker_tick_commits_started_attempt_result_and_one_effect[fable]\n18 passed in 1.96s\n"
+    }
+  ]
+}

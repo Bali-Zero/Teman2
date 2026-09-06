@@ -1,0 +1,52 @@
+task_id: dual-consul-v4
+gear: 3
+gear_reason:
+  Adds PostgreSQL migration 306 and a fenced Autonomous Lab executor stage; database migration
+  and authorization checks are the hot-zone floor.
+objective:
+  Version the accepted Dual Consul v4 design and selected authentic evidence, repair the MIR
+  projection from its cards, and connect a synthetic mission stage to the existing Autonomous Lab lifecycle
+  without another scheduler.
+scope:
+  - Same-database synthetic receipt effect serialized with current lease, scoped grant, resource, frozen
+    packet, expiry, and revocation checks.
+  - Canonical Research OS ActionIntent and VerificationReceipt binding; runtime extensions remain observational
+    rather than authorization.
+  - Pure adapter admission and response normalization with explicit identity, budget, completeness, and
+    cancellation limits.
+constraints:
+  - Prepare-only external builder; no own merge, auto-merge, deploy, or fleet activation.
+  - No operational provider launch, service-identity provisioning, or remote effect qualification by the
+    implemented adapter.
+  - No production database mutation; real PostgreSQL verification uses an isolated temporary cluster on
+    Pro with synthetic records.
+  - Preserve selected original design-answer bytes and hashes.
+  - Preserve change_map, impact_map, and advisory merge_group exclusions; no general harness suite added
+    to unrelated PRs.
+acceptance:
+  - text:
+      WHEN a synthetic owner is stale or revoked, the executor SHALL reject the protected same-database
+      effect; changed frozen packets SHALL invalidate review.
+    probe: backend/tests/integration/test_dual_consul_postgres.py
+  - text:
+      WHEN identity or hard budget requirements are unsupported, adapter admission SHALL refuse rather
+      than weaken them; incomplete replies SHALL retain their incomplete status.
+    probe: scripts/tests/test_conductor_adapter_contracts.py
+  - text: The model capability index SHALL match its source cards without promoting runtime eligibility.
+    probe: python -m scripts.conductor.build_model_capability_index --check
+  - text: The final executor, admission and migration source SHALL receive independent native consul review.
+    status: verified
+    probe:
+      Read native session 9db691ab-8167-459b-a921-54857dde0d49 assistant text and compare selected
+      input packets and final source SHA-256; no thinking blocks selected.
+risks:
+  - A same-database transaction does not establish a distinct OS service identity or qualify native tool
+    use, provider entitlement, resume, or remote cancellation.
+  - Production deployment and operational reliability remain unmeasured.
+  - Historical design consultations are not implementation review or runtime certification.
+pii: none
+instruction_to_the_grader:
+  Review the frozen implementation and actual test evidence, especially row-lock
+  ordering, fencing and revocation at the effect boundary, exact input binding, replay under current authority,
+  and JSON storage through the real asyncpg codec. Synthetic success cannot establish remote or distinct-identity
+  enforcement.

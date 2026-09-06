@@ -1,0 +1,27 @@
+Verdict: **PASS** for the first synthetic slice. I found no blocking correctness issue in the fencing, expiry, binding, hashing, replay/atomicity or text-admission code as provided. Findings below are non-blocking but concrete.
+
+**Non-blocking findings**
+
+- `consul_store.revoke` cannot tombstone a superseded approval. Trigger: bind approval A (gen 1), bind approval B (gen 2) without revoking, then `revoke(Lease(run, owner, 1))`. The UPDATE matches no row, returns False, and A stays absent from `revoked_approval_hashes`. A later bind with A (gen 3) succeeds while A is unexpired. Fail-closed only if the broker honours the False return. Add an approval-level revoke that appends the hash regardless of generation.
+- `adapter_contracts.admit` treats an unreported worker limit as "delegation disabled". Trigger: `claude_interactive_text`, `worker_limit=None`, `delegation_observable=False`, default `Requirements()` → admitted. Unknown is not disabled for surfaces with native delegation. Harmless for this slice since admission confers no effect authority, but fix before those surfaces are used. Also `worker_limit=False` or `0.0` pass `in (None, 0)` by equality.
+- `execute_synthetic` replay needs a live lease. After a lost commit acknowledgement, if the lease expired or was revoked, the retry raises `PermissionError` inside `guard` rather than returning the committed receipt. No duplicate effect is possible since `result_id` derives from the intent hash and the guard serialises the run. Liveness only.
+
+**Confirmed properties**
+
+- Lock order parent → lease is identical in `bind`, `revoke` and `guard`, so no deadlock and full serialisation per run.
+- Owner change is excluded during the effect by the held `FOR UPDATE` locks; the effect statement rechecks generation, revocation and both expiries with live `clock_timestamp()`.
+- Attempt, outbox effect and result receipt commit in one transaction; any failure rolls back all three.
+- Changed artifact, superseded owner, revoked lease and expired grant each refuse via distinct checks.
+
+**Residual limits, not verifiable from the provided code**
+
+- `FrozenCoreModel` must recompute `object_hash` during `model_validate_json`; otherwise the trust-boundary revalidation checks shape only. `authorizes_action_intent` is assumed to bind approval to intent hash; grant expiry is independently covered by the lease.
+- Success path assumes `approval.authorized_effects` is a tuple and `review.target_objects` entries dump to exactly three keys. Mismatch fails closed.
+- `research_os_objects` needs a unique index on `object_id` alone; `autonomous_lab_runs.run_id` must be TEXT; existing `worker_id` values must satisfy the `owner_id` CHECK regex; outbox columns must match.
+- Migration `SET LOCAL` is a no-op unless the runner wraps the file in a transaction; the rollback marker relies on runner convention.
+- Idempotency is per intent, not per resource: two distinct valid intents for one run yield two checkpoint events.
+- Tombstone array grows without bound; the CHECK regex is linear in its size.
+- Heartbeat writers on other connections block briefly behind the parent lock during an effect.
+- As stated, nothing here qualifies remote effects, native invocation, distinct service identity or production activation.
+
+END_DUAL_CONSUL_REVIEW

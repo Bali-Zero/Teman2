@@ -103,9 +103,7 @@ class LabWorkerDryRun:
             "created_at": self.created_at.isoformat(),
             "placement": self.placement.to_receipt(),
             "sandbox_policy": self.sandbox_policy.to_receipt(),
-            "checkpoints": [
-                checkpoint.to_receipt() for checkpoint in self.checkpoints
-            ],
+            "checkpoints": [checkpoint.to_receipt() for checkpoint in self.checkpoints],
             "paused_at_stage": self.paused_at_stage.value,
             "execution_allowed": self.execution_allowed,
             "manual_promotion_required": self.manual_promotion_required,
@@ -142,11 +140,12 @@ class AutonomousLabWorker:
 
         checkpoints: list[LabCheckpoint] = []
         try:
-            await self.state_store.heartbeat_run(
+            if not await self.state_store.heartbeat_run(
                 conn,
                 run_id=record.run_id,
                 worker_id=worker_id,
-            )
+            ):
+                raise PermissionError("worker no longer owns the run")
             context: dict[str, Any] = {}
             for node in _nodes_after_resume(self.stage_nodes, record):
                 result = await node.run(record, context)
@@ -160,13 +159,14 @@ class AutonomousLabWorker:
                 )
                 context[result.stage.value] = checkpoint.fingerprint
                 if result.status is LabStageStatus.PAUSED:
-                    await self.state_store.mark_run_paused(
+                    if not await self.state_store.mark_run_paused(
                         conn,
                         run_id=record.run_id,
                         worker_id=worker_id,
                         stage=result.stage.value,
                         checkpoint=checkpoint.to_receipt(),
-                    )
+                    ):
+                        raise PermissionError("worker lost ownership before pause")
                     return LabWorkerTickResult.paused(
                         worker_id=worker_id,
                         record=record,
@@ -174,12 +174,13 @@ class AutonomousLabWorker:
                         paused_at_stage=result.stage,
                     )
 
-            await self.state_store.mark_run_succeeded(
+            if not await self.state_store.mark_run_succeeded(
                 conn,
                 run_id=record.run_id,
                 worker_id=worker_id,
                 summary={"checkpoint_count": len(checkpoints)},
-            )
+            ):
+                raise PermissionError("worker lost ownership before completion")
             return LabWorkerTickResult.succeeded(
                 worker_id=worker_id,
                 record=record,

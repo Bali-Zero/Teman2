@@ -1,0 +1,38 @@
+Design-only review, no tools, no evidence inspected beyond the supplied text.
+
+**Verdict: ACCEPTED with five corrections.** None reopen governance. All are precision fixes against the supplied contributions.
+
+1. **Claude validated scope is narrower than stated.** What is validated is interactive, tools-empty, plan-mode text collaboration. Interactive tool use under mission governance, native resume under fresh checks, and any effect path remain unqualified. The consolidated line should say so rather than "interactive text collaboration validated".
+2. **Identity assurance needs a request-side versus response-side distinction.** The three gateway routes returned an exact model field in the response. The Kimi evidence shows alias resolution on the request wire, with no response model field cited. Gemini shows no effective identifier at all. Record three levels: response_observed, request_observed, and unknown. Only response_observed satisfies a mission that requires an attested model.
+3. **Incomplete state must derive from provider signals, not length.** The gateway evidence gives completion counts under the cap but no finish reason. Adapters capture the native finish or stop field where the provider supplies one. A missing field is recorded as unknown completeness, which is distinct from both incomplete and reconcile_required.
+4. **Kimi hard-cap eligibility should be explicit, not implied.** The observed one-million-token request ceiling means no per-mission output bound exists until a verified setting is found by tooling or docs. Until then the Kimi native binding is ineligible for any mission that requires an enforced output cap. The no-tools text binding shares this limit.
+5. **Gateway shared parameters need an explicit per-route parameter table.** The spec says the transport is shared but not the parameters. The table should list, per route, which fields were sent and accepted in the actual request. Currently that is effort medium for Qwen, and effort omitted for DeepSeek and GLM. Anything else is unvalidated.
+
+**FINAL CLAUDE SPEC, changes from accepted v3 only**
+
+- **Validated surface.** Interactive, tools empty, plan mode, design text. Recorded as response_observed identity from the native model field in this session.
+- **Unqualified surfaces.** Headless entitlement, interactive tool use under the executor boundary, native resume with fresh checks, hook deny path, env isolation, process-group cancellation. Each stays a recorded gap until its fixture or smoke passes.
+- **Identity.** Assurance level runtime_observed, sub-level response_observed. No trailer or link claim.
+- **Budget.** Effort from the mission-class table. Where a hard output cap is required and no verified setting exists for the installed CLI version, the binding is ineligible for that requirement rather than silently weakened.
+- **Cancellation reporting.** Local interruption and remote cancellation are separate fields. Ambiguous effects only become reconcile_required. Truncated or unfinished text is incomplete.
+- **Tests.** As in v3, plus one fixture for unknown completeness and one for request-observed identity mismatch.
+
+**FINAL FIVE-ADAPTER SPEC**
+
+Common to all five. One adapter interface: discover with observations and expiry, admit with mission, binding, budget, and scoped grant, invoke a bounded prompt or native turn, checkpoint or handoff, cancel with local and remote fields reported separately. Records use existing Research OS types with route-specific reverse-DNS extensions. Scope covers data egress and quota even with no tools. Usage fields are logged under native definitions with unknowns explicit and no reasoning double count. Deadline bounds local wait only. Identity from response metadata, never self-assertion. Unknown tool support is unvalidated, not absent. Local schema validation applies when a task requires structure, since no native structured guarantee is tested on any route.
+
+- **Kimi.** Two bindings. No-tools text through the existing wrapper is participation-validated with an empty tool inventory observed. Native agentic CLI and ACP are unqualified. Preserve alias and resolved model. Identity request_observed until a response model field is captured. Effort default max is excluded from ordinary admission. No invented effort flag. Ineligible for enforced output caps until a verified setting exists. Transcript retention is native product state, separate from shared evidence.
+- **Gemini.** Native CLI binding with the observed model list, boolean sandbox flag, plan mode, and conversation identifier for resume. One successful turn recorded as participation only. Identity unknown because the effective identifier was absent, so exact-model missions cannot pass on this route. Cached usage logged in the native field. Sandbox, tool denial, schema, and effort override are unqualified. No suffix-plus-override combination.
+- **Qwen.** Gateway binding for the exact resolved model. Effort medium was accepted on the wire, with semantics unproven. Tool calling, schema enforcement, and mid-generation cancellation are unvalidated. Truncation tests are fixture-first. The separate native CLI remains unqualified.
+- **DeepSeek.** Gateway binding for the exact resolved model, effort omitted. User-only body, no system directive option. Pre-flight exact cost absent, so overspend before evidence is a recorded limitation and hard-cap missions are ineligible. Adapter does not manage history, multi-turn state, or cancellation. Local R1 is a distinct binding with its own card, never a fallback equivalent.
+- **GLM.** Gateway binding for the exact resolved model, effort omitted. Text-only surface. Compatibility routing grants no Claude tools, permissions, or identity. Provider-side cancellation and reasoning budget are unproven, exactly as the model stated.
+
+**Tests.** One shared executor conformance run. Cheap parameterized fixtures per route for unsupported parameter, truncated response, unknown completeness, unknown identity, reasoning sentinel exclusion, and late response. One route smoke on installation or relevant change. No all-PR or all-host suite, no deliberate long generation, no implementation-mirroring tests.
+
+**Rollout.** Pro broker, M5 thin client, Mini executor where needed, with per-host attestation. No repo edits made. The unrelated dirty files stay untouched. Persistence and activation are outside this session.
+
+**Deliverables when implementation is allowed.** One common contract. Astra native spec by Astra. Claude native spec by me. One adapter document with five attributed sections. Existing MIR and Research OS files for schemas and registries. Author, review, and test evidence labeled separately.
+
+**Still unvalidated.** Astra on Pro and Mini. Claude headless and effect paths. The distinct-UID executor. Env isolation for both native launchers. Gemini effective identity. Kimi output cap and response identity. Tool and cancellation behavior on all three gateway routes.
+
+END_FABLE_DC_V4_FINAL
