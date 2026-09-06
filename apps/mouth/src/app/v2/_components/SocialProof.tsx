@@ -148,7 +148,7 @@ export function SocialProof() {
             }}
           >
             <BadgeCheck size={12} strokeWidth={2} />
-            5,000+ expats and founders · since 2019
+            5,000+ expats and founders · since 2020
           </div>
           <h2
             className="tracking-tight mb-4"
@@ -170,7 +170,7 @@ export function SocialProof() {
             className="text-[14px] max-w-xl mx-auto"
             style={{ color: "var(--text-secondary)" }}
           >
-            Real consultants handling real cases in Bali since 2019. AI drafts
+            Real consultants handling real cases in Bali since 2020. AI drafts
             the analysis. Our licensed Indonesian team signs the filings.
           </p>
         </div>
@@ -453,7 +453,7 @@ export function SocialProof() {
         >
           <TrustItem
             icon={<BadgeCheck size={14} strokeWidth={2} />}
-            label="5,000+ Clients since 2019"
+            label="5,000+ Clients since 2020"
           />
           <TrustItem
             icon={<Star size={14} strokeWidth={0} fill="currentColor" />}
