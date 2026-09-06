@@ -1,0 +1,113 @@
+task_id: garuda-voa-documents-0901
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Gear-3 evidence ceremony for PR #5526 (feat(garuda-voa): give the
+  document-upload lane the persistence it was written against), rilaunched
+  after a predecessor session died mid-ceremony (no evidence pack was ever
+  written under this slug or the old one). The PR was already disarmed
+  (autoMergeRequest: null) before this ceremony started and stays disarmed —
+  this pack's job is to JUDGE the diff, not to ship it.
+
+  PR #5526 adds migration 304_garuda_documents.sql (two new tables,
+  garuda_documents + garuda_document_review_fields) and
+  postgres_store.py (a real PostgresDocumentStore implementing
+  garuda_documents/ports.py's DocumentStorePort), plus its integration test
+  suite. Migration 304 also widens the SAME shared CHECK constraint on
+  visa_decision_retention_policies that migrations 264/281/285 have widened
+  before it, and adds a fifth SECURITY DEFINER trigger + inline ownership
+  transfer, replicating migration 301's fix-shape for a real 2026-08-30
+  production outage (magic-link creation 500ing for weeks because a
+  SECURITY DEFINER trigger was owned by the wrong role).
+
+  Because merging any PR under apps/backend-rag/** deploys automatically
+  (fly-deploy.yml runs on push to main; release_command applies pending
+  migrations forward-only before the rolling app update completes — see
+  CLAUDE.md's cicatrix discovery_merging_a_backend_rag_pr_deploys_by_itself),
+  the central question this ceremony exists to answer is not "is the code
+  well written" but "can this migration actually be APPLIED by the real
+  production migration-runner role, and is it safe to run while old GARUDA_*
+  app code is still live against the same shared table".
+constraints:
+  - "No merge, no re-arm. The PR was disarmed before this ceremony and this
+    ceremony's own mandate is to judge and report, not to ship — the merge
+    decision belongs to Zero."
+  - "Generator != grader: neither refuter authored the diff under review, and
+    the session itself only VERIFIES (git diff read, local pytest against a
+    throwaway Postgres, static rule cross-check) — it does not write code to
+    make the PR pass."
+  - "A green integration test is not evidence of production migration
+    safety by itself if the test builds schema through a superuser
+    connection — the exact blind spot that let migration 281/285 pass CI
+    and then fail in production on 2026-08-26 (test file's own docstring).
+    This ceremony explicitly checked which role the new
+    test_postgres_store.py fixture uses to run migration 304's forward SQL
+    before accepting its 11-pass result as evidence of anything beyond
+    schema/store correctness."
+acceptance:
+  - text: >
+      WHEN migration 304_garuda_documents.sql is linted with the exact
+      squawk-cli invocation .github/workflows/migration-lint.yml uses
+      (--pg-version=15.0 plus the repo's 13 standing --exclude rules), it
+      SHALL report 0 issues.
+    status: verified
+    probe: "squawk --pg-version=15.0 <13 --exclude flags from migration-lint.yml> apps/backend-rag/backend/db/migrations_v2/304_garuda_documents.sql"
+  - text: >
+      WHEN the repo's own post-D1 ledger-ownership guard
+      (test_post_d1_migrations_guard_ledger_owned_ddl.py) is run against the
+      full migrations_v2 corpus including 304, it SHALL find no NEW
+      violation beyond the two already-frozen ones (281, 285).
+    status: falsified
+    probe: "PYTHONPATH=. pytest backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py -v"
+  - text: >
+      WHEN PostgresDocumentStore's own integration suite is run against a
+      real throwaway Postgres, replaying/racing/conflicting outcomes SHALL
+      behave exactly as ports.py's DocumentStorePort contract documents, and
+      the SECURITY DEFINER ownership-transfer trigger SHALL let a
+      low-privilege application role INSERT successfully.
+    status: verified
+    probe: "PYTHONPATH=. pytest backend/tests/services/garuda_documents/test_postgres_store.py -v (against local superuser Postgres)"
+  - text: >
+      IF the new test_postgres_store.py fixture is inspected for WHICH role
+      applies migration 304's forward SQL, it SHALL be checked against
+      whether that matches the real production migration-runner role, not
+      assumed to.
+    status: falsified
+    probe: "read sandbox() fixture, test_postgres_store.py:150-180 — conn = asyncpg.connect(_ADMIN_URL-derived DSN), and _ADMIN_URL is required to be superuser by the fixture's own is_superuser check"
+risks:
+  - "PRIMARY: migration 304 top-level ALTERs visa_decision_retention_policies
+    (DROP/ADD the policy_scope CHECK) and its garuda_documents table
+    inline-REFERENCES that same table — both require ownership/REFERENCES
+    privilege that backend_rag_v2 (the runtime/migration role, per D1's
+    least-privilege repair) does not hold. This is the EXACT incident class
+    that failed 5 migrations in production on 2026-08-26 (documented in the
+    guard test's own header). The guard test itself convicts 304 for the
+    ALTER-shaped half of this; the inline-CREATE-TABLE-REFERENCES half is a
+    DOCUMENTED BLIND SPOT of that same guard (its docstring: '1 by naming it
+    in a REFERENCES clause... the single REFERENCES case lives inside
+    migration 281 itself' — i.e. the guard only detects REFERENCES clauses
+    INSIDE a top-level ALTER TABLE statement, not inside a CREATE TABLE)."
+  - "SECONDARY: even if privilege were granted, migration_base.py wraps the
+    whole migration file in one transaction, and the CHECK-constraint
+    DROP/ADD sits at the very top of the file (Section 0) — so the resulting
+    ACCESS EXCLUSIVE lock on visa_decision_retention_policies would be held
+    for the migration's ENTIRE remaining runtime (through table/function/
+    trigger creation), not released until COMMIT. Other live GARUDA_* paths
+    (magic-link, check, order) take FOR SHARE on that same table on every
+    write during a rolling deploy and would queue behind it."
+  - "MINOR (non-blocking, flagged by codex-gpt-5.6-sol, not independently
+    reproduced against live Postgres by this session): commit()'s
+    UniqueViolationError handler treats ANY unique-constraint hit as a lost
+    race and returns False without re-checking whether the winning row
+    actually carries the SAME payload hash — a genuine same-key,
+    different-payload race would silently swallow an IdempotencyConflictError
+    that should have been raised. The current sole caller (service.py)
+    re-reads via get_existing() afterward, which DOES compare payload hashes
+    and would still raise — so this is a latent contract gap, not a live
+    bug today."
+  - "The store is not wired into any router yet (verified: no import of
+    PostgresDocumentStore outside its own file and its test) — so nothing in
+    this PR is reachable by a live request today. The risk is entirely at
+    migration-apply time, not at request time."
+pii: none

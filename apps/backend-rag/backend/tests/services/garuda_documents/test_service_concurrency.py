@@ -62,6 +62,7 @@ async def test_two_concurrent_submissions_same_key_commit_exactly_once(monkeypat
             declared_media_type="image/png",
             document_kind=DocumentKind.PASSPORT_BIODATA,
             idempotency_key="race-key",
+            actor_id="actor-1",
         )
 
     task_a = asyncio.create_task(submit())
@@ -106,6 +107,7 @@ async def test_two_concurrent_low_confidence_submissions_fire_hook_exactly_once(
             declared_media_type="image/png",
             document_kind=DocumentKind.PASSPORT_BIODATA,
             idempotency_key="race-key-lowconf",
+            actor_id="actor-1",
         )
 
     task_a = asyncio.create_task(submit())
