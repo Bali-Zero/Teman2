@@ -1,0 +1,33 @@
+{
+  "requested_model": "qwen3.8-max",
+  "requested_effort": "medium",
+  "max_tokens_requested": 4096,
+  "absolute_deadline_seconds": 180,
+  "retry_count": 0,
+  "prompt_sha256": "d25f29f6ed0bd3bc1b7b6d4011ecf5656733701a8640d7babbb39e6a539d1887",
+  "started_at_utc": "2026-09-05T23:10:06.215021+00:00",
+  "http_status": 200,
+  "provider_model": "qwen3.8-max",
+  "provider_model_matches_requested": true,
+  "usage": {
+    "prompt_tokens": 558,
+    "total_tokens": 1677,
+    "completion_tokens": 1119,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "text_tokens": 558
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 388,
+      "text_tokens": 1119
+    }
+  },
+  "finish_reason": "stop",
+  "status": "completed",
+  "answer_sha256": "11c735dd1e741f1ba5aea9dee3aa49c986e82a55cb15726f3e53ec97d0bd7074",
+  "wall_seconds": 27.085,
+  "finished_at_utc": "2026-09-05T23:10:33.300323+00:00",
+  "route": "TP1",
+  "identity_assurance": "response_observed",
+  "original_answer_sha256_verified": true
+}

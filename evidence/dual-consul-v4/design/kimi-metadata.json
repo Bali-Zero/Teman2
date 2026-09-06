@@ -1,0 +1,43 @@
+{
+  "route": "existing Kimi CLI no-tools profile",
+  "runtime_version_reported_in_design_packet": "0.41.0",
+  "identity_assurance": "request_observed",
+  "profile_binding": {
+    "modelAlias": "kimi-code/k3",
+    "thinkingEffort": "max",
+    "activeToolNames": [],
+    "disallowedTools": []
+  },
+  "request_metadata": {
+    "type": "llm.request",
+    "model": "k3",
+    "provider": "openai",
+    "modelAlias": "kimi-code/k3",
+    "thinkingEffort": "max",
+    "maxTokens": 1048576,
+    "toolSelect": false
+  },
+  "usage_metadata": {
+    "type": "usage.record",
+    "model": "kimi-code/k3",
+    "usage": {
+      "inputOther": 962,
+      "output": 2387,
+      "inputCacheRead": 0,
+      "inputCacheCreation": 0
+    }
+  },
+  "finish_metadata": {
+    "finishReason": "end_turn",
+    "usage": {
+      "inputOther": 962,
+      "output": 2387,
+      "inputCacheRead": 0,
+      "inputCacheCreation": 0
+    },
+    "providerFinishReason": "completed"
+  },
+  "request_metadata_source_jsonl_line": 624,
+  "request_metadata_source_tool_call_id": "call_yOg21BPvq8LSrL5WoXaYA8hm",
+  "original_answer_sha256_verified": true
+}

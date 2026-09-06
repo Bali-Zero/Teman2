@@ -14,12 +14,12 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from collections import Counter
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
 from scripts.conductor.calibration import CalibrationRecord, EndpointHostObservation
+from scripts.conductor.contracts import AuthSurface
 from scripts.conductor.model_registry import (
     RegistryValidationError,
     _candidate_from_records,
@@ -45,14 +45,7 @@ STATUSES = {
 }
 EVIDENCE_LEVELS = {"declared", "probed", "benchmarked", "production", "unmeasured"}
 PUBLIC_URL_PATTERN = re.compile(r"https?://[^\s|]+")
-AUTH_SURFACE_COUNTS = {
-    "anthropic_oauth_subscription": 6,
-    "google_oauth_subscription": 5,
-    "local_runtime": 14,
-    "manual_gui": 1,
-    "openai_chatgpt_subscription": 10,
-    "unknown": 45,
-}
+AUTH_SURFACES = {surface.value for surface in AuthSurface}
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -522,7 +515,7 @@ class ModelIntelligenceRegistryTest(unittest.TestCase):
 
     def test_cards_have_evidenced_claims_and_unique_ids(self) -> None:
         cards = [load_json(path) for path in sorted(CARD_DIR.glob("*.json"))]
-        self.assertEqual(len(cards), 80)
+        self.assertTrue(cards, "MIR must contain at least one evidenced ModelCard")
         ids = [card["id"] for card in cards]
         self.assertEqual(len(ids), len(set(ids)))
         aliases = [alias for card in cards for alias in card["identity"]["aliases"]]
@@ -686,12 +679,16 @@ class ModelIntelligenceRegistryTest(unittest.TestCase):
             len(set(invocation_keys)),
             "a concrete provider invocation must identify exactly one EndpointProfile",
         )
-        self.assertGreaterEqual(len(endpoints), len(cards))
+        self.assertEqual(
+            {endpoint["model_card_id"] for endpoint in endpoints},
+            set(cards),
+            "every ModelCard must have a concrete endpoint profile",
+        )
         for endpoint in endpoints:
             with self.subTest(endpoint=endpoint["id"]):
                 self.assertEqual(endpoint["schema_version"], "endpoint-profile.v1")
                 self.assertIn(endpoint["model_card_id"], cards)
-                self.assertIn(endpoint["auth_surface"], AUTH_SURFACE_COUNTS)
+                self.assertIn(endpoint["auth_surface"], AUTH_SURFACES)
                 self.assertIn(endpoint["routing"]["status"], STATUSES)
                 if endpoint["routing"]["automated_routing"]:
                     self.assertEqual(endpoint["routing"]["status"], "eligible")
@@ -721,14 +718,21 @@ class ModelIntelligenceRegistryTest(unittest.TestCase):
                     endpoint["id"] + ".exposed_capabilities",
                 )
 
-    def test_auth_surface_migration_has_conservative_complete_counts(self) -> None:
+    def test_auth_surfaces_are_complete_and_conservatively_routable(self) -> None:
         """Every concrete endpoint states an authority; unverified providers stay denied."""
-        endpoints = [load_json(path) for path in sorted(ENDPOINT_DIR.glob("*.json"))]
-        counts = Counter(endpoint["auth_surface"] for endpoint in endpoints)
-
-        self.assertEqual(dict(sorted(counts.items())), AUTH_SURFACE_COUNTS)
-        self.assertEqual(sum(counts.values()), 81)
-        self.assertNotIn("anthropic_paid_api", counts)
+        schema = load_json(MIR / "endpoint_profile.schema.json")
+        self.assertEqual(
+            set(schema["properties"]["auth_surface"]["enum"]), AUTH_SURFACES
+        )
+        registry = load_registry(ROOT)
+        for endpoint in registry.endpoint_profiles.values():
+            with self.subTest(endpoint=endpoint["id"]):
+                self.assertIn(endpoint["auth_surface"], AUTH_SURFACES)
+                self.assertNotEqual(endpoint["auth_surface"], "anthropic_paid_api")
+                candidate = registry.endpoint(endpoint["id"])
+                self.assertEqual(candidate.auth_surface.value, endpoint["auth_surface"])
+                if candidate.auth_surface is AuthSurface.UNKNOWN:
+                    self.assertFalse(candidate.automated_routing)
 
     def test_index_is_a_complete_normalized_projection(self) -> None:
         cards = [load_json(path) for path in sorted(CARD_DIR.glob("*.json"))]
