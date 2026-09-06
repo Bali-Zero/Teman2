@@ -1557,6 +1557,34 @@ describe("PR-3 · ASK_FOLLOW_UP appends, and never destroys the interview", () =
     expect(back.pendingFollowUp).toBeNull();
   });
 
+  // `pendingFollowUp` is cleared by BACK, so an applicant who answers the
+  // follow-up, steps BACK onto it and answers again holds no pending id.
+  // Routing that second answer by question id would drop them into
+  // `review_gate` — the interview they had already finished, re-opened.
+  it("guilt: re-answering a follow-up after BACK still returns to the verdict, not review_gate", () => {
+    let state = reduce(atVerdict(), {
+      type: "ASK_FOLLOW_UP",
+      questionId: "study_level",
+    });
+    state = reduce(state, {
+      type: "ANSWER",
+      questionId: "study_level",
+      value: "POSTGRADUATE",
+    });
+    state = reduce(state, { type: "BACK" });
+    expectQuestion(state, "study_level");
+    expect(state.pendingFollowUp).toBeNull();
+    state = reduce(state, {
+      type: "ANSWER",
+      questionId: "study_level",
+      value: "UNDERGRADUATE",
+    });
+    expect(state.history[state.history.length - 1]).toEqual({
+      kind: "verdict",
+    });
+    expect(state.facts.study_level).toBe("UNDERGRADUATE");
+  });
+
   it("innocence: an ordinary in-sequence answer is unaffected by the follow-up machinery", () => {
     let state = startOffshore("tourism");
     state = answer(state, "trip_scope", "single");

@@ -119,6 +119,14 @@ const en = {
     "Are you asking to change status without leaving Indonesia?",
   "q.wants_onshore_conversion.hint":
     "Answer about your intended process, not whether it will be approved.",
+  // Offshore wording (adversarial review 2026-09-06, finding 9). The same
+  // question, asked of someone who is not in Indonesia yet: put in the
+  // present tense it reads as a claim about a country they have not
+  // reached. The fact sent to the engine is identical either way.
+  "q.wants_onshore_conversion.offshore":
+    "Once in Indonesia, do you plan to switch to a different permit without leaving the country?",
+  "q.wants_onshore_conversion.offshore.hint":
+    "Answer about the process you intend to follow after you arrive, not whether it will be approved.",
   "why.wants_onshore_conversion":
     "This exact yes/no process fact is sent without choosing a conversion path.",
   "q.application_channel":
@@ -932,6 +940,10 @@ const id: Record<Keys, string> = {
     "Apakah Anda ingin mengubah status tanpa meninggalkan Indonesia?",
   "q.wants_onshore_conversion.hint":
     "Jawab tentang proses yang Anda inginkan, bukan apakah proses itu akan disetujui.",
+  "q.wants_onshore_conversion.offshore":
+    "Setelah berada di Indonesia, apakah Anda berencana beralih ke izin lain tanpa meninggalkan Indonesia?",
+  "q.wants_onshore_conversion.offshore.hint":
+    "Jawab tentang proses yang Anda rencanakan setelah tiba, bukan apakah proses itu akan disetujui.",
   "why.wants_onshore_conversion":
     "Fakta proses ya atau tidak ini dikirim tanpa memilih jalur konversi.",
   "q.application_channel":

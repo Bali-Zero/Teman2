@@ -315,14 +315,61 @@ describe("OracleShell authoritative evaluate integration", () => {
         name: translate("en", "outcome.answer_missing_input"),
       }),
     );
+    // The OFFSHORE prompt: this fixture never entered Indonesia, and
+    // adversarial review 2026-09-06 finding 9 forbids the present-tense
+    // wording for that audience.
     expect(
       await screen.findByRole("heading", {
-        name: translate("en", "q.wants_onshore_conversion"),
+        name: translate("en", "q.wants_onshore_conversion.offshore"),
       }),
     ).toBeInTheDocument();
     // Innocence: the interview was appended to, not restarted — the
     // framing screen's Start button is nowhere on the page.
     expect(screen.queryByRole("button", { name: /^start$/i })).toBeNull();
+  });
+
+  // Adversarial review 2026-09-06, finding 1 (accepted, narrowed): the
+  // follow-up must not bypass the tree's prerequisite ordering.
+  it("guilt: a NEEDS_INPUT on a prerequisite-bearing fact keeps the handoff row instead of pushing the question", async () => {
+    // A CHILD-relation family walk. `family_marriage_registered` is
+    // registered, collects exactly one FactPath, and was never asked —
+    // but the family branch asks it only for SPOUSE or PARENT, so
+    // appending it would contradict an answer already given.
+    installVerdictResume([
+      ["in_indonesia", "no"],
+      ["holds_stay_permit", "no"],
+      ["overstay_days", "0"],
+      ["nationalities", "US"],
+      ["birth_date", "1990-01-01"],
+      ["category", "family"],
+      ["trip_scope", "single"],
+      ["sponsor_category", "INDIVIDUAL"],
+      ["family_relation", "CHILD"],
+      ["marital_status", "SINGLE"],
+      ["family_sponsor_nationalities", "ID"],
+      ["family_sponsor_confirmed", "yes"],
+      ["stay_days", "180"],
+      ["review_gate", "none"],
+    ]);
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["family.marriage_registered"];
+    global.fetch = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    render(<OracleShell />);
+
+    await expectStateHeading("NEEDS_INPUT");
+    expect(
+      screen.queryByRole("button", {
+        name: translate("en", "outcome.answer_missing_input"),
+      }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: /^edit$/i })).toBeNull();
+    expect(screen.getByText(/Bali Zero can help clarify/)).toBeInTheDocument();
   });
 
   it("keeps an unavailable missing question actionable through the existing handoff, without a dead Edit", async () => {

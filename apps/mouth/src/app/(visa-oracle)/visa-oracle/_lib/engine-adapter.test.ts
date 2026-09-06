@@ -350,6 +350,7 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     const response = makeVisaOracleResponse("NEEDS_INPUT");
     response.decision.missing_facts = ["process.wants_onshore_conversion"];
     const outcome = buildEngineOutcome(response, {
+      facts: { in_indonesia: "no", category: "tourism" },
       editableQuestionIds: ["category", "stay_days"],
     });
     if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
@@ -362,6 +363,54 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     expect(JSON.stringify(outcome.missingInputs[0].message)).not.toContain(
       "process.wants_onshore_conversion",
     );
+  });
+
+  // Adversarial review 2026-09-06, finding 1 (accepted, narrowed): the
+  // follow-up may not bypass the tree's prerequisite ordering. Exactly one
+  // question collects `family.marriage_registered`, and the family branch
+  // asks it only for a SPOUSE or PARENT relation.
+  it("guilt: a prerequisite-bearing fact the answers contradict is NOT pushed", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["family.marriage_registered"];
+    const outcome = buildEngineOutcome(response, {
+      facts: {
+        in_indonesia: "no",
+        category: "family",
+        family_relation: "CHILD",
+      },
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0].questionId).toBeUndefined();
+    expect(outcome.missingInputs[0].followUp).toBeUndefined();
+  });
+
+  it("innocence: the same fact IS pushed once the relation satisfies it", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["family.marriage_registered"];
+    const outcome = buildEngineOutcome(response, {
+      facts: {
+        in_indonesia: "no",
+        category: "family",
+        family_relation: "SPOUSE",
+      },
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0]).toMatchObject({
+      questionId: "family_marriage_registered",
+      followUp: true,
+    });
+  });
+
+  it("guilt: no facts supplied means no follow-up — fail-closed", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["process.wants_onshore_conversion"];
+    const outcome = buildEngineOutcome(response, {
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0].questionId).toBeUndefined();
   });
 
   it("innocence: an ALREADY-ASKED question stays a plain edit, with no followUp marker", () => {

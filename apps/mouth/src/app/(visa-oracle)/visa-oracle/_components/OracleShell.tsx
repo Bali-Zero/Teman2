@@ -948,6 +948,7 @@ function OracleShellRuntime({
                   state.blockedAnswer,
                 )}
                 currentAnswer={state.facts[current.questionId]}
+                facts={state.facts}
               />
             )}
 

@@ -1308,6 +1308,36 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
   },
 };
 
+/**
+ * The prompt to render for `question` given the answers so far.
+ *
+ * Almost every question has exactly one prompt and this returns
+ * `question.i18nKey` unchanged. The exception is
+ * `wants_onshore_conversion`, which two different walks ask from opposite
+ * standpoints: onshore it is about a status change from inside the
+ * country, offshore it is a plan for after arrival. Adversarial review
+ * 2026-09-06 (finding 9) accepted the offshore wording as a fix — asked in
+ * the present tense, it puts an applicant who is not in Indonesia in the
+ * position of answering about a country they have not reached. The
+ * question id, the option keys and the fact sent to the engine are
+ * identical on both walks; only the sentence changes.
+ *
+ * The hint follows the prompt: callers derive it as `<key>.hint`, so the
+ * offshore variant carries its own.
+ */
+export function questionPromptI18nKey(
+  question: OracleQuestion,
+  facts: OracleFacts,
+): string {
+  if (
+    question.id === "wants_onshore_conversion" &&
+    facts.in_indonesia === "no"
+  ) {
+    return "q.wants_onshore_conversion.offshore";
+  }
+  return question.i18nKey;
+}
+
 /** Sub-items shown inside the review-gate checklist (design doc §4 shared
  * review-gate). Finding #5 (adversarial review 2026-07-17): "None of
  * these" is now an EXPLICIT, mutually-exclusive item — the checklist can

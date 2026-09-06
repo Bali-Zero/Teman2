@@ -19,6 +19,7 @@ import {
 import {
   QUESTIONS,
   formatIsoDateForDisplay,
+  questionPromptI18nKey,
   type OracleFacts,
 } from "../_lib/tree";
 import type { Language } from "../_lib/flow";
@@ -99,7 +100,9 @@ function answerRows(language: Language, facts: OracleFacts) {
     const value = facts[id];
     return {
       id,
-      label: question ? translate(language, question.i18nKey as I18nKey) : id,
+      label: question
+        ? translate(language, questionPromptI18nKey(question, facts) as I18nKey)
+        : id,
       value: question ? formatFactDisplay(language, id, value) : value,
     };
   });

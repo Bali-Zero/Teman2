@@ -852,6 +852,68 @@ function familyQuestionIds(facts: OracleFacts): readonly string[] {
   ];
 }
 
+/**
+ * Hard bound on the replay below. The spine plus the longest branch is far
+ * short of it; the cap exists so that a future routing mistake degrades
+ * into a truncated list instead of a frozen tab.
+ */
+const WALK_REPLAY_LIMIT = 64;
+
+/**
+ * Every question this walk WOULD ask, replayed from the framing screen
+ * against `facts` as they stand — the same `computeNextNode` the interview
+ * itself runs, so the list can never disagree with the routing.
+ */
+export function walkQuestionIds(
+  facts: OracleFacts,
+  today?: Date,
+): readonly string[] {
+  const ids: string[] = [];
+  let node: OracleNode = { kind: "framing" };
+  for (let step = 0; step < WALK_REPLAY_LIMIT; step += 1) {
+    node = computeNextNode(node, facts, today);
+    if (node.kind !== "question") break;
+    // Defensive only: `computeNextNode` is acyclic today, and a cycle
+    // introduced later must not hang the verdict screen.
+    if (ids.includes(node.questionId)) break;
+    ids.push(node.questionId);
+  }
+  return ids;
+}
+
+/**
+ * Whether the NEEDS_INPUT follow-up may append `questionId` to THIS
+ * interview (adversarial review 2026-09-06, finding 1 — accepted,
+ * narrowed).
+ *
+ * Many questions appear in their branch only under a condition on the
+ * facts: `family_marriage_registered` exists for a SPOUSE or PARENT
+ * relation, the Second Home evidence questions for one documented basis,
+ * `renewal_paid` for one permit shape. Splicing such a question in when
+ * its condition is unmet asks the applicant something their own earlier
+ * answer has already ruled out — the tree's prerequisite ordering
+ * bypassed, which is exactly the blocker the review raised.
+ *
+ * The test is structural, not a hand-maintained table of gates, so it
+ * cannot drift from the routing: hold every answer given so far fixed and
+ * replay the walk once per category. If ANY category's walk asks the
+ * question, its prerequisites are satisfied (a question that "declares no
+ * gate" is asked by its own branch for any facts, so choosing that branch
+ * surfaces it). If NO category can reach it, the only thing standing in
+ * the way is a fact the applicant has already answered the other way, and
+ * the interview keeps today's behaviour: the human-handoff row.
+ */
+export function followUpPrerequisitesMet(
+  questionId: string,
+  facts: OracleFacts,
+  today?: Date,
+): boolean {
+  if (walkQuestionIds(facts, today).includes(questionId)) return true;
+  return CATEGORY_KEYS.some((category) =>
+    walkQuestionIds({ ...facts, category }, today).includes(questionId),
+  );
+}
+
 function truncateToNode(
   history: OracleNode[],
   target: OracleNode,
@@ -889,12 +951,20 @@ function pruneFacts(facts: OracleFacts, history: OracleNode[]): OracleFacts {
 
 /**
  * Where a just-recorded answer leads. `computeNextNode` in every case but
- * one: when the answered question IS this interview's pending follow-up (a
- * node appended from the verdict to satisfy one engine `missing_facts`
- * entry), the answer goes straight back to the verdict for re-evaluation.
- * Routing it by id instead would splice the applicant into whatever
- * sequence that question normally belongs to and re-ask what they have
- * already answered.
+ * one: when the answered question IS a follow-up (a node appended from the
+ * verdict to satisfy one engine `missing_facts` entry), the answer goes
+ * straight back to the verdict for re-evaluation. Routing it by id instead
+ * would splice the applicant into whatever sequence that question normally
+ * belongs to and re-ask what they have already answered.
+ *
+ * Two ways to recognise it, because `pendingFollowUp` alone is not enough.
+ * It is cleared by BACK, so an applicant who answers the follow-up, steps
+ * BACK onto it and answers again holds no pending id — and would fall
+ * through to `nextCategoryQuestion`, landing on `review_gate` instead of
+ * the verdict they came from. A verdict already sitting EARLIER in history
+ * is the durable signal: `EDIT`, `BACK`, `REVIEW_ANSWERS` and
+ * `SELECT_CATEGORY` all truncate, so no other action can leave a question
+ * node standing after a verdict.
  */
 function nextAfterAnswer(
   state: FlowState,
@@ -903,6 +973,10 @@ function nextAfterAnswer(
   today?: Date,
 ): OracleNode {
   if (state.pendingFollowUp === questionId) return { kind: "verdict" };
+  const precedingNodes = state.history.slice(0, -1);
+  if (precedingNodes.some((node) => node.kind === "verdict")) {
+    return { kind: "verdict" };
+  }
   return computeNextNode(state.history[state.history.length - 1], facts, today);
 }
 
