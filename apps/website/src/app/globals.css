@@ -172,7 +172,7 @@ p {
   color: var(--copper);
   border-color: var(--copper);
 }
-header {
+.site-header {
   height: 88px;
   display: flex;
   align-items: center;
@@ -184,12 +184,12 @@ header {
   top: 0;
   z-index: 8;
 }
-header .brand img {
+.site-header .brand img {
   width: 62px;
   height: 62px;
   object-fit: contain;
 }
-nav {
+:where(.site-header) nav {
   display: flex;
   gap: 34px;
   font-size: 13px;
@@ -679,7 +679,7 @@ nav {
   min-width: 230px;
   text-align: center;
 }
-footer {
+.site-footer {
   background: var(--dark);
   color: #f6f3ed;
   padding: 45px 0 25px;
@@ -689,12 +689,12 @@ footer {
   grid-template-columns: 1.5fr 1fr 1fr 1fr;
   gap: 30px;
 }
-footer .brand img {
+.site-footer .brand img {
   width: 62px;
   height: 62px;
   object-fit: contain;
 }
-footer p {
+.site-footer p {
   color: #c7cbc8;
   font-size: 12px;
   margin-top: 16px;
@@ -828,20 +828,20 @@ dialog p {
   }
 }
 @media (max-width: 680px) {
-  header {
+  .site-header {
     height: 72px;
     padding: 0 5%;
     gap: 15px;
   }
-  header .brand img {
+  .site-header .brand img {
     width: 48px;
     height: 48px;
   }
-  nav {
+  :where(.site-header) nav {
     gap: 15px;
     font-size: 11px;
   }
-  nav a:last-child {
+  :where(.site-header) nav a:last-child {
     display: none;
   }
   .account {
@@ -1058,7 +1058,7 @@ dialog p {
     animation: none !important;
   }
 }
-header {
+.site-header {
   background: #f6f3ed;
 }
 .hero {
@@ -2601,7 +2601,7 @@ header {
     transparent 65%
   );
 }
-header .account {
+.site-header .account {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
@@ -2746,7 +2746,7 @@ header .account {
   }
 }
 @media (max-width: 800px) {
-  header nav {
+  :where(.site-header) nav {
     gap: 19px;
   }
   .trust-ribbon {
@@ -2777,10 +2777,10 @@ header .account {
   .hero:after {
     background: linear-gradient(180deg, #fff0e88c, transparent 65%);
   }
-  header {
+  .site-header {
     gap: 10px;
   }
-  header nav {
+  :where(.site-header) nav {
     gap: 12px;
   }
   .account-my {
@@ -2789,7 +2789,7 @@ header .account {
   .account-brand {
     font-size: 14px;
   }
-  header .account {
+  .site-header .account {
     gap: 5px;
   }
   .account-arrow {
@@ -2816,10 +2816,10 @@ header .account {
   }
 }
 @media (max-width: 420px) {
-  header nav {
+  :where(.site-header) nav {
     gap: 10px;
   }
-  header nav a[href="#team"] {
+  :where(.site-header) nav a[href="#team"] {
     display: none;
   }
   .account-brand {
@@ -3194,10 +3194,10 @@ header .account {
 
 /* refinement-14.css */
 /* Revision 14: a warm, personal next chapter. */
-header .account {
+.site-header .account {
   gap: 8px;
 }
-header .account-brand {
+.site-header .account-brand {
   font-size: 16px;
   letter-spacing: -0.045em;
 }
@@ -3487,23 +3487,23 @@ header .account-brand {
   margin-top: 16px;
   letter-spacing: 0.04em;
 }
-footer {
+.site-footer {
   background: #2c2825;
   color: #f4e9dd;
   border-top: 3px solid #a9684c;
   padding-top: 49px;
 }
-footer p,
-footer .footer-base {
+.site-footer p,
+.site-footer .footer-base {
   color: #cbbbaa;
 }
-footer .footer-col .eyebrow {
+.site-footer .footer-col .eyebrow {
   color: #d4a584;
 }
-footer .footer-base {
+.site-footer .footer-base {
   border-color: #b69c8040;
 }
-footer a:hover {
+.site-footer a:hover {
   color: #edbd94;
 }
 @media (max-width: 900px) {
@@ -3556,7 +3556,7 @@ footer a:hover {
   }
 }
 @media (max-width: 680px) {
-  header .account-brand {
+  .site-header .account-brand {
     font-size: 14px;
   }
   .journal-title .journal-brand {

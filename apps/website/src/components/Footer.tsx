@@ -1,6 +1,6 @@
 export function Footer() {
   return (
-    <footer>
+    <footer className="site-footer">
       <div className="wrap">
         <div className="footer-grid">
           <div>
