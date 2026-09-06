@@ -211,6 +211,34 @@ def test_fresh_trial_prompts_do_not_inherit_previous_outputs(tmp_path: Path) -> 
     assert "FIRST_OUTPUT_SENTINEL" not in adapter.prompts[1]
 
 
+def test_receipt_separates_supplied_from_selected_skills(tmp_path: Path) -> None:
+    skill = {
+        "skill_id": "skill-one",
+        "content": "Synthetic content.",
+        "content_hash": "a" * 64,
+        "prerequisites": "Synthetic prerequisite.",
+        "expected_outcome": "Synthetic outcome.",
+    }
+    adapter = _FakeAdapter([_result()])
+    ledger = AttemptLedger(tmp_path, total_limit=5, preparation_limit=5)
+    receipt = asyncio.run(
+        run_trial(
+            ledger,
+            adapter,
+            _case(),
+            "B",
+            1,
+            "policy",
+            (skill,),
+            {"forbidden_phrases": []},
+            "preparation",
+            selected_skill_ids=(),
+        )
+    )
+    assert receipt["supplied_skill_ids"] == ["skill-one"]
+    assert receipt["selected_skill_ids"] == []
+
+
 def test_held_out_schedule_has_frozen_paired_denominator() -> None:
     cases = [case for case in _pack() if case["split"] == "test"]
     schedule = build_held_out_schedule(cases, seed=20260906)

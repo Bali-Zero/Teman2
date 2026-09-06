@@ -425,11 +425,20 @@ def verify_manifest(manifest: dict[str, object]) -> None:
 class ClaudeCliAdapter:
     """Fresh, tool-disabled Claude CLI adapter with no session persistence."""
 
-    def __init__(self, *, executable: str, model: str, effort: str, learner_cwd: Path) -> None:
+    def __init__(
+        self,
+        *,
+        executable: str,
+        model: str,
+        effort: str,
+        learner_cwd: Path,
+        system_prompt: str = "Classify one synthetic incident. Never call tools. Return valid JSON only.",
+    ) -> None:
         self.executable = executable
         self.model = model
         self.effort = effort
         self.learner_cwd = learner_cwd
+        self.system_prompt = system_prompt
 
     def build_command(self, schema: dict[str, object]) -> list[str]:
         return [
@@ -458,7 +467,7 @@ class ClaudeCliAdapter:
             "--json-schema",
             _canonical_json(schema),
             "--system-prompt",
-            "Classify one synthetic incident. Never call tools. Return valid JSON only.",
+            self.system_prompt,
         ]
 
     @staticmethod
@@ -478,7 +487,9 @@ class ClaudeCliAdapter:
             result_text = envelope.get("result", "")
             value = json.loads(result_text) if isinstance(result_text, str) else result_text
         model_usage = envelope.get("modelUsage", {})
-        model_identity = next(iter(model_usage), self.model)
+        if not isinstance(model_usage, dict) or len(model_usage) != 1:
+            raise ValueError("missing or ambiguous model identity")
+        model_identity = next(iter(model_usage))
         usage = {
             key: int(item)
             for key, item in envelope.get("usage", {}).items()
@@ -553,6 +564,7 @@ async def run_trial(
     *,
     timeout_seconds: int = 120,
     max_prompt_chars: int = 12_000,
+    selected_skill_ids: tuple[str, ...] | None = None,
 ) -> dict[str, object]:
     trial_id = f"{case['case_id']}:{arm}:{repetition}"
     attempt_id = str(uuid.uuid4())
@@ -585,6 +597,9 @@ async def run_trial(
     ledger.finish(attempt_id, trial_id, phase, status, result.raw_hash if result else None)
     policy_hash = sha256_text(base_policy)
     skill_ids = [str(skill["skill_id"]) for skill in skills]
+    selected_ids = skill_ids if selected_skill_ids is None else list(selected_skill_ids)
+    if any(skill_id not in skill_ids for skill_id in selected_ids):
+        raise ValueError("selected skill was not supplied")
     skill_hashes = [str(skill["content_hash"]) for skill in skills]
     receipt: dict[str, object] = {
         "run_id": ledger.root.name,
@@ -601,7 +616,7 @@ async def run_trial(
         "base_policy_hash": policy_hash,
         "skill_bundle_hash": sha256_text(_canonical_json(skill_hashes)),
         "supplied_skill_ids": skill_ids,
-        "selected_skill_ids": skill_ids,
+        "selected_skill_ids": selected_ids,
         "executed": False,
         "evaluator_version": EVALUATOR_VERSION,
         "proposal": result.proposal if result else None,
