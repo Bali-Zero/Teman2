@@ -65,6 +65,26 @@ objective: >-
   test, so each now rides a walk that is still a dead end and says why it moved. Nothing is
   loosened: no count became a range, no assertion was deleted, no skip or xfail was added, and
   the allowlist shrank by DELETING cured rows rather than by widening a comparison.
+
+  DUPLICATE NO-PATH REASON, round 4 (2026-09-07). Gate finding on the seq-20 head: a
+  NO_SUPPORTED_PATH sheet rendered the same sentence twice. Six walks (the five
+  offshore/retirement/* and onshore/retirement) carried no_path_reason_codes
+  ['AGE_BELOW_55', 'AGE_BELOW_55'], and engine-adapter.ts maps that list 1:1 through copy keyed
+  by CODE ALONE, so a real person read "you must be at least 55" twice on one sheet. In scope
+  for THIS PR and not inherited: before the reorder ZERO walks reached NO_SUPPORTED_PATH, so
+  the duplicate was unreachable.
+
+  INVESTIGATED BEFORE FIXING, and the investigation changed the fix. The two entries are NOT
+  redundant: entry one is hf.e33e.age-below-55 citing one source record, entry two is
+  hf.e33f.age-below-55 citing TWO, one of which entry one does not carry. _dedupe_reasons keys
+  on the whole (code, rule_ids, source_refs) triple and uses setdefault, so a blind collapse on
+  the code would have kept the first-seen entry and SILENTLY DROPPED a citation from a surface
+  where citations are load-bearing (engine-adapter.ts's requireDecisiveRefs validates every ref
+  on every rendered reason). New _merge_reasons_by_code collapses on the code and UNIONS
+  rule_ids and source_refs, first-seen order preserved. Applied at the no_path_reasons site
+  only, NOT inside _dedupe_reasons: the two review-reason call sites feed a state this PR does
+  not move (the census measures HUMAN_REVIEW_REQUIRED == 0 before and after), so changing their
+  collapse semantics would be an unmeasured behaviour change in a surface with no witness here.
 constraints:
   - >-
     The reorder must not be able to fail open, and that must be a measurement rather than an
@@ -169,4 +189,16 @@ acceptance:
     turns this test red instead of leaving a fabricated copy alive; the unlisted-fact witness
     rides offshore/work, which answers and therefore carries no row -- the branch under test.
     probe: pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+  - >-
+    WHEN two products are excluded by two DIFFERENT rules that carry the SAME reason code and
+    cite DIFFERENT source records, THEN the applicant-facing list renders that code ONCE, on an
+    entry carrying BOTH rule_ids and the UNION of both source_ref sets -- no sentence repeated,
+    no citation dropped. And WHEN the two codes differ, both survive in engine order, each
+    keeping its own single citation, so the merge cannot be a blanket collapse. Measured on the
+    real pack too: no walk in the 43 renders any repeated no_path or review reason code.
+    Reverting _merge_reasons_by_code to _dedupe_reasons on a backed-up copy turns EXACTLY three
+    tests red -- the two mechanism guilts and the real-pack census guard -- with both innocence
+    halves still green (34 passed), then restored hash-verified. probe:
+    pytest backend/tests/services/visa_engine/test_evaluator_purpose_feasibility_precedence.py
+    backend/tests/services/visa_engine/test_interview_walk_census.py
 pii_scan: clean

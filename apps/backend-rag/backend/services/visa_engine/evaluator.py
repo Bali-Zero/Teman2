@@ -200,11 +200,11 @@ import hashlib
 import hmac
 import json
 import uuid
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
 from enum import Enum
-from typing import Literal
+from typing import Literal, TypeVar
 
 from backend.services.visa_engine import ast as ast_module
 from backend.services.visa_engine.ast import ConditionResult, FactSnapshot, UnknownFact
@@ -424,6 +424,65 @@ def _dedupe_reasons(reasons: Iterable[Reason]) -> tuple[Reason, ...]:
         )
         seen.setdefault(key, reason)
     return tuple(seen.values())
+
+
+def _merge_reasons_by_code(reasons: Iterable[Reason]) -> tuple[Reason, ...]:
+    """Collapse ``Reason``s that render as the SAME SENTENCE — one entry per
+    ``code`` — UNIONING their ``rule_ids`` and ``source_refs``.
+
+    Stronger than ``_dedupe_reasons``, which keys on the whole triple and so
+    only collapses byte-identical entries. Two DIFFERENT rules on two different
+    products can carry the same code, and then the applicant reads the same
+    sentence twice: the reader-facing copy is keyed by CODE alone
+    (``engine-adapter.ts``'s ``SUPPORT_REASON_COPY``), so two entries differing
+    only in ``rule_ids`` are two identical paragraphs on one sheet. Measured
+    2026-09-07 on seq-20: five retirement walks and ``onshore/retirement``
+    render ``AGE_BELOW_55`` twice, once for ``hf.e33e.age-below-55`` and once
+    for ``hf.e33f.age-below-55``.
+
+    The union is the whole point and is why this is not a dedupe. Those two
+    entries do NOT carry the same citations — ``hf.e33f``'s proof cites a
+    source record ``hf.e33e``'s does not — so collapsing on the code and
+    keeping the first-seen entry would silently DROP a citation from a surface
+    where citations are load-bearing (``engine-adapter.ts``'s
+    ``requireDecisiveRefs`` validates every ref on every rendered reason, and
+    still does: unioning gives it MORE to validate, never less).
+
+    First-seen order is preserved for the codes and, within a code, for the
+    merged ids — the ordering the determinism gates depend on. Order-preserving
+    dedupe inside each union also satisfies ``Reason``'s own uniqueness
+    validators for both tuples.
+    """
+
+    merged: dict[str, Reason] = {}
+    for reason in reasons:
+        previous = merged.get(reason.code)
+        if previous is None:
+            merged[reason.code] = reason
+            continue
+        merged[reason.code] = previous.model_copy(
+            update={
+                "rule_ids": _ordered_union(previous.rule_ids, reason.rule_ids),
+                "source_refs": _ordered_union(previous.source_refs, reason.source_refs),
+            }
+        )
+    return tuple(merged.values())
+
+
+#: Only ever bound to ``Identifier`` (str) and ``uuid.UUID`` — both hashable,
+#: which ``_ordered_union``'s dict-backed ordering requires.
+_HashableT = TypeVar("_HashableT", bound=Hashable)
+
+
+def _ordered_union(
+    first: Iterable[_HashableT], second: Iterable[_HashableT]
+) -> tuple[_HashableT, ...]:
+    """``first`` then ``second``, first-seen order, duplicates removed."""
+
+    seen: dict[_HashableT, None] = {}
+    for item in (*first, *second):
+        seen.setdefault(item, None)
+    return tuple(seen)
 
 
 #: Gate round 2 (2026-07-20) P0-R2: cap on the number of UNKNOWN support
@@ -1501,7 +1560,23 @@ def evaluate_with_trace(
         for proof in proofs
         if proof.status is ProductProofStatus.EXCLUDED and proof.purpose_feasible
     ]
-    no_path_reasons = _dedupe_reasons(reason for proof in excluded for reason in proof.reasons)
+    #
+    # `_merge_reasons_by_code`, not `_dedupe_reasons`: the same reorder that
+    # made this list visible also made it repeat itself. `_dedupe_reasons` keys
+    # on the whole (code, rule_ids, source_refs) triple, so two DIFFERENT rules
+    # carrying one code both survive — and the reader-facing copy is keyed by
+    # code alone, so that is the same paragraph printed twice. Measured on
+    # seq-20: six walks render `AGE_BELOW_55` twice, for `hf.e33e.age-below-55`
+    # and `hf.e33f.age-below-55`. Merging UNIONS the citations rather than
+    # picking a winner, because those two proofs cite different source records.
+    # Applied HERE and not inside `_dedupe_reasons` on purpose: the review-reason
+    # sites above feed a state this PR does not move (the census measures
+    # HUMAN_REVIEW_REQUIRED == 0 before and after), so changing their collapse
+    # semantics would be an unmeasured behaviour change in a surface this PR has
+    # no witness for.
+    no_path_reasons = _merge_reasons_by_code(
+        reason for proof in excluded for reason in proof.reasons
+    )
     if not no_path_reasons:
         no_path_reasons = (_fallback_no_path_reason(products, compiled_pack),)
     return assemble(state=DecisionState.NO_SUPPORTED_PATH, no_path_reasons=no_path_reasons)

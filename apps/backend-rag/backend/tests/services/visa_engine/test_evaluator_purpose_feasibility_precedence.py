@@ -38,6 +38,7 @@ Two layers of witness:
 from __future__ import annotations
 
 import json
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -419,6 +420,163 @@ class TestNoPathReasonsAreScopedToPurposeFeasibleProducts:
                 observed_at=_EFFECTIVE_AT,
             )
             assert decision.state is DecisionState.NO_SUPPORTED_PATH, purposes
+            assert decision.candidates == ()
+            assert decision.missing_facts == ()
+
+
+def _same_code_two_sources_pack(
+    *, second_code: str = "SHARED_EXCLUSION"
+) -> tuple[Any, str, str]:
+    """Two products that BOTH cover TOURISM and are BOTH excluded, each by its
+    own HARD_FILTER rule — with ``second_code`` deciding whether the two
+    exclusions carry the SAME reason code or different ones, and always from
+    DIFFERENT source records so the citations differ.
+
+    This is the exact shape the real pack produces: ``hf.e33e.age-below-55``
+    and ``hf.e33f.age-below-55`` are two rules on two products carrying one
+    code, and their proofs do not cite the same records.
+
+    Returns the pack WITH its two source ids: ``B.new_uuid()`` is fresh per
+    call, so the expected citations have to come out of the same build that
+    produced the decision — comparing refs across two builds compares two
+    unrelated sets of UUIDs and can never be meaningful.
+    """
+    src_a = B.new_uuid()
+    src_b = B.new_uuid()
+    products = []
+    rules = []
+    for code, src, reason_code in (
+        ("DUPA", src_a, "SHARED_EXCLUSION"),
+        ("DUPB", src_b, second_code),
+    ):
+        pid = B.new_uuid()
+        products.append(
+            B.product(
+                product_id=pid,
+                source_id=src_a,
+                product_code=code,
+                covered_purposes=["TOURISM"],
+            )
+        )
+        rules.append(
+            B.rule(
+                rule_id=f"el.{code.lower()}",
+                stage="ELIGIBILITY",
+                scope="PRODUCTS",
+                product_version_ids=[pid],
+                when={"op": "eq", "fact": "study.admission_confirmed", "value": True},
+                effect={
+                    "type": "SUPPORT",
+                    "reason_code": f"{code}_SUPPORT",
+                    "covered_purposes": ["TOURISM"],
+                },
+                source_id=src_a,
+                required_facts=["study.admission_confirmed"],
+            )
+        )
+        rules.append(
+            B.rule(
+                rule_id=f"hf.{code.lower()}",
+                stage="HARD_FILTER",
+                scope="PRODUCTS",
+                product_version_ids=[pid],
+                when={"op": "eq", "fact": "immigration.currently_in_indonesia", "value": False},
+                effect={"type": "EXCLUDE", "reason_code": reason_code},
+                source_id=src,
+                required_facts=["immigration.currently_in_indonesia"],
+            )
+        )
+    payload = B.rule_pack_payload(
+        rules=rules,
+        products=products,
+        source_records=[B.source_record(source_id=src_a), B.source_record(source_id=src_b)],
+    )
+    pack = build_compiled_pack(M.RulePack.model_validate(B.rule_pack_envelope(payload)))
+    return pack, src_a, src_b
+
+
+def _no_path_reasons_on(pack: Any) -> tuple[Any, ...]:
+    facts = _facts(
+        {
+            "intent.purposes": _known(["TOURISM"]),
+            "immigration.currently_in_indonesia": _known(False),
+            "study.admission_confirmed": _known(False),
+        }
+    )
+    decision = evaluate(facts, pack, effective_at=_EFFECTIVE_AT, observed_at=_EFFECTIVE_AT)
+    assert decision.state is DecisionState.NO_SUPPORTED_PATH
+    return decision.no_path_reasons
+
+
+class TestNoPathReasonsAreMergedByCodeNotRepeated:
+    """One SENTENCE per reason, and no citation lost merging them.
+
+    Same root cause as the class above: the reorder made ``no_path_reasons``
+    the text a real person reads, and it repeated itself. ``_dedupe_reasons``
+    keys on the whole (code, rule_ids, source_refs) triple, so two DIFFERENT
+    rules carrying ONE code both survived — and ``engine-adapter.ts`` maps the
+    list 1:1 through copy keyed by CODE ALONE, so the applicant was told "you
+    must be at least 55" twice on one sheet. Measured on seq-20 before the fix:
+    six walks rendered ``['AGE_BELOW_55', 'AGE_BELOW_55']``.
+
+    Collapsing on the code and keeping the first entry would have been the
+    wrong fix and is what these tests forbid: the two proofs cite DIFFERENT
+    source records, and ``requireDecisiveRefs`` makes citations load-bearing on
+    this surface. The merge unions them.
+    """
+
+    def test_guilt_one_code_from_two_rules_renders_once(self) -> None:
+        """GUILT: two products, two rules, one code. Before the merge this
+        returned the code TWICE."""
+        pack, _, _ = _same_code_two_sources_pack()
+        reasons = _no_path_reasons_on(pack)
+        assert [reason.code for reason in reasons] == ["SHARED_EXCLUSION"]
+
+    def test_guilt_the_merge_unions_the_citations_and_drops_none(self) -> None:
+        """GUILT, and the half that makes 'merge' different from 'dedupe':
+        the surviving entry carries BOTH rules and BOTH source records. A
+        collapse that kept the first-seen entry would pass the test above and
+        fail this one, having silently dropped ``src_b``."""
+        pack, src_a, src_b = _same_code_two_sources_pack()
+        merged = _no_path_reasons_on(pack)
+        assert len(merged) == 1
+        assert set(merged[0].rule_ids) == {"hf.dupa", "hf.dupb"}
+        assert set(merged[0].source_refs) == {uuid.UUID(src_a), uuid.UUID(src_b)}, (
+            "the merge lost a citation — every source_ref the two separate "
+            "reasons carried must survive on the merged one"
+        )
+        assert len(set(merged[0].source_refs)) == len(merged[0].source_refs)
+
+    def test_innocence_two_different_codes_are_two_reasons(self) -> None:
+        """INNOCENCE: the merge is keyed on the CODE, so two genuinely
+        different sentences stay two entries in engine order, each keeping its
+        OWN single citation. A blanket 'one reason per state' collapse would
+        fail here, and so would a merge that unioned across codes."""
+        pack, src_a, src_b = _same_code_two_sources_pack(second_code="OTHER_EXCLUSION")
+        reasons = _no_path_reasons_on(pack)
+        assert [reason.code for reason in reasons] == ["SHARED_EXCLUSION", "OTHER_EXCLUSION"]
+        assert set(reasons[0].source_refs) == {uuid.UUID(src_a)}
+        assert set(reasons[1].source_refs) == {uuid.UUID(src_b)}
+
+    def test_innocence_the_merge_never_changes_the_state(self) -> None:
+        """The merged list feeds the reason TEXT and nothing else — same
+        guarantee the scoping carries, and the reason both are safe."""
+        for second_code in ("SHARED_EXCLUSION", "OTHER_EXCLUSION"):
+            facts = _facts(
+                {
+                    "intent.purposes": _known(["TOURISM"]),
+                    "immigration.currently_in_indonesia": _known(False),
+                    "study.admission_confirmed": _known(False),
+                }
+            )
+            pack, _, _ = _same_code_two_sources_pack(second_code=second_code)
+            decision = evaluate(
+                facts,
+                pack,
+                effective_at=_EFFECTIVE_AT,
+                observed_at=_EFFECTIVE_AT,
+            )
+            assert decision.state is DecisionState.NO_SUPPORTED_PATH, second_code
             assert decision.candidates == ()
             assert decision.missing_facts == ()
 

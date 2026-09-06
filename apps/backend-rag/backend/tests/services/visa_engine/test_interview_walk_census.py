@@ -428,6 +428,38 @@ def test_dead_end_fact_census_matches_the_blocking_fact_table(
     assert dict(census) == EXPECTED_DEAD_END_FACT_CENSUS
 
 
+def test_no_walk_renders_the_same_reason_code_twice(
+    outcomes: dict[str, dict[str, Any]],
+) -> None:
+    """A NO_SUPPORTED_PATH sheet must not print one sentence twice.
+
+    ``engine-adapter.ts`` maps ``no_path_reasons`` 1:1 and looks the copy up by
+    CODE alone (``SUPPORT_REASON_COPY``), so two entries sharing a code are two
+    identical paragraphs in front of a real person. This PR is what makes that
+    reachable — before the reorder ZERO walks reached NO_SUPPORTED_PATH — so
+    the guard ships with it.
+
+    Measured 2026-09-07 on seq-20 BEFORE ``_merge_reasons_by_code``: six walks
+    (the five ``offshore/retirement/*`` and ``onshore/retirement``) rendered
+    ``['AGE_BELOW_55', 'AGE_BELOW_55']``, one entry for
+    ``hf.e33e.age-below-55`` and one for ``hf.e33f.age-below-55``. Reverting
+    that helper to ``_dedupe_reasons`` turns this test red on all six.
+
+    Stated over EVERY walk and every reason list rather than over the six
+    known ones: a new pack that gives two products one code anywhere is the
+    same defect, and this catches it without being re-pinned.
+    """
+
+    violations = []
+    for label, actual in sorted(outcomes.items()):
+        for field in ("no_path_reason_codes", "review_reason_codes"):
+            codes = list(actual.get(field, ()))
+            repeated = sorted({code for code in codes if codes.count(code) > 1})
+            if repeated:
+                violations.append(f"{label}: {field} repeats {repeated} — rendered as {codes}")
+    assert not violations, "a reason code is rendered more than once:\n  " + "\n  ".join(violations)
+
+
 def test_no_walk_dead_ends_outside_the_allowlist(outcomes: dict[str, dict[str, Any]]) -> None:
     violations = _dead_end_violations(outcomes)
     assert not violations, "walk-census invariant broken:\n  " + "\n  ".join(violations)
