@@ -1,0 +1,28 @@
+**Acceptance**: All constraints accepted. No disagreements with the specified Nuzantara DC-v3 architecture, PG Autonomous Lab lifecycle, or security fencing.
+
+**Supplied Observation**: 
+The `agy` CLI surface provides: `--model`, `--effort low|medium|high`, `--mode plan`, `--sandbox terminal`, `--output-format json|stream-json`, `--json-schema`, `--conversation resume`, and `--print-timeout`. Available models are `gemini-3.1-pro-high`, `gemini-3.1-pro-low`, and `gemini-3.8-flash-[high|medium|low]`. Roster bare model IDs are stale. CLI model selection does not guarantee served identity. Agent/tool denial, schema fidelity, cancellation, and resume behaviors are currently unqualified.
+
+**Proposal: Gemini-Native Adapter Lifecycle**
+*   **Mission**: Map PG Lab phases natively to the `agy` CLI. Decouple capabilities: model selection (`gemini-3.1-pro-high`), effort (`--effort`), route/mode (`--mode plan`), and privilege (`--sandbox terminal`).
+*   **Execution**: A trusted executor under a distinct UID invokes the CLI. Scope, epoch, and resource fences are verified immediately before execution. The adapter consumes `--output-format stream-json` for intent receipt. If an ambiguous timeout occurs (e.g., via `--print-timeout`), the adapter forces state reconciliation rather than a blind retry. 
+*   **Handoff/Evidence**: Raw reasoning and client PII are aggressively stripped from the JSON stream. Evidence is explicitly keyed to the exact tree, input, tests, config, and environment hash.
+*   **Authorization & Resume**: Resuming a mission utilizes `--conversation resume`, but only after a mandatory recheck of auth, fencing, and config. Cross-mission context reuse is strictly prohibited. 
+*   **Token Economy**: Confine broad reviews. Dispatch narrow, frozen diffs and specific evidence to a ceiling of four `gemini-3.8-flash-low` workers. Reserve `gemini-3.1-pro-high` for the lead execution planner.
+
+**Unverified / Unknowns**:
+*   The true served identity versus the requested CLI model.
+*   The stability of `agy` when a long-running execution is externally cancelled.
+*   The precise definition and enforcement mechanism of `--print-timeout`.
+
+**Hypotheses (Capabilities & Pitfalls)**:
+*   *Pitfall*: Strict adherence to `--json-schema` degrades when the model encounters terminal sandbox denials, potentially leaking raw reasoning into the structured output.
+*   *Capability*: `--conversation resume` maintains high fidelity of the execution state without requiring token-heavy replays of prior evidence.
+*   *Pitfall*: Utilizing `--effort high` increases latency between intent receipt and execution, elevating the risk of ambiguous timeouts during complex routing.
+
+**Contract Tests (Outside PR Path)**:
+1.  **Schema Fidelity under Denial**: Invoke `agy` with `--sandbox terminal`, `--json-schema`, and an instruction requiring network access. Verify the output remains valid JSON without schema drift when the action is denied.
+2.  **Ambiguous Timeout Reconciliation**: Inject an artificial timeout during a `gemini-3.1-pro-high` execution. Assert that the adapter suspends, queries external state for side effects, and halts without retrying.
+3.  **Strict Resume Fencing**: Execute an initial task, advance the fencing epoch or alter the executing UID, and attempt `--conversation resume`. Assert that the executor rejects the resume attempt before initiating model inference.
+
+END_ADAPTER_GEMINI

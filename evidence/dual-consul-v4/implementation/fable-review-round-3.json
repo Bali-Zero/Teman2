@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "scope": "new empirical missing-foundation prerequisite review, after two accepted implementation rounds",
+  "session_id": "9db691ab-8167-459b-a921-54857dde0d49",
+  "observed_model": "claude-fable-5-1",
+  "runtime_version": "2.1.261",
+  "permission_mode": "plan",
+  "tools": [],
+  "finish_reason": "end_turn",
+  "timestamp": "2026-09-05T23:46:29.999Z",
+  "response_sha256": "abd7a7be84734373618d3b9ac9b85e1c1a4852a0d50703edc0a7891e27ddf7bf",
+  "input_packet_path": "fable-review-round-3-input.txt",
+  "input_packet_sha256": "6399846ec91d53377a1373dcf4add691f0381a530a8f15bd99b90ea296726038",
+  "input_file_sha256": {
+    "apps/backend-rag/backend/db/migrations_v2/306_autonomous_lab_consul_leases.sql": "f0ab2b6c045fe66df91be8e2139d1a649b5a51b6090b43b17455f1a02b453dbc",
+    "apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py": "58c5ca731ecaac70d5db038a9cb04ff4ac2331a5dc9b290074f735e6b58af928"
+  },
+  "claim_limit": "Reviewer prescribed a final explicit search_path pin; resulting exact delta and hashes require the short final acknowledgment."
+}

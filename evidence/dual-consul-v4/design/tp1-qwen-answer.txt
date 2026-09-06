@@ -1,0 +1,20 @@
+**Nuzantara Adapter Candidate — qwen3.8-max via Alibaba TP1**
+
+**(a) Minimal adapter surface and unknowns.**
+The adapter exposes exactly one validated operation: synchronous text completion through `scripts/tp1_call.py`, accepting a prompt string and receiving a completion string. Parameters observed in route evidence: `requested_model`, `reasoning_effort=medium`, `max_tokens=4096`, wall deadline 180 s. No temperature, top-p, stop sequences, or streaming flags are supplied; the adapter must not assume them. Tool calling, structured-JSON schema enforcement, and mid-generation cancellation are **not validated** and must be treated as absent until a separate contract test proves otherwise. Unknown: whether the TP1 gateway propagates a provider-side cancellation signal or simply drops the TCP connection at deadline; whether `reasoning_effort` is honored, ignored, or mapped server-side; actual context-window ceiling; whether retries are idempotent at the gateway. The adapter records `provider_identity` from response metadata, never from self-assertion.
+
+**(b) Two hypotheses (not certified facts).**
+*Hypothesis 1 – strength:* A medium-effort reasoning mode, if genuinely honored by the gateway, may allow the model to allocate internal deliberation tokens disproportionate to the 4 096 output cap, improving multi-step plan coherence without inflating visible token cost. This is untested; the adapter must log whether output quality degrades when `reasoning_effort` is lowered in a controlled probe.
+*Hypothesis 2 – pitfall:* Because the TP1 surface is text-completion-only, any structured-output requirement (change_map, impact_map) must be enforced by post-hoc parsing on the caller side. If the model emits malformed or partial structure under token pressure, the adapter has no native schema-fallback. Silent degradation risk is highest here.
+
+**(c) Three cheap discriminating smoke/contract tests (outside ordinary PR path).**
+1. **Echo-fence test:** Submit a prompt requesting the model to reproduce a nonce and the literal string `reconcile_required`. Assert exact substring presence. Cost: one small call. Validates round-trip integrity and that the adapter does not swallow gateway errors into empty success.
+2. **Timeout-boundary probe:** Set a prompt engineered to approach the 180 s wall deadline with `max_tokens=4096`. Assert the adapter returns either a complete completion or an explicit `reconcile_required` status—never a silent partial treated as final. No retry is issued.
+3. **Structure-absence probe:** Request a JSON-shaped change_map in a text-completion call. Assert the adapter tags the output `unvalidated_structure` rather than parsing it as authoritative, confirming no false native-schema claim.
+
+**(d) Token minimization without silent capability degradation.**
+Cap visible output at the supplied 4 096; do not conflate this with a reasoning budget. Strip redundant preamble in system prompts; pass only the frozen diff, relevant change_map keys, and advisory exclusions. Omit full history. If a response is truncated, mark `reconcile_required` rather than re-issuing blindly. Log token counts from gateway metadata when available; do not invent pricing.
+
+Disagreements: none material; I accept DC-v3 terms as stated. I flag that observable native delegation remains unproven on this route and the four-worker ceiling must not be asserted from this adapter alone.
+
+END_ADAPTER_MODEL

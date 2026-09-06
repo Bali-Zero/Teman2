@@ -1,0 +1,12 @@
+Verdict: **PASS**. This exact delta is correct and closes the hazard.
+
+- `SET LOCAL search_path = public, pg_catalog;` sits outside the snapshot markers, so the eight-statement parity test is unaffected, and it applies for the whole runner transaction, so the backfill and the lease FK resolve in the same schema.
+- The strengthened test enters with `dual_consul_alternate, public`, runs the forward SQL, and asserts the tables land in `public` and not in the alternate schema. That directly exercises the trigger I described. Session `search_path` reverts after commit, so the enqueue and worker steps that follow are unaffected.
+- The leftover empty `dual_consul_alternate` schema in the disposable database is harmless and idempotent across fixture runs.
+
+Two notes, neither blocking:
+
+- Listing `pg_catalog` after `public` lets a public object shadow a catalog name. Nothing in this migration collides, so it is functionally fine.
+- The pin also scopes the runner's own ledger write inside the same transaction. That is correct if the migration ledger lives in `public`, which every prior SQL migration already assumes. If it did not, the transaction would fail atomically, which is the same fail-closed outcome as before the pin.
+
+END_DUAL_CONSUL_REVIEW

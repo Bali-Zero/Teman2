@@ -1,0 +1,31 @@
+{
+  "requested_model": "glm-5.2",
+  "requested_effort": null,
+  "max_tokens_requested": 4096,
+  "absolute_deadline_seconds": 180,
+  "retry_count": 0,
+  "prompt_sha256": "65763de263719418bf8dcc72224b2a1606933f9bbc80ec854d3adc42446d0063",
+  "started_at_utc": "2026-09-05T23:11:38.292021+00:00",
+  "http_status": 200,
+  "provider_model": "glm-5.2",
+  "provider_model_matches_requested": true,
+  "usage": {
+    "prompt_tokens": 547,
+    "total_tokens": 3820,
+    "completion_tokens": 3273,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 2742
+    }
+  },
+  "finish_reason": "stop",
+  "status": "completed",
+  "answer_sha256": "2d30f0dcb3b74959601c2cea721a80413216687aca502b5c55d8faa4c9ae7067",
+  "wall_seconds": 50.341,
+  "finished_at_utc": "2026-09-05T23:12:28.634268+00:00",
+  "route": "TP1",
+  "identity_assurance": "response_observed",
+  "original_answer_sha256_verified": true
+}
