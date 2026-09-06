@@ -157,6 +157,95 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
 }
 
 
+def _codex_patch_payload(cwd: str, *sections: str) -> dict:
+    return {
+        "hook_event_name": "PreToolUse", "tool_name": "apply_patch", "cwd": cwd,
+        "tool_input": {"command": "*** Begin Patch\n" + "\n".join(sections) + "\n*** End Patch"},
+    }
+
+
+def _codex_patch_cases() -> list[tuple[dict, str, str]]:
+    """Native payload cases join the same matrix the CI script actually runs."""
+    cases: list[tuple[dict, str, str]] = []
+    for operation, body in (("Add", "\n+fixture"), ("Update", "\n@@\n-old\n+new"), ("Delete", "")):
+        for cwd, expect in ((REPO_ROOT, "BLOCK"), (WT, "ALLOW")):
+            for target in ("fixture.py", cwd + "/fixture.py"):
+                cases.append((_codex_patch_payload(cwd, f"*** {operation} File: {target}{body}"), expect,
+                              f"Codex {operation}: relative/absolute path resolved from event cwd"))
+    for source in (REPO_ROOT + "/old.py", WT + "/old.py"):
+        for destination in (REPO_ROOT + "/new.py", WT + "/new.py"):
+            expect = "ALLOW" if source.startswith(WT + "/") and destination.startswith(WT + "/") else "BLOCK"
+            cases.append((_codex_patch_payload(WT, f"*** Update File: {source}\n*** Move to: {destination}\n@@\n-old\n+new"),
+                          expect, "Codex move checks both source and destination"))
+    cases.extend([
+        (_codex_patch_payload(WT, "*** Add File: okay.py\n+fixture", "*** Delete File: ../../main.py"), "BLOCK", "Codex mixed patch cannot hide main target"),
+        (_codex_patch_payload(WT, "*** Update File: okay.py\n*** Move to: ../../main.py\n@@\n-old\n+new"), "BLOCK", "Codex relative move uses event cwd"),
+        (_codex_patch_payload(REPO_ROOT, "*** Add File: .worktrees/lane-x/okay.py\n+fixture", f"*** Delete File: {_TMP / 'outside.py'}"), "ALLOW", "Codex multiple allowed targets, including outside repo"),
+        (_codex_patch_payload(WT, "*** Update File: okay.py\n@@ context\n-old\n+*** Delete File: ../../main.py\n@@\n unchanged\n+new\n*** End of File"), "ALLOW", "Codex hunk content is not a target directive"),
+    ])
+    pathlib.Path(WT, "patch-escape").symlink_to(_SYN, target_is_directory=True)
+    cases.append((_codex_patch_payload(WT, "*** Add File: patch-escape/main.py\n+fixture"), "BLOCK", "Codex symlink cannot escape worktree"))
+    malformed = [
+        None, {}, "", "*** Begin Patch\n*** End Patch",
+        "*** Begin Patch\n*** Add File: okay.py\n+fixture",
+        "*** Begin Patch\n*** Delete File: okay.py\n+unexpected\n*** End Patch",
+        "*** Begin Patch\n*** Add File: \n+fixture\n*** End Patch",
+        "*** Begin Patch\n*** Add File: okay.py\n*** Move to: elsewhere.py\n*** End Patch",
+        "*** Begin Patch\n*** Update File: okay.py\n@@\n*** End Patch",
+        "*** Begin Patch\n*** Update File: okay.py\n@@\n@@\n-old\n+new\n*** End Patch",
+        "*** Begin Patch\n*** Add File: okay.py\ninvalid body\n*** End Patch",
+        "*** Begin Patch\n*** Mystery File: okay.py\n*** End Patch",
+        "*** Begin Patch\n*** Add File: okay.py\n+fixture\n*** End Patch\nignored tail",
+        "*** Begin Patch\n*** Add File: bad\x00path\n+fixture\n*** End Patch",
+    ]
+    for command in malformed:
+        payload = _codex_patch_payload(WT)
+        payload["tool_input"]["command"] = command
+        cases.append((payload, "BLOCK", "Codex malformed/ambiguous patch fails closed"))
+    for cwd in (None, "relative/path", 123):
+        payload = _codex_patch_payload(WT, "*** Add File: okay.py\n+fixture")
+        payload["cwd"] = cwd
+        cases.append((payload, "BLOCK", "Codex ambiguous event cwd fails closed"))
+    for tool_input in (None, [], "patch", {"patch": "wrong field"}):
+        payload = _codex_patch_payload(WT)
+        payload["tool_input"] = tool_input
+        cases.append((payload, "BLOCK", "Codex malformed canonical tool_input fails closed"))
+    for tool in ("Edit", "Write", "MultiEdit"):
+        for directory, expect in ((REPO_ROOT, "BLOCK"), (WT, "ALLOW")):
+            cases.append(({"tool_name": tool, "tool_input": {"file_path": directory + "/legacy.py"}},
+                          expect, "Claude file_path compatibility remains unchanged"))
+    cases.append(({"tool_name": "Read", "tool_input": {"file_path": REPO_ROOT + "/main.py"}},
+                  "ALLOW", "Unrelated tools remain unchanged"))
+    return cases
+
+
+CASES["worktree_file_write_check.py"].extend(_codex_patch_cases())
+
+
+def _codex_patch_extra_checks() -> list[str]:
+    """Check actual stdout/stderr privacy and the pre-existing explicit escape."""
+    failures: list[str] = []
+    fixture = "fixture.person@example.invalid"
+    payload = _codex_patch_payload(REPO_ROOT, f"*** Add File: {fixture}.py\n+{fixture}")
+    env = dict(os.environ)
+    env["NUZ_REPO_ROOT"] = REPO_ROOT
+    env.pop("AGENT_WORKTREE_ENFORCEMENT", None)
+    for disabled, expected in ((False, 2), (True, 0)):
+        if disabled:
+            env["AGENT_WORKTREE_ENFORCEMENT"] = "false"
+        try:
+            result = subprocess.run(
+                [sys.executable, str(_hook_path("worktree_file_write_check.py"))],
+                input=json.dumps(payload), capture_output=True, text=True, env=env, timeout=15,
+            )
+        except subprocess.TimeoutExpired:
+            failures.append("[Codex patch] privacy/escape check timed out")
+            continue
+        if result.returncode != expected or fixture in result.stdout + result.stderr:
+            failures.append("[Codex patch] privacy/escape contract failed")
+    return failures
+
+
 def run_hook(hook: str, payload: dict) -> tuple[int, str]:
     """Invoke the real hook file as Claude Code does: JSON on stdin. Returns
     (exit_code, stderr)."""
@@ -195,6 +284,9 @@ def evaluate() -> list[str]:
             if code < 0:
                 failures.append(f"[{hook}] {desc}: hook error ({err.strip()[:80]})")
                 continue
+            if payload.get("tool_name") == "apply_patch" and code not in (0, 2):
+                failures.append(f"[Codex patch] unexpected hook exit {code}")
+                continue
             blocked = code == 2
             if expect == "BLOCK":
                 if not blocked:
@@ -206,6 +298,7 @@ def evaluate() -> list[str]:
                         f"        payload={json.dumps(payload)[:160]}\n"
                         f"        stderr={err.strip()[:160]}"
                     )
+    failures.extend(_codex_patch_extra_checks())
     return failures
 
 
@@ -216,7 +309,7 @@ def test_hook_innocence():
 
 if __name__ == "__main__":
     fails = evaluate()
-    total = sum(len(v) for v in CASES.values())
+    total = sum(len(v) for v in CASES.values()) + 2  # Codex privacy + explicit escape
     if fails:
         print(f"=== {len(fails)}/{total} FAIL ===")
         for f in fails:
