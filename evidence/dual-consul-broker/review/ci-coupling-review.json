@@ -1,0 +1,23 @@
+{
+  "verdict": "PASS",
+  "scope": "generated SCRIPTS_COUPLING table only; no activation or GitHub status publication",
+  "native_session": "6176cf25-93c9-4053-93eb-4c5e987dbf5c",
+  "observed_model": "claude-fable-5-1",
+  "runtime": "Claude Code 2.1.263",
+  "observed_at": "2026-09-06T05:09:35.151Z",
+  "finish_reason": "end_turn",
+  "response_text_sha256": "77fb251f2a4cfd363ea92c51fe5d0cf5f779697d8ed9ecd680ce070446903e22",
+  "exported_file_sha256": "df283832750c21e92aac2b8cfabbe8197db093582704cf3bc72543c9d99b8df4",
+  "input_sha256": "a89ce11d8f122053237d6d7c320752b4157716374d1237be09113b893f20e938",
+  "source_files": {
+    "scripts/ci/change_map.py": "db336f7eaa967ac8b7155b9443a4c4783d48021e3e950d106b4be55fc667e144"
+  },
+  "review_method": "Independent native reading of the exact diff, generated block, classifier route, generator and existing pg.sh reference; no execution or hash computation by reviewer",
+  "root_verification": {
+    "classifier_tests": "71 passed, 58 subtests passed in 4.52s",
+    "census_check": "up to date",
+    "ruff": "passed",
+    "original_broker_source_hashes": "all 39 unchanged",
+    "scope": "only generated marker block differs; 10 additions, no removals"
+  }
+}

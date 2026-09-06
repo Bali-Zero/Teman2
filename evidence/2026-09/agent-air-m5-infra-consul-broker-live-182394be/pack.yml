@@ -1,12 +1,12 @@
 brief_ref: evidence/brief.yml
 recorded_at: "2026-09-06T04:59:32Z"
 timestamp_semantics:
-  Receipt timestamps below are evidence-recording times unless the artifact supplies an
-  observed_at. They do not invent exact test start times.
+  Receipt timestamps below are evidence-recording times unless the artifact supplies an observed_at.
+  They do not invent exact test start times.
 scope_status: prepare-only-protected-broker; privileged installation and native canary not performed
 gate_status:
-  native-source-review-PASS; prepared installation gate only; no activation or exact-head release
-  status published by this pack
+  native-source-review-PASS; prepared installation gate only; no activation or exact-head release status
+  published by this pack
 review:
   status: PASS
   round: 2
@@ -29,10 +29,9 @@ review:
     response: evidence/dual-consul-broker/review/review-1.txt
     packet_manifest_sha256: 0400af2645d92957dd6446e9241cfc0eade991f5c13d6843b50866fce9d49d78
   note:
-    Independent native Fable closed all five findings and accepted the disabled opt-in source and prepared
-    privileged installation gate. The reviewer read supplied source and selected evidence without executing
-    tests or recomputing hashes. No service activation, model availability, operational approval or exact-head
-    release status is implied.
+    Independent native Fable closed all five findings and accepted the disabled opt-in source and prepared privileged
+    installation gate. The reviewer read supplied source and selected evidence without executing tests or recomputing
+    hashes. No service activation, model availability, operational approval or exact-head release status is implied.
   native_runtime: Claude Code 2.1.263
   mode_observed: interactive plan; Read only; strict empty MCP; no Bash or write tools
   observed_at: "2026-09-06T04:55:30.875Z"
@@ -46,8 +45,8 @@ review:
   source_commit: c1227fe1ff1ef916ff3902c2ec00bf535dc24ddf
   source_files: 39
   source_hash_verification:
-    39 current source hashes match the retained manifest; independently checked by
-    the evidence author after reading the native receipt.
+    39 current source hashes match the retained manifest; independently checked by the evidence
+    author after reading the native receipt.
   evidence: evidence/dual-consul-broker/review/review-2.json
   response: evidence/dual-consul-broker/review/review-2.txt
   input_manifest: evidence/dual-consul-broker/review/review-2-manifest.json
@@ -59,14 +58,13 @@ review:
   native_response_text_sha256: 970c09b3ca66f87f7db37c2ae3a00190b89b1d25052ad9ef32cf1147253abca1
   exported_response_file_sha256: b83e6c3b626ea13b72f97d826d3c37aac65563c67210863a3afeff2f87198859
   response_hash_semantics:
-    The exported text appends one LF. Removing exactly that final LF reproduces the
-    native assistant-text digest.
+    The exported text appends one LF. Removing exactly that final LF reproduces the native
+    assistant-text digest.
 seat_override:
-  The owner's accepted v4 mandate uses one lead and the other consul for narrow frozen-artifact
-  review without a duplicated routine council. Independent native Fable returned REWORK and then PASS after
-  all five findings were corrected. Historical consultation and delegated debugging do not constitute quorum
-  or a formal verdict. This schema exception confers no merge, deployment, privileged-installation or gate-publishing
-  authority.
+  The owner's accepted v4 mandate uses one lead and the other consul for narrow frozen-artifact review
+  without a duplicated routine council. Independent native Fable returned REWORK and then PASS after all five findings
+  were corrected. Historical consultation and delegated debugging do not constitute quorum or a formal verdict.
+  This schema exception confers no merge, deployment, privileged-installation or gate-publishing authority.
 lanes:
   - lane: native-broker-conductor
     role: build
@@ -82,38 +80,37 @@ lanes:
     seat: codex (OpenAI delegated runtime qualification, RPC correction and selected evidence)
 diff:
   scope:
-    Protected helper/client/fixed canary; native broker and completion-generation migration; shared JSONB
-    codec correction; immutable packaging; exact runtime bindings; targeted tests and selected evidence.
+    Protected helper/client/fixed canary; native broker and completion-generation migration; shared JSONB codec
+    correction; immutable packaging; exact runtime bindings; targeted tests and selected evidence.
   local_lint_baseline:
-    d5dace9d204315680c834acbae37863241de9f93 combines the already reviewed prerequisites.
-    The scoped local lint measures only the new broker increment, including untracked files. Final main-base
-    validation follows prerequisite integration.
+    d5dace9d204315680c834acbae37863241de9f93 combines the already reviewed prerequisites. The
+    scoped local lint measures only the new broker increment, including untracked files. Final main-base validation
+    follows prerequisite integration.
   authority_boundary:
-    The prepared helper is designed to hold metadata-writer credentials under a distinct
-    service UID; native inference remains in the ordinary caller process. The proposed sudoers control channel
-    is reachable by that entire caller UID, including its model process, so no-tools sandbox enforcement remains
-    necessary. Service identity, role, configuration and grant are not installed by this work.
+    The prepared helper is designed to hold metadata-writer credentials under a distinct service
+    UID; native inference remains in the ordinary caller process. The proposed sudoers control channel is reachable
+    by that entire caller UID, including its model process, so no-tools sandbox enforcement remains necessary. Service
+    identity, role, configuration and grant are not installed by this work.
   prerequisite_integration:
     "Root reports foundation PR #5825 merged at 5194fbd; the independent Claude release
     session is updating native PR #5833. This new broker increment has no PR assigned and does not own prerequisite
     merge or activation."
 pii_scan: clean
 pii_scan_scope:
-  This pack contains technical paths, synthetic identifiers, model/runtime names and digests.
-  Selected artifacts exclude credential values, client data, raw configuration, model reasoning and free-form
-  provider errors. This statement is the scoped content review, not a claim of an independent full-repository
-  scanner.
+  This pack contains technical paths, synthetic identifiers, model/runtime names and digests. Selected
+  artifacts exclude credential values, client data, raw configuration, model reasoning and free-form provider errors.
+  This statement is the scoped content review, not a claim of an independent full-repository scanner.
 receipts:
   - claim:
-      Stored isolated PostgreSQL verification records the broker and foundation regressions, with codec
-      parity checked separately.
+      Stored isolated PostgreSQL verification records the broker and foundation regressions, with codec parity
+      checked separately.
     cmd:
       cat evidence/dual-consul-broker/implementation/validation.json evidence/dual-consul-broker/implementation/postgres-pytest.txt
       evidence/dual-consul-broker/implementation/postgres-codec-parity.txt
     exit: 0
     result:
-      152 passed in 1.45s; separate codec structural check 7 passed, 7 deselected in 0.18s. Historical
-      source manifest 5b0d8044a5b8baac979fc07f2425150c6fc63ee87136c3bbc1e5cf7b766e3838.
+      152 passed in 1.45s; separate codec structural check 7 passed, 7 deselected in 0.18s. Historical source
+      manifest 5b0d8044a5b8baac979fc07f2425150c6fc63ee87136c3bbc1e5cf7b766e3838.
     ts: "2026-09-06T04:40:40Z"
     seat: codex evidence author (stored selected output read; execution provenance remains in the artifact)
     evidence: evidence/dual-consul-broker/implementation/validation.json
@@ -121,8 +118,8 @@ receipts:
       The historical client, protected loader, gateway, adapter and launcher suite passed before first-review
       corrections.
     cmd:
-      PYTHONPATH=.:apps/backend-rag:packages/research-os-core /Users/balizero/nuzantara/.venv/bin/python -m
-      pytest scripts/tests/test_protected_grants.py scripts/tests/test_consul_broker_client.py scripts/tests/test_consul_broker_gateway.py
+      PYTHONPATH=.:apps/backend-rag:packages/research-os-core /Users/balizero/nuzantara/.venv/bin/python -m pytest
+      scripts/tests/test_protected_grants.py scripts/tests/test_consul_broker_client.py scripts/tests/test_consul_broker_gateway.py
       scripts/tests/test_codex_shadow.py scripts/tests/test_codex_shadow_launch.py -q
     exit: 0
     result: 104 passed in 10.36s
@@ -149,22 +146,21 @@ receipts:
     seat: codex evidence author (stored selected output read; execution provenance remains in the artifact)
     evidence: evidence/dual-consul-broker/implementation/test-fixture-delta-pytest.txt
   - claim:
-      The historical disposable Pro release passed the selected offline checks before the review-required
-      mode correction; it is superseded and is not the activation candidate.
+      The historical disposable Pro release passed the selected offline checks before the review-required mode
+      correction; it is superseded and is not the activation candidate.
     cmd:
       cat evidence/dual-consul-broker/provisioning/commands.md evidence/dual-consul-broker/provisioning/verification-final.json
       evidence/dual-consul-broker/provisioning/source-binding.json
     exit: 0
     result:
-      Historical release ad2fc4b24a11d1eda3798044414a105a4459d905bbfc6dbcafe200edfb72807c; selected checks
-      exit 0; service_uid_observed null and installed_binding_observed false. Superseded by corrected release
-      e17182ca4e2f65ba711431dac3db97d7778a24feeb1cadf69e24258691f4f4c8.
+      Historical release ad2fc4b24a11d1eda3798044414a105a4459d905bbfc6dbcafe200edfb72807c; selected checks exit
+      0; service_uid_observed null and installed_binding_observed false. Superseded by corrected release e17182ca4e2f65ba711431dac3db97d7778a24feeb1cadf69e24258691f4f4c8.
     ts: "2026-09-06T04:40:40Z"
     seat: codex evidence author (stored selected output read; execution provenance remains in the artifact)
     evidence: evidence/dual-consul-broker/provisioning/verification-final.json
   - claim:
-      The historical real packaged helper refused malformed ungranted input before any audited network or
-      child-process effect; the corrected bundle repeats this probe separately.
+      The historical real packaged helper refused malformed ungranted input before any audited network or child-process
+      effect; the corrected bundle repeats this probe separately.
     cmd: cat evidence/dual-consul-broker/provisioning/negative-probe.txt evidence/dual-consul-broker/provisioning/verification-final.json
     exit: 0
     result: Probe exit 0; entry refusal exit 1; no audited effect attempts; empty stderr.
@@ -180,40 +176,36 @@ receipts:
       "Pro 0.149.0: 8 models; Mini 0.148.0: 7; M5 0.147.0: 9; include_hidden true, complete true, requested_model_available
       false. The receipts retain their as-collected producer hashes before later source corrections."
     ts: "2026-09-06T04:40:40Z"
-    seat:
-      codex runtime-evidence (actual per-host catalog commands and selected outputs collected during this
-      session)
+    seat: codex runtime-evidence (actual per-host catalog commands and selected outputs collected during this session)
     evidence: evidence/dual-consul-broker/runtime/qualification.json
   - claim:
-      The stored correction receipts cover all five first-review findings through bounded deterministic
-      and isolated PostgreSQL tests.
+      The stored correction receipts cover all five first-review findings through bounded deterministic and isolated
+      PostgreSQL tests.
     cmd: cat evidence/dual-consul-broker/implementation/validation.json
     exit: 0
     result:
       "Correction snapshot: 42 native units; 13 PostgreSQL tests passed, 18 deselected in 0.59s and disposable
       process stopped; 22 RPC tests passed in 9.59s; 36 provisioning tests per host on Air-M5 and Pro; 66 client/gateway/adapter
-      tests before the additional constructor test, then 10 gateway tests; 11 probe tests. These overlapping
-      suites are not summed. Source manifest 3f0c4df62c7361f7e656a3ee5863c039e8ad0cbace08923ff256037703c466b8.
-      No live activation."
+      tests before the additional constructor test, then 10 gateway tests; 11 probe tests. These overlapping suites
+      are not summed. Source manifest 3f0c4df62c7361f7e656a3ee5863c039e8ad0cbace08923ff256037703c466b8. No live activation."
     ts: "2026-09-06T04:55:20Z"
     seat:
       codex evidence author (selected stored results read; actual executors are root, lifecycle-ground, protected-helper-package
       and runtime-evidence)
     evidence: evidence/dual-consul-broker/implementation/validation.json
   - claim:
-      The corrected disposable Pro bundle is the current preparation candidate and passed offline checks
-      after an actual unsafe-mode rejection and temporary normalization.
+      The corrected disposable Pro bundle is the current preparation candidate and passed offline checks after
+      an actual unsafe-mode rejection and temporary normalization.
     cmd:
       cat evidence/dual-consul-broker/provisioning/rework-1/commands.md evidence/dual-consul-broker/provisioning/rework-1/verification-rework-1.json
       evidence/dual-consul-broker/provisioning/rework-1/source-binding.json
     exit: 0
     result:
-      "Release e17182ca4e2f65ba711431dac3db97d7778a24feeb1cadf69e24258691f4f4c8: 1533 manifest entries
-      and 66 runtime Python files. Mode guard first refused site-packages/.lock mode 0666; ordinary-user temporary
-      normalization preserved the content digest, then mode/import/preflight/sudoers checks passed. Real malformed
-      ungranted entry refused with no audited network or process effects. Source comparison reports no drift.
-      UID 501; service_uid_observed null; installed_binding_observed false. Privileged immutable/rollback execution
-      remains unperformed."
+      "Release e17182ca4e2f65ba711431dac3db97d7778a24feeb1cadf69e24258691f4f4c8: 1533 manifest entries and 66
+      runtime Python files. Mode guard first refused site-packages/.lock mode 0666; ordinary-user temporary normalization
+      preserved the content digest, then mode/import/preflight/sudoers checks passed. Real malformed ungranted entry
+      refused with no audited network or process effects. Source comparison reports no drift. UID 501; service_uid_observed
+      null; installed_binding_observed false. Privileged immutable/rollback execution remains unperformed."
     ts: "2026-09-06T04:55:20Z"
     seat: codex evidence author (stored selected Pro proof read; observed_at remains in original artifacts)
     evidence: evidence/dual-consul-broker/provisioning/rework-1/verification-rework-1.json
@@ -221,41 +213,39 @@ receipts:
     cmd: cat evidence/dual-consul-broker/review/review-1.json
     exit: 0
     result:
-      Observed claude-fable-5-1, Claude Code 2.1.263, finish_reason end_turn, 2026-09-06T04:41:46.917Z.
-      Source-only review with selected evidence; no reviewer-executed tests or digest recomputation. Preserved
-      historical REWORK; the independent second source review separately returned PASS.
+      Observed claude-fable-5-1, Claude Code 2.1.263, finish_reason end_turn, 2026-09-06T04:41:46.917Z. Source-only
+      review with selected evidence; no reviewer-executed tests or digest recomputation. Preserved historical REWORK;
+      the independent second source review separately returned PASS.
     ts: "2026-09-06T04:55:20Z"
     seat: codex evidence author (reads authentic native Claude review metadata; not the reviewer)
     evidence: evidence/dual-consul-broker/review/review-1.json
   - claim:
-      The independent native second review closed all five findings and accepted the disabled source and
-      prepared privileged installation gate.
+      The independent native second review closed all five findings and accepted the disabled source and prepared
+      privileged installation gate.
     cmd: cat evidence/dual-consul-broker/review/review-2.json evidence/dual-consul-broker/review/review-2.txt
     exit: 0
     result:
-      PASS observed at 2026-09-06T04:55:30.875Z; claude-fable-5-1 via Claude Code 2.1.263, interactive
-      plan/Read only, effort high, finish_reason end_turn. Source commit c1227fe1ff1ef916ff3902c2ec00bf535dc24ddf;
-      39 files. Reviewer did not execute tests or recompute digests. The evidence author separately verified
-      all 39 current source hashes, the bb6005f54894304bc2ec3eb637916a44150c1d2ceb29692d947fddf60f8cfd02 manifest
-      bytes and three decompressed correction chunk hashes. Receipt response digest is native text without the
-      export final LF. No activation approval.
+      PASS observed at 2026-09-06T04:55:30.875Z; claude-fable-5-1 via Claude Code 2.1.263, interactive plan/Read
+      only, effort high, finish_reason end_turn. Source commit c1227fe1ff1ef916ff3902c2ec00bf535dc24ddf; 39 files.
+      Reviewer did not execute tests or recompute digests. The evidence author separately verified all 39 current
+      source hashes, the bb6005f54894304bc2ec3eb637916a44150c1d2ceb29692d947fddf60f8cfd02 manifest bytes and three
+      decompressed correction chunk hashes. Receipt response digest is native text without the export final LF. No
+      activation approval.
     ts: "2026-09-06T04:58:16Z"
     seat:
       codex evidence author (reads authentic native Claude review and independently checks local source/input
       digests; not the reviewer)
     evidence: evidence/dual-consul-broker/review/review-2.json
-  - claim:
-      A later full-file PostgreSQL run completed all 31 new native broker cases on the unchanged corrected
-      source.
+  - claim: A later full-file PostgreSQL run completed all 31 new native broker cases on the unchanged corrected source.
     cmd:
       cat evidence/dual-consul-broker/implementation/final-native-postgres-pytest.txt evidence/dual-consul-broker/implementation/final-native-postgres-source.sha256
       evidence/dual-consul-broker/implementation/validation.json
     exit: 0
     result:
       31 passed in 0.89s after the source review; source manifest 3f0c4df62c7361f7e656a3ee5863c039e8ad0cbace08923ff256037703c466b8,
-      21 current source hashes all match, retained stdout digest matches. No source changes, provider inference,
-      operational database or broad harness repeat. Disposable PostgreSQL process stopped. This later execution
-      resolves the review-time full-file testing limitation without altering the reviewer text or granting activation.
+      21 current source hashes all match, retained stdout digest matches. No source changes, provider inference, operational
+      database or broad harness repeat. Disposable PostgreSQL process stopped. This later execution resolves the review-time
+      full-file testing limitation without altering the reviewer text or granting activation.
     ts: "2026-09-06T04:59:32Z"
     seat:
       codex evidence author (reads selected isolated Pro execution by lifecycle-ground; independently verifies
@@ -265,15 +255,15 @@ dissent:
   - seat: codex runtime-evidence (local fixture reproduction)
     status: CONFIRMED
     objection:
-      A delayed authorization reply could arrive after local cancellation began, and a wrong canary
-      marker was accepted by the original consumer fixture. The conductor implemented targeted client/canary
-      corrections; their tests are recorded separately. This delegated finding is not the formal Fable verdict.
+      A delayed authorization reply could arrive after local cancellation began, and a wrong canary marker
+      was accepted by the original consumer fixture. The conductor implemented targeted client/canary corrections;
+      their tests are recorded separately. This delegated finding is not the formal Fable verdict.
   - seat: codex runtime-evidence (actual isolated subprocess diagnosis)
     status: CONFIRMED
     objection:
-      Darwin group probes transiently returned EPERM during shutdown. The correction treats permission
-      denial as unconfirmed group absence, polls within bounds, and permits local_stopped only after leader exit
-      and group absence; persistent denial remains false.
+      Darwin group probes transiently returned EPERM during shutdown. The correction treats permission denial
+      as unconfirmed group absence, polls within bounds, and permits local_stopped only after leader exit and group
+      absence; persistent denial remains false.
   - seat: codex lifecycle-ground (isolated PostgreSQL verification)
     status: CONFIRMED
     objection:
@@ -282,28 +272,28 @@ dissent:
   - seat: codex protected-helper-package (actual Pro preparation)
     status: CONFIRMED
     objection:
-      Unprivileged bundle import and negative-protocol success do not prove installed root ownership
-      or a separate service execution. Current service UID and active binding are absent; privileged Pro installation
-      and DBA setup remain separate.
+      Unprivileged bundle import and negative-protocol success do not prove installed root ownership or a
+      separate service execution. Current service UID and active binding are absent; privileged Pro installation and
+      DBA setup remain separate.
   - seat: claude-fable-5-1 (independent native first review)
     status: CONFIRMED
     objection:
-      "REWORK: package byte digests did not cover unsafe installed modes; the prior lease was shorter
-      than cumulative canary bounds; unprefixed consul names were accepted; replay could report a failed result
-      as recorded; unknown native counters were silently discarded. The corrected source adds mode rejection/normalization,
-      a shared 200-second lease budget, exact namespaced identities, outcome-preserving replay and bounded names-only
-      unknown-counter markers. The genuine second native review closed all five findings and returned source
-      PASS; both review receipts remain retained."
+      "REWORK: package byte digests did not cover unsafe installed modes; the prior lease was shorter than
+      cumulative canary bounds; unprefixed consul names were accepted; replay could report a failed result as recorded;
+      unknown native counters were silently discarded. The corrected source adds mode rejection/normalization, a shared
+      200-second lease budget, exact namespaced identities, outcome-preserving replay and bounded names-only unknown-counter
+      markers. The genuine second native review closed all five findings and returned source PASS; both review receipts
+      remain retained."
 remaining:
-  - "Finish independent prerequisite integration for native PR #5833 and validate the new broker PR against its
-    final main base; foundation PR #5825 is parent-reported merged."
-  - Obtain and execute separately authorized privileged Pro installation and DBA setup using only the current
-    reviewed corrected bundle e17182ca4e2f65ba711431dac3db97d7778a24feeb1cadf69e24258691f4f4c8, then provision
-    a scoped expiring grant.
-  - Verify the real installed service UID, ownership and control-channel restrictions. Current preparation does
-    not prove caller/model kernel separation or DBA authority.
-  - Astra requires fresh availability and identity evidence before its canary; no silent fallback or operational
-    readiness claim.
+  - "Finish independent prerequisite integration for native PR #5833 and validate the new broker PR against its final
+    main base; foundation PR #5825 is parent-reported merged."
+  - Obtain and execute separately authorized privileged Pro installation and DBA setup using only the current reviewed
+    corrected bundle e17182ca4e2f65ba711431dac3db97d7778a24feeb1cadf69e24258691f4f4c8, then provision a scoped expiring
+    grant.
+  - Verify the real installed service UID, ownership and control-channel restrictions. Current preparation does not
+    prove caller/model kernel separation or DBA authority.
+  - Astra requires fresh availability and identity evidence before its canary; no silent fallback or operational readiness
+    claim.
   - Expired/revoked/paused missions cannot re-admit or replay with expired authority; persistent recovery, generation
     rebinding through production admission, staging effects, remote cancellation and production reliability remain
     separately unqualified.
@@ -321,5 +311,25 @@ final_postgres_verification:
     harness campaign.
   note:
     Executed after the source-only review and supersedes its time-specific 13-pass/18-deselected verification
-    limit. The genuine review text remains unchanged. Evidence author verified all 21 current source hashes
-    and retained stdout digest; the disposable PostgreSQL process is recorded stopped.
+    limit. The genuine review text remains unchanged. Evidence author verified all 21 current source hashes and
+    retained stdout digest; the disposable PostgreSQL process is recorded stopped.
+packaging_addendum:
+  status: PASS
+  scope:
+    Generated CI coupling table refresh after pre-push census identified actual backend test references. Nine
+    broker paths plus the existing pg.sh comment reference; classifier logic, impact_map and workflows unchanged.
+    This is a separate narrow review; the original 39-file broker review remains unchanged.
+  source: scripts/ci/change_map.py
+  source_sha256: db336f7eaa967ac8b7155b9443a4c4783d48021e3e950d106b4be55fc667e144
+  evidence: evidence/dual-consul-broker/review/ci-coupling-review.json
+  response: evidence/dual-consul-broker/review/ci-coupling-review.txt
+  input: evidence/dual-consul-broker/review/ci-coupling-input.txt
+  observed_model: claude-fable-5-1
+  native_session: 6176cf25-93c9-4053-93eb-4c5e987dbf5c
+  observed_at: "2026-09-06T05:09:35.151Z"
+  root_checks:
+    classifier_tests: 71 passed, 58 subtests passed in 4.52s
+    census_check: up to date
+    ruff: passed
+    original_broker_source_hashes: all 39 unchanged
+    scope: only generated marker block differs; 10 additions, no removals
