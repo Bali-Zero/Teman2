@@ -173,13 +173,10 @@ describe("question registry -> wire coverage", () => {
     }
   });
 
-  // Re-stated 2026-09-06 (spec §4 PR-4 + owner ruling decision 6). The flag is
+  // Re-stated 2026-09-06 (spec §4 PR-4 + owner ruling decision 6): the flag is
   // raised for an ANSWER the signed vocabulary cannot decide, never for the
-  // fact that a question was answered — a disclosed flag rewrites the whole
-  // decision to HUMAN_REVIEW_REQUIRED with `candidates=()`, so it deletes
-  // products the pack had already proven. The pairs that must NOT flag are
-  // pinned directly below; the two halves are the guilt and the innocence of
-  // the same table, and the per-walk census lives in `activity-boundary.test.ts`.
+  // fact that a question was answered. The pairs that must NOT flag are pinned
+  // directly below — guilt and innocence of the same table.
   it.each([
     ["trip_scope", "multiple", "MULTI_PURPOSE_TRIP"],
     ["business_activity", "training", "ACTIVITY_BOUNDARY"],
@@ -206,15 +203,9 @@ describe("question registry -> wire coverage", () => {
     ["investment_vehicle", "pt_pma"],
     ["retirement_basis", "bank_deposit"],
     ["retirement_basis", "passive_income"],
-    // HUMAN_CONTEXT and engine-inert: no rule reads a work role
-    // (`el.e23-employment-support` reads employer + sponsor;
-    // `el.e23-operational-work-boundary` reads `investment.proposed_role`,
-    // which only the invest branch writes). Owner ruling, decision 6.
-    ["work_role", "executive"],
-    ["work_role", "manager"],
+    // Engine-inert: no rule reads a work role (owner ruling, decision 6).
+    // All five options are swept in `activity-boundary.test.ts`.
     ["work_role", "specialist"],
-    ["work_role", "performer"],
-    ["work_role", "other"],
   ])(
     "leaves a decidable answer (%s=%s) unflagged — it must not veto a proven candidate",
     (id, value) => {
@@ -775,10 +766,8 @@ describe("family sponsor status — unverified human context", () => {
 
 describe("remote_income — a dead question id, never invented", () => {
   it("does not invent a FactPath, and no longer holds on a question tree.ts does not have", () => {
-    // `remote_income` (like `tourism_duration`) names one of the 2 dead legacy
-    // nodes deleted from the registry — pinned absent by `tree.test.ts`, "does
-    // not carry the 2 dead legacy nodes". Its ACTIVITY_BOUNDARY clause was
-    // therefore unreachable code, not a live guard, and was deleted with it.
+    // One of the 2 dead legacy nodes (pinned absent by `tree.test.ts`), so its
+    // ACTIVITY_BOUNDARY clause was unreachable code, not a live guard.
     const base: OracleFacts = { category: "remote", remote_clients: "foreign" };
     const withIncome: OracleFacts = { ...base, remote_income: "above" };
     const before = mapFacts(base);

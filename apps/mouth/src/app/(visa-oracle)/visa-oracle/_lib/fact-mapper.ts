@@ -400,52 +400,23 @@ const REVIEW_FLAG_MAP: Readonly<
 };
 
 /**
- * ACTIVITY_BOUNDARY is a HOLD, not a label. When the request carries ANY
- * disclosed flag the backend rewrites the whole decision to
- * HUMAN_REVIEW_REQUIRED with `candidates=()`
+ * ACTIVITY_BOUNDARY is a HOLD, not a label: any disclosed flag makes the
+ * backend rewrite the decision to HUMAN_REVIEW_REQUIRED with `candidates=()`
  * (`evaluate_path.py::_apply_disclosed_review_flags`), and `models.py` forbids
- * a non-empty candidate list in any state other than SUPPORTED_CANDIDATES — so
- * raising this flag DELETES a product the signed pack had already proven. It
- * may therefore be raised only for an answer the signed vocabulary genuinely
- * cannot decide, and never for the mere fact that a question was answered.
+ * a non-empty candidate list in any other state — so raising it DELETES a
+ * product the signed pack had already proven. It may be raised only for an
+ * answer the signed vocabulary cannot decide, never for the mere fact that a
+ * question was answered.
  *
- * The table is keyed by question id (`tree.ts`) and lists, per question, the
- * answers the signed pack decides on its own. Every OTHER answer to a listed
- * question holds — including an option added to `tree.ts` later without
- * revisiting this table, which is the fail-closed direction on purpose. A
- * question absent from the table never raises this flag at all.
- *
- * Rows, and why each one is where it is (spec: research/visa/
- * 2026-09-06-visa-oracle-decisiveness-investigation.md §4 PR-4):
- *
- * - `business_activity`: `meetings` / `negotiation` / `conference` are
- *   ordinary BUSINESS_MEETINGS conduct, which `el.c2.business` and
- *   `el.d1/d2-multi-entry-support` already decide from `intent.purposes` +
- *   `intent.stay_days`. `training` and `other` stay held: CL-D12-05 puts
- *   site-scouting-shaped activity under D12 and records that no `activity.*`
- *   fact discriminates it, so the pack cannot separate them.
- * - `investment_vehicle`: only `pt_pma` has a modelled route
- *   (`investment.*` facts + the E28 family). `property` / `bank_deposit` are
- *   Second Home (E33) shapes the funnel cannot yet emit `SECOND_HOME` for, so
- *   they hold — §6 R3 measured that unflagging them turns a correct "hold for
- *   a human" into a confidently wrong "no path".
- * - `retirement_basis`: `bank_deposit` and `passive_income` are the two E33E /
- *   E33F routes the pack decides. `property` (Second Home), `family_sponsor`
- *   and `undecided` hold, same reason as above.
- * - `diaspora_connection` / `diaspora_documents` / `other_purpose` /
- *   `other_paid_activity`: no answer is decidable — `CATEGORY_TO_PURPOSE`
- *   emits no `SECOND_HOME` and no diaspora purpose, and the `other` branch's
- *   detail answers reach no fact any rule reads.
- *
- * NOT in the table, deliberately:
- * - `work_role` — HUMAN_CONTEXT, engine-inert (`el.e23-employment-support`
- *   reads employer + sponsor, never a role; `el.e23-operational-work-boundary`
- *   reads `investment.proposed_role`, written only by the invest branch). Its
- *   flag suppressed E23 for 100% of employment interviews. Owner ruling
- *   2026-09-06, decision 6.
- * - `tourism_duration` / `remote_income` — question ids that exist nowhere in
- *   `tree.ts` (pinned dead by `tree.test.ts`, "does not carry the 2 dead
- *   legacy nodes"), so their clauses could never fire.
+ * Keyed by question id (`tree.ts`), listing per question the answers the pack
+ * decides on its own. Every OTHER answer holds, including an option added to
+ * `tree.ts` later without revisiting this table — fail-closed on purpose. A
+ * question absent from the table never raises this flag at all. Rationale per
+ * row, and the rows deliberately NOT here (`work_role`, engine-inert per the
+ * owner ruling of 2026-09-06 decision 6; `tourism_duration`/`remote_income`,
+ * question ids that exist nowhere in `tree.ts`): research/visa/
+ * 2026-09-06-visa-oracle-decisiveness-investigation.md §4 PR-4 and §6 R3.
+ * Guilt, innocence and the per-walk census: `activity-boundary.test.ts`.
  */
 export const ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS = {
   business_activity: ["meetings", "negotiation", "conference"],
