@@ -1,0 +1,97 @@
+gear: 2
+objective: >
+  Make the GARUDA staff assignee picker offer only the emails `assignPractice`
+  would accept, so that a picker option can no longer be a guaranteed 422.
+constraints:
+  - Do not restate the assignment predicate. Call
+    `staff_auth.is_valid_garuda_assignment_target` for every candidate row, so
+    `listed ∩ refused = ∅` holds by construction and keeps holding when PR
+    #5817 replaces the role denylist with a census allow-list.
+  - Do not change the shared roster's semantics. `backend/app/routers/team.py`,
+    `backend/app/utils/service_accounts.py`, `apps/mouth/src/hooks/useTeamMembers.ts`
+    and `backend/services/garuda_portal/staff_auth.py` stay unmodified — the
+    roster is a visibility artifact whose read-only accounting viewer legitimately
+    belongs to the CRM surfaces, and two of those files belong to other lanes in
+    this loop.
+  - Stay outside the frozen GARUDA VOA contract. No edit to
+    `products/garuda-voa/contracts/**` and no new operation under
+    `/api/visa/voa/**`; the endpoint is CRM-prefixed, which is the side of the
+    boundary the picker's data has always come from.
+  - No production write, and no client PII in any output. The census was
+    read-only, counts only, with addresses compared by `md5(lower(email))`
+    instead of selected.
+acceptance:
+  - text: >
+      The enumeration SHALL equal the set of active candidate rows the validator
+      accepts, over a fixture carrying every role named by
+      `backend/data/team_members.json` plus partner, client, monitoring, the
+      `PRACTICES_EXTRA_VIEW_EMAILS` row, unknown, empty and `" Partner "` roles.
+    probe: >
+      PYTHONPATH=. pytest
+      backend/tests/services/garuda_portal/test_assignment_targets.py
+      (test_listed_is_exactly_the_active_rows_the_validator_accepts)
+  - text: >
+      The endpoint SHALL answer 401 to a principal that is not GARUDA staff and
+      403 to a non-admin staff member, in both cases before the database is
+      touched.
+    probe: >
+      same suite, test_endpoint_refuses_a_caller_that_is_not_a_staff_principal
+      and test_endpoint_refuses_a_non_admin_staff_member, both over an
+      _UntouchablePool whose every attribute access fails the test
+  - text: >
+      The frozen contract SHALL stay byte-identical and the staff surface SHALL
+      keep exposing exactly its four contract operations.
+    probe: >
+      PYTHONPATH=. pytest
+      backend/tests/app/routers/test_garuda_voa_openapi_parity.py
+      backend/tests/app/routers/test_garuda_staff_public_prefix_guard.py
+  - text: >
+      A newly registered router SHALL NOT be an orphan, and the route censuses
+      SHALL stay green with it present.
+    probe: >
+      PYTHONPATH=. pytest backend/tests/setup/ backend/tests/security/
+      (router-manifest census, route-walk floor, authz coverage, public
+      mutating-route census)
+  - text: >
+      The picker SHALL render from the new endpoint, SHALL keep showing a
+      current assignee the gate refuses as a disabled option rather than
+      rendering "Unassigned" over a real assignment, and SHALL say when the list
+      could not be fetched.
+    probe: >
+      npx vitest run "src/app/(workspace)/garuda-voa" (25 passed) and
+      npx tsc --noEmit (clean)
+consumer_map:
+  - The assignee <select> in
+    apps/mouth/src/app/(workspace)/garuda-voa/[practiceId]/page.tsx, which
+    renders this endpoint's items — shipped in the same PR, not a future job.
+  - harness-floor.yml Step 6, which reads this brief's declared gear against the
+    deterministic floor, and Step 7a, which passes a sub-Gear-3 task without a
+    gate verdict.
+  - The Backend Shard and Frontend Tests required checks, which run the probes
+    above on the PR head.
+assumptions:
+  - text: >
+      Production holds 0 active `partner` rows (1 inactive) and exactly 1 active
+      row whose email is in `PRACTICES_EXTRA_VIEW_EMAILS`, so the partner half of
+      the defect is latent and the read-only-viewer half is live.
+    status: verified
+    probe: >
+      read-only census of team_members through scripts/pg.sh on 2026-09-06,
+      GROUP BY lower(role), active and an md5 comparison — counts only, quoted
+      in the PR description
+  - text: >
+      Every admin-class role (`founder`, `ceo`, `board member`) holds an active
+      `team_members` row, so the documented boundary — an admin email with no
+      active row is accepted by the validator but not offered — is empty today.
+    status: verified
+    probe: >
+      the same census; pinned by
+      test_admin_boundary_is_the_documented_one in the suite above
+  - text: >
+      PR #5817's census allow-list will not change which rows this enumeration
+      returns for a role the allow-list keeps, because the enumeration asks the
+      predicate instead of naming roles.
+    status: verified
+    probe: >
+      test_enumeration_decides_by_asking_not_by_copying, which replaces the
+      predicate and asserts the list follows it
