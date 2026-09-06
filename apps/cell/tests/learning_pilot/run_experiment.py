@@ -31,13 +31,13 @@ from .harness import (
 LEARNER_MODEL = "claude-sonnet-5"
 LEARNER_EFFORT = "high"
 REVIEWER_MODEL = "claude-opus-5"
-REVIEWER_EFFORT = "xhigh"
+REVIEWER_EFFORT = "high"
 TIMEOUT_SECONDS = 120
 MAX_PROMPT_CHARS = 12_000
 MAX_REFLECTION_PROMPT_CHARS = 64_000
 TOTAL_BUDGET = 250
 PREPARATION_BUDGET = 70
-PLANNED_PREPARATION = 45
+PLANNED_PREPARATION = 48
 HELD_OUT_BUDGET = 180
 BOOTSTRAP_SEED = 20260906
 
@@ -286,7 +286,7 @@ class Experiment:
                 "development_trials": 20,
                 "candidate_generation": 1,
                 "validation_trials": 20,
-                "protocol_review": 1,
+                "protocol_review": 4,
                 "admission_review": 1,
                 "final_audit": 1,
                 "held_out_trials": 180,
@@ -494,35 +494,79 @@ class Experiment:
             frozen_files,
             metadata={"run_id": self.root.name, "stage": "pre-learning"},
         )
-        packet = {
-            "instruction": (
-                "Independently review this contained experiment before learning. FAIL on leakage, mutable gold, "
-                "missing denominator, unsafe execution, unfrozen order/rule, budget inconsistency, or model ambiguity. "
-                "Echo every supplied file hash exactly in reviewed_hashes."
+        archive_by_name = {path.name: path for path in archived}
+        review_groups = [
+            (
+                "cases",
+                [self.root / "fixtures.json", self.root / "rubric.json", self.root / "base_policy.md"],
+                "Inspect every synthetic case, accepted combination, category, split identity, and forbidden recommendation.",
             ),
-            "manifest": manifest,
-            "files": {str(path): path.read_text(encoding="utf-8") for path in frozen_files},
-        }
-        result = await self._structured_attempt(
-            trial_id="review:protocol:1",
-            phase="preparation",
-            adapter=self.reviewer,
-            prompt=_canonical_json(packet),
-            schema=REVIEW_SCHEMA,
-            expected_identity=None,
-        )
-        validate_model_identity(REVIEWER_MODEL, result.model_identity)
-        self.expected_reviewer_identity = result.model_identity
-        review = result.value
-        if not isinstance(review, dict):
-            raise RuntimeError("malformed protocol review")
+            (
+                "schedule",
+                [self.root / "protocol.json", self.root / "trial_order.json"],
+                "Inspect the frozen budgets, model pin, rules, context ceilings, and paired trial denominator/order.",
+            ),
+            (
+                "containment",
+                [
+                    archive_by_name["contract.py"],
+                    archive_by_name["harness.py"],
+                    archive_by_name["test_contract.py"],
+                    archive_by_name["test_harness.py"],
+                ],
+                "Inspect gold isolation, tool disabling, fresh state, grading, receipts, hashes, budgets, and fake-backed tests.",
+            ),
+            (
+                "runner",
+                [archive_by_name["run_experiment.py"], archive_by_name["test_run_experiment.py"]],
+                "Inspect the end-to-end state machine, freeze boundaries, admission rule, safety stop, held-out loop, and audit.",
+            ),
+        ]
+        reviews: list[dict[str, object]] = []
+        all_reviewed_hashes: list[str] = []
+        for index, (name, paths, focus) in enumerate(review_groups, start=1):
+            expected = [str(manifest["files"][str(path)]) for path in paths]
+            packet = {
+                "instruction": (
+                    "Independently review this contained experiment before learning. FAIL on leakage, mutable gold, "
+                    "missing denominator, unsafe execution, unfrozen rules, budget inconsistency, or model ambiguity. "
+                    f"{focus} Echo the supplied expected_hashes exactly in reviewed_hashes."
+                ),
+                "review_part": f"{index}/4:{name}",
+                "expected_hashes": expected,
+                "files": {str(path): path.read_text(encoding="utf-8") for path in paths},
+            }
+            result = await self._structured_attempt(
+                trial_id=f"review:protocol:{name}:1",
+                phase="preparation",
+                adapter=self.reviewer,
+                prompt=_canonical_json(packet),
+                schema=REVIEW_SCHEMA,
+                expected_identity=self.expected_reviewer_identity,
+            )
+            validate_model_identity(REVIEWER_MODEL, result.model_identity)
+            self.expected_reviewer_identity = result.model_identity
+            review = result.value
+            if not isinstance(review, dict):
+                raise RuntimeError(f"malformed protocol review part: {name}")
+            reviewed = [str(item) for item in review.get("reviewed_hashes", [])]
+            if review.get("verdict") != "PASS" or sorted(reviewed) != sorted(expected):
+                raise RuntimeError(f"protocol review failed in {name}: {review}")
+            all_reviewed_hashes.extend(reviewed)
+            reviews.append(
+                {
+                    "part": name,
+                    "review": review,
+                    "model_identity": result.model_identity,
+                    "response_hash": result.raw_hash,
+                }
+            )
         expected_hashes = sorted(str(item) for item in manifest["files"].values())
-        reviewed_hashes = sorted(str(item) for item in review.get("reviewed_hashes", []))
-        if review.get("verdict") != "PASS" or reviewed_hashes != expected_hashes:
-            raise RuntimeError(f"protocol review failed: {review}")
+        if sorted(all_reviewed_hashes) != expected_hashes:
+            raise RuntimeError("combined protocol review did not cover the complete manifest")
         atomic_write_json(
             self.root / "reviews" / "protocol_review.json",
-            {"review": review, "model_identity": result.model_identity, "response_hash": result.raw_hash},
+            {"verdict": "PASS", "parts": reviews, "reviewed_hashes": all_reviewed_hashes},
         )
         return manifest
 
