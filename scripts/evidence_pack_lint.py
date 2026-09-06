@@ -2588,11 +2588,50 @@ def check_cheap_seat_floor(
     return _r9_r11_verdict("seat_floor", not has_cheap_build_lane, message, pack, today)
 
 
-#: R9 — review seats that count toward Gear-3 council quorum.
-COUNCIL_REVIEW_SEATS: tuple[str, ...] = (
+#: R9 — review seats that count toward Gear-3 council quorum. RULED by Zero
+#: 2026-09-02, verbatim: "metti codex, kimi (tanto tra 2 ore riprende), qwen,
+#: deepseek, glm (questi 3 da TP1), gemini. I primi 3 titolari e gli altri
+#: fallback nel caso un titolare e' indisponibile".
+#:
+#: WHY THE ROSTER GREW, measured the day it was ruled: the previous list held
+#: exactly three seats, and on 2026-09-02 Kimi was 403 weekly-quota-dead while
+#: arsenal_probe.py reported Codex TIMEOUT — so the quorum for EVERY Gear-3 PR
+#: in the fleet rested on two seats, one of which the fleet's own liveness
+#: probe called dead. (It was not: that TIMEOUT is the probe's flat 15s
+#: ceiling, and called directly the seat answered and found a real defect.)
+#: A quorum that a single quota reset can take to zero is not a quorum.
+COUNCIL_REVIEW_SEATS_TITOLARI: tuple[str, ...] = (
     "codex-gpt-5.6-sol",
     "kimi-code/k3",
     "tp1-qwen3.8-max",
+)
+
+#: The reserve bench. Zero, correcting an earlier draft of this rule on the
+#: day it was written: "le riserve non intervengono se i titolari ci sono" —
+#: the bench does NOT play while the starters are available. So a reserve is a
+#: SUBSTITUTION, not an equal alternative, and check_council_run_gear3 requires
+#: any pack that counts even ONE reserve toward quorum to name the titolare it
+#: replaced and how that unavailability was observed.
+#:
+#: The first draft only asked for a reason when the council was seated
+#: ENTIRELY on reserves. That was strictly weaker than the ruling: it let one
+#: reserve walk in beside an available titolare with nothing said, which is
+#: exactly the substitution the ruling governs.
+#:
+#: A reserve's VERDICT still weighs the same as a titolare's — a finding is not
+#: worth less because of which seat found it, and scoring it lower would be
+#: scoring the messenger. Deliberately NOT enforced: "was that titolare really
+#: down?" — the lint has no liveness data, and a guard that judges what it
+#: cannot see is the guard-over-match family this repo already has scars in.
+#: What is enforced is that somebody had to WRITE the substitution down.
+COUNCIL_REVIEW_SEATS_FALLBACK: tuple[str, ...] = (
+    "tp1-deepseek-v4-pro",
+    "tp1-glm-5.2",
+    "agy-gemini-3.1-pro",
+)
+
+COUNCIL_REVIEW_SEATS: tuple[str, ...] = (
+    COUNCIL_REVIEW_SEATS_TITOLARI + COUNCIL_REVIEW_SEATS_FALLBACK
 )
 
 
@@ -2659,7 +2698,17 @@ def check_council_run_gear3(
     convention as check_dissent_nonempty_on_gear3); >=2 distinct seats
     found; seat_override present. Known day-0 measure, declared in this
     PR's body and NOT a bug: every EXISTING Gear-3 pack predates
-    `council_run` entirely and will NOTICE (not FAIL) until 2026-09-02."""
+    `council_run` entirely and will NOTICE (not FAIL) until 2026-09-02.
+
+    SECOND LIMB (Zero 2026-09-02, roster split into titolari + reserves;
+    "le riserve non intervengono se i titolari ci sono"): once quorum holds,
+    a council counting ANY seat from COUNCIL_REVIEW_SEATS_FALLBACK — one is
+    enough, beside a titolare is enough — must also declare a non-empty
+    `seat_fallback_reason`. GUILT: >=1 reserve seat counted, no reason, no
+    override. INNOCENCE: every counted seat is a titolare (the common path,
+    untouched); a non-empty reason string; gear != 3; quorum already failing
+    (that violation is reported alone rather than stacking a second one on
+    the same pack)."""
     if gear != 3:
         return [], None
     seats = _read_council_journal_seats(pack_dir, pack.get("council_run"))
@@ -2668,7 +2717,33 @@ def check_council_run_gear3(
         "gear:3 pack declares no council_run journal with >=2 distinct "
         f"review seats from {COUNCIL_REVIEW_SEATS} marked ok:true"
     )
-    return _r9_r11_verdict("council_run", not has_quorum, message, pack, today)
+    verdict = _r9_r11_verdict("council_run", not has_quorum, message, pack, today)
+    if not has_quorum:
+        return verdict
+    # Quorum is satisfied. Second limb (Zero 2026-09-02): "le riserve non
+    # intervengono se i titolari ci sono". A reserve is a SUBSTITUTION, so ANY
+    # reserve counted toward quorum — even one, even standing beside a
+    # titolare — must be explained. This is the only half of the ruling a
+    # linter can honestly check: it has no liveness data and cannot verify the
+    # reason is TRUE, only that somebody was made to state one. A council of
+    # titolari only never trips it, which is why the common path is untouched.
+    benched = seats & set(COUNCIL_REVIEW_SEATS_FALLBACK)
+    if benched:
+        reason = pack.get("seat_fallback_reason")
+        if not (isinstance(reason, str) and reason.strip()):
+            return _r9_r11_verdict(
+                "council_fallback_reason",
+                True,
+                "gear:3 council counts reserve seat(s) "
+                f"({', '.join(sorted(benched))}) toward quorum — reserves do "
+                "not play while the titolari "
+                f"({', '.join(COUNCIL_REVIEW_SEATS_TITOLARI)}) are available, "
+                "so declare `seat_fallback_reason: <which titolare each "
+                "reserve replaced, and how that unavailability was observed>`",
+                pack,
+                today,
+            )
+    return verdict
 
 
 def _pack_source_relpath(source_path: str, repo_root: Path) -> str:
