@@ -122,6 +122,35 @@ def test_adapter_command_disables_tools_settings_and_persistence(tmp_path: Path)
     assert "--model claude-sonnet-5" in joined
 
 
+def test_adapter_environment_uses_oauth_allowlist(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "paid-key")
+    monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "bearer-token")
+    monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://example.invalid")
+    monkeypatch.setenv("AWS_BEDROCK_REGION", "region")
+    monkeypatch.setenv("VERTEX_AI_PROJECT", "project")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://example")
+    monkeypatch.setenv("QDRANT_API_KEY", "qdrant-key")
+    monkeypatch.setenv("OPENAI_API_KEY", "openai-key")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "oauth-token")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "oauth-token-2")
+
+    environment = ClaudeCliAdapter._safe_environment()
+
+    assert environment["CLAUDE_CODE_OAUTH_TOKEN"] == "oauth-token"
+    assert environment["CLAUDE_CODE_OAUTH_TOKEN_2"] == "oauth-token-2"
+    for forbidden in (
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_BASE_URL",
+        "AWS_BEDROCK_REGION",
+        "VERTEX_AI_PROJECT",
+        "DATABASE_URL",
+        "QDRANT_API_KEY",
+        "OPENAI_API_KEY",
+    ):
+        assert forbidden not in environment
+
+
 def test_generic_structured_envelope_preserves_identity_and_usage(tmp_path: Path) -> None:
     adapter = ClaudeCliAdapter(
         executable="/usr/bin/false",

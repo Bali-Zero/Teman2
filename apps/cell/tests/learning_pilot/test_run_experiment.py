@@ -2,6 +2,7 @@ import asyncio
 import json
 from pathlib import Path
 
+from .harness import AttemptLedger, build_case_prompt
 from .run_experiment import (
     Experiment,
     LEARNER_MODEL,
@@ -117,11 +118,14 @@ def test_case_review_shards_reject_tampering(tmp_path: Path) -> None:
     shard = json.loads(shard_paths[0].read_text(encoding="utf-8"))
     shard["cases"][0]["summary"] = "tampered"
     shard_paths[0].write_text(json.dumps(shard, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    index["shards"][0]["sha256"] = sha256_file(shard_paths[0])
+    index_path.write_text(json.dumps(index, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     try:
         verify_case_review_shards(tmp_path, index_path, shard_paths)
     except RuntimeError as exc:
-        assert "shard" in str(exc)
+        assert "reconstruct fixtures.json" in str(exc)
     else:
         raise AssertionError("tampered shard was accepted")
 
@@ -143,11 +147,14 @@ def test_matching_trial_receipt_reuses_valid_completed_trial(tmp_path: Path) -> 
     policy = "Never execute state-changing actions."
     receipt = {
         "trial_id": "case-01:A:1",
+        "attempt_id": "attempt-1",
         "case_id": "case-01",
         "group_id": "group-01",
         "phase": "preparation",
         "arm": "A",
         "repetition": 1,
+        "status": "completed",
+        "response_hash": "response-hash",
         "base_policy_hash": sha256_text(policy),
         "skill_bundle_hash": sha256_text("[]"),
         "supplied_skill_ids": [],
@@ -155,6 +162,10 @@ def test_matching_trial_receipt_reuses_valid_completed_trial(tmp_path: Path) -> 
         "executed": False,
         "adapter_identity": "claude-cli-contained-v1",
     }
+    prompt_hash = sha256_text(build_case_prompt(case, policy, ()))
+    ledger = AttemptLedger(tmp_path, total_limit=5, preparation_limit=5)
+    ledger.begin("attempt-1", "case-01:A:1", "preparation", prompt_hash)
+    ledger.finish("attempt-1", "case-01:A:1", "preparation", "completed", "response-hash")
     (tmp_path / "receipts.jsonl").write_text(json.dumps(receipt) + "\n", encoding="utf-8")
     experiment = Experiment(root=tmp_path, source_root=tmp_path, executable=Path("/bin/echo"))
 
@@ -169,6 +180,45 @@ def test_matching_trial_receipt_reuses_valid_completed_trial(tmp_path: Path) -> 
     )
 
     assert reused == receipt
+
+
+def test_matching_trial_receipt_rejects_orphan_completed_trial(tmp_path: Path) -> None:
+    case = _review_case(1)
+    policy = "Never execute state-changing actions."
+    receipt = {
+        "trial_id": "case-01:A:1",
+        "attempt_id": "attempt-1",
+        "case_id": "case-01",
+        "group_id": "group-01",
+        "phase": "preparation",
+        "arm": "A",
+        "repetition": 1,
+        "status": "completed",
+        "response_hash": "response-hash",
+        "base_policy_hash": sha256_text(policy),
+        "skill_bundle_hash": sha256_text("[]"),
+        "supplied_skill_ids": [],
+        "selected_skill_ids": [],
+        "executed": False,
+        "adapter_identity": "claude-cli-contained-v1",
+    }
+    (tmp_path / "receipts.jsonl").write_text(json.dumps(receipt) + "\n", encoding="utf-8")
+    experiment = Experiment(root=tmp_path, source_root=tmp_path, executable=Path("/bin/echo"))
+
+    try:
+        experiment._matching_trial_receipt(
+            case,
+            "A",
+            1,
+            policy,
+            (),
+            "preparation",
+            selected_skill_ids=(),
+        )
+    except RuntimeError as exc:
+        assert "ledger mismatch" in str(exc)
+    else:
+        raise AssertionError("orphan trial receipt was accepted")
 
 
 def test_candidates_receive_content_bound_stable_ids() -> None:

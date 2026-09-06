@@ -535,12 +535,18 @@ class ClaudeCliAdapter:
 
     @staticmethod
     def _safe_environment() -> dict[str, str]:
-        environment = dict(os.environ)
-        banned_fragments = ("API_KEY", "DATABASE_URL", "REDIS_URL", "QDRANT", "FLY_", "BREVO", "GITHUB_TOKEN")
-        for key in tuple(environment):
-            if any(fragment in key.upper() for fragment in banned_fragments):
-                environment.pop(key, None)
-        environment.pop("ANTHROPIC_API_KEY", None)
+        allowed_exact = {"CLAUDE_CODE_OAUTH_TOKEN", "HOME", "LANG", "LC_ALL", "LC_CTYPE", "LOGNAME", "PATH", "TERM", "TMPDIR", "USER"}
+        environment = {key: value for key, value in os.environ.items() if key in allowed_exact}
+        environment.update(
+            {
+                key: value
+                for key, value in os.environ.items()
+                if key.startswith("CLAUDE_CODE_OAUTH_TOKEN_") and value
+            }
+        )
+        environment.setdefault("HOME", str(Path.home()))
+        environment.setdefault("LANG", "C.UTF-8")
+        environment.setdefault("PATH", "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin")
         return environment
 
     def parse_structured_envelope(self, raw: str, *, latency_ms: int) -> StructuredResult:

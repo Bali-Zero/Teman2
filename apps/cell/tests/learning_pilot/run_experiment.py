@@ -21,6 +21,7 @@ from .harness import (
     ClaudeCliAdapter,
     StructuredResult,
     _canonical_json,
+    build_case_prompt,
     build_held_out_schedule,
     compute_metrics,
     reconcile_interrupted_attempts,
@@ -555,6 +556,48 @@ class Experiment:
             return []
         return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
 
+    def _assert_trial_receipt_bound_to_ledger(
+        self,
+        receipt: dict[str, object],
+        trial_id: str,
+        phase: str,
+        prompt_hash: str,
+    ) -> None:
+        attempt_id = receipt.get("attempt_id")
+        status = receipt.get("status")
+        if not isinstance(attempt_id, str) or not attempt_id:
+            raise RuntimeError(f"resumed trial receipt ledger mismatch for {trial_id}:attempt_id")
+        if not isinstance(status, str) or not status or status == "dispatched":
+            raise RuntimeError(f"resumed trial receipt ledger mismatch for {trial_id}:status")
+        if status == "completed" and not isinstance(receipt.get("response_hash"), str):
+            raise RuntimeError(f"resumed trial receipt ledger mismatch for {trial_id}:response_hash")
+
+        events = self.ledger.events()
+        dispatches = [
+            event
+            for event in events
+            if event.get("attempt_id") == attempt_id
+            and event.get("trial_id") == trial_id
+            and event.get("phase") == phase
+            and event.get("status") == "dispatched"
+        ]
+        if len(dispatches) != 1 or dispatches[0].get("prompt_hash") != prompt_hash:
+            raise RuntimeError(f"resumed trial receipt ledger mismatch for {trial_id}:prompt_hash")
+
+        terminals = [
+            event
+            for event in events
+            if event.get("attempt_id") == attempt_id
+            and event.get("trial_id") == trial_id
+            and event.get("phase") == phase
+            and event.get("status") != "dispatched"
+        ]
+        if len(terminals) != 1:
+            raise RuntimeError(f"resumed trial receipt ledger mismatch for {trial_id}:terminal")
+        terminal = terminals[0]
+        if terminal.get("status") != status or terminal.get("response_hash") != receipt.get("response_hash"):
+            raise RuntimeError(f"resumed trial receipt ledger mismatch for {trial_id}:terminal")
+
     def _matching_trial_receipt(
         self,
         case: dict[str, object],
@@ -573,6 +616,7 @@ class Experiment:
         if not matches:
             return None
         receipt = matches[0]
+        prompt_hash = sha256_text(build_case_prompt(case, base_policy, skills))
         skill_ids = [str(skill["skill_id"]) for skill in skills]
         selected_ids = skill_ids if selected_skill_ids is None else list(selected_skill_ids)
         expected = {
@@ -591,6 +635,7 @@ class Experiment:
         for key, value in expected.items():
             if receipt.get(key) != value:
                 raise RuntimeError(f"resumed trial receipt mismatch for {trial_id}:{key}")
+        self._assert_trial_receipt_bound_to_ledger(receipt, trial_id, phase, prompt_hash)
         return receipt
 
     async def _run_or_load_trial(
