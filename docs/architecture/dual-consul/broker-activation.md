@@ -10,6 +10,10 @@ model fallback. This document describes prepared code and activation steps;
 it does not assert that the privileged helper has been installed or a live
 broker-authorized turn has completed.
 
+For window responsibilities and the offline `consul_packet prepare/assemble`
+commands, see [dual-consul windows](../../runbooks/dual-consul-windows.md).
+The preparation CLI never issues approvals or installs protected grants.
+
 The [runtime qualification](../../../evidence/dual-consul-broker/runtime/README.md)
 records strict isolated launch and complete hidden-inclusive catalogs on the
 exact Pro 0.149.0, Mini 0.148.0, and M5 0.147.0 executables. **Astra was absent on
