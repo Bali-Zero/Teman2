@@ -474,6 +474,85 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(codes.length).toBeGreaterThanOrEqual(13);
     expect(codes.filter((code) => !(code in SUPPORT_REASON_COPY))).toEqual([]);
   });
+
+  /**
+   * The tripwire above walks SUPPORT effects only, but an EXCLUDE code reaches
+   * a reader through the SAME `reasonMessage` fallback: `NO_SUPPORTED_PATH`
+   * maps `no_path_reasons` through `reason()`. So a new hard filter can print
+   * a machine code on the no-path sheet without failing anything above. seq-20
+   * adds exactly one such rule — `hf.d2.indonesia-source-compensation`,
+   * CL-D2-01's local-compensation prohibition — and its code is read OUT of
+   * the highest-sequence pack on disk rather than typed here, so a rename in
+   * the fold moves this test with it instead of leaving it quietly stale.
+   */
+  function highestSequencePack(): { rules?: Array<Record<string, unknown>> } {
+    let best: {
+      payload: { sequence: number; rules?: Array<Record<string, unknown>> };
+      sequence: number;
+    } | null = null;
+    for (const full of productionPackFiles()) {
+      const payload = JSON.parse(fs.readFileSync(full, "utf-8")) as {
+        sequence?: unknown;
+        rules?: Array<Record<string, unknown>>;
+      };
+      // A pack without a numeric `sequence` cannot be compared — skip it
+      // rather than let it win via a sentinel default.
+      if (typeof payload.sequence !== "number") continue;
+      if (best === null || payload.sequence > best.sequence) {
+        best = {
+          payload: payload as {
+            sequence: number;
+            rules?: Array<Record<string, unknown>>;
+          },
+          sequence: payload.sequence,
+        };
+      }
+    }
+    if (best === null) {
+      throw new Error(`no pack under ${PACKS_DIR} had a numeric sequence`);
+    }
+    return best.payload;
+  }
+
+  function excludeReasonCodeOfRule(ruleId: string): string {
+    for (const rule of highestSequencePack().rules ?? []) {
+      if (rule.rule_id !== ruleId) continue;
+      const effect = rule.effect as Record<string, unknown> | undefined;
+      if (
+        effect &&
+        effect.type === "EXCLUDE" &&
+        typeof effect.reason_code === "string"
+      ) {
+        return effect.reason_code;
+      }
+      throw new Error(`${ruleId} is no longer an EXCLUDE rule`);
+    }
+    throw new Error(`${ruleId} is absent from the highest-sequence pack`);
+  }
+
+  function firstNoPathReason(code: string) {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons[0].code = code;
+    const outcome = buildEngineOutcome(response);
+    if (outcome.state !== "NO_SUPPORTED_PATH")
+      throw new Error("unexpected state");
+    return outcome.noPathReasons[0].message;
+  }
+
+  it("explains the seq-20 local-compensation exclusion in prose, in every locale", () => {
+    const code = excludeReasonCodeOfRule("hf.d2.indonesia-source-compensation");
+    expect(code).toBe("BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED");
+    expect(code in SUPPORT_REASON_COPY).toBe(true);
+
+    const message = firstNoPathReason(code);
+    expect(message.en).not.toMatch(/^Verified reason: /);
+    expect(message.en).not.toContain(code);
+    expect(message.en).toMatch(/Indonesian source/i);
+    expect(message.en).toMatch(/work route/i);
+    expect(message.id).not.toContain(code);
+    expect(message.id).toMatch(/sumber di Indonesia/i);
+    expect(message.id).toMatch(/jalur kerja/i);
+  });
 });
 
 describe("review reasons cover every code the current pack can emit", () => {
@@ -594,11 +673,14 @@ describe("review reasons cover every code the current pack can emit", () => {
     "E28F_IKN_THRESHOLD_MANUAL_CHECK",
     "E33B_EXPERTISE_QUALIFICATION_CHECK",
     "E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP",
-    // E5 increment 3 seq-9 fold (2026-08-19): review.e33g.income-evidence
-    // (OD-1 pattern — the USD 60,000/year income floor is un-modelable, no
-    // work-income FactPath exists, see cure-e33g.md). QW-4b (copy-deck
-    // approval) still owns writing the actual sentence.
-    "E33G_INCOME_EVIDENCE_REVIEW",
+    // `E33G_INCOME_EVIDENCE_REVIEW` was here from the E5 increment 3 seq-9
+    // fold (2026-08-19) until the seq-20 decisiveness fold retired the rule
+    // that emitted it: `review.e33g.income-evidence`'s `when` was a
+    // byte-for-byte copy of `el.e33g.remote-work`'s, so it vetoed E33G on
+    // the product's own success condition and E33G could never be
+    // recommended (2026-09-06 investigation §2.3 L3-b). It is removed here,
+    // not merely left unmapped, because the test below fails on a gap-list
+    // entry naming a code the highest-sequence pack no longer emits.
     "E33_WORK_RANGKAP_KEGIATAN_GATED",
     "GOVT_INVITATION_REQUIRED",
     // Pack-independent (evaluate_path.py):

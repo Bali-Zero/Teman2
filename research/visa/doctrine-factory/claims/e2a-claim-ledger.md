@@ -105,7 +105,16 @@ prohibition on subordinate employment or local compensation.
 - **State: VERIFIED-WITH-CAVEAT** (see CF-3 — internal-guide-only NB-2 citation, upgraded to VERIFIED only
   via the separate QW-5 channel, never silently promoted on the internal guide's authority alone).
 - Products: D2. Provenance: `VO-NB2-004` (2026-08-15) + QW-5 record #16.
-- Backs: `el.d2-multi-entry-support` (`PURPOSE_PRODUCT_MATCH`).
+- Backs: `el.d2-multi-entry-support` (`PURPOSE_PRODUCT_MATCH`),
+  `hf.d2.indonesia-source-compensation` (`BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED`).
+- The prohibition half of this claim was UNCOMPILED until seq-20 (2026-09-06): the only rule
+  named above read `intent.purposes` and `intent.stay_days` and nothing else, so
+  BUSINESS_MEETINGS + 60d + `work.indonesia_source_compensation = true` returned
+  `SUPPORTED_CANDIDATES [D2]` with no review at all (measured on the signed seq-19 pack,
+  `research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md` §4 PR-1 edit 5).
+  Compiled as EXCLUDE rather than REQUIRE_REVIEW per the owner ruling of 2026-09-06 (§5
+  decision 2) — the ledger calls it an "absolute prohibition", and only an EXCLUDE lets the
+  blanket `business_activity` review flag be retired later without a fail-open.
 
 **CL-D2-02 — Requirement bundle.** Verified via QW-5 (`d3ad622e-...`, record #16, CURRENT, "verbatim
 confirms all 6, identical structure to D1 page").

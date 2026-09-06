@@ -527,6 +527,29 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "recomputed and checked before the transplant; exact assignment and "
         "value pinned per constant, never a credential",
     ),
+    # fold_pack_seq20.py: one chain-of-custody digest. SEQ19_PAYLOAD_SHA256 is
+    # the chain anchor — the digest of the SIGNED seq-19 payload production
+    # actually serves today, cross-checked this session against both
+    # `rulepack-prod-019.signed.json`'s own `payload_sha256` field and a
+    # recomputation over `rulepack-prod-019.source.json`. The fold recomputes
+    # sha256 over the canonical payload and aborts unless it equals this value
+    # before editing anything, then verifies the SIGNATURE on the same payload.
+    #
+    # Content-keyed and pinned to the exact assignment AND exact digest, so
+    # this production file stays closed to any other value or line, and a
+    # ride-along statement cannot match because the pattern is end-anchored.
+    (
+        re.compile(
+            r"^apps/backend-rag/backend/scripts/visa_engine/fold_pack_seq20\.py$"
+        ),
+        re.compile(
+            r'^\s*SEQ19_PAYLOAD_SHA256\s*=\s*'
+            r'"bac5da8e4727e7f639c947c50211e6f95e15c1403cf6aef0dd57a92014d6e6ea"\s*$'
+        ),
+        "fold_pack_seq20.py: seq-19 chain anchor — content-derived sha256 of "
+        "the signed seq-19 RulePack payload, recomputed and signature-verified "
+        "before folding; exact assignment and value pinned, never a credential",
+    ),
     # test_seq19_signed_bundle.py: pins the SIGNED seq-19 production bundle's
     # trust anchors — the same pinned Ed25519 PUBLIC verification key already
     # covered for gold_replay_driver.py above (private key stays off-repo,
