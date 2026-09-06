@@ -30,8 +30,12 @@ import {
   writeWalkCorpus,
 } from "../../../../../scripts/visa-oracle/generate-walk-corpus";
 
-/** The corpus size as committed. A PR that adds an interview branch moves it. */
-const EXPECTED_WALK_COUNT = 43;
+/** The corpus size as committed. A PR that adds an interview branch moves it.
+ * 43 → 61 on 2026-09-06: `second_home` (2 offshore bases + 1 onshore),
+ * `STEPCHILD` (×2 sponsor nationalities), and `diaspora` crossed like the
+ * family tile now that it serves the same question sequence (14 walks
+ * replacing one). */
+const EXPECTED_WALK_COUNT = 61;
 
 function jsonFilesIn(dir: string): string[] {
   return readdirSync(dir)

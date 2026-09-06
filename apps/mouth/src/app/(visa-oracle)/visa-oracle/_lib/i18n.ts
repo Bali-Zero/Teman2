@@ -119,6 +119,14 @@ const en = {
     "Are you asking to change status without leaving Indonesia?",
   "q.wants_onshore_conversion.hint":
     "Answer about your intended process, not whether it will be approved.",
+  // Offshore wording (adversarial review 2026-09-06, finding 9). The same
+  // question, asked of someone who is not in Indonesia yet: put in the
+  // present tense it reads as a claim about a country they have not
+  // reached. The fact sent to the engine is identical either way.
+  "q.wants_onshore_conversion.offshore":
+    "Once in Indonesia, do you plan to switch to a different permit without leaving the country?",
+  "q.wants_onshore_conversion.offshore.hint":
+    "Answer about the process you intend to follow after you arrive, not whether it will be approved.",
   "why.wants_onshore_conversion":
     "This exact yes/no process fact is sent without choosing a conversion path.",
   "q.application_channel":
@@ -166,7 +174,8 @@ const en = {
   "q.category.opt.invest": "Invest & golden",
   "q.category.opt.remote": "Remote worker",
   "q.category.opt.family": "Family & marriage",
-  "q.category.opt.retirement": "Retirement & second home",
+  "q.category.opt.retirement": "Retirement",
+  "q.category.opt.second_home": "Second Home",
   "q.category.opt.study": "Study",
   "q.category.opt.diaspora": "Diaspora & ex-WNI",
   "q.category.opt.other": "Something else",
@@ -233,16 +242,6 @@ const en = {
     "A conversation or possible employer is not a confirmed sponsor.",
   "why.work_sponsor_confirmed":
     "The engine receives only your yes or no answer about sponsor confirmation.",
-  "q.work_role": "Which description is closest to the work you will do?",
-  "q.work_role.hint":
-    "This is human context only; it does not select a product or price.",
-  "q.work_role.opt.executive": "Executive or company leadership",
-  "q.work_role.opt.manager": "Manager or supervisor",
-  "q.work_role.opt.specialist": "Professional or technical specialist",
-  "q.work_role.opt.performer": "Performer, athlete, or creative work",
-  "q.work_role.opt.other": "Another kind of work",
-  "why.work_role":
-    "There is no matching engine fact for this role label, so it stays outside the automated decision.",
 
   "q.remote_clients": "Where do your clients or employer sit?",
   "q.remote_clients.hint":
@@ -407,6 +406,13 @@ const en = {
   "q.retirement_basis.opt.undecided": "I have not chosen a basis",
   "why.retirement_basis":
     "There is no matching engine fact for this label. It only routes the next exact inputs.",
+  "q.secondhome_basis": "Which Second Home basis can you document today?",
+  "q.secondhome_basis.hint":
+    "Pick the one you can evidence now. Use Not sure rather than guessing.",
+  "q.secondhome_basis.opt.bank_deposit": "A bank deposit held in my own name",
+  "q.secondhome_basis.opt.property": "A qualifying property",
+  "why.secondhome_basis":
+    "This only decides which evidence questions follow; the engine receives the evidence itself, never this label.",
   "q.secondhome_deposit_usd": "What bank deposit can you document?",
   "q.secondhome_deposit_usd.hint":
     "Enter the exact whole-dollar amount; use Not sure rather than estimating.",
@@ -600,7 +606,6 @@ const en = {
   "tree.work_payer": "Who pays you",
   "tree.work_indonesia_compensation": "Payment source",
   "tree.work_sponsor_confirmed": "Work sponsor",
-  "tree.work_role": "Work context",
   "tree.remote_clients": "Where clients sit",
   "tree.remote_compensation": "Payment source",
   "tree.remote_employer_country": "Employer country",
@@ -622,6 +627,7 @@ const en = {
   "tree.family_stepchild_birth_certificate_confirmed": "Birth certificate",
   "tree.family_sponsor_confirmed": "Family sponsor",
   "tree.retirement_basis": "Long-stay basis",
+  "tree.secondhome_basis": "Second Home basis",
   "tree.secondhome_deposit_usd": "Bank deposit",
   "tree.secondhome_state_bank": "Bank type",
   "tree.secondhome_own_name": "Account holder",
@@ -760,6 +766,7 @@ const en = {
   "outcome.document_status.UNKNOWN": "To be confirmed",
   "outcome.needs_input_body":
     "The engine abstained because these facts are still missing:",
+  "outcome.answer_missing_input": "Answer this",
   "outcome.retryable": "You can safely try this evaluation again.",
   "outcome.not_retryable": "A person needs to check this before you continue.",
   "outcome.sources_title": "Sources used for this decision",
@@ -933,6 +940,10 @@ const id: Record<Keys, string> = {
     "Apakah Anda ingin mengubah status tanpa meninggalkan Indonesia?",
   "q.wants_onshore_conversion.hint":
     "Jawab tentang proses yang Anda inginkan, bukan apakah proses itu akan disetujui.",
+  "q.wants_onshore_conversion.offshore":
+    "Setelah berada di Indonesia, apakah Anda berencana beralih ke izin lain tanpa meninggalkan Indonesia?",
+  "q.wants_onshore_conversion.offshore.hint":
+    "Jawab tentang proses yang Anda rencanakan setelah tiba, bukan apakah proses itu akan disetujui.",
   "why.wants_onshore_conversion":
     "Fakta proses ya atau tidak ini dikirim tanpa memilih jalur konversi.",
   "q.application_channel":
@@ -983,7 +994,8 @@ const id: Record<Keys, string> = {
   "q.category.opt.invest": "Investasi & golden visa",
   "q.category.opt.remote": "Pekerja remote",
   "q.category.opt.family": "Keluarga & pernikahan",
-  "q.category.opt.retirement": "Pensiun & second home",
+  "q.category.opt.retirement": "Pensiun",
+  "q.category.opt.second_home": "Second Home",
   "q.category.opt.study": "Studi",
   "q.category.opt.diaspora": "Diaspora & eks-WNI",
   "q.category.opt.other": "Lainnya",
@@ -1052,16 +1064,6 @@ const id: Record<Keys, string> = {
     "Percakapan atau calon pemberi kerja belum berarti sponsor sudah dikonfirmasi.",
   "why.work_sponsor_confirmed":
     "Mesin hanya menerima jawaban ya atau tidak tentang konfirmasi sponsor.",
-  "q.work_role": "Deskripsi mana yang paling dekat dengan pekerjaan Anda?",
-  "q.work_role.hint":
-    "Ini hanya konteks manusia; tidak memilih produk atau harga.",
-  "q.work_role.opt.executive": "Eksekutif atau pimpinan perusahaan",
-  "q.work_role.opt.manager": "Manajer atau penyelia",
-  "q.work_role.opt.specialist": "Profesional atau spesialis teknis",
-  "q.work_role.opt.performer": "Penampil, atlet, atau pekerjaan kreatif",
-  "q.work_role.opt.other": "Jenis pekerjaan lain",
-  "why.work_role":
-    "Tidak ada fakta mesin yang cocok untuk label peran ini, sehingga tetap di luar keputusan otomatis.",
 
   "q.remote_clients": "Di mana klien atau pemberi kerja Anda berada?",
   "q.remote_clients.hint":
@@ -1227,6 +1229,14 @@ const id: Record<Keys, string> = {
   "q.retirement_basis.opt.undecided": "Saya belum memilih dasar",
   "why.retirement_basis":
     "Tidak ada fakta mesin yang cocok untuk label ini. Label hanya mengarahkan input persis berikutnya.",
+  "q.secondhome_basis":
+    "Dasar Second Home mana yang dapat Anda buktikan saat ini?",
+  "q.secondhome_basis.hint":
+    "Pilih yang buktinya sudah Anda miliki sekarang. Gunakan Tidak yakin daripada menebak.",
+  "q.secondhome_basis.opt.bank_deposit": "Deposito bank atas nama saya",
+  "q.secondhome_basis.opt.property": "Properti yang memenuhi syarat",
+  "why.secondhome_basis":
+    "Ini hanya menentukan pertanyaan bukti berikutnya; mesin menerima buktinya sendiri, bukan label ini.",
   "q.secondhome_deposit_usd": "Berapa deposito bank yang dapat Anda buktikan?",
   "q.secondhome_deposit_usd.hint":
     "Masukkan jumlah dolar bulat yang tepat; pilih Tidak yakin daripada memperkirakan.",
@@ -1414,7 +1424,6 @@ const id: Record<Keys, string> = {
   "tree.work_payer": "Siapa yang menggaji",
   "tree.work_indonesia_compensation": "Sumber pembayaran",
   "tree.work_sponsor_confirmed": "Sponsor kerja",
-  "tree.work_role": "Konteks kerja",
   "tree.remote_clients": "Lokasi klien",
   "tree.remote_compensation": "Sumber pembayaran",
   "tree.remote_employer_country": "Negara pemberi kerja",
@@ -1436,6 +1445,7 @@ const id: Record<Keys, string> = {
   "tree.family_stepchild_birth_certificate_confirmed": "Akta lahir",
   "tree.family_sponsor_confirmed": "Sponsor keluarga",
   "tree.retirement_basis": "Dasar tinggal panjang",
+  "tree.secondhome_basis": "Dasar Second Home",
   "tree.secondhome_deposit_usd": "Deposito bank",
   "tree.secondhome_state_bank": "Jenis bank",
   "tree.secondhome_own_name": "Pemilik rekening",
@@ -1573,6 +1583,7 @@ const id: Record<Keys, string> = {
   "outcome.document_status.UNKNOWN": "Perlu dikonfirmasi",
   "outcome.needs_input_body":
     "Mesin tidak mengambil keputusan karena fakta berikut masih belum tersedia:",
+  "outcome.answer_missing_input": "Jawab ini",
   "outcome.retryable": "Anda dapat mencoba evaluasi ini kembali dengan aman.",
   "outcome.not_retryable":
     "Seseorang perlu memeriksa ini sebelum Anda melanjutkan.",

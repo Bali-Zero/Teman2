@@ -19,6 +19,7 @@ import {
 import {
   QUESTIONS,
   formatIsoDateForDisplay,
+  questionPromptI18nKey,
   type OracleFacts,
 } from "../_lib/tree";
 import type { Language } from "../_lib/flow";
@@ -42,7 +43,13 @@ export interface OutcomeSheetProps {
   outcome: OutcomeViewModel;
   facts: OracleFacts;
   onSelectCategory?: (category: string) => void;
+  /** Reopen an ALREADY-ASKED question (history truncates back to it). */
   onEditMissingInput?: (questionId: string) => void;
+  /** Ask a question this interview never reached (history appends; every
+   * answer already given is kept). Distinct slot from
+   * `onEditMissingInput` on purpose — the two do opposite things to the
+   * interview and must not be wired to the same handler. */
+  onAskMissingInput?: (questionId: string) => void;
   /** Integration-owned, consent-gated handoff. No WhatsApp/CRM destination
    * is rendered unless the caller supplies this slot explicitly. */
   handoffSlot?: ReactNode;
@@ -93,7 +100,9 @@ function answerRows(language: Language, facts: OracleFacts) {
     const value = facts[id];
     return {
       id,
-      label: question ? translate(language, question.i18nKey as I18nKey) : id,
+      label: question
+        ? translate(language, questionPromptI18nKey(question, facts) as I18nKey)
+        : id,
       value: question ? formatFactDisplay(language, id, value) : value,
     };
   });
@@ -395,6 +404,7 @@ export function OutcomeSheet({
   facts,
   onSelectCategory,
   onEditMissingInput,
+  onAskMissingInput,
   handoffSlot,
 }: OutcomeSheetProps) {
   const sourceIndex = useMemo(
@@ -512,15 +522,30 @@ export function OutcomeSheet({
             {visibleMissingInputs.map((input) => (
               <li key={input.code}>
                 <span>{localized(input.message, language)}</span>
-                {input.questionId && onEditMissingInput && (
-                  <button
-                    type="button"
-                    className="oracle-confirmation__edit"
-                    onClick={() => onEditMissingInput(input.questionId!)}
-                  >
-                    {translate(language, "confirmation.edit")}
-                  </button>
-                )}
+                {/* A never-asked question is ANSWERED, not edited: the
+                    interview appends it and keeps everything already
+                    given. An already-asked one keeps the pre-existing
+                    Edit, which truncates back to it. Never both. */}
+                {input.questionId &&
+                  (input.followUp
+                    ? onAskMissingInput && (
+                        <button
+                          type="button"
+                          className="oracle-confirmation__edit"
+                          onClick={() => onAskMissingInput(input.questionId!)}
+                        >
+                          {translate(language, "outcome.answer_missing_input")}
+                        </button>
+                      )
+                    : onEditMissingInput && (
+                        <button
+                          type="button"
+                          className="oracle-confirmation__edit"
+                          onClick={() => onEditMissingInput(input.questionId!)}
+                        >
+                          {translate(language, "confirmation.edit")}
+                        </button>
+                      ))}
               </li>
             ))}
           </ul>

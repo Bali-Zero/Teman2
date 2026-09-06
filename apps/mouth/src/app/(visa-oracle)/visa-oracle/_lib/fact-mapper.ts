@@ -252,6 +252,26 @@ const SPONSOR_TYPES = [
   "GOVERNMENT",
 ] as const satisfies readonly SponsorTypeValue[];
 
+/**
+ * Every tile now has a purpose. Typed `Partial` deliberately, even though
+ * it is total over `CategoryKey`: `facts.category` is a raw browser string
+ * cast to `CategoryKey`, so the lookup below CAN miss at runtime and
+ * `mapPurposes`'s `undefined` branch must stay reachable to the compiler.
+ * `fact-mapper.test.ts` pins the totality instead of the type doing it.
+ *
+ * `second_home` emits `SECOND_HOME` ALONE and never alongside `RETIREMENT`
+ * (owner ruling 3, 2026-09-06): the pack's
+ * `hit_policy.eligibility = COVER_ALL_DECLARED_PURPOSES` drops E33 the
+ * moment a second purpose is declared, so a joined purpose would be a
+ * silent no-path. One tile, one purpose is what makes that safe here.
+ *
+ * `diaspora` maps to `FAMILY` (owner ruling 4, 2026-09-06). It previously
+ * mapped to nothing at all, so `mapPurposes` returned
+ * `UNKNOWN(NOT_APPLICABLE)` and every diaspora interview dead-ended on
+ * `intent.purposes` — a fact the interview HAD collected. The products a
+ * diaspora applicant actually reaches (E31C/E31F) are family-reunification
+ * products, and `flow.ts` now serves the family question set on this tile.
+ */
 export const CATEGORY_TO_PURPOSE: Partial<Record<CategoryKey, Purpose>> = {
   tourism: "TOURISM",
   business: "BUSINESS_MEETINGS",
@@ -260,13 +280,22 @@ export const CATEGORY_TO_PURPOSE: Partial<Record<CategoryKey, Purpose>> = {
   remote: "REMOTE_WORK",
   family: "FAMILY",
   retirement: "RETIREMENT",
+  second_home: "SECOND_HOME",
   study: "STUDY",
+  diaspora: "FAMILY",
   other: "OTHER",
-  // Diaspora is intentionally represented only by request_category.
 };
 
+/**
+ * `request_category` is an OPTIONAL query parameter whose vocabulary is
+ * owned by the backend operation, not by this file. `second_home` has no
+ * member there yet, so the tile deliberately sends NO `request_category`
+ * rather than borrowing `retirement`'s — a wrong label is worse than an
+ * absent optional one, and the decision itself is driven by
+ * `intent.purposes`, never by this parameter. Hence `Partial`.
+ */
 const CATEGORY_TO_REQUEST_CATEGORY: Readonly<
-  Record<CategoryKey, VisaOracleRequestCategory>
+  Partial<Record<CategoryKey, VisaOracleRequestCategory>>
 > = {
   tourism: "long_tourism",
   business: "business",

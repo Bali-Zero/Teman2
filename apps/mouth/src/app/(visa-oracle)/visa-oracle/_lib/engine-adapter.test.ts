@@ -341,6 +341,119 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     );
   });
 
+  // ── 2026-09-06 decisiveness wave (PR-3): the follow-up loop ──────────
+  // Before this, a NEEDS_INPUT naming a fact whose question exists in
+  // QUESTIONS but was never asked on this walk rendered an unanswerable
+  // row: `questionForFact` only ever looked inside the interview history.
+
+  it("names a modelled-but-unasked question as a FOLLOW-UP, not as an edit", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["process.wants_onshore_conversion"];
+    const outcome = buildEngineOutcome(response, {
+      facts: { in_indonesia: "no", category: "tourism" },
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0]).toMatchObject({
+      code: "process.wants_onshore_conversion",
+      questionId: "wants_onshore_conversion",
+      followUp: true,
+    });
+    // The row carries the question's own copy, never the raw fact path.
+    expect(JSON.stringify(outcome.missingInputs[0].message)).not.toContain(
+      "process.wants_onshore_conversion",
+    );
+  });
+
+  // Adversarial review 2026-09-06, finding 1 (accepted, narrowed): the
+  // follow-up may not bypass the tree's prerequisite ordering. Exactly one
+  // question collects `family.marriage_registered`, and the family branch
+  // asks it only for a SPOUSE or PARENT relation.
+  it("guilt: a prerequisite-bearing fact the answers contradict is NOT pushed", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["family.marriage_registered"];
+    const outcome = buildEngineOutcome(response, {
+      facts: {
+        in_indonesia: "no",
+        category: "family",
+        family_relation: "CHILD",
+      },
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0].questionId).toBeUndefined();
+    expect(outcome.missingInputs[0].followUp).toBeUndefined();
+  });
+
+  it("innocence: the same fact IS pushed once the relation satisfies it", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["family.marriage_registered"];
+    const outcome = buildEngineOutcome(response, {
+      facts: {
+        in_indonesia: "no",
+        category: "family",
+        family_relation: "SPOUSE",
+      },
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0]).toMatchObject({
+      questionId: "family_marriage_registered",
+      followUp: true,
+    });
+  });
+
+  it("guilt: no facts supplied means no follow-up — fail-closed", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["process.wants_onshore_conversion"];
+    const outcome = buildEngineOutcome(response, {
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0].questionId).toBeUndefined();
+  });
+
+  it("innocence: an ALREADY-ASKED question stays a plain edit, with no followUp marker", () => {
+    const outcome = buildEngineOutcome(makeVisaOracleResponse("NEEDS_INPUT"), {
+      editableQuestionIds: ["stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0].questionId).toBe("stay_days");
+    expect(outcome.missingInputs[0].followUp).toBeUndefined();
+  });
+
+  it.each([
+    "work.indonesia_source_compensation",
+    "investment.pt_pma_committed",
+    "immigration.current_status_code",
+  ] as const)(
+    "innocence: %s is collected by two questions, so it is never followed up",
+    (factPath) => {
+      // Splicing in one of two candidate branches' questions would be the
+      // adapter guessing which branch the applicant belongs to.
+      const response = makeVisaOracleResponse("NEEDS_INPUT");
+      response.decision.missing_facts = [factPath];
+      const outcome = buildEngineOutcome(response, {
+        editableQuestionIds: ["category", "stay_days"],
+      });
+      if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+      expect(outcome.missingInputs[0].questionId).toBeUndefined();
+      expect(outcome.missingInputs[0].followUp).toBeUndefined();
+      expect(outcome.missingInputs[0].message.en).toContain("Bali Zero");
+    },
+  );
+
+  it("innocence: a fact no question collects still falls back to the handoff", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["intent.requested_product_code"];
+    const outcome = buildEngineOutcome(response, {
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0].questionId).toBeUndefined();
+    expect(outcome.missingInputs[0].followUp).toBeUndefined();
+  });
+
   it.each([
     { editableQuestionIds: undefined },
     { editableQuestionIds: [] },
