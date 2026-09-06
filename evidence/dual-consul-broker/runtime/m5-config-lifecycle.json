@@ -1,0 +1,19 @@
+{
+  "observed_at": "2026-09-06T04:17:48.190100+00:00",
+  "host": "Air-M5",
+  "mode": "config_lifecycle_only",
+  "inference_calls": 0,
+  "config_hashes": [
+    [
+      "929175b4108e57004fbbfde621e6b75a7dd976cad34c8b918a17efdfebb055e1",
+      "929175b4108e57004fbbfde621e6b75a7dd976cad34c8b918a17efdfebb055e1"
+    ],
+    [
+      "929175b4108e57004fbbfde621e6b75a7dd976cad34c8b918a17efdfebb055e1",
+      "929175b4108e57004fbbfde621e6b75a7dd976cad34c8b918a17efdfebb055e1"
+    ]
+  ],
+  "same_process_differing_fields": [[], []],
+  "fresh_process_differing_fields": [],
+  "raw_config_retained": false
+}

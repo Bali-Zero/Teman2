@@ -1,8 +1,8 @@
-"""PostgreSQL fencing for the synthetic Dual Consul lifecycle slice.
+"""PostgreSQL fencing for Dual Consul's existing Lab lifecycle.
 
 Only the trusted broker calls ``bind``, after validating authority and the frozen
-review; hashes supplied by a model are not admission. ``guard`` encloses ONLY a
-same-connection synthetic receipt write. Its locks give no remote-effect atomicity
+review; hashes supplied by a model are not admission. ``guard`` encloses only
+same-connection receipt writes and Lab state changes. Its locks give no remote-effect atomicity
 and this module does not establish a separate operating-system service identity.
 """
 

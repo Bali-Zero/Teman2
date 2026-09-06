@@ -4,9 +4,11 @@ from copy import deepcopy
 import json
 from pathlib import Path
 import stat
+from unittest.mock import AsyncMock
 
 import pytest
 
+from scripts.conductor import codex_shadow_launch as launcher
 from scripts.conductor.codex_shadow_launch import prepare_auth
 
 AUTH = {
@@ -67,3 +69,62 @@ def test_existing_auth_snapshot_is_never_overwritten(tmp_path: Path) -> None:
     with pytest.raises(FileExistsError):
         prepare_auth(source, target)
     assert target.read_text() == "preserve"
+
+
+@pytest.mark.parametrize("version", tuple(launcher.QUALIFIED_BINARY_SHA256))
+def test_only_the_observed_version_and_binary_pair_is_qualified(version: str) -> None:
+    launcher.validate_runtime_binding(
+        version, launcher.QUALIFIED_BINARY_SHA256[version]
+    )
+    with pytest.raises(PermissionError, match="native_binary_unqualified"):
+        launcher.validate_runtime_binding(version, "unobserved-bytes")
+    other = next(v for v in launcher.QUALIFIED_BINARY_SHA256 if v != version)
+    with pytest.raises(PermissionError, match="native_binary_unqualified"):
+        launcher.validate_runtime_binding(
+            version, launcher.QUALIFIED_BINARY_SHA256[other]
+        )
+
+
+def test_newer_version_is_not_implicitly_qualified() -> None:
+    with pytest.raises(PermissionError, match="native_version_unqualified"):
+        launcher.validate_runtime_binding(
+            "codex-cli 0.150.0", launcher.QUALIFIED_BINARY_SHA256["codex-cli 0.149.0"]
+        )
+
+
+@pytest.mark.parametrize("npm_present", (True, False))
+def test_observed_native_npm_and_cask_layouts(
+    monkeypatch: pytest.MonkeyPatch, npm_present: bool
+) -> None:
+    import platform
+
+    monkeypatch.setattr(platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(platform, "machine", lambda: "arm64")
+    cask = Path("/opt/homebrew/Caskroom/codex/0.148.0/bin/codex")
+    npm = Path(
+        "/opt/homebrew/lib/node_modules/@openai/codex/node_modules/"
+        "@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex"
+    )
+    monkeypatch.setattr(
+        Path, "is_file", lambda path: path == cask or npm_present and path == npm
+    )
+    monkeypatch.setattr(Path, "resolve", lambda path: path)
+    monkeypatch.setattr(launcher.os, "access", lambda path, mode: True)
+    assert launcher.native_binary() == (npm if npm_present else cask)
+
+
+@pytest.mark.asyncio
+async def test_unknown_binary_is_not_executed_or_given_an_auth_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import asyncio
+
+    binary = tmp_path / "codex"
+    binary.write_bytes(b"unqualified executable")
+    monkeypatch.setattr(launcher, "native_binary", lambda: binary)
+    launched = AsyncMock()
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", launched)
+    with pytest.raises(PermissionError, match="native_binary_unqualified"):
+        async with launcher.launch_shadow(tmp_path / "missing-auth-home"):
+            pytest.fail("unknown runtime admitted")
+    launched.assert_not_called()

@@ -1,0 +1,29 @@
+All three correction parts were read completely and in order. Manifest and evidence digests are taken as stated, since Read cannot compute hashes.
+
+**Finding 1, setuid/setgid survives install: CLOSED.** The installer now copies into a fresh root-private staging directory under the releases tree, verifies content, strips `u-s,g-s`, removes ACLs and xattrs, changes ownership, removes group and other write, then runs a shell mode guard before publishing by rename. The same guard runs on an existing release and on the rollback candidate before any bundled Python executes, and the test asserts that ordering. The immutable verifier now rejects the combined `0o6022` mask. Tests cover 4755, 2755, 6755 with matching hashes, normalization before ownership, and refusal before execution. Root behaviour is modelled, not run, which is the correct scope for this stage.
+
+**Finding 2, lease shorter than consumer bounds: CLOSED.** A shared contract module fixes helper, RPC and turn deadlines and derives a 200 second budget from four post-admission helper calls, five RPC calls, the turn timeout and a margin. That arithmetic matches the consumer's actual call sequence. The helper injects the budget through the broker constructor, so the backend keeps no scripts import. Admission refuses a grant whose remaining approval or review window is below the budget before any run or object is written, so a bound lease is never silently truncated. The real `handle` path and the constructor are both tested. One conservative side effect: an idempotent re-admit late in the grant window can now be refused even though the existing lease is still valid. That is fail-closed and the client does not retry admission, so it is a note, not a defect.
+
+**Finding 3, namespace prefix: CLOSED.** The check now requires the producer and verifier names to equal the two fully qualified identities as a set, which also forces them to differ. Both unqualified variants are tested.
+
+**Finding 4, dead replay branch: CLOSED.** One `_receipt_reply` mapper serves both the in-guard lookup and `_replay`, and it also hardens the failed case against an unexpected native status. The test forces the in-guard path and asserts the original outcome is preserved for failed and interrupted receipts.
+
+**Finding 5, unknown counters dropped silently: CLOSED.** The transport projection now records scope-qualified names of unrecognised counters, never values, bounded to sixteen with a deterministic selection and an `omitted` flag for unsafe or excess names. The broker accepts only that closed shape and rejects an empty marker. Coverage runs from a real fake-server notification through `_collect` into the checkpoint, and from the projection output into a stored canonical receipt. Residual: a known counter key with a non-integer value is still dropped without a marker. That is a malformed-known-field case, not the unknown-field case the contract names, so it does not reopen the finding.
+
+**Other changes reviewed.** The docs now state the caller-UID control-channel reality, the incomplete versus known-failure semantics, and the no-renewal lease rule accurately. The new `codex_shadow_probe.py` and its tests are outside the broker gate. Its invoke and cancel modes spend real turns under a local in-process callback, not the PostgreSQL broker, which is the pre-existing manual shadow stage and is documented as such. No scheduler, fallback, tool surface or activation path was added. The bundle closure picks up the new contract module, consistent with the manifest entry count rising by one.
+
+VERDICT: PASS
+
+The corrected source is acceptable to version as a disabled, opt-in implementation and as the prepared privileged activation gate.
+
+**Exact remaining activation limits**
+
+- Live activation is not justified and is not granted by this verdict. The service UID, database role, mode-0600 config, migration 307 on the operational database, and any protected grant are all uninstalled. `--apply` and `--rollback` have never run as root. Mode normalisation is proven with mocked ownership and an unprivileged run on Pro, not a privileged install.
+- Astra is absent from all observed native catalogs. The `gpt-6-astra` name inside the test fixture is synthetic and is not catalog evidence. No fallback exists.
+- The full PostgreSQL suite was not rerun on the final manifest. Thirteen targeted tests ran with eighteen deselected. The complete twenty-four test run binds an older manifest.
+- The sudoers rule covers the whole caller UID, which also hosts the native process. Separation rests on the native sandbox, as the docs now state.
+- The lease cannot be renewed. Receipt replay after lease expiry and a terminal or expired run under a new grant both remain reconciliation cases.
+- The shadow probe's invoke and cancel modes perform inference without broker admission under the operator's OAuth. Its output must not be presented as evidence for the broker path.
+- Local process stop never certifies remote cancellation.
+
+END_CONSUL_BROKER_REVIEW_2

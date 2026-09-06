@@ -6,11 +6,13 @@ import asyncio
 import json
 import os
 from pathlib import Path
+import signal
 import sys
 
 import pytest
 
-from scripts.conductor.app_server_rpc import AppServerError, AppServerRPC
+from scripts.conductor.app_server_rpc import AppServerError, AppServerRPC, _notification
+from scripts.conductor.native_canary_contract import RPC_TIMEOUT_SECONDS
 
 
 FAKE_SERVER = r"""
@@ -77,6 +79,17 @@ for line in sys.stdin:
                     "text": "Synthetic answer" if kind == "agentMessage" else "EXCLUDED_REASONING",
                     "reasoning": "EXCLUDED_REASONING"}})
         emit({"id": rid, "result": {"ok": True}})
+    elif method == "unknownUsage":
+        counters = {"inputTokens": 4, "outputTokens": 3, "reasoningOutputTokens": 2,
+                    "cacheWriteInputTokens": 1, "totalTokens": 7,
+                    "futureTokens": "EXCLUDED_UNKNOWN_VALUE"}
+        notice("thread/tokenUsage/updated", {"threadId": "thread-1", "turnId": "turn-1",
+            "tokenUsage": {"last": counters, "total": counters,
+                           "futureRoot": {"private": "EXCLUDED_UNKNOWN_VALUE"}}})
+        notice("item/completed", {"threadId": "thread-1", "turnId": "turn-1",
+            "item": {"id": "reply", "type": "agentMessage", "phase": "final_answer", "text": "Synthetic answer"}})
+        notice("turn/completed", {"threadId": "thread-1", "turn": {"id": "turn-1", "status": "completed"}})
+        emit({"id": rid, "result": {"ok": True}})
     elif method == "eof":
         sys.exit(0)
     elif method == "oversize":
@@ -108,7 +121,7 @@ def rpc(server: Path, **kwargs: object) -> AppServerRPC:
         [sys.executable, "-u", str(server)],
         server.parent,
         env,
-        rpc_timeout=1,
+        rpc_timeout=RPC_TIMEOUT_SECONDS,
         shutdown_timeout=0.2,
         **kwargs,
     )
@@ -260,6 +273,65 @@ def test_cancel_context_stops_local_process(server: Path) -> None:
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize("denied_signal", [signal.SIGTERM, 0])
+def test_transient_signal_denial_requires_later_confirmed_group_exit(
+    server: Path, monkeypatch: pytest.MonkeyPatch, denied_signal: int
+) -> None:
+    async def scenario() -> None:
+        client = rpc(server)
+        await client.__aenter__()
+        original = os.killpg
+        denied = False
+
+        def transient(pgid: int, sig: int) -> None:
+            nonlocal denied
+            if pgid == client.pid and sig == denied_signal and not denied:
+                denied = True
+                raise PermissionError("transient group permission")
+            original(pgid, sig)
+
+        try:
+            with monkeypatch.context() as patch:
+                patch.setattr(os, "killpg", transient)
+                await client.close()
+            assert denied and client.local_stopped
+            with pytest.raises(ProcessLookupError):
+                original(client.pid, 0)
+        finally:
+            await client.close()
+
+    asyncio.run(scenario())
+
+
+def test_persistent_signal_denial_never_claims_a_stopped_group(
+    server: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def scenario() -> None:
+        client = rpc(server)
+        await client.__aenter__()
+        client._shutdown_timeout = 0.01
+        original = os.killpg
+
+        def denied(pgid: int, sig: int) -> None:
+            if pgid == client.pid:
+                raise PermissionError("group absence unproven")
+            original(pgid, sig)
+
+        try:
+            with monkeypatch.context() as patch:
+                patch.setattr(os, "killpg", denied)
+                await asyncio.wait_for(client.close(), 1)
+            # Closing stdin lets the actual child exit, but a leader receipt
+            # alone cannot prove all its descendants or the group are gone.
+            assert client._process.returncode is not None
+            assert not client.local_stopped
+        finally:
+            await client.close()
+        assert client.local_stopped
+
+    asyncio.run(scenario())
+
+
 @pytest.mark.parametrize("event", ["item/started", "item/completed"])
 @pytest.mark.parametrize("kind", ["commandExecution", "collabAgentToolCall"])
 def test_shadow_rejects_tool_or_delegation_activity_without_retaining_output(
@@ -298,3 +370,81 @@ def test_shadow_allows_innocuous_item_types_and_retains_only_agent_text(
                 await client.next_notification(timeout=0.01)
 
     asyncio.run(scenario())
+
+
+def test_unknown_native_counters_survive_real_notifications_into_checkpoint(
+    server: Path,
+) -> None:
+    from scripts.conductor.adapter_contracts import DiscoveryKey
+    from scripts.conductor.codex_shadow import CodexShadow, NativeBinding
+
+    async def scenario() -> None:
+        async def authorize(binding: NativeBinding, phase: str) -> None:
+            raise AssertionError(
+                "this fixture only collects an existing synthetic turn"
+            )
+
+        async with rpc(server) as client:
+            adapter = CodexShadow(
+                client,
+                cwd=server.parent,
+                runtime_version="fake/1",
+                host="synthetic",
+                authorize=authorize,
+                auth_fingerprint=lambda: "synthetic",
+            )
+            binding = NativeBinding(
+                "mission",
+                "a" * 64,
+                DiscoveryKey("fake/1", "b" * 64, "synthetic", "c" * 64),
+                "synthetic-model",
+                "medium",
+                "thread-1",
+            )
+            adapter._active_turn = "turn-1"
+            await client.call("unknownUsage", {})
+            checkpoint = (await adapter._collect(binding, 1)).checkpoint()
+            usage = checkpoint["native_usage"]
+            assert usage["total"]["totalTokens"] == 7
+            assert usage["total"]["reasoningOutputTokens"] == 2
+            assert usage["last"]["cacheWriteInputTokens"] == 1
+            assert usage["unknownCounters"] == {
+                "names": ["last.futureTokens", "root.futureRoot", "total.futureTokens"],
+                "omitted": False,
+            }
+            assert "EXCLUDED_UNKNOWN_VALUE" not in json.dumps(checkpoint)
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("safe_count", [0, 24])
+def test_unknown_counter_names_are_bounded_and_unsafe_names_are_not_retained(
+    safe_count: int,
+) -> None:
+    unsafe = [
+        "redacted@example.invalid",
+        "/private/EXCLUDED",
+        "EXCLUDED\nLINE",
+        "x" * 65,
+    ]
+    counters = {name: "EXCLUDED_VALUE" for name in unsafe}
+    counters.update(
+        {f"future{i:02}": {"private": "EXCLUDED_VALUE"} for i in range(safe_count)}
+    )
+    counters["inputTokens"] = 9
+    event = _notification(
+        "thread/tokenUsage/updated",
+        {
+            "threadId": "thread-1",
+            "turnId": "turn-1",
+            "tokenUsage": {"last": counters, "total": {}},
+        },
+    )
+    selected = event["params"]["tokenUsage"]
+    assert selected["last"] == {"inputTokens": 9}
+    assert selected["unknownCounters"] == {
+        "names": [f"last.future{i:02}" for i in range(min(safe_count, 16))],
+        "omitted": True,
+    }
+    assert "EXCLUDED" not in json.dumps(selected)
+    assert "@example" not in json.dumps(selected)

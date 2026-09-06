@@ -1,0 +1,10 @@
+{
+  "current_worktree_drift": [],
+  "dependency_lock_matches": true,
+  "input_archive_sha256": "58a1155fb7f1cfbd4c1ee4d05351a057670095f26093e7cbfddce2c489255158",
+  "input_files": 74,
+  "observed_at": "2026-09-06T04:33:24.860120+00:00",
+  "package_files": 10,
+  "runtime_source_files": 65,
+  "scope": "Unprivileged disposable Pro build and offline checks; not service installation, database authorization, or native invocation qualification."
+}

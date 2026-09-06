@@ -11,9 +11,12 @@ import asyncio
 import json
 import os
 from pathlib import Path
+import re
 import signal
 from types import TracebackType
 from typing import Any, Mapping, Sequence
+
+from scripts.conductor.native_canary_contract import RPC_TIMEOUT_SECONDS
 
 
 class AppServerError(RuntimeError):
@@ -22,6 +25,59 @@ class AppServerError(RuntimeError):
     def __init__(self, code: str) -> None:
         self.code = code
         super().__init__(f"app_server:{code}")
+
+
+_COUNTER_FIELDS = frozenset(
+    {
+        "inputTokens",
+        "cachedInputTokens",
+        "cacheWriteInputTokens",
+        "outputTokens",
+        "reasoningOutputTokens",
+        "totalTokens",
+    }
+)
+_COUNTER_NAME = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,63}", re.ASCII)
+
+
+def _usage(raw: object) -> dict[str, Any]:
+    """Keep native counters and bounded names of unrecognized fields, not values."""
+    if not isinstance(raw, dict):
+        raise AppServerError("protocol_error")
+    selected: dict[str, Any] = {}
+    names: set[str] = set()
+    omitted = False
+
+    def unknown(scope: str, fields: dict[str, Any], known: frozenset[str]) -> None:
+        nonlocal omitted
+        for name in fields:
+            if name in known:
+                continue
+            if not isinstance(name, str) or not _COUNTER_NAME.fullmatch(name):
+                omitted = True
+                continue
+            names.add(f"{scope}.{name}")
+            if len(names) > 16:
+                # Keep a deterministic bounded selection even for large frames.
+                names.remove(max(names))
+                omitted = True
+
+    unknown("root", raw, frozenset({"last", "total", "modelContextWindow"}))
+    for group in ("last", "total"):
+        counters = raw.get(group)
+        if not isinstance(counters, dict):
+            raise AppServerError("protocol_error")
+        selected[group] = {
+            key: counters[key]
+            for key in sorted(_COUNTER_FIELDS)
+            if type(counters.get(key)) is int and counters[key] >= 0
+        }
+        unknown(group, counters, _COUNTER_FIELDS)
+    if type(raw.get("modelContextWindow")) is int and raw["modelContextWindow"] >= 0:
+        selected["modelContextWindow"] = raw["modelContextWindow"]
+    if names or omitted:
+        selected["unknownCounters"] = {"names": sorted(names), "omitted": omitted}
+    return selected
 
 
 def _notification(method: str, params: object) -> dict[str, Any] | None:
@@ -75,33 +131,7 @@ def _notification(method: str, params: object) -> dict[str, Any] | None:
                 if item.get("phase") in {"commentary", "final_answer"}:
                     selected["item"]["phase"] = item["phase"]
             else:
-                usage = params.get("tokenUsage")
-                if not isinstance(usage, dict):
-                    raise AppServerError("protocol_error")
-                selected["tokenUsage"] = {}
-                for group in ("last", "total"):
-                    counters = usage.get(group)
-                    if not isinstance(counters, dict):
-                        raise AppServerError("protocol_error")
-                    selected["tokenUsage"][group] = {
-                        key: counters[key]
-                        for key in (
-                            "inputTokens",
-                            "cachedInputTokens",
-                            "cacheWriteInputTokens",
-                            "outputTokens",
-                            "reasoningOutputTokens",
-                            "totalTokens",
-                        )
-                        if type(counters.get(key)) is int and counters[key] >= 0
-                    }
-                if (
-                    type(usage.get("modelContextWindow")) is int
-                    and usage["modelContextWindow"] >= 0
-                ):
-                    selected["tokenUsage"]["modelContextWindow"] = usage[
-                        "modelContextWindow"
-                    ]
+                selected["tokenUsage"] = _usage(params.get("tokenUsage"))
     return {"method": method, "params": selected}
 
 
@@ -114,7 +144,7 @@ class AppServerRPC:
         cwd: Path,
         env: Mapping[str, str],
         *,
-        rpc_timeout: float = 10,
+        rpc_timeout: float = RPC_TIMEOUT_SECONDS,
         frame_limit: int = 1 << 20,
         queue_limit: int = 64,
         shutdown_timeout: float = 1,
@@ -400,6 +430,18 @@ class AppServerRPC:
             return True
         except ProcessLookupError:
             return False
+        except PermissionError:
+            # Darwin can report EPERM while a group is exiting. It can also
+            # mean a surviving member is not signalable: absence is unproven.
+            return True
+
+    async def _wait_for_group_exit(self) -> bool:
+        deadline = asyncio.get_running_loop().time() + self._shutdown_timeout
+        while self._group_alive():
+            if asyncio.get_running_loop().time() >= deadline:
+                return False
+            await asyncio.sleep(0.02)
+        return True
 
     async def close(self) -> None:
         """Stop this local process group; remote operation status remains unknown."""
@@ -419,17 +461,17 @@ class AppServerRPC:
                     os.killpg(self._process.pid, sig)
                 except ProcessLookupError:
                     break
-                deadline = asyncio.get_running_loop().time() + self._shutdown_timeout
-                while (
-                    self._group_alive() and asyncio.get_running_loop().time() < deadline
-                ):
-                    await asyncio.sleep(0.02)
-                if not self._group_alive():
+                except PermissionError:
+                    # Keep the bounded group check; denied signaling never
+                    # establishes local shutdown, even after the leader exits.
+                    pass
+                if await self._wait_for_group_exit():
                     break
             try:
                 await asyncio.wait_for(self._process.wait(), self._shutdown_timeout)
             except TimeoutError:
                 return
             self.local_stopped = (
-                self._process.returncode is not None and not self._group_alive()
+                self._process.returncode is not None
+                and await self._wait_for_group_exit()
             )

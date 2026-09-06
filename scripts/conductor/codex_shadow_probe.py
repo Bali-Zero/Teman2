@@ -38,6 +38,7 @@ SOURCE_MODULES = (
     "codex_shadow.py",
     "codex_shadow_launch.py",
     "codex_shadow_probe.py",
+    "native_canary_contract.py",
 )
 
 

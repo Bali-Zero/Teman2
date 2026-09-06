@@ -211,7 +211,9 @@ class LabRunRecord:
 
     def to_receipt(self) -> dict[str, Any]:
         """Return a read-only, receipt-safe run view for operator APIs."""
-        assert_receipt_persistable({"run_id": self.run_id, "receipt": self.receipt, "blocked": False})
+        assert_receipt_persistable(
+            {"run_id": self.run_id, "receipt": self.receipt, "blocked": False}
+        )
         return {
             "run_id": self.run_id,
             "idempotency_key": self.idempotency_key,
@@ -764,6 +766,97 @@ class AutonomousLabStateStore:
         if row is None:
             return None
         return _run_record(row)
+
+    async def claim_run(
+        self, conn: AsyncConnection, *, run_id: str, worker_id: str
+    ) -> LabRunRecord | None:
+        """Claim exactly one authorized run; never consume another queue item."""
+        _validate_run_id(run_id)
+        role = self._assert_run_worker_allowed()
+        query = CLAIM_NEXT_RUN_SQL.replace(
+            "WHERE status = 'pending'", "WHERE run_id = $3 AND status = 'pending'", 1
+        )
+        row = await conn.fetchrow(query, worker_id, role.value, run_id)
+        return _run_record(row) if row is not None else None
+
+    async def cancel_fenced_run(
+        self,
+        conn: AsyncConnection,
+        *,
+        run_id: str,
+        worker_id: str,
+        generation: int,
+    ) -> bool:
+        """Cancel only the current Consul owner/generation, including a running run.
+
+        The broker holds the parent and lease locks while recording revocation;
+        the state transition and its outbox event are one database statement.
+        """
+        self._assert_run_worker_allowed()
+        _validate_run_id(run_id)
+        row = await conn.fetchrow(
+            """WITH updated AS (
+                UPDATE autonomous_lab_runs AS run
+                SET status = 'cancelled', completed_at = clock_timestamp(),
+                    updated_at = clock_timestamp()
+                FROM autonomous_lab_consul_leases AS lease
+                WHERE run.run_id = $1 AND run.worker_id = $2
+                    AND run.status IN ('pending', 'running', 'paused')
+                    AND lease.run_id = run.run_id AND lease.owner_id = $2
+                    AND lease.generation = $3 AND lease.revoked_at IS NOT NULL
+                RETURNING run.run_id
+            ), event_insert AS (
+                INSERT INTO autonomous_lab_events_outbox (run_id, event_type, payload)
+                SELECT run_id, 'run_cancelled', jsonb_build_object(
+                    'run_id', run_id, 'lease_generation', $3::bigint)
+                FROM updated RETURNING event_id
+            ) SELECT run_id FROM updated""",
+            run_id,
+            worker_id,
+            generation,
+        )
+        return row is not None
+
+    async def checkpoint_fenced_run(
+        self,
+        conn: AsyncConnection,
+        *,
+        run_id: str,
+        worker_id: str,
+        generation: int,
+        succeeded: bool,
+        receipt_hash: str,
+    ) -> bool:
+        """Finish a native stage with live expiry checks in the effect statement."""
+        self._assert_run_worker_allowed()
+        _validate_run_id(run_id)
+        row = await conn.fetchrow(
+            """WITH updated AS (
+                UPDATE autonomous_lab_runs AS run
+                SET status = $4, completed_at = CASE WHEN $4='succeeded' THEN clock_timestamp() ELSE NULL END,
+                    updated_at = clock_timestamp(),
+                    metadata = metadata || jsonb_build_object('checkpoint_fingerprint', $5::text)
+                FROM autonomous_lab_consul_leases AS lease
+                WHERE run.run_id=$1 AND run.worker_id=$2 AND run.status='running'
+                    AND lease.run_id=run.run_id AND lease.owner_id=$2 AND lease.generation=$3
+                    AND lease.revoked_at IS NULL
+                    AND clock_timestamp() < lease.lease_expires_at
+                    AND clock_timestamp() < lease.grant_expires_at
+                RETURNING run.run_id
+            ), event_insert AS (
+                INSERT INTO autonomous_lab_events_outbox (run_id, event_type, payload)
+                SELECT run_id, $6, jsonb_build_object(
+                    'run_id', run_id, 'lease_generation', $3::bigint, 'checkpoint_fingerprint', $5::text)
+                FROM updated RETURNING event_id
+            ) SELECT run_id FROM updated""",
+            run_id,
+            worker_id,
+            generation,
+            "succeeded" if succeeded else "paused",
+            receipt_hash,
+            "run_succeeded" if succeeded else "run_paused",
+        )
+        return row is not None
 
     async def heartbeat_run(
         self,
