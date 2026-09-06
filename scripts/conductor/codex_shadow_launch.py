@@ -146,6 +146,7 @@ async def launch_shadow(
             str(binary),
             "--version",
             env=env,
+            stdin=asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL,
         )

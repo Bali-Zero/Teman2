@@ -89,7 +89,13 @@ class FakeRPC:
                 for method, payload in [
                     (
                         "item/completed",
-                        {"item": {"type": "agentMessage", "text": "SYNTHETIC_OK"}},
+                        {
+                            "item": {
+                                "type": "agentMessage",
+                                "text": "SYNTHETIC_OK",
+                                "phase": "final_answer",
+                            }
+                        },
                     ),
                     (
                         "thread/tokenUsage/updated",
@@ -165,11 +171,81 @@ def test_native_continuity_reauthorizes_and_reuses_catalog_only() -> None:
         checkpoint = second.checkpoint()
         assert checkpoint["native_usage"]["total"]["outputTokens"] == 5
         assert checkpoint["inference_model"] is None
+        assert checkpoint["identity_evidence"] == "request_observed"
+        assert checkpoint["model_evidence_source"] == "native_thread_configuration"
         assert "SYNTHETIC_OK" not in str(checkpoint)
         start = next(p for m, p in rpc.calls if m == "thread/start")
         assert (
             start["environments"] == [] and start["allowProviderModelFallback"] is False
         )
+
+    run(scenario())
+
+
+@pytest.mark.parametrize(
+    "phases", [("commentary",), (None,), ("commentary", "final_answer")]
+)
+def test_only_final_phase_counts_as_complete_answer(
+    phases: tuple[str | None, ...],
+) -> None:
+    class PhasedRPC(FakeRPC):
+        async def call(self, method: str, params: dict, **kwargs: object) -> dict:
+            result = await super().call(method, params, **kwargs)
+            if method == "turn/start":
+                while not self.events.empty():
+                    self.events.get_nowait()
+                for phase in phases:
+                    self.events.put_nowait(
+                        {
+                            "method": "item/completed",
+                            "params": {
+                                "threadId": "thread-1",
+                                "turnId": "turn-1",
+                                "item": {
+                                    "type": "agentMessage",
+                                    "text": str(phase),
+                                    "phase": phase,
+                                },
+                            },
+                        }
+                    )
+                self.events.put_nowait(
+                    {
+                        "method": "turn/completed",
+                        "params": {
+                            "threadId": "thread-1",
+                            "turn": {"id": "turn-1", "status": "completed"},
+                        },
+                    }
+                )
+            return result
+
+    async def scenario() -> None:
+        result = await make(PhasedRPC(), []).invoke(
+            TASK, "synthetic", model=MODEL, effort="medium"
+        )
+        assert result.status == (
+            "completed" if "final_answer" in phases else "incomplete"
+        )
+        assert result.text == ("final_answer" if "final_answer" in phases else "")
+
+    run(scenario())
+
+
+@pytest.mark.parametrize("network", [True, None, 0, ""])
+def test_only_false_network_flag_admits_read_only_turn(network: object) -> None:
+    class NetworkRPC(FakeRPC):
+        async def call(self, method: str, params: dict, **kwargs: object) -> dict:
+            result = await super().call(method, params, **kwargs)
+            if method == "thread/start":
+                result["sandbox"]["networkAccess"] = network
+            return result
+
+    async def scenario() -> None:
+        rpc = NetworkRPC()
+        with pytest.raises(PermissionError, match="native_effective_binding_mismatch"):
+            await make(rpc, []).invoke(TASK, "synthetic", model=MODEL, effort="medium")
+        assert not any(m == "turn/start" for m, _ in rpc.calls)
 
     run(scenario())
 

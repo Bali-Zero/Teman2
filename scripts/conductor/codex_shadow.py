@@ -72,7 +72,8 @@ class NativeResult:
             "requested_model": self.binding.model,
             "runtime_model": self.binding.model,
             "inference_model": None,
-            "identity_evidence": "runtime_configuration",
+            "identity_evidence": "request_observed",
+            "model_evidence_source": "native_thread_configuration",
             "effort": self.binding.effort,
             "runtime_version": self.binding.discovery_key.runtime_version,
             "config_hash": self.binding.discovery_key.config_hash,
@@ -245,7 +246,8 @@ class CodexShadow:
                 or started.get("approvalPolicy") != "never"
                 or started.get("reasoningEffort") != effort
                 or sandbox.get("type") != "readOnly"
-                or sandbox.get("networkAccess", False)
+                # The pinned native schema defaults an omitted flag to false.
+                or sandbox.get("networkAccess", False) is not False
             ):
                 raise PermissionError("native_effective_binding_mismatch")
             binding = replace(binding, thread_id=started["thread"]["id"])
@@ -303,6 +305,7 @@ class CodexShadow:
                 if (
                     event["method"] == "item/completed"
                     and p.get("item", {}).get("type") == "agentMessage"
+                    and p["item"].get("phase") == "final_answer"
                 ):
                     text.append(p["item"].get("text", ""))
                     if sum(len(x.encode()) for x in text) > 65536:
