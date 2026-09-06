@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { destinations, getDestination } from "../../content/destinations";
+import {
+  destinations,
+  getDestination,
+  getReleasableDestination,
+} from "../../content/destinations";
+import { destinationEvidence20260906 } from "../../content/evidence/destinations-2026-09-06";
 import { buildEmailIntent, buildWhatsAppIntent, toSafeExternalHref } from ".";
 
 describe("destination contract", () => {
@@ -25,6 +30,22 @@ describe("destination contract", () => {
       label: "Visa Oracle",
       href: "https://visa.balizero.com/",
     });
+  });
+
+  it("fails closed for a blocked release destination", () => {
+    expect(getReleasableDestination("telegram")).toBeNull();
+    expect(getReleasableDestination("whatsapp")).toMatchObject({
+      releaseStatus: "approved",
+    });
+  });
+
+  it("keeps every dated evidence URL on an allowed protocol", () => {
+    for (const evidence of destinationEvidence20260906) {
+      expect(() => toSafeExternalHref(evidence.requestedHref)).not.toThrow();
+      if (evidence.finalHref) {
+        expect(() => toSafeExternalHref(evidence.finalHref)).not.toThrow();
+      }
+    }
   });
 });
 
