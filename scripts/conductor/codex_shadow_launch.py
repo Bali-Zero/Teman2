@@ -23,6 +23,7 @@ QUALIFIED_BINARY_SHA256 = {
     "codex-cli 0.147.0": "19c4f144c5226a9f17c58e6f0fa854843b0f77a6eb420f40e2745a12f10f5d37",
     "codex-cli 0.148.0": "b0308517b20543012fa2171aa3d46ce455a7456c4eb2a552ab9468ba4eeb1e50",
     "codex-cli 0.149.0": "f4a74117b8142cda581c95ff753abf4508b5636d89682c1ed77e4a9249af8963",
+    "codex-cli 0.153.4": "b973d440acac501fd2594a43e7ca9ce41e0a65b9dfb28d0d7a7837c99e1261e3",
 }
 DISABLED_FEATURES = (
     "apps",
@@ -89,7 +90,9 @@ def native_binary() -> Path:
     )
     # Mini's observed 0.148.0 install is a native Homebrew Cask, not npm.
     cask = prefix / "Caskroom/codex/0.148.0/bin/codex"
-    for candidate in (binary, cask):
+    # A side-by-side qualified runtime leaves interactive fleet installs intact.
+    pinned = Path.home() / ".local/share/nuzantara/codex/0.153.4/bin/codex"
+    for candidate in (pinned, binary, cask):
         if candidate.is_file() and os.access(candidate, os.X_OK):
             return candidate.resolve()
     raise RuntimeError("native_binary_unavailable")

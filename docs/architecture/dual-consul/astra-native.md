@@ -32,3 +32,12 @@ On cancellation, revoke the mission grant/ownership in PostgreSQL, interrupt the
 The initial synthetic slice exercises common lifecycle and ownership rules. Operational App Server launch, environment isolation, broker approval handling, delegation observability, native resume, process-group cancellation, and host eligibility require their own versioned evidence. The prior plan reports M5 discovery and narrow sandbox observations; this document does not upgrade them into a fresh runtime attestation.
 
 Focused qualification covers layered `env.set` leakage, identity/config changes, unsupported effort, stale-owner effect refusal despite hook bypass, changed-artifact review invalidation, revoked resume, and local interruption with a late remote response. Share common executor proofs and use protocol fixtures before bounded real smoke tests. Fleet activation is a later stage in the common contract.
+
+### Current runtime qualification
+
+The [0.153.4 qualification](../../../evidence/dual-consul-astra/README.md) observes
+Astra in the strict native catalogs on Pro, Mini, and Air-M5, plus two completed
+synthetic M5 turns and discovery through the real canary consumer. The launcher
+selects a side-by-side, hash-pinned runtime. These observations supersede the
+older catalog-absence finding, while inference identity and privileged broker
+activation retain their separate evidence requirements.

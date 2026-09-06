@@ -93,8 +93,9 @@ def test_newer_version_is_not_implicitly_qualified() -> None:
 
 
 @pytest.mark.parametrize("npm_present", (True, False))
+@pytest.mark.parametrize("pinned_present", (True, False))
 def test_observed_native_npm_and_cask_layouts(
-    monkeypatch: pytest.MonkeyPatch, npm_present: bool
+    monkeypatch: pytest.MonkeyPatch, npm_present: bool, pinned_present: bool
 ) -> None:
     import platform
 
@@ -105,12 +106,23 @@ def test_observed_native_npm_and_cask_layouts(
         "/opt/homebrew/lib/node_modules/@openai/codex/node_modules/"
         "@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex"
     )
+    pinned = Path.home() / ".local/share/nuzantara/codex/0.153.4/bin/codex"
     monkeypatch.setattr(
-        Path, "is_file", lambda path: path == cask or npm_present and path == npm
+        Path,
+        "is_file",
+        lambda path: (
+            path == cask
+            or npm_present
+            and path == npm
+            or pinned_present
+            and path == pinned
+        ),
     )
     monkeypatch.setattr(Path, "resolve", lambda path: path)
     monkeypatch.setattr(launcher.os, "access", lambda path, mode: True)
-    assert launcher.native_binary() == (npm if npm_present else cask)
+    assert launcher.native_binary() == (
+        pinned if pinned_present else npm if npm_present else cask
+    )
 
 
 @pytest.mark.asyncio

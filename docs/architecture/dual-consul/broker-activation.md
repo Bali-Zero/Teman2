@@ -13,7 +13,10 @@ broker-authorized turn has completed.
 The [runtime qualification](../../../evidence/dual-consul-broker/runtime/README.md)
 records strict isolated launch and complete hidden-inclusive catalogs on the
 exact Pro 0.149.0, Mini 0.148.0, and M5 0.147.0 executables. **Astra was absent on
-all three hosts.** Those probes made zero inference calls. The earlier
+all three hosts.** Those probes made zero inference calls. The later
+[0.153.4 qualification](../../../evidence/dual-consul-astra/README.md) observes
+Astra on all three hosts and two completed synthetic M5 turns; the launcher
+prefers that side-by-side, hash-pinned runtime where installed. The earlier
 [native shadow experiment](native-shadow.md) records two Terra turns on M5 under
 an independent synthetic callback; it is not evidence of an Astra response or
 of this new PostgreSQL broker path. Selecting another model would require an
@@ -132,7 +135,9 @@ under a new grant, and receipt replay after lease expiry needs reconciliation.
 The new runtime receipts establish only the shadow row. Unit or isolated database
 tests and source review do not by themselves establish installed service
 identity, a live model turn, or fleet activation. Astra's observed absence prevents
-an Astra canary until fresh catalog evidence and admission permit it.
+an Astra canary on those older bindings. The 0.153.4 receipts resolve catalog
+availability; an actual broker canary still requires installed authority and
+fresh admission.
 
 The consumer attempts grant revocation on an invocation/checkpoint exception and
 always attempts native local cancellation. Broker transport timeouts preserve
