@@ -1,7 +1,7 @@
 task_id: visa-seq20-sign
 gear: 3
 gate_class: opus
-brief_ref: evidence/2026-09/agent-air-m5-backend-rag-visa-seq20-sign-5717d691/brief.yml
+brief_ref: evidence/brief.yml
 date: 2026-09-06
 machine: M5
 lanes:
@@ -68,8 +68,14 @@ outcome: >-
   guard was re-pinned, never weakened: the 21 surviving dead ends keep an honest reason
   naming the blocking fact and its source question, and the two guilt tests whose
   seq-19 subjects this pack CURED were re-anchored onto walks that still dead-end, so
-  neither passes vacuously. Nothing was activated; promoting this bundle into the
-  active sequence remains a separate Zero-only ceremony.
+  neither passes vacuously. CORRECTED BY THE GRADING SESSION: the sentence that stood
+  here said "nothing was activated", which was true when the builder seat wrote it and
+  is FALSE now. The activation ceremony ran BEFORE this PR, on the owner's explicit
+  instruction, inverting the wave spec's order — seq-20 is the ACTIVE production pack
+  (activation_id e08ebea9-d50f-48a6-989e-b7e4698f96ad). The auditability window that
+  inversion opens is closed by measurement: the blob committed here was read back out
+  of git and verified with verify_rule_pack against the pinned production trust store,
+  and it carries the same payload_sha256 and rule_pack_id the live engine reports.
 diff:
   files: 7
   net_lines: >-
@@ -78,10 +84,14 @@ diff:
     test_seq20_signed_bundle.py (new), 112/89 test_interview_walk_census.py (re-pin),
     38/0 scripts/detect_secrets_auto_triage.py (one content-keyed rule + its rationale),
     3/2 scripts/tests/test_detect_secrets_auto_triage.py (count bump + audit-trail line),
-    84/0 scripts/ci/observe_visa_seq20_signed.py (new, bites-observable), plus this
-    evidence pack — +9941/-91 in total. The generated signed artifact is 93 percent of
-    that by itself; strip it and the authored review surface is six hundred and
-    forty-eight added lines against ninety-one removed, all of it test and tooling.
+    84/0 scripts/ci/observe_visa_seq20_signed.py (new, bites-observable), plus the
+    LIVE STATE record in .agents/skills/visaoracle/SKILL.md and this evidence pack. No
+    total is narrated here on purpose: the grading session added commits after the
+    builder measured, so any literal written into this file is stale the moment the
+    file itself changes. The shape is what matters and it is stable — the generated
+    signed artifact is the overwhelming majority of the diff by itself; strip it and
+    the authored review surface is a few hundred added lines against ninety-one
+    removed, all of it test, record and tooling.
   measured_at: >-
     `git diff --numstat $(git merge-base HEAD origin/main)` for the tracked files plus
     `wc -l` for the untracked new files, merge-base dc7189f4af09857a6d7fbe26e33f3f553921c216
