@@ -660,6 +660,50 @@ def evaluate_product(
     support_safety = _safety_unknowns(support_results)
     support_review_unknowns, support_input_unknowns = _partition_unknowns_by_policy(support_safety)
 
+    # P0-A fix (gate round 1 item 1, see module docstring): the previous
+    # check asked "does ANY unknown SUPPORT rule's covered_purposes
+    # intersect ANY missing purpose" — wrong whenever one missing purpose is
+    # permanently uncoverable by anything in this product while ANOTHER is
+    # potentially coverable via an unknown rule. `naive_potential_coverage`
+    # below (the optimistic union, ignoring joint consistency) still answers
+    # exactly that question: any purpose it can't reach is permanently
+    # uncoverable by ANYTHING in this product, full stop, regardless of how
+    # any fact resolves — reported verbatim as `missing_purposes` here,
+    # unchanged from round 1.
+    #
+    # Decisiveness reorder (2026-09-06, research/visa/
+    # 2026-09-06-visa-oracle-decisiveness-investigation.md §4 PR-2): this
+    # test runs BEFORE the `hard_input_unknowns or review_input_unknowns`
+    # block below, not after it. A product whose SUPPORT rules can never
+    # cover the applicant's declared purposes must not get to name the fact
+    # the applicant is asked for — `evaluate`'s
+    # `min(blocked, key=len(missing_facts))` tie-break otherwise lets a
+    # product with ZERO SUPPORT rules (E33A/B/C, E23U/V, E28B/C/D/F under
+    # seq-19) choose the global `NEEDS_INPUT` question for everybody else.
+    # This is a REORDER, not a new computation: `covered`, `support_safety`
+    # and `purposes` are all already resolved above. It cannot fail open —
+    # the only status it can return is UNSUPPORTED, so the reachable
+    # behaviour change is `NEEDS_INPUT` → the honest `NO_SUPPORTED_PATH`,
+    # never `NEEDS_INPUT` → `SUPPORTED`, and every EXCLUDED/REVIEW return
+    # above still runs first. Pinned by
+    # `test_evaluator_purpose_feasibility_precedence.py`.
+    naive_potential_coverage: frozenset[str] = covered | (
+        frozenset[str]().union(
+            *(frozenset(rule.effect.covered_purposes) for rule, _ in support_safety)  # type: ignore[union-attr]
+        )
+        if support_safety
+        else frozenset()
+    )
+    if not (purposes <= naive_potential_coverage):
+        return finish(
+            ProductProof(
+                product=product,
+                status=ProductProofStatus.UNSUPPORTED,
+                missing_purposes=purposes - naive_potential_coverage,
+            ),
+            applied_rule_ids=frozenset(rule.rule_id for rule, _ in true_support),
+        )
+
     if hard_input_unknowns or review_input_unknowns:
         missing = _underlying_applicant_facts(
             hard_input_unknowns + review_input_unknowns, fact_registry
@@ -687,33 +731,6 @@ def evaluate_product(
         )
 
     missing_purposes = purposes - covered
-
-    # P0-A fix (gate round 1 item 1, see module docstring): the previous
-    # check asked "does ANY unknown SUPPORT rule's covered_purposes
-    # intersect ANY missing purpose" — wrong whenever one missing purpose is
-    # permanently uncoverable by anything in this product while ANOTHER is
-    # potentially coverable via an unknown rule. `naive_potential_coverage`
-    # below (the optimistic union, ignoring joint consistency) still answers
-    # exactly that question: any purpose it can't reach is permanently
-    # uncoverable by ANYTHING in this product, full stop, regardless of how
-    # any fact resolves — reported verbatim as `missing_purposes` here,
-    # unchanged from round 1.
-    naive_potential_coverage: frozenset[str] = covered | (
-        frozenset[str]().union(
-            *(frozenset(rule.effect.covered_purposes) for rule, _ in support_safety)  # type: ignore[union-attr]
-        )
-        if support_safety
-        else frozenset()
-    )
-    if not (purposes <= naive_potential_coverage):
-        return finish(
-            ProductProof(
-                product=product,
-                status=ProductProofStatus.UNSUPPORTED,
-                missing_purposes=purposes - naive_potential_coverage,
-            ),
-            applied_rule_ids=frozenset(rule.rule_id for rule, _ in true_support),
-        )
 
     # Gate round 2 (2026-07-20) P0-R2: the optimistic union above says every
     # purpose is INDIVIDUALLY reachable by some unknown rule — but it never
