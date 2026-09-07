@@ -173,6 +173,11 @@ describe("question registry -> wire coverage", () => {
     }
   });
 
+  // Re-stated 2026-09-06 (spec §4 PR-4 + owner ruling decision 6): the flag is
+  // raised for an ANSWER the signed vocabulary cannot decide, never for the
+  // fact that a question was answered. The pairs that must NOT flag are pinned
+  // directly below — guilt and innocence of the same table.
+
   // 2026-09-06, owner ruling 6. `work_role` sat fifth in the fixed `work`
   // sequence, so it was ALWAYS answered, so this presence-triggered flag
   // was ALWAYS attached — and any disclosed flag is terminal backend-side
@@ -198,11 +203,18 @@ describe("question registry -> wire coverage", () => {
   });
 
   it("innocence: the other presence-triggered clauses are untouched by that deletion", () => {
-    // PR-4 of the decisiveness wave owns these, and only AFTER the seq-20
-    // fold compiles the D2 local-compensation prohibition — removing the
-    // `business_activity` clause before that is a measured fail-open.
+    // `business_activity` USED to be pinned here, with the condition that PR-4
+    // owns its removal "only AFTER the seq-20 fold compiles the D2
+    // local-compensation prohibition — removing it before that is a measured
+    // fail-open". That condition is now MET: rule-pack seq-20 was signed
+    // (payload_sha256 df02287b…) and activated in production on 2026-09-06,
+    // and it carries the EXCLUDE `hf.d2.indonesia-source-compensation`. The
+    // prohibition the flag was standing in for is therefore enforced by the
+    // signed vocabulary itself, so the pair moves to the must-NOT-flag table
+    // below rather than being deleted — the assertion changed sides, it did
+    // not disappear. Measured live the same day: `offshore/business` returns
+    // NO_SUPPORTED_PATH with `BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED`.
     for (const [id, value] of [
-      ["business_activity", "meetings"],
       ["other_purpose", "medical"],
       ["diaspora_connection", "former_wni"],
     ] as const) {
@@ -214,9 +226,8 @@ describe("question registry -> wire coverage", () => {
 
   it.each([
     ["trip_scope", "multiple", "MULTI_PURPOSE_TRIP"],
-    ["business_activity", "meetings", "ACTIVITY_BOUNDARY"],
-    ["tourism_duration", "short", "ACTIVITY_BOUNDARY"],
-    ["remote_income", "above", "ACTIVITY_BOUNDARY"],
+    ["business_activity", "training", "ACTIVITY_BOUNDARY"],
+    ["business_activity", "other", "ACTIVITY_BOUNDARY"],
     ["investment_vehicle", "property", "ACTIVITY_BOUNDARY"],
     ["retirement_basis", "property", "ACTIVITY_BOUNDARY"],
     ["family_sponsor_status_code", "FOO", "AMBIGUOUS_SPONSOR"],
@@ -226,9 +237,26 @@ describe("question registry -> wire coverage", () => {
     ["other_purpose", "medical", "ACTIVITY_BOUNDARY"],
     ["other_paid_activity", "yes", "ACTIVITY_BOUNDARY"],
   ])(
-    "maps HUMAN_CONTEXT %s to a conservative review flag",
+    "maps an undecidable HUMAN_CONTEXT answer (%s=%s) to a conservative review flag",
     (id, value, flag) => {
       expect(mapFacts({ [id]: value }).disclosed_review_flags).toContain(flag);
+    },
+  );
+
+  it.each([
+    ["business_activity", "meetings"],
+    ["business_activity", "negotiation"],
+    ["business_activity", "conference"],
+    ["investment_vehicle", "pt_pma"],
+    ["retirement_basis", "bank_deposit"],
+    ["retirement_basis", "passive_income"],
+    // Engine-inert: no rule reads a work role (owner ruling, decision 6).
+    // All five options are swept in `activity-boundary.test.ts`.
+    ["work_role", "specialist"],
+  ])(
+    "leaves a decidable answer (%s=%s) unflagged — it must not veto a proven candidate",
+    (id, value) => {
+      expect(mapFacts({ [id]: value }).disclosed_review_flags).toEqual([]);
     },
   );
 });
@@ -816,15 +844,17 @@ describe("family sponsor status — unverified human context", () => {
   });
 });
 
-describe("remote_income — no FactPath exists, never invented", () => {
-  it("does not invent a FactPath and instead adds a monotone review hold", () => {
+describe("remote_income — a dead question id, never invented", () => {
+  it("does not invent a FactPath, and no longer holds on a question tree.ts does not have", () => {
+    // One of the 2 dead legacy nodes (pinned absent by `tree.test.ts`), so its
+    // ACTIVITY_BOUNDARY clause was unreachable code, not a live guard.
     const base: OracleFacts = { category: "remote", remote_clients: "foreign" };
     const withIncome: OracleFacts = { ...base, remote_income: "above" };
     const before = mapFacts(base);
     const after = mapFacts(withIncome);
     expect(after.facts).toEqual(before.facts);
     expect(before.disclosed_review_flags).toEqual([]);
-    expect(after.disclosed_review_flags).toEqual(["ACTIVITY_BOUNDARY"]);
+    expect(after.disclosed_review_flags).toEqual([]);
   });
 
   it("is never one of the 40 emitted keys", () => {
