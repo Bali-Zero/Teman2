@@ -123,6 +123,40 @@ pii_scan_note:
   same synthetic fact sets and no request body is reproduced here. The receipts quote decision states,
   product codes and reason codes only.
 dissent:
+  - seat: spalla-review subagent (claude-sonnet-5, adversarial, dispatched on the finished merge)
+    objection:
+      "Decisions 1 and 2 hold (both re-proved live against production, independently). Decision
+      3 does not, fully: the `diaspora` walk row certifies with a green test a fail-closed whose only written
+      justification was falsified by the very merge this PR performs. The row was named 'CATEGORY_TO_PURPOSE
+      emits no purpose for it', but PR 5855 added diaspora -> FAMILY to CATEGORY_TO_PURPOSE, and the spec's
+      rationale for keeping the clause (research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md:668-673)
+      was explicitly 'diaspora unmapped', i.e. the path was unreachable so the flag was harmless. It is
+      reachable now. The same re-verification that was correctly performed for business_activity was not
+      performed here."
+    status: CONFIRMED
+    resolution:
+      "Verified independently by the session before acting: CATEGORY_TO_PURPOSE carries diaspora
+      -> FAMILY at fact-mapper.ts:285, the flag fires on mere presence of diaspora_connection/diaspora_documents,
+      and ALL 15 diaspora walks in the corpus return SUPPORTED_CANDIDATES from production with real candidates
+      (C1 plus E31A/E31C/E31F/E31G by relation). So the hold deletes proven candidates for 100% of diaspora
+      traffic. SPLIT RESOLUTION. Fixed here: the false rationale — the row now states what it actually asserts
+      and that the measurement contradicts the old reason, instead of shipping a green test that certifies
+      a dead justification. NOT fixed here, and deliberately: whether to stop holding diaspora is a business
+      and legal call, because a former-WNI claim is the one branch that can surface Indonesian dual nationality,
+      which the owner listed as a legitimate human-review case. Raised to the owner with the measured numbers
+      rather than decided by this seat."
+  - seat: spalla-review subagent (claude-sonnet-5, adversarial)
+    objection:
+      "The safety of decision 1 has no automated regression: offshore_business.json carries only
+      label/asked/overrides and no expected outcome, so BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED is proved
+      only by the manual live probe quoted in the commit. If the pack were re-pinned to an earlier sequence,
+      nothing would say so."
+    status: CONFIRMED
+    resolution:
+      Accepted and NOT fixed in this PR — adding an expected-outcome assertion to the gold corpus
+      is PR-5's concern (gold personas and gold_coverage_replay), and doing it here would break one-PR-one-concern
+      on a PR that is already over its size floor. Recorded as an open gap with its owner named, not as
+      a resolved item.
   - seat: session (declared conflict of interest, owner-authorised)
     objection:
       "Generator is never grader, in either direction - yet this session both AUTHORED the merge

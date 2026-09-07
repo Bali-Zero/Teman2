@@ -169,7 +169,27 @@ const WALKS: readonly WalkCase[] = [
     flags: ["ACTIVITY_BOUNDARY"],
   },
   {
-    name: "diaspora — HELD: CATEGORY_TO_PURPOSE emits no purpose for it",
+    // NAME CORRECTED 2026-09-08. This row used to read "HELD:
+    // CATEGORY_TO_PURPOSE emits no purpose for it", and that rationale is now
+    // FALSE: #5855 — merged into this very branch — added `diaspora: "FAMILY"`
+    // to CATEGORY_TO_PURPOSE (fact-mapper.ts), and the spec's own
+    // justification for keeping this clause ("diaspora unmapped", i.e. the
+    // path was unreachable so the flag was harmless) died with it.
+    //
+    // MEASURED against production 2026-09-07, `disclosed_review_flags=[]`: all
+    // 15 diaspora walks of the corpus return SUPPORTED_CANDIDATES with real
+    // candidates (C1 + E31A/E31C/E31F/E31G by relation). So the hold this row
+    // asserts now DELETES proven candidates for 100% of diaspora traffic —
+    // the exact pathology this file's own docstring names.
+    //
+    // The clause is kept anyway, and NOT because nobody looked: a former-WNI
+    // claim is the one branch that can surface an Indonesian dual-nationality
+    // question, which the owner listed as a legitimate human-review case.
+    // Whether that justifies holding EVERY diaspora answer is a business and
+    // legal call, not this seat's, and it is raised to the owner rather than
+    // decided here. What is fixed here is the lie: the row now says what it
+    // actually asserts and why.
+    name: "diaspora — HELD by the blanket category clause, NOT by a missing purpose",
     category: "diaspora",
     tripScope: "single",
     branch: [
