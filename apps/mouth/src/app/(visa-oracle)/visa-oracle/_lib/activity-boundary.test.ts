@@ -169,27 +169,25 @@ const WALKS: readonly WalkCase[] = [
     flags: ["ACTIVITY_BOUNDARY"],
   },
   {
-    // NAME CORRECTED 2026-09-08. This row used to read "HELD:
-    // CATEGORY_TO_PURPOSE emits no purpose for it", and that rationale is now
-    // FALSE: #5855 — merged into this very branch — added `diaspora: "FAMILY"`
-    // to CATEGORY_TO_PURPOSE (fact-mapper.ts), and the spec's own
-    // justification for keeping this clause ("diaspora unmapped", i.e. the
-    // path was unreachable so the flag was harmless) died with it.
+    // NAME CORRECTED 2026-09-08, RELEASED SAME DAY. This row used to read
+    // "HELD: CATEGORY_TO_PURPOSE emits no purpose for it", and that rationale
+    // died when #5855 — merged into this very branch — added
+    // `diaspora: "FAMILY"` to CATEGORY_TO_PURPOSE (fact-mapper.ts): the path
+    // was no longer unreachable, so the flag was no longer harmless.
     //
     // MEASURED against production 2026-09-07, `disclosed_review_flags=[]`: all
     // 15 diaspora walks of the corpus return SUPPORTED_CANDIDATES with real
-    // candidates (C1 + E31A/E31C/E31F/E31G by relation). So the hold this row
-    // asserts now DELETES proven candidates for 100% of diaspora traffic —
-    // the exact pathology this file's own docstring names.
+    // candidates (C1 + E31A/E31C/E31F/E31G by relation). Holding on the mere
+    // presence of `diaspora_connection`/`diaspora_documents` was deleting
+    // proven candidates for 100% of diaspora traffic — the exact pathology
+    // this file's own docstring names. The owner ruled: automatic. This walk
+    // (`former_wni`) is now FREED — the pack decides it on its own.
     //
-    // The clause is kept anyway, and NOT because nobody looked: a former-WNI
-    // claim is the one branch that can surface an Indonesian dual-nationality
-    // question, which the owner listed as a legitimate human-review case.
-    // Whether that justifies holding EVERY diaspora answer is a business and
-    // legal call, not this seat's, and it is raised to the owner rather than
-    // decided here. What is fixed here is the lie: the row now says what it
-    // actually asserts and why.
-    name: "diaspora — HELD by the blanket category clause, NOT by a missing purpose",
+    // `dual` (Indonesian dual citizenship) stays HELD, deliberately: it is the
+    // one diaspora status the owner named as a legitimate human-review case,
+    // and no corpus walk exercises it — see the second row below, which
+    // certifies the exception on the same live branch.
+    name: "diaspora · former_wni — FREED: the pack decides it on its own",
     category: "diaspora",
     tripScope: "single",
     branch: [
@@ -198,6 +196,23 @@ const WALKS: readonly WalkCase[] = [
       // #5855 turned the single dead-end diaspora walk into a full family
       // branch — the sponsor is now interviewed properly instead of the
       // interview stopping. Re-anchored to that live sequence.
+      ["sponsor_category", "FAMILY"],
+      ["family_relation", "SPOUSE"],
+      ["marital_status", "MARRIED"],
+      ["family_sponsor_nationalities", "ID"],
+      ["family_marriage_registered", "yes"],
+      ["family_sponsor_confirmed", "yes"],
+      ["stay_days", "365"],
+    ],
+    flags: [],
+  },
+  {
+    name: "diaspora · dual — HELD: Indonesian dual citizenship, no corpus walk exercises it",
+    category: "diaspora",
+    tripScope: "single",
+    branch: [
+      ["diaspora_connection", "dual"],
+      ["diaspora_documents", "yes"],
       ["sponsor_category", "FAMILY"],
       ["family_relation", "SPOUSE"],
       ["marital_status", "MARRIED"],
@@ -325,10 +340,12 @@ describe("ACTIVITY_BOUNDARY — the decision table itself", () => {
     expect(mapDisclosedReviewFlags({ remote_income: "above" })).toEqual([]);
   });
 
-  it("still holds the whole diaspora category, answers or not", () => {
-    expect(mapDisclosedReviewFlags({ category: "diaspora" })).toEqual([
-      "ACTIVITY_BOUNDARY",
-    ]);
+  it("no longer holds on the bare category — released 2026-09-08, per-answer table governs now", () => {
+    // The blanket `facts.category === "diaspora"` clause is gone: a diaspora
+    // walk with no `diaspora_connection`/`diaspora_documents` answer yet
+    // raises nothing, exactly like every other category — the table above,
+    // not the category label, decides.
+    expect(mapDisclosedReviewFlags({ category: "diaspora" })).toEqual([]);
     expect(mapDisclosedReviewFlags({ category: "business" })).toEqual([]);
   });
 });
