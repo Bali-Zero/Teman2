@@ -11,9 +11,17 @@
  * on the tree and not on the answers.
  *
  * The enumerated scenarios are the two-arm spine (offshore / onshore) crossed
- * with the ten `CATEGORY_KEYS`, plus the sub-branches that exist today
- * (`invest` × 6 vehicles, `retirement` × 5 bases, `family` × 6 relations × 2
+ * with the eleven `CATEGORY_KEYS`, plus the sub-branches that exist today
+ * (`invest` × 6 vehicles, `retirement` × 5 bases, `second_home` × 2 bases,
+ * and — because `getCategoryQuestionIds` now serves `familyQuestionIds`
+ * VERBATIM on both tiles — `family` AND `diaspora`, each × 7 relations × 2
  * sponsor nationalities), plus the three `holds_stay_permit = yes` walks.
+ *
+ * Diaspora is crossed rather than sampled once because its wire facts are
+ * NOT a copy of the family arm's: `mapDisclosureFlags` adds
+ * `ACTIVITY_BOUNDARY` on `category === "diaspora"` alone, so the two tiles
+ * can reach different outcomes from the same relation. A tile that shares a
+ * branch still needs its own walks.
  *
  * Regenerate with:
  *
@@ -144,12 +152,21 @@ export function enumerateScenarios(): Scenario[] {
     "family_sponsor",
     "undecided",
   ] as const;
+  // `second_home` offers exactly the two bases E33 has support rules for
+  // (`el.e33.deposit-basis`, `el.e33.property-basis`) — see the
+  // `secondhome_basis` question in tree.ts.
+  const SECOND_HOME_BASES = ["bank_deposit", "property"] as const;
   const FAMILY_RELATIONS = [
     "SPOUSE",
     "CHILD",
     "PARENT",
     "SIBLING",
     "DEPENDENT",
+    // STEPCHILD's option row landed in tree.ts on 2026-09-06; the branch in
+    // `getCategoryQuestionIds` (its two evidence questions) had shipped in
+    // 2026-08 already, so until now this relation was enumerable here only
+    // in theory — the interview could never reach it.
+    "STEPCHILD",
     "OTHER",
   ] as const;
   const SPONSOR_NATIONALITIES = ["IT", "ID"] as const;
@@ -174,7 +191,14 @@ export function enumerateScenarios(): Scenario[] {
           overrides: { ...base, retirement_basis: basis },
         });
       }
-    } else if (category === "family") {
+    } else if (category === "second_home") {
+      for (const basis of SECOND_HOME_BASES) {
+        scenarios.push({
+          label: `offshore/${category}/${basis}`,
+          overrides: { ...base, secondhome_basis: basis },
+        });
+      }
+    } else if (category === "family" || category === "diaspora") {
       for (const relation of FAMILY_RELATIONS) {
         for (const nationality of SPONSOR_NATIONALITIES) {
           scenarios.push({

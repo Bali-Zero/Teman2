@@ -13,6 +13,8 @@
     "secondhome_deposit_usd",
     "secondhome_state_bank",
     "secondhome_own_name",
+    "family_sponsor_confirmed",
+    "wants_onshore_conversion",
     "stay_days",
     "review_gate"
   ],
@@ -105,7 +107,7 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "family.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
+    "family.sponsor_confirmed": { "status": "KNOWN", "value": true },
     "study.level": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
@@ -128,10 +130,7 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "process.wants_onshore_conversion": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
-    },
+    "process.wants_onshore_conversion": { "status": "KNOWN", "value": true },
     "commercial.service_fee_budget_idr": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"

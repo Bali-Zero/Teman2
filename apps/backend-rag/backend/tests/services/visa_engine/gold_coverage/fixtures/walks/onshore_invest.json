@@ -18,6 +18,7 @@
     "investment_capital_idr",
     "investment_paid_up_capital_idr",
     "investment_role",
+    "family_sponsor_confirmed",
     "stay_days",
     "review_gate"
   ],
@@ -107,7 +108,7 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "family.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
+    "family.sponsor_confirmed": { "status": "KNOWN", "value": true },
     "study.level": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.admission_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "study.sponsor_confirmed": { "status": "UNKNOWN", "reason": "NOT_ASKED" },

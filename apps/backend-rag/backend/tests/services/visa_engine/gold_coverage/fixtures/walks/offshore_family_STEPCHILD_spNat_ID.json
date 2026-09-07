@@ -1,5 +1,5 @@
 {
-  "label": "offshore/invest/property",
+  "label": "offshore/family/STEPCHILD/spNat=ID",
   "asked": [
     "in_indonesia",
     "holds_stay_permit",
@@ -9,17 +9,19 @@
     "category",
     "trip_scope",
     "sponsor_category",
-    "investment_vehicle",
-    "secondhome_property_value_usd",
+    "family_relation",
+    "marital_status",
+    "family_sponsor_nationalities",
+    "family_stepchild_marriage_certificate_confirmed",
+    "family_stepchild_birth_certificate_confirmed",
     "family_sponsor_confirmed",
-    "wants_onshore_conversion",
     "stay_days",
     "review_gate"
   ],
   "overrides": {
     "person.birth_date": { "status": "KNOWN", "value": "2000-11-11" },
     "person.nationalities": { "status": "KNOWN", "value": ["IT"] },
-    "person.marital_status": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
+    "person.marital_status": { "status": "KNOWN", "value": "SINGLE" },
     "immigration.currently_in_indonesia": { "status": "KNOWN", "value": false },
     "immigration.current_status_code": {
       "status": "KNOWN",
@@ -36,7 +38,7 @@
     "immigration.overstay_days": { "status": "KNOWN", "value": 0 },
     "immigration.violation_history": { "status": "KNOWN", "value": [] },
     "immigration.renewal_paid": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "intent.purposes": { "status": "KNOWN", "value": ["INVESTMENT"] },
+    "intent.purposes": { "status": "KNOWN", "value": ["FAMILY"] },
     "intent.stay_days": { "status": "KNOWN", "value": 121 },
     "intent.desired_entry_date": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "intent.entry_pattern": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
@@ -77,14 +79,8 @@
       "reason": "NOT_ASKED"
     },
     "investment.proposed_role": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
-    "family.relation_to_sponsor": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
-    },
-    "family.sponsor_nationalities": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
-    },
+    "family.relation_to_sponsor": { "status": "KNOWN", "value": "STEPCHILD" },
+    "family.sponsor_nationalities": { "status": "KNOWN", "value": ["ID"] },
     "family.sponsor_status_code": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
@@ -94,12 +90,12 @@
       "reason": "NOT_ASKED"
     },
     "family.stepchild_marriage_certificate_confirmed": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": true
     },
     "family.stepchild_birth_certificate_confirmed": {
-      "status": "UNKNOWN",
-      "reason": "NOT_ASKED"
+      "status": "KNOWN",
+      "value": true
     },
     "family.sponsor_permit_basis": {
       "status": "UNKNOWN",
@@ -123,8 +119,8 @@
       "reason": "NOT_ASKED"
     },
     "secondhome.qualifying_property_value_usd": {
-      "status": "KNOWN",
-      "value": 1000000000
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
     },
     "secondhome.passive_monthly_income_usd": {
       "status": "UNKNOWN",
@@ -134,7 +130,10 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
-    "process.wants_onshore_conversion": { "status": "KNOWN", "value": true },
+    "process.wants_onshore_conversion": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "commercial.service_fee_budget_idr": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
