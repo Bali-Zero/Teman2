@@ -9,8 +9,11 @@ against the highest signed PRODUCTION pack, and pin the outcome census.
 
 Measured 2026-09-07 on ``rulepack-prod-020.signed.json``, with PR-3's
 interview on top: **0 NEEDS_INPUT / 10 NO_SUPPORTED_PATH / 51
-SUPPORTED_CANDIDATES**. No walk asks the applicant for a fact the interview
-has no question for any more
+SUPPORTED_CANDIDATES — at ENGINE level, with no disclosure flags supplied.**
+That qualifier is load-bearing and is spelled out under "WHAT THIS CENSUS
+DOES NOT SEE" below; 51 is not the number of applicants who see a
+recommendation without human review. No walk asks the applicant for a fact
+the interview has no question for any more
 (research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md §1-§2).
 
 Three hops got here, and this file has been re-derived at each one — never
@@ -79,24 +82,44 @@ WHAT THIS CENSUS DOES NOT SEE — read the numbers with these two bounds, both
 raised by independent review on 2026-09-06 (codex) and both PRE-EXISTING, not
 introduced by this PR:
 
-1. **Disclosure flags are not carried.** A fixture stores a walk's ``facts``
-   only, so every walk is evaluated with ``disclosed_review_flags = ()`` —
-   while the live funnel sends whatever ``mapDisclosureFlags`` computed
-   (``ACTIVITY_BOUNDARY`` on the whole diaspora tile, for one). Those flags
-   can only LOWER a result to HUMAN_REVIEW_REQUIRED, so "0 NEEDS_INPUT" and
-   the candidate lists are sound as stated: the missing fact a dead end
-   reports does not depend on them. What is NOT sound is reading 51
-   SUPPORTED_CANDIDATES as the number of applicants who see a recommendation
-   without a human step. MEASURED 2026-09-07 by replaying this same corpus
-   through ``apply_public_policy_adapters`` with ``ACTIVITY_BOUNDARY``
-   supplied on the diaspora tile ALONE: 10/15/36 — all fifteen diaspora
-   walks move SUPPORTED_CANDIDATES → HUMAN_REVIEW_REQUIRED, none becomes
-   NEEDS_INPUT, no NO_SUPPORTED_PATH walk moves. The real flag set is wider
-   than that one tile. The review-flag arm of the public adapter is simply
-   not exercised here, and
-   ``census.get("HUMAN_REVIEW_REQUIRED", 0) == 0`` below asserts a property
-   of the corpus, not of production. Carrying the flags is a corpus-schema
-   change that would re-pin this whole table; it belongs to its own PR.
+1. **Disclosure flags are not carried, so this file proves LESS than it
+   looks like it proves.** A fixture stores a walk's ``facts`` only, so every
+   walk is evaluated with ``disclosed_review_flags = ()`` — while the live
+   funnel sends whatever ``mapDisclosureFlags`` computed (``ACTIVITY_BOUNDARY``
+   on the whole diaspora tile, for one). Read every number above with this
+   attached:
+
+   - **51 SUPPORTED_CANDIDATES means 51 walks reach candidates AT ENGINE
+     LEVEL, with no disclosure flags supplied.** It does NOT mean 51
+     applicants see a recommendation without human review.
+   - **``census.get("HUMAN_REVIEW_REQUIRED", 0) == 0`` below is a property of
+     these fixtures, not of production.** The review-flag arm of
+     ``apply_public_policy_adapters`` is not exercised by any walk here.
+   - **A regression that ADDS a disclosure flag — or fails to REMOVE one —
+     passes this census invisibly.** That is not hypothetical: it is exactly
+     what ``work_role`` did, and it is why the E23 claim in this PR rests on
+     a separate replay rather than on this table.
+
+   What IS sound as stated: "0 NEEDS_INPUT", the allowlist invariant and the
+   candidate lists. A review flag can only LOWER a result to
+   HUMAN_REVIEW_REQUIRED; it cannot create a missing fact.
+
+   MEASURED by this seat, 2026-09-07, replaying this same corpus through
+   ``evaluator.evaluate`` + ``apply_public_policy_adapters`` with
+   ``ACTIVITY_BOUNDARY`` supplied on the diaspora tile ALONE: **10/15/36** —
+   fifteen diaspora walks move SUPPORTED_CANDIDATES → HUMAN_REVIEW_REQUIRED,
+   NEEDS_INPUT stays 0 either way, and no NO_SUPPORTED_PATH walk moves. The
+   real flag set is wider than that one tile: the independent reviewer
+   (codex, 2026-09-06) reports 21/35/5 for the FULL flag set — that figure is
+   theirs and was NOT independently reproduced here, and note it moves
+   NO_SUPPORTED_PATH walks too, so 10 is not flag-invariant in general
+   either.
+
+   Carrying the flags is a corpus-SCHEMA change: the fixtures gain a field,
+   every one of them changes bytes, and the census can no longer share
+   ``_evaluate`` with ``gold_coverage_eval`` unchanged — which is the
+   coverage-floor gate. It belongs to its own PR, and until it lands this
+   bound stands.
 2. **The enumeration is a chosen sample, not a cover.** Every question is
    answered with its FIRST option and no walk ever answers ``unsure``, and
    the onshore arm is ONE neutral walk per category — its sub-branches
@@ -490,6 +513,11 @@ def test_walk_state_census_is_0_dead_ends_10_no_paths_and_51_answers(
     # a state nobody reached: the dead end is gone from the census, not merely
     # rare. The invariant test below says the same thing from the other side.
     assert "NEEDS_INPUT" not in census
+    # NOT a claim about production. The corpus carries no disclosure flags, so
+    # the review arm of `apply_public_policy_adapters` is unreachable from
+    # here by construction: this line says the FIXTURES trigger no review, and
+    # a regression that adds a disclosure flag passes it invisibly. Bound 1 of
+    # the module docstring, with the measurement.
     assert census.get("HUMAN_REVIEW_REQUIRED", 0) == 0
     # The 10 NO_SUPPORTED_PATH walks are PR-2's, unmoved: this PR only ever
     # supplies facts the interview was already refusing to ask for, and no
