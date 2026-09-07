@@ -1,0 +1,186 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "PR 5851 (agent/air-m5/mouth/oracle-activity-boundary-narrowing) - PR-4 of the Visa Oracle decisiveness
+  wave. Spec: research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md section 4 PR-4 and section
+  6 R3. Wave order: 5862 -> PR-1 5854 -> sign+ceremony -> 5867 -> PR-2 5853 -> PR-3 5855 -> PR-4."
+lanes:
+  - lane: oracle-activity-boundary-narrowing
+    role: build
+    seat:
+      "claude-opus-5 - authored the original narrowing before PR 5855 landed AND resolved the merge
+      with it. Declared as ONE build lane because it is one seat: splitting it into two would misread as
+      breadth that does not exist."
+  - lane: oracle-provelive
+    role: review
+    seat:
+      frontend-browser subagent (claude-sonnet-5) - independent production measurement of the walk corpus;
+      it REFUSED the browser prove-live it could not perform rather than fabricating 12 outcomes, and it
+      corrected the session on the no_path_reasons field name (see dissent[1])
+  - lane: oracle-activity-boundary-refute
+    role: review
+    seat:
+      spalla-review subagent (claude-sonnet-5) - dispatched adversarially on the finished merge and
+      told to demolish the three judgement calls, precisely because the session that made them is also the
+      gate
+seat_diversity: not_applicable
+seat_diversity_note:
+  "All lanes are Anthropic seats. Declared rather than left to read as satisfied: every
+  load-bearing claim here is settled by a test exit code or by a POST against the live production engine,
+  not by an opinion. The one genuine judgement - whether secondhome_basis=property is decidable - was
+  deliberately converted into a measurement against production rather than argued (receipt 2)."
+diff:
+  net_lines:
+    "Deliberately NOT narrated as a count. The pack is itself part of the diff and origin/main
+    moves underneath it, so any number written here is stale the moment it is written - the countable-claims
+    rule rejected three successive attempts, each correctly. Authoritative count: git diff --numstat $(git
+    merge-base origin/main HEAD)..HEAD. Shape instead: activity-boundary.test.ts is new, fact-mapper.ts
+    carries the narrowed decision table, fact-mapper.test.ts its guilt and innocence pairs, i18n.ts a
+    few lines, plus this brief and pack. Zero backend, zero workflow, zero signed pack."
+  behaviour_change:
+    The ACTIVITY_BOUNDARY disclosed-review flag stops being raised for business_activity=meetings,
+    for work_role (already gone from the flow) and for two question ids that exist nowhere in tree.ts.
+    Because a disclosed flag is terminal backend-side - evaluate_path.py::_apply_disclosed_review_flags
+    rewrites the decision to HUMAN_REVIEW_REQUIRED with candidates=() - each removed clause stops DELETING
+    a product the signed pack had already proven. No fact value changes; only whether a hold is attached.
+receipts:
+  - claim:
+      Deterministic gear floor recomputed from THIS PR's post-merge changed-file list is 2, not the
+      1 the PR body claimed pre-merge - the declared gear was raised to match rather than trimming comments
+      to fit under the threshold
+    cmd:
+      git diff --numstat origin/main...HEAD > /tmp/pr4.numstat && git diff --name-only origin/main...HEAD
+      > /tmp/pr4.files && python3 scripts/evidence_pack_lint.py --print-floor --numstat-file /tmp/pr4.numstat
+      --changed-files-file /tmp/pr4.files
+    result: 2 (churn 443, over SIZE_GEAR2_THRESHOLD=400; SIZE_GEAR3_THRESHOLD=1828 is far away)
+    exit: 0
+    ts: 2026-09-08T00:20Z
+    seat: session (M5)
+  - claim:
+      THE CENTRAL RECEIPT - secondhome_basis is filed EXEMPT because production PROVES holding it would
+      delete a candidate, not because the session judged it engine-inert
+    cmd:
+      POST https://nuzantara-rag.fly.dev/api/visa-oracle/evaluate?traffic_source=real with the offshore_second_home_property
+      walk's 45-fact overrides taken verbatim from origin/main
+    result:
+      state=SUPPORTED_CANDIDATES, candidates=[E33], no_path_reasons=[]. Classifying property as undecidable
+      would rewrite this to HUMAN_REVIEW_REQUIRED with zero candidates - the exact failure PR-4 exists to
+      stop. offshore/second_home/bank_deposit and onshore/second_home also return [E33].
+    exit: 0
+    ts: 2026-09-07T14:05Z
+    seat: session (M5, live production endpoint)
+  - claim:
+      The business_activity precondition main itself wrote (removal allowed only AFTER the seq-20 fold
+      compiles the D2 local-compensation prohibition) is SATISFIED - the prohibition is enforced by the
+      signed pack now, so the flag is redundant rather than load-bearing
+    cmd: same endpoint, the offshore_business and onshore_business walks from origin/main
+    result:
+      Both return NO_SUPPORTED_PATH carrying BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED. Rule-pack seq-20
+      (payload_sha256 df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d) was signed and activated
+      in production on 2026-09-06 and carries EXCLUDE hf.d2.indonesia-source-compensation.
+    exit: 0
+    ts: 2026-09-07T14:05Z
+    seat: session (M5, live production endpoint)
+  - claim:
+      The six re-anchored walk-census rows were MOVED to the live question sequence, not weakened -
+      each row still drives the REAL flowReducer, which is what made them fail in the first place
+    cmd:
+      drove flowReducer from initialFlowState(en) through each category with a temporary probe test,
+      dumped the exact question order, then edited each branch to match; probe deleted before commit
+    result:
+      "work: work_role gone. remote: work_payer inserted after remote_compensation. invest: family_sponsor_confirmed
+      plus wants_onshore_conversion inserted. other: family_sponsor_confirmed inserted. diaspora: the single
+      dead-end walk became sponsor_category -> family_relation -> marital_status -> family_sponsor_nationalities
+      -> family_marriage_registered -> family_sponsor_confirmed. No row's expected flags field was changed."
+    exit: 0
+    ts: 2026-09-08T00:14Z
+    seat: session (M5)
+  - claim: The full visa-oracle suite is green after the merge, including the file that would not load
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle/"
+    result:
+      39 test files passed, 676 tests passed, 0 failed. Before the re-anchoring the same command gave
+      7 failures (6 walk-census rows plus the secondhome_basis classification guard).
+    exit: 0
+    ts: 2026-09-08T00:19Z
+    seat: session (M5)
+  - claim:
+      The walk-corpus-determinism.test.ts load failure was environmental, not caused by this merge
+      - a missing local dependency, not a code defect
+    cmd:
+      checked both worktrees for node_modules/prettier, then git show origin/main:package.json for the
+      declaration, then npm install prettier@^3.9.6 --no-save
+    result:
+      Absent from BOTH this worktree and PR 5855's own, though 5855 authored the file and merged green.
+      Declared devDependency ^3.9.6. After install the file loads and the suite is 39/39. git diff --cached
+      --stat origin/main on package.json, package-lock.json and apps/mouth/package.json is empty - no manifest
+      was touched.
+    exit: 0
+    ts: 2026-09-08T00:18Z
+    seat: session (M5)
+pii_scan: clean
+pii_scan_note:
+  Nothing in this diff, brief or pack transcribes applicant data. Every walk is synthetic
+  and comes from the repo's own gold_coverage/fixtures/walks/ corpus; the production POSTs used those
+  same synthetic fact sets and no request body is reproduced here. The receipts quote decision states,
+  product codes and reason codes only.
+dissent:
+  - seat: session (declared conflict of interest, owner-authorised)
+    objection:
+      "Generator is never grader, in either direction - yet this session both AUTHORED the merge
+      resolution (a genuine semantic decision, not a mechanical rebase: it deletes an assertion main deliberately
+      pinned) and is the gate that signs it off. The external builder seat that wrote the original narrowing
+      did not review this resolution."
+    status: CONFIRMED
+    resolution:
+      "Declared instead of hidden, and partially mitigated. The session raised the conflict to
+      the owner BEFORE resolving anything and the owner answered 'risolvi tu PR-4 e vai avanti' (2026-09-07)
+      - an explicit, informed override, recorded here so a later reader sees the exemption rather than assuming
+      the norm held. Two mitigations were actually applied: the one judgement call was converted into a
+      production measurement (receipt 2), and an adversarial spalla-review seat was dispatched on the finished
+      merge with instructions to demolish all three judgement calls."
+  - seat: frontend-browser subagent (claude-sonnet-5, independent measurement lane)
+    objection:
+      "The session instructed the lane to read no_path_reason_codes from the HTTP response. That
+      key does not exist at that level: the live OpenAPI schema and all 12 real responses carry no_path_reasons,
+      a list of objects with a code field. no_path_reason_codes exists only inside gold_replay.py and gold_replay_driver.py
+      as a derived key for fixture comparison. A tool reading the session's name against a real payload
+      gets None and concludes 'no reasons' when reasons are present."
+    status: CONFIRMED
+    resolution:
+      "Accepted in full and verified independently by the session against the raw response JSON
+      before being propagated. The session's instruction was wrong: it had generalised a correction true
+      of the internal decision dict to the HTTP boundary, where it is false. Both spellings are real in
+      their own layer; the trap is symmetric, which is why it is recorded rather than silently fixed."
+  - seat: session (declared limit, unresolved)
+    objection:
+      "No browser prove-live exists for this wave. No browser tool is mounted in this fleet session
+      or in the subagent, so nothing here observes the RENDERED page: layout, translated copy, and above
+      all whether duplicate reason PARAGRAPHS appear on screen. Reason-code duplication is measured as zero
+      in the raw engine payloads (61/61 walks, every list); the rendered text is not measured at all."
+    status: PLAUSIBLE
+    resolution:
+      Left standing and labelled rather than quietly counted as covered. It does not affect this
+      PR, whose consumer is the flag table and whose acceptance is a test suite. It does mean the wave's
+      claim about what a real applicant SEES rests on the engine payload plus the served bundle, never on
+      the screen.
+  - seat: session (self-refutation mid-merge)
+    objection:
+      "The first production measurement of this wave reported 5 NEEDS_INPUT and was about to be
+      read as the post-5855 state. It was the PRE-5855 state: the probe read walk fixtures from a worktree
+      pinned before 5855, where family.sponsor_confirmed and process.wants_onshore_conversion are UNKNOWN/NOT_ASKED
+      - precisely the two facts 5855 makes the interview ask."
+    status: CONFIRMED
+    resolution:
+      "Caught by noticing that the fixture at origin/main carries status KNOWN value true for
+      a fact production claimed was missing, then re-run against origin/main fixtures: the three investment
+      walks move NEEDS_INPUT to SUPPORTED_CANDIDATES [C2]. Rule adopted for the rest of the run: read a
+      corpus with git show origin/main:<path>, never from whatever a worktree happens to be pinned at."
+seat_override:
+  "R8 ground-truth lane declined with reason, not skipped. The rule fires because the diff
+  touches a mouth visa-oracle path, but this diff asserts NO fact about Indonesian immigration law: it
+  changes only whether a UI review-hold is attached to an answer. Every substantive claim in this pack
+  is grounded in the SIGNED rule pack running in production (seq-20, payload_sha256 df02287b...) and measured
+  by POST against the live engine - a stronger authority for this question than any notebook, and the
+  artifact the law is actually compiled into here. No NotebookLM query was run, so no nb/query_hash is
+  fabricated to satisfy the shape."
+spend:
+  wall_clock_hours: 2
