@@ -684,7 +684,8 @@ async def publish_staging_item(
     """
     Publish approved item to Qdrant knowledge base and register in anti-duplicate system.
 
-    Optional body: {"position": "hero_main"} to set homepage position.
+    News Room requests must carry an explicit body such as
+    ``{"position": "hero_main"}``; there is no editorial placement default.
 
     This endpoint:
     1. Ingests article to Qdrant (knowledge base)
@@ -700,6 +701,11 @@ async def publish_staging_item(
     which names the actor explicitly rather than bypassing the gate.
     """
     _require_publish_admin(current_user)
+    if type == "news" and body is None:
+        raise HTTPException(
+            status_code=422,
+            detail="News Room publication requires an explicit homepage position",
+        )
     return await _publish_staging_item(
         type=type,
         item_id=item_id,
@@ -1310,6 +1316,7 @@ async def _publish_staging_item(
         return {
             "success": github_published,
             "github_published": github_published,
+            "status": data["status"],
             "message": message,
             "id": item_id,
             "title": title,

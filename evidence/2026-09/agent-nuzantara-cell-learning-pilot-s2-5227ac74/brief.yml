@@ -1,0 +1,36 @@
+task_id: cell-learning-pilot-s2
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Harden the Cell learning pilot S2 harness so the protocol review is sharded safely, resumed trial
+  receipts cannot be fabricated or orphaned from the attempt ledger, and the Claude CLI adapter runs
+  under an explicit OAuth-only environment allowlist.
+
+  The PR is source/test preparation only. It does not merge, arm auto-merge, deploy, publish, or touch
+  client data. The experiment artifacts remain synthetic and the final S2 scientific verdict remains
+  NO-GO: the learning skill did not clear the predeclared admission effect threshold.
+constraints:
+  - "Generator is not grader: this Codex builder only prepares the branch; a Claude session reviews and ships."
+  - "Synthetic fixtures only; no client PII, OSINT, CRM rows, WhatsApp data, or production secrets."
+  - "Claude access must stay on the sanctioned CLI OAuth path, never the paid per-token Anthropic endpoint."
+  - "Resume must be fail-closed: a receipt is reusable only when it binds to a dispatched and terminal attempt ledger event."
+acceptance:
+  - text: "WHEN the learning-pilot suite runs after hardening, it SHALL pass."
+    probe: "PYTHONPATH=. /Users/nuzantara/nuzantara/.venv/bin/python -m pytest apps/cell/tests/learning_pilot -q"
+  - text: "WHEN shard content is tampered and the shard hash is rebound, fixture reconstruction SHALL fail."
+    probe: "apps/cell/tests/learning_pilot/test_run_experiment.py::test_case_review_shards_reject_tampering"
+  - text: "WHEN a completed receipt has no matching attempt-ledger terminal event, resume SHALL reject it."
+    probe: "apps/cell/tests/learning_pilot/test_run_experiment.py::test_matching_trial_receipt_rejects_orphan_completed_trial"
+  - text: "WHEN the adapter builds its subprocess environment, it SHALL preserve Claude OAuth and strip provider/data credentials."
+    probe: "apps/cell/tests/learning_pilot/test_harness.py::test_adapter_environment_uses_oauth_allowlist"
+consumer_map:
+  - "apps/cell/tests/learning_pilot/run_experiment.py -- resumes S2 experiment trials only from ledger-bound receipts."
+  - "apps/cell/tests/learning_pilot/harness.py -- invokes the contained Claude CLI adapter with an explicit safe environment."
+  - "apps/cell/tests/learning_pilot/test_run_experiment.py -- guards shard reconstruction and receipt provenance regressions."
+  - "apps/cell/tests/learning_pilot/test_harness.py -- guards provider credential stripping for adapter subprocesses."
+risks:
+  - "This is harness/test code, not a production Cell admission change; it improves proof integrity but does not change the S2 NO-GO outcome."
+  - "R9 council quorum is not claimed in this builder handoff; the pack declares a seat_override because only one independent spalla review was available inside this Codex continuation."
+grader: |
+  Generator is this Codex builder lane. The independent spalla review found three blockers that changed this diff: the shard tamper test only proved stale shard hashes, resume accepted orphan receipts, and the adapter copied too much host environment into the subprocess. All three were patched and covered by local tests. A Claude session remains the required shipping grader.

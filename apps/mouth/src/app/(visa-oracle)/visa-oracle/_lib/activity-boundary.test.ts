@@ -114,7 +114,10 @@ const WALKS: readonly WalkCase[] = [
       ["work_payer", "yes"],
       ["work_indonesia_compensation", "yes"],
       ["work_sponsor_confirmed", "yes"],
-      ["work_role", "specialist"],
+      // `work_role` used to sit here. It is gone from the flow as of
+      // 2026-09-06 (owner ruling 6, shipped on main), so driving the REAL
+      // reducer through it now fails — the row is re-anchored to the live
+      // sequence, not weakened.
       ["stay_days", "365"],
     ],
     flags: [],
@@ -127,6 +130,10 @@ const WALKS: readonly WalkCase[] = [
       ["sponsor_category", "NONE"],
       ["remote_clients", "foreign"],
       ["remote_compensation", "no"],
+      // `work_payer` (work.employer_is_indonesian_entity) was inserted into
+      // the remote branch by #5855. "no" is the answer a foreign-client
+      // remote worker gives; it is a FACT question, so it adds no flag.
+      ["work_payer", "no"],
       ["remote_employer_country", "US"],
       ["remote_pt_pma", "no"],
       ["stay_days", "365"],
@@ -141,6 +148,10 @@ const WALKS: readonly WalkCase[] = [
       ["sponsor_category", "INVESTMENT"],
       ["investment_vehicle", "property"],
       ["secondhome_property_value_usd", "1200000"],
+      // Both inserted into the invest branch by #5855 — they are the two
+      // facts that turned this walk's NEEDS_INPUT into an answer.
+      ["family_sponsor_confirmed", "yes"],
+      ["wants_onshore_conversion", "no"],
       ["stay_days", "730"],
     ],
     flags: ["ACTIVITY_BOUNDARY"],
@@ -164,6 +175,15 @@ const WALKS: readonly WalkCase[] = [
     branch: [
       ["diaspora_connection", "former_wni"],
       ["diaspora_documents", "yes"],
+      // #5855 turned the single dead-end diaspora walk into a full family
+      // branch — the sponsor is now interviewed properly instead of the
+      // interview stopping. Re-anchored to that live sequence.
+      ["sponsor_category", "FAMILY"],
+      ["family_relation", "SPOUSE"],
+      ["marital_status", "MARRIED"],
+      ["family_sponsor_nationalities", "ID"],
+      ["family_marriage_registered", "yes"],
+      ["family_sponsor_confirmed", "yes"],
       ["stay_days", "365"],
     ],
     flags: ["ACTIVITY_BOUNDARY"],
@@ -175,6 +195,8 @@ const WALKS: readonly WalkCase[] = [
     branch: [
       ["other_purpose", "medical"],
       ["other_paid_activity", "no"],
+      // Inserted into the `other` branch by #5855.
+      ["family_sponsor_confirmed", "yes"],
       ["stay_days", "30"],
       ["entry_pattern", "SINGLE"],
     ],
@@ -227,6 +249,17 @@ describe("ACTIVITY_BOUNDARY — the decision table itself", () => {
       family_sponsor_status_code: "raises AMBIGUOUS_SPONSOR",
       family_sponsor_permit_basis: "raises AMBIGUOUS_SPONSOR",
       work_role: "engine-inert; owner ruling 2026-09-06 decision 6",
+      // Engine-inert routing label added by #5855: it only chooses WHICH
+      // evidence question follows, and the engine reads that evidence
+      // (`secondhome.qualifying_property_value_usd` /
+      // `secondhome.bank_deposit_usd`), never this label. Holding on it would
+      // be raising the flag "for the mere fact that a question was answered",
+      // which the table's own contract forbids. Not a judgement call:
+      // MEASURED against production on 2026-09-07, `offshore/second_home/
+      // property` returns SUPPORTED_CANDIDATES [E33] — classifying `property`
+      // as undecidable would delete an E33 the signed pack had proven.
+      secondhome_basis:
+        "engine-inert routing label; the evidence carries the fact",
     };
     for (const question of Object.values(QUESTIONS)) {
       if (question.decisionMapping.kind !== "HUMAN_CONTEXT") continue;

@@ -452,6 +452,7 @@ function OracleShellRuntime({
     advance,
     back,
     edit,
+    askFollowUp,
     selectCategory,
     reviewAnswers,
     restart,
@@ -512,6 +513,23 @@ function OracleShellRuntime({
       edit(questionId);
     },
     [edit, leaveOutcome],
+  );
+
+  /**
+   * NEEDS_INPUT follow-up (2026-09-06): the engine named a fact whose
+   * question this interview never asked. Append it and re-evaluate —
+   * `leaveOutcome` drops the cached decision so the answer produces a
+   * fresh evaluation rather than replaying the one that asked for it.
+   * Deliberately NOT `handleEdit`: `EDIT` on an absent target resets the
+   * entire interview (flow.ts's `EDIT` case), which would throw away every
+   * answer in order to collect one.
+   */
+  const handleAskFollowUp = useCallback(
+    (questionId: string) => {
+      leaveOutcome();
+      askFollowUp(questionId);
+    },
+    [askFollowUp, leaveOutcome],
   );
 
   const handleSelectCategory = useCallback(
@@ -930,6 +948,7 @@ function OracleShellRuntime({
                   state.blockedAnswer,
                 )}
                 currentAnswer={state.facts[current.questionId]}
+                facts={state.facts}
               />
             )}
 
@@ -968,6 +987,7 @@ function OracleShellRuntime({
                     facts={state.facts}
                     onSelectCategory={handleSelectCategory}
                     onEditMissingInput={handleEdit}
+                    onAskMissingInput={handleAskFollowUp}
                   />
                   <div
                     className="oracle-no-print"

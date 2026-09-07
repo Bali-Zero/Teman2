@@ -9,6 +9,7 @@ import {
 import {
   QUESTIONS,
   formatIsoDateForDisplay,
+  questionPromptI18nKey,
   type OracleFacts,
 } from "../_lib/tree";
 import type { Language } from "../_lib/flow";
@@ -141,7 +142,10 @@ export function ConfirmationCard({
     return {
       id,
       group: question.group,
-      label: translate(language, question.i18nKey as I18nKey),
+      label: translate(
+        language,
+        questionPromptI18nKey(question, facts) as I18nKey,
+      ),
       value: formatFactDisplay(language, id, value),
     };
   });

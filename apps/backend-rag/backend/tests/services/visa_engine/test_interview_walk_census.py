@@ -1,0 +1,928 @@
+"""Interview-walk decisiveness census: what the PUBLIC funnel actually answers.
+
+``test_gold_coverage_floor.py`` proves the pack can support a product when
+every fact arrives. This file proves the opposite half, and it is the half
+the user lives in: replay the **61 real interview walks** — every distinct
+path through ``flow.ts``'s two-arm spine and ``getCategoryQuestionIds``'
+eleven categories, each answered through the real ``fact-mapper.ts`` —
+against the highest signed PRODUCTION pack, and pin the outcome census.
+
+Measured 2026-09-07 on ``rulepack-prod-020.signed.json``, with PR-3's
+interview on top: **0 NEEDS_INPUT / 10 NO_SUPPORTED_PATH / 51
+SUPPORTED_CANDIDATES — at ENGINE level, with no disclosure flags supplied.**
+That qualifier is load-bearing and is spelled out under "WHAT THIS CENSUS
+DOES NOT SEE" below; 51 is not the number of applicants who see a
+recommendation without human review. No walk asks the applicant for a fact
+the interview has no question for any more
+(research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md §1-§2).
+
+Three hops got here, and this file has been re-derived at each one — never
+hand-edited:
+
+1. **seq-19 → seq-20 (the signed fold, #5867): 36/0/7 → 21/0/22.** Fold edit
+   1 raised ``el.c1.tourism-family``'s stay-day bound 60 → 180, so the
+   corpus's 121-stay-day walks satisfy C1 and the whole tourism/family arm
+   answers. The same widening on ``el.c2.business`` made C2 reachable for the
+   business/investment arm, and C2's own ``family.sponsor_confirmed == true``
+   premise became the smallest missing-fact set — so 9 walks MOVED their
+   block onto a fact no invest/business/other branch asks. Edits 2 and 3
+   retired ``review.e33g.income-evidence`` and the eight
+   ``family.sponsor_status_code`` rules.
+2. **seq-20 → seq-20 + PR-2's reorder (#5853): 21/0/22 → 11/10/22.** Ten dead
+   ends became the honest ``NO_SUPPORTED_PATH``: seven blocked on
+   ``process.wants_onshore_conversion``, two on
+   ``investment.{investment,paid_up}_capital_idr`` and one on ``sponsor.type``
+   — every one of them on behalf of a product whose ELIGIBILITY rules cannot
+   cover the declared purposes under ANY fact resolution, which is exactly the
+   class the reorder stops from choosing the global question.
+3. **PR-3, this PR — the INTERVIEW moves, not the pack: 11/10/22 → 0/10/51
+   over a corpus that grows 43 → 61.** The pack is byte-identical; every
+   number below moved because ``flow.ts`` now asks facts it used to skip.
+   Eleven dead ends were cured and eighteen walks are NEW:
+
+   - ``family_sponsor_confirmed`` joined the ``invest`` and ``other``
+     branches, so the nine walks that blocked on ``family.sponsor_confirmed``
+     answer: the six ``offshore/invest/*`` and ``onshore/invest`` on C2,
+     ``offshore/other`` and ``onshore/other`` on C6.
+   - ``diaspora`` maps to the ``FAMILY`` purpose and serves the family
+     question set, so ``intent.purposes`` is KNOWN on that tile: the two
+     diaspora dead ends are gone and the tile is enumerated like the family
+     one, 7 relations × 2 sponsor nationalities.
+   - ``second_home`` is its own tile with two documented bases, adding three
+     walks that all reach E33.
+   - ``STEPCHILD`` became a reachable option, adding four walks (family and
+     diaspora × 2 nationalities) that all reach E31D — a product no
+     interview could name before.
+   - ``work_payer`` joined the ``remote`` branch. It changes no state: both
+     remote walks were already NO_SUPPORTED_PATH, and they now carry
+     ``INDONESIAN_EMPLOYER_NOT_ALLOWED`` alongside the compensation reason
+     instead of reaching that verdict with the employer fact UNKNOWN.
+   - ``work_role`` was deleted. Its removal is invisible to this census by
+     construction: the corpus carries a walk's wire FACTS, and ``work_role``
+     was ``HUMAN_CONTEXT`` — it mapped to no FactPath, only to a disclosure
+     flag. Both work walks still answer E23 with the same candidates.
+
+**No walk moved DOWN.** Every one of the 22 seq-20 answers keeps its exact
+candidate list, the 10 NO_SUPPORTED_PATH walks stay NO_SUPPORTED_PATH, and
+the only transition in the census is ``NEEDS_INPUT`` →
+``SUPPORTED_CANDIDATES``.
+
+The invariant this file exists to arm is one sentence:
+
+    no walk may end in NEEDS_INPUT on a fact for which the interview has no
+    reachable question in that walk's own history.
+
+**It is now UNCONDITIONAL.** ``WALK_DEAD_END_ALLOWLIST`` is empty, so
+``_dead_end_violations`` has no excuse left to find for any NEEDS_INPUT walk;
+the allowlist machinery stays because a future signed pack can raise a new
+``on_unknown: NEEDS_INPUT`` rule on an unaskable fact, and the guilt tests
+below keep every branch of it exercised against a fabricated row.
+
+WHAT THIS CENSUS DOES NOT SEE — read the numbers with these two bounds, both
+raised by independent review on 2026-09-06 (codex) and both PRE-EXISTING, not
+introduced by this PR:
+
+1. **Disclosure flags are not carried, so this file proves LESS than it
+   looks like it proves.** A fixture stores a walk's ``facts`` only, so every
+   walk is evaluated with ``disclosed_review_flags = ()`` — while the live
+   funnel sends whatever ``mapDisclosureFlags`` computed (``ACTIVITY_BOUNDARY``
+   on the whole diaspora tile, for one). Read every number above with this
+   attached:
+
+   - **51 SUPPORTED_CANDIDATES means 51 walks reach candidates AT ENGINE
+     LEVEL, with no disclosure flags supplied.** It does NOT mean 51
+     applicants see a recommendation without human review.
+   - **``census.get("HUMAN_REVIEW_REQUIRED", 0) == 0`` below is a property of
+     these fixtures, not of production.** The review-flag arm of
+     ``apply_public_policy_adapters`` is not exercised by any walk here.
+   - **A regression that ADDS a disclosure flag — or fails to REMOVE one —
+     passes this census invisibly.** That is not hypothetical: it is exactly
+     what ``work_role`` did, and it is why the E23 claim in this PR rests on
+     a separate replay rather than on this table.
+
+   What IS sound as stated: "0 NEEDS_INPUT", the allowlist invariant and the
+   candidate lists. A review flag can only LOWER a result to
+   HUMAN_REVIEW_REQUIRED; it cannot create a missing fact.
+
+   MEASURED by this seat, 2026-09-07, replaying this same corpus through
+   ``evaluator.evaluate`` + ``apply_public_policy_adapters`` with
+   ``ACTIVITY_BOUNDARY`` supplied on the diaspora tile ALONE: **10/15/36** —
+   fifteen diaspora walks move SUPPORTED_CANDIDATES → HUMAN_REVIEW_REQUIRED,
+   NEEDS_INPUT stays 0 either way, and no NO_SUPPORTED_PATH walk moves. The
+   real flag set is wider than that one tile: the independent reviewer
+   (codex, 2026-09-06) reports 21/35/5 for the FULL flag set — that figure is
+   theirs and was NOT independently reproduced here, and note it moves
+   NO_SUPPORTED_PATH walks too, so 10 is not flag-invariant in general
+   either.
+
+   Carrying the flags is a corpus-SCHEMA change: the fixtures gain a field,
+   every one of them changes bytes, and the census can no longer share
+   ``_evaluate`` with ``gold_coverage_eval`` unchanged — which is the
+   coverage-floor gate. It belongs to its own PR, and until it lands this
+   bound stands.
+2. **The enumeration is a chosen sample, not a cover.** Every question is
+   answered with its FIRST option and no walk ever answers ``unsure``, and
+   the onshore arm is ONE neutral walk per category — its sub-branches
+   (``onshore/second_home/property``, ``onshore/diaspora/STEPCHILD/...``)
+   are deliberately not enumerated, as they never were for invest,
+   retirement or family. Byte-for-byte reproducibility is proven; coverage
+   of every reachable path is not claimed.
+
+The corpus under ``gold_coverage/fixtures/walks/`` is DATA, generated by driving the
+real ``computeNextNode``/``getCategoryQuestionIds``/``mapOracleFactsToApplicantFacts``
+(first option answered at every question, 121 stay-days), never hand-written:
+each file carries the walk's ``asked`` question ids and the exact wire
+``overrides`` that walk produced. The expectations live HERE, in one
+reviewable table, so a wave PR that moves an outcome must state which
+outcome it moved.
+
+Regenerate the corpus with ``npm run visa-oracle:walk-corpus -w apps/mouth``
+(``apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts``, proved byte-for-byte
+reproducible by ``walk-corpus-determinism.test.ts``): a PR that changes the
+interview tree MUST regenerate it and update ``EXPECTED_OUTCOME`` /
+``WALK_DEAD_END_ALLOWLIST`` below in that same PR.
+"""
+
+from __future__ import annotations
+
+import json
+from collections import Counter
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from backend.scripts.visa_engine import gold_coverage_eval
+from backend.scripts.visa_engine.gold_coverage_eval import _evaluate
+from backend.scripts.visa_engine.gold_replay_driver import (
+    PACKS_DIR,
+    _parse_utc,
+    build_persona_request,
+    select_highest_repository_pack,
+)
+from backend.services.visa_engine import evaluate_path, evaluator
+from backend.services.visa_engine.enums import DecisionState
+from backend.tests.services.visa_engine.test_evaluator_gold import Persona
+
+CORPUS_DIR = Path(__file__).resolve().parent / "gold_coverage" / "fixtures" / "walks"
+
+# PINNED to the highest signed pack's own `signed_at`, never the wall clock —
+# same clock bomb `test_gold_coverage_floor.py` documents at length: the
+# selected pack's source_records carry a freshness_policy with as little as a
+# 604800s (7-day) window, so evaluating at `datetime.now(UTC)` is guaranteed
+# to turn this whole census into HUMAN_REVIEW_REQUIRED seven days after the
+# newest source's verified_at, with zero code change. `signed_at` (not
+# `payload.created_at`) because the same instant drives `verify_rule_pack`'s
+# `observed_at`, which rejects a signature dated after the observation.
+_, _HIGHEST_SIGNED_PACK = select_highest_repository_pack(PACKS_DIR)
+_AS_OF = _parse_utc(_HIGHEST_SIGNED_PACK["protected"]["signed_at"])
+
+#: Why an allowlisted NEEDS_INPUT is a DEAD END and not a question the funnel
+#: could ask. Each value is checked against the walk's own `asked` history.
+NO_QUESTION_IN_TREE = "no question in tree.ts can ever set this fact"
+QUESTION_NOT_IN_THIS_WALK = "the question exists but this walk's branch never asks it"
+ANSWER_NEVER_CERTIFIED = "the question IS asked, and the mapper refuses to certify the answer"
+
+
+@dataclass(frozen=True)
+class DeadEnd:
+    """One allowlisted dead end: the blocking fact, its source question in
+    ``tree.ts`` (``None`` when no question emits it at all), and the reason
+    the funnel cannot supply it."""
+
+    fact: str
+    source_question: str | None
+    why_unaskable: str
+
+
+#: EMPTY, and that is the whole point of PR-3: the invariant below is now
+#: unconditional. A row here says "this walk may end NEEDS_INPUT on this fact
+#: because the funnel genuinely cannot ask for it"; there is no longer a walk
+#: for which that is true.
+#:
+#: The wave retired every shape by CURING it, never by loosening a count:
+#:
+#: - seq-20's fold: `family.sponsor_status_code` (its eight rules made
+#:   NO_EFFECT) and `intent.requested_product_code` (the four BRIDGING rules
+#:   guarded on a `known` premise).
+#: - PR-2's reorder: `process.wants_onshore_conversion` (7 rows),
+#:   `investment.{investment,paid_up}_capital_idr` (2 rows, always paired) and
+#:   `sponsor.type` (1 row) — each raised on behalf of a product that could
+#:   not cover the walk's declared purposes under ANY fact resolution.
+#: - THIS PR: `family.sponsor_confirmed` (9 rows) by adding
+#:   `family_sponsor_confirmed` to the `invest` and `other` branches, and
+#:   `intent.purposes` (2 rows) by giving the `diaspora` tile the `FAMILY`
+#:   purpose instead of `unknownFact(NOT_APPLICABLE)`.
+#:
+#: Never add a row without an anchor showing the fact is genuinely unaskable
+#: in that walk — and prefer curing it, which is what every row above became.
+WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = {}
+
+#: Per-walk outcome pin: state plus the candidate products, in rank order.
+#: Candidates are pinned too — a pack edit that adds or drops a product for a
+#: walk that already had an answer is exactly as much of a shift as a state
+#: change, and this table is the only place either becomes visible.
+EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
+    "offshore/business": ("NO_SUPPORTED_PATH", ()),
+    "offshore/diaspora/CHILD/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31G")),
+    "offshore/diaspora/CHILD/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/diaspora/DEPENDENT/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/diaspora/DEPENDENT/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/diaspora/OTHER/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/diaspora/OTHER/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/diaspora/PARENT/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31C", "E31F")),
+    "offshore/diaspora/PARENT/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/diaspora/SIBLING/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/diaspora/SIBLING/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/diaspora/SPOUSE/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31A")),
+    "offshore/diaspora/SPOUSE/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/diaspora/STEPCHILD/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31D")),
+    "offshore/diaspora/STEPCHILD/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1", "E31D")),
+    "offshore/family/CHILD/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31G")),
+    "offshore/family/CHILD/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/DEPENDENT/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/DEPENDENT/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/OTHER/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/OTHER/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/PARENT/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31C", "E31F")),
+    "offshore/family/PARENT/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/SIBLING/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/SIBLING/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/SPOUSE/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31A")),
+    "offshore/family/SPOUSE/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/family/STEPCHILD/spNat=ID": ("SUPPORTED_CANDIDATES", ("C1", "E31D")),
+    "offshore/family/STEPCHILD/spNat=IT": ("SUPPORTED_CANDIDATES", ("C1", "E31D")),
+    "offshore/holdsPermit/current/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/invest/bank_deposit": ("SUPPORTED_CANDIDATES", ("C2",)),
+    "offshore/invest/family": ("SUPPORTED_CANDIDATES", ("C2",)),
+    "offshore/invest/merit": ("SUPPORTED_CANDIDATES", ("C2",)),
+    "offshore/invest/property": ("SUPPORTED_CANDIDATES", ("C2",)),
+    "offshore/invest/pt_pma": ("SUPPORTED_CANDIDATES", ("C2",)),
+    "offshore/invest/undecided": ("SUPPORTED_CANDIDATES", ("C2",)),
+    "offshore/other": ("SUPPORTED_CANDIDATES", ("C6",)),
+    "offshore/remote": ("NO_SUPPORTED_PATH", ()),
+    "offshore/retirement/bank_deposit": ("NO_SUPPORTED_PATH", ()),
+    "offshore/retirement/family_sponsor": ("NO_SUPPORTED_PATH", ()),
+    "offshore/retirement/passive_income": ("NO_SUPPORTED_PATH", ()),
+    "offshore/retirement/property": ("NO_SUPPORTED_PATH", ()),
+    "offshore/retirement/undecided": ("NO_SUPPORTED_PATH", ()),
+    "offshore/second_home/bank_deposit": ("SUPPORTED_CANDIDATES", ("E33",)),
+    "offshore/second_home/property": ("SUPPORTED_CANDIDATES", ("E33",)),
+    "offshore/study": ("SUPPORTED_CANDIDATES", ("E30", "E30A")),
+    "offshore/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "offshore/work": ("SUPPORTED_CANDIDATES", ("E23",)),
+    "onshore/business": ("NO_SUPPORTED_PATH", ()),
+    "onshore/diaspora": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "onshore/family": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "onshore/holdsPermit/current/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "onshore/holdsPermit/expired/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "onshore/invest": ("SUPPORTED_CANDIDATES", ("C2",)),
+    "onshore/other": ("SUPPORTED_CANDIDATES", ("C6",)),
+    "onshore/remote": ("NO_SUPPORTED_PATH", ()),
+    "onshore/retirement": ("NO_SUPPORTED_PATH", ()),
+    "onshore/second_home": ("SUPPORTED_CANDIDATES", ("E33",)),
+    "onshore/study": ("SUPPORTED_CANDIDATES", ("E30", "E30A")),
+    "onshore/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
+    "onshore/work": ("SUPPORTED_CANDIDATES", ("E23",)),
+}
+
+#: The state distribution, restated as a total so a reviewer sees the shape of
+#: the funnel in one line. Derived from EXPECTED_OUTCOME on purpose: the two
+#: can never disagree, and the wave PRs edit one table, not two.
+EXPECTED_STATE_CENSUS: dict[str, int] = dict(
+    Counter(state for state, _ in EXPECTED_OUTCOME.values())
+)
+
+#: Which fact blocks how many walks — the §2.2 table, now EMPTY. A cure that
+#: moves walks between blocking facts instead of removing the block goes red
+#: here even if the total happens to stay the same, and so does the first fact
+#: that starts blocking again.
+EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = {}
+
+
+def _load_walks() -> dict[str, dict[str, Any]]:
+    """Read the walk corpus, keyed by label (which must match the file stem
+    modulo the ``/``→``_`` filename encoding, so a renamed file cannot smuggle
+    another walk's expectations in)."""
+
+    walks: dict[str, dict[str, Any]] = {}
+    for path in sorted(CORPUS_DIR.glob("*.json")):
+        spec = json.loads(path.read_text(encoding="utf-8"))
+        label = str(spec["label"])
+        assert label.replace("/", "_").replace("=", "_") == path.stem.replace("=", "_"), (
+            f"{path.name}: file name does not encode its own label {label!r}"
+        )
+        walks[label] = spec
+    return walks
+
+
+def _evaluate_walks(walks: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Evaluate every walk through ``gold_coverage_eval._evaluate`` — the same
+    verify → compile → evaluate → apply_public_policy_adapters path the gold
+    replay and the coverage floor use. Never re-implemented here, so this
+    census and those gates cannot drift on what "evaluate" means."""
+
+    return {
+        label: _evaluate(spec["overrides"], label, as_of=_AS_OF)["actual"]
+        for label, spec in sorted(walks.items())
+    }
+
+
+def _outcome_violations(
+    outcomes: dict[str, dict[str, Any]],
+    expected: dict[str, tuple[str, tuple[str, ...]]] | None = None,
+) -> list[str]:
+    """Every walk whose (state, candidates) differ from the pinned pair."""
+
+    pins = EXPECTED_OUTCOME if expected is None else expected
+    violations: list[str] = []
+    for label in sorted(set(outcomes) | set(pins)):
+        actual = outcomes.get(label)
+        if actual is None:
+            violations.append(f"{label}: pinned but absent from the corpus")
+            continue
+        if label not in pins:
+            violations.append(f"{label}: evaluated but not pinned in EXPECTED_OUTCOME")
+            continue
+        want_state, want_candidates = pins[label]
+        got = (actual["state"], tuple(actual["candidates"]))
+        if got != (want_state, want_candidates):
+            violations.append(
+                f"{label}: expected {want_state} {list(want_candidates)}, got {got[0]} {list(got[1])}"
+            )
+    return violations
+
+
+def _dead_end_violations(
+    outcomes: dict[str, dict[str, Any]],
+    allowlist: dict[str, tuple[DeadEnd, ...]] | None = None,
+) -> list[str]:
+    """The invariant, both ways.
+
+    A NEEDS_INPUT walk must be allowlisted and must block on EXACTLY the
+    allowlisted facts (a new blocking fact is a new dead end, not a variant of
+    an old one), and an allowlisted walk that no longer dead-ends is a STALE
+    row that the curing PR must delete — otherwise the allowlist would outlive
+    the defect and quietly re-authorise it.
+    """
+
+    rows = WALK_DEAD_END_ALLOWLIST if allowlist is None else allowlist
+    violations: list[str] = []
+    for label in sorted(outcomes):
+        actual = outcomes[label]
+        allowed = tuple(sorted(dead_end.fact for dead_end in rows.get(label, ())))
+        missing = tuple(actual["missing_facts"])
+        if actual["state"] == "NEEDS_INPUT":
+            if not allowed:
+                violations.append(
+                    f"{label}: NEEDS_INPUT on {list(missing)} with no allowlist row — "
+                    "the interview cannot ask for a fact it has no reachable question for"
+                )
+            elif missing != allowed:
+                violations.append(
+                    f"{label}: dead-ends on {list(missing)}, allowlist says {list(allowed)}"
+                )
+        elif allowed:
+            violations.append(
+                f"{label}: allowlisted for {list(allowed)} but now ends {actual['state']} — "
+                "stale allowlist row, delete it in the PR that cured it"
+            )
+    for label in sorted(set(rows) - set(outcomes)):
+        violations.append(f"{label}: allowlisted but absent from the corpus")
+    return violations
+
+
+def _decide(overrides: dict[str, Any], label: str) -> tuple[Any, Any, Any]:
+    """``(raw_decision, compiled, request)``.
+
+    ``_evaluate`` returns the flattened ``actual`` view (codes only), which
+    cannot witness ``rule_ids``/``source_refs``. This reuses that module's own
+    verified-pack loader and identity provider so the two never diverge on
+    which pack, or which instant, is under test.
+    """
+
+    _pack_path, compiled = gold_coverage_eval._verified_compiled_pack(_AS_OF)
+    persona = Persona(
+        id=0, label=label, overrides=overrides, expected_state=DecisionState.NEEDS_INPUT
+    )
+    request = build_persona_request(persona)
+    decision = evaluator.evaluate(
+        request.applicant_facts(),
+        compiled,
+        effective_at=_AS_OF,
+        observed_at=_AS_OF,
+        identity_provider=gold_coverage_eval._offline_identity_provider,
+    )
+    return decision, compiled, request
+
+
+def _engine_decision(overrides: dict[str, Any], label: str) -> Any:
+    """The RAW ``Decision`` — ``evaluator.evaluate``, no public shaping."""
+
+    decision, _compiled, _request = _decide(overrides, label)
+    return decision
+
+
+def _public_decision(overrides: dict[str, Any], label: str) -> Any:
+    """The applicant-facing ``Decision`` — the same verify → compile →
+    evaluate → ``apply_public_policy_adapters`` path ``_evaluate`` walks."""
+
+    decision, compiled, request = _decide(overrides, label)
+    return evaluate_path.apply_public_policy_adapters(
+        decision,
+        request.applicant_facts(),
+        compiled,
+        disclosed_review_flags=request.effective_review_flags(),
+    )
+
+
+def _scoped_allowlist(*labels: str) -> dict[str, tuple[DeadEnd, ...]]:
+    """``WALK_DEAD_END_ALLOWLIST`` restricted to ``labels`` — what a
+    single-walk assertion MUST be graded against.
+
+    PR-0 gate finding, 2026-09-06: grading one mutated walk against the whole
+    table made ``_dead_end_violations``' trailing "allowlisted but absent from
+    the corpus" loop fire once per OTHER row, unconditionally, so the guilt
+    assertions below were non-empty no matter what the mutation did — they
+    would have passed against an engine that ignored the mutation entirely.
+    Same shape for ``_outcome_violations`` and its "pinned but absent" loop.
+    Scoping is what restores the guilt: with it, the ONLY thing that can put a
+    violation in the list is the walk under test.
+    """
+
+    return {
+        label: WALK_DEAD_END_ALLOWLIST[label]
+        for label in labels
+        if label in WALK_DEAD_END_ALLOWLIST
+    }
+
+
+def _scoped_expectation(*labels: str) -> dict[str, tuple[str, tuple[str, ...]]]:
+    """``EXPECTED_OUTCOME`` restricted to ``labels`` — see ``_scoped_allowlist``."""
+
+    return {label: EXPECTED_OUTCOME[label] for label in labels if label in EXPECTED_OUTCOME}
+
+
+@pytest.fixture(scope="module")
+def walks() -> dict[str, dict[str, Any]]:
+    return _load_walks()
+
+
+@pytest.fixture(scope="module")
+def outcomes(walks: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    return _evaluate_walks(walks)
+
+
+def test_corpus_is_the_61_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
+    """An empty or shrunken corpus fails loudly: a census that passes because
+    nobody fed it any walks is the green-but-dead shape (cicatrix #2).
+
+    43 before this PR. The 18 new walks are the branches the interview gained:
+    `second_home` × 2 bases offshore + 1 onshore, `STEPCHILD` × 2 sponsor
+    nationalities on the family tile, and the `diaspora` tile crossed like the
+    family one (7 relations × 2 nationalities) now that
+    `getCategoryQuestionIds` serves it the same sequence — 14 walks replacing
+    the single neutral `offshore/diaspora`, which is DELETED, not renamed."""
+
+    assert len(walks) == 61, f"expected 61 interview walks, found {len(walks)}"
+    assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
+    for label, spec in walks.items():
+        assert spec["asked"], f"{label}: walk carries no asked-question history"
+        assert spec["overrides"], f"{label}: walk carries no wire facts"
+
+
+def test_every_walk_ends_in_its_pinned_outcome(outcomes: dict[str, dict[str, Any]]) -> None:
+    violations = _outcome_violations(outcomes)
+    assert not violations, "interview-walk outcomes moved:\n  " + "\n  ".join(violations)
+
+
+def test_walk_state_census_is_0_dead_ends_10_no_paths_and_51_answers(
+    outcomes: dict[str, dict[str, Any]],
+) -> None:
+    """The headline number of the decisiveness wave. Every PR that changes it
+    updates this literal and says which walks moved, in its own body.
+
+    36/0/7 on seq-19; 21/0/22 once the signed seq-20 bundle's stay-day
+    widening landed; 11/10/22 with PR-2's reorder on top; 0/10/51 over a
+    43 → 61 corpus with this PR's interview (module docstring)."""
+
+    census = dict(Counter(outcome["state"] for outcome in outcomes.values()))
+    assert census == EXPECTED_STATE_CENSUS == {"NO_SUPPORTED_PATH": 10, "SUPPORTED_CANDIDATES": 51}
+    # Stated as an absence, not as a zero count, because `Counter` simply omits
+    # a state nobody reached: the dead end is gone from the census, not merely
+    # rare. The invariant test below says the same thing from the other side.
+    assert "NEEDS_INPUT" not in census
+    # NOT a claim about production. The corpus carries no disclosure flags, so
+    # the review arm of `apply_public_policy_adapters` is unreachable from
+    # here by construction: this line says the FIXTURES trigger no review, and
+    # a regression that adds a disclosure flag passes it invisibly. Bound 1 of
+    # the module docstring, with the measurement.
+    assert census.get("HUMAN_REVIEW_REQUIRED", 0) == 0
+    # The 10 NO_SUPPORTED_PATH walks are PR-2's, unmoved: this PR only ever
+    # supplies facts the interview was already refusing to ask for, and no
+    # supplied fact turned an answer back into a no-path.
+    assert census["NO_SUPPORTED_PATH"] == 10
+
+
+def test_dead_end_fact_census_matches_the_blocking_fact_table(
+    outcomes: dict[str, dict[str, Any]],
+) -> None:
+    census = Counter(
+        fact
+        for outcome in outcomes.values()
+        if outcome["state"] == "NEEDS_INPUT"
+        for fact in outcome["missing_facts"]
+    )
+    assert dict(census) == EXPECTED_DEAD_END_FACT_CENSUS
+
+
+def test_no_walk_renders_the_same_reason_code_twice(
+    outcomes: dict[str, dict[str, Any]],
+) -> None:
+    """A NO_SUPPORTED_PATH sheet must not print one sentence twice.
+
+    ``engine-adapter.ts`` maps ``no_path_reasons`` 1:1 and looks the copy up by
+    CODE alone (``SUPPORT_REASON_COPY``), so two entries sharing a code are two
+    identical paragraphs in front of a real person. This PR is what makes that
+    reachable — before the reorder ZERO walks reached NO_SUPPORTED_PATH — so
+    the guard ships with it.
+
+    Measured 2026-09-07 on seq-20 BEFORE ``_merge_reasons_by_code``: six walks
+    (the five ``offshore/retirement/*`` and ``onshore/retirement``) rendered
+    ``['AGE_BELOW_55', 'AGE_BELOW_55']``, one entry for
+    ``hf.e33e.age-below-55`` and one for ``hf.e33f.age-below-55``. Reverting
+    that helper to ``_dedupe_reasons`` turns this test red on all six.
+
+    Stated over EVERY walk and every reason list rather than over the six
+    known ones: a new pack that gives two products one code anywhere is the
+    same defect, and this catches it without being re-pinned.
+    """
+
+    violations = []
+    for label, actual in sorted(outcomes.items()):
+        for field in ("no_path_reason_codes", "review_reason_codes"):
+            codes = list(actual.get(field, ()))
+            repeated = sorted({code for code in codes if codes.count(code) > 1})
+            if repeated:
+                violations.append(f"{label}: {field} repeats {repeated} — rendered as {codes}")
+    assert not violations, "a reason code is rendered more than once:\n  " + "\n  ".join(violations)
+
+
+def test_the_retirement_walk_merges_age_below_55_keeping_both_rules_and_both_refs(
+    walks: dict[str, dict[str, Any]],
+) -> None:
+    """The real-pack witness for the merge, on the walk it was measured on.
+
+    ``offshore/retirement/property`` is excluded by TWO products for the same
+    legal reason — E33E and E33F both say the applicant is under 55 — and
+    before ``_collapse_reader_reasons`` the sheet carried the code twice.
+
+    All three assertions matter, and the last two are the ones that forbid the
+    WRONG fix. A naive dedupe on the code would satisfy the first and fail
+    these: ``_dedupe_reasons`` uses ``setdefault``, so it would have kept
+    ``hf.e33e``'s entry and silently dropped both ``hf.e33f`` and the source
+    record only ``hf.e33f`` cites. Measured 2026-09-07 on
+    ``rulepack-prod-020.signed.json``:
+
+        [0] AGE_BELOW_55  ('hf.e33e.age-below-55',)  (9248b1d7,)
+        [1] AGE_BELOW_55  ('hf.e33f.age-below-55',)  (6f5135f2, 9248b1d7)
+
+    One ref set happens to be a subset of the other in THIS pair; nothing in
+    the contract guarantees that for the next one, which is why the union is
+    asserted as a union rather than as 'the longer entry wins'.
+    """
+
+    label = "offshore/retirement/property"
+    decision = _public_decision(walks[label]["overrides"], label)
+    assert decision.state.value == "NO_SUPPORTED_PATH"
+
+    age_reasons = [reason for reason in decision.no_path_reasons if reason.code == "AGE_BELOW_55"]
+    assert len(age_reasons) == 1, (
+        f"AGE_BELOW_55 must render exactly once, got {len(age_reasons)} entries — "
+        f"{[list(reason.rule_ids) for reason in age_reasons]}"
+    )
+
+    merged = age_reasons[0]
+    assert set(merged.rule_ids) == {"hf.e33e.age-below-55", "hf.e33f.age-below-55"}, (
+        "the merge dropped a rule id — both excluding rules must survive the collapse"
+    )
+
+    raw = _engine_decision(walks[label]["overrides"], label)
+    every_ref = {
+        ref
+        for reason in raw.no_path_reasons
+        if reason.code == "AGE_BELOW_55"
+        for ref in reason.source_refs
+    }
+    assert len(every_ref) == 2, f"expected two distinct citations upstream, got {every_ref}"
+    assert set(merged.source_refs) == every_ref, (
+        "the merge dropped a citation — the union of every AGE_BELOW_55 source_ref "
+        "the ENGINE produced must survive onto the single merged reason"
+    )
+
+
+def test_no_walk_dead_ends_outside_the_allowlist(outcomes: dict[str, dict[str, Any]]) -> None:
+    violations = _dead_end_violations(outcomes)
+    assert not violations, "walk-census invariant broken:\n  " + "\n  ".join(violations)
+
+
+def test_allowlist_is_empty_so_the_invariant_is_unconditional() -> None:
+    """The strongest form this table can take, and PR-3's deliverable.
+
+    Was ``len(...) == 11`` before this PR. An equality against ``{}`` is not a
+    loosened count: it is the count that admits nothing, and any future row —
+    however well argued — has to move this literal in the PR that adds it."""
+
+    assert WALK_DEAD_END_ALLOWLIST == {}
+
+
+def _unaskable_violations(
+    walks: dict[str, dict[str, Any]],
+    rows: dict[str, tuple[DeadEnd, ...]],
+) -> list[str]:
+    """Every allowlist row whose stated REASON is contradicted by the walk's
+    own ``asked`` history — the claim checked, not taken on trust.
+
+    Returns violations instead of asserting so the guilt test below can drive
+    it with a fabricated row. That indirection is what keeps this machinery
+    honest now that ``WALK_DEAD_END_ALLOWLIST`` is empty: iterating an empty
+    table proves nothing, and a validator nobody exercises is a validator that
+    has quietly stopped working by the time the next row needs it.
+    """
+
+    violations: list[str] = []
+    for label, dead_ends in sorted(rows.items()):
+        asked = set(walks[label]["asked"])
+        for dead_end in dead_ends:
+            if dead_end.why_unaskable == NO_QUESTION_IN_TREE:
+                if dead_end.source_question is not None:
+                    violations.append(
+                        f"{label}: {dead_end.fact} claims no question emits it, "
+                        f"yet names {dead_end.source_question!r}"
+                    )
+            elif dead_end.why_unaskable == QUESTION_NOT_IN_THIS_WALK:
+                if dead_end.source_question in asked:
+                    violations.append(
+                        f"{label}: {dead_end.source_question!r} IS asked in this walk — "
+                        f"{dead_end.fact} is no longer unaskable here"
+                    )
+            elif dead_end.why_unaskable == ANSWER_NEVER_CERTIFIED:
+                if dead_end.source_question not in asked:
+                    violations.append(
+                        f"{label}: {dead_end.source_question!r} is not asked in this walk, "
+                        "so the mapper never gets an answer to refuse"
+                    )
+            else:
+                violations.append(f"{label}: unknown reason {dead_end.why_unaskable!r}")
+    return violations
+
+
+def test_every_allowlisted_dead_end_is_genuinely_unaskable_in_its_own_walk(
+    walks: dict[str, dict[str, Any]],
+) -> None:
+    """The allowlist's REASON, checked against the walk's own history."""
+
+    violations = _unaskable_violations(walks, WALK_DEAD_END_ALLOWLIST)
+    assert not violations, "an allowlist row's reason is false:\n  " + "\n  ".join(violations)
+
+
+def test_guilt_a_row_whose_question_this_walk_now_asks_is_caught(
+    walks: dict[str, dict[str, Any]],
+) -> None:
+    """GUILT, and PR-3's own cure is the witness.
+
+    Re-anchored: this test used to be the assertion loop above, and that loop
+    is vacuous now that the allowlist is empty. What it claimed — "the moment
+    the invest branch starts asking ``family_sponsor_confirmed``, that row's
+    ``QUESTION_NOT_IN_THIS_WALK`` reason is false" — is exactly what happened,
+    so it is restated here as a fabricated row over the REAL corpus rather
+    than deleted with the row it graded.
+
+    Both branches of the reason vocabulary are driven, in the two directions
+    this PR moved: ``offshore/invest/pt_pma`` now DOES ask
+    ``family_sponsor_confirmed`` (so a ``QUESTION_NOT_IN_THIS_WALK`` claim is
+    a lie), and ``offshore/tourism`` does NOT ask it (so an
+    ``ANSWER_NEVER_CERTIFIED`` claim, which asserts the mapper refused an
+    answer it was given, is equally a lie).
+    """
+
+    asks_it = "offshore/invest/pt_pma"
+    assert "family_sponsor_confirmed" in walks[asks_it]["asked"], (
+        "the cure this test is anchored on is gone — re-anchor it onto a walk "
+        "that DOES ask the question"
+    )
+    stale_row = DeadEnd(
+        "family.sponsor_confirmed", "family_sponsor_confirmed", QUESTION_NOT_IN_THIS_WALK
+    )
+    violations = _unaskable_violations(walks, {asks_it: (stale_row,)})
+    assert violations and "IS asked in this walk" in violations[0]
+
+    never_asks_it = "offshore/tourism"
+    assert "family_sponsor_confirmed" not in walks[never_asks_it]["asked"]
+    fabricated_row = DeadEnd(
+        "family.sponsor_confirmed", "family_sponsor_confirmed", ANSWER_NEVER_CERTIFIED
+    )
+    assert _unaskable_violations(walks, {never_asks_it: (fabricated_row,)})
+
+    # A row that names a source question while claiming NO question emits the
+    # fact contradicts itself, and a typo in the reason string must not pass
+    # silently either.
+    assert _unaskable_violations(
+        walks,
+        {
+            asks_it: (
+                DeadEnd(
+                    "family.sponsor_confirmed", "family_sponsor_confirmed", NO_QUESTION_IN_TREE
+                ),
+            )
+        },
+    )
+    assert _unaskable_violations(walks, {asks_it: (DeadEnd("x", None, "typo"),)})
+
+
+def test_guilt_withdrawing_the_newly_asked_fact_restores_the_dead_end(
+    walks: dict[str, dict[str, Any]],
+) -> None:
+    """GUILT, on the real engine, and the direct witness that PR-3's cure is
+    the QUESTION and not a pack edit or a corpus artefact.
+
+    Re-anchored a third time. Seq-19's anchor (``onshore/tourism``) answers on
+    seq-20; seq-20's (``onshore/business``) ends NO_SUPPORTED_PATH under PR-2;
+    and PR-2's shape — hand ``offshore/invest/pt_pma`` its blocking fact and
+    watch the block MOVE to ``process.wants_onshore_conversion`` rather than
+    lift — cannot be reproduced here either, because this PR asks BOTH facts:
+    there is nothing left for the block to move onto. So the mutation is
+    inverted. Instead of supplying the fact, WITHDRAW it, and the walk falls
+    straight back into the dead end this PR cured.
+
+    Measured 2026-09-07 on ``rulepack-prod-020.signed.json``:
+
+    - ``family.sponsor_confirmed`` UNKNOWN → NEEDS_INPUT on exactly
+      ``['family.sponsor_confirmed']`` — byte for byte the pre-PR row.
+    - the same fact KNOWN ``false`` → NO_SUPPORTED_PATH, an ANSWER. Denying
+      C2's sponsor premise is decisive now precisely because
+      ``wants_onshore_conversion`` is answered too, so D12 has no missing fact
+      left to bid with.
+
+    With the allowlist empty, the first mutation is graded against ``{}`` —
+    the permanent form of the invariant, with no excuse available."""
+
+    label = "offshore/invest/pt_pma"
+    assert "family_sponsor_confirmed" in walks[label]["asked"], (
+        "this walk no longer asks the fact the test withdraws — re-anchor"
+    )
+
+    withdrawn = dict(walks[label]["overrides"])
+    withdrawn["family.sponsor_confirmed"] = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
+    actual = _evaluate(withdrawn, label, as_of=_AS_OF)["actual"]
+    assert actual["state"] == "NEEDS_INPUT", (
+        "withdrawing the fact no longer dead-ends this walk — the cure is no "
+        "longer attributable to the question and this test proves nothing"
+    )
+    assert actual["missing_facts"] == ["family.sponsor_confirmed"]
+    assert _dead_end_violations({label: actual}, allowlist=_scoped_allowlist(label))
+
+    denied = dict(walks[label]["overrides"])
+    denied["family.sponsor_confirmed"] = {"status": "KNOWN", "value": False}
+    denied_actual = _evaluate(denied, label, as_of=_AS_OF)["actual"]
+    assert denied_actual["state"] == "NO_SUPPORTED_PATH"
+    assert not _dead_end_violations({label: denied_actual}, allowlist=_scoped_allowlist(label))
+
+
+def test_guilt_a_walk_that_loses_its_answer_is_caught(
+    walks: dict[str, dict[str, Any]],
+) -> None:
+    """GUILT: ``offshore/work`` is one of the 51 walks that DO answer (E23).
+    Take its ``work.indonesian_work_sponsor_confirmed`` away and the outcome
+    pin must fire.
+
+    Measured 2026-09-07 on seq-20 with PR-2's reorder, and RE-MEASURED under
+    this PR's corpus — ``work_role`` left the walk, so its fixture changed —
+    with the same result. The mutated walk
+    lands on NO_SUPPORTED_PATH, not NEEDS_INPUT — E23 is the only product whose
+    ELIGIBILITY rules cover EMPLOYMENT, and denying its sponsor gate leaves
+    nothing that could ever cover the purpose. Without the reorder this same
+    mutation produced a dead end, which is why the seq-20 version of this test
+    also asserted ``_dead_end_violations``. It no longer can: a
+    NO_SUPPORTED_PATH walk is an ANSWER, and the invariant deliberately says
+    nothing about it. That second assertion is therefore not dropped but
+    REPLACED by the two things this mutation actually witnesses — the exact
+    state and the invariant's silence — rather than kept as an assertion that
+    only passed because it was graded against the whole table (the PR-0 gate's
+    vacuity finding)."""
+
+    mutated = dict(walks["offshore/work"]["overrides"])
+    mutated["work.indonesian_work_sponsor_confirmed"] = {"status": "KNOWN", "value": False}
+    actual = _evaluate(mutated, "offshore/work", as_of=_AS_OF)["actual"]
+
+    assert actual["state"] == "NO_SUPPORTED_PATH"
+    assert actual["candidates"] == []
+    assert _outcome_violations(
+        {"offshore/work": actual}, expected=_scoped_expectation("offshore/work")
+    )
+    # ...and the invariant stays SILENT, because losing an answer this way is
+    # not a dead end. Scoped, so the silence is about this walk only.
+    assert not _dead_end_violations(
+        {"offshore/work": actual}, allowlist=_scoped_allowlist("offshore/work")
+    )
+
+
+def test_guilt_a_dead_end_on_an_unlisted_fact_is_caught() -> None:
+    """GUILT: a NEEDS_INPUT on a fact nobody allowlisted — the shape a new
+    signed rule with ``on_unknown: NEEDS_INPUT`` on an unaskable fact would
+    produce — is a violation, and stays one when the allowlist is EMPTY, which
+    is no longer a hypothetical: it is the live table this PR ships."""
+
+    # `offshore/work` is one of the 51 ANSWERING walks, so it carries no
+    # allowlist row — which is exactly the branch under test here.
+    fabricated = {
+        "offshore/work": {
+            "state": "NEEDS_INPUT",
+            "candidates": [],
+            "missing_facts": ["work.employer_is_indonesian_entity"],
+        }
+    }
+    assert _dead_end_violations(fabricated, allowlist=_scoped_allowlist("offshore/work"))
+    assert _dead_end_violations(
+        {"offshore/work": {"state": "NEEDS_INPUT", "candidates": [], "missing_facts": []}},
+        allowlist={},
+    )
+
+
+def test_guilt_an_allowlisted_walk_that_blocks_on_a_DIFFERENT_fact_is_caught() -> None:
+    """GUILT for ``_dead_end_violations``' ``elif missing != allowed`` branch —
+    the one that compares FACTS instead of counting states.
+
+    Independent review 2026-09-06 (codex, MEDIUM) measured the hole this
+    fills: with ``WALK_DEAD_END_ALLOWLIST`` empty, that branch is unreachable
+    from the live table, so deleting it left all 14 tests in this file green.
+    An empty allowlist cannot exercise a rule about what a row PERMITS, so the
+    row is fabricated — but the rule is the load-bearing one: it is what stops
+    a "cure" that merely moves the block from reading as a no-op.
+
+    Both directions, because the equality has to bite both ways: a walk
+    blocking on a fact its row does not name is a violation, and the same walk
+    blocking on exactly the named fact is not.
+    """
+
+    label = "offshore/invest/pt_pma"
+    row = DeadEnd("family.sponsor_confirmed", "family_sponsor_confirmed", QUESTION_NOT_IN_THIS_WALK)
+    allowlist = {label: (row,)}
+
+    moved = {
+        label: {
+            "state": "NEEDS_INPUT",
+            "candidates": [],
+            "missing_facts": ["process.wants_onshore_conversion"],
+        }
+    }
+    violations = _dead_end_violations(moved, allowlist=allowlist)
+    assert violations and "allowlist says" in violations[0]
+    assert len(violations) == 1, f"only the moved block may be reported here: {violations}"
+
+    unmoved = {
+        label: {
+            "state": "NEEDS_INPUT",
+            "candidates": [],
+            "missing_facts": ["family.sponsor_confirmed"],
+        }
+    }
+    assert not _dead_end_violations(unmoved, allowlist=allowlist)
+
+
+def test_guilt_a_stale_allowlist_row_is_caught() -> None:
+    """GUILT: the cure lands, the walk answers, and the allowlist row stays —
+    the way an allowlist normally outlives its defect. Must be red.
+
+    Re-anchored onto a FABRICATED row, and it had to be: this test was graded
+    against the live ``offshore/invest/pt_pma`` row, and PR-3 deleted that row
+    by curing the walk — which is precisely the transition the previous
+    docstring said would turn it red. There is no live row left to anchor on
+    (``WALK_DEAD_END_ALLOWLIST`` is empty and the test above pins that), so
+    the choice is a fabricated row or no coverage at all for the branch of
+    ``_dead_end_violations`` that reports a row outliving its defect. The
+    branch is what a FUTURE row will depend on, so it keeps its test.
+
+    The anchor is still the real cure: the state and candidate list fed in are
+    the ones ``offshore/invest/pt_pma`` actually reaches now (pinned in
+    ``EXPECTED_OUTCOME``), so if that walk ever stops answering C2 this test's
+    premise is visibly stale rather than quietly fictional."""
+
+    label = "offshore/invest/pt_pma"
+    assert EXPECTED_OUTCOME[label] == ("SUPPORTED_CANDIDATES", ("C2",)), (
+        "the cured outcome this fabricated row is built on moved — re-anchor"
+    )
+    stale_row = DeadEnd(
+        "family.sponsor_confirmed", "family_sponsor_confirmed", QUESTION_NOT_IN_THIS_WALK
+    )
+    cured = {
+        label: {
+            "state": "SUPPORTED_CANDIDATES",
+            "candidates": ["C2"],
+            "missing_facts": [],
+        }
+    }
+    violations = _dead_end_violations(cured, allowlist={label: (stale_row,)})
+    assert violations and "stale allowlist row" in violations[0]
+    assert len(violations) == 1, f"only the stale row may be reported here: {violations}"

@@ -285,7 +285,9 @@ async def test_workspace_publish_uses_named_actor_and_existing_cover_only(
     request.scope["app"] = app
     result = await intel.workspace_marketing_publish_news(
         "news_1",
-        intel.WorkspaceNewsPublishRequest(confirmation="DAMAR_CONFIRMED"),
+        intel.WorkspaceNewsPublishRequest(
+            confirmation="DAMAR_CONFIRMED", position="latest"
+        ),
         request=request,
     )
 
@@ -328,7 +330,9 @@ async def test_workspace_publish_recovers_expired_lease_with_same_operation(
 
     result = await intel.workspace_marketing_publish_news(
         "news_1",
-        intel.WorkspaceNewsPublishRequest(confirmation="DAMAR_CONFIRMED"),
+        intel.WorkspaceNewsPublishRequest(
+            confirmation="DAMAR_CONFIRMED", position="latest"
+        ),
     )
 
     assert result["success"] is True
@@ -584,7 +588,9 @@ async def test_workspace_publish_blocks_incomplete_or_already_published_items(
     with pytest.raises(HTTPException) as exc_info:
         await intel.workspace_marketing_publish_news(
             "news_1",
-            intel.WorkspaceNewsPublishRequest(confirmation="DAMAR_CONFIRMED"),
+            intel.WorkspaceNewsPublishRequest(
+                confirmation="DAMAR_CONFIRMED", position="latest"
+            ),
         )
     assert exc_info.value.status_code == 409
     assert exc_info.value.detail["missing"] == ["cover_image"]
@@ -595,7 +601,9 @@ async def test_workspace_publish_blocks_incomplete_or_already_published_items(
     monkeypatch.setattr(intel.staging_service, "load_staging_item", lambda *_: published)
     replay = await intel.workspace_marketing_publish_news(
         "news_1",
-        intel.WorkspaceNewsPublishRequest(confirmation="DAMAR_CONFIRMED"),
+        intel.WorkspaceNewsPublishRequest(
+            confirmation="DAMAR_CONFIRMED", position="latest"
+        ),
     )
     assert replay["idempotent"] is True
     assert replay["status"] == "published"
@@ -698,7 +706,7 @@ def test_http_boundary_requires_exact_dedicated_key(monkeypatch) -> None:
     }
 
     publish_path = "/api/workspace-marketing/news/news_1/publish"
-    publish_body = {"confirmation": "DAMAR_CONFIRMED"}
+    publish_body = {"confirmation": "DAMAR_CONFIRMED", "position": "latest"}
     assert client.post(publish_path, json=publish_body).status_code == 401
     assert (
         client.post(
@@ -715,6 +723,13 @@ def test_http_boundary_requires_exact_dedicated_key(monkeypatch) -> None:
     )
     assert published.status_code == 200
     assert published.json()["published_url"].startswith("https://balizero.com/")
+
+    missing_position = client.post(
+        publish_path,
+        json={"confirmation": "DAMAR_CONFIRMED"},
+        headers={"X-Workspace-Marketing-Key": "dedicated-key"},
+    )
+    assert missing_position.status_code == 422
 
 
 def test_all_bridge_routes_reach_their_dedicated_route_auth(monkeypatch) -> None:

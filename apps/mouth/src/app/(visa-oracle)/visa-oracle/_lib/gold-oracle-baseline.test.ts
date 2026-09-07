@@ -4,6 +4,7 @@ import {
   GOLD_ORACLE_PACK_HASH,
   goldOracleReviewReasonCode,
 } from "./gold-oracle-baseline";
+import { getCategoryQuestionIds } from "./flow";
 
 describe("gold oracle baseline (QW-2 independent SHADOW-parity oracle)", () => {
   it("pins a stable, non-empty source identifier", () => {
@@ -61,6 +62,30 @@ describe("gold oracle baseline (QW-2 independent SHADOW-parity oracle)", () => {
         review_gate: "none",
       }),
     ).toBeUndefined();
+  });
+
+  // 2026-09-06: guilt for the reachability note on the remote persona in
+  // gold-oracle-baseline.ts. Both personas must be answerable by a real
+  // browser walk, or the baseline can never match live SHADOW traffic and
+  // "parity_match" is dead by construction — the exact defect this file
+  // was written to fix, one layer down.
+  it("every fact each persona pins is asked by that persona's own interview branch", () => {
+    expect(getCategoryQuestionIds({ category: "remote" })).toContain(
+      "work_payer",
+    );
+    const familyIds = getCategoryQuestionIds({
+      category: "family",
+      family_relation: "SPOUSE",
+      family_sponsor_nationalities: "ID",
+    });
+    for (const id of [
+      "family_relation",
+      "family_sponsor_nationalities",
+      "family_sponsor_confirmed",
+      "family_marriage_registered",
+    ]) {
+      expect(familyIds).toContain(id);
+    }
   });
 
   it("returns undefined for interviews outside the pinned subset", () => {

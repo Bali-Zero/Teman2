@@ -956,6 +956,21 @@ class TestGoldReplayDriverOffline:
     other 15. Re-running that measurement here (``report_18``) is this
     test's own sanity check on its re-derivation, not an assumed constant.
 
+    **Revised 2026-09-06 to 6/20, on BOTH sides, by the decisiveness
+    reorder** (``evaluator.evaluate_product`` now tests purpose-feasibility
+    before blocking on an input-tagged gate unknown — see
+    ``test_evaluator_purpose_feasibility_precedence.py``). The one persona
+    that joined is **#13**, and it joined for its OWN stated reason, not
+    because a threshold moved: its label is "remote worker, local-clients
+    fact unprovided -> needs input" and its fixture declares
+    ``expected_missing=("work.serves_indonesian_clients",)``. It was already
+    NEEDS_INPUT; what it was ASKING for was ``sponsor.type``, contributed by
+    E33A/E33B/E33C — three products with zero eligibility rules that can
+    never cover REMOTE_WORK. It now asks for the fact the persona says it
+    should ask for. Measured across all 20 personas on both packs: ZERO
+    ``DecisionState`` changes and ZERO candidate-set changes; persona #13's
+    ``missing_facts`` is the only field that moved.
+
     What this fold actually changes, verified: persona #7's manufactured
     ``E31B``/``E31D`` candidates (the fail-open consequence Q3's diff
     explains) are GONE on seq-19 — but persona #7 still shows as
@@ -976,9 +991,28 @@ class TestGoldReplayDriverOffline:
         self, report_18: dict[str, Any]
     ) -> None:
         summary = report_18["summary"]
-        assert (summary["personas_match"], summary["personas_total"]) == (5, 20)
+        assert (summary["personas_match"], summary["personas_total"]) == (6, 20)
         matching = {row["persona_id"] for row in report_18["personas"] if not row["divergence"]}
-        assert matching == {3, 4, 12, 15, 18}
+        assert matching == {3, 4, 12, 13, 15, 18}
+
+    def test_persona_13_matches_because_it_finally_asks_its_own_fact(
+        self, report_18: dict[str, Any], report_19: dict[str, Any]
+    ) -> None:
+        """The justification for the 5/20 → 6/20 move above, stated as a
+        persona rather than as a number (generator is never grader): #13's
+        fixture asks for ``work.serves_indonesian_clients`` and #13's own
+        state is unchanged — still ``NEEDS_INPUT``. Nothing was loosened;
+        the engine stopped substituting a zero-support product's
+        ``sponsor.type`` for the persona's own question."""
+        by_id_18 = {row["persona_id"]: row for row in report_18["personas"]}
+        by_id_19 = {row["persona_id"]: row for row in report_19["personas"]}
+        persona_13 = next(p for p in PERSONAS if p.id == 13)
+        assert persona_13.expected_missing == ("work.serves_indonesian_clients",)
+        for report in (by_id_18, by_id_19):
+            row = report[13]
+            assert row["actual"]["state"] == DecisionState.NEEDS_INPUT.value
+            assert row["actual"]["missing_facts"] == ["work.serves_indonesian_clients"]
+            assert not row["divergence"]
 
     def test_persona_7_manufactured_e31_candidates_are_gone_on_seq19(
         self, report_18: dict[str, Any], report_19: dict[str, Any]
