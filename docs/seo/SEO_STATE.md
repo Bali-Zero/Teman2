@@ -1,7 +1,8 @@
 # SEO_STATE — balizero.com
 
 **Owner:** AISO (standing SEO manager) · **Operator:** Subhi Darajat
-**Created:** 2026-09-07 · **Measured at commit:** `6c6f25a960f108d3cf88c85b5ba428cc3604c1b1` (`origin/main`)
+**Created:** 2026-09-07 · **Source measured at commit:** `6c6f25a960f108d3cf88c85b5ba428cc3604c1b1` (`origin/main`)
+**Served surface measured at commit:** `1bdadc5f2839f2d49d3d4f5d0424ccdaf4937d50` (2026-09-07, `curl /api/health`) — 5 commits behind `main`
 
 > Rule: a route that is not in the ledger below has SEO status **unknown**, not "fine".
 > Rule: update this file in the same PR that changes anything it describes.
@@ -10,10 +11,11 @@
 
 ## 0. Measurement layer of this file
 
-Everything here was measured at **layer 2 — `origin/main` source**, quotable as `file:line`.
-**Nothing in this file is "live".** The session that created it ran in the Anthropic cloud sandbox, where:
+Counts in §1 and §2 were measured at **layer 2 — `origin/main` source**, quotable as `file:line`.
+**§3.1 is the exception: it was closed at layer 3 on the served surface**, see that section.
+The session that created this file ran in the Anthropic cloud sandbox, where:
 
-- `curl https://balizero.com/api/health` → egress proxy `connect_rejected` (measured 2026-09-07). Served commit **not measured**.
+- `curl https://balizero.com/api/health` → egress proxy `connect_rejected` from the sandbox. The layer-3 probes in §3.1 were therefore run from Subhi's machine on 2026-09-07 and are recorded with the served commit they measured.
 - Ahrefs MCP → `{"error":"Insufficient plan"}` on `site-audit-projects`, `site-explorer-top-pages`, `site-explorer-metrics`, `gsc-pages`, and even the free `subscription-info-limits-and-usage` (measured 2026-09-07). **No traffic figure in this file. None was invented.**
 - `docs/SYSTEM_INVENTORY.md` → does not exist at that path on `origin/main` @ `6c6f25a9`. `find . -iname 'SYSTEM_INVENTORY*'` → 0 hits.
 
@@ -119,7 +121,7 @@ so the route inherits `apps/mouth/src/app/layout.tsx:131` `canonical: appUrl` �
 
 Ranked by crawl exposure, **not** by measured traffic — traffic could not be measured on 2026-09-07 (§0).
 
-### 3.1 — Root-layout canonical leaks onto every non-overriding route
+### 3.1 — Root-layout canonical leaks onto every non-overriding route — **CONFIRMED LIVE 2026-09-07**
 
 **Evidence (layer 2, `6c6f25a9`):**
 
@@ -149,18 +151,36 @@ returns 0 files that assert a route's canonical.
 `<link rel="canonical" href="https://balizero.com/">` plus three hreflang entries pointing at the
 homepage — an instruction to Google to consolidate the page into the homepage.
 
-**⚠️ NOT YET MEASURED — the one command that closes this.** Run from Subhi's machine:
+**MEASURED ON THE SERVED SURFACE — 2026-09-07, served commit `1bdadc5f2839f2d49d3d4f5d0424ccdaf4937d50`.**
 
 ```
-curl -s https://balizero.com/api/health | grep -i commit
-curl -s https://tax.balizero.com/            | grep -o '<link rel="canonical"[^>]*>'
-curl -s https://balizero.com/tax-calendar    | grep -o '<link rel="canonical"[^>]*>'
-curl -s https://balizero.com/visa            | grep -o '<link rel="canonical"[^>]*>'   # positive control
+$ curl -s https://balizero.com/api/health | grep -i commit
+{"status":"ok","timestamp":1788769086856,"commit":"1bdadc5f2839f2d49d3d4f5d0424ccdaf4937d50"}
+
+$ curl -s https://tax.balizero.com/ | grep -o '<link rel="canonical"[^>]*>'
+<link rel="canonical" href="https://balizero.com"/>
+
+$ curl -s https://balizero.com/tax-calendar | grep -o '<link rel="canonical"[^>]*>'
+<link rel="canonical" href="https://balizero.com"/>
+
+$ curl -s https://balizero.com/visa | grep -o '<link rel="canonical"[^>]*>'      # positive control
+<link rel="canonical" href="https://balizero.com/visa"/>
 ```
 
-Pass = the first two print `href="https://balizero.com/"` (defect confirmed) while the control
-prints `href="https://balizero.com/visa"` (proving the grep reaches the target).
-If the first two print their own path, this whole item is void — close it and write why.
+The positive control printed its own path, so the two homepage results are a real finding and not a
+grep that missed its target. The inference is closed: **`tax.balizero.com` and `/tax-calendar` both
+serve `<link rel="canonical" href="https://balizero.com"/>` — they declare themselves duplicates of
+the homepage.**
+
+The source explanation holds at the served commit itself, not only at `main`:
+`git show 1bdadc5f:apps/mouth/src/app/layout.tsx` → `canonical: appUrl` at line 131, `appUrl` at
+line 39; `git show '1bdadc5f:apps/mouth/src/app/(tax-calendar)/tax-calendar/layout.tsx'` → `title`
+at line 9, no `alternates`. `1bdadc5f` is an ancestor of `6c6f25a9` (`git merge-base --is-ancestor`,
+RC=0); `git rev-list --count 1bdadc5f..6c6f25a9` = 5.
+
+**Still unmeasured:** the other 25 routes in the list below were not probed individually. Two of
+27 were measured; the remaining 25 share the same source condition but carry no layer-3 evidence
+yet. Do not write "27 routes confirmed" anywhere — write "2 of 27 measured, 25 inferred".
 
 **Affected crawlable public routes (27)** — robots-disallowed prefixes already excluded
 (`/chat`, `/login`, `/admin`, `/dashboard`, `/clients`, `/settings`, `/analytics`, `/intelligence`,
@@ -255,5 +275,13 @@ Founding year is contested (2019 vs 2006) — must not appear in copy or schema 
 ```
 curl -s https://balizero.com/api/health | grep -i commit
 git fetch origin && git rev-parse origin/main
-# then the §3.1 canonical probe block, control included
+curl -s https://balizero.com/visa | grep -o '<link rel="canonical"[^>]*>'
 ```
+
+The third is the standing positive control for every canonical probe: if it stops printing
+`https://balizero.com/visa`, the probe method is broken and no zero from it counts.
+
+**Open next action from §3.1 (confirmed, not yet fixed):** add `alternates.canonical` to
+`apps/mouth/src/app/(tax-calendar)/tax-calendar/layout.tsx`, add `/tax-calendar` to the static list
+in `apps/mouth/src/app/sitemap.ts`, and add a guard test asserting a route's canonical — modelled on
+`apps/mouth/src/app/metadata-title-template.test.ts`. One surface per PR. Zone VERDE.
