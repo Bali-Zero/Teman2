@@ -445,14 +445,27 @@ const REVIEW_FLAG_MAP: Readonly<
  * owner ruling of 2026-09-06 decision 6; `tourism_duration`/`remote_income`,
  * question ids that exist nowhere in `tree.ts`): research/visa/
  * 2026-09-06-visa-oracle-decisiveness-investigation.md §4 PR-4 and §6 R3.
+ * `diaspora_connection`/`diaspora_documents` decided 2026-09-07: measured in
+ * production with `disclosed_review_flags=[]`, all 15 corpus diaspora walks
+ * resolved to `SUPPORTED_CANDIDATES` with real candidates (C1, plus
+ * E31A/E31C/E31F/E31G per the declared link) — the pack already decides
+ * `former_wni`/`descendant`/`family` and both document answers on its own, so
+ * holding on their mere presence was discarding a proven answer, the same
+ * defect this table exists to cure for the other questions. `dual` (Indonesian
+ * dual citizenship) and `other` stay undecidable on purpose: `dual` is the
+ * legally most sensitive diaspora status the owner named as a legitimate
+ * human-review case, and no corpus walk exercises it — releasing it would
+ * open a branch never tested on the point that matters most; `other` is
+ * fail-closed by construction, it names no specific status the pack can
+ * reason about.
  * Guilt, innocence and the per-walk census: `activity-boundary.test.ts`.
  */
 export const ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS = {
   business_activity: ["meetings", "negotiation", "conference"],
   investment_vehicle: ["pt_pma"],
   retirement_basis: ["bank_deposit", "passive_income"],
-  diaspora_connection: [],
-  diaspora_documents: [],
+  diaspora_connection: ["former_wni", "descendant", "family"],
+  diaspora_documents: ["yes", "no"],
   other_purpose: [],
   other_paid_activity: [],
 } as const satisfies Readonly<Record<string, readonly string[]>>;
@@ -487,7 +500,7 @@ export function mapDisclosedReviewFlags(
   // Human-context answers the signed vocabulary cannot decide may only lower
   // the result to review. An answer it CAN decide must not: this flag is a
   // hold that deletes candidates, never a label (see the table above).
-  if (facts.category === "diaspora" || hasUndecidableActivityAnswer(facts)) {
+  if (hasUndecidableActivityAnswer(facts)) {
     flags.add("ACTIVITY_BOUNDARY");
   }
   if (

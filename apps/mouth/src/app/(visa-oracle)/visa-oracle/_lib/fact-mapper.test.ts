@@ -214,10 +214,12 @@ describe("question registry -> wire coverage", () => {
     // below rather than being deleted — the assertion changed sides, it did
     // not disappear. Measured live the same day: `offshore/business` returns
     // NO_SUPPORTED_PATH with `BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED`.
-    for (const [id, value] of [
-      ["other_purpose", "medical"],
-      ["diaspora_connection", "former_wni"],
-    ] as const) {
+    //
+    // `diaspora_connection`/`diaspora_documents` released 2026-09-08 for the
+    // SAME reason (measured 2026-09-07: all 15 corpus diaspora walks reach
+    // SUPPORTED_CANDIDATES with `disclosed_review_flags=[]`) — moved out of
+    // this list to the must-NOT-flag table below, `former_wni` included.
+    for (const [id, value] of [["other_purpose", "medical"]] as const) {
       expect(mapFacts({ [id]: value }).disclosed_review_flags).toContain(
         "ACTIVITY_BOUNDARY",
       );
@@ -253,6 +255,12 @@ describe("question registry -> wire coverage", () => {
     // Engine-inert: no rule reads a work role (owner ruling, decision 6).
     // All five options are swept in `activity-boundary.test.ts`.
     ["work_role", "specialist"],
+    // Released 2026-09-08 — see the "innocence" test above for the measurement.
+    ["diaspora_connection", "former_wni"],
+    ["diaspora_connection", "descendant"],
+    ["diaspora_connection", "family"],
+    ["diaspora_documents", "yes"],
+    ["diaspora_documents", "no"],
   ])(
     "leaves a decidable answer (%s=%s) unflagged — it must not veto a proven candidate",
     (id, value) => {
