@@ -2,21 +2,23 @@
 
 ``test_gold_coverage_floor.py`` proves the pack can support a product when
 every fact arrives. This file proves the opposite half, and it is the half
-the user lives in: replay the **61 real interview walks** — every distinct
+the user lives in: replay the **67 real interview walks** — every distinct
 path through ``flow.ts``'s two-arm spine and ``getCategoryQuestionIds``'
 eleven categories, each answered through the real ``fact-mapper.ts`` —
 against the highest signed PRODUCTION pack, and pin the outcome census.
 
 Measured 2026-09-07 on ``rulepack-prod-020.signed.json``, with PR-3's
-interview on top: **0 NEEDS_INPUT / 10 NO_SUPPORTED_PATH / 51
-SUPPORTED_CANDIDATES — at ENGINE level, with no disclosure flags supplied.**
-That qualifier is load-bearing and is spelled out under "WHAT THIS CENSUS
-DOES NOT SEE" below; 51 is not the number of applicants who see a
-recommendation without human review. No walk asks the applicant for a fact
-the interview has no question for any more
+interview on top and PR-5's age dimension on top of that: **2 NEEDS_INPUT /
+10 NO_SUPPORTED_PATH / 55 SUPPORTED_CANDIDATES — at ENGINE level, with no
+disclosure flags supplied.** That qualifier is load-bearing and is spelled
+out under "WHAT THIS CENSUS DOES NOT SEE" below; 55 is not the number of
+applicants who see a recommendation without human review. Almost no walk
+asks the applicant for a fact the interview has no question for any more —
+the two exceptions are PR-5's own, and the module carries their allowlist
+rows below
 (research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md §1-§2).
 
-Three hops got here, and this file has been re-derived at each one — never
+Four hops got here, and this file has been re-derived at each one — never
 hand-edited:
 
 1. **seq-19 → seq-20 (the signed fold, #5867): 36/0/7 → 21/0/22.** Fold edit
@@ -61,26 +63,61 @@ hand-edited:
      construction: the corpus carries a walk's wire FACTS, and ``work_role``
      was ``HUMAN_CONTEXT`` — it mapped to no FactPath, only to a disclosure
      flag. Both work walks still answer E23 with the same candidates.
+4. **PR-5, THIS PR — the AGE dimension: 0/10/51 → 2/10/55 over a corpus that
+   grows 61 → 67.** Neither the pack nor the interview tree moved; only the
+   corpus did. ``birth_date`` is a spine question no branch reads, so every
+   walk before this PR answers it with a fixed 25-year-old identity — and
+   every one of the six ``retirement`` walks is excluded by
+   ``hf.e33e.age-below-55`` / ``hf.e33f.age-below-55`` before either
+   product's own eligibility rule is ever exercised. This PR adds 6 walks —
+   the same 5 offshore retirement bases plus the onshore retirement walk,
+   replayed at age 64 (birth date ``1961-11-11``, deliberately outside
+   ``el.e33e.age-55-59-disputed-band``) — so E33E/E33F get exercised on the
+   facts for the first time:
 
-**No walk moved DOWN.** Every one of the 22 seq-20 answers keeps its exact
-candidate list, the 10 NO_SUPPORTED_PATH walks stay NO_SUPPORTED_PATH, and
-the only transition in the census is ``NEEDS_INPUT`` →
-``SUPPORTED_CANDIDATES``.
+   - ``bank_deposit``, ``passive_income`` and ``family_sponsor`` (offshore)
+     and the onshore neutral walk all reach ``SUPPORTED_CANDIDATES`` — four
+     new answers.
+   - ``property`` and ``undecided`` (offshore) end ``NEEDS_INPUT`` on
+     ``family.sponsor_confirmed``: honest dead ends, not a defect. The
+     question exists in the ``retirement`` category (the ``passive_income``
+     and ``family_sponsor`` bases both ask it) but neither the ``property``
+     nor the ``undecided`` branch reaches it — see
+     ``WALK_DEAD_END_ALLOWLIST`` below, which is why the invariant this file
+     arms is no longer unconditional.
+
+**No EXISTING walk moved.** Every one of the 61 pre-PR-5 walks keeps its
+exact state and candidate list — the 6 new walks are the only entries this
+PR adds to the census, and 2 of them are the first ``NEEDS_INPUT`` this file
+has ever pinned.
 
 The invariant this file exists to arm is one sentence:
 
     no walk may end in NEEDS_INPUT on a fact for which the interview has no
     reachable question in that walk's own history.
 
-**It is now UNCONDITIONAL.** ``WALK_DEAD_END_ALLOWLIST`` is empty, so
-``_dead_end_violations`` has no excuse left to find for any NEEDS_INPUT walk;
-the allowlist machinery stays because a future signed pack can raise a new
-``on_unknown: NEEDS_INPUT`` rule on an unaskable fact, and the guilt tests
-below keep every branch of it exercised against a fabricated row.
+**It is CONDITIONAL again, on exactly two named rows.** PR-3 made
+``WALK_DEAD_END_ALLOWLIST`` empty; PR-5 adds back the two rows above,
+each with its own anchor checked against the walk's own ``asked`` history
+(``test_every_allowlisted_dead_end_is_genuinely_unaskable_in_its_own_walk``).
+Curing ``flow.ts`` so ``retirement/property`` and ``retirement/undecided``
+also ask ``family_sponsor_confirmed`` — restoring the unconditional
+invariant — is a second concern and a follow-up, not this PR: it would
+rewrite the *young* ``offshore/retirement/property`` fixture that
+``test_the_retirement_walk_merges_age_below_55_keeping_both_rules_and_both_refs``
+pins. The allowlist machinery otherwise stays because a future signed pack
+can raise a new ``on_unknown: NEEDS_INPUT`` rule on an unaskable fact, and
+the guilt tests below keep every branch of it exercised against a
+fabricated row.
 
 WHAT THIS CENSUS DOES NOT SEE — read the numbers with these two bounds, both
 raised by independent review on 2026-09-06 (codex) and both PRE-EXISTING, not
-introduced by this PR:
+introduced by this PR. Both bounds and the two measurements below them
+(**51**, **10/15/36**, **21/35/5**) were taken on the pre-PR-5, 61-walk
+corpus — PR-5 adds no disclosure-flag interaction of its own to replay, and
+none of its 6 new walks carries a disclosure flag either, so the bound's
+shape is unchanged; only the raw SUPPORTED_CANDIDATES/NEEDS_INPUT counts
+below move, per the invariant section above:
 
 1. **Disclosure flags are not carried, so this file proves LESS than it
    looks like it proves.** A fixture stores a walk's ``facts`` only, so every
@@ -100,9 +137,11 @@ introduced by this PR:
      what ``work_role`` did, and it is why the E23 claim in this PR rests on
      a separate replay rather than on this table.
 
-   What IS sound as stated: "0 NEEDS_INPUT", the allowlist invariant and the
-   candidate lists. A review flag can only LOWER a result to
-   HUMAN_REVIEW_REQUIRED; it cannot create a missing fact.
+   What IS sound as stated: the allowlist invariant (conditional, since
+   PR-5, on the two named rows below — never unconditionally "0
+   NEEDS_INPUT" again) and the candidate lists. A review flag can only
+   LOWER a result to HUMAN_REVIEW_REQUIRED; it cannot create a missing
+   fact.
 
    MEASURED by this seat, 2026-09-07, replaying this same corpus through
    ``evaluator.evaluate`` + ``apply_public_policy_adapters`` with
@@ -196,12 +235,13 @@ class DeadEnd:
     why_unaskable: str
 
 
-#: EMPTY, and that is the whole point of PR-3: the invariant below is now
-#: unconditional. A row here says "this walk may end NEEDS_INPUT on this fact
-#: because the funnel genuinely cannot ask for it"; there is no longer a walk
-#: for which that is true.
+#: Was EMPTY between PR-3 and PR-5: the invariant below was UNCONDITIONAL for
+#: that stretch. A row here says "this walk may end NEEDS_INPUT on this fact
+#: because the funnel genuinely cannot ask for it" — PR-5 is the first PR
+#: since PR-3 for which that is true again, on exactly 2 walks.
 #:
-#: The wave retired every shape by CURING it, never by loosening a count:
+#: History (every shape before PR-5 was retired by CURING it, never by
+#: loosening a count):
 #:
 #: - seq-20's fold: `family.sponsor_status_code` (its eight rules made
 #:   NO_EFFECT) and `intent.requested_product_code` (the four BRIDGING rules
@@ -210,14 +250,41 @@ class DeadEnd:
 #:   `investment.{investment,paid_up}_capital_idr` (2 rows, always paired) and
 #:   `sponsor.type` (1 row) — each raised on behalf of a product that could
 #:   not cover the walk's declared purposes under ANY fact resolution.
-#: - THIS PR: `family.sponsor_confirmed` (9 rows) by adding
+#: - PR-3: `family.sponsor_confirmed` (9 rows) by adding
 #:   `family_sponsor_confirmed` to the `invest` and `other` branches, and
 #:   `intent.purposes` (2 rows) by giving the `diaspora` tile the `FAMILY`
 #:   purpose instead of `unknownFact(NOT_APPLICABLE)`.
+#: - THIS PR (PR-5): `family.sponsor_confirmed` (2 rows) on
+#:   `offshore/retirement/property/age64` and
+#:   `offshore/retirement/undecided/age64` — the age-64 walks are the first
+#:   to clear `hf.e33e.age-below-55` / `hf.e33f.age-below-55` and exercise
+#:   `el.e33e.retirement` / `el.e33f.retirement` on the facts, and neither the
+#:   `property` nor the `undecided` retirement branch (`flow.ts`,
+#:   `getCategoryQuestionIds`) ever asks `family_sponsor_confirmed` — only the
+#:   `passive_income` and `family_sponsor` bases do. Curing that (making
+#:   `property`/`undecided` ask it too) is a follow-up, not this PR: it would
+#:   also rewrite the *young* `offshore/retirement/property` fixture pinned by
+#:   `test_the_retirement_walk_merges_age_below_55_keeping_both_rules_and_both_refs`.
 #:
 #: Never add a row without an anchor showing the fact is genuinely unaskable
-#: in that walk — and prefer curing it, which is what every row above became.
-WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = {}
+#: in that walk — and prefer curing it, which is what every row before THIS
+#: PR became.
+WALK_DEAD_END_ALLOWLIST: dict[str, tuple[DeadEnd, ...]] = {
+    "offshore/retirement/property/age64": (
+        DeadEnd(
+            fact="family.sponsor_confirmed",
+            source_question="family_sponsor_confirmed",
+            why_unaskable=QUESTION_NOT_IN_THIS_WALK,
+        ),
+    ),
+    "offshore/retirement/undecided/age64": (
+        DeadEnd(
+            fact="family.sponsor_confirmed",
+            source_question="family_sponsor_confirmed",
+            why_unaskable=QUESTION_NOT_IN_THIS_WALK,
+        ),
+    ),
+}
 
 #: Per-walk outcome pin: state plus the candidate products, in rank order.
 #: Candidates are pinned too — a pack edit that adds or drops a product for a
@@ -263,10 +330,15 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/other": ("SUPPORTED_CANDIDATES", ("C6",)),
     "offshore/remote": ("NO_SUPPORTED_PATH", ()),
     "offshore/retirement/bank_deposit": ("NO_SUPPORTED_PATH", ()),
+    "offshore/retirement/bank_deposit/age64": ("SUPPORTED_CANDIDATES", ("E33E",)),
     "offshore/retirement/family_sponsor": ("NO_SUPPORTED_PATH", ()),
+    "offshore/retirement/family_sponsor/age64": ("SUPPORTED_CANDIDATES", ("E33F",)),
     "offshore/retirement/passive_income": ("NO_SUPPORTED_PATH", ()),
+    "offshore/retirement/passive_income/age64": ("SUPPORTED_CANDIDATES", ("E33F",)),
     "offshore/retirement/property": ("NO_SUPPORTED_PATH", ()),
+    "offshore/retirement/property/age64": ("NEEDS_INPUT", ()),
     "offshore/retirement/undecided": ("NO_SUPPORTED_PATH", ()),
+    "offshore/retirement/undecided/age64": ("NEEDS_INPUT", ()),
     "offshore/second_home/bank_deposit": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/second_home/property": ("SUPPORTED_CANDIDATES", ("E33",)),
     "offshore/study": ("SUPPORTED_CANDIDATES", ("E30", "E30A")),
@@ -281,6 +353,7 @@ EXPECTED_OUTCOME: dict[str, tuple[str, tuple[str, ...]]] = {
     "onshore/other": ("SUPPORTED_CANDIDATES", ("C6",)),
     "onshore/remote": ("NO_SUPPORTED_PATH", ()),
     "onshore/retirement": ("NO_SUPPORTED_PATH", ()),
+    "onshore/retirement/age64": ("SUPPORTED_CANDIDATES", ("E33E",)),
     "onshore/second_home": ("SUPPORTED_CANDIDATES", ("E33",)),
     "onshore/study": ("SUPPORTED_CANDIDATES", ("E30", "E30A")),
     "onshore/tourism": ("SUPPORTED_CANDIDATES", ("C1",)),
@@ -294,11 +367,17 @@ EXPECTED_STATE_CENSUS: dict[str, int] = dict(
     Counter(state for state, _ in EXPECTED_OUTCOME.values())
 )
 
-#: Which fact blocks how many walks — the §2.2 table, now EMPTY. A cure that
-#: moves walks between blocking facts instead of removing the block goes red
-#: here even if the total happens to stay the same, and so does the first fact
-#: that starts blocking again.
-EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = {}
+#: Which fact blocks how many walks — the §2.2 table, EMPTY between PR-3 and
+#: PR-5. A cure that moves walks between blocking facts instead of removing
+#: the block goes red here even if the total happens to stay the same, and so
+#: does the first fact that starts blocking again — which is exactly what
+#: THIS PR does: 2 age-64 retirement walks (`property`, `undecided`) block on
+#: `family.sponsor_confirmed`, the same fact PR-3 retired for 9 OTHER walks by
+#: adding the question to the `invest`/`other` branches (see
+#: `WALK_DEAD_END_ALLOWLIST` above) — this pack's rules still ask for it, the
+#: `retirement` branch just doesn't route these two bases to the question
+#: that supplies it.
+EXPECTED_DEAD_END_FACT_CENSUS: dict[str, int] = {"family.sponsor_confirmed": 2}
 
 
 def _load_walks() -> dict[str, dict[str, Any]]:
@@ -474,18 +553,19 @@ def outcomes(walks: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return _evaluate_walks(walks)
 
 
-def test_corpus_is_the_61_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
+def test_corpus_is_the_67_real_interview_walks(walks: dict[str, dict[str, Any]]) -> None:
     """An empty or shrunken corpus fails loudly: a census that passes because
     nobody fed it any walks is the green-but-dead shape (cicatrix #2).
 
-    43 before this PR. The 18 new walks are the branches the interview gained:
-    `second_home` × 2 bases offshore + 1 onshore, `STEPCHILD` × 2 sponsor
-    nationalities on the family tile, and the `diaspora` tile crossed like the
-    family one (7 relations × 2 nationalities) now that
-    `getCategoryQuestionIds` serves it the same sequence — 14 walks replacing
-    the single neutral `offshore/diaspora`, which is DELETED, not renamed."""
+    43 before PR-3, 61 before THIS PR. PR-5's 6 new walks are the 5 offshore
+    `retirement` bases plus the onshore neutral `retirement` walk, each
+    replayed with `birth_date` overridden to `RETIREMENT_AGE_64_BIRTH_DATE`
+    (age 64 on `CORPUS_TODAY`) instead of the corpus-wide default 25 — the
+    generator's own age dimension, not a new tree branch. Every OTHER walk in
+    the corpus is unchanged, byte-for-byte, because `birth_date` is a spine
+    question no branch reads."""
 
-    assert len(walks) == 61, f"expected 61 interview walks, found {len(walks)}"
+    assert len(walks) == 67, f"expected 67 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
@@ -497,7 +577,7 @@ def test_every_walk_ends_in_its_pinned_outcome(outcomes: dict[str, dict[str, Any
     assert not violations, "interview-walk outcomes moved:\n  " + "\n  ".join(violations)
 
 
-def test_walk_state_census_is_0_dead_ends_10_no_paths_and_51_answers(
+def test_walk_state_census_is_2_dead_ends_10_no_paths_and_55_answers(
     outcomes: dict[str, dict[str, Any]],
 ) -> None:
     """The headline number of the decisiveness wave. Every PR that changes it
@@ -505,14 +585,20 @@ def test_walk_state_census_is_0_dead_ends_10_no_paths_and_51_answers(
 
     36/0/7 on seq-19; 21/0/22 once the signed seq-20 bundle's stay-day
     widening landed; 11/10/22 with PR-2's reorder on top; 0/10/51 over a
-    43 → 61 corpus with this PR's interview (module docstring)."""
+    43 → 61 corpus with PR-3's interview; 2/10/55 over a 61 → 67 corpus with
+    THIS PR's age dimension on top (module docstring). The 2 NEEDS_INPUT are
+    new walks, not moved ones: `offshore/retirement/property/age64` and
+    `offshore/retirement/undecided/age64`, both allowlisted above."""
 
     census = dict(Counter(outcome["state"] for outcome in outcomes.values()))
-    assert census == EXPECTED_STATE_CENSUS == {"NO_SUPPORTED_PATH": 10, "SUPPORTED_CANDIDATES": 51}
-    # Stated as an absence, not as a zero count, because `Counter` simply omits
-    # a state nobody reached: the dead end is gone from the census, not merely
-    # rare. The invariant test below says the same thing from the other side.
-    assert "NEEDS_INPUT" not in census
+    assert census == EXPECTED_STATE_CENSUS == {
+        "NEEDS_INPUT": 2,
+        "NO_SUPPORTED_PATH": 10,
+        "SUPPORTED_CANDIDATES": 55,
+    }
+    # No longer stated as an absence: THIS PR is the one that puts NEEDS_INPUT
+    # back in the census, on exactly the 2 walks the allowlist above names.
+    assert census["NEEDS_INPUT"] == 2
     # NOT a claim about production. The corpus carries no disclosure flags, so
     # the review arm of `apply_public_policy_adapters` is unreachable from
     # here by construction: this line says the FIXTURES trigger no review, and
@@ -520,8 +606,8 @@ def test_walk_state_census_is_0_dead_ends_10_no_paths_and_51_answers(
     # the module docstring, with the measurement.
     assert census.get("HUMAN_REVIEW_REQUIRED", 0) == 0
     # The 10 NO_SUPPORTED_PATH walks are PR-2's, unmoved: this PR only ever
-    # supplies facts the interview was already refusing to ask for, and no
-    # supplied fact turned an answer back into a no-path.
+    # adds NEW walks that either answer or dead-end, and no existing walk's
+    # state changed.
     assert census["NO_SUPPORTED_PATH"] == 10
 
 
@@ -627,14 +713,32 @@ def test_no_walk_dead_ends_outside_the_allowlist(outcomes: dict[str, dict[str, A
     assert not violations, "walk-census invariant broken:\n  " + "\n  ".join(violations)
 
 
-def test_allowlist_is_empty_so_the_invariant_is_unconditional() -> None:
-    """The strongest form this table can take, and PR-3's deliverable.
+def test_allowlist_has_exactly_the_two_age64_rows_so_the_invariant_is_conditional_again() -> None:
+    """PR-3's deliverable — ``len(...) == 0``, the strongest form this table
+    can take — held for exactly one wave. THIS PR is the one that reopens it.
 
-    Was ``len(...) == 11`` before this PR. An equality against ``{}`` is not a
-    loosened count: it is the count that admits nothing, and any future row —
-    however well argued — has to move this literal in the PR that adds it."""
+    The invariant is no longer unconditional: it now reads "no walk may end
+    NEEDS_INPUT on a fact for which the interview has no reachable question
+    in that walk's own history, OR the walk is one of these 2 named rows,
+    each checked against its own `asked` history below." That is a WEAKER
+    claim than PR-3 shipped, on purpose — `offshore/retirement/property/age64`
+    and `offshore/retirement/undecided/age64` are the first walks able to
+    clear `hf.e33e.age-below-55` / `hf.e33f.age-below-55` and reach
+    `el.e33e.retirement` / `el.e33f.retirement` on the facts, and neither
+    retirement sub-branch asks `family_sponsor_confirmed`. Curing `flow.ts` so
+    they do would restore `len(...) == 0`, but it is a second concern (see
+    `WALK_DEAD_END_ALLOWLIST`'s module-level comment) and not this PR's.
 
-    assert WALK_DEAD_END_ALLOWLIST == {}
+    An equality against a named 2-row dict is still not a loosened count in
+    the sense PR-3 warned about: it names both rows explicitly, and any
+    THIRD row — however well argued — still has to move this literal in the
+    PR that adds it."""
+
+    assert set(WALK_DEAD_END_ALLOWLIST) == {
+        "offshore/retirement/property/age64",
+        "offshore/retirement/undecided/age64",
+    }
+    assert len(WALK_DEAD_END_ALLOWLIST) == 2
 
 
 def _unaskable_violations(
@@ -793,7 +897,7 @@ def test_guilt_withdrawing_the_newly_asked_fact_restores_the_dead_end(
 def test_guilt_a_walk_that_loses_its_answer_is_caught(
     walks: dict[str, dict[str, Any]],
 ) -> None:
-    """GUILT: ``offshore/work`` is one of the 51 walks that DO answer (E23).
+    """GUILT: ``offshore/work`` is one of the 55 walks that DO answer (E23).
     Take its ``work.indonesian_work_sponsor_confirmed`` away and the outcome
     pin must fire.
 
@@ -834,7 +938,7 @@ def test_guilt_a_dead_end_on_an_unlisted_fact_is_caught() -> None:
     produce — is a violation, and stays one when the allowlist is EMPTY, which
     is no longer a hypothetical: it is the live table this PR ships."""
 
-    # `offshore/work` is one of the 51 ANSWERING walks, so it carries no
+    # `offshore/work` is one of the 55 ANSWERING walks, so it carries no
     # allowlist row — which is exactly the branch under test here.
     fabricated = {
         "offshore/work": {
