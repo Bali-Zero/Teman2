@@ -62,7 +62,7 @@ so the route inherits `apps/mouth/src/app/layout.tsx:131` `canonical: appUrl` �
 | `/exclusive`                        | `exclusive/page.tsx`                           | **NO — inherits `/`** | no     | no            | `exclusive/page.tsx`                         |
 | `/interview_natalie`                | `(assessment)/interview_natalie/layout.tsx`    | **NO — inherits `/`** | no     | no            | `(assessment)/interview_natalie/page.tsx`    |
 | `/kbli`                             | `kbli/page.tsx`                                | yes                   | no     | yes           | `kbli/page.tsx`                              |
-| `/kbli-explorer`                    | `kbli-explorer/layout.tsx`                     | yes                   | yes    | yes           | `kbli-explorer/page.tsx`                     |
+| `/kbli-explorer`                    | `kbli-explorer/layout.tsx`                     | **NO — was mis-scored "yes" here, see §3.1a** | yes    | yes           | `kbli-explorer/page.tsx`                     |
 | `/kbli/[code]`                      | `kbli/[code]/page.tsx`                         | yes                   | yes    | dynamic       | `kbli/[code]/page.tsx`                       |
 | `/kbli/builder`                     | `kbli/builder/page.tsx`                        | yes                   | no     | no            | `kbli/builder/page.tsx`                      |
 | `/kbli/decoder`                     | `kbli/decoder/page.tsx`                        | yes                   | no     | no            | `kbli/decoder/page.tsx`                      |
@@ -210,6 +210,35 @@ It is also **absent from `apps/mouth/src/app/sitemap.ts`** (the static list at l
 Removing the root-layout `languages` block would touch the shared root layout and every route at
 once; that is a one-PR-per-surface decision, not a sweep (memory item 103 pattern).
 
+### 3.1a — Correction (2026-09-08, session 3): `/kbli-explorer` was mis-scored, and is now the worst case
+
+The §2 row above was written from a `grep -l 'canonical'` walk over `apps/mouth/src`, and
+`apps/mouth/src/app/kbli-explorer/layout.tsx` @ `6c6f25a9` was measured directly today: it declares
+`title`, `description` and `openGraph`, and **no `alternates`**. It is one of the 27 (now 28)
+routes affected by §3.1 — the grep-based walk credited it off the word "canonical" appearing
+elsewhere in the route's subtree, not inside a real `alternates` object. §3.1's own text already
+warned this could happen ("no equivalent guard for `alternates`"); this is that warning landing.
+
+`/kbli-explorer` is the **sharpest instance of §3.1**, not a random member of the list: it is the
+only one of the 28 that `sitemap.ts` (`staticPaths`, line 41) actively submits to Google, it names
+itself as a distinct application in the sitewide `SearchAction` JSON-LD
+(`components/seo/JsonLd.tsx:320`, `urlTemplate` = `${baseUrl}/kbli-explorer?q=…`) and in its own
+`openGraph.url`, and it still served `<link rel="canonical" href="https://balizero.com"/>` — a
+submitted URL whose own HTML asks Google to fold it into the homepage.
+
+**Fixed in [PR #5920](https://github.com/Bali-Zero/Teman2/pull/5920)** (`seo/kbli-explorer-canonical`,
+branched from `origin/main` @ `246902e086`, 5 commits ahead of this ledger's `6c6f25a9`): adds
+`alternates: { canonical: `${baseUrl}/kbli-explorer` }` to the layout, plus a new guard,
+`apps/mouth/src/app/metadata-canonical.test.ts`, that resolves every route `sitemap.ts` submits via
+its own literal path arrays and asserts each carries an own-segment canonical — so a future static
+sitemap addition can't ship the same silent-inheritance bug. Verified locally by stashing the fix:
+exactly 2 of 6 guard tests fail, both naming `/kbli-explorer`. PR opened with auto-merge armed;
+not yet merged as of this note.
+
+The **affected-routes count in §3.1 is therefore 28, not 27**, until the PR above merges — the
+original walk's false "yes" undercounted by exactly this one route. The other 27 in the §3.1 list
+are unaffected by this correction.
+
 ### 3.2 — Six of 94 public routes carry any JSON-LD
 
 Only `/[category]/[slug]`, `/services/[slug]`, `/kbli/[code]`, `/kbli-explorer`,
@@ -281,7 +310,13 @@ curl -s https://balizero.com/visa | grep -o '<link rel="canonical"[^>]*>'
 The third is the standing positive control for every canonical probe: if it stops printing
 `https://balizero.com/visa`, the probe method is broken and no zero from it counts.
 
+**Session 3 (2026-09-08):** shipped [PR #5920](https://github.com/Bali-Zero/Teman2/pull/5920) —
+`/kbli-explorer` canonical fix + the `metadata-canonical.test.ts` guard (§3.1a). Opened with
+auto-merge armed; confirm it merged before treating `/kbli-explorer` as closed.
+
 **Open next action from §3.1 (confirmed, not yet fixed):** add `alternates.canonical` to
 `apps/mouth/src/app/(tax-calendar)/tax-calendar/layout.tsx`, add `/tax-calendar` to the static list
-in `apps/mouth/src/app/sitemap.ts`, and add a guard test asserting a route's canonical — modelled on
-`apps/mouth/src/app/metadata-title-template.test.ts`. One surface per PR. Zone VERDE.
+in `apps/mouth/src/app/sitemap.ts`, and extend `metadata-canonical.test.ts`'s
+`SITEMAP_STATIC_PATHS` to cover it (the guard only sees paths `sitemap.ts` already submits, so
+adding `/tax-calendar` to the sitemap and to the guard is the same PR). One surface per PR. Zone
+VERDE.
