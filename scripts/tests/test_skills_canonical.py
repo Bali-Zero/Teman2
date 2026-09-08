@@ -327,11 +327,18 @@ def test_real_repo_claude_only_names_never_leak_into_agents_skills() -> None:
         )
 
 
-def test_modus_skill_reflects_the_2026_08_20_fable_out_ruling() -> None:
+def test_modus_skill_reflects_the_fable_routing_rulings() -> None:
     """Positive assertion, not a fragile substring-absence check: the
-    historical '...was \"Fable 5 first...\"' quote is expected to stay in
-    this file's changelog-style prose forever. What must never regress is
-    the ruling itself being documented as current."""
+    historical quotes are expected to stay in this file's changelog-style
+    prose forever. What must never regress is the CURRENT ruling being
+    documented as current. RULED 2026-08-20 ("Fable out of the workflow")
+    was narrowed by RULED 2026-09-06→08: Fable 5.1 re-enters ONLY as the
+    owner-opened imperator window — still never auto-routed, never a gate
+    seat, never fan-out. The provenance of the 2026-08-20 ruling must remain
+    cited; the current rule must name the imperator window and the
+    never-auto-routed invariant."""
     text = (CLAUDE_SKILLS / "modus" / "SKILL.md").read_text()
     assert "RULED 2026-08-20" in text
-    assert "Fable" in text and "out of the workflow" in text
+    assert "RULED 2026-09-06→08" in text
+    assert "Fable" in text and "imperator window" in text
+    assert "never auto-routed" in text
