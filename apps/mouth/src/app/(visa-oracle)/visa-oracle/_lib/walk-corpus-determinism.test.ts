@@ -30,12 +30,16 @@ import {
   writeWalkCorpus,
 } from "../../../../../scripts/visa-oracle/generate-walk-corpus";
 
-/** The corpus size as committed. A PR that adds an interview branch moves it.
+/** The corpus size as committed. A PR that adds an interview branch — or, as
+ * of PR-5, a new DIMENSION replayed over existing branches — moves it.
  * 43 → 61 on 2026-09-06: `second_home` (2 offshore bases + 1 onshore),
  * `STEPCHILD` (×2 sponsor nationalities), and `diaspora` crossed like the
  * family tile now that it serves the same question sequence (14 walks
- * replacing one). */
-const EXPECTED_WALK_COUNT = 61;
+ * replacing one). 61 → 67 on PR-5 (2026-09-07): the 5 offshore `retirement`
+ * bases plus the onshore neutral `retirement` walk, each replayed a second
+ * time at `RETIREMENT_AGE_64_BIRTH_DATE` (age 64) instead of the corpus-wide
+ * default 25 — no new tree branch, the same 6 walks answered twice. */
+const EXPECTED_WALK_COUNT = 67;
 
 function jsonFilesIn(dir: string): string[] {
   return readdirSync(dir)
