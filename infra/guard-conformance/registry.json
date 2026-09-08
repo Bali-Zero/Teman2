@@ -761,6 +761,24 @@
             "test_lanes_gear3_opus5_sonnet5_flip_behavior"
           ]
         },
+        "check_reviewer_independence": {
+          "scar": ["W2", "A17"],
+          "guilt": [
+            "test_reviewer_independence_guilt_reviewer_is_contributor_rejected_post_flip",
+            "test_reviewer_independence_guilt_rank_confers_no_exemption_opus_too",
+            "test_reviewer_independence_guilt_case_and_whitespace_folded_match",
+            "test_reviewer_independence_guilt_multiple_review_lanes_each_judged"
+          ],
+          "innocence": [
+            "test_reviewer_independence_innocence_eligible_independent_reviewer_passes",
+            "test_reviewer_independence_innocence_no_review_lane_skipped",
+            "test_reviewer_independence_innocence_no_build_lane_skipped",
+            "test_reviewer_independence_innocence_gear1_exempt",
+            "test_reviewer_independence_innocence_pre_flip_notice_not_fail",
+            "test_reviewer_independence_innocence_seat_override_reports_not_fails",
+            "test_reviewer_independence_innocence_all_real_packs_pass_today"
+          ]
+        },
         "check_ground_truth_lane": {
           "scar": ["E3-R8"],
           "guilt": [
