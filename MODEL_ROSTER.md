@@ -261,7 +261,7 @@ Implementer routing is **task-shaped across the full roster above**, not Sonnet-
 - **Final gate, all gears (RULED 2026-09-06→08, supersedes the permanent-Opus reviewer of 2026-08-20)** — an
   **assignment to a qualified independent verifier outside the contribution chain**, a Claude session
   on the Opus 5 `xhigh` seat, never cascading; the Gear-3 harness verdict gate and the WR2 content gate
-  are the same assignment. Two imperators (Fable 5.1, Astra) and two generals (Opus 5, Sol) with a
+  are distinct assignments on the same mandatory seat, each with its own verification (modus §Gate taxonomy). Two imperators (Fable 5.1, Astra) and two generals (Opus 5, Sol) with a
   temporary Dux: `docs/architecture/dual-consul/army-map.md`. Fable 5.1 is the owner-opened imperator
   window only (`docs/rules/RULINGS.md`, AGENTS.md §17.1, FLEET_TOPOLOGY `_invariants`).
 
