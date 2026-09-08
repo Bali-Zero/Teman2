@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: "Zantara AI | KBLI Business Code Guide",
   description:
     "Search and explore Indonesian business classification codes (KBLI 2025). Check foreign ownership rules, required licenses, and PMA eligibility for any business activity.",
+  alternates: {
+    canonical: `${baseUrl}/kbli-explorer`,
+  },
   openGraph: {
     title: "Zantara AI | KBLI Business Code Guide",
     description:
