@@ -11,9 +11,11 @@
 >
 > **Routing vigente** (read this line, skip the rest unless you need the history): due imperatori
 > pari (Fable 5.1 · Astra) = direzione strategica e nomina del Dux · due generali pari (Opus 5 ·
-> Sol), uno è Dux temporaneo per missione · interattivo Opus 5 xhigh · implementer Sonnet 5 · gate
-> finale: verificatore indipendente qualificato per Gear, effort `xhigh` (`max` solo su adjudication
-> Gear-3 dichiarata) — RULED 2026-09-06→08, niente più Opus permanente · Fable 5.1 mai
+> Sol), uno è Dux temporaneo per missione · interattivo Opus 5 xhigh · implementer Sonnet 5 · review
+> indipendente: seat qualificato fuori dalla catena contribuente (famiglia ≠ builder su Gear 2) · gate
+> empirico su disco, DISTINTO dalla review: sessione Claude sul seat Opus 5 `xhigh`, obbligatorio,
+> nessuna sostituzione salvo ruling, mai cascata, finestra morta → SUSPEND; `max` solo su adjudication
+> Gear-3 dichiarata — RULED 2026-09-06→08, abolito solo il titolo permanente di revisore · Fable 5.1 mai
 > auto-instradata: solo finestra imperiale aperta da Zero con `--model` · SDK Anthropic BANNATO
 > (solo `claude` CLI + OAuth).
 
@@ -61,15 +63,15 @@ amendment is necessary" section).
 >
 > **Two imperators, equal: Fable 5.1 and Astra.** They own strategic direction, constraints and the appointment of the Dux. They talk to each other and to the generals. They **never fan out and never implement** — five Fable lanes in parallel exhausted a MAX seat in 2-3 minutes (2026-09-05), so parallelism lives at builder/support level. Zero, 2026-09-06 12:14, verbatim: *"Fable 5.1 xhigh e Astra xhigh, ma con il consumo minimo di token. Sono puri architetti seduti al fresco."*
 >
-> **Two generals, equal: Opus 5 and Sol.** *"OPUS E SOL SONO UGUALI"* (Zero, 12:56). Per mission one of them is the **Dux** — a temporary appointment made by the imperators, not a model, a rank or a piece of software. The Dux owns the plan, the assignments, the integration, the evidence and the ledger. Specialists, builders and supports are staffed on concrete need only; communication runs strictly along the chain (support → builder → specialist/general → imperator). Two things travel outside the chain and must: original evidence, and escalations to the human.
+> **Two generals, equal: Opus 5 and Sol.** *"OPUS E SOL SONO UGUALI"* (Zero, 12:56). Per mission one of them is the **Dux** — a temporary appointment made by the imperators, not a model, a rank or a piece of software. The Dux owns the plan, the assignments, the integration, the evidence and the ledger. Specialists, builders and supports are staffed on concrete need only; communication runs strictly along the chain (support → builder → [specialist →] general → imperator; a specialist reaches an imperator only through its general). Two things travel outside the chain and must: original evidence, and escalations to the human.
 >
-> **Independent verification is an assignment outside the contribution chain, not a rank.** Rank, family membership and a different window never make a contributor independent. The Gear requirements are unchanged: family ≠ main builder on Gear 2, qualified independent verifier on Gear 3. A verifier who writes a fix becomes a contributor and the changed artifact needs new independent verification.
+> **Independent verification is an assignment outside the contribution chain, not a rank.** Rank, family membership and a different window never make a contributor independent. The Gear requirements are unchanged: family ≠ main builder on Gear 2, qualified independent verifier on Gear 3. Two assignments stay distinct and both are made by the Dux: the independent **review** (a quality opinion — any qualified non-contributing seat, cross-family on Gear 2) and the final **on-disk gate** (the empirical disk/live check before release — a Claude session on the Opus 5 `xhigh` seat, **mandatory**, no substitution without a ruling, never cascading, window dead → SUSPEND). What this ruling abolishes is the permanent *reviewer* title, not the gate seat; work built by an external seat always passes the gate. A verifier who writes a fix becomes a contributor and the changed artifact needs new independent verification.
 >
 > **Gate effort is `xhigh`; `max` is opt-in on a declared Gear-3 adjudication, never a default.** This resolves the internal contradiction between the `max` clause in the 2026-07-02 routing paragraph above and the `xhigh` clause of the RULED 2026-08-20 block — `xhigh` wins, and `FLEET_TOPOLOGY.json` `role_chains.gear3_final_gate.chain[0].effort` reads `xhigh` from this date.
 >
 > **The shipping fence is unchanged, and parity does NOT widen anyone's permissions.** No external seat — Astra, Sol, Kimi, Qwen, GLM, Gemini — merges, arms or deploys; an external seat prepares and an authorized Claude session verifies and releases (Builder Contract 5). *"La parità non amplia i permessi di Astra/Sol"* (workshop 2026-09-08). **This supersedes the "merge, deploy, every authorization" sentence of draft PR #5821**, which is closed as superseded: its live part (two equal imperators) lands here, its permission grant does not.
 >
-> **Every `Agent`/`Workflow` child pins `model:`.** Inheritance is the defect, whatever the parent — enforced by `infra/claude-hooks/model_routing_gate.py`.
+> **Every `Agent`/`Workflow` child pins `model:`.** Inheritance is the defect, whatever the parent. The obligation binds every call; the enforcer `infra/claude-hooks/model_routing_gate.py` covers `Agent` calls today and `Workflow` scripts once the HOME PreToolUse matcher includes `Workflow` (PENDING-ARMS row, operator), and by design exempts `fork` children, frontmatter-pinned definitions and named/builtin workflows whose script it cannot read — those remain the conductor's responsibility.
 >
 > **Fable 5.1 is never auto-routed.** It enters only as the imperator window Zero opens himself with `--model`. This **narrows, it does not repeal, RULED 2026-08-20**: no doctrine, skill, cron, script or session may route to or self-select it, and the roster retirement sentence above stands verbatim. What changes is that the owner-opened window now has a named role in the hierarchy instead of being merely "out of the workflow".
 

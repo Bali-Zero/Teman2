@@ -338,7 +338,17 @@ def test_modus_skill_reflects_the_fable_routing_rulings() -> None:
     cited; the current rule must name the imperator window and the
     never-auto-routed invariant."""
     text = (CLAUDE_SKILLS / "modus" / "SKILL.md").read_text()
-    assert "RULED 2026-08-20" in text
-    assert "RULED 2026-09-06→08" in text
-    assert "Fable" in text and "imperator window" in text
-    assert "never auto-routed" in text
+    assert "RULED 2026-08-20" in text  # provenance of the narrowed ruling stays cited
+    # The CURRENT rule must be stated on a line that cites the current ruling —
+    # not merely somewhere in the file's history: the owner-opened imperator
+    # window, the never-auto-routed invariant and the no-fan-out ban together.
+    current = [ln for ln in text.splitlines() if "RULED 2026-09-06→08" in ln]
+    assert current, "modus must cite RULED 2026-09-06→08"
+    assert any(
+        "imperator window" in ln and "never auto-routed" in ln and "never fan-out" in ln
+        for ln in current
+    ), "the current Fable rule (imperator window, never auto-routed, never fan-out) must sit on a line citing RULED 2026-09-06→08"
+    # The final on-disk gate seat is mandatory, and distinct from the review.
+    assert any(
+        "mandatory seat of the final on-disk gate" in ln for ln in current
+    ), "the gate seat must be stated as mandatory on a line citing the current ruling"
