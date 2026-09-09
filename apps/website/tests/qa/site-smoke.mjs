@@ -12,12 +12,14 @@ const REQUIRED_ROUTES = [
 ];
 
 const REQUIRED_HOME_COPY = [
-  "Consultancy for immigration, company setup, tax and property in Indonesia.",
+  "What’s your next step",
+  "in Indonesia?",
+  "Choose where to start",
   "Sign in to My Bali Zero",
   "Surya",
   "Ari",
   "Tax Compliance Calendar",
-  "Read our reviews on Google",
+  "Google Reviews",
 ];
 
 const EXCLUDED_STALE_HOME_COPY = [
@@ -80,6 +82,18 @@ async function main() {
 
   if (homeHtml) {
     const homeHrefs = attributes(homeHtml, "href");
+    for (const route of REQUIRED_ROUTES.filter((route) =>
+      route.startsWith("/services/"),
+    )) {
+      if (!homeHrefs.includes(route)) {
+        report.failures.push({
+          check: "home-service-destination",
+          route,
+          expected: "service family linked from homepage",
+          actual: "missing link",
+        });
+      }
+    }
     const fragmentLinks = unique(
       homeHrefs
         .filter((href) => href.startsWith("#") && href.length > 1)

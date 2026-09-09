@@ -1,0 +1,18 @@
+.portal { width: min(1320px,90%); margin: 20px auto 88px; padding: clamp(32px,5vw,72px); display: grid; grid-template-columns: 1.05fr 1fr; gap: clamp(40px,7vw,100px); background: #233d52; color: #fffcf7; font: 400 15px/1.7 "Manrope", sans-serif; }
+.eyebrow { display: block; font-size: 10px; font-weight: 650; letter-spacing: .15em; text-transform: uppercase; color: #eae3d8; }
+.opening h2 { margin: 26px 0; font: 450 clamp(40px,4.2vw,62px)/1.05 "Fraunces", Georgia, serif; letter-spacing: -.035em; }
+.opening h2 em { font-weight: 400; color: #eae3d8; }
+.opening > p { max-width: 39ch; color: #f7f4ee; }
+.signIn { display: inline-flex; justify-content: space-between; align-items: center; gap: 30px; min-height: 50px; padding: 14px 22px; margin-top: 28px; background: #fffcf7; color: #233d52; font-size: 13px; font-weight: 650; }
+.signIn:hover { background: #eae3d8; text-decoration: none; }
+.opening .note { margin: 14px 0 0; font-size: 11px; line-height: 1.7; color: #eae3d8; }
+.contents dl { margin: 0; }
+.contents dl > div { padding: 22px 0; border-top: 1px solid #fffcf738; }
+.contents dt { font: 450 27px/1.2 "Fraunces", Georgia, serif; display: flex; gap: 24px; align-items: baseline; }
+.contents dt > span { font: 600 10px/1.6 "Manrope", sans-serif; color: #eae3d8; }
+.contents dd { margin: 10px 0 0 38px; font-size: 13px; color: #f7f4ee; max-width: 40ch; }
+.permissions { font-size: 11px; color: #eae3d8; margin: 10px 0 24px; }
+.help { display: grid; gap: 6px; padding: 18px 0 0; border-top: 1px solid #fffcf738; font-size: 12px; color: #eae3d8; }
+.help > span { display: flex; align-items: center; justify-content: space-between; min-height: 44px; color: #fffcf7; font-weight: 650; }
+.portal a:focus-visible { outline: 2px solid #fffcf7; outline-offset: 5px; }
+@media(max-width:700px) { .portal { grid-template-columns: 1fr; gap: 36px; margin-block: 12px 52px; padding: 30px 24px; } .opening h2 { font-size: 44px; margin: 22px 0; } .opening > p { font-size: 14px; } .signIn { width: 100%; gap: 12px; } .contents dt { font-size: 26px; } .contents dl > div { padding-block: 20px; } }

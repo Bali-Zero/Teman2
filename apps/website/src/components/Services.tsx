@@ -22,7 +22,7 @@ export function Services() {
               <span>↗</span>
             </span>
             <span className="eyebrow">{service.title}</span>
-            <h3>{service.tool}</h3>
+            <h3 id={service.id === "business" ? "kbli" : service.id} tabIndex={-1}>{service.tool}</h3>
             <div className="tool-art" aria-hidden="true">
               <img
                 src={"/assets/" + service.image}
@@ -36,10 +36,10 @@ export function Services() {
             <div className="tool-ui">
               <p>{service.detail}</p>
             </div>
-            <a className="textlink" href={service.route}>
+            <a className="textlink service-main-link" href={service.route}>
               Explore {service.title} <span aria-hidden="true">→</span>
             </a>
-            <a className="textlink" href={service.href}>
+            <a className="textlink service-tool-link" href={service.href}>
               {service.action} <span aria-hidden="true">↗</span>
             </a>
             <a className="service-contact" href={contactHref(service.title)}>

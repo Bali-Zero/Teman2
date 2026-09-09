@@ -1,0 +1,1411 @@
+[
+  {
+    "id": "svc-visa-001",
+    "legacyName": "A1 Visa-Free Tourism",
+    "currentName": "A1 Visa-Free Tourism",
+    "domain": "immigration",
+    "descriptionSha256": "a1919cffc3a9cba0a135fc01ebab975b3fa5c05cd6202f7d2ac9d22559cc58ab",
+    "features": [
+      {
+        "id": "svc-visa-001.feature.01",
+        "sha256": "ffd7280513ce285e6d9dc8d0b7078c4f39c8fe0e69b0d0a87d8af2965e445d7a"
+      },
+      {
+        "id": "svc-visa-001.feature.02",
+        "sha256": "7ed79f42f925a8e733e0cdfe3e746afeff934599f6e27d452bfbf6368f4e4cf0"
+      },
+      {
+        "id": "svc-visa-001.feature.03",
+        "sha256": "fd73a569112e457a7572fce6d82faf92bd55e8c5edae11604f3c4225c326bf1c"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-002",
+    "legacyName": "B1 Visa on Arrival (VOA)",
+    "currentName": "B1 Visa on Arrival (VOA)",
+    "domain": "immigration",
+    "descriptionSha256": "b332aa167705d0e088f0017510ac1117230ea538ed4a71f8bf50d8d65e84f743",
+    "features": [
+      {
+        "id": "svc-visa-002.feature.01",
+        "sha256": "ffd7280513ce285e6d9dc8d0b7078c4f39c8fe0e69b0d0a87d8af2965e445d7a"
+      },
+      {
+        "id": "svc-visa-002.feature.02",
+        "sha256": "e3c02db2134e93b15ced1570054434fa93d080d38cc9586ce0e1698a17b207e9"
+      },
+      {
+        "id": "svc-visa-002.feature.03",
+        "sha256": "a4dd59b9db332c16a7173f930d206c5dce18f1e4cbb572daf8b5c0005a7765fa"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-003",
+    "legacyName": "B1 Visa on Arrival — Extension (+30 days)",
+    "currentName": "B1 Visa on Arrival — Extension (+30 days)",
+    "domain": "immigration",
+    "descriptionSha256": "876fd8277a69d02b8734cea86d7a828f7de1966302ac11662db3834ca2df383e",
+    "features": [
+      {
+        "id": "svc-visa-003.feature.01",
+        "sha256": "ffd7280513ce285e6d9dc8d0b7078c4f39c8fe0e69b0d0a87d8af2965e445d7a"
+      },
+      {
+        "id": "svc-visa-003.feature.02",
+        "sha256": "7976670fca42a3010d34e380b94b8fa0bc44cbd63c15c5d2843efad74f37826f"
+      },
+      {
+        "id": "svc-visa-003.feature.03",
+        "sha256": "0796f9305764c2cde0565068fff1ae5f6adfad8e8e958e65426012cfa39c1de6"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-004",
+    "legacyName": "C1 Tourism",
+    "currentName": "C1 Tourism",
+    "domain": "immigration",
+    "descriptionSha256": "2a6cee481be26bd05c0f0593b7c57f94214912e1c5c32c60aaf864b72282e188",
+    "features": []
+  },
+  {
+    "id": "svc-visa-005",
+    "legacyName": "C1 Tourism — Extension (+60 days)",
+    "currentName": "C1 Tourism — Extension (+60 days)",
+    "domain": "immigration",
+    "descriptionSha256": "a6e3395129ecf426e31bad30b9ab58fd410c5f40872497c19b0ab06c051528c3",
+    "features": [
+      {
+        "id": "svc-visa-005.feature.01",
+        "sha256": "600a4e11044e7b72e4432ddc79d1ac71ea7aa54287a141c518f6a6c7d343bc2e"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-006",
+    "legacyName": "C2 Business",
+    "currentName": "C2 Business",
+    "domain": "immigration",
+    "descriptionSha256": "45741314e8fd46f5a60474e69a27cfd9e682f1540304700e5b33635e2aacfba2",
+    "features": []
+  },
+  {
+    "id": "svc-visa-007",
+    "legacyName": "C6 Social Activity",
+    "currentName": "C6 Social Activity",
+    "domain": "immigration",
+    "descriptionSha256": "c47b649548c99b895e303365fd7ad2fbfaf59f4b426f2483c8080a2258170bc3",
+    "features": []
+  },
+  {
+    "id": "svc-visa-008",
+    "legacyName": "C7A,B,C — Music/Art",
+    "currentName": "C7A,B,C — Music/Art",
+    "domain": "immigration",
+    "descriptionSha256": "b2aae8491d52905df02ae1d4498d19a411878f6a80ece896e6bb3745f2c30a99",
+    "features": []
+  },
+  {
+    "id": "svc-visa-009",
+    "legacyName": "C8A,B Sports Events",
+    "currentName": "C8A,B Sports Events",
+    "domain": "immigration",
+    "descriptionSha256": "23875350b6cbfd95e5bd65b2b3a5438cd43af464ba2dcb1a243988db9753a288",
+    "features": []
+  },
+  {
+    "id": "svc-visa-010",
+    "legacyName": "C10 Speaker Visa",
+    "currentName": "C10 Speaker Visa",
+    "domain": "immigration",
+    "descriptionSha256": "1821ac5d75598b22e63fe8ab22698915f614f777a84d6c53bc99575559babf24",
+    "features": []
+  },
+  {
+    "id": "svc-visa-011",
+    "legacyName": "C18 Work Trial",
+    "currentName": "C18 Work Trial",
+    "domain": "immigration",
+    "descriptionSha256": "5f8b79a224b9153b66368987507f241dc9e43f4bccc0d527e39b0fb0dfa0b170",
+    "features": [
+      {
+        "id": "svc-visa-011.feature.01",
+        "sha256": "38825b0f646bb29351a778d5db6052f736e9f728eb9ff15070ae8f46d3b1ebc4"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-012",
+    "legacyName": "C22A&B Internship (60 Days)",
+    "currentName": "C22A&B Internship (60 Days)",
+    "domain": "immigration",
+    "descriptionSha256": "9a9f187bc437c5ba356c971b379c18f02fe6686bdd838decc082af5d2c45a4b7",
+    "features": [
+      {
+        "id": "svc-visa-012.feature.01",
+        "sha256": "600a4e11044e7b72e4432ddc79d1ac71ea7aa54287a141c518f6a6c7d343bc2e"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-013",
+    "legacyName": "C22A&B Internship (180 Days)",
+    "currentName": "C22A&B Internship (180 Days)",
+    "domain": "immigration",
+    "descriptionSha256": "f88eebaf81a63a12c16bd0c08160efddab36981deee9e01e7906b1ee998f0272",
+    "features": [
+      {
+        "id": "svc-visa-013.feature.01",
+        "sha256": "8cf9aafa1e4758bf706d732c83f412772bb9695d529b0c345dfbe2d629c51dfc"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-014",
+    "legacyName": "Bridging Visa",
+    "currentName": "Bridging Visa",
+    "domain": "immigration",
+    "descriptionSha256": "efbfecd4f0d53f3a29228cd811abf6d0d6a28d074d85731805d1ef68262c47dc",
+    "features": []
+  },
+  {
+    "id": "svc-visa-015",
+    "legacyName": "D1 Tourism (1 Year)",
+    "currentName": "D1 Tourism (1 Year)",
+    "domain": "immigration",
+    "descriptionSha256": "69a0d94d9fec19e002baa225d31ce7ff0076fec7c4133a6db595440f1f27743c",
+    "features": [
+      {
+        "id": "svc-visa-015.feature.01",
+        "sha256": "e1aa5e87f470bd74b4a62b1bb02c46c0c7fa82db697ea152856378c9bfa86e7b"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-016",
+    "legacyName": "D1 Tourism (2 Years)",
+    "currentName": "D1 Tourism (2 Years)",
+    "domain": "immigration",
+    "descriptionSha256": "a1e0751652a609dc8d381ecd9f94d846325fe893a58d90251e0d81be149958a3",
+    "features": [
+      {
+        "id": "svc-visa-016.feature.01",
+        "sha256": "88051e974e5dbd5af513dc2f6093accfd4e7bcff29863db1ac99d8aff9f76841"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-017",
+    "legacyName": "D1 Tourism (5 Years)",
+    "currentName": "D1 Tourism (5 Years)",
+    "domain": "immigration",
+    "descriptionSha256": "64b26af4c998c10c860696fd9f2a535a1f83c50f57881cb4926d090176d980a2",
+    "features": [
+      {
+        "id": "svc-visa-017.feature.01",
+        "sha256": "62e2a32fe814cf83d79dbd64e38be4c33e99633f97580185c2935759b431b54d"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-018",
+    "legacyName": "D2 Business (1 Year)",
+    "currentName": "D2 Business (1 Year)",
+    "domain": "immigration",
+    "descriptionSha256": "d61bca1c715f58547cf9d89c9d61a5f4804106c6ddfc123d0e169a46b8659bc4",
+    "features": [
+      {
+        "id": "svc-visa-018.feature.01",
+        "sha256": "e1aa5e87f470bd74b4a62b1bb02c46c0c7fa82db697ea152856378c9bfa86e7b"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-019",
+    "legacyName": "D2 Business (2 Years)",
+    "currentName": "D2 Business (2 Years)",
+    "domain": "immigration",
+    "descriptionSha256": "cf2786b7bd08fa55fbd52d61ce8a30e4a44262976840797e8def800e484845ea",
+    "features": [
+      {
+        "id": "svc-visa-019.feature.01",
+        "sha256": "88051e974e5dbd5af513dc2f6093accfd4e7bcff29863db1ac99d8aff9f76841"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-020",
+    "legacyName": "D12 Business Investigation (1 Year)",
+    "currentName": "D12 Business Investigation (1 Year)",
+    "domain": "immigration",
+    "descriptionSha256": "93130d2f1abc59dfd8d720289492a4146c75ab5f6b22cf3aece09d7f86fe7a0c",
+    "features": [
+      {
+        "id": "svc-visa-020.feature.01",
+        "sha256": "e1aa5e87f470bd74b4a62b1bb02c46c0c7fa82db697ea152856378c9bfa86e7b"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-021",
+    "legacyName": "D12 Business Investigation (2 Years)",
+    "currentName": "D12 Business Investigation (2 Years)",
+    "domain": "immigration",
+    "descriptionSha256": "0c6dac61dc83e73344fe429086df91d34108e6eafbf95a62f5046f452a711024",
+    "features": [
+      {
+        "id": "svc-visa-021.feature.01",
+        "sha256": "88051e974e5dbd5af513dc2f6093accfd4e7bcff29863db1ac99d8aff9f76841"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-022",
+    "legacyName": "Working KITAS (Altus/Onshore)",
+    "currentName": "Working KITAS (Altus/Onshore)",
+    "domain": "immigration",
+    "descriptionSha256": "c635b33ea014961ec26671fc59367c923a32081ce7e596b09586327c40c73f18",
+    "features": [
+      {
+        "id": "svc-visa-022.feature.01",
+        "sha256": "91647badc37b93096d0144cbef5bd26bdd45c2b2f4b05f6a2a10fff6e0442eb8"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-023",
+    "legacyName": "Working KITAS (Offshore)",
+    "currentName": "Working KITAS (Offshore)",
+    "domain": "immigration",
+    "descriptionSha256": "7028422667f70d4a191450958c48daa44458ae5f02142ac20757c7f132d1df8c",
+    "features": [
+      {
+        "id": "svc-visa-023.feature.01",
+        "sha256": "91647badc37b93096d0144cbef5bd26bdd45c2b2f4b05f6a2a10fff6e0442eb8"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-024",
+    "legacyName": "Working KITAS (Extend)",
+    "currentName": "Working KITAS (Extend)",
+    "domain": "immigration",
+    "descriptionSha256": "6d41ad1082f96617e499e1e519849be6f1634cffea186bf0c649adea07fbf2cb",
+    "features": []
+  },
+  {
+    "id": "svc-visa-025",
+    "legacyName": "Investor KITAS 2 Years (Altus/Onshore)",
+    "currentName": "Investor KITAS 2 Years (Altus/Onshore)",
+    "domain": "immigration",
+    "descriptionSha256": "d0b1ae32263de0694c227f95120742e6febded93009a1d3d730281843dc6078b",
+    "features": []
+  },
+  {
+    "id": "svc-visa-026",
+    "legacyName": "Investor KITAS 2 Years (Offshore)",
+    "currentName": "Investor KITAS 2 Years (Offshore)",
+    "domain": "immigration",
+    "descriptionSha256": "2c6059d30e683b30b70478fe23eee1adfe0331785a5954fcbfa396aa064bd575",
+    "features": []
+  },
+  {
+    "id": "svc-visa-027",
+    "legacyName": "Investor KITAS 2 Years (Extend)",
+    "currentName": "Investor KITAS 2 Years (Extend)",
+    "domain": "immigration",
+    "descriptionSha256": "8ae4e50c30a9a21aab978a0e88f03abb0df8d6d757075d4582818f356ed81402",
+    "features": []
+  },
+  {
+    "id": "svc-visa-028",
+    "legacyName": "Freelance E23 (Altus/Onshore)",
+    "currentName": "Freelance E23 (Altus/Onshore)",
+    "domain": "immigration",
+    "descriptionSha256": "23ecd79c35949dcda5fbd25402b2b43df1f43de2c1d30b4a58824301c43683c4",
+    "features": [
+      {
+        "id": "svc-visa-028.feature.01",
+        "sha256": "8ed94b4cf82d95487a6134b344b06ace905909dcbae2a50c22608937de66f6a4"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-029",
+    "legacyName": "Freelance E23 (Offshore)",
+    "currentName": "Freelance E23 (Offshore)",
+    "domain": "immigration",
+    "descriptionSha256": "d9a65d41ec7946b2601d4ff6a42bbf56f64a3575d4f90b4b44227aa4c96e7373",
+    "features": [
+      {
+        "id": "svc-visa-029.feature.01",
+        "sha256": "8ed94b4cf82d95487a6134b344b06ace905909dcbae2a50c22608937de66f6a4"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-030",
+    "legacyName": "E33G Remote Worker (Altus/Onshore)",
+    "currentName": "E33G Remote Worker (Altus/Onshore)",
+    "domain": "immigration",
+    "descriptionSha256": "b5179b51f86d18b3d7a4befd68ec0315498ea5f33ba75fc458afe88af4b8b466",
+    "features": []
+  },
+  {
+    "id": "svc-visa-031",
+    "legacyName": "E33G Remote Worker (Offshore)",
+    "currentName": "E33G Remote Worker (Offshore)",
+    "domain": "immigration",
+    "descriptionSha256": "f016065153d7137273816efda527470fa5b3b1efc7556f7320f1128ae3f23e5a",
+    "features": []
+  },
+  {
+    "id": "svc-visa-032",
+    "legacyName": "E33G Remote Worker (Extend)",
+    "currentName": "E33G Remote Worker (Extend)",
+    "domain": "immigration",
+    "descriptionSha256": "9c73d8e398ed43e8e58c4a47002dde205abb32281f88b6fd43eae023f3645496",
+    "features": []
+  },
+  {
+    "id": "svc-visa-033",
+    "legacyName": "E33 Second Home (5 Years)",
+    "currentName": "E33 Second Home (5 Years)",
+    "domain": "immigration",
+    "descriptionSha256": "9a78b7f17f84b70ee3d966e61a255e74153d7a9f1a47cfad0a6de8226d4b9681",
+    "features": [
+      {
+        "id": "svc-visa-033.feature.01",
+        "sha256": "9d8ee593ed5c2c983448eea1e88bb245e17c47bc37e26cc510e72c263f6e104c"
+      },
+      {
+        "id": "svc-visa-033.feature.02",
+        "sha256": "4d741823e9bea87d3542217d9e227387a6b757fe83944545b9ed3b39c0b9f842"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-034",
+    "legacyName": "E33E Second Home Senior (5 Years)",
+    "currentName": "E33E Second Home Senior (5 Years)",
+    "domain": "immigration",
+    "descriptionSha256": "c07448fdf645123e1b5c87dad1bc44c0ca3e6446fb645bdedaf9d84ac31b7e7d",
+    "features": [
+      {
+        "id": "svc-visa-034.feature.01",
+        "sha256": "9d8ee593ed5c2c983448eea1e88bb245e17c47bc37e26cc510e72c263f6e104c"
+      },
+      {
+        "id": "svc-visa-034.feature.02",
+        "sha256": "39049eddcd9ae3eb1af8aa98150b59e733a01cb854a23e86c6e90507ef3bdab5"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-035",
+    "legacyName": "E33E Second Home Senior (Extend)",
+    "currentName": "E33E Second Home Senior (Extend)",
+    "domain": "immigration",
+    "descriptionSha256": "469d09d5794b09fd6a9355162fca061ed938b0b2aa7094bdb2653bca0ea5ccbe",
+    "features": [
+      {
+        "id": "svc-visa-035.feature.01",
+        "sha256": "7f0502815261bbbdadd1932ff1c3fdfedacb20c35e036e29788fd9dff3c8b138"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-036",
+    "legacyName": "E33F Second Home Senior (1 Year, Offshore)",
+    "currentName": "E33F Second Home Senior (1 Year, Offshore)",
+    "domain": "immigration",
+    "descriptionSha256": "2b9e94ddd50de98919dd92f8ed450e1190440c79784fa9649b0b7ad9537b2260",
+    "features": [
+      {
+        "id": "svc-visa-036.feature.01",
+        "sha256": "91647badc37b93096d0144cbef5bd26bdd45c2b2f4b05f6a2a10fff6e0442eb8"
+      },
+      {
+        "id": "svc-visa-036.feature.02",
+        "sha256": "77cfa8e8da368402edfb9ffd9ddcd6685d7b1c4363b00978e2ed471d61c80359"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-037",
+    "legacyName": "E33F Second Home Senior (1 Year, Altus/Onshore)",
+    "currentName": "E33F Second Home Senior (1 Year, Altus/Onshore)",
+    "domain": "immigration",
+    "descriptionSha256": "d979798586a82b1998d809352cf98f4491fdb3b31ff9ade338db28615196bc0a",
+    "features": [
+      {
+        "id": "svc-visa-037.feature.01",
+        "sha256": "91647badc37b93096d0144cbef5bd26bdd45c2b2f4b05f6a2a10fff6e0442eb8"
+      },
+      {
+        "id": "svc-visa-037.feature.02",
+        "sha256": "77cfa8e8da368402edfb9ffd9ddcd6685d7b1c4363b00978e2ed471d61c80359"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-038",
+    "legacyName": "E33F Second Home Senior (Extend)",
+    "currentName": "E33F Second Home Senior (Extend)",
+    "domain": "immigration",
+    "descriptionSha256": "d70e62a6f866c87d98e2d3db857257bd013c0faaba829ba0e6a28ad75cebdd86",
+    "features": [
+      {
+        "id": "svc-visa-038.feature.01",
+        "sha256": "04052bfcc3893ff044a81590a7f2548557ef34486662f3144363dfd342ee6cd3"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-039",
+    "legacyName": "E30A Education Visa (1 Year)",
+    "currentName": "E30A Education Visa (1 Year)",
+    "domain": "immigration",
+    "descriptionSha256": "104d9fc7b2a3ebc9e3ee20904736c3860551cf1926e7a34f3cafab9c55b93787",
+    "features": [
+      {
+        "id": "svc-visa-039.feature.01",
+        "sha256": "91647badc37b93096d0144cbef5bd26bdd45c2b2f4b05f6a2a10fff6e0442eb8"
+      },
+      {
+        "id": "svc-visa-039.feature.02",
+        "sha256": "a13f371ea91768de8517ffe63ef3fe5f228846e3c47ce7036b59f8be51358609"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-040",
+    "legacyName": "E30A Education Visa (2 Years)",
+    "currentName": "E30A Education Visa (2 Years)",
+    "domain": "immigration",
+    "descriptionSha256": "4210a1475275134637d4ea61a1169b6eb47a33e984320f6f8bceb17c597181c7",
+    "features": [
+      {
+        "id": "svc-visa-040.feature.01",
+        "sha256": "7dab2372ff909b063d57bf1e7ac4212c333337fcd47e30f7791d189a63c912db"
+      },
+      {
+        "id": "svc-visa-040.feature.02",
+        "sha256": "a13f371ea91768de8517ffe63ef3fe5f228846e3c47ce7036b59f8be51358609"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-041",
+    "legacyName": "E30B Higher Education (1 Year)",
+    "currentName": "E30B Higher Education (1 Year)",
+    "domain": "immigration",
+    "descriptionSha256": "be42b136e949667d43338be45a1bdbe5e290e78ea65ca27e2fd6cca51c6ddbf8",
+    "features": [
+      {
+        "id": "svc-visa-041.feature.01",
+        "sha256": "91647badc37b93096d0144cbef5bd26bdd45c2b2f4b05f6a2a10fff6e0442eb8"
+      },
+      {
+        "id": "svc-visa-041.feature.02",
+        "sha256": "a13f371ea91768de8517ffe63ef3fe5f228846e3c47ce7036b59f8be51358609"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-042",
+    "legacyName": "E30B Higher Education (2 Years)",
+    "currentName": "E30B Higher Education (2 Years)",
+    "domain": "immigration",
+    "descriptionSha256": "3954a8550eb0c278df3c391cabd9bc8d012709b8894ec50f317e6608f9fcc01d",
+    "features": [
+      {
+        "id": "svc-visa-042.feature.01",
+        "sha256": "7dab2372ff909b063d57bf1e7ac4212c333337fcd47e30f7791d189a63c912db"
+      },
+      {
+        "id": "svc-visa-042.feature.02",
+        "sha256": "a13f371ea91768de8517ffe63ef3fe5f228846e3c47ce7036b59f8be51358609"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-043",
+    "legacyName": "E30B Higher Education (4 Years)",
+    "currentName": "E30B Higher Education (4 Years)",
+    "domain": "immigration",
+    "descriptionSha256": "d5ea17a346c891bc3f46c729ab4ea09203561752050912fb051e18cfecef1cd9",
+    "features": [
+      {
+        "id": "svc-visa-043.feature.01",
+        "sha256": "cfd73a0bc46c7ae5aca20434334cb1edf7a57611e4882390ba86fe0a667bd4c2"
+      },
+      {
+        "id": "svc-visa-043.feature.02",
+        "sha256": "a13f371ea91768de8517ffe63ef3fe5f228846e3c47ce7036b59f8be51358609"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-044",
+    "legacyName": "Spouse 1 Year (Altus/Onshore)",
+    "currentName": "Spouse 1 Year (Altus/Onshore)",
+    "domain": "immigration",
+    "descriptionSha256": "8c8e66aa332bafe974ea8c241f66a5c324869f3b4029f8c94c13d668274dcda7",
+    "features": []
+  },
+  {
+    "id": "svc-visa-045",
+    "legacyName": "Spouse 1 Year (Offshore)",
+    "currentName": "Spouse 1 Year (Offshore)",
+    "domain": "immigration",
+    "descriptionSha256": "3dca4bf1e05353ac2d8ecd560d2b42ae25f2dfcf9a28a99cf6ce68cb65c713d4",
+    "features": []
+  },
+  {
+    "id": "svc-visa-046",
+    "legacyName": "Spouse 1 Year (Extend)",
+    "currentName": "Spouse 1 Year (Extend)",
+    "domain": "immigration",
+    "descriptionSha256": "a592e924d4acae6c71b2f6e4199238a93ce7b2c9a96eca5156b4c850368fead7",
+    "features": []
+  },
+  {
+    "id": "svc-visa-047",
+    "legacyName": "Spouse 2 Years (Altus/Onshore)",
+    "currentName": "Spouse 2 Years (Altus/Onshore)",
+    "domain": "immigration",
+    "descriptionSha256": "6f848786b82838753b8bf1b8cf8656cd8e5b7a7d38ba774558b3f85d9a530f12",
+    "features": []
+  },
+  {
+    "id": "svc-visa-048",
+    "legacyName": "Spouse 2 Years (Offshore)",
+    "currentName": "Spouse 2 Years (Offshore)",
+    "domain": "immigration",
+    "descriptionSha256": "e36e5a1ddbcf2efe702efb5af5cec384e527f86f4d1f8bc6176babb1ba66491e",
+    "features": []
+  },
+  {
+    "id": "svc-visa-049",
+    "legacyName": "Spouse 2 Years (Extend)",
+    "currentName": "Spouse 2 Years (Extend)",
+    "domain": "immigration",
+    "descriptionSha256": "3763e10e6b9632ba722fda636008df7a3dd4079ecc21ad685414ed812d17c793",
+    "features": []
+  },
+  {
+    "id": "svc-visa-050",
+    "legacyName": "Dependent 1 Year (Altus/Onshore)",
+    "currentName": "Dependent 1 Year (Altus/Onshore)",
+    "domain": "immigration",
+    "descriptionSha256": "851b799ed97d9d0e0f429dcdbcd64c116c32accd6126e663697aa487ffe20105",
+    "features": []
+  },
+  {
+    "id": "svc-visa-051",
+    "legacyName": "Dependent 1 Year (Offshore)",
+    "currentName": "Dependent 1 Year (Offshore)",
+    "domain": "immigration",
+    "descriptionSha256": "183e8a243c0a1ab488fd7167a1aa0f118dcfed9909ee0b9e1891f9e8805fe7bf",
+    "features": []
+  },
+  {
+    "id": "svc-visa-052",
+    "legacyName": "Dependent 1 Year (Extend)",
+    "currentName": "Dependent 1 Year (Extend)",
+    "domain": "immigration",
+    "descriptionSha256": "31d997b2571ec8466257275deebbf77956a79ae744869e677f10ea58ec93256b",
+    "features": []
+  },
+  {
+    "id": "svc-visa-053",
+    "legacyName": "Dependent 2 Years (Altus/Onshore)",
+    "currentName": "Dependent 2 Years (Altus/Onshore)",
+    "domain": "immigration",
+    "descriptionSha256": "148f3efb433aaf2e679d0ab6bfe83d5b65ac014fc9ae283d0bfb23016c675e1f",
+    "features": []
+  },
+  {
+    "id": "svc-visa-054",
+    "legacyName": "Dependent 2 Years (Offshore)",
+    "currentName": "Dependent 2 Years (Offshore)",
+    "domain": "immigration",
+    "descriptionSha256": "f9674b83d8f0e6edf4bddd5c4bef46666d736157a6f55dc5b4e15d7d5f5ef5e1",
+    "features": []
+  },
+  {
+    "id": "svc-visa-055",
+    "legacyName": "Dependent 2 Years (Extend)",
+    "currentName": "Dependent 2 Years (Extend)",
+    "domain": "immigration",
+    "descriptionSha256": "2de608551688c3bae45d9f6ba0661a6b916760170c6ebaa591a4f6cb749d692b",
+    "features": []
+  },
+  {
+    "id": "svc-visa-056",
+    "legacyName": "Born KITAS",
+    "currentName": "Born KITAS",
+    "domain": "immigration",
+    "descriptionSha256": "0260259a9b808c02639d745a3edaf27d2884516c66a688c65754a1231ded9c7d",
+    "features": []
+  },
+  {
+    "id": "svc-visa-057",
+    "legacyName": "Retirement (Altus/Onshore)",
+    "currentName": "Retirement (Altus/Onshore)",
+    "domain": "immigration",
+    "descriptionSha256": "a499e419d84509cc237a1c717e2ff29d4ee329b919f71795239b736425fb7d2f",
+    "features": []
+  },
+  {
+    "id": "svc-visa-058",
+    "legacyName": "Retirement (Offshore)",
+    "currentName": "Retirement (Offshore)",
+    "domain": "immigration",
+    "descriptionSha256": "0e4c3addc8873963220b5a5c5af51c0399ef3635d1b22f7feea6b782ae2c9622",
+    "features": []
+  },
+  {
+    "id": "svc-visa-059",
+    "legacyName": "Retirement (Extend)",
+    "currentName": "Retirement (Extend)",
+    "domain": "immigration",
+    "descriptionSha256": "704899e934e682c92c395caf9442c6869b1bad269b2610944b583974b069c937",
+    "features": []
+  },
+  {
+    "id": "svc-visa-060",
+    "legacyName": "Investor KITAP + MERP",
+    "currentName": "Investor KITAP + MERP",
+    "domain": "immigration",
+    "descriptionSha256": "661f09d97c1b198566ce716322d1f675150223213b1222ae9f33070da113d503",
+    "features": []
+  },
+  {
+    "id": "svc-visa-061",
+    "legacyName": "Dependent KITAP + MERP",
+    "currentName": "Dependent KITAP + MERP",
+    "domain": "immigration",
+    "descriptionSha256": "78c5f44ef303b9fe07e4bd0735f59160af5163691f337f019407181ac2e5cf3a",
+    "features": []
+  },
+  {
+    "id": "svc-visa-062",
+    "legacyName": "Retirement KITAP + MERP",
+    "currentName": "Retirement KITAP + MERP",
+    "domain": "immigration",
+    "descriptionSha256": "1fa1d1db0263c55efb4ca971a8e96779a20db40241b85004896c2a8ce317ed7b",
+    "features": []
+  },
+  {
+    "id": "svc-visa-063",
+    "legacyName": "Reset Molina",
+    "currentName": "Reset Molina",
+    "domain": "immigration",
+    "descriptionSha256": "beb4e46732a028153958444550326452f243830d396ec9b81ed1f4a6aedb4518",
+    "features": []
+  },
+  {
+    "id": "svc-visa-064",
+    "legacyName": "Created Molina Express",
+    "currentName": "Created Molina Express",
+    "domain": "immigration",
+    "descriptionSha256": "a9582c5eb75e3f2075874ff7f911f26ee48a873bbbc159e7a686bf010c1fa351",
+    "features": []
+  },
+  {
+    "id": "svc-visa-065",
+    "legacyName": "Passport 5 Years",
+    "currentName": "Passport 5 Years",
+    "domain": "immigration",
+    "descriptionSha256": "bad63c0667ec8f77af31a7b204c442d6621852e0f8e73e0baf03625d835aedc9",
+    "features": [
+      {
+        "id": "svc-visa-065.feature.01",
+        "sha256": "9d8ee593ed5c2c983448eea1e88bb245e17c47bc37e26cc510e72c263f6e104c"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-066",
+    "legacyName": "Passport 10 Years",
+    "currentName": "Passport 10 Years",
+    "domain": "immigration",
+    "descriptionSha256": "9638423a7da3b655444e602790f819b73dd185530a7cbfdf2ce01bfb8d75aa98",
+    "features": [
+      {
+        "id": "svc-visa-066.feature.01",
+        "sha256": "b5dbae5bc9a65f93ce2b66899d34ec42121b4629518880374f59c589fbbde20c"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-067",
+    "legacyName": "Electronic Passport 5 Years",
+    "currentName": "Electronic Passport 5 Years",
+    "domain": "immigration",
+    "descriptionSha256": "7fcce4c061e498c12511365e9199cf3919006e5aed3ba2460f961014b116d7d3",
+    "features": [
+      {
+        "id": "svc-visa-067.feature.01",
+        "sha256": "9d8ee593ed5c2c983448eea1e88bb245e17c47bc37e26cc510e72c263f6e104c"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-068",
+    "legacyName": "Electronic Passport 10 Years",
+    "currentName": "Electronic Passport 10 Years",
+    "domain": "immigration",
+    "descriptionSha256": "bf4831b504d91383b28d3268cf67679aaa836a0bfba647dd9b2515d6c58d99ac",
+    "features": [
+      {
+        "id": "svc-visa-068.feature.01",
+        "sha256": "b5dbae5bc9a65f93ce2b66899d34ec42121b4629518880374f59c589fbbde20c"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-069",
+    "legacyName": "SKTT",
+    "currentName": "SKTT",
+    "domain": "immigration",
+    "descriptionSha256": "48a25ad466e7acd16b614f0b69a4149ddb748f14c45f6ab6ad84c1dbb30d3ce7",
+    "features": []
+  },
+  {
+    "id": "svc-visa-070",
+    "legacyName": "SKCK",
+    "currentName": "SKCK",
+    "domain": "immigration",
+    "descriptionSha256": "8d9686b377ba83bb9b799d91bf27b925f4b79c2fe78aae9086ff995df0184a1f",
+    "features": []
+  },
+  {
+    "id": "svc-visa-071",
+    "legacyName": "Domicilie Letter",
+    "currentName": "Domicilie Letter",
+    "domain": "immigration",
+    "descriptionSha256": "df69b241d5508f0a0f8aee9562ab4a16c4080c4b87e65e95d7c0efcc4b457887",
+    "features": []
+  },
+  {
+    "id": "svc-visa-072",
+    "legacyName": "Mutation Passport",
+    "currentName": "Mutation Passport",
+    "domain": "immigration",
+    "descriptionSha256": "a254a2819fd4fef2800c44821191798b4072df088824cd5f77bb2732c391609b",
+    "features": []
+  },
+  {
+    "id": "svc-visa-073",
+    "legacyName": "Mutation Address",
+    "currentName": "Mutation Address",
+    "domain": "immigration",
+    "descriptionSha256": "6293209c47c7d717ebf01aac3c3cdadc4a235cea4842fcd29561d0005709b787",
+    "features": []
+  },
+  {
+    "id": "svc-visa-074",
+    "legacyName": "Mutation Address 2 Kanim",
+    "currentName": "Mutation Address 2 Kanim",
+    "domain": "immigration",
+    "descriptionSha256": "692bc2ae6c1716ca766d4b67265d2b996b18ff3a7aa965773cbf1485cee169d5",
+    "features": []
+  },
+  {
+    "id": "svc-visa-075",
+    "legacyName": "Lapor Lahir (Under)",
+    "currentName": "Lapor Lahir (Under)",
+    "domain": "immigration",
+    "descriptionSha256": "98ebedc4703af9d1b3fbaaa0f32326efd365e8e92b06e207c2e70af6ce54ff60",
+    "features": [
+      {
+        "id": "svc-visa-075.feature.01",
+        "sha256": "7c5d6af3bf3915ed74506ace7037417d915b701b8ad8e352f94cea45f5ad9aea"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-076",
+    "legacyName": "Lapor Lahir (Up)",
+    "currentName": "Lapor Lahir (Up)",
+    "domain": "immigration",
+    "descriptionSha256": "99466a14b1b3a695f1c00166c0e294d30b13ae1c0a21ffd4c03f3c371aff2056",
+    "features": [
+      {
+        "id": "svc-visa-076.feature.01",
+        "sha256": "843a1b327d44ded560897778cef50d4d7765e8fa7615177fef287d5a2c2ab425"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-077",
+    "legacyName": "Cancel RPTKA",
+    "currentName": "Cancel RPTKA",
+    "domain": "immigration",
+    "descriptionSha256": "b084b8ac44d84747040d64737eb5d3541b1a389c066b7a8ecafe46a719ae8750",
+    "features": []
+  },
+  {
+    "id": "svc-visa-078",
+    "legacyName": "Cancel Wajib Lapor",
+    "currentName": "Cancel Wajib Lapor",
+    "domain": "immigration",
+    "descriptionSha256": "414c51514f022373fbee435ec3ce585587be516722a0d7afe668e965db1a9360",
+    "features": []
+  },
+  {
+    "id": "svc-visa-079",
+    "legacyName": "Process IMTA & RPTKA Only (12 Months)",
+    "currentName": "Process IMTA & RPTKA Only (12 Months)",
+    "domain": "immigration",
+    "descriptionSha256": "3ac05804de9f314f816c48401d2bb0c345d9dcdf0f70931a31bd8c45d2f93d5d",
+    "features": [
+      {
+        "id": "svc-visa-079.feature.01",
+        "sha256": "5f58bdda2d4c6917bcc354a0172d161efd5ad7edb4dbf342143054217dc10f85"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-080",
+    "legacyName": "Process IMTA & RPTKA Only (6 Months or Less)",
+    "currentName": "Process IMTA & RPTKA Only (6 Months or Less)",
+    "domain": "immigration",
+    "descriptionSha256": "01ab604ed7aa332c7c9e5d2fb8423be17edd4be23f391f125d6eba1cf432bdd5",
+    "features": [
+      {
+        "id": "svc-visa-080.feature.01",
+        "sha256": "4717122047502c1b4dd575da29713395aea177b817ac239d198cd86f52fd62fc"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-081",
+    "legacyName": "EPO (Exit Permit Only)",
+    "currentName": "EPO (Exit Permit Only)",
+    "domain": "immigration",
+    "descriptionSha256": "ed0ee83f540f0bc76811d9de202074d6702d6ed08b7aa5a8b7d17e7ca642c7ca",
+    "features": []
+  },
+  {
+    "id": "svc-visa-082",
+    "legacyName": "ERP (Exit Permit Only — Offshore)",
+    "currentName": "ERP (Exit Permit Only — Offshore)",
+    "domain": "immigration",
+    "descriptionSha256": "3e8b2f7eac5463c6e8c40c7cad314103f63c0a8306a1a219d645978b4c0f2a1b",
+    "features": []
+  },
+  {
+    "id": "svc-visa-083",
+    "legacyName": "Driving License",
+    "currentName": "Driving License",
+    "domain": "immigration",
+    "descriptionSha256": "5e077bc9d4172c7058ad6f3e9741c9ed7f374f36c03899173d7eb6056b526765",
+    "features": []
+  },
+  {
+    "id": "svc-visa-084",
+    "legacyName": "Urgent 1 Hari",
+    "currentName": "Urgent 1 Hari",
+    "domain": "immigration",
+    "descriptionSha256": "9708789567e7364e87e81d8e297fe835321c86344e53c5082b84dadb03b4e8ce",
+    "features": [
+      {
+        "id": "svc-visa-084.feature.01",
+        "sha256": "fa665d95d29e83bc8dc7afc598bc4d3329e56628d5304eb7ca7502fe4a4f03c0"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-085",
+    "legacyName": "Urgent 2 Hari",
+    "currentName": "Urgent 2 Hari",
+    "domain": "immigration",
+    "descriptionSha256": "4079ac6108973567be43d8e41cc97dcabff1bbba82d02bfd247f7e518e743688",
+    "features": [
+      {
+        "id": "svc-visa-085.feature.01",
+        "sha256": "ec13178b98722aec7155e81ceb34ccd429ae05a1f20bd48589c0b83fa3a3a10e"
+      }
+    ]
+  },
+  {
+    "id": "svc-visa-086",
+    "legacyName": "Urgent 3 Hari",
+    "currentName": "Urgent 3 Hari",
+    "domain": "immigration",
+    "descriptionSha256": "f52344ee59d63ba58e8138e1484e6cdb13928426847e4b8771224c2942ae4b8e",
+    "features": [
+      {
+        "id": "svc-visa-086.feature.01",
+        "sha256": "360719440e92c92438956f79912d4a1a26178fb6bc4deb8538a82ad629e795ed"
+      }
+    ]
+  },
+  {
+    "id": "svc-company-001",
+    "legacyName": "Company Revision",
+    "currentName": "Company Revision",
+    "domain": "company-setup",
+    "descriptionSha256": "f14fedd8edcafb79c13a4fdbe1bbe74e6759330b13f1ab309f14cd2ebb21de03",
+    "features": [
+      {
+        "id": "svc-company-001.feature.01",
+        "sha256": "d3c2b4393e479d143aa56c9a1b1760513e5b2a5fb3427485b7f1b2aee22d0ea6"
+      },
+      {
+        "id": "svc-company-001.feature.02",
+        "sha256": "65238b043e77f3e5b8b82385342c0460f099ec13e8b568ba507be81e57df742f"
+      },
+      {
+        "id": "svc-company-001.feature.03",
+        "sha256": "18bac77ed792cdcf3ba70af5d9f424bbb9e0bec2c813d832efddf43272d2f9e9"
+      },
+      {
+        "id": "svc-company-001.feature.04",
+        "sha256": "bfc9a058b8ecd8a6ffdc97f6a27793bb273c85afc447610fa313ad09ebe50c0c"
+      },
+      {
+        "id": "svc-company-001.feature.05",
+        "sha256": "621d5bd48cc385948779fd59c03331d6257e5f6298c18afbe9a1f26ccd975e5b"
+      }
+    ]
+  },
+  {
+    "id": "svc-company-002",
+    "legacyName": "SLHS (Hygiene Certificate)",
+    "currentName": "SLHS (Hygiene Certificate)",
+    "domain": "company-setup",
+    "descriptionSha256": "ca30bfdc9b25ec68835abf72950dcb921e89dc84d1615a09b3908fd5f4a62196",
+    "features": [
+      {
+        "id": "svc-company-002.feature.01",
+        "sha256": "8f735b8fd37f015537c02f70c0d36b47a834b9409a73548ee2453575ef62107f"
+      },
+      {
+        "id": "svc-company-002.feature.02",
+        "sha256": "4f5e6bf8dc9fbe5052db17f816e57796ec98cc26c5b7052debe599ffb671e152"
+      },
+      {
+        "id": "svc-company-002.feature.03",
+        "sha256": "64a4242365ddff60fde73f12f3c52a0d00cd9c98fc6f9c3905e33b624fcc837d"
+      },
+      {
+        "id": "svc-company-002.feature.04",
+        "sha256": "e668df7ae1c84c84c1fb145be7650632c5242a115dba819b0ed246dbc5980fe5"
+      },
+      {
+        "id": "svc-company-002.feature.05",
+        "sha256": "8f5a36e6f46f196ca11e47084ec08903ef18632e8d3aff87f2067d2ecadc0fba"
+      }
+    ]
+  },
+  {
+    "id": "svc-company-003",
+    "legacyName": "Alcohol License (NPBBKC)",
+    "currentName": "Alcohol License (NPBBKC)",
+    "domain": "company-setup",
+    "descriptionSha256": "a879d3736291de1d1f42a5e064fe1713c9a01eb942aee841dcfe296fa90e294d",
+    "features": [
+      {
+        "id": "svc-company-003.feature.01",
+        "sha256": "e70f3b2ef63af989ffd29d641cd1ac863d40f16ad2caf76416753d537255ac2d"
+      },
+      {
+        "id": "svc-company-003.feature.02",
+        "sha256": "91c06d38a55515d40f9866af0c92fe656edce44be8868bc96ce5b63c4c4cf547"
+      },
+      {
+        "id": "svc-company-003.feature.03",
+        "sha256": "5477348916182f7e909af6070d85182e913bef6451e04d530a548500b7d003c1"
+      },
+      {
+        "id": "svc-company-003.feature.04",
+        "sha256": "e32f6e557a3e8a3bd482cf97ba5116bfd704abb8a7e483a02460eca0cc267fe2"
+      },
+      {
+        "id": "svc-company-003.feature.05",
+        "sha256": "246d1ee2fa9db9b6f06e8690e6931440c183b8d11ca41506572714ac9fe0402c"
+      }
+    ]
+  },
+  {
+    "id": "svc-company-004",
+    "legacyName": "PT PMA/PMDN Setup",
+    "currentName": "PT PMA/PMDN Setup",
+    "domain": "company-setup",
+    "descriptionSha256": "efe6ad1aeb3a71b1590b138e295e6481541b08cdc379fe518c82bab23fef0f8f",
+    "features": [
+      {
+        "id": "svc-company-004.feature.01",
+        "sha256": "2d6a1daca0549ca9d4463684073e3657016466c3b3fe0254d24a1be4368f7b14"
+      },
+      {
+        "id": "svc-company-004.feature.02",
+        "sha256": "25dfb20fab07f1d11e8faf355ee3621501fe8a4123c04426638ef9c965b62719"
+      },
+      {
+        "id": "svc-company-004.feature.03",
+        "sha256": "95d9e446b3f329c4e037b35b5fcd1649f6f396ae01b36eb779eb73158080bce9"
+      },
+      {
+        "id": "svc-company-004.feature.04",
+        "sha256": "d1301f6435c3c9454eefe0db6da5c3d521659e7ccfd6640741097941cc402f2e"
+      },
+      {
+        "id": "svc-company-004.feature.05",
+        "sha256": "cdabcbf7667857bd3ee3e1a35dd2d35fdf2458b56e8c60abffdf0862b1a1fa2f"
+      },
+      {
+        "id": "svc-company-004.feature.06",
+        "sha256": "affe780f7270ee749f93dfc10d337d58ba828346b322f8836a54a5284382c92f"
+      }
+    ]
+  },
+  {
+    "id": "svc-tax-001",
+    "legacyName": "NPWP Personal + Coretax",
+    "currentName": "NPWP Personal + Coretax",
+    "domain": "tax",
+    "descriptionSha256": "229518a0a1d5a8d3d0192c686d6715bfb1f300d5156a455b23f48c74cf3807b6",
+    "features": [
+      {
+        "id": "svc-tax-001.feature.01",
+        "sha256": "a1f3f50f8c19683a8e371706a3e9a2560715acd9104f116e1a538b4af7dedf22"
+      },
+      {
+        "id": "svc-tax-001.feature.02",
+        "sha256": "e2699e3a6490bacde2f1226310e5a267e8d7274040fc0446fd65f4aa5d9ef329"
+      },
+      {
+        "id": "svc-tax-001.feature.03",
+        "sha256": "8f5a36e6f46f196ca11e47084ec08903ef18632e8d3aff87f2067d2ecadc0fba"
+      },
+      {
+        "id": "svc-tax-001.feature.04",
+        "sha256": "381e0135b4ea04dca644f82ee95ec7329759896286e837955a074993e4b1a859"
+      }
+    ]
+  },
+  {
+    "id": "svc-tax-002",
+    "legacyName": "NPWPD Corporate",
+    "currentName": "NPWPD Corporate",
+    "domain": "tax",
+    "descriptionSha256": "7a23fdac0e918fd26626e0e8f7bc1966f4041b54bbff3988c44a2d2ffb3d08e4",
+    "features": [
+      {
+        "id": "svc-tax-002.feature.01",
+        "sha256": "05e7aa398a12b898229cd2a939ddca1a226e4b0ce9447553d347c87679fd38ae"
+      },
+      {
+        "id": "svc-tax-002.feature.02",
+        "sha256": "fd19c5180ff3d36e5038e917731c1f1928e20bdd28ff3dc7ca9ba2269fdb3274"
+      },
+      {
+        "id": "svc-tax-002.feature.03",
+        "sha256": "d1967ad11e21697f6fc2c3e5571c4d873226f0a54e56529d0b1b506e224952e9"
+      },
+      {
+        "id": "svc-tax-002.feature.04",
+        "sha256": "4dd57bc30ceef4ab8b983cdc77c5c84d07fc703ae24d791b9e0266e5656a96d4"
+      }
+    ]
+  },
+  {
+    "id": "svc-tax-003",
+    "legacyName": "SPT Annual Personal",
+    "currentName": "SPT Annual Personal",
+    "domain": "tax",
+    "descriptionSha256": "ecefb228b30f182bdfa760e3b8d5b9aeab235e2e41dc10e81b826ec64a94c3cb",
+    "features": [
+      {
+        "id": "svc-tax-003.feature.01",
+        "sha256": "87d5ecc53419592072ef374ffb4c0512fada4d5836f2e50954288455a7eb20df"
+      },
+      {
+        "id": "svc-tax-003.feature.02",
+        "sha256": "4723637321679f810a0119f06d6283b75c18491b8d5833d87819c258c728b15a"
+      },
+      {
+        "id": "svc-tax-003.feature.03",
+        "sha256": "10faf22bc130a00e2d47b1a9f8b3e62ee4f37c8a14ec6f8e29991bcdb67fd965"
+      },
+      {
+        "id": "svc-tax-003.feature.04",
+        "sha256": "f6bed7ecb0f94053201e19d58046b68946f4c5b5cf054ecc6855477302cc9ca2"
+      }
+    ]
+  },
+  {
+    "id": "svc-tax-004",
+    "legacyName": "SPT Annual Company (Zero)",
+    "currentName": "SPT Annual Company (Zero)",
+    "domain": "tax",
+    "descriptionSha256": "232ab740bb569e13d029bba4c53f832ed582feaf68d102216a2037777784876a",
+    "features": [
+      {
+        "id": "svc-tax-004.feature.01",
+        "sha256": "6b74b16a57c10f7501293129b5174f24b80ebf606b82733c670a5aeabc6ae0d1"
+      },
+      {
+        "id": "svc-tax-004.feature.02",
+        "sha256": "95cc86ea1fd7f929669e1af8392c5da0786817ab4bf7be2dd4f7202691d24de5"
+      },
+      {
+        "id": "svc-tax-004.feature.03",
+        "sha256": "14e63bcbcccbdd33fb443c259f1861a6ae0e22c426e9dd775e1c23bd17a045f0"
+      },
+      {
+        "id": "svc-tax-004.feature.04",
+        "sha256": "f6bed7ecb0f94053201e19d58046b68946f4c5b5cf054ecc6855477302cc9ca2"
+      }
+    ]
+  },
+  {
+    "id": "svc-tax-005",
+    "legacyName": "SPT Annual Company (Operational)",
+    "currentName": "SPT Annual Company (Operational)",
+    "domain": "tax",
+    "descriptionSha256": "a2af92c388bc4071b9411e26da4fd808f970ca3be9055fa09e143af6652f7867",
+    "features": [
+      {
+        "id": "svc-tax-005.feature.01",
+        "sha256": "b939030f73cba64d474266432ee445fa9cb2e18b5fb5d2aa4c10f89d325b3c13"
+      },
+      {
+        "id": "svc-tax-005.feature.02",
+        "sha256": "ff3d22427ae4827e02b180dad0e92a31959d5cf32ef7c456bcbb5fc3a0c3e35b"
+      },
+      {
+        "id": "svc-tax-005.feature.03",
+        "sha256": "0370e2b86a5b0739746f9a376da7d6d739c70aac3bc3076952123a29db0c2361"
+      },
+      {
+        "id": "svc-tax-005.feature.04",
+        "sha256": "f6bed7ecb0f94053201e19d58046b68946f4c5b5cf054ecc6855477302cc9ca2"
+      }
+    ]
+  },
+  {
+    "id": "svc-tax-006",
+    "legacyName": "Monthly Tax Report",
+    "currentName": "Monthly Tax Report",
+    "domain": "tax",
+    "descriptionSha256": "5d54f030bbe683daf3bc1b6d4991fd3cbe85da97b17c12baa91710d82a847442",
+    "features": [
+      {
+        "id": "svc-tax-006.feature.01",
+        "sha256": "50e167778d2dc88ca98f216c762e96164f9af87f637ef9ab6cb832abaa49c319"
+      },
+      {
+        "id": "svc-tax-006.feature.02",
+        "sha256": "c4235c0ff10d9eeb9d129068b4dc57a498e59429abc52a4896d40f79e60fdc73"
+      },
+      {
+        "id": "svc-tax-006.feature.03",
+        "sha256": "ab5479798ad48fbd34668b96e8893f532a9edd7c5d4ec099607d418b781bb680"
+      },
+      {
+        "id": "svc-tax-006.feature.04",
+        "sha256": "f05103fc7af6cbdbc0f98a08247dc65b90d756477b5531d5461cce1823fd2f22"
+      }
+    ]
+  },
+  {
+    "id": "svc-tax-007",
+    "legacyName": "BPJS Health Insurance",
+    "currentName": "BPJS Health Insurance",
+    "domain": "tax",
+    "descriptionSha256": "b4b64956f65a521c1f22601b1c6514af96ac19ddf72e496390b056f5b6b2fad6",
+    "features": [
+      {
+        "id": "svc-tax-007.feature.01",
+        "sha256": "cdba809f03c7ca23119b8468a212913c814aaa74ce294e49b51fea202ee1b60d"
+      },
+      {
+        "id": "svc-tax-007.feature.02",
+        "sha256": "886cf6a16fad8a2d9ba0a741fa72526af0ae92de0ccdabed387fb1f2c4977e9e"
+      },
+      {
+        "id": "svc-tax-007.feature.03",
+        "sha256": "3cb6f779d7a1ad8c2df84ad5a9ff892165138c6db42a830d28349f12545711b9"
+      },
+      {
+        "id": "svc-tax-007.feature.04",
+        "sha256": "1c3c465e0d2e776619d4bea945eba54ff92fd6f525886ffe82aa9ddec7fd4f37"
+      }
+    ]
+  },
+  {
+    "id": "svc-tax-008",
+    "legacyName": "BPJS Employment Insurance",
+    "currentName": "BPJS Employment Insurance",
+    "domain": "tax",
+    "descriptionSha256": "f24485ee6f40b0f7362f1bd8446e9a287e48e157ad831d50535ee82be82d7109",
+    "features": [
+      {
+        "id": "svc-tax-008.feature.01",
+        "sha256": "9e7a2681520f686f57e8c563a9d4aa285ab53dab37d05f8d378e930403e2f7f3"
+      },
+      {
+        "id": "svc-tax-008.feature.02",
+        "sha256": "9452aea9b0d643c9b76301751d53c7f961badb448b234b1eaba387de1ec9d81b"
+      },
+      {
+        "id": "svc-tax-008.feature.03",
+        "sha256": "886cf6a16fad8a2d9ba0a741fa72526af0ae92de0ccdabed387fb1f2c4977e9e"
+      },
+      {
+        "id": "svc-tax-008.feature.04",
+        "sha256": "1c3c465e0d2e776619d4bea945eba54ff92fd6f525886ffe82aa9ddec7fd4f37"
+      }
+    ]
+  },
+  {
+    "id": "svc-tax-009",
+    "legacyName": "LKPM Report",
+    "currentName": "LKPM Report",
+    "domain": "tax",
+    "descriptionSha256": "f70c5c8d434bae8fdc6a05191273fe5c88894851dd2c6c7373db286cfb5aeef6",
+    "features": [
+      {
+        "id": "svc-tax-009.feature.01",
+        "sha256": "d2de0877e43299db0ce30fc1c58eac6cd7390a7627a880474c3034d01864d3cb"
+      },
+      {
+        "id": "svc-tax-009.feature.02",
+        "sha256": "f35bffb5c410d6854b5b70780cc3102fa30d3e0bfb3d85b8734d98a5b7ab8d61"
+      },
+      {
+        "id": "svc-tax-009.feature.03",
+        "sha256": "f7dc50d4c87d5bd5a2ec0a03617211c15666bf0c484a349146d9ed1f189c0572"
+      },
+      {
+        "id": "svc-tax-009.feature.04",
+        "sha256": "d86c6e8884605086b48b62e96762bc3ce740c8a36684d6be28bcd60159cf1146"
+      }
+    ]
+  },
+  {
+    "id": "svc-property-001",
+    "legacyName": "Legal Due Diligence",
+    "currentName": "Legal Due Diligence",
+    "domain": "property",
+    "descriptionSha256": "e525e876518260fc5909e2ad8748373ca90ae093966f841a39dc8b6b3aa79a44",
+    "features": [
+      {
+        "id": "svc-property-001.feature.01",
+        "sha256": "5a28bd9f6f29445455539ffa1551040cb8d941e96fceb5391f9b5236e8c1a20e"
+      },
+      {
+        "id": "svc-property-001.feature.02",
+        "sha256": "da31a184c260a7469d661e1a62a25dcb5741cdbb9b92c4e14a7b1d10e07a6732"
+      },
+      {
+        "id": "svc-property-001.feature.03",
+        "sha256": "3e9630505dd617f3440f951527d19dda8d8561399ef207f55c7843d7a0d7eb62"
+      },
+      {
+        "id": "svc-property-001.feature.04",
+        "sha256": "601078f87312c7e2ea3c9a3292422b81e8fc3f86879878adac25cf6296255e3d"
+      },
+      {
+        "id": "svc-property-001.feature.05",
+        "sha256": "21119c04480737dd45e30dcdb58241c2961195ebfee10cb2436f4719e26cac7b"
+      }
+    ]
+  },
+  {
+    "id": "svc-property-002",
+    "legacyName": "Leasehold Agreement (Hak Sewa)",
+    "currentName": "Leasehold Agreement (Hak Sewa)",
+    "domain": "property",
+    "descriptionSha256": "1854eab11a08d4a70c2e6b6fb399e5afa050ef5b3b659ad72b8c0004688767f6",
+    "features": [
+      {
+        "id": "svc-property-002.feature.01",
+        "sha256": "7f9010ddab014d629056bd35b139ca9e376579173c49b0bbdaf31e3ce7946cbf"
+      },
+      {
+        "id": "svc-property-002.feature.02",
+        "sha256": "315cb82edb86f87779833de67877033d907e9a99b15409dc7adedb2480d9dc32"
+      },
+      {
+        "id": "svc-property-002.feature.03",
+        "sha256": "92626fef7708ad7d72cea2f99c31e8dcc67ee2ea69ef5453a79fe4062bbc053a"
+      },
+      {
+        "id": "svc-property-002.feature.04",
+        "sha256": "7f05ac3f3d4ff24f51a5c1d5795b3d0305766c419117b3581dc25d433de1799c"
+      },
+      {
+        "id": "svc-property-002.feature.05",
+        "sha256": "403feafc29823f3760a9b365f2e29578edd57babb293dc4095a936b00a9c6a0d"
+      }
+    ]
+  },
+  {
+    "id": "svc-property-003",
+    "legacyName": "IMB & Building Permits",
+    "currentName": "Building Permits",
+    "domain": "property",
+    "descriptionSha256": "10a5034b10def4d9a78c65faf66c0bd2c466cef93c62dd83db931056b03e4be7",
+    "features": [
+      {
+        "id": "svc-property-003.feature.01",
+        "sha256": "1669a9e92ab48719ee7e0c78e7dd10b44bbd27ca933c5b5846c445f6c3b42753"
+      },
+      {
+        "id": "svc-property-003.feature.02",
+        "sha256": "03236d27fa024c965fc15ad57e5339ea3ac9c85e1252cf0feed1a8badfed7c0e"
+      },
+      {
+        "id": "svc-property-003.feature.03",
+        "sha256": "5540064bbbd1f835e13318db93d01a1cb00f47a039bf58afed972b1f81af7635"
+      },
+      {
+        "id": "svc-property-003.feature.04",
+        "sha256": "89439db983791329c2ab024611233fc955951b2cf4ee8f7c0a6a4558fac568c5"
+      },
+      {
+        "id": "svc-property-003.feature.05",
+        "sha256": "64d37bd2e6d42dbb3eee2eb72b065bafe61025fc7f759d17167007265f9dcc72"
+      }
+    ]
+  },
+  {
+    "id": "svc-property-004",
+    "legacyName": "Ownership Structures (PT PMA)",
+    "currentName": "Ownership Structures (PT PMA)",
+    "domain": "property",
+    "descriptionSha256": "09a5953ac7bad87aa2ea225a70dcdbc80ecb6a7129b4b183639258a09e846344",
+    "features": [
+      {
+        "id": "svc-property-004.feature.01",
+        "sha256": "580c9ca107664aa9c06ca0ce567a059ceb54be811f0864afb7cb5641c01e1e67"
+      },
+      {
+        "id": "svc-property-004.feature.02",
+        "sha256": "d8d2b4840c4e227cd8cabfc780256e3a67855724782f4bfeb99056977c12cbc1"
+      },
+      {
+        "id": "svc-property-004.feature.03",
+        "sha256": "6a13ce188e5981c74e7a13015174fa246714f778f7942fbf840a5c1563ee89bd"
+      },
+      {
+        "id": "svc-property-004.feature.04",
+        "sha256": "72cae3a4d322ca4588626750d333462a04bc457367ff721ee8a03d8f19021fe4"
+      },
+      {
+        "id": "svc-property-004.feature.05",
+        "sha256": "fe3e8f634e20b964d6e493f288a5e0739a24d22699c95b972e4d6c0714f28c14"
+      }
+    ]
+  }
+]

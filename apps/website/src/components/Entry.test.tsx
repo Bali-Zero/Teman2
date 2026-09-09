@@ -8,6 +8,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import { Hero, SiteHeader } from "./Entry";
+import { Services } from "./Services";
 
 afterEach(cleanup);
 
@@ -25,10 +26,12 @@ describe("SiteHeader", () => {
     expect(button.getAttribute("aria-expanded")).toBe("true");
     expect(navigation.getAttribute("data-open")).toBe("true");
     for (const [name, href] of [
-      ["Explore", "#tools"],
+      ["Explore", "/#tools"],
       ["Services", "/services"],
       ["Journal", "/journal"],
-      ["Our team", "#team"],
+      ["Our story", "/about"],
+      ["Our team", "/team"],
+      ["Contact", "/contact"],
       ["My account", "https://my.balizero.com/"],
     ]) {
       expect(
@@ -72,6 +75,25 @@ describe("SiteHeader", () => {
 });
 
 describe("Hero", () => {
+  it("retains all four historic Home fragments as unique focusable tool targets", () => {
+    const { container } = render(<><SiteHeader /><Hero /><Services /></>);
+    const ids = [...container.querySelectorAll("[id]")].map((element) => element.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const [fragment, currentId, title] of [
+      ["visa", "visa-tool", "Visa Oracle"],
+      ["kbli", "business-tool", "KBLI Navigator"],
+      ["tax", "tax-tool", "Tax Compliance Calendar"],
+      ["property", "property-tool", "Property Check"],
+    ]) {
+      const target = container.querySelector<HTMLElement>(`#${fragment}`);
+      expect(target).toBe(screen.getByRole("heading", { name: title }));
+      expect(target?.closest("article")?.id).toBe(currentId);
+      expect(target?.tabIndex).toBe(-1);
+      target?.focus();
+      expect(target).toHaveFocus();
+    }
+  });
+
   it("offers explicit category links to the matching local service journeys", () => {
     render(<Hero />);
     const startingPoints = screen.getByRole("list", {
@@ -92,10 +114,5 @@ describe("Hero", () => {
       ).toBe(href);
     }
     expect(screen.queryByRole("textbox")).toBeNull();
-    expect(
-      screen
-        .getByRole("link", { name: "Talk to our team" })
-        .getAttribute("href"),
-    ).toBe("#contact");
   });
 });

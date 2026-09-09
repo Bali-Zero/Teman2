@@ -1,62 +1,67 @@
-import type { CSSProperties } from "react";
+import styles from "./ToolEntries.module.css";
+import art from "./HomeTools.module.css";
 export function Evoa() {
   return (
-    <section className="voa" id="evoa">
+    <section className={art.arrival} id="evoa" aria-labelledby="arrival-title">
       <img
         alt="AI photographic study of a Balinese jukung on continuous crystalline sea"
-        className="voa-panorama"
+        className={art.panorama}
         loading="lazy"
         src="/assets/evoa-panorama.png"
       />
-      <div className="voa-visual">
-        <span className="caption">
-          <span className="caption-kicker">{"YOUR NEXT CHAPTER"}</span>
+      <div className={art.arrivalVisual}>
+        <span className={art.caption}>
+          <span className={art.captionKicker}>{"YOUR NEXT CHAPTER"}</span>
           {"Bali is closer"}
           <br />
           {"than you think."}
         </span>
       </div>
-      <div className="voa-copy">
-        <span className="eyebrow">{"Arriving in Indonesia?"}</span>
-        <h2>{"E-VOA"}</h2>
-        <p className="subtitle">{"Electronic Visa on Arrival"}</p>
-        <div className="voa-price-block">
-          <span className="eyebrow">{"Your E-VOA, with Bali Zero"}</span>
-          <p className="price">{"Plan your arrival."}</p>
-          <p className="small">
+      <div className={art.arrivalCopy}>
+        <span className={art.eyebrow}>{"Arriving in Indonesia?"}</span>
+        <h2 id="arrival-title">{"E-VOA"}</h2>
+        <p className={art.subtitle}>{"Electronic Visa on Arrival"}</p>
+        <div className={art.arrivalDetails}>
+          <p className={art.arrivalLead}>{"Plan your arrival."}</p>
+          <p className={art.small}>
             {
-              "Explore the application steps and current fees in the E-VOA service."
+              "Planning a short visit? Start with your nationality and travel plans. The E-VOA service checks the available route and shows the documents, application steps and current fees."
             }
           </p>
         </div>
-        <a className="button copper" href="https://balizero.com/visa/voa">
+        <a className={art.primary} href="/visa/voa">
           {"Explore E-VOA "}
           <span aria-hidden="true">{"→"}</span>
         </a>
-        <p className="small">
-          {"First, check your eligibility. Then follow the application steps."}
+        <p className={art.small}>
+          {"Have your passport and arrival plans ready when you begin an application."}
         </p>
+        <div className={`${styles.branches}`} aria-label="Choose your visa starting point">
+          <a href="/visa-oracle">Still choosing a visa? Explore your options →</a>
+          <a href="/visa/clock">Already in Indonesia? Check your stay dates →</a>
+          <a href="/services/immigration">Discuss an extension or renewal →</a>
+        </div>
         <a
           aria-label="Contact our team about Surya’s E-VOA project"
-          className="project-host host-surya"
+          className={art.host}
           href="https://wa.me/628213454721?text=Hello%20Bali%20Zero%2C%20I%20would%20like%20to%20discuss%20E-VOA%20with%20Surya."
         >
-          <span className="host-portrait">
+          <span className={art.hostPortrait}>
             <img
               alt="Surya"
               loading="lazy"
               src="/assets/surya-cutout-v19.png"
             />
           </span>
-          <span className="host-copy">
-            <span className="host-label">
+          <span className={art.hostCopy}>
+            <span className={art.hostLabel}>
               {"The person behind your next step"}
             </span>
             <strong>
               {"Surya "}
               <span>{"· E-VOA"}</span>
             </strong>
-            <span className="host-contact">
+            <span className={art.hostContact}>
               {"Questions? Start a conversation "}
               <span aria-hidden="true">{"↗"}</span>
             </span>

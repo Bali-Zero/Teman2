@@ -1,13 +1,16 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
+import "../styles/brand-fonts.css";
 import "./entry.css";
 
 const navigation = [
-  { label: "Explore", href: "#tools" },
+  { label: "Explore", href: "/#tools" },
   { label: "Services", href: "/services" },
   { label: "Journal", href: "/journal" },
-  { label: "Our team", href: "#team" },
+  { label: "Our story", href: "/about" },
+  { label: "Our team", href: "/team" },
+  { label: "Contact", href: "/contact" },
 ];
 
 export function SiteHeader() {
@@ -29,7 +32,7 @@ export function SiteHeader() {
         if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
       }}
     >
-      <a aria-label="Bali Zero home" className="brand" href="#main">
+      <a aria-label="Bali Zero home" className="brand" href="/">
         <img alt="Bali Zero" height="62" src="/assets/logo.png" width="62" />
       </a>
       <button
@@ -106,10 +109,6 @@ export function Hero() {
           <br />
           in Indonesia?
         </h1>
-        <p>
-          Consultancy for immigration, company setup, tax and property in
-          Indonesia.
-        </p>
         <div className="entry-starting-points">
           <span className="entry-category-label" id="entry-category-label">
             Choose where to start
@@ -128,12 +127,9 @@ export function Hero() {
             ))}
           </ul>
         </div>
-        <a className="human" href="#contact">
-          Talk to our team
-        </a>
       </div>
       <span className="hero-caption">
-        TRADITION, TOMORROW · AI ILLUSTRATION
+        TRADITION, TOMORROW
       </span>
     </section>
   );

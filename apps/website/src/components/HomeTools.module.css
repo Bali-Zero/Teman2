@@ -1,0 +1,41 @@
+.arrival, .studio { color: #1d2c3b; font: 400 15px/1.7 "Manrope", sans-serif; }
+.eyebrow { display: block; color: #a44b36; font: 650 10px/1.6 "Manrope", sans-serif; text-transform: uppercase; letter-spacing: .16em; }
+.primary { display: inline-flex; align-items: center; justify-content: space-between; gap: 32px; min-height: 50px; padding: 14px 24px; background: #233d52; color: #fffcf7; font-size: 13px; font-weight: 650; }
+.primary:hover { background: #1d2c3b; text-decoration: none; }
+.arrival a:focus-visible, .studio a:focus-visible { outline: 2px solid #a44b36; outline-offset: 5px; }
+.small { font-size: 11px; line-height: 1.7; color: #58626b; }
+.arrival { display: grid; grid-template-columns: 1.2fr 1fr; position: relative; isolation: isolate; padding: 52px 5%; gap: 7%; }
+.panorama { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 32% center; z-index: -1; }
+.arrivalVisual { display: flex; align-items: end; padding-bottom: 10px; }
+.caption { padding: 0; color: #fffcf7; text-shadow: 0 2px 6px #102b30b3, 0 8px 28px #102b3066; font: 450 28px/1.14 "Fraunces", Georgia, serif; }
+.captionKicker { display: block; margin-bottom: 10px; color: inherit; font: 650 9px/1.6 "Manrope", sans-serif; letter-spacing: .13em; }
+.arrivalCopy { max-width: 530px; width: 100%; padding: 36px 38px; background: #fffcf7; justify-self: end; }
+.arrivalCopy h2 { font: 450 clamp(48px,5vw,68px)/1 "Fraunces", Georgia, serif; letter-spacing: -.04em; margin: 16px 0 10px; }
+.subtitle { font-size: 13px; color: #58626b; margin: 0 0 24px; }
+.arrivalDetails { border-top: 1px solid #dad8d1; padding-top: 20px; }
+.arrivalLead { font: 450 26px/1.2 "Fraunces", Georgia, serif; margin: 0 0 12px; }
+.arrivalDetails .small { font-size: 14px; margin-bottom: 22px; }
+.arrivalCopy > .small { margin: 12px 0 0; }
+.host { display: flex; align-items: center; gap: 16px; padding-top: 24px; margin-top: 24px; border-top: 1px solid #dad8d1; }
+.hostPortrait { display: block; width: 62px; height: 78px; overflow: hidden; flex-shrink: 0; background: transparent; }
+.hostPortrait img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
+.hostCopy { display: grid; gap: 5px; }
+.hostLabel { color: #58626b; font-size: 9px; }
+.hostCopy strong { font: 450 23px/1.15 "Fraunces", Georgia, serif; }
+.hostCopy strong > span { font: 500 11px/1.6 "Manrope", sans-serif; color: #58626b; }
+.hostContact { color: #233d52; font-size: 11px; }
+.studio { width: min(1320px,90%); margin: 88px auto 80px; }
+.studioTopline { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; padding-bottom: 20px; border-bottom: 1px solid #dad8d1; }
+.studioTopline > span:last-child { color: #58626b; font-size: 11px; }
+.studioGrid { display: grid; grid-template-columns: 1fr 1.15fr; gap: 6%; align-items: center; padding-top: 40px; }
+.studioVisual { grid-column: 2; grid-row: 1; align-self: center; }
+.studioVisual img { width: 100%; height: auto; display: block; mix-blend-mode: multiply; }
+.artCaption { display: block; color: #58626b; font-size: 10px; text-align: center; margin-top: 20px; }
+.studioCopy { grid-column: 1; grid-row: 1; max-width: 490px; }
+.studioCopy h2 { font: 450 clamp(38px,4vw,56px)/1.08 "Fraunces", Georgia, serif; letter-spacing: -.035em; margin: 0 0 26px; }
+.studioCopy h2 em { color: #a44b36; font-weight: 400; }
+.studioLead { font-size: 16px; margin-bottom: 20px; }
+.studioThought { font-size: 13px; color: #58626b; padding: 18px 0; margin-bottom: 20px; border-block: 1px solid #dad8d1; }
+.studioCopy > .small { margin: 12px 0 0; }
+@media(max-width:1000px) { .arrival { gap: 4%; grid-template-columns: .85fr 1fr; padding-block: 40px; } .arrivalCopy { padding: 30px 26px; } .studioGrid { gap: 3%; grid-template-columns: 1fr 1fr; } }
+@media(max-width:700px) { .arrival { display: flex; flex-direction: column; padding: 0; gap: 0; background: #fffcf7; } .panorama { height: 260px; object-position: 30% 50%; } .arrivalVisual { min-height: 260px; padding: 0 5% 20px; } .caption { font-size: 23px; } .captionKicker { font-size: 8px; margin-bottom: 7px; } .arrivalCopy { max-width: none; padding: 32px 5% 36px; } .arrivalCopy h2 { font-size: 56px; } .arrivalCopy .primary { width: 100%; } .studio { margin: 48px auto; } .studioTopline { display: block; padding-bottom: 16px; } .studioTopline > span:last-child { display: block; margin-top: 6px; } .studioGrid { display: flex; flex-direction: column; gap: 28px; padding-top: 26px; } .studioVisual { width: 100%; max-width: 460px; } .studioVisual img { max-height: 300px; object-fit: contain; } .artCaption { margin-top: 8px; font-size: 9px; } .studioCopy { max-width: none; } .studioCopy h2 { font-size: 40px; margin-bottom: 22px; } .studioLead { font-size: 15px; } .studioCopy .primary { width: 100%; gap: 15px; } .host { padding-top: 20px; margin-top: 22px; } }

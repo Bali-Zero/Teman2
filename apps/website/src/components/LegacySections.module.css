@@ -1,0 +1,68 @@
+.reviews, .about {
+  --paper: #f7f4ee;
+  --ink: #1d2c3b;
+  --blue: #233d52;
+  --accent: #a44b36;
+  --muted: #58626b;
+  --line: #dad8d1;
+  color: var(--ink);
+  font: 400 15px/1.7 "Manrope", Arial, sans-serif;
+}
+.eyebrow { display: block; color: var(--accent); font-size: 10px; font-weight: 650; letter-spacing: .16em; line-height: 1.6; text-transform: uppercase; }
+.reviews:global(#google-reviews) { width: min(1320px, 90%); margin: 72px auto; display: grid; grid-template-columns: 1.15fr 1fr 190px; gap: 48px; align-items: center; border-block: 1px solid var(--line); padding: 42px 0; }
+.reviewIntro h2 { margin: 12px 0 18px; font: 450 clamp(30px, 3vw, 42px)/1.12 "Fraunces", Georgia, serif; letter-spacing: -.025em; }
+.reviewIntro p { max-width: 36ch; color: var(--muted); }
+.reviewCard { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; padding: 24px 0 24px 32px; border: 1px solid var(--line); background: transparent; border-radius: 0; border-width: 0 0 0 1px; }
+.reviewCard:hover { border-color: var(--blue); text-decoration: none; }
+.sourceLabel { display: flex; justify-content: space-between; align-items: center; width: 100%; color: var(--blue); font-size: 12px; font-weight: 700; }
+.reviewCard strong { font: 450 28px/1.2 "Fraunces", Georgia, serif; }
+.reviewCard p { color: var(--muted); font-size: 13px; }
+.sourceNote { border-top: 1px solid var(--line); padding-top: 16px; width: 100%; font-size: 11px; color: var(--muted); }
+.reviewPortrait { margin: 0; align-self: stretch; display: grid; align-content: end; }
+.reviewPortrait img { width: 160px; height: 180px; object-fit: cover; object-position: center 25%; margin: 0 auto; }
+.reviewPortrait figcaption { padding: 12px 0 0; text-align: center; border-top: 1px solid var(--line); }
+.reviewPortrait figcaption strong { display: block; font: 450 23px/1.2 "Fraunces", Georgia, serif; }
+.reviewPortrait figcaption span { display: block; margin-top: 5px; font-size: 10px; color: var(--muted); }
+.about { width: min(1200px, 90%); margin: 0 auto; }
+.aboutHero { padding: 64px 0 48px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 72px; border-bottom: 1px solid var(--line); align-items: center; }
+.aboutHero h1 { margin: 18px 0 24px; font: 450 clamp(40px, 5vw, 68px)/1.06 "Fraunces", Georgia, serif; letter-spacing: -.04em; max-width: 13ch; }
+.aboutHero p { max-width: 45ch; color: var(--muted); font-size: 17px; }
+.founderPortraits { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.founderPortraits figure { margin: 0; }
+.founderPortraits figure:nth-child(2) { margin-top: 56px; }
+.founderPortraits img { aspect-ratio: 4/5; object-fit: cover; object-position: center 30%; border-radius: 100px 100px 3px 3px; }
+.founderPortraits figcaption { margin-top: 16px; }
+.founderPortraits strong { display: block; font: 450 23px/1.2 "Fraunces", Georgia, serif; }
+.founderPortraits span { display: block; margin-top: 5px; font-size: 12px; color: var(--muted); }
+.story { display: grid; grid-template-columns: 1fr 1.5fr; gap: 72px; padding: 60px 0; border-bottom: 1px solid var(--line); }
+.story h2 { margin: 12px 0 0; font: 450 clamp(30px, 3vw, 40px)/1.12 "Fraunces", Georgia, serif; letter-spacing: -.02em; }
+.story p + p { margin-top: 18px; }
+.story p { color: var(--muted); }
+.storyActions { display: flex; flex-wrap: wrap; gap: 12px 28px; margin-top: 24px; }
+.storyActions a { display: inline-flex; align-items: center; min-height: 44px; gap: 16px; border-bottom: 1px solid var(--blue); color: var(--blue); font-size: 13px; font-weight: 650; }
+.aboutContact { display: flex; justify-content: space-between; gap: 32px; align-items: center; margin: 48px 0 72px; padding: 32px; background: #eae3d8; }
+.aboutContact h2 { font: 450 32px/1.15 "Fraunces", Georgia, serif; margin-bottom: 12px; }
+.aboutContact a { padding: 14px 24px; min-height: 48px; background: var(--blue); color: white; font-weight: 600; white-space: nowrap; }
+@media (max-width: 1000px) {
+  .reviews:global(#google-reviews) { grid-template-columns: 1fr 1fr; gap: 28px; }
+  .reviewPortrait { grid-column: 1/-1; display: flex; justify-content: flex-end; align-items: center; gap: 16px; }
+  .reviewPortrait img { width: 72px; height: 88px; margin: 0; }
+  .reviewPortrait figcaption { padding: 0; border: 0; text-align: left; }
+  .aboutHero, .story { gap: 36px; }
+}
+@media (max-width: 700px) {
+  .reviews:global(#google-reviews) { grid-template-columns: 1fr; margin-block: 40px; padding-block: 28px; gap: 24px; }
+  .reviewIntro p { max-width: none; }
+  .reviewCard { padding: 24px; }
+  .reviewPortrait { justify-content: flex-start; }
+  .aboutHero { grid-template-columns: 1fr; padding-block: 40px; }
+  .aboutHero h1 { max-width: 14ch; }
+  .founderPortraits { gap: 16px; }
+  .founderPortraits figure:nth-child(2) { margin-top: 28px; }
+  .founderPortraits strong { font-size: 21px; }
+  .story { grid-template-columns: 1fr; padding-block: 36px; gap: 24px; }
+  .aboutContact { align-items: flex-start; flex-direction: column; padding: 24px; margin-block: 36px 48px; gap: 24px; }
+  .aboutContact a { width: 100%; text-align: center; white-space: normal; }
+}
+
+@media(max-width:700px) { .reviewCard { padding: 22px 0; border-width: 1px 0; } }

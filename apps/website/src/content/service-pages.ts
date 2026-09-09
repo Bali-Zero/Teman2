@@ -24,7 +24,7 @@ export const servicePages = [
     cardTitle: "Immigration",
     eyebrow: "Visas and residence",
     summary:
-      "Start with the purpose of your stay, the activities you are planning and the context that may shape the conversation.",
+      "A first visit, a working life, a family move. Each starts with a different permission. Explore the route, the preparation and the decisions that come before an application.",
     metaDescription:
       "Discuss immigration and residence plans in Indonesia with the Bali Zero team.",
     image: {
@@ -47,7 +47,7 @@ export const servicePages = [
     cardTitle: "Company setup",
     eyebrow: "Business in Indonesia",
     summary:
-      "Discuss the activity, people and operating plan behind a company before deciding how to proceed.",
+      "Build the company around the business you intend to run. Formation establishes the entity; revisions and specialist licences keep its records aligned with the work on the ground.",
     metaDescription:
       "Discuss company setup questions and business plans in Indonesia with the Bali Zero team.",
     image: {
@@ -70,7 +70,7 @@ export const servicePages = [
     cardTitle: "Tax",
     eyebrow: "Personal and company tax",
     summary:
-      "Bring the facts of your situation into one conversation before making assumptions about obligations or reporting.",
+      "Registration, monthly records and the annual return serve different purposes. Find the support that matches the person, the company and the period you need to put in order.",
     metaDescription:
       "Discuss personal or company tax and accounting questions in Indonesia with the Bali Zero team.",
     image: {
@@ -93,7 +93,7 @@ export const servicePages = [
     cardTitle: "Property",
     eyebrow: "Property decisions",
     summary:
-      "Clarify the intended use, proposed structure and documents that deserve attention before a property decision.",
+      "Understand what the land, the agreement and the building documents actually allow. Begin with the asset, then work through the contract, approvals and proposed holding structure.",
     metaDescription:
       "Discuss property and due diligence questions in Indonesia with the Bali Zero team.",
     image: {

@@ -6434,8 +6434,20 @@ dialog p {
   outline-offset: 5px;
 }
 .services-intro {
-  padding: 36px 0 24px;
+  /* Leave 24px below the link after the tools' 38px upward lift. */
+  padding: 36px 0 62px;
   max-width: 760px;
+}
+.services-intro > .textlink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+@media (max-width: 680px) {
+  .services-intro {
+    /* The tools lift is reduced to 16px on small screens. */
+    padding-bottom: 40px;
+  }
 }
 .services-intro h2 {
   font:
@@ -6489,4 +6501,13 @@ dialog p {
   .tool-ui {
     min-height: 0;
   }
+}
+
+/* Publication feed states retain the R19 editorial palette. */
+.editorial-preview-note, .editorial-feed-notice { margin: 1.4rem 0; padding: 1rem 1.2rem; border-left: 2px solid var(--copper); background: #eeece5; color: var(--ink); font-size: 0.85rem; line-height: 1.6; }
+.article-amended { margin-top: 0.75rem; color: var(--copper); font-size: 0.75rem; }
+.story-destination { display: block; }
+.feature:not(:has(> img)) .feature-copy { padding-top: 3rem; padding-bottom: 3rem; }
+@media (min-width: 1051px) {
+  .editorial-grid-compact { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
 }

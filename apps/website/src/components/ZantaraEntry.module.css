@@ -1,0 +1,29 @@
+.shell { padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px)); }
+.trigger { position: fixed; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); right: 24px; z-index: 30; display: inline-flex; align-items: center; gap: 12px; min-height: 48px; border: 1px solid #cbbfb0; border-radius: 4px; background: #fffcf7; color: #1d2c3b; padding: 10px 16px; font: 450 20px/1.15 "Fraunces", Georgia, serif; letter-spacing: -.02em; box-shadow: 0 3px 12px #1d2c3b14; cursor: pointer; transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
+.trigger:hover { background: #f7f4ee; border-color: #a44b36; box-shadow: 0 6px 18px #1d2c3b1a; }
+.trigger svg { flex: 0 0 20px; color: #a44b36; }
+.dialog { position: fixed; inset: auto 24px 82px auto; width: min(390px, calc(100vw - 32px)); max-height: calc(100svh - 112px); padding: 0; margin: 0; overflow-y: auto; border: 1px solid #dad8d1; border-radius: 8px; background: #f7f4ee; color: #1d2c3b; font: 400 14px/1.65 "Manrope", Arial, sans-serif; box-shadow: 0 20px 80px #1d2c3b33; }
+.dialog::backdrop { background: #1d2c3b33; }
+.heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid #dad8d1; padding: 20px 24px; }
+.heading span { font-size: 10px; text-transform: uppercase; letter-spacing: .14em; color: #58626b; }
+.heading h2 { font: 450 32px/1.1 "Fraunces", Georgia, serif; margin-top: 6px; }
+.close { display: grid; place-content: center; width: 44px; height: 44px; padding: 0; border: 1px solid #dad8d1; border-radius: 50%; background: transparent; color: #1d2c3b; font: 24px/1 Arial, sans-serif; }
+.content { padding: 24px; }
+.context { border-left: 2px solid #233d52; background: #fffcf7; padding: 12px 16px; margin: 16px 0; overflow-wrap: anywhere; }
+.context span, .context strong, .context small { display: block; }
+.context span { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: #58626b; }
+.context strong { font: 450 23px/1.35 "Fraunces", Georgia, serif; margin: 5px 0; }
+.context small { font-size: 11px; color: #58626b; }
+.dialog :focus-visible, .trigger:focus-visible { outline: 3px solid #233d52; outline-offset: 4px; }
+.dialog .primary:focus-visible { outline-offset: 3px; }
+.status { display: block; font-size: 11px; font-weight: 650; color: #a44b36; margin-bottom: 12px; }
+.primary, .secondary { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; padding: 12px 16px; font-size: 13px; font-weight: 650; }
+.primary { background: #233d52; color: #fff; margin-top: 24px; }
+.secondary { border: 1px solid #dad8d1; margin-top: 10px; }
+.content .note { color: #58626b; font-size: 11px; margin-top: 18px; }
+@media (max-width: 700px) {
+  .shell { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  /* The mobile contact entry occupies its own space, never the reader's text. */
+  .trigger { position: static; display: flex; margin: 16px auto; }
+  .dialog { right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); max-height: calc(100svh - 32px); }
+}

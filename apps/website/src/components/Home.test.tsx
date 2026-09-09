@@ -7,50 +7,49 @@ import { Services } from "./Services";
 import { Evoa } from "./Evoa";
 import { SecondHome } from "./SecondHome";
 import { contactHref } from "../content/services";
+import { getPublicJournalArticles } from "../content/journal";
 
-describe("client portal feature preview", () => {
-  it("shows one panel and supports all tab keyboard transitions", async () => {
+describe("client portal introduction", () => {
+  it("explains all three account areas without inventing interactive product views", () => {
+    render(<Portal />);
+    const portal = screen.getByRole("region", { name: /Your case/ });
+    const terms = within(portal).getAllByRole("term");
+    const definitions = within(portal).getAllByRole("definition");
+    expect(terms).toHaveLength(3);
+    expect(definitions).toHaveLength(3);
+    for (const [index, title, detail] of [
+      [0, "Documents", "records shared with your account"],
+      [1, "Applications", "next steps linked to your case"],
+      [2, "Conversations", "your Bali Zero team"],
+    ] as const) {
+      expect(terms[index]).toHaveTextContent(title);
+      expect(definitions[index]).toHaveTextContent(detail);
+    }
+    expect(within(portal).getByText(/depend on your account and permissions/)).toBeVisible();
+    expect(within(portal).queryByRole("tab")).not.toBeInTheDocument();
+    expect(within(portal).queryByRole("tabpanel")).not.toBeInTheDocument();
+  });
+
+  it("provides keyboard access to real sign-in and contextual account help", async () => {
     const user = userEvent.setup();
     render(<Portal />);
-    const tabs = screen.getAllByRole("tab");
-    expect(screen.getAllByRole("tabpanel")).toHaveLength(1);
-    expect(screen.getByRole("tabpanel")).toHaveTextContent(
-      "Document organisation.",
-    );
-    tabs[0].focus();
-    await user.keyboard("{ArrowRight}");
-    expect(tabs[1]).toHaveFocus();
-    expect(tabs[1]).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tabpanel")).toHaveTextContent(
-      "Application updates.",
-    );
-    await user.keyboard("{End}");
-    expect(tabs[2]).toHaveFocus();
-    await user.keyboard("{ArrowRight}");
-    expect(tabs[0]).toHaveFocus();
-    await user.keyboard("{ArrowLeft}");
-    expect(tabs[2]).toHaveFocus();
-    await user.keyboard("{Home}");
-    expect(tabs[0]).toHaveFocus();
-    await user.click(tabs[2]);
-    expect(screen.getByRole("tabpanel")).toHaveTextContent(
-      "Team conversations.",
-    );
-    expect(screen.getAllByRole("tabpanel")).toHaveLength(1);
-  });
-  it("distinguishes the preview from account access", () => {
-    render(<Portal />);
-    expect(screen.getByText("Feature preview")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Sign in/ })).toHaveAttribute(
-      "href",
-      "https://my.balizero.com",
-    );
+    const signIn = screen.getByRole("link", { name: /Sign in/ });
+    const help = screen.getByRole("link", { name: /Need access or help/ });
+    expect(signIn).toHaveAttribute("href", "https://my.balizero.com/");
+    expect(signIn).toHaveAttribute("target", "_blank");
+    expect(signIn).toHaveAttribute("rel", "noopener noreferrer");
+    expect(screen.getByText(/Opens My Bali Zero in a new tab/)).toBeVisible();
+    expect(help).toHaveAttribute("href", "/contact?topic=portal&from=home");
+    await user.tab();
+    expect(signIn).toHaveFocus();
+    await user.tab();
+    expect(help).toHaveFocus();
   });
 });
 describe("editorial carousel", () => {
   it("keeps image, heading, date and destination together in both directions", async () => {
     const user = userEvent.setup();
-    render(<Journal />);
+    render(<Journal articles={getPublicJournalArticles()} />);
     const feature = screen.getByRole("article", {
       name: "Featured editorial stories",
     });
@@ -86,7 +85,7 @@ describe("service routes", () => {
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /Find a business code/ }),
-    ).toHaveAttribute("href", "https://balizero.com/kbli");
+    ).toHaveAttribute("href", "/kbli");
     const contacts = screen.getAllByRole("link", { name: /Talk to our team/ });
     expect(contacts).toHaveLength(4);
     expect(new Set(contacts.map((x) => x.getAttribute("href"))).size).toBe(4);

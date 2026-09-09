@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { ZantaraEntry } from "../components/ZantaraEntry";
+import assistantStyles from "../components/ZantaraEntry.module.css";
+import "../styles/brand-fonts.css";
 import "./globals.css";
 export const metadata: Metadata = {
   title: "Bali Zero — Website development",
@@ -11,7 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={assistantStyles.shell}>{children}<ZantaraEntry /></body>
     </html>
   );
 }

@@ -1,0 +1,48 @@
+.theme { --paper: #f7f4ee; --ink: #1d2c3b; --forest: #233d52; --copper: #a44b36; --muted: #58626b; --line: #dad8d1; --surface: #fffcf7; --wash: #eae3d8; --serif: "Fraunces", Georgia, serif; --sans: "Manrope", Arial, sans-serif; background: var(--paper); color: var(--ink); font: 400 16px/1.7 var(--sans); }
+.page { width: min(1200px, 90%); margin-inline: auto; }
+.page :is(h1, h2, h3) { font-family: var(--serif); font-weight: 450; line-height: 1.1; letter-spacing: -.035em; text-wrap: balance; }
+.page h1 { margin: 20px 0 26px; font-size: clamp(42px, 5.2vw, 70px); }
+.page h2 { margin: 14px 0 24px; font-size: clamp(30px, 3.4vw, 44px); }
+.page h3 { font-size: 26px; margin: 0 0 14px; }
+.page p { color: var(--muted); margin: 0 0 20px; }
+.eyebrow { display: block; color: var(--copper); font: 600 11px/1.6 var(--sans); letter-spacing: .15em; text-transform: uppercase; }
+.hero { display: grid; grid-template-columns: 1.05fr 1fr; align-items: center; gap: 58px; padding-block: 64px 76px; }
+.heroCopy { max-width: 530px; }
+.heroCopy p { font-size: 18px; }
+.portraits { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+.portraits figure { margin: 0; min-width: 0; }
+.portraits figure:nth-child(2) { margin-top: 64px; }
+.portraits img { display: block; width: 100%; height: auto; aspect-ratio: 4/5; object-fit: cover; object-position: center 30%; }
+.portraits figcaption { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 16px; }
+.portraits strong { display: block; font: 450 24px/1.12 var(--serif); }
+.portraits figcaption span { display: block; color: var(--muted); margin-top: 8px; font-size: 12px; }
+.story { display: grid; grid-template-columns: 1fr 1.3fr; gap: 90px; padding-block: 66px; border-top: 1px solid var(--line); }
+.prose p:first-child { color: var(--ink); font-size: 19px; }
+.textLink { display: inline-flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 28px; font: 600 13px/1.5 var(--sans); color: var(--forest); border-bottom: 1px solid var(--line); }
+.textLink:hover { color: var(--copper); border-color: var(--copper); }
+.method { display: grid; grid-template-columns: 1fr; gap: 42px; padding: 52px; background: var(--wash); }
+.methodIntro { display: grid; grid-template-columns: 1.4fr 1fr; column-gap: 64px; align-items: end; }
+.methodIntro .eyebrow { grid-column: 1/-1; }
+.methodIntro h2 { margin-bottom: 0; }
+.methodIntro p { max-width: 34ch; margin-bottom: 0; }
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; list-style: none; counter-reset: steps; padding: 0; margin: 0; }
+.steps li { counter-increment: steps; position: relative; padding: 44px 0 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; align-items: flex-start; }
+.steps li .textLink { margin-top: auto; }
+.steps li:last-child { padding-bottom: 0; }
+.steps li::before { content: "0" counter(steps); position: absolute; left: 0; top: 12px; color: var(--copper); font: 600 12px/2 var(--sans); }
+.steps p { font-size: 15px; }
+.expertise { display: grid; grid-template-columns: 1fr 1.3fr; gap: 80px; padding-block: 80px; }
+.expertiseIntro p { max-width: 310px; }
+.expertiseRow { border-top: 1px solid var(--line); padding: 24px 0 8px; }
+.expertiseRow h3 a { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 44px; }
+.expertiseRow h3 span { color: var(--copper); font: 22px var(--sans); }
+.expertiseRow p { font-size: 15px; }
+.knowledge { max-width: 800px; margin-left: auto; border-top: 1px solid var(--line); padding-block: 52px 76px; }
+.knowledge p { max-width: 670px; }
+.invitation { display: flex; align-items: center; justify-content: space-between; gap: 40px; background: var(--forest); color: var(--surface); padding: 44px 48px; margin-bottom: 72px; }
+.invitation .eyebrow, .invitation p { color: var(--surface); }
+.invitation h2 { margin-bottom: 16px; }
+.invitation p { max-width: 610px; margin: 0; font-size: 15px; }
+.button { display: inline-flex; align-items: center; justify-content: center; gap: 24px; min-height: 48px; padding: 15px 22px; background: var(--surface); color: var(--forest); font-size: 14px; font-weight: 600; white-space: nowrap; }
+@media (max-width: 1000px) { .hero, .story, .method, .expertise { gap: 40px; } .method { padding: 36px; } .portraits { gap: 16px; } .portraits strong { font-size: 22px; } }
+@media (max-width: 700px) { .hero { grid-template-columns: 1fr; padding-block: 40px 48px; gap: 36px; } .heroCopy p { font-size: 17px; } .portraits { gap: 22px; max-width: 480px; } .portraits figure:nth-child(2) { margin-top: 36px; } .portraits strong { font-size: 24px; } .story, .method, .expertise { grid-template-columns: 1fr; gap: 16px; } .story { padding-block: 38px; } .method { padding: 28px 22px; } .methodIntro p, .expertiseIntro p { max-width: none; } .methodIntro, .steps { grid-template-columns: 1fr; } .methodIntro { gap: 14px; } .methodIntro h2 { margin-top: 0; } .steps { gap: 28px; } .steps li { padding: 42px 0 0; } .steps li .textLink { margin-top: 0; } .expertise { padding-block: 48px; } .knowledge { padding-block: 38px 48px; } .invitation { flex-direction: column; align-items: stretch; padding: 28px 24px; gap: 24px; margin-bottom: 44px; } .button { white-space: normal; } }

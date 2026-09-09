@@ -1,0 +1,13 @@
+.branches { display: grid; gap: 4px; margin-top: 18px; text-align: left; }
+.branches a { display: inline-flex; align-items: center; min-height: 44px; color: #233D52; text-decoration: underline; text-underline-offset: 4px; font: 500 12px/1.6 "Manrope", sans-serif; }
+.branches a:hover { color: #A44B36; }
+.branches a:focus-visible { outline: 2px solid #A44B36; outline-offset: 4px; }
+.languages { display: flex; flex-wrap: wrap; gap: 20px; }
+
+/* Keep the reading routes legible against the existing sea photograph. */
+.onPhoto a { color: #fff9ee; }
+.onPhoto a:hover { color: #fff9ee; text-decoration-thickness: 2px; }
+.onPhoto a:focus-visible { outline-color: #fff9ee; }
+
+.centered { justify-items: center; text-align: center; }
+.centered .languages { justify-content: center; }

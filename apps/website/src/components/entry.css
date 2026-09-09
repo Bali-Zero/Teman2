@@ -36,7 +36,7 @@
 .site-header .entry-navigation .account {
   display: inline-flex;
   justify-content: flex-end;
-  gap: 7px;
+  gap: 5px;
   margin-left: auto;
   white-space: nowrap;
 }
@@ -55,17 +55,17 @@
   display: inline-flex;
   align-items: center;
   font:
-    900 17px/1 "Arial Black",
+    900 16px/1 "Arial Black",
     Impact,
     "Franklin Gothic Heavy",
     sans-serif;
-  letter-spacing: 0.005em;
+  letter-spacing: -0.035em;
   color: #202824;
 }
 
 .site-header .account-brand .brand-logo-3-img {
   width: auto;
-  height: 1.23em;
+  height: 1.18em;
   object-fit: contain;
   margin: 0 -0.035em 0 -0.08em;
 }
@@ -73,8 +73,8 @@
 .site-header .brand-zero {
   display: inline-flex;
   align-items: center;
-  margin-left: 0.3em;
-  gap: 0.02em;
+  margin-left: 0.2em;
+  gap: 0;
 }
 
 .site-header .brand-om-circle {
@@ -229,7 +229,7 @@
   }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 980px) {
   .site-header {
     height: 72px;
     gap: 15px;
@@ -248,11 +248,17 @@
     left: 0;
     right: 0;
     gap: 0;
+    max-height: calc(100dvh - 72px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 12px 5% 20px;
     background: #f6f3ed;
     border-bottom: 1px solid #cecfc5;
     box-shadow: 0 12px 20px #20282412;
     font-size: 15px;
+  }
+  .site-header:has(.entry-navigation[data-open="true"]) {
+    z-index: 31;
   }
   .site-header .entry-navigation[data-open="true"] {
     display: flex;
@@ -271,11 +277,14 @@
     margin-top: 8px;
     padding-top: 16px;
   }
+}
+
+@media (max-width: 680px) {
   .entry-hero {
     min-height: 650px;
   }
   .entry-hero > img {
-    object-fit: contain;
+    object-fit: cover;
     background: #f7e3d1;
   }
   .entry-hero::after {
@@ -294,11 +303,230 @@
   }
   .entry-hero .entry-categories a {
     font-size: 12px;
-    padding: 12px;
+    padding: 6px 12px;
   }
   .entry-hero .hero-caption {
     bottom: 37px;
     font-size: 6px;
     padding: 4px;
+  }
+}
+
+
+/* Owner-approved direction A: contemporary editorial (2026-09-07). */
+body:has(.entry-hero){
+  --paper:#F7F4EE;
+  --ink:#1D2C3B;
+  --forest:#233D52;
+  --copper:#A44B36;
+  --muted:#58626B;
+  --line:#DAD8D1;
+  --surface:#FFFCF7;
+  --wash:#EAE3D8;
+  --serif:"Fraunces",Georgia,serif;
+  --sans:"Manrope",Arial,sans-serif;
+}
+
+body:has(.entry-hero){
+  font-family:var(--sans);
+  background:var(--paper);
+  color:var(--ink);
+}
+
+body:has(.entry-hero) .site-header,body:has(.entry-hero) .site-header .entry-navigation{
+  background:var(--paper);
+  color:var(--ink);
+  border-color:var(--line);
+  font-family:var(--sans);
+}
+
+body:has(.entry-hero) .site-header .entry-menu-toggle{
+  color:var(--ink);
+  border-color:var(--line);
+}
+
+body:has(.entry-hero) .entry-hero{
+  background:var(--wash);
+  color:var(--ink);
+}
+
+body:has(.entry-hero) .entry-hero::after{
+  background:radial-gradient(ellipse at 50% 20%,#F7F4EEe8 0%,#F7F4EEb8 26%,#F7F4EE33 48%,transparent 68%);
+}
+
+body:has(.entry-hero) .entry-hero h1{
+  font-family:var(--serif);
+  font-weight:450;
+  font-size:clamp(42px,4.5vw,64px);
+  line-height:1.04;
+  letter-spacing:-.045em;
+  font-variation-settings:"SOFT" 25,"WONK" 0;
+}
+
+body:has(.entry-hero) .entry-hero .hero-copy>.eyebrow,body:has(.entry-hero) .services-intro>.eyebrow{
+  color:var(--copper);
+  font-weight:700;
+  letter-spacing:.18em;
+}
+
+body:has(.entry-hero) .entry-hero .hero-copy>p{
+  color:var(--ink);
+  font-size:15px;
+  line-height:1.65;
+}
+
+body:has(.entry-hero) .entry-hero .entry-category-label{
+  color:var(--muted);
+  background:#FFFCF7eb;
+  font-size:11px;
+}
+
+body:has(.entry-hero) .entry-hero .entry-categories a{
+  background:#FFFCF7f5;
+  color:var(--forest);
+  border-color:#233D5266;
+  font-weight:550;
+}
+
+body:has(.entry-hero) .entry-hero .entry-categories a:hover{
+  background:var(--paper);
+}
+
+body:has(.entry-hero) .entry-hero .entry-categories a>span{
+  color:var(--copper);
+}
+
+body:has(.entry-hero) .entry-hero .human{
+  background:#F7F4EEf5;
+  color:var(--forest);
+  border-color:var(--copper);
+  font-weight:600;
+}
+
+body:has(.entry-hero) .entry-hero .hero-caption{
+  background:#F7F4EEd9;
+  color:var(--muted);
+}
+
+body:has(.entry-hero) .services-intro h2,body:has(.entry-hero) .tools .tool h3{
+  font-family:var(--serif);
+  font-weight:450;
+  letter-spacing:-.035em;
+  line-height:1.1;
+  color:var(--ink);
+}
+
+body:has(.entry-hero) .services-intro p{
+  font-family:var(--sans);
+  color:var(--muted);
+  font-size:17px;
+  line-height:1.7;
+}
+
+body:has(.entry-hero) .services-intro>.textlink{
+  font-family:var(--sans);
+  font-weight:600;
+  color:var(--copper);
+  font-size:14px;
+}
+
+body:has(.entry-hero) .tools .tool{
+  background:var(--surface);
+  border-color:var(--line);
+  color:var(--ink);
+}
+
+body:has(.entry-hero) .tools .tool-index,body:has(.entry-hero) .tools .tool>.eyebrow{
+  color:var(--forest);
+}
+
+@media(max-width:680px){
+  body:has(.entry-hero) .entry-hero>img{
+    background:var(--wash);
+  }
+
+  body:has(.entry-hero) .entry-hero::after{
+    background:linear-gradient(180deg,#F7F4EEdd,#F7F4EE66 38%,transparent 66%);
+  }
+
+  body:has(.entry-hero) .entry-hero h1{
+    font-size:clamp(35px,8.7vw,43px);
+    letter-spacing:-.035em;
+  }
+
+  body:has(.entry-hero) .entry-hero .hero-copy>p{
+    font-size:13px;
+    line-height:1.65;
+  }
+
+  body:has(.entry-hero) .entry-hero .entry-categories a{
+    font-size:11.5px;
+  }
+
+  body:has(.entry-hero) .services-intro p{
+    font-size:16px;
+  }
+
+}
+
+/* Include section headings whose inherited styles name Georgia directly. */
+body:has(.entry-hero) h2 {
+  font-family: var(--serif);
+}
+
+body:has(.entry-hero) .journal-title .journal-the,
+body:has(.entry-hero) .journal-title .journal-word {
+  font-family: var(--serif);
+}
+
+@media (max-width: 380px) {
+  body:has(.entry-hero) .entry-hero h1 {
+    font-size: 32px;
+  }
+}
+
+/* Homepage hierarchy: even choices and service-first card actions. */
+body:has(.entry-hero) .entry-categories > li {
+  display: flex;
+}
+
+body:has(.entry-hero) .entry-categories > li > a {
+  flex: 1;
+  min-height: 48px;
+  line-height: 1.35;
+}
+
+body:has(.entry-hero) .tools .tool > .service-main-link,
+body:has(.entry-hero) .tools .tool > .service-tool-link {
+  min-height: 64px;
+  flex-shrink: 0;
+}
+
+body:has(.entry-hero) .tools .tool > .service-tool-link {
+  margin-top: 12px;
+  background: var(--surface);
+  border-color: var(--tool-accent);
+  color: var(--tool-accent);
+}
+
+body:has(.entry-hero) .tools .tool > .service-tool-link:hover {
+  background: var(--paper);
+}
+
+body:has(.entry-hero) .tools .tool > .service-contact {
+  margin-top: 8px;
+  flex-shrink: 0;
+}
+
+@media (min-width: 541px) {
+  body:has(.entry-hero) .tools .tool h3 {
+    min-height: 2.2em;
+  }
+}
+
+@media (max-width: 540px) {
+  body:has(.entry-hero) .tools .tool > .service-main-link,
+  body:has(.entry-hero) .tools .tool > .service-tool-link {
+    min-height: 52px;
   }
 }

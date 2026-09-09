@@ -1,0 +1,58 @@
+.theme, .contact {
+  --paper: #F7F4EE; --ink: #1D2C3B; --forest: #233D52; --copper: #A44B36;
+  --muted: #58626B; --line: #DAD8D1; --surface: #FFFCF7; --wash: #EAE3D8;
+  color: var(--ink); font: 400 15px/1.75 "Manrope", sans-serif;
+}
+.theme { background: var(--paper); }
+.contact:global(#contact) {
+  display: grid; grid-template-columns: minmax(0,1.35fr) minmax(0,.85fr);
+  align-items: start; gap: 70px; width: min(1320px,90%); padding: 64px 0;
+  margin: 24px auto 72px; background: transparent; border: 0; border-block: 1px solid var(--line);
+  border-radius: 0; text-align: left;
+}
+.contact:global(#contact).full { padding-top: 56px; margin-top: 0; border-top: 0; }
+.eyebrow { display: block; color: var(--copper); font-size: 10px; line-height: 1.6; font-weight: 650; letter-spacing: .16em; text-transform: uppercase; }
+.contact:global(#contact) h1, .contact:global(#contact) h2 {
+  font: 450 clamp(34px,3.8vw,53px)/1.08 "Fraunces", Georgia, serif;
+  letter-spacing: -.035em; margin: 16px 0 22px !important; max-width: 18ch;
+}
+.contact:global(#contact) h1 { font-size: clamp(42px,5vw,70px); }
+.contact:global(#contact) p { margin: 0 0 18px; max-width: 54ch; color: var(--muted); font-size: 15px; line-height: 1.75; }
+.contact a { text-underline-offset: 5px; }
+.contact a:focus-visible, .contact select:focus-visible { outline: 2px solid var(--copper); outline-offset: 5px; }
+.options { max-width: 500px; margin-top: 26px; }
+.options label { display: block; margin-bottom: 9px; font-size: 13px; font-weight: 650; }
+.options select { font: inherit; color: var(--ink); background: var(--surface); padding: 12px 40px 12px 14px; border: 1px solid var(--line); border-radius: 0; width: 100%; min-height: 48px; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; margin: 18px 0 12px; }
+.primary { display: inline-flex; align-items: center; justify-content: center; gap: 22px; min-height: 50px; padding: 13px 22px; background: var(--forest); color: var(--surface); font-size: 13px; font-weight: 650; text-decoration: none; }
+.primary:hover { background: var(--ink); text-decoration: none; }
+.primary[aria-busy="true"] { opacity: .7; }
+.secondary { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; color: var(--forest); text-decoration: underline; }
+.contact:global(#contact) .note { font-size: 12px; line-height: 1.7; margin-bottom: 0; }
+.office { background: var(--wash); border-top: 2px solid var(--copper); padding: 32px 36px 28px; }
+.contact:global(#contact) .office h2, .contact:global(#contact) .office h3 { font: 450 30px/1.2 "Fraunces", Georgia, serif; margin: 14px 0 24px !important; }
+.office address { font-style: normal; max-width: 28ch; color: var(--ink); }
+.office dl { margin: 28px 0 22px; }
+.office dt { font-weight: 650; font-size: 13px; margin-top: 24px; color: var(--ink); }
+.office dd { margin: 6px 0 0; font-size: 14px; color: var(--muted); }
+.office dd span { display: block; font-size: 12px; }
+.office a { display: inline-flex; min-height: 44px; align-items: center; font-size: 13px; color: var(--forest); text-decoration: underline; }
+.officeLinks { display: flex; flex-direction: column; align-items: flex-start; }
+.preparation { grid-column: 1/-1; display: grid; grid-template-columns: 1fr 1fr; gap: 60px; padding-top: 36px; border-top: 1px solid var(--line); }
+.contact:global(#contact) .preparation h2 { font-size: 30px; margin: 0 0 16px !important; max-width: none; }
+.preparation ul { padding-left: 20px; margin: 0; color: var(--muted); }
+.preparation li { margin-bottom: 8px; }
+@media(max-width:1000px) {
+  .contact:global(#contact) { gap: 40px; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); }
+  .office { padding-inline: 26px; }
+}
+@media(max-width:700px) {
+  .contact:global(#contact), .contact:global(#contact).full { grid-template-columns: 1fr; gap: 36px; padding-block: 36px; margin-bottom: 40px; }
+  .contact:global(#contact) p { max-width: none; font-size: 14px; }
+  .contact:global(#contact) h1 { font-size: clamp(40px, 11.8vw, 46px); }
+  .office { padding: 28px 24px 24px; }
+  .office dl { margin-top: 22px; }
+  .preparation { grid-template-columns: 1fr; gap: 28px; padding-top: 28px; }
+  .primary { width: 100%; }
+  .options { max-width: none; }
+}
