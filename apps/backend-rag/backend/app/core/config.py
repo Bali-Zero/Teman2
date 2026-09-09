@@ -1030,6 +1030,19 @@ class Settings(BaseSettings):
         ),
     )
 
+    developer_emails: str | None = Field(
+        default=None,
+        description=(
+            "Comma-separated allowlist of developer addresses that may read the runtime "
+            "observability endpoints (/api/debug/*, /api/admin/logs/*) with their ordinary "
+            "team JWT. Set via DEVELOPER_EMAILS env var. Deliberately SEPARATE from "
+            "admin_emails: a developer needs to read logs to debug production, which is not "
+            "the same authority as administering the CRM book, and conflating the two would "
+            "force one to be widened to grant the other. Empty by default — an unset var "
+            "grants nobody, and revoking is removing the address from the list."
+        ),
+    )
+
     notification_cc_emails: str | None = Field(
         default=None,
         description=(
@@ -1083,6 +1096,21 @@ class Settings(BaseSettings):
         if not emails:
             return self._ADMIN_EMAILS_FALLBACK
         return frozenset(emails)
+
+    @property
+    def developer_emails_set(self) -> frozenset[str]:
+        """Developer observability allowlist (lower-case, frozen).
+
+        NO fallback, unlike :attr:`admin_emails_set`: an unset or blank
+        DEVELOPER_EMAILS must grant NOBODY. A fallback here would mean a
+        deployment that never configured the var silently hands log access to
+        whoever the historical default named — the opposite of a grant that is
+        meant to be explicit and revocable.
+        """
+        raw = self.developer_emails
+        if not raw:
+            return frozenset()
+        return frozenset(e.strip().lower() for e in raw.split(",") if e.strip())
 
     @property
     def notification_cc_emails_list(self) -> tuple[str, ...]:
