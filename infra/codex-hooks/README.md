@@ -42,6 +42,12 @@ See [the child rollout record](CHILD-ROLLOUT-2026-09-09.md) for enforcement limi
 Fable review, fleet evidence and the distinction between installation and
 observed native execution.
 
+The capacity follow-up adds expiring, host/profile/model/version-specific Claude
+calibration from a successful native CLI result. Unknown capacity uses an
+absolute token/tool/active-time budget. A fresh Air-M5 desktop task also proved
+native Codex parent and child hook consumption; its evidence is linked in the
+rollout record.
+
 ## Installation and rollback
 
 Run install.py using the host's existing project virtualenv, once per seat,

@@ -1,0 +1,559 @@
+{
+  "observed_date": "2026-09-09",
+  "source_commit": "70acc0579f0101c3bb5b3136170a31458c7e2754",
+  "source_sha256": {
+    "child_context.py": "9ec3546e355c4ea65764b78d9886a415c0c3a0f81ef751fe3cfbb673800c54f2",
+    "mandate_budget.py": "800f4194e8085db1cebead905268e28cf6960d8e7b12a011a7846c96c57adb2d",
+    "child_workflow.py": "6519ba2110fd886094f8f2b6d133dad48077f32d0ded30b45b67ea67c2598312"
+  },
+  "review": "child-capacity-review-2026-09-09.json",
+  "app_proof": "app-native-verification-2026-09-09.json",
+  "validation": {
+    "regression_tests_passed": 70,
+    "ruff": "PASS",
+    "pre_commit_hooks": "PASS",
+    "native_calibrated_primary_hosts": 3,
+    "profiles_independently_verified": 6
+  },
+  "hosts": [
+    {
+      "host": "Air-M5",
+      "observed_hostname": "Air-M5",
+      "legacy_sha256": {
+        "context_window_guard.py": "e6a1843e6a6ea848a09b9af9ca63d7082e81e735ab0715c877ad927f3553de75",
+        "subagent_stop_verify.py": "5268cba4a8166f349caf8a633feff0636223bab716459f9741769ce10a4a3909",
+        "orchestrate_gate.py": "5b07baa7d23fdb4321ec01f6f5bfd3e7e792379f2c029f95e89cdf3475152ef8"
+      },
+      "profiles": [
+        {
+          "profile": ".claude",
+          "backup": "/Users/balizero/.claude/state/child-workflow-backups/1788946318036497000",
+          "settings_symlink": false,
+          "handler_counts": {
+            "PreToolUse": 1,
+            "SubagentStart": 1,
+            "SubagentStop": 1
+          },
+          "independent_source_hash_match": true,
+          "legacy_hash_match": true,
+          "backup_exists": true
+        },
+        {
+          "profile": ".claude-acct2",
+          "backup": "/Users/balizero/.claude-acct2/state/child-workflow-backups/1788946318285222000",
+          "settings_symlink": true,
+          "handler_counts": {
+            "PreToolUse": 1,
+            "SubagentStart": 1,
+            "SubagentStop": 1
+          },
+          "independent_source_hash_match": true,
+          "legacy_hash_match": true,
+          "backup_exists": true
+        }
+      ],
+      "probes": [
+        {
+          "evidence_file": "child-capacity-m5-postinstall-1.json",
+          "passed": true,
+          "cwd": "/Users/balizero/.claude/state/worktrees/claude-child-probe",
+          "session_id": "9b4a9849-1b60-4ea4-9dde-34614a517b36",
+          "observed_events": [
+            "PostToolUse",
+            "PreToolUse",
+            "SessionStart",
+            "Stop",
+            "SubagentStart",
+            "SubagentStop"
+          ],
+          "children": [
+            {
+              "parent_session": "9b4a9849-1b60-4ea4-9dde-34614a517b36",
+              "agent_id": "aca804ae0046e2dc0",
+              "role": "builder",
+              "model": "claude-haiku-4-5-20251001",
+              "measurement": "calibrated",
+              "status": "returned_unverified",
+              "pretool_count": 1,
+              "stop_reminded": null,
+              "used": 2832,
+              "window": 200000,
+              "token_limit": 80000,
+              "version": "2.1.266",
+              "independent_state_sha256": "5379d489e086bef803fec33b14dc99ef1e98c48c5fefdea2edc2e82f730ed4f8"
+            }
+          ],
+          "calibrated_capacities": [
+            {
+              "model": "claude-fable-5-1",
+              "version": "2.1.266",
+              "window": 1000000,
+              "scope": "253f5c1476bac882d7ea3c82078d444c6b89e1ab306958dfbb1941eb74178c07",
+              "source": "owned_cli_probe.modelUsage.contextWindow"
+            },
+            {
+              "model": "claude-haiku-4-5-20251001",
+              "version": "2.1.266",
+              "window": 200000,
+              "scope": "253f5c1476bac882d7ea3c82078d444c6b89e1ab306958dfbb1941eb74178c07",
+              "source": "owned_cli_probe.modelUsage.contextWindow"
+            }
+          ]
+        },
+        {
+          "evidence_file": "child-capacity-m5-postinstall-2.json",
+          "passed": true,
+          "cwd": "/Users/balizero/.claude/state/worktrees/claude-child-probe",
+          "session_id": "65ba57a0-736a-4e74-a240-7693c0ab6105",
+          "observed_events": [
+            "PostToolUse",
+            "PreToolUse",
+            "SessionStart",
+            "Stop",
+            "SubagentStart",
+            "SubagentStop"
+          ],
+          "children": [
+            {
+              "parent_session": "65ba57a0-736a-4e74-a240-7693c0ab6105",
+              "agent_id": "a1c4c66ebf7f99af5",
+              "role": "builder",
+              "model": "claude-haiku-4-5-20251001",
+              "measurement": "calibrated",
+              "status": "returned_unverified",
+              "pretool_count": 1,
+              "stop_reminded": null,
+              "used": 2813,
+              "window": 200000,
+              "token_limit": 80000,
+              "version": "2.1.266",
+              "independent_state_sha256": "3127947629c59890752b89d85e5e532edc284bfb401bfa0c35507eaaf2e6fe56"
+            }
+          ],
+          "calibrated_capacities": [
+            {
+              "model": "claude-fable-5-1",
+              "version": "2.1.266",
+              "window": 1000000,
+              "scope": "253f5c1476bac882d7ea3c82078d444c6b89e1ab306958dfbb1941eb74178c07",
+              "source": "owned_cli_probe.modelUsage.contextWindow"
+            },
+            {
+              "model": "claude-haiku-4-5-20251001",
+              "version": "2.1.266",
+              "window": 200000,
+              "scope": "253f5c1476bac882d7ea3c82078d444c6b89e1ab306958dfbb1941eb74178c07",
+              "source": "owned_cli_probe.modelUsage.contextWindow"
+            }
+          ]
+        },
+        {
+          "evidence_file": "child-capacity-m5-repository-final.json",
+          "passed": true,
+          "cwd": "/Users/balizero/nuzantara/.worktrees/infra-codex-context-bridge",
+          "session_id": "5e8b82a5-a867-4665-ba58-9f656fd3405c",
+          "observed_events": [
+            "PostToolUse",
+            "PreToolUse",
+            "SessionStart",
+            "Stop",
+            "SubagentStart",
+            "SubagentStop"
+          ],
+          "children": [
+            {
+              "parent_session": "5e8b82a5-a867-4665-ba58-9f656fd3405c",
+              "agent_id": "a40590f431d087874",
+              "role": "builder",
+              "model": "claude-haiku-4-5-20251001",
+              "measurement": "calibrated",
+              "status": "returned_unverified",
+              "pretool_count": 1,
+              "stop_reminded": null,
+              "used": 2841,
+              "window": 200000,
+              "token_limit": 80000,
+              "version": "2.1.266",
+              "independent_state_sha256": "b86f8e703c9ebdb791603ed64786279c2e10c254141910a93828ca11d2f10411"
+            }
+          ],
+          "calibrated_capacities": [
+            {
+              "model": "claude-fable-5-1",
+              "version": "2.1.266",
+              "window": 1000000,
+              "scope": "6a833578f34a90c75caa2806e732fb1eb6294aa56a88d30241f8482c536af969",
+              "source": "owned_cli_probe.modelUsage.contextWindow"
+            },
+            {
+              "model": "claude-haiku-4-5-20251001",
+              "version": "2.1.266",
+              "window": 200000,
+              "scope": "6a833578f34a90c75caa2806e732fb1eb6294aa56a88d30241f8482c536af969",
+              "source": "owned_cli_probe.modelUsage.contextWindow"
+            }
+          ]
+        },
+        {
+          "evidence_file": "child-capacity-m5-repository-first.json",
+          "passed": false,
+          "cwd": "/Users/balizero/nuzantara/.worktrees/infra-codex-context-bridge",
+          "session_id": "1da4c6b7-6504-4bff-b18e-b04842178f6b",
+          "observed_events": [
+            "PostToolUse",
+            "PreToolUse",
+            "SessionStart",
+            "Stop",
+            "SubagentStart",
+            "SubagentStop"
+          ],
+          "children": [
+            {
+              "parent_session": "1da4c6b7-6504-4bff-b18e-b04842178f6b",
+              "agent_id": "a0c21aee4a6703ef6",
+              "role": "builder",
+              "model": "claude-haiku-4-5-20251001",
+              "measurement": "UNKNOWN",
+              "status": null,
+              "pretool_count": 1,
+              "stop_reminded": null,
+              "used": 2830,
+              "window": null,
+              "token_limit": 64000,
+              "version": "2.1.266"
+            }
+          ],
+          "calibrated_capacities": []
+        },
+        {
+          "evidence_file": "child-capacity-m5-repository-warmup.json",
+          "passed": true,
+          "cwd": "/Users/balizero/nuzantara/.worktrees/infra-codex-context-bridge",
+          "session_id": "1a66370f-db53-4809-bec7-75977678ac0b",
+          "observed_events": [
+            "PostToolUse",
+            "PreToolUse",
+            "SessionStart",
+            "Stop",
+            "SubagentStart",
+            "SubagentStop"
+          ],
+          "children": [
+            {
+              "parent_session": "1a66370f-db53-4809-bec7-75977678ac0b",
+              "agent_id": "a70161a89749b5f01",
+              "role": "builder",
+              "model": "claude-haiku-4-5-20251001",
+              "measurement": "UNKNOWN",
+              "status": "returned_unverified",
+              "pretool_count": 1,
+              "stop_reminded": null,
+              "used": 2993,
+              "window": null,
+              "token_limit": 64000,
+              "version": "2.1.266",
+              "independent_state_sha256": "53451a34cec2bdb4438c23af515ca17fe4f9f86041a7225610bce90e28c2b08e"
+            }
+          ],
+          "calibrated_capacities": [
+            {
+              "model": "claude-fable-5-1",
+              "version": "2.1.266",
+              "window": 1000000,
+              "scope": "6a833578f34a90c75caa2806e732fb1eb6294aa56a88d30241f8482c536af969",
+              "source": "owned_cli_probe.modelUsage.contextWindow"
+            },
+            {
+              "model": "claude-haiku-4-5-20251001",
+              "version": "2.1.266",
+              "window": 200000,
+              "scope": "6a833578f34a90c75caa2806e732fb1eb6294aa56a88d30241f8482c536af969",
+              "source": "owned_cli_probe.modelUsage.contextWindow"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "host": "Pro",
+      "observed_hostname": "Nuzantara",
+      "legacy_sha256": {
+        "context_window_guard.py": "e6a1843e6a6ea848a09b9af9ca63d7082e81e735ab0715c877ad927f3553de75",
+        "subagent_stop_verify.py": "055c9594a94b5b9cd5c8fb8bbe1148677d95509a48dbcc20c16259ed2f7a34d0",
+        "orchestrate_gate.py": "5b07baa7d23fdb4321ec01f6f5bfd3e7e792379f2c029f95e89cdf3475152ef8"
+      },
+      "profiles": [
+        {
+          "profile": ".claude",
+          "backup": "/Users/nuzantara/.claude/state/child-workflow-backups/1788946784896814000",
+          "settings_symlink": false,
+          "handler_counts": {
+            "PreToolUse": 1,
+            "SubagentStart": 1,
+            "SubagentStop": 1
+          },
+          "independent_source_hash_match": true,
+          "legacy_hash_match": true,
+          "backup_exists": true
+        },
+        {
+          "profile": ".claude-acct2",
+          "backup": "/Users/nuzantara/.claude-acct2/state/child-workflow-backups/1788946784953876000",
+          "settings_symlink": true,
+          "handler_counts": {
+            "PreToolUse": 1,
+            "SubagentStart": 1,
+            "SubagentStop": 1
+          },
+          "independent_source_hash_match": true,
+          "legacy_hash_match": true,
+          "backup_exists": true
+        }
+      ],
+      "probes": [
+        {
+          "evidence_file": "child-capacity-pro-postinstall-1.json",
+          "passed": true,
+          "cwd": "/Users/nuzantara/nuzantara",
+          "session_id": "72e99709-2459-421b-a9cf-daff8b7f79a4",
+          "observed_events": [
+            "PostToolUse",
+            "PreToolUse",
+            "SessionStart",
+            "Stop",
+            "SubagentStart",
+            "SubagentStop"
+          ],
+          "children": [
+            {
+              "parent_session": "72e99709-2459-421b-a9cf-daff8b7f79a4",
+              "agent_id": "a55645e11caccefaa",
+              "role": "builder",
+              "model": "claude-haiku-4-5-20251001",
+              "measurement": "UNKNOWN",
+              "status": "returned_unverified",
+              "pretool_count": 1,
+              "stop_reminded": null,
+              "used": 2814,
+              "window": null,
+              "token_limit": 64000,
+              "version": "2.1.266",
+              "independent_state_sha256": "95db1dcf83dd3b1ded698d3e29f2ddf279122dc6c802e679d1222c8d65a7f06d"
+            }
+          ],
+          "calibrated_capacities": [
+            {
+              "model": "claude-fable-5-1",
+              "version": "2.1.266",
+              "window": 1000000,
+              "scope": "d2439a1c0205d280490672c62211730cadf9b64d7848decf168f59cae253c2df",
+              "source": "owned_cli_probe.modelUsage.contextWindow"
+            },
+            {
+              "model": "claude-haiku-4-5-20251001",
+              "version": "2.1.266",
+              "window": 200000,
+              "scope": "d2439a1c0205d280490672c62211730cadf9b64d7848decf168f59cae253c2df",
+              "source": "owned_cli_probe.modelUsage.contextWindow"
+            }
+          ]
+        },
+        {
+          "evidence_file": "child-capacity-pro-postinstall-2.json",
+          "passed": true,
+          "cwd": "/Users/nuzantara/nuzantara",
+          "session_id": "e58616d9-b0a3-47df-a8a5-4dc2960b9ece",
+          "observed_events": [
+            "PostToolUse",
+            "PreToolUse",
+            "SessionStart",
+            "Stop",
+            "SubagentStart",
+            "SubagentStop"
+          ],
+          "children": [
+            {
+              "parent_session": "e58616d9-b0a3-47df-a8a5-4dc2960b9ece",
+              "agent_id": "a6b6e0458ce986263",
+              "role": "builder",
+              "model": "claude-haiku-4-5-20251001",
+              "measurement": "calibrated",
+              "status": "returned_unverified",
+              "pretool_count": 1,
+              "stop_reminded": null,
+              "used": 2811,
+              "window": 200000,
+              "token_limit": 80000,
+              "version": "2.1.266",
+              "independent_state_sha256": "b029fe762e7984d8bd9a387f7b250cabf535d3561b45bdee5ff8e970a88b75d5"
+            }
+          ],
+          "calibrated_capacities": [
+            {
+              "model": "claude-fable-5-1",
+              "version": "2.1.266",
+              "window": 1000000,
+              "scope": "d2439a1c0205d280490672c62211730cadf9b64d7848decf168f59cae253c2df",
+              "source": "owned_cli_probe.modelUsage.contextWindow"
+            },
+            {
+              "model": "claude-haiku-4-5-20251001",
+              "version": "2.1.266",
+              "window": 200000,
+              "scope": "d2439a1c0205d280490672c62211730cadf9b64d7848decf168f59cae253c2df",
+              "source": "owned_cli_probe.modelUsage.contextWindow"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "host": "Mini",
+      "observed_hostname": "mini-pro2",
+      "legacy_sha256": {
+        "context_window_guard.py": "e6a1843e6a6ea848a09b9af9ca63d7082e81e735ab0715c877ad927f3553de75",
+        "subagent_stop_verify.py": "055c9594a94b5b9cd5c8fb8bbe1148677d95509a48dbcc20c16259ed2f7a34d0",
+        "orchestrate_gate.py": "5b07baa7d23fdb4321ec01f6f5bfd3e7e792379f2c029f95e89cdf3475152ef8"
+      },
+      "profiles": [
+        {
+          "profile": ".claude",
+          "backup": "/Users/nuzantara/.claude/state/child-workflow-backups/1788946798928732000",
+          "settings_symlink": false,
+          "handler_counts": {
+            "PreToolUse": 1,
+            "SubagentStart": 1,
+            "SubagentStop": 1
+          },
+          "independent_source_hash_match": true,
+          "legacy_hash_match": true,
+          "backup_exists": true
+        },
+        {
+          "profile": ".claude-acct2",
+          "backup": "/Users/nuzantara/.claude-acct2/state/child-workflow-backups/1788946798956088000",
+          "settings_symlink": false,
+          "handler_counts": {
+            "PreToolUse": 1,
+            "SubagentStart": 1,
+            "SubagentStop": 1
+          },
+          "independent_source_hash_match": true,
+          "legacy_hash_match": true,
+          "backup_exists": true
+        }
+      ],
+      "probes": [
+        {
+          "evidence_file": "child-capacity-mini-postinstall-1.json",
+          "passed": true,
+          "cwd": "/Users/nuzantara/nuzantara",
+          "session_id": "e61e6c3e-5fef-457f-9d67-0e59c79fc9d9",
+          "observed_events": [
+            "PostToolUse",
+            "PreToolUse",
+            "SessionStart",
+            "Stop",
+            "SubagentStart",
+            "SubagentStop"
+          ],
+          "children": [
+            {
+              "parent_session": "e61e6c3e-5fef-457f-9d67-0e59c79fc9d9",
+              "agent_id": "abce6c020b3528cec",
+              "role": "builder",
+              "model": "claude-haiku-4-5-20251001",
+              "measurement": "UNKNOWN",
+              "status": "returned_unverified",
+              "pretool_count": 1,
+              "stop_reminded": null,
+              "used": 3275,
+              "window": null,
+              "token_limit": 64000,
+              "version": "2.1.263",
+              "independent_state_sha256": "abd0cccd818648137c4c6b49e54c60fa5202181a104d342892d44f36f22cad4f"
+            }
+          ],
+          "calibrated_capacities": [
+            {
+              "model": "claude-fable-5-1",
+              "version": "2.1.263",
+              "window": 1000000,
+              "scope": "4b57ed839a935a65b7d58e075ee90e682357e2abd56d01c91c54e1ad837034db",
+              "source": "owned_cli_probe.modelUsage.contextWindow"
+            },
+            {
+              "model": "claude-haiku-4-5-20251001",
+              "version": "2.1.263",
+              "window": 200000,
+              "scope": "4b57ed839a935a65b7d58e075ee90e682357e2abd56d01c91c54e1ad837034db",
+              "source": "owned_cli_probe.modelUsage.contextWindow"
+            }
+          ]
+        },
+        {
+          "evidence_file": "child-capacity-mini-postinstall-2.json",
+          "passed": true,
+          "cwd": "/Users/nuzantara/nuzantara",
+          "session_id": "151eb09c-59d4-4e1f-b76a-d91f5af02405",
+          "observed_events": [
+            "PostToolUse",
+            "PreToolUse",
+            "SessionStart",
+            "Stop",
+            "SubagentStart",
+            "SubagentStop"
+          ],
+          "children": [
+            {
+              "parent_session": "151eb09c-59d4-4e1f-b76a-d91f5af02405",
+              "agent_id": "a9533257fbf54629a",
+              "role": "builder",
+              "model": "claude-haiku-4-5-20251001",
+              "measurement": "calibrated",
+              "status": "returned_unverified",
+              "pretool_count": 1,
+              "stop_reminded": null,
+              "used": 3276,
+              "window": 200000,
+              "token_limit": 80000,
+              "version": "2.1.263",
+              "independent_state_sha256": "a022d00300b771be55f058b9611172bf83556ec083621cc25bd37a44d9d9768b"
+            }
+          ],
+          "calibrated_capacities": [
+            {
+              "model": "claude-fable-5-1",
+              "version": "2.1.263",
+              "window": 1000000,
+              "scope": "4b57ed839a935a65b7d58e075ee90e682357e2abd56d01c91c54e1ad837034db",
+              "source": "owned_cli_probe.modelUsage.contextWindow"
+            },
+            {
+              "model": "claude-haiku-4-5-20251001",
+              "version": "2.1.263",
+              "window": 200000,
+              "scope": "4b57ed839a935a65b7d58e075ee90e682357e2abd56d01c91c54e1ad837034db",
+              "source": "owned_cli_probe.modelUsage.contextWindow"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "diagnostics": [
+    "All three primary hosts observed a real Haiku child reading the fixture, returning, and a parent independently checking the fixture.",
+    "M5 completed two post-install probes and then a calibrated native child in the repository worktree before Pro/Mini installation.",
+    "The first M5 repository probe detected an inherited STOP_VERIFY_ALLOW_DIRTY=1 setting; its failed state assertion is retained. The owned probe now sets recovery flags to zero in CLI-only settings, then calibrates the repository scope and repeats. User settings were not changed.",
+    "Mini's first probe completed after two native automatic-permission classifier timeouts before one child was actually created. The repeat consumed the calibrated capacity successfully.",
+    "The probe now closes CLI stdin so a CLI cannot consume remaining SSH orchestration commands as prompt text."
+  ],
+  "limits": [
+    "Calibration is exact-model, transcript-version, host, profile and routing/settings scoped, expires after seven days, and is produced only by an owned successful native CLI probe.",
+    "Uncalibrated models/profiles retain UNKNOWN capacity and absolute 64000-measured-token, 60-tool-call and 900-active-second limits. Checks occur before the next tool; there is no in-flight watchdog.",
+    "Recovery switches remain honored. Bypassing the Stop adapter also bypasses its active-time pause; the existing M5 repository STOP_VERIFY_ALLOW_DIRTY=1 setting remains in place outside the probe.",
+    "Secondary Claude profiles were verified for configuration, hashes and backups. M5 secondary authentication failed: OAuth session expired and could not be refreshed. Separate Pro/Mini secondary authentication was not exercised.",
+    "The fresh desktop-native proof is Air-M5 only. Existing tasks were not restarted; Pro/Mini desktop GUIs were not separately exercised.",
+    "Repository integration remains on the external-builder branch; no merge, auto-merge or deploy was performed."
+  ]
+}
