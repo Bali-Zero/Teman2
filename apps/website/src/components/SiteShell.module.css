@@ -1,0 +1,23 @@
+.shell {
+  --paper: #f7f4ee;
+  --ink: #1d2c3b;
+  --forest: #233d52;
+  --copper: #a44b36;
+  --muted: #58626b;
+  --line: #dad8d1;
+  --surface: #fffcf7;
+  --wash: #eae3d8;
+  --serif: "Fraunces", Georgia, serif;
+  --sans: "Manrope", Arial, sans-serif;
+  min-height: 100svh;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 15px/1.65 var(--sans);
+  color-scheme: light;
+}
+.skip { position: absolute; top: -100px; left: 16px; z-index: 40; background: #233d52; color: #fff; padding: 12px 20px; }
+.skip:focus { top: 12px; }
+.context { width: min(1320px, 90%); margin: 0 auto; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+.context a { display: inline-flex; align-items: center; min-height: 44px; }
+.shell :global(.site-header), .shell :global(.entry-navigation) { background: var(--paper); color: var(--ink); border-color: var(--line); font-family: var(--sans); }
+.shell :global(.entry-menu-toggle) { color: var(--ink); border-color: var(--line); }

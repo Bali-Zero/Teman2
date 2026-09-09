@@ -1,0 +1,6 @@
+.languages { width:min(1180px,90%); margin:0 auto 20px; display:flex; align-items:center; flex-wrap:wrap; gap:4px 16px; font:500 12px Manrope,sans-serif; }
+.languages > span { color:#58626B; margin-right:6px; }
+.languages a { display:inline-flex; align-items:center; min-height:44px; color:#58626B; text-decoration:none; border-bottom:1px solid transparent; }
+.languages a[aria-current] { color:#A44B36; border-bottom-color:#A44B36; }
+.languages a:focus-visible { outline:3px solid #233D52; outline-offset:4px; }
+.notice { box-sizing:border-box; width:min(1180px,90%); margin:0 auto 24px; padding:16px 20px; border-left:2px solid #A44B36; background:#EAE3D8; font:450 13px/1.7 Manrope,sans-serif; color:#1D2C3B; }

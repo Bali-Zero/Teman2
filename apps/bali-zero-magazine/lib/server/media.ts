@@ -4,6 +4,7 @@ import type { AssetUploadMetadataV2 } from "../contracts/collector.ts";
 import { assetEligibilitySql } from "./asset-eligibility.ts";
 import type { D1DatabaseLike } from "./publication-repository.ts";
 import { sha256Hex } from "./security.ts";
+import { expectedMetadata, verifiedObjectBytes, type StoredAssetDescriptor } from "./verified-media-bytes.ts";
 
 export const MAX_MEDIA_BYTES = 12 * 1024 * 1024;
 export const MAX_MEDIA_DIMENSION = 8192;
@@ -365,60 +366,6 @@ export async function canonicalizeImageAsset(
     height: dimensions.height,
     extension: "png",
   };
-}
-
-type StoredAssetDescriptor = Readonly<{
-  sha256: string;
-  byteCount: number;
-  mimeType: "image/png";
-  width: number;
-  height: number;
-}>;
-
-function expectedMetadata(
-  asset: StoredAssetDescriptor,
-): Readonly<Record<string, string>> {
-  return {
-    sha256: asset.sha256,
-    mimeType: asset.mimeType,
-    byteCount: String(asset.byteCount),
-    width: String(asset.width),
-    height: String(asset.height),
-  };
-}
-
-async function verifiedObjectBytes(
-  bucket: R2BucketLike,
-  key: string,
-  asset: StoredAssetDescriptor,
-): Promise<Uint8Array> {
-  const object = await bucket.get(key);
-  if (
-    object === null ||
-    object.key !== key ||
-    object.size !== asset.byteCount ||
-    object.httpMetadata?.contentType !== asset.mimeType
-  ) {
-    throw new Error("asset storage verification conflict");
-  }
-  const expected = expectedMetadata(asset);
-  if (
-    Object.keys(object.customMetadata ?? {}).length !==
-      Object.keys(expected).length ||
-    Object.entries(expected).some(
-      ([name, value]) => object.customMetadata?.[name] !== value,
-    )
-  ) {
-    throw new Error("asset storage verification conflict");
-  }
-  const bytes = new Uint8Array(await object.arrayBuffer());
-  if (
-    bytes.byteLength !== asset.byteCount ||
-    (await sha256Hex(bytes)) !== asset.sha256
-  ) {
-    throw new Error("asset storage verification conflict");
-  }
-  return bytes;
 }
 
 export async function storeVerifiedAsset(
