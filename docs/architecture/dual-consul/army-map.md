@@ -155,9 +155,10 @@ Codex task):**
 > obtain independent review, pass the Claude final on-disk gate, hand the evidence package to the
 > authorized Claude release owner, prove live, close the ledger with a read-back. Escalate strategic
 > questions to the imperators; business questions to Zero/Subhi with question, options,
-> recommendation, blocked part. _Pilot procedure v1 (workshop 2026-09-08, pending Zero's written
-> ratification): also obtain a PRE-review of the plan and an explicit human scope decision before
-> the first edit; under modus alone these two steps are the conductor's judgment, not a gate._
+> recommendation, blocked part. _Subhi's pilot only (contract v1; Zero 2026-09-09: "lascia questa dottrina per
+> Subhi"): PRE-review of the plan and an explicit human scope decision before the first edit, four
+> PRs per day, Todoist ledger. Not harness doctrine: under modus these are the conductor's judgment,
+> not a gate._
 
 **Builder:** the file set you own, the proof criteria, the worktree path, `model:` pinned, report to
 `<general|specialist>`; never touch outside your ownership; never merge.
