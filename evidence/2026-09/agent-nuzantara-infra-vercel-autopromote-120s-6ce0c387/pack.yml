@@ -1,5 +1,5 @@
 gear: 3
-brief_ref: evidence/2026-09/agent-nuzantara-infra-vercel-autopromote-120s-6ce0c387/brief.yml
+brief_ref: evidence/brief.yml
 council_run: council-journal.jsonl
 lanes:
   - lane: build
