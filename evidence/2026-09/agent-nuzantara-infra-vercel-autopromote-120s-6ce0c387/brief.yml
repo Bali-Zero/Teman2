@@ -22,5 +22,5 @@ consumer_map:
   - The next session that merges an apps/mouth PR and expects it live without running vercel_prod_deploy.py by hand.
 risks:
   - A promote run takes ~2 minutes (probe loop), so the tick after a promote lands in the single-instance skip and writes a warning heartbeat once; visible, not a race.
-  - A fetch that genuinely needs more than 30s times out and degrades that tick; the cost is 2 minutes, not 15.
+  - A fetch that genuinely needs more than 45s times out and degrades that tick; the cost is 2 minutes, not 15.
 pii: none

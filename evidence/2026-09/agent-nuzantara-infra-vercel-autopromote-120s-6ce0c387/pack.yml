@@ -7,7 +7,13 @@ lanes:
     seat: claude-fable-5-1
   - lane: independent-diff-review
     role: review
-    seat: codex-gpt-5.6
+    seat: codex-gpt-5.6-sol
+  - lane: independent-diff-review-2
+    role: review
+    seat: kimi-code/k3
+  - lane: final-gate
+    role: review
+    seat: claude-opus-5
 spend:
   wall_clock_hours: 0.6
   adversarial_rounds: 3
@@ -51,6 +57,20 @@ dissent:
     objection: "120s is not an end-to-end bound: the post-promote probe loop, the Vercel listing scan and the gh fallback can each push a run past one tick, and the cadence test only proves the isolated fetch retry."
     status: PLAUSIBLE
     disposition: "By design, now stated in the wrapper: launchd never starts a second instance of a label while one runs (it skips that fire) and the pidfile is the second line for manual runs, so a long promote costs one skipped fire, visible as a warning heartbeat. The cadence bounds the FETCH — the step every idle tick takes — so a dead network degrades this tick instead of wedging the next. An end-to-end budget would mean cutting the promote's own proof, which is the organ's reason to exist."
+gate_verdict:
+  verdict: PASS-WITH-CONDITIONS
+  seat: claude-opus-5
+  graded_sha: 4630e825e62c444ba71da01e9cf928e54a3d525f
+  conditions:
+    - owner: Fable Pro session 997ab3e1 (shipper)
+      deadline: before declaring the organ live
+      condition: run the mini-install proof (launchctl run interval = 120 seconds, run-start lines 2 min apart)
+    - owner: Fable Pro session 997ab3e1 (shipper)
+      deadline: first apps/mouth merge after this lands
+      condition: run the next-mouth-merge proof (PROMOTED logged within 2 min of READY, no hand-run)
+    - owner: Fable Pro session 997ab3e1 (shipper)
+      deadline: at merge
+      condition: brief.yml risks say 45s, not 30s (done in this commit)
 pending_proofs:
   - probe: mini-install
     owner: Fable Pro session 997ab3e1 (shipper)
