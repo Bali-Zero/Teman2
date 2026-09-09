@@ -28,10 +28,16 @@ from typing import Any, Iterator
 from rpc import binary_path
 from mandate_budget import observe as budget_observe, reserve as budget_reserve
 
-VERSION = "1.1.0"
-HANDSHAKE_SECONDS = 45
+VERSION = "1.2.0"
+HANDSHAKE_SECONDS = 45  # one Stop hook blocks at most this long waiting for the destination
+ACKNOWLEDGE_SECONDS = 240  # the supervisor waits this long for the destination to claim the source
+MAX_LAUNCH_ATTEMPTS = 3
 POLL_SECONDS = 1
 MANDATE_SECONDS = 3600
+# Launch failures the next Stop may retry on its own (bounded by MAX_LAUNCH_ATTEMPTS).
+TRANSIENT_FAILURES = frozenset(
+    {"continuation_not_confirmed", "TimeoutError", "RuntimeError", "destination_failed"}
+)
 SELF = Path(__file__).resolve()
 EVENTS = (
     "SessionStart",
@@ -342,6 +348,39 @@ def instructions(sid: str) -> str:
         "The coordinator owns a total deadline and all attempts, retries, replacements, depth "
         "and concurrent children. Receipt success is execution evidence, not independent acceptance."
     )
+
+
+def frozen_reason(sid: str, state: dict[str, Any]) -> str:
+    """Name the exact handoff phase, so a frozen source never retries blindly."""
+    phase = state.get("rollover")
+    attempt = state.get("launch_attempts", 0)
+    helpers = "Only the bridge helpers (checkpoint/status/verify) run here."
+    if phase == "accepted":
+        return (
+            "Handed off: work continues in Codex task "
+            + str(state.get("to_session"))
+            + ". This source is frozen; open that task. "
+            + helpers
+        )
+    if phase == "starting":
+        return (
+            f"Continuation launching (attempt {attempt} of {MAX_LAUNCH_ATTEMPTS}); "
+            "end this turn and wait for the destination to acknowledge. " + helpers
+        )
+    if phase == "needs_attention":
+        failure = str(state.get("failure"))
+        if failure in TRANSIENT_FAILURES and attempt < MAX_LAUNCH_ATTEMPTS:
+            cure = "End this turn: the next Stop retries the handoff automatically. "
+        else:
+            cure = (
+                "Operator decision needed: "
+                + shlex.join([sys.executable, str(SELF), "retry", sid])
+                + " re-arms the handoff; "
+                + shlex.join([sys.executable, str(SELF), "release", sid])
+                + " lets this source continue over threshold. "
+            )
+        return f"Handoff attempt {attempt} failed ({failure}). " + cure + helpers
+    return "Context threshold reached. " + instructions(sid)
 
 
 def native_child(payload: dict[str, Any]) -> tuple[str, str, str] | None:
@@ -657,6 +696,7 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
             raise ValueError("invalid threshold")
         over = state.get("used", 0) >= state.get("window", float("inf")) * fraction
         over = over and state.get("observed") != state.get("ignore_observed")
+        over = over and not state.get("threshold_released")
         if over and not state.get("rollover"):
             state["rollover"] = "requested"
         save(path, state)
@@ -667,9 +707,7 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
             "needs_attention",
         ):
             if not helper_command(payload, sid):
-                return context_output(
-                    event, "Context threshold reached. " + instructions(sid), deny=True
-                )
+                return context_output(event, frozen_reason(sid, state), deny=True)
         if event == "PostToolUse" and over:
             return context_output(
                 event, "Context threshold reached. " + instructions(sid)
@@ -681,6 +719,21 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
                 + instructions(sid),
             )
     if event == "Stop":
+        if (
+            state.get("rollover") == "needs_attention"
+            and state.get("failure") in TRANSIENT_FAILURES
+            and state.get("launch_attempts", 0) < MAX_LAUNCH_ATTEMPTS
+            and state.get("checkpoint", {}).get("remaining")
+        ):
+            # A transient launch failure is retried by the next Stop, never by the model.
+            with locked(sid) as (path, latest):
+                if latest.get("rollover") == "needs_attention":
+                    latest["rollover"] = "requested"
+                    latest.pop("failure", None)
+                    save(path, latest)
+                    state = latest
+        if state.get("rollover") == "starting":
+            return await_acceptance(sid)
         if state.get("rollover") == "requested":
             if not state.get("checkpoint"):
                 if payload.get("stop_hook_active"):
@@ -831,7 +884,7 @@ def launch(sid: str, max_hops: int) -> dict[str, Any]:
             return {"systemMessage": reason}
         state.update(
             rollover="starting",
-            launch_deadline=time.time() + HANDSHAKE_SECONDS,
+            launch_deadline=time.time() + ACKNOWLEDGE_SECONDS,
             launch_nonce=uuid.uuid4().hex,
             launch_attempts=state.get("launch_attempts", 0) + 1,
         )
@@ -845,8 +898,30 @@ def launch(sid: str, max_hops: int) -> dict[str, Any]:
             stderr=subprocess.DEVNULL,
             start_new_session=True,
         )
+    return await_acceptance(sid)
+
+
+def supervisor_alive(state: dict[str, Any]) -> bool:
+    pid = state.get("supervisor_pid")
+    if state.get("supervisor_finished") or not isinstance(pid, int):
+        return False
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def await_acceptance(sid: str) -> dict[str, Any]:
+    """Block one Stop for at most HANDSHAKE_SECONDS; a slow destination is not a dead one.
+
+    Until 1.1.0 this flipped the source to needs_attention at 45 s and the supervisor
+    then killed a destination that had already claimed the source (measured 2026-09-09:
+    claim at +4 s, first model event still pending at +45 s on a 100 KB xhigh prompt).
+    Only the supervisor's own verdict, its death, or the acknowledge deadline end a launch.
+    """
     until = time.monotonic() + HANDSHAKE_SECONDS
-    while time.monotonic() < until:
+    while True:
         latest = load(state_path(sid))
         if latest.get("rollover") == "accepted":
             return {
@@ -854,16 +929,30 @@ def launch(sid: str, max_hops: int) -> dict[str, Any]:
                 "stopReason": "Continuation accepted: " + latest["to_session"],
                 "systemMessage": "Work continues in Codex task " + latest["to_session"],
             }
-        if latest.get("rollover") == "needs_attention":
+        if latest.get("rollover") != "starting":
             break
+        if "supervisor_pid" in latest and not supervisor_alive(latest):
+            break  # the supervisor died without recording a verdict
+        if time.time() > latest.get("launch_deadline", 0) + POLL_SECONDS:
+            break
+        if time.monotonic() >= until:
+            return {
+                "systemMessage": "Continuation still launching (attempt "
+                + str(latest.get("launch_attempts", 0))
+                + f" of {MAX_LAUNCH_ATTEMPTS}); the destination has not acknowledged yet. "
+                "Source frozen, not cancelled: end the turn again to re-check."
+            }
         time.sleep(0.1)
-    # Never terminate the source on an unconfirmed launch; invalidate late acceptance.
     with locked(sid) as (path, latest):
-        latest["rollover"] = "needs_attention"
-        latest.setdefault("failure", "continuation_not_confirmed")
-        save(path, latest)
+        if latest.get("rollover") == "starting":
+            latest["rollover"] = "needs_attention"
+            latest.setdefault("failure", "continuation_not_confirmed")
+            save(path, latest)
+    failure = str(load(state_path(sid)).get("failure"))
     return {
-        "systemMessage": "Continuation not confirmed. Source preserved; inspect context bridge status."
+        "systemMessage": "Continuation not confirmed ("
+        + failure
+        + "). Source preserved; end the turn to retry, or inspect context bridge status."
     }
 
 
@@ -948,6 +1037,7 @@ def continue_session(sid: str) -> None:
             try:
                 msg = messages.get(timeout=POLL_SECONDS)
             except queue.Empty:
+                msg = {}
                 if proc.poll() is not None:
                     reader.join(timeout=2)
                     if not messages.empty():
@@ -955,33 +1045,37 @@ def continue_session(sid: str) -> None:
                     raise RuntimeError(
                         "owned destination exited without completion"
                     ) from None
-                if accepted or time.time() < state["launch_deadline"]:
-                    continue
-                raise TimeoutError("destination handshake expired") from None
+                if not accepted and time.time() >= state["launch_deadline"]:
+                    raise TimeoutError("destination handshake expired") from None
             kind, item = msg.get("type"), msg.get("item", {})
             if kind == "thread.started":
                 to = msg["thread_id"]
             progress = kind in ("item.started", "item.completed") and item.get(
                 "type"
             ) in ("agent_message", "reasoning", "command_execution", "mcp_tool_call")
-            if not accepted and to and progress:
+            if not accepted and to:
+                # The destination's SessionStart hook claims this exact source under the
+                # launch nonce. That claim is the acknowledgement; the first model event
+                # may take longer than any handshake on a large high-effort prompt.
                 child = load(state_path(to))
-                if child.get("from_session") != sid:
+                claimed = child.get("from_session") == sid
+                if progress and not claimed:
                     raise ValueError("destination did not acknowledge exact source")
-                with locked(sid) as (path, latest):
-                    if (
-                        latest.get("rollover") != "starting"
-                        or time.time() > latest["launch_deadline"]
-                    ):
-                        raise TimeoutError("source cancelled late continuation")
-                    latest.update(
-                        to_session=to, rollover="accepted", accepted_at=time.time()
+                if claimed:
+                    with locked(sid) as (path, latest):
+                        if (
+                            latest.get("rollover") != "starting"
+                            or time.time() > latest["launch_deadline"]
+                        ):
+                            raise TimeoutError("source cancelled late continuation")
+                        latest.update(
+                            to_session=to, rollover="accepted", accepted_at=time.time()
+                        )
+                        save(path, latest)
+                    accepted = True
+                    budget_observe(
+                        state_dir() / "mandates", state.get("mandate_root", sid), to
                     )
-                    save(path, latest)
-                accepted = True
-                budget_observe(
-                    state_dir() / "mandates", state.get("mandate_root", sid), to
-                )
             if kind in ("turn.completed", "turn.failed", "bridge/eof"):
                 status = "completed" if kind == "turn.completed" else "failed"
                 with locked(sid) as (path, latest):
@@ -1033,6 +1127,41 @@ def continue_session(sid: str) -> None:
                 )
 
 
+def retry(sid: str) -> dict[str, Any]:
+    """Operator verb: re-arm a parked handoff so the next Stop launches it again."""
+    with locked(sid) as (path, state):
+        if state.get("rollover") != "needs_attention":
+            raise ValueError("only a needs_attention source can be retried")
+        if not state.get("checkpoint", {}).get("remaining"):
+            raise ValueError("retry needs a checkpoint with remaining work")
+        state["rollover"] = "requested"
+        for field in ("failure", "cancel_requested"):
+            state.pop(field, None)
+        save(path, state)
+        return {"retry_armed": True, "launch_attempts": state.get("launch_attempts", 0)}
+
+
+def release(sid: str) -> dict[str, Any]:
+    """Operator verb: unfreeze a parked source; the owner decided it continues here.
+
+    A launch still in flight must be cancelled first, so the supervisor records its
+    own verdict instead of racing this write.
+    """
+    with locked(sid) as (path, state):
+        if state.get("rollover") not in ("needs_attention", "requested"):
+            raise ValueError("release applies to a parked (needs_attention/requested) source")
+        state["released"] = {
+            "from": state.get("rollover"),
+            "failure": state.get("failure"),
+            "at": time.time(),
+        }
+        for field in ("rollover", "failure", "cancel_requested", "launch_nonce"):
+            state.pop(field, None)
+        state["threshold_released"] = True
+        save(path, state)
+        return {"released": True}
+
+
 def cancel(sid: str) -> None:
     """Signal only the supervisor that owns this exact launch; never kill by guessed PID."""
     with locked(sid) as (path, state):
@@ -1052,6 +1181,12 @@ def main() -> int:
         if verb == "cancel":
             cancel(sys.argv[2])
             print('{"cancellation_requested":true}')
+            return 0
+        if verb == "retry":
+            print(json.dumps(retry(sys.argv[2])))
+            return 0
+        if verb == "release":
+            print(json.dumps(release(sys.argv[2])))
             return 0
         if verb == "attention":
             print(

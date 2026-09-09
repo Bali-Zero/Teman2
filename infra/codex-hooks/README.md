@@ -19,10 +19,17 @@ CLI for fresh continuations. It does not modify the Claude/Fable hook files.
   reasoning effort, approval policy and supported sandbox settings. Original
   text instructions and later steering are read transiently from native
   rollouts; generated continuation wrappers are not added again on each hop.
-- A destination must acknowledge that exact source and emit an actual model or
-  tool event within 45 seconds. Creating a thread alone is insufficient. A
-  failed or late launch retains the source and checkpoint as needs_attention.
-  The maximum chain length is three hops. No GUI automation is involved.
+- A destination must acknowledge that exact source: its own SessionStart hook
+  claims the source under the launch nonce, and that claim is the acceptance
+  (1.2.0). Creating a thread alone is insufficient; a model or tool event
+  without a claim still rejects the destination. The supervisor waits up to 240
+  seconds for the claim, while one Stop hook blocks at most 45 seconds and then
+  leaves the launch `starting` rather than cancelling it — the next Stop
+  re-checks. A failed launch parks the source as needs_attention; transient
+  failures (timeout, destination exit, unconfirmed) are retried by the next
+  Stop up to three launch attempts, other failures wait for the operator
+  (`retry` re-arms, `release` unfreezes the source over threshold). The
+  maximum chain length is three hops. No GUI automation is involved.
 - Verification executes real argv commands, records exit codes and hashes, and
   binds the receipt to HEAD, tracked changes and untracked contents. Any later
   edit invalidates it. Stop requests verification when changes lack a current
