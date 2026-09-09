@@ -32,6 +32,7 @@ from evidence_pack_lint import (  # noqa: E402
     FLOOR_SOURCE_SIZE,
     LANES_NON_ANTHROPIC_ENFORCEMENT_DATE,
     R9_R11_ENFORCEMENT_DATE,
+    REVIEWER_INDEPENDENCE_ENFORCEMENT_DATE,
     SEAT_RULES_ENFORCEMENT_DATE,
     SIZE_GEAR2_THRESHOLD,
     SIZE_GEAR3_THRESHOLD,
@@ -54,6 +55,7 @@ from evidence_pack_lint import (  # noqa: E402
     check_pii_local_seat,
     check_pii_scan_clean,
     check_receipts_have_provenance,
+    check_reviewer_independence,
     check_size_budget,
     compute_ceiling,
     compute_floor,
@@ -1527,6 +1529,163 @@ def test_lanes_gear3_opus5_sonnet5_flip_behavior():
     )
     assert violations
     assert notice is None
+
+
+# --------------------------------------------------------- check_reviewer_independence (W2)
+#
+# Shared today= pins for this rule's own flip date — never fired before, so
+# it gets its own clock rather than borrowing D3's or the seat-rules
+# program's (same reasoning _r9_r11_verdict's own module comment gives for
+# why R9/R11 did not reuse SEAT_RULES_ENFORCEMENT_DATE).
+_REVIEWER_PRE_FLIP = REVIEWER_INDEPENDENCE_ENFORCEMENT_DATE - datetime.timedelta(days=1)
+_REVIEWER_POST_FLIP = REVIEWER_INDEPENDENCE_ENFORCEMENT_DATE
+
+
+def test_reviewer_independence_guilt_reviewer_is_contributor_rejected_post_flip():
+    """GUILT: a pack whose reviewer is ALSO a contributor fails — the exact
+    property both W1 and W2 pin (A17, rank confers no exemption)."""
+    pack = _lane_pack(
+        {"lane": "B1", "role": "build", "seat": "sol"},
+        {"lane": "R1", "role": "review", "seat": "sol"},
+    )
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_POST_FLIP)
+    assert violations and "reviewer_independence" in violations[0]
+    assert "sol" in violations[0]
+    assert notice is None
+
+
+def test_reviewer_independence_guilt_rank_confers_no_exemption_opus_too():
+    """GUILT, same shape, named `opus` instead of `sol` — the rule must not
+    special-case either name (RULED 2026-09-06)."""
+    pack = _lane_pack(
+        {"lane": "B1", "role": "build", "seat": "opus"},
+        {"lane": "R1", "role": "review", "seat": "opus"},
+    )
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_POST_FLIP)
+    assert violations and "opus" in violations[0]
+
+
+def test_reviewer_independence_innocence_eligible_independent_reviewer_passes():
+    """INNOCENCE: a pack with an eligible independent reviewer (distinct
+    from every contributor) passes cleanly."""
+    pack = _lane_pack(
+        {"lane": "B1", "role": "build", "seat": "opus"},
+        {"lane": "R1", "role": "review", "seat": "sol"},
+    )
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_POST_FLIP)
+    assert violations == [] and notice is None
+
+
+def test_reviewer_independence_innocence_no_review_lane_skipped():
+    """INNOCENCE: a pack that declares contributors but no review lane at
+    all is not this rule's concern — a separate, larger "must a reviewer
+    exist" policy question this increment does not decide. D3/rule-8
+    already requires `lanes:` shape on Gear>=2; a gap there is D3's finding."""
+    pack = _lane_pack({"lane": "B1", "role": "build", "seat": "opus"})
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_POST_FLIP)
+    assert violations == [] and notice is None
+
+
+def test_reviewer_independence_innocence_no_build_lane_skipped():
+    """INNOCENCE, the mirror case: a review lane with zero declared build
+    lanes has nothing to compare against — skipped, not a fabricated
+    'no contributor recorded' finding this consumer did not ask for."""
+    pack = _lane_pack({"lane": "R1", "role": "review", "seat": "sol"})
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_POST_FLIP)
+    assert violations == [] and notice is None
+
+
+def test_reviewer_independence_innocence_gear1_exempt():
+    """INNOCENCE: Gear 1 is exempt outright, mirroring D3's own gear gate —
+    the same guilty shape at Gear 1 must not fire."""
+    pack = _lane_pack(
+        {"lane": "B1", "role": "build", "seat": "sol"},
+        {"lane": "R1", "role": "review", "seat": "sol"},
+    )
+    violations, notice = check_reviewer_independence(pack, gear=1, today=_REVIEWER_POST_FLIP)
+    assert violations == [] and notice is None
+    violations, notice = check_reviewer_independence(pack, gear=None, today=_REVIEWER_POST_FLIP)
+    assert violations == [] and notice is None
+
+
+def test_reviewer_independence_innocence_pre_flip_notice_not_fail():
+    """INNOCENCE: the same guilty shape only NOTICEs before the flip — this
+    is what keeps the one real pack this rule found (measured 2026-09-07:
+    evidence/2026-08/.../pack.yml with `claude (session, pro)` on both a
+    build and a review lane) passing today rather than turning it red on a
+    PR that never touched it."""
+    pack = _lane_pack(
+        {"lane": "B1", "role": "build", "seat": "sol"},
+        {"lane": "R1", "role": "review", "seat": "sol"},
+    )
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_PRE_FLIP)
+    assert violations == []
+    assert notice is not None and "reviewer_independence" in notice
+
+
+def test_reviewer_independence_innocence_seat_override_reports_not_fails():
+    """INNOCENCE: `seat_override` clears the violation and is reported,
+    exactly like every other seat rule's human-call escape hatch."""
+    pack = _lane_pack(
+        {"lane": "B1", "role": "build", "seat": "sol"},
+        {"lane": "R1", "role": "review", "seat": "sol"},
+    )
+    pack["seat_override"] = "manual exception, reviewed by Zero"
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_POST_FLIP)
+    assert violations == []
+    assert notice is not None and "(overridden)" in notice
+
+
+def test_reviewer_independence_guilt_case_and_whitespace_folded_match():
+    """GUILT: the same identity written with different case/whitespace on
+    each lane is still caught — review_eligibility's own normalization,
+    exercised through this consumer rather than re-derived here."""
+    pack = _lane_pack(
+        {"lane": "B1", "role": "build", "seat": "  Sol  "},
+        {"lane": "R1", "role": "review", "seat": "SOL"},
+    )
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_POST_FLIP)
+    assert violations and "reviewer_independence" in violations[0]
+
+
+def test_reviewer_independence_guilt_multiple_review_lanes_each_judged():
+    """GUILT: with two review lanes, only the offending one is named — each
+    reviewer is judged independently against the same contributor set."""
+    pack = _lane_pack(
+        {"lane": "B1", "role": "build", "seat": "opus"},
+        {"lane": "R1", "role": "review", "seat": "opus"},
+        {"lane": "R2", "role": "review", "seat": "sol"},
+    )
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_POST_FLIP)
+    assert len(violations) == 1
+    assert "opus" in violations[0] and "sol" not in violations[0]
+
+
+@pytest.mark.parametrize(
+    "existing_pack_path",
+    sorted(str(p) for p in Path("evidence").glob("**/pack.yml")),
+)
+def test_reviewer_independence_innocence_all_real_packs_pass_today(existing_pack_path):
+    """INNOCENCE, the non-optional one: every real evidence pack in this
+    tree, run through this rule PRE-FLIP, must never produce a HARD
+    violation — forcing gear=2 on every pack (the worst case: D3 already
+    exempts Gear-1, but a pack's REAL gear is not re-derived here) so this
+    proves the phasing itself, not that most packs happen to be Gear-1. A
+    check that fails everything would satisfy the guilt tests above just as
+    well; this is the one that proves it does not.
+
+    `today` is pinned to `_REVIEWER_PRE_FLIP`, NOT the real wall clock: the
+    property under test is "the phasing protects real packs before the
+    flip", which is true by construction of REVIEWER_INDEPENDENCE_ENFORCEMENT_DATE
+    regardless of which day this suite happens to run — pinning it means
+    this test does not itself start failing the moment the calendar crosses
+    2026-09-21, which would prove nothing about the rule and everything
+    about not having re-run it that day."""
+    pack = yaml.safe_load(Path(existing_pack_path).read_text(encoding="utf-8"))
+    if not isinstance(pack, dict):
+        pytest.skip(f"{existing_pack_path} did not parse to a mapping")
+    violations, _notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_PRE_FLIP)
+    assert violations == [], (existing_pack_path, violations)
 
 
 # --------------------------------------------------------- seat rules by path class (E3/R8-R11)
@@ -4126,3 +4285,37 @@ def test_path_term_exemption_innocence_a_real_new_file_header_is_still_a_header(
         ".github/workflows/a.yml",
         ".github/workflows/b.yml",
     }
+
+
+def test_size_term_net_lines_innocence_generated_translation_excluded_2026_09_09():
+    # The 68-duplicate-PR disease: 20 machine-translated .id/.it MDX files,
+    # ~97 lines each, floored every hourly promote batch at Gear 3 by size.
+    numstat = (
+        "97\t0\tapps/mouth/src/content/articles/tax-legal/x.id.mdx\n"
+        "99\t0\tapps/mouth/src/content/articles/tax-legal/x.it.mdx\n"
+        "95\t0\tapps/mouth/src/content/articles/business/y.ru.mdx\n"
+        "95\t0\tapps/mouth/src/content/articles/business/y.fr.mdx\n"
+        "40\t3\tapps/mouth/src/content/articles/tax-legal/x.mdx\n"
+    )
+    # Only the English SOURCE counts (40+3) — it is the reviewable artifact.
+    assert _size_term_net_lines(numstat) == 43
+
+
+def test_size_term_net_lines_guilt_translation_suffix_outside_content_dir_counts_2026_09_09():
+    # Same language suffix, wrong directory: a decoy named like a translation
+    # must not hide behind the exemption (superscar #3, entity not substring).
+    numstat = (
+        "500\t0\tapps/mouth/src/lib/x.id.mdx\n"
+        "500\t0\tdocs/x.it.mdx\n"
+        "500\t0\tapps/mouth/src/content/x.id.mdx\n"  # sibling dir, not articles/
+    )
+    assert _size_term_net_lines(numstat) == 1500
+
+
+def test_size_term_net_lines_guilt_english_source_and_other_mdx_still_count_2026_09_09():
+    numstat = (
+        "900\t900\tapps/mouth/src/content/articles/tax-legal/x.mdx\n"
+        "100\t0\tapps/mouth/src/content/articles/tax-legal/x.en.mdx\n"
+        "100\t0\tapps/mouth/src/content/articles/tax-legal/x.id.md\n"
+    )
+    assert _size_term_net_lines(numstat) == 2000

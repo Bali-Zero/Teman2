@@ -15,7 +15,11 @@
  * (`invest` × 6 vehicles, `retirement` × 5 bases, `second_home` × 2 bases,
  * and — because `getCategoryQuestionIds` now serves `familyQuestionIds`
  * VERBATIM on both tiles — `family` AND `diaspora`, each × 7 relations × 2
- * sponsor nationalities), plus the three `holds_stay_permit = yes` walks.
+ * sponsor nationalities), plus the three `holds_stay_permit = yes` walks,
+ * plus 6 more `retirement` walks (the 5 offshore bases + the one onshore
+ * neutral walk) re-run at `RETIREMENT_AGE_64_BIRTH_DATE` — every other walk
+ * still applies at `YOUNG_APPLICANT_BIRTH_DATE`, since `birth_date` is a
+ * spine question no branch reads (see `answerFor`).
  *
  * Diaspora is crossed rather than sampled once because its wire facts are
  * NOT a copy of the family arm's: `mapDisclosureFlags` adds
@@ -69,6 +73,25 @@ export const CORPUS_TODAY = new Date("2026-09-06T00:00:00Z");
 /** Fixed synthetic assessment id — the mapper needs one and never emits it. */
 const ASSESSMENT_ID = "x";
 
+/**
+ * The synthetic identity's birth date for every walk except the age-64
+ * retirement variants below: 25 on `CORPUS_TODAY`, comfortably clear of
+ * every age-gated rule in the pack.
+ */
+const YOUNG_APPLICANT_BIRTH_DATE = "2000-11-11";
+
+/**
+ * Birth date for the 6 age-64 retirement walks. `_derive_age_years`
+ * (`fact_registry.py`) is birthday-inclusive against `effective_at`; both
+ * `CORPUS_TODAY` and the highest signed pack's `signed_at` land on
+ * 2026-09-06, so this clears the `hf.e33e.age-below-55` /
+ * `hf.e33f.age-below-55` floor with margin while staying deliberately OUTSIDE
+ * `el.e33e.age-55-59-disputed-band` (55-59) — that band carries its own
+ * reason code and its own legal claim, and deserves a walk of its own rather
+ * than a silent absorption into this one.
+ */
+const RETIREMENT_AGE_64_BIRTH_DATE = "1961-11-11";
+
 /** Runaway guard: no real walk is anywhere near this long. */
 const MAX_STEPS = 200;
 
@@ -99,7 +122,7 @@ export function answerFor(
   const question = QUESTIONS[id];
   if (!question) throw new Error(`unknown question ${id}`);
   if (question.kind === "date") {
-    return id === "birth_date" ? "2000-11-11" : "2026-12-31";
+    return id === "birth_date" ? YOUNG_APPLICANT_BIRTH_DATE : "2026-12-31";
   }
   if (question.kind === "number") {
     if (id === "overstay_days") return "0";
@@ -191,6 +214,21 @@ export function enumerateScenarios(): Scenario[] {
           overrides: { ...base, retirement_basis: basis },
         });
       }
+      // Age dimension (owner mandate, 2026-09-07): the same 5 bases, replayed
+      // at RETIREMENT_AGE_64_BIRTH_DATE. `AGE_BELOW_55` excluded E33E/E33F on
+      // every walk above regardless of basis, so those 5 never exercised
+      // either product's actual eligibility rule — E33E and E33F were never
+      // exercised at an age that clears the hard filter.
+      for (const basis of RETIREMENT_BASES) {
+        scenarios.push({
+          label: `offshore/${category}/${basis}/age64`,
+          overrides: {
+            ...base,
+            retirement_basis: basis,
+            birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
+          },
+        });
+      }
     } else if (category === "second_home") {
       for (const basis of SECOND_HOME_BASES) {
         scenarios.push({
@@ -226,6 +264,20 @@ export function enumerateScenarios(): Scenario[] {
         category,
       },
     });
+    // Age dimension (owner mandate, 2026-09-07): the onshore retirement walk
+    // gets its own age-64 sibling too, same reasoning as the offshore loop
+    // above.
+    if (category === "retirement") {
+      scenarios.push({
+        label: `onshore/${category}/age64`,
+        overrides: {
+          in_indonesia: "yes",
+          holds_stay_permit: "no",
+          category,
+          birth_date: RETIREMENT_AGE_64_BIRTH_DATE,
+        },
+      });
+    }
   }
 
   // The three walks that already hold a stay permit: expired vs current,

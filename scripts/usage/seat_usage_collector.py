@@ -10,7 +10,14 @@ Sorgenti (tutte best-effort, stdlib only):
   - Claude Code: $CLAUDE_PROFILE_DIRS (colon-sep; default ~/.claude) →
     projects/**/*.jsonl → entries con message.usage {input_tokens, output_tokens,
     cache_read_input_tokens, cache_creation_input_tokens} + model + timestamp.
-    Dedupe su (message.id, requestId) — stesso approccio di ccusage.
+    Grouping on (message.id, requestId) with LAST-WINS: under streaming the
+    same response group is rewritten several times with growing CUMULATIVE
+    snapshots — the latest snapshot counts, never the first, never their
+    sum. Latest is by the record's own timestamp, not file order (tie on
+    equal timestamps: the record encountered later in the scan wins), and
+    counters merge per field: a counter omitted by the latest snapshot keeps
+    the value of its latest report in the group — "unknown" means no record
+    of the group ever reported it.
   - Codex CLI: $CODEX_HOMES (colon-sep; default ~/.codex:~/.codex-o2) →
     sessions/**/*.jsonl → oggetti con token count (campi tollerati:
     input_tokens/output_tokens | prompt_tokens/completion_tokens).
@@ -29,7 +36,11 @@ Sorgenti (tutte best-effort, stdlib only):
     status "unknown", mai un numero inventato da una dir non verificata.
 
 Output: JSON snapshot (default ~/.agent/cost-ledger/seat_usage_snapshot.json)
-con schema {generated_at, seats:[{id, source, status, days:{...}, metrics}]}.
+con schema {generated_at, seats:[{id, source, status, days:{...}, metrics,
+provenance?}]}. `provenance` esiste SOLO sui seat Claude: metadato additivo
+(superficie JSONL locale, ultimo snapshot per gruppo, osservato/provvisorio)
+— le chiavi in/out/cache_r/cache_w restano invariate per nome, tipo e
+semantica di status (matrice collector-provenance/2, righe P3/C2).
 Con --inject <dashboard.html> riscrive il blocco window.__SNAPSHOT__.seats.
 
 Uso:
@@ -41,6 +52,7 @@ template da editare: quale profilo cswap corrisponde ad A1/A2/A3/AZ, ecc.)
 from __future__ import annotations
 import argparse, glob, json, os, sys, time
 from collections import defaultdict
+from collections.abc import Iterable
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -81,13 +93,87 @@ def _day(ts: str) -> str | None:
         return None
 
 
+def _ts_epoch(ts: str) -> float:
+    """Record timestamp as epoch seconds, for ordering a group's snapshots.
+    A naive ISO timestamp is assumed UTC; a missing/unparseable one maps to
+    -inf, so any timestamped record outranks it and two untimestamped
+    records fall through to the encounter-order tie-break (see
+    collect_claude's docstring)."""
+    try:
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.timestamp()
+    except Exception:
+        return float("-inf")
+
+
+def _tok_or_none(usage: dict, key: str) -> int | None:
+    """Value of a token counter: int if reported, None if ABSENT.
+    0 and 'not reported' are different facts — never collapse None into 0."""
+    v = usage.get(key)
+    return v if isinstance(v, int) and not isinstance(v, bool) else None
+
+
+def _acc_tok(acc: int | str, val: int | None) -> int | str:
+    """Accumulate a counter that may be 'unknown'. If ANY contribution is
+    None (not reported) the aggregate stays 'unknown': summing only the
+    known values would be an underestimate passed off as a total."""
+    if not isinstance(acc, int) or val is None:
+        return "unknown"
+    return acc + val
+
+
 def collect_claude(profile_dir: str, since: datetime) -> dict:
-    """Parse dei transcript JSONL di Claude Code per un profilo/account."""
+    """Parse Claude Code JSONL transcripts for one profile/account.
+
+    Real bug (2026-09-07, "output 852 vs 14931" on a Sonnet builder
+    transcript): under streaming the same response group (message.id,
+    requestId) is written MULTIPLE times into the transcript, each line a
+    CUMULATIVE snapshot of that group's counters growing as the stream
+    advances. The old dedupe kept the FIRST snapshot seen (first-wins on a
+    `seen` set) and dropped every update — it published the partial
+    beginning-of-stream count. Correct semantics: per group the LATEST
+    snapshot wins (last-wins); NEVER sum a group's snapshots (they are
+    cumulative: summing double-counts, the same defect class as the Codex
+    2026-08-20 bug).
+
+    "Latest" is decided by the record's own `timestamp`, NOT by file order
+    (records can arrive out of order: replays, merged logs, concurrent
+    writers). Ordering key is (timestamp, encounter_seq). Tie-break,
+    explicit: records of a group with EQUAL timestamps resolve to the one
+    encountered LATER in the scan — deterministic, and right for streaming
+    (a same-timestamp rewrite is the more advanced snapshot). A record with
+    a missing/unparseable timestamp sorts lowest (-inf): any timestamped
+    record outranks it; two untimestamped records fall back to the
+    encounter-order tie-break.
+
+    Counters merge PER FIELD across the group's records: a counter omitted
+    by the winning record keeps the latest value any record of the group
+    reported (same ordering). A counter surfaces as "unknown" ONLY when no
+    record of the group ever reported it — "missing from the last snapshot"
+    is not unknown, and 0 and "not reported" are different facts.
+
+    cache_* stay counters SEPARATE from in/out (they can overlap): never add
+    them together. Day and model come from the group's latest record.
+
+    Incomplete identity: the pair (message.id, requestId) groups records ONLY
+    when BOTH ids are present. A record missing either id receives a fresh
+    unique group key (a singleton group): partial identity cannot prove
+    sameness, so it must never merge two records on the strength of the one
+    id they happen to share — see the INCOMPLETE-IDENTITY POLICY comment in
+    the code below.
+    """
     out = {"status": "ok", "days": defaultdict(lambda: defaultdict(int)), "models": defaultdict(int)}
     root = Path(profile_dir) / "projects"
     if not root.is_dir():
         return {"status": "absent", "note": f"{root} non esiste"}
-    seen: set[tuple] = set()
+    # (message.id, requestId) -> per-group state: "order" is the (timestamp,
+    # seq) key of the latest record overall (source of day/model); each
+    # counter is None or the (timestamp, seq, value) of its latest REPORT.
+    groups: dict[tuple, dict] = {}
+    anon = 0
+    seq = 0
     files = glob.glob(str(root / "**" / "*.jsonl"), recursive=True)
     if not files:
         return {"status": "empty"}
@@ -106,20 +192,59 @@ def collect_claude(profile_dir: str, since: datetime) -> dict:
                     if not usage:
                         continue
                     key = (msg.get("id"), j.get("requestId"))
-                    if key in seen and key != (None, None):
-                        continue
-                    seen.add(key)
-                    day = _day(j.get("timestamp", "")) or "??"
-                    model = msg.get("model", "?")
-                    d = out["days"][day]
-                    d["in"] += usage.get("input_tokens", 0) or 0
-                    d["out"] += usage.get("output_tokens", 0) or 0
-                    d["cache_r"] += usage.get("cache_read_input_tokens", 0) or 0
-                    d["cache_w"] += usage.get("cache_creation_input_tokens", 0) or 0
-                    out["models"][model] += (usage.get("output_tokens", 0) or 0)
-        except Exception as e:  # una sorgente rotta non ferma il giro
+                    if key[0] is None or key[1] is None:
+                        # INCOMPLETE-IDENTITY POLICY (explicit, never implicit):
+                        # the group key answers "are these the same record?"
+                        # and a tuple with a hole cannot answer yes — a hole
+                        # is not a value.
+                        #   - BOTH ids present → dedupe on the pair
+                        #     (last-wins per group, per the docstring);
+                        #   - EITHER id missing → identity is incomplete: the
+                        #     record must NOT merge with another record on the
+                        #     strength of the half that is present. Two
+                        #     genuinely independent records can share a
+                        #     requestId while both lack message.id (or vice
+                        #     versa); collapsing them is the W1 exactly-once
+                        #     defect shape — a key that silently merges what
+                        #     it should distinguish;
+                        #   - both missing → the anonymous path (unchanged).
+                        # Mechanism: ANY incomplete-identity record gets a
+                        # FRESH unique key, i.e. a singleton group of one —
+                        # records merge only when both ids are present and
+                        # equal, the only shape in which sameness is provable.
+                        anon += 1
+                        key = ("__incomplete_id__", anon)
+                    seq += 1
+                    order = (_ts_epoch(j.get("timestamp", "")), seq)
+                    g = groups.setdefault(
+                        key,
+                        {"order": None, "day": "??", "model": "?",
+                         "in": None, "out": None, "cache_r": None, "cache_w": None},
+                    )
+                    if g["order"] is None or order >= g["order"]:
+                        # day/model follow the group's latest record
+                        g["order"] = order
+                        g["day"] = _day(j.get("timestamp", "")) or "??"
+                        g["model"] = msg.get("model", "?")
+                    for field, usage_key in (("in", "input_tokens"),
+                                             ("out", "output_tokens"),
+                                             ("cache_r", "cache_read_input_tokens"),
+                                             ("cache_w", "cache_creation_input_tokens")):
+                        v = _tok_or_none(usage, usage_key)
+                        if v is None:
+                            continue  # absent here: keep any earlier report
+                        cur = g[field]
+                        if cur is None or order >= (cur[0], cur[1]):
+                            g[field] = (order[0], order[1], v)
+        except Exception as e:  # a broken source does not stop the run
             out["status"] = "partial"
             out.setdefault("errors", []).append(f"{fp}: {e}")
+    for g in groups.values():
+        d = out["days"][g["day"]]
+        for k in ("in", "out", "cache_r", "cache_w"):
+            d[k] = _acc_tok(d[k], g[k][2] if g[k] is not None else None)
+        group_out = g["out"][2] if g["out"] is not None else None
+        out["models"][g["model"]] = _acc_tok(out["models"][g["model"]], group_out)
     out["days"] = {k: dict(v) for k, v in out["days"].items()}
     out["models"] = dict(out["models"])
     return out
@@ -270,12 +395,51 @@ def collect_api_mirror(export_dir: str, since: datetime) -> dict:
     return {"status": "ok", "usd_by_provider": dict(tot)} if tot else {"status": "empty"}
 
 
-def fmt_metrics(days: dict) -> str:
+def _fmt_tok(v: int | str) -> str:
+    return f"{v:,}" if isinstance(v, int) else "unknown"
+
+
+def _sum_tok(values: Iterable[int | str]) -> int | str:
+    """Sum only if EVERY contribution is known: a single 'unknown' makes the
+    total 'unknown' (a partial sum would be an underestimate)."""
+    total = 0
+    for v in values:
+        if not isinstance(v, int):
+            return "unknown"
+        total += v
+    return total
+
+
+# Provenance label for the figures collect_claude publishes (acceptance
+# matrix collector-provenance/2, rows P1/P5/C1). Three DIFFERENT surfaces
+# produce token figures and must never read as one: SDK per-step counters
+# (which may be documented placeholders), cumulative SSE deltas, and THIS
+# collector's source — the local Claude Code JSONL transcripts, read as
+# latest-observed snapshot per response group. The label names the third.
+# Claude seats ONLY: the provenance of Codex/agy/Kimi/TP1 figures is not
+# established here, so their metrics strings stay byte-unchanged (row C3) —
+# stamping this label on them would manufacture a claim, not state a fact.
+CLAUDE_LOCAL_JSONL_PROVENANCE = (
+    "fonte: JSONL locali, ultimo snapshot per gruppo — "
+    "osservato/provvisorio, non provider-final"
+)
+
+
+def fmt_metrics(days: dict, provenance: str | None = None) -> str:
+    """Render the per-seat metrics line. `provenance=None` (the default)
+    keeps the rendering BYTE-IDENTICAL to the pre-provenance format — the
+    Codex path depends on that (row C3); only the Claude path passes the
+    label, so the provenance claim travels with the string a dashboard
+    reader copies (row C1), not just with the JSON payload."""
     today = NOW.strftime("%d/%m")
     t = days.get(today, {})
-    tot_out_7d = sum(v.get("out", 0) for v in days.values())
-    return (f"oggi: {t.get('in',0):,}in/{t.get('out',0):,}out · "
-            f"7g out: {tot_out_7d:,} tok · cache r/w oggi: {t.get('cache_r',0):,}/{t.get('cache_w',0):,}")
+    tot_out_7d = _sum_tok(v.get("out", 0) for v in days.values())
+    s = (f"oggi: {_fmt_tok(t.get('in', 0))}in/{_fmt_tok(t.get('out', 0))}out · "
+         f"7g out: {_fmt_tok(tot_out_7d)} tok · "
+         f"cache r/w oggi: {_fmt_tok(t.get('cache_r', 0))}/{_fmt_tok(t.get('cache_w', 0))}")
+    if provenance:
+        s += f" · {provenance}"
+    return s
 
 
 def main() -> int:
@@ -294,7 +458,18 @@ def main() -> int:
         r = collect_claude(os.path.expanduser(pdir), since)
         seats.append({"id": seat_id, "source": f"claude:{pdir}", "status": r.get("status"),
                       "days": r.get("days", {}), "models": r.get("models", {}),
-                      "metrics": fmt_metrics(r.get("days", {})) if r.get("days") else None,
+                      "metrics": fmt_metrics(r.get("days", {}),
+                                             provenance=CLAUDE_LOCAL_JSONL_PROVENANCE)
+                      if r.get("days") else None,
+                      # Additive metadata (rows P1/C2): the existing keys
+                      # above keep names, types and status semantics;
+                      # provenance only ADDS, never renames or retypes.
+                      "provenance": {
+                          "surface": "claude_code_local_jsonl_transcripts",
+                          "method": "latest_observed_snapshot_per_response_group",
+                          "reading": "observed/provisional — not provider-final",
+                          "label": CLAUDE_LOCAL_JSONL_PROVENANCE,
+                      },
                       "note": r.get("note")})
 
     for chome, seat_id in (smap.get("codex_homes") or {}).items():

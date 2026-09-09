@@ -167,7 +167,7 @@ export function KBLISearch({
   return (
     <div ref={containerRef} className={cn("relative w-full", className)}>
       <div className="relative group">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-zinc-300 transition-colors">
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-zinc-300 transition-colors">
           {isLoading ? (
             <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
@@ -184,9 +184,9 @@ export function KBLISearch({
           placeholder={placeholder}
           aria-label={placeholder || "Search KBLI"}
           className={cn(
-            "w-full pl-12 pr-10 py-4 bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl text-white placeholder-zinc-500",
+            "w-full pl-12 pr-10 py-4 bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl text-white placeholder-zinc-400",
             "shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)]",
-            "focus:outline-none focus:ring-2 focus:ring-[#dc2626]/20 focus:border-white/[0.15] transition-all text-lg",
+            "focus:outline-none focus:ring-2 focus:ring-[#dc2626] focus:border-white/[0.15] transition-all text-lg",
           )}
         />
         {query && (
@@ -278,14 +278,14 @@ export function KBLISearch({
                 </div>
                 <ChevronRight
                   className={cn(
-                    "w-4 h-4 self-center text-zinc-600",
+                    "w-4 h-4 self-center text-zinc-400",
                     index === activeIndex && "text-[#dc2626] animate-pulse",
                   )}
                 />
               </button>
             ))}
           </div>
-          <div className="p-3 bg-white/[0.02] border-t border-white/[0.06] flex justify-between items-center text-[10px] text-zinc-500 uppercase tracking-widest font-bold">
+          <div className="p-3 bg-white/[0.02] border-t border-white/[0.06] flex justify-between items-center text-[10px] text-zinc-400 uppercase tracking-widest font-bold">
             <span>{results.length} KBLI codes found</span>
             <span className="flex items-center gap-1">
               Press{" "}

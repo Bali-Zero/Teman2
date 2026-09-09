@@ -422,6 +422,24 @@ from typing import Any
 
 import yaml
 
+# W2 reviewer-independence integration (2026-09-07): the ONE implementation of
+# the "reviewer is not a contributor" rule lives in
+# scripts/conductor/review_eligibility.py — this file calls into it rather
+# than re-deriving the comparison (implementation-plan.md §2: "migrate the
+# actual policy consumer... no copied eligibility list"). `sys.path` is
+# defensive, not required for the real invocation shapes measured (direct
+# `python3 scripts/evidence_pack_lint.py` from repo root, and
+# council_journal.py's dynamic load — both already put this file's own
+# directory on `sys.path[0]`, which is all `conductor.review_eligibility`
+# needs since `scripts/conductor/__init__.py` exists) — kept anyway so an
+# unanticipated third loader does not silently lose this import.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from conductor.review_eligibility import (  # noqa: E402
+    Decision as _ReviewerDecision,
+    SCHEMA_VERSION as _REVIEWER_SCHEMA_VERSION,
+    evaluate as _evaluate_reviewer_eligibility,
+)
+
 # ---------------------------------------------------------------------------
 # Hot-zone floor (rule 6) — DELIBERATE, DECLARED duplication of the case-block
 # in .github/workflows/hot-zone-pr-gate.yml. Keep the two lists in sync by
@@ -864,6 +882,23 @@ SIZE_TERM_EXCLUDE_SUFFIXES: tuple[str, ...] = (
     ".pdf", ".zip", ".gz", ".woff", ".woff2", ".ttf", ".otf", ".eot",
     ".mp4", ".mp3", ".wav", ".mov",
 )
+# Machine-generated article translations (2026-09-09, measured: 68 identical
+# `chore(mouth): promote hourly-translated articles` PRs open at once, every
+# one BLOCKED since 2026-09-04). scripts/translate-articles.py writes
+# `<slug>.<lang>.mdx` next to the English `<slug>.mdx` source, ~95 lines per
+# file, 20 files per hourly batch — churn 1946 > SIZE_GEAR3_THRESHOLD, so the
+# size term floored every batch at Gear 3 and no brief ever existed for a bot
+# diff nobody reviews line-by-line. The translation is a GENERATED artifact of
+# the source (regenerated on source_sha256 staleness), the same class as the
+# `generated/` directories above: it inflates churn without inflating review
+# burden. Scoped on BOTH the directory prefix and the language suffix so a
+# same-suffix decoy elsewhere in the tree, or the English source itself (no
+# language suffix), still counts in full — the reviewable artifact is the
+# source; the translation is derived from it.
+SIZE_TERM_EXCLUDE_GENERATED_TRANSLATION_DIR = "apps/mouth/src/content/articles/"
+SIZE_TERM_EXCLUDE_GENERATED_TRANSLATION_SUFFIXES: tuple[str, ...] = (
+    ".id.mdx", ".it.mdx", ".ru.mdx", ".fr.mdx",
+)
 
 
 def _is_size_term_excluded(path: str) -> bool:
@@ -894,6 +929,10 @@ def _is_size_term_excluded(path: str) -> bool:
     if name in SIZE_TERM_EXCLUDE_FILENAMES:
         return True
     if ".min." in name.lower():
+        return True
+    if p.as_posix().startswith(SIZE_TERM_EXCLUDE_GENERATED_TRANSLATION_DIR) and any(
+        name.endswith(suf) for suf in SIZE_TERM_EXCLUDE_GENERATED_TRANSLATION_SUFFIXES
+    ):
         return True
     return any(name.lower().endswith(suf) for suf in SIZE_TERM_EXCLUDE_SUFFIXES)
 
@@ -2175,6 +2214,164 @@ def check_lanes_build_seat_diversity(
 
 
 # ---------------------------------------------------------------------------
+# Reviewer independence (W2, dual-consul army mission, 2026-09-07). RULED
+# 2026-09-06 (see docs/rules/RULINGS.md): "the required release verdict comes
+# from a qualified verifier who is independent of the artifact's authors and
+# material implementation contributors" — and "rank confers no exemption":
+# a pack naming `opus` or `sol` as reviewer is judged the SAME as any other
+# name. Doctrine existed and a standalone validator (review_eligibility.py)
+# existed, but nothing installed called it — this is that call.
+#
+# THE GAP THIS DOES NOT CLOSE, stated rather than hidden: review_eligibility's
+# `evaluate()` also judges artifact/reviewed-hash STALENESS (A18) and carries
+# required `*_family` fields. No field in this pack format tracks a
+# reviewed-vs-current artifact hash today (grepped: no `artifact_hash`,
+# `reviewed_hash`, `commit_sha`, or `head_sha` key anywhere in this module or
+# `lint()`'s own parameters) — the smallest addition that would close it is a
+# `reviewed_diff_sha`/`artifact_sha` pack field, not invented here. Rather
+# than fabricate a hash this consumer cannot actually observe, both hash
+# arguments below are the SAME literal sentinel (`"unattested"`), which makes
+# `evaluate()`'s staleness comparison neutral BY CONSTRUCTION (equal inputs
+# never trigger `stale_review_hash`) instead of asserting a freshness fact
+# nobody measured. `*_family` is real but coarse — this file's own
+# `_is_anthropic_seat` already tokenizes a seat as "everything before its
+# first `-`"; `_reviewer_family` reuses that exact tokenization. Both
+# `evaluate()`'s own docstring and its test corpus already establish that
+# family is validated for presence only and never drives its verdict, so this
+# coarseness cannot affect the one property that matters here.
+#
+# WHAT DOES NOT NEED INVENTING: contributor and reviewer IDENTITY. The
+# `lanes:` list already names both — a `role: build` lane's `seat` is who
+# materially implemented the artifact; a `role: review` lane's `seat` is who
+# reviewed it. No new pack field is required for the actual A17 comparison.
+REVIEWER_INDEPENDENCE_ENFORCEMENT_DATE = datetime.date(2026, 9, 21)
+
+
+def _reviewer_family(seat: str) -> str:
+    """Coarse vendor/family token for a seat string: everything before its
+    FIRST `-`, lowercased — the same tokenization `_is_anthropic_seat` already
+    uses. Never empty for a non-empty `seat` (callers only pass validated,
+    stripped, non-empty strings)."""
+    return seat.strip().lower().split("-", 1)[0]
+
+
+def check_reviewer_independence(
+    pack: dict[str, Any],
+    gear: int | None = None,
+    today: datetime.date | None = None,
+) -> tuple[list[str], str | None]:
+    """W2: a declared reviewer must be independent of the pack's declared
+    contributors, per `scripts/conductor/review_eligibility.py` (the ONE
+    implementation of this rule — see the module comment above for why this
+    calls it rather than re-deriving the comparison).
+
+    SCOPE, deliberately narrow: this fires only when the pack names BOTH a
+    reviewer (>=1 `role: review` lane with a non-empty `seat`) AND a
+    contributor (>=1 `role: build` lane with a non-empty `seat`) — comparing
+    "is this specific reviewer also this specific contributor" needs both
+    sides present. A pack naming a reviewer with NO declared build lane at
+    all is not this rule's concern (a separate, larger policy question this
+    increment does not decide); D3/rule-8 already requires `lanes:` at all on
+    Gear >= 2, and a shape gap there is D3's finding, not duplicated here.
+    Gear < 2 (or ungraded) is exempt outright, mirroring D3's own gear gate.
+
+    MULTIPLE review lanes are each judged independently against the SAME
+    contributor set — every one that fails produces its own message naming
+    that seat, mirroring how R10 collects every offending seat rather than
+    stopping at the first.
+
+    KNOWN, DOCUMENTED LIMITATION: comparison is exact-normalized-string
+    match (via review_eligibility's own case/whitespace folding) on
+    whatever the pack author typed into `seat:`. Several real packs use
+    free-form prose there (e.g. "claude opus-5 xhigh (this orchestrator) --
+    final on-disk gate, empirical") rather than a clean seat token — the
+    SAME real seat described differently between a build and a review lane
+    will NOT be caught. Fixing that would need NLP-level fuzzy matching,
+    which risks its own over/under-match failure (cicatrix family #3) and is
+    not attempted here.
+
+    GUILT/NOTICE: a reviewer seat that normalizes to the same identity as a
+    contributor seat -> phased violation naming the offending seat. INNOCENCE:
+    no review lane, no build lane, gear < 2, or every reviewer is independent
+    of every contributor -> clean. `seat_override: <reason>` clears it exactly
+    like the other seat rules, always reported."""
+    if gear is None or gear < 2:
+        return [], None
+
+    lanes = pack.get("lanes")
+    if not isinstance(lanes, list):
+        lanes = []
+
+    build_seats: list[str] = []
+    review_seats: list[str] = []
+    for entry in lanes:
+        if not isinstance(entry, dict):
+            continue
+        role = str(entry.get("role", "")).strip().lower()
+        seat = entry.get("seat")
+        if not isinstance(seat, str) or not seat.strip():
+            continue
+        if role == "build":
+            build_seats.append(seat.strip())
+        elif role == "review":
+            review_seats.append(seat.strip())
+
+    if not build_seats or not review_seats:
+        return [], None
+
+    contributors = tuple(dict.fromkeys(build_seats))  # de-dup, order-preserving
+    contributor_families = tuple(_reviewer_family(s) for s in contributors)
+
+    offending: list[str] = []
+    for reviewer in dict.fromkeys(review_seats):
+        record = {
+            "schema_version": _REVIEWER_SCHEMA_VERSION,
+            "artifact_hash": "unattested",
+            "reviewed_hash": "unattested",
+            "reviewer": reviewer,
+            "reviewer_family": _reviewer_family(reviewer),
+            "contributors": contributors,
+            "contributor_families": contributor_families,
+        }
+        result = _evaluate_reviewer_eligibility(record)
+        if result.decision is _ReviewerDecision.BLOCK and "reviewer_is_contributor" in result.reason_codes:
+            offending.append(reviewer)
+
+    if not offending:
+        return [], None
+
+    message = (
+        f"reviewer_independence: reviewer seat(s) {offending} also declared "
+        f"on a build lane in the same pack — rank confers no exemption, this "
+        f"applies identically whatever the seat is named "
+        f"(RULED 2026-09-06, docs/rules/RULINGS.md)"
+    )
+    return _reviewer_independence_verdict(message, pack, today)
+
+
+def _reviewer_independence_verdict(
+    message: str,
+    pack: dict[str, Any],
+    today: datetime.date | None,
+) -> tuple[list[str], str | None]:
+    """Own phasing clock, deliberately NOT `_seat_rule_verdict` (already
+    hard-flipped at SEAT_RULES_ENFORCEMENT_DATE, 2026-08-31 — reusing it
+    would make this rule violate on day one) — same reasoning `_r9_r11_verdict`
+    documents for why R9/R11 got their own clock instead of borrowing D3's:
+    this program has never fired before, so its own enforcement date is the
+    honest one. `seat_override: <reason>` wins outright, always reported,
+    exactly like every other seat rule's escape hatch."""
+    override = pack.get("seat_override")
+    if isinstance(override, str) and override.strip():
+        return [], f"{message} (overridden) — {override.strip()}"
+    if today is None:
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+    if today < REVIEWER_INDEPENDENCE_ENFORCEMENT_DATE:
+        return [], message
+    return [message], None
+
+
+# ---------------------------------------------------------------------------
 # Seat rules by path class (E3/R8-R11 — 2026-08-26 seat-rules program, spec
 # §8 in 2026-08-26-PIANO-SPEC-receptor-live.md). Two rules ship here (R8
 # ground-truth, R10 PII-local); two more (R11 cheap-seat floor, R9 Gear-3
@@ -2911,6 +3108,11 @@ def lint(
     violations += lane_violations
     if lane_notice:
         print(f"evidence_pack_lint: NOTICE — {lane_notice}", file=sys.stderr)
+
+    reviewer_violations, reviewer_notice = check_reviewer_independence(pack, gear)
+    violations += reviewer_violations
+    if reviewer_notice:
+        print(f"evidence_pack_lint: NOTICE — {reviewer_notice}", file=sys.stderr)
 
     # E3/R8-R11 seat rules (2026-08-26 program) — one call site. R8/R10
     # land here; R11 (seat_floor) and R9 (council_run) join this same

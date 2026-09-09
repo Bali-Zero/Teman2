@@ -1,0 +1,34 @@
+task_id: conductor-w1-army-assignment-v2
+gear: 2
+objective: >-
+  Land the W1 assignment-parent graph validator (scripts/conductor/army_assignment.py)
+  that was built and accepted at fixture level on agent/air-m5/ops/army-w1-assignment
+  but never shipped as a PR. Every conductor plan's assignment graph must resolve to a
+  valid parent chain, with no cycles and no orphaned assignments. This PR carries the
+  code as-is from the source branch, squashing two commits (initial validator + a
+  follow-up fix enforcing exactly-once imperator approval and guarding non-dict
+  payloads), plus a full negative-case test suite.
+
+  Gear 2 by SIZE, deterministically: net churn is 774 lines (278 in the validator,
+  496 across the two source commits' test additions), over the 400-line non-hot-zone
+  threshold.
+constraints:
+  - >-
+    This is a landing PR, not new design: the validator's logic is unchanged from what
+    was reviewed and accepted at fixture level on the source branch.
+  - >-
+    Guilt AND innocence fixtures both ship (cicatrix #3) — a guard tested only on
+    offenders cannot show it acquits.
+  - >-
+    Fixture level F only: no consumer executes these plans yet. That is stated
+    honestly in both this brief and the PR body, not claimed as integrated.
+acceptance:
+  - text: >-
+      The validator rejects a plan whose assignment graph contains a cycle or an
+      orphaned assignment, and accepts a plan whose graph is a valid parent chain.
+    probe: pytest scripts/tests/test_army_assignment.py -q
+  - text: >-
+      Exactly-once imperator approval is enforced, and a non-dict payload is
+      guarded rather than raising an unhandled exception.
+    probe: pytest scripts/tests/test_army_assignment.py -k "imperator or payload" -q
+pii_scan: clean
