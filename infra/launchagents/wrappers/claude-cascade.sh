@@ -381,13 +381,16 @@ build_claude_args() {
 # ---------------------------------------------------------------------------
 JUMP_MAX_HOPS="${JUMP_MAX_HOPS:-3}"
 # Guard threshold for a headless seat. The guard's default (40% of the
-# window) is an interactive cost rule; measured live on Pro 2026-09-09
-# (pro-healer tick, Sonnet 200K): the tick needs ~90K, tripped at 80K, and
-# every hop restarted at ~47K (system prompt + injected handoff), redid ~35
-# tool calls and tripped again — the chain reached the cap INCOMPLETE at 3x
-# the cost. A headless run has no human to protect from a slow window; the
-# jump is there to beat the hard ceiling, so trip late. An explicit
-# CONTEXT_GUARD_PCT in the caller's env wins.
+# window) exists for CONTEXT QUALITY (Zero, 2026-09-09: short windows per
+# role reason better than a full or compacted one). Measured live on Pro
+# 2026-09-09 (pro-healer tick, Sonnet 200K): the tick needs ~90K, tripped at
+# 80K, and every hop restarted at ~47K (system prompt + injected handoff),
+# redid ~35 tool calls and tripped again — the chain reached the cap
+# INCOMPLETE, so the quality rule bought nothing and cost 3x. A cron tick
+# that cannot finish inside 40% must be allowed to finish; 80% is a measured
+# exception for the headless tier, not a new default for windows (Astra,
+# 2026-09-09: 80% of 200K is 160K; Codex's 40% of 258K is already 103K).
+# An explicit CONTEXT_GUARD_PCT in the caller's env wins.
 JUMP_GUARD_PCT="${JUMP_GUARD_PCT:-80}"
 JUMP_STATE_DIR="${JUMP_STATE_DIR:-$HOME/.organism/context-guard}"
 
@@ -438,12 +441,12 @@ cascade_cap_escalation() {
         done
     fi
     if [ -z "$board" ]; then
-        echo "  [jump] $1 — cap escalation NOT written: no escalations board found (set CASCADE_ESCALATIONS_FILE)" >&2
+        echo "  [cap] $1 — cap escalation NOT written: no escalations board found (set CASCADE_ESCALATIONS_FILE)" >&2
         return 0
     fi
     CAP_SEAT="$1" CAP_HOPS="$2" CAP_JUMP_FILE="$3" CAP_SID="${4:-}" CAP_BOARD="$board" CAP_MAX="$JUMP_MAX_HOPS" \
     CAP_HANDOFF="${CONTEXT_GUARD_HANDOFF_DIR:-$HOME/.claude/state}/precompact-handoff-${4:-}.json" \
-    python3 - <<'PY' 2>&1 | sed 's/^/  [jump] /' >&2
+    python3 - <<'PY' 2>&1 | sed 's/^/  [cap] /' >&2
 import json, os, socket, time
 seat, hops, jf, board, sid_env = (os.environ[k] for k in ("CAP_SEAT", "CAP_HOPS", "CAP_JUMP_FILE", "CAP_BOARD", "CAP_SID"))
 j = {}
@@ -474,7 +477,7 @@ rec = {
     "error_summary": (
         f"headless window jump hit cap {os.environ['CAP_MAX']} on seat {seat} with a jump still "
         f"pending: the mandate ended INCOMPLETE with exit 0 ({hops} hops"
-        f"{'' if jf else ', guard refused the jump: its chain cap or kill switch'}); "
+        f"{'' if jf else ', guard refused the jump: its chain cap or CONTEXT_JUMP_OFF'}); "
         f"handoff {handoff or '?'}"
     ),
     "seat": seat,
@@ -492,7 +495,10 @@ rec = {
     },
     "machine": host,
     "_writer": host,
-    "ts": str(time.time()),
+    # a NUMBER: scripts/sentinel_lib/escalations.py sorts entries on the raw
+    # value and the live board carries floats — one string would TypeError
+    # the whole read (codex #1, 2026-09-09)
+    "ts": time.time(),
 }
 os.makedirs(os.path.dirname(os.path.abspath(board)), exist_ok=True)
 with open(board, "a", encoding="utf-8") as fh:
@@ -503,16 +509,20 @@ PY
 }
 
 guard_tripped_in_run() {
-    # $1 = session id. True when context_window_guard.py tripped in that run:
-    # it writes ~/.claude/state/precompact-handoff-<session>.json on EVERY trip,
-    # also when it refuses the jump (its own chain cap, kill switch) — the
-    # pending-jump file alone is not the signal (review finding 2026-09-09,
-    # kimi #1: at the guard's cap the 4th run trips, writes no jump file, and a
-    # wrapper keyed on the file alone would call the chain clean). With the
-    # jump kill switch on, the operator opted out of the whole mechanism: no
-    # detection, no INCOMPLETE line (the guard's own deny text is the report).
-    [ "${CONTEXT_JUMP_OFF:-0}" = "1" ] && return 1
-    [ -f "${CONTEXT_GUARD_HANDOFF_DIR:-$HOME/.claude/state}/precompact-handoff-$1.json" ]
+    # $1 = session id. True when context_window_guard.py tripped in that run.
+    # Signals, either one: (a) the guard's OWN marker
+    # ~/.claude/state/context-window-guard/<session>.last-handoff, written by
+    # _mark_handoff_written() after a successful handoff — NOT the handoff
+    # file itself, which precompact-mnemos.py also writes on an ordinary
+    # compaction (codex #2, 2026-09-09: a compaction would read as INCOMPLETE);
+    # (b) the pending-jump file for that session, whatever its state — the
+    # guard creates it even when the handoff write failed (codex #3). The
+    # pending file alone is not enough: at the guard's chain cap the run trips,
+    # marks, and refuses the jump (kimi #1, seen live on Pro hop 2). The jump
+    # kill switch does not silence detection: the operator turned off the
+    # jump, not the report (codex #4).
+    [ -f "${CONTEXT_GUARD_STATE_DIR:-$HOME/.claude/state/context-window-guard}/$1.last-handoff" ] \
+        || [ -f "$JUMP_STATE_DIR/pending-jump-$1.json" ]
 }
 
 claude_seat_invoke() {
@@ -623,10 +633,12 @@ try_claude() {
     # are an INCOMPLETE mandate wearing exit 0 — say so and raise it.
     if guard_tripped_in_run "$run_sid"; then
         jump_file="$(headless_jump_raised_by "$run_sid" || true)"
-        if [ "$hop" -ge "$JUMP_MAX_HOPS" ]; then
-            echo "  [jump] $label — cap $JUMP_MAX_HOPS reached with a jump still pending (${jump_file:+$(basename "$jump_file")}${jump_file:-no jump file: guard refused}): mandate may be INCOMPLETE" >&2
+        if [ "${CONTEXT_JUMP_OFF:-0}" = "1" ]; then
+            echo "  [cap] $label — guard tripped on session $run_sid, jump disabled (CONTEXT_JUMP_OFF=1): mandate may be INCOMPLETE" >&2
+        elif [ "$hop" -ge "$JUMP_MAX_HOPS" ]; then
+            echo "  [cap] $label — cap $JUMP_MAX_HOPS reached with a jump still pending (${jump_file:+$(basename "$jump_file")}${jump_file:-no jump file: guard refused}): mandate may be INCOMPLETE" >&2
         else
-            echo "  [jump] $label — guard tripped on session $run_sid after hop $hop but raised no jump (its chain cap or CONTEXT_JUMP_OFF): mandate may be INCOMPLETE" >&2
+            echo "  [cap] $label — guard tripped on session $run_sid after hop $hop but raised no jump (its chain cap): mandate may be INCOMPLETE" >&2
         fi
         cascade_cap_escalation "$label" "$hop" "${jump_file:-}" "$run_sid"
     fi

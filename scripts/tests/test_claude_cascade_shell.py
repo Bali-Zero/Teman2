@@ -1326,12 +1326,20 @@ _JUMP_FILE = (
     '"cwd":os.getcwd(),"hops":1,"ts":time.time(),"mandate":"M"},'
     'open(os.path.expanduser("~/.organism/context-guard/pending-jump-"+sys.argv[1]+".json"),"w"))\' '
 )
+# What the guard leaves on a trip besides the jump file: the handoff (also
+# written by precompact-mnemos.py on an ordinary compaction — NOT a trip
+# signal) and its own marker <sid>.last-handoff (guard-only — THE signal).
 _HANDOFF_FILE = (
+    'mkdir -p "$HOME/.claude/state/context-window-guard"; '
+    'printf \'{"session_id":"%s","mandate":"M"}\' "$sid" > "$HOME/.claude/state/precompact-handoff-$sid.json"; '
+    'date +%s > "$HOME/.claude/state/context-window-guard/$sid.last-handoff"; '
+)
+_COMPACTION_ONLY = (
     'mkdir -p "$HOME/.claude/state"; '
     'printf \'{"session_id":"%s","mandate":"M"}\' "$sid" > "$HOME/.claude/state/precompact-handoff-$sid.json"; '
 )
-# A real trip leaves BOTH artifacts; the guard's own chain cap leaves only the
-# handoff (it refuses the jump file) — see _TRIP_NO_JUMP below.
+# A real trip leaves marker + handoff + jump file; the guard's own chain cap
+# leaves marker + handoff and refuses the jump file — see _TRIP_NO_JUMP.
 _JUMP_WRITER = _SID_FROM_ARGV + _HANDOFF_FILE + _JUMP_FILE
 _TRIP_NO_JUMP = _SID_FROM_ARGV + _HANDOFF_FILE
 
@@ -1489,6 +1497,7 @@ def test_headless_cap_writes_one_high_escalation(tmp_path: Path) -> None:
     assert rec["session"] == _sids(tmp_path)[-1]  # the still-pending session
     assert rec["jump_file"].endswith(f"pending-jump-{rec['session']}.json")
     assert "INCOMPLETE" in rec["error_summary"] and rec["cure_lane"]["owner"] == "session"
+    assert isinstance(rec["ts"], float)  # the board reader sorts on the raw value
     assert "cap escalation HIGH written" in result.stderr
 
 
@@ -1603,7 +1612,7 @@ def test_guard_refusing_the_jump_before_the_wrappers_cap_is_incomplete_too(tmp_p
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
     assert result.returncode == 0, result.stderr
     assert result.stdout == "first\nsecond\n"
-    assert "raised no jump (its chain cap or CONTEXT_JUMP_OFF)" in result.stderr
+    assert "raised no jump (its chain cap)" in result.stderr
     rec = json.loads(board.read_text(encoding="utf-8").splitlines()[0])
     assert rec["hops"] == 1 and rec["session"] == _sids(tmp_path)[-1]
     assert rec["job"] == f"cascade-headless-cap-claude-token-1-env-{rec['session'][:8]}"
@@ -1618,4 +1627,35 @@ def test_a_run_that_never_tripped_leaves_no_handoff_and_no_escalation(tmp_path: 
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
     assert result.returncode == 0, result.stderr
     assert result.stdout == "done\n" and "INCOMPLETE" not in result.stderr and not board.exists()
+
+
+def test_an_ordinary_compaction_handoff_is_not_a_trip(tmp_path: Path) -> None:
+    # precompact-mnemos.py writes precompact-handoff-<sid>.json on auto-compact
+    # too; only the guard writes <sid>.last-handoff (codex #2)
+    bodies = _default_bodies()
+    bodies["token1"] = _SID_FROM_ARGV + _COMPACTION_ONLY + 'printf "done\\n"; exit 0'
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    board = tmp_path / "escalations.jsonl"
+    env["CASCADE_ESCALATIONS_FILE"] = str(board)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "done\n" and "INCOMPLETE" not in result.stderr and not board.exists()
+
+
+def test_a_jump_file_without_the_marker_still_counts_as_a_trip(tmp_path: Path) -> None:
+    # the guard creates the jump file even when its handoff write failed
+    # (no marker then) — the jump file alone must still be read as a trip
+    # (codex #3); with the jump disabled nobody continues it → INCOMPLETE
+    bodies = _default_bodies()
+    bodies["token1"] = _SID_FROM_ARGV + _JUMP_FILE + '"$sid" headless; printf "only\\n"; exit 0'
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    env["CONTEXT_JUMP_OFF"] = "1"
+    board = tmp_path / "escalations.jsonl"
+    env["CASCADE_ESCALATIONS_FILE"] = str(board)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "only\n" and "[jump]" not in result.stderr
+    assert "jump disabled (CONTEXT_JUMP_OFF=1): mandate may be INCOMPLETE" in result.stderr
+    rec = json.loads(board.read_text(encoding="utf-8").splitlines()[0])
+    assert rec["hops"] == 0 and rec["session"] == _sids(tmp_path)[-1]
 
