@@ -205,6 +205,9 @@ Three reds for the same cause → SUSPEND with one PENDING-ARMS row, cut from fr
 
 ## LIVE STATE — 2026-09-04, Pro session 1
 
+> Superseded 2026-09-04 by #5693 (option c: Bites contract lives in the evidence pack's
+> `pack.yml`). Kept as the record of why PR-1 #5661 was suspended.
+
 **PR-0 — MERGED (#5658).** This brief and its row in the README allocation table are on
 `origin/main`. Observation made after merge: 179 lines, one index reference,
 `prettier --check` conformant. Deviation from verbatim disclosed in that PR's body — three
