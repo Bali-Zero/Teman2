@@ -14,7 +14,9 @@
 
 These seven rules apply to every agent-produced PR. They govern lifecycle discipline; they do
 not grant a role authority that its own contract withholds (for example, an external builder
-still does not arm, merge, or deploy). The operational commands are documented in
+still does not arm, merge, or deploy — the single exception is the Sol session appointed Dux of
+a mission Zero declared ORANGE, which releases that one mission under PARABELLUM, RULED
+2026-09-10 in `docs/rules/RULINGS.md`). The operational commands are documented in
 `docs/runbooks/merge-queue-discipline.md`.
 
 1. **One PR, one concern.** Target no more than about 400 net lines when the nature of the work

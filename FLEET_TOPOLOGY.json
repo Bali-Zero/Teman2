@@ -248,6 +248,19 @@
       ],
       "on_exhaustion": "queue in PENDING-ARMS (all Anthropic accounts dead). Never pay."
     },
+    "gear3_final_gate_orange": {
+      "_added": "RULED 2026-09-10 (PARABELLUM, docs/rules/RULINGS.md): the ORANGE colour's final on-disk gate. The BLUE chain above is untouched and remains the default for any mission whose colour was not declared.",
+      "chain": [
+        {
+          "model": "codex gpt-5.6-sol",
+          "effort": "xhigh",
+          "session": "fresh, outside the contribution chain; it SIGNS and never arms, merges or alters the candidate",
+          "note": "Colour table: docs/architecture/dual-consul/army-map.md §1bis. The receipt carries mission id, colour, HEAD sha, gate thread id, commands with exit codes and verdict, re-checked against the current PR HEAD before posting; publish with scripts/harness_fable_gate.py (PASS uses --description, 140-char cap; --conditions-ref only on PASS-WITH-CONDITIONS)."
+        }
+      ],
+      "no_cross_colour_fallback": "a dead orange seat never falls back to gear3_final_gate — the mission SUSPENDS at its colour",
+      "on_exhaustion": "suspend"
+    },
     "interactive_architect": {
       "chain": [
         {
@@ -457,12 +470,12 @@
         "codex gpt-6-astra"
       ],
       "never": ["fan-out", "implement", "auto-route"],
-      "note": "RULED 2026-09-06→08; appoint the Dux; talk to each other and to the generals only"
+      "note": "RULED 2026-09-06→08; appoint the Dux; talk to each other and to the generals only. RULED 2026-09-10 (PARABELLUM): the staff room is Fable + Astra with Zero only — it also declares the mission COLOUR (BLUE/ORANGE, docs/architecture/dual-consul/army-map.md §1bis) and fixes the battle windows, teams and specs. Context threshold 0.6, not 0.2 (Zero 2026-09-10 04:20, live on M5/Pro/Mini): 0.2 of 258k is below the measured Codex boot, so an imperator consultation at 0.2 parks at its first tool call."
     },
     "generals": {
       "seats": ["claude-opus-5", "codex gpt-5.6-sol"],
       "dux": "temporary, per mission, appointed by the imperators",
-      "note": "equal peers; no permanent reviewer title (Zero 2026-09-06: 'Opus e Sol sono uguali')"
+      "note": "equal peers; no permanent reviewer title (Zero 2026-09-06: 'Opus e Sol sono uguali'). RULED 2026-09-10 (PARABELLUM): the mission COLOUR fixes which general is eligible as Dux — Opus 5 on BLUE, Sol on ORANGE — and the Dux is also the release owner of its own mission. No automatic colour fallback; an undeclared mission is BLUE."
     }
   },
   "pending_arms": [
