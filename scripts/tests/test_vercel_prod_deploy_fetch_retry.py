@@ -22,7 +22,7 @@ that minute:
      second the SSH fetch failed, which points at the transport, not at connectivity. A message
      that does not name its cause sends the reader away from it (W106).
 
-Bounded, not persistent: three attempts at FETCH_TIMEOUT_S each plus backoff still ends far
+Bounded, not persistent: FETCH_ATTEMPTS attempts at FETCH_TIMEOUT_S each plus backoff still ends far
 inside the 120s cadence, so a genuinely dead network degrades on THIS tick instead of wedging
 the organ into the next one.
 
