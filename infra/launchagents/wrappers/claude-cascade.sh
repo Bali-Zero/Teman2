@@ -424,13 +424,16 @@ cascade_cap_escalation() {
     # checkout's shared/escalations_pro.jsonl. Dedupe: one line per pending
     # session id (the file's from_session). Kill switch:
     # CASCADE_CAP_ESCALATION_OFF=1. Never fails the run: the emitted hops are
-    # real work; a broken board is a stderr warning, not a lost answer.
+    # real work; a broken board is a stderr warning, not a lost answer. No
+    # ~/Desktop candidate on purpose: a launchd wrapper touching Desktop trips
+    # macOS TCC (W84-tcc-dead, scripts/lint_tcc_desktop_paths.py) — every
+    # machine has ~/nuzantara, and NUZANTARA_ROOT names any other checkout.
     [ "${CASCADE_CAP_ESCALATION_OFF:-0}" = "1" ] && return 0
     local board="${CASCADE_ESCALATIONS_FILE:-}" cand
     if [ -z "$board" ]; then
-        for cand in "$HOME/nuzantara/shared/escalations_pro.jsonl" \
-                    "$HOME/Desktop/nuzantara/shared/escalations_pro.jsonl"; do
-            [ -f "$cand" ] && { board="$cand"; break; }
+        for cand in "${NUZANTARA_ROOT:+$NUZANTARA_ROOT/shared/escalations_pro.jsonl}" \
+                    "$HOME/nuzantara/shared/escalations_pro.jsonl"; do
+            [ -n "$cand" ] && [ -f "$cand" ] && { board="$cand"; break; }
         done
     fi
     if [ -z "$board" ]; then
