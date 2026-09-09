@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import pytest
 
+from backend.app.core.constants import EvidenceScoreConstants
 from backend.services.rag.agentic._abstain_policy import build_abstain_policy
 from backend.services.rag.agentic.reasoning_utils import (
     _SHORT_IDENTIFIERS,
@@ -68,9 +69,17 @@ class TestTheEntityIsNoLongerThrownAway:
     """Criterion 2. A rule keyed on token LENGTH cannot express "keep the
     entity"; this one is keyed on vocabulary."""
 
-    @pytest.mark.parametrize("identifier", ["pt", "pma", "nib", "oss", "spt", "hgb"])
+    @pytest.mark.parametrize("identifier", ["pma", "nib", "oss", "spt", "hgb"])
     def test_a_short_business_identifier_is_kept(self, identifier: str) -> None:
         assert identifier in _SHORT_IDENTIFIERS
+
+    def test_pt_was_removed_as_non_discriminating_not_forgotten(self) -> None:
+        """`pt` is the identifier this whole spec names first — and it was
+        removed in the 2026-09-10 fix-of-a-fix, not overlooked: it is a free
+        hit on almost every Indonesian company name.
+        See ``test_pt_pma_over_match_on_an_unrelated_company_chunk_now_abstains``
+        for the measured before/after."""
+        assert "pt" not in _SHORT_IDENTIFIERS
 
     @pytest.mark.parametrize("already_safe", ["npwp", "kitas", "e28a", "kbli"])
     def test_a_four_character_identifier_never_needed_the_allowlist(
@@ -269,6 +278,14 @@ def test_one_generic_word_should_not_be_evidence() -> None:
 # measured on the off-topic chunk below, substring matching scores **0.475**
 # (`pt` inside `receipt`/`script`/`empty`/`accept`, `rp` inside `corporate`)
 # against a 0.15 gate; word-boundary matching scores **0.060**.
+#
+# UPDATE, 2026-09-10 fix-of-a-fix: `pt`, `rp` and `cv` were removed from
+# `_SHORT_IDENTIFIERS` entirely (whole-token over-match, not the substring
+# case this section is about) — see the block below and
+# ``test_pt_pma_over_match_on_an_unrelated_company_chunk_now_abstains``. They
+# stay in the historical narrative above because that IS what was measured at
+# the time; the guilt parametrize below now only lists members still in the
+# vocabulary.
 # ---------------------------------------------------------------------------
 
 COLLIDING_CONTEXT = [
@@ -279,14 +296,79 @@ COLLIDING_CONTEXT = [
 
 @pytest.mark.parametrize(
     "identifier",
-    ["pt", "rp", "sk", "cv", "b1", "c1", "c2", "c7", "d1", "d2"],
+    ["sk", "b1", "c1", "c2", "c7", "d1", "d2"],
 )
 def test_two_character_identifiers_reach_the_matcher(identifier: str) -> None:
-    """Guilt: each of the ten survives BOTH filters and is counted as a hit."""
+    """Guilt: each of these seven survives BOTH filters and is counted as a
+    hit. (`pt`/`rp`/`cv` were dropped from this list 2026-09-10 — they no
+    longer reach the matcher on purpose, see the test below.)"""
     score = calculate_evidence_score(
         RETRIEVAL, [f"The {identifier.upper()} document is issued by the agency."], identifier
     )
     assert score >= 0.15, f"{identifier!r} was dropped before matching"
+
+
+@pytest.mark.parametrize("removed", ["pt", "rp", "cv"])
+def test_non_discriminating_two_character_tokens_were_removed_from_the_vocabulary(
+    removed: str,
+) -> None:
+    """Innocence, the mirror of the guilt test above: `pt`/`rp`/`cv` used to
+    reach the matcher too, and that was the defect — each is common enough to
+    be a free hit on an UNRELATED chunk. Measured with `pt` still in the
+    vocabulary: 0.800 on an unrelated-company chunk; removed, 0.080. See
+    ``test_pt_pma_over_match_on_an_unrelated_company_chunk_now_abstains``."""
+    assert removed not in _SHORT_IDENTIFIERS
+    score = calculate_evidence_score(
+        RETRIEVAL, [f"The {removed.upper()} document is issued by the agency."], removed
+    )
+    assert score < EvidenceScoreConstants.ABSTAIN_THRESHOLD, (
+        f"{removed!r} still reaches the matcher (score {score})"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Whole-token over-match on an off-topic chunk (2026-09-10 fix-of-a-fix)
+#
+# Distinct from the substring case above (`receipt`/`corporate` etc.): here
+# the chunk contains the identifier as a genuine standalone word, on a topic
+# that has nothing to do with the query. `pt`/`rp`/`idr`/`usd`/`cv` used to
+# be a free hit on this shape because they are common enough to appear on
+# almost ANY chunk regardless of subject.
+# ---------------------------------------------------------------------------
+
+MONEY_UNRELATED_CONTEXT = [
+    "Sewa motor per hari Rp 150.000, atau IDR 900.000 per minggu, USD 60 untuk turis."
+]
+
+
+def test_pt_pma_over_match_on_an_unrelated_company_chunk_now_abstains() -> None:
+    """Measured: with `pt` in the vocabulary this scored 0.800 (an unrelated
+    chunk answered a company question); with it removed, 0.080."""
+    score = calculate_evidence_score(
+        RETRIEVAL, ["PT Warung Bali menjual nasi goreng dan es teh"], "Apa itu PT PMA?"
+    )
+    assert score < EvidenceScoreConstants.ABSTAIN_THRESHOLD, (
+        f"an unrelated company chunk cleared the gate on a bare 'PT' hit (score {score})"
+    )
+
+
+def test_a_price_chunk_with_currency_units_but_no_visa_word_still_abstains() -> None:
+    """Measured 0.080 both before and after this fix: the query names no
+    currency, so `rp`/`idr`/`usd` never drove this score either way — pinned
+    so a future vocabulary change cannot reintroduce the free hit silently."""
+    score = calculate_evidence_score(RETRIEVAL, MONEY_UNRELATED_CONTEXT, "Berapa harga KITAS?")
+    assert score < EvidenceScoreConstants.ABSTAIN_THRESHOLD, (
+        f"a price chunk with no visa word cleared the gate (score {score})"
+    )
+
+
+def test_the_pt_pma_guilt_twin_still_clears_the_gate_after_the_over_match_fix() -> None:
+    """Guilt twin: removing `pt` must not cost the PR's cross-language win.
+    Measured 0.800 before this fix, 0.600 after — both comfortably above the
+    existing >= 0.15 expectation this reuses from
+    ``TestTheCrossLanguageCasesThatCarryAnIdentifier.test_it_clears_the_gate_in_either_context_language``."""
+    score = calculate_evidence_score(RETRIEVAL, EN_CONTEXT, "Harga PT PMA berapa all in?")
+    assert score >= EvidenceScoreConstants.ABSTAIN_THRESHOLD, score
 
 
 def test_short_identifiers_do_not_match_inside_ordinary_words() -> None:

@@ -181,10 +181,25 @@ def is_valid_tool_call(tool_call: Any) -> bool:
 # Short business identifiers that MUST survive keyword extraction. Every one is
 # <= 3 characters and would otherwise be discarded as noise, taking the subject
 # of the question with it. Lower-cased because the extractor folds case first.
+#
+# EXCLUDED ON PURPOSE (Opus gate PASS-WITH-CONDITIONS, measured 2026-09-10):
+# `pt`, `rp`, `idr`, `usd`, `cv` are NOT discriminating — each is a free hit on
+# almost any chunk regardless of topic. `pt` prefixes nearly every Indonesian
+# company name, `rp`/`idr`/`usd` sit on every price line, and `cv` is both
+# another company-name prefix and the everyday word for a résumé. Measured
+# worst case with these still in the vocabulary: "Apa itu PT PMA?" against a
+# chunk that only names an unrelated company ("PT Warung Bali menjual nasi
+# goreng ...") went 0.080 -> 0.800 (with sources) — abstain became an answer
+# from an unrelated chunk. See
+# test_non_discriminating_two_character_tokens_were_removed_from_the_vocabulary.
 _SHORT_IDENTIFIERS: frozenset[str] = frozenset(
     {
         # Company / licensing
-        "pt", "pma", "cv", "nib", "oss", "tdp", "sk",
+        "pma", "nib", "oss", "tdp",
+        # `sk` (Surat Keputusan / decision letter) stays: measured, unlike
+        # `pt`/`cv` it is not a common standalone word in ordinary Indonesian
+        # or English prose, so it is not a systemic free hit.
+        "sk",
         # Tax
         "pph", "ppn", "spt", "pbb", "pkp",
         # Immigration — the permit codes a client actually types
@@ -192,8 +207,6 @@ _SHORT_IDENTIFIERS: frozenset[str] = frozenset(
         "b1", "c1", "c2", "c7", "d1", "d2", "e23", "e28", "e31", "e32", "e33",
         # Property
         "hgb", "shm", "imb", "pbg", "slf", "ajb", "hak",
-        # Money
-        "idr", "usd", "rp",
     }
 )
 
@@ -474,10 +487,24 @@ def calculate_evidence_score(
     # Substring matching stays for ordinary keywords because Indonesian
     # morphology depends on it (`pendirian` inside `pendiriannya`). An
     # identifier does not inflect, so it loses nothing by being matched whole.
-    context_tokens = set(re.findall(r"[a-z0-9]+", context_text))
+    #
+    # PERF: the whole-context tokenisation only matters for the (rare) query
+    # that actually names a vocabulary identifier — most queries contain
+    # none, and `re.findall` over the full joined context is the one
+    # non-trivial cost in this function. Computed lazily, on the first
+    # identifier lookup, and cached so the two `_hits` call sites (query
+    # keywords, then the legacy keyword set below) share one pass. Behaviour
+    # is identical to the eager version; only the WHEN changes.
+    _context_tokens_cache: set[str] | None = None
+
+    def _context_tokens() -> set[str]:
+        nonlocal _context_tokens_cache
+        if _context_tokens_cache is None:
+            _context_tokens_cache = set(re.findall(r"[a-z0-9]+", context_text))
+        return _context_tokens_cache
 
     def _hits(kw: str) -> bool:
-        return kw in context_tokens if kw in _SHORT_IDENTIFIERS else kw in context_text
+        return kw in _context_tokens() if kw in _SHORT_IDENTIFIERS else kw in context_text
 
     keyword_hits = sum(1 for kw in query_keywords if _hits(kw))
 
