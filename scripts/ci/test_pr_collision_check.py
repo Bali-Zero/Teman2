@@ -547,6 +547,10 @@ def test_find_collisions_and_uncompared_backward_compat_when_all_same_sentinel()
 def test_pr_list_truncated_at_limit_is_reported_not_silently_clean(
     monkeypatch, capsys, tmp_path: Path
 ) -> None:
+    """`--all-open` is required here: PR_LIST_LIMIT truncation is a property
+    of the legacy `gh pr list` repo-wide scan (gather_live_pr_windows),
+    which only runs under `--all-open` now that the SUBJECT-SCOPED default
+    (module docstring) fetches candidates via GraphQL instead."""
     limit = pcc.PR_LIST_LIMIT
     fake_prs = json.dumps([{"number": i} for i in range(1, limit + 1)])
 
@@ -564,7 +568,7 @@ def test_pr_list_truncated_at_limit_is_reported_not_silently_clean(
         raise AssertionError(f"unexpected command in fake_run: {cmd}")
 
     monkeypatch.setattr(pcc, "_run", fake_run)
-    rc = pcc.main(["--repo-root", str(tmp_path)])
+    rc = pcc.main(["--repo-root", str(tmp_path), "--all-open"])
     captured = capsys.readouterr()
     assert rc == 0  # no collisions found -- but must not read as confident clean
     assert "SCAN TRUNCATED" in captured.out
@@ -576,7 +580,8 @@ def test_pr_list_below_limit_is_not_reported_as_truncated(
 ) -> None:
     """Innocence guard: a scan that returns FEWER PRs than the limit must
     NOT print the truncation line -- the heuristic must not fire on an
-    ordinary small open-PR count."""
+    ordinary small open-PR count. `--all-open` for the same reason as the
+    truncation test above (this heuristic lives in the legacy scan)."""
     fake_prs = json.dumps([{"number": 1}, {"number": 2}])
 
     def fake_run(cmd, cwd, check=True):
@@ -593,7 +598,180 @@ def test_pr_list_below_limit_is_not_reported_as_truncated(
         raise AssertionError(f"unexpected command in fake_run: {cmd}")
 
     monkeypatch.setattr(pcc, "_run", fake_run)
-    rc = pcc.main(["--repo-root", str(tmp_path)])
+    rc = pcc.main(["--repo-root", str(tmp_path), "--all-open"])
     captured = capsys.readouterr()
     assert rc == 0
     assert "SCAN TRUNCATED" not in captured.out
+
+
+# ── SUBJECT-SCOPED default: compare THIS PR only against ARMED/QUEUED open
+# PRs, never candidate-vs-candidate -- guilt+innocence (superscar #3) ──────
+
+
+def _subject_fixture(tmp_path: Path, name: str, subject: str, prs: dict) -> Path:
+    fixture = tmp_path / name
+    fixture.write_text(json.dumps({"subject": subject, "prs": prs}))
+    return fixture
+
+
+def test_subject_vs_armed_candidate_overlap_is_flagged(tmp_path: Path, capsys) -> None:
+    """(a) subject vs an ARMED candidate, overlapping windows -> reported."""
+    fixture = _subject_fixture(tmp_path, "a.json", "PR #100", {
+        "PR #100": {PENDING_ARMS: "@@ -1271,6 +1271,7 @@\n" + " l\n" * 6 + "+x\n"},
+        "PR #200": {"armed": True, PENDING_ARMS: "@@ -1272,6 +1272,7 @@\n" + " l\n" * 6 + "+y\n"},
+    })
+    rc = pcc.main(["--fixture", str(fixture)])
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert "COLLISION" in captured.out
+    assert "#100" in captured.out and "#200" in captured.out
+    assert "armed" in captured.out
+
+
+def test_subject_overlap_with_non_candidate_pr_is_not_reported(tmp_path: Path, capsys) -> None:
+    """(b) same overlap as (a), but the other PR is not armed/queued ->
+    not a candidate, never compared, absent from the report."""
+    fixture = _subject_fixture(tmp_path, "b.json", "PR #100", {
+        "PR #100": {PENDING_ARMS: "@@ -1271,6 +1271,7 @@\n" + " l\n" * 6 + "+x\n"},
+        "PR #200": {PENDING_ARMS: "@@ -1272,6 +1272,7 @@\n" + " l\n" * 6 + "+y\n"},
+    })
+    rc = pcc.main(["--fixture", str(fixture)])
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "CLEAN" in captured.out
+    assert "0 armed/queued" in captured.out
+    assert "#200" not in captured.out
+
+
+def test_two_armed_candidates_colliding_with_each_other_not_subject_is_not_reported(
+    tmp_path: Path, capsys
+) -> None:
+    """(c) #200 and #300 are both candidates and collide with EACH OTHER,
+    but neither overlaps the subject -> must NOT be reported."""
+    fixture = _subject_fixture(tmp_path, "c.json", "PR #100", {
+        "PR #100": {"only_subject.txt": "@@ -1,1 +1,2 @@\n l1\n+x\n"},
+        "PR #200": {"armed": True, PENDING_ARMS: "@@ -1271,6 +1271,7 @@\n" + " l\n" * 6 + "+x\n"},
+        "PR #300": {"queued": 2, PENDING_ARMS: "@@ -1272,6 +1272,7 @@\n" + " l\n" * 6 + "+y\n"},
+    })
+    rc = pcc.main(["--fixture", str(fixture)])
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "CLEAN" in captured.out
+    assert "2 armed/queued" in captured.out
+    assert "#200" in captured.out and "#300" in captured.out  # candidate list, not a collision
+
+
+def test_subject_with_zero_candidates_is_clean(tmp_path: Path, capsys) -> None:
+    """(d) no other PR is armed/queued -> CLEAN, "0 armed/queued"."""
+    fixture = _subject_fixture(tmp_path, "d.json", "PR #100", {
+        "PR #100": {PENDING_ARMS: "@@ -1271,6 +1271,7 @@\n" + " l\n" * 6 + "+x\n"},
+        "PR #200": {PENDING_ARMS: "@@ -1272,6 +1272,7 @@\n" + " l\n" * 6 + "+y\n"},
+    })
+    rc = pcc.main(["--fixture", str(fixture)])
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "0 armed/queued" in captured.out
+
+
+def test_all_open_flag_reproduces_legacy_repo_wide_output_on_old_fixture(
+    tmp_path: Path, capsys
+) -> None:
+    """(e) `--all-open` on the old k7b fixture reproduces the pre-existing
+    repo-wide report exactly (same fixture/assertion as the k7b test above)."""
+    fixture = tmp_path / "k7b_all_open.json"
+    fixture.write_text(json.dumps({
+        "prs": {
+            "PR #1": {
+                "shared.txt": "@@ -1,1 +1,2 @@\n l1\n+x\n",
+                "only-pr1.txt": "@@ -1,1 +1,2 @@\n l1\n+x\n",
+            },
+            "PR #2": {
+                "shared.txt": "@@ -50,1 +50,2 @@\n l50\n+y\n",
+                "only-pr2.txt": "@@ -1,1 +1,2 @@\n l1\n+y\n",
+            },
+        }
+    }))
+    rc = pcc.main(["--fixture", str(fixture), "--all-open"])
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "1 file(s) genuinely shared" in captured.out
+
+
+def test_candidate_query_failure_yields_cannot_verify_not_clean(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """(f) the GraphQL candidate scan failing -> rc 2 CANNOT VERIFY, never
+    a silent fallback to --all-open and never a false CLEAN."""
+    event_path = tmp_path / "event.json"
+    event_path.write_text(json.dumps({"pull_request": {"number": 4242}}))
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(event_path))
+    monkeypatch.delenv("GITHUB_REF", raising=False)
+
+    def fake_run(cmd, cwd, check=True):
+        if cmd[:3] == ["gh", "api", "graphql"]:
+            raise pcc.CollisionCheckError("simulated: gh api graphql unreachable")
+        raise AssertionError(f"unexpected command in fake_run: {cmd}")
+
+    monkeypatch.setattr(pcc, "_run", fake_run)
+    rc = pcc.main(["--repo-root", str(tmp_path)])
+    captured = capsys.readouterr()
+    assert rc == 2
+    assert "CANNOT VERIFY" in captured.err
+    assert captured.out == ""
+
+
+def test_gather_fixture_pr_candidates_defaults_no_subject_to_none(tmp_path: Path) -> None:
+    """Innocence guard: a fixture with no "subject" key returns (None, {})
+    -- main() reads that as "fall back to legacy repo-wide fixture mode",
+    the exact backward-compat guarantee every pre-existing fixture relies on."""
+    fixture = tmp_path / "no_subject.json"
+    fixture.write_text(json.dumps({"prs": {"PR #1": {"f.txt": "@@ -1,1 +1,2 @@\n l1\n+x\n"}}}))
+    subject, candidates = pcc.gather_fixture_pr_candidates(fixture)
+    assert subject is None
+    assert candidates == {}
+
+
+# ── review findings (codex-gpt-5.6-sol, BLOCK): a GraphQL `errors` array
+# alongside partial `data`, and the pagination cap hit with more pages
+# remaining, must both raise -- never a false CLEAN on incomplete data ────
+
+
+def test_candidate_scan_graphql_errors_field_raises_cannot_verify(tmp_path: Path, monkeypatch) -> None:
+    """GitHub can return partial `data` ALONGSIDE a top-level `errors`
+    array -- an ignored `errors` field would let an incomplete armed/queued
+    set print CLEAN. Must raise instead of continuing on it."""
+    def fake_run(cmd, cwd, check=True):
+        return json.dumps({
+            "data": {"repository": {"pullRequests": {
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+                "nodes": [],
+            }}},
+            "errors": [{"message": "some fields were not returned"}],
+        })
+
+    monkeypatch.setattr(pcc, "_run", fake_run)
+    with pytest.raises(pcc.CollisionCheckError, match="errors"):
+        pcc.gather_armed_candidate_pr_numbers(tmp_path, "Bali-Zero/Teman2", subject_number=1)
+
+
+def test_candidate_scan_cap_hit_with_more_pages_raises_cannot_verify(tmp_path: Path, monkeypatch) -> None:
+    """Innocence guard's mirror: hitting the fetch cap while `hasNextPage`
+    is still True must raise, never silently stop and report the PRs seen
+    so far as a complete (and possibly false) CLEAN."""
+    pages = {"n": 0}
+
+    def fake_run(cmd, cwd, check=True):
+        pages["n"] += 1
+        start = (pages["n"] - 1) * 100 + 1
+        nodes = [
+            {"number": i, "autoMergeRequest": None, "mergeQueueEntry": None, "isInMergeQueue": False}
+            for i in range(start, start + 100)
+        ]
+        return json.dumps({"data": {"repository": {"pullRequests": {
+            "pageInfo": {"hasNextPage": True, "endCursor": f"c{pages['n']}"},
+            "nodes": nodes,
+        }}}})
+
+    monkeypatch.setattr(pcc, "_run", fake_run)
+    with pytest.raises(pcc.CollisionCheckError, match="scan cap"):
+        pcc.gather_armed_candidate_pr_numbers(tmp_path, "Bali-Zero/Teman2", subject_number=1, limit=200)

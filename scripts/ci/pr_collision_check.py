@@ -90,12 +90,19 @@ succeeded) and never flip a clean 0 to 1 (they are not findings) — they
 are reported as prose so a reader cannot mistake incomplete coverage for
 a positive result, without this advisory tool's exit code lying about
 which of those two very different things happened.
+
+SUBJECT-SCOPED default (Zero mandate 2026-09-10, measured on PR #6058's own advisory
+comment: 35 add/add pairs across 40 open PRs, NONE involving #6058 — over-match in the
+reporting dimension, superscar #3). The default live run compares THIS PR (the subject)
+only against open PRs that are ARMED or QUEUED at scan time, never candidate-vs-candidate.
+`--all-open` restores the old repo-wide scan, unfiltered.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -110,6 +117,10 @@ PR_LIST_LIMIT = 500  # K9: `gh pr list --limit` — see gather_live_pr_windows.
 # omits the key shares this SAME value, so they're all mutually comparable
 # (matches this tool's pre-COMPARABILITY behavior for every old fixture).
 NO_MERGE_BASE_DECLARED = "<fixture: no merge_base declared>"
+# Non-file keys in a fixture PR's file-map: "merge_base" pre-existed,
+# "armed"/"queued" are new (declare a candidate). Skipped when parsing
+# patches — a bool/int here would crash str.splitlines().
+RESERVED_PR_KEYS = {"merge_base", "armed", "queued"}
 # `@@ -oldstart[,oldlen] +newstart[,newlen] @@` — a missing count means 1.
 _HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 Window = tuple[int, int]  # [start, end) in OLD-FILE (merge-base) coordinates
@@ -220,6 +231,14 @@ class NotCompared:
     merge_base_b: str
 
 
+@dataclass(frozen=True)
+class Candidate:
+    """An ARMED/QUEUED open PR (SUBJECT-SCOPED mode). Keyed by label
+    (e.g. "PR #6046") everywhere, matching Collision's own labels."""
+    armed: bool
+    queue_position: int | None  # None if armed-only or queued w/o a known position
+
+
 def find_collisions(pr_files: dict[str, dict[str, list[Window]]]) -> list[Collision]:
     """pr_files: {pr_label: {path: [windows]}}. A file on <2 PRs is never a
     candidate — necessary but not sufficient (trap #11). Callers that must
@@ -291,6 +310,38 @@ def find_collisions_and_uncompared(
     return collisions, not_compared
 
 
+def find_subject_collisions_and_uncompared(
+    pr_files: dict[str, dict[str, list[Window]]],
+    pr_merge_base: dict[str, str],
+    subject_label: str,
+    candidate_labels: list[str],
+) -> tuple[list[Collision], list[NotCompared]]:
+    """Compares ONLY (subject, candidate) pairs, one at a time — NEVER
+    candidate-vs-candidate (two armed PRs colliding with EACH OTHER but
+    not the subject must not be reported). Reuses
+    find_collisions_and_uncompared per pair unchanged, so its tested
+    guilt/innocence/merge-base logic is exercised exactly as before; this
+    only restricts WHICH pairs get built."""
+    subject_files = pr_files.get(subject_label, {})
+    subject_mb = pr_merge_base.get(subject_label, NO_MERGE_BASE_DECLARED)
+    all_collisions: list[Collision] = []
+    all_not_compared: list[NotCompared] = []
+    for candidate_label in candidate_labels:
+        pair_files = {
+            subject_label: subject_files,
+            candidate_label: pr_files.get(candidate_label, {}),
+        }
+        pair_mb = {
+            subject_label: subject_mb,
+            candidate_label: pr_merge_base.get(candidate_label, NO_MERGE_BASE_DECLARED),
+        }
+        collisions, not_compared = find_collisions_and_uncompared(pair_files, pair_mb)
+        all_collisions.extend(collisions)
+        all_not_compared.extend(not_compared)
+    all_collisions.sort(key=lambda c: (c.path, c.pr_a, c.pr_b))
+    return all_collisions, all_not_compared
+
+
 def format_report(
     collisions: list[Collision],
     scanned_prs: int,
@@ -354,6 +405,80 @@ def format_report(
     return "\n".join(lines)
 
 
+def format_subject_report(
+    subject_label: str,
+    collisions: list[Collision],
+    not_compared: list[NotCompared],
+    candidates: dict[str, "Candidate"],
+    truncated_scan: bool = False,
+) -> str:
+    """SUBJECT-SCOPED report: every line is scoped to `subject_label` vs
+    `candidates` (armed/queued open PRs only), never candidate-vs-
+    candidate. Keeps the SAME marker/heading and the same NOT COMPARED /
+    hot-files / advisory-footer sections as format_report; only the
+    verdict line and its evidence differ."""
+
+    def display(label: str) -> str:
+        return f"#{label.removeprefix('PR #')}" if label.startswith("PR #") else label
+
+    def status(c: "Candidate") -> str:
+        if c.queue_position is not None:
+            return f"queued, position {c.queue_position}"
+        return "queued" if not c.armed else "armed"
+
+    lines = ["## PR collision check (advisory — gates nothing)", ""]
+    if truncated_scan:
+        lines.append(
+            f"CANDIDATE SCAN TRUNCATED — the armed/queued-state query hit the "
+            f"{PR_LIST_LIMIT}-PR fetch cap; PR(s) beyond it were never "
+            "considered as candidates. Treat this run as a PARTIAL scan of "
+            "the armed/queued set, not a clean one."
+        )
+        lines.append("")
+
+    colliding_labels = sorted({c.pr_b if c.pr_a == subject_label else c.pr_a for c in collisions})
+    if collisions:
+        lines.append(
+            f"COLLISION — this PR ({display(subject_label)}) overlaps "
+            f"{len(colliding_labels)} armed/queued PR(s):"
+        )
+        fragments = []
+        for label in colliding_labels:
+            spots = [c for c in collisions if label in (c.pr_a, c.pr_b)]
+            spot_text = ", ".join(
+                f"`{c.path}` lines {(c.window_b if c.pr_a == subject_label else c.window_a)[0]}-"
+                f"{(c.window_b if c.pr_a == subject_label else c.window_a)[1]}"
+                for c in spots
+            )
+            fragments.append(f"{display(label)} ({status(candidates[label])}) on {spot_text}")
+        lines.append("  " + "; ".join(fragments))
+    else:
+        candidate_list = ", ".join(display(lbl) for lbl in sorted(candidates)) or "none"
+        lines.append(
+            f"CLEAN — this PR ({display(subject_label)}) has no add/add overlap "
+            f"with the {len(candidates)} armed/queued PR(s): {candidate_list}"
+        )
+    lines.append("")
+    lines.append(
+        f"NOT COMPARED — {len(not_compared)} pair(s) shared a file with this PR "
+        "but had DIFFERENT merge-bases, so their windows are not in the same "
+        "coordinate space and could not be checked for overlap at all (see "
+        "module docstring, COMPARABILITY)."
+    )
+    for nc in not_compared:
+        lines.append(f"  - `{nc.path}`: {nc.pr_a} vs {nc.pr_b} — different merge-bases, not compared")
+    lines.append("")
+    lines.append("Known hot files (reference — flagged above only on a live overlap):")
+    for path, note in HOT_FILES:
+        lines.append(f"  - `{path}` — {note}")
+    lines.append("")
+    lines.append(
+        "Advisory only: gates nothing. Reinstate-by-catch to a required check "
+        "needs two clean advisory weeks first (PR-3 acceptance)."
+    )
+    return "\n".join(lines)
+
+
 def _run(cmd: list[str], cwd: Path, check: bool = True) -> str:
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
@@ -390,14 +515,32 @@ def pr_windows_from_git(repo_root: Path, base_sha: str, head_ref: str) -> tuple[
     patch = _run(["git", "diff", "--no-renames", merge_base, head_ref], repo_root)
     return merge_base, parse_multi_file_diff(patch)
 
+def gather_live_pr_windows_for_numbers(
+    repo_root: Path, base_ref: str, pr_numbers: set[int]
+) -> tuple[dict[str, dict[str, list[Window]]], dict[str, str]]:
+    """The per-PR half of gather_live_pr_windows, factored out so the
+    SUBJECT-SCOPED default path can fetch windows for ONLY {subject} |
+    candidates instead of every open PR."""
+    base_sha = _run(["git", "rev-parse", base_ref], repo_root).strip()
+    result: dict[str, dict[str, list[Window]]] = {}
+    pr_merge_base: dict[str, str] = {}
+    for number in sorted(pr_numbers):
+        label = f"PR #{number}"
+        head_sha = fetch_pr_head(repo_root, number)
+        merge_base, windows = pr_windows_from_git(repo_root, base_sha, head_sha)
+        if windows:
+            result[label] = windows
+            pr_merge_base[label] = merge_base
+    return result, pr_merge_base
+
 def gather_live_pr_windows(
     repo_root: Path, repo_slug: str, base_ref: str = DEFAULT_BASE_REF
 ) -> tuple[dict[str, dict[str, list[Window]]], dict[str, str], bool]:
-    """Returns `(pr_windows, pr_merge_base, truncated_scan)`. truncated_scan
-    is True iff `gh pr list` returned exactly PR_LIST_LIMIT entries — the
-    only signal available that more open PRs may exist beyond the fetch
-    window (K9); it can never be told apart from "exactly the limit, no
-    more" from here, so it is reported as a possibility, not a certainty."""
+    """`--all-open` legacy path: unfiltered repo-wide scan, unchanged
+    behavior. Returns `(pr_windows, pr_merge_base, truncated_scan)`;
+    truncated_scan is True iff `gh pr list` returned exactly
+    PR_LIST_LIMIT entries (K9) — reported as a possibility, not a
+    certainty."""
     raw = _run(["gh", "pr", "list", "--repo", repo_slug, "--state", "open",
                 "--json", "number", "--limit", str(PR_LIST_LIMIT)], repo_root)
     try:
@@ -408,18 +551,126 @@ def gather_live_pr_windows(
         # ("collision found"). See test_pr_collision_check.py FIX-2 tests.
         raise CollisionCheckError(f"gh pr list returned unparseable JSON: {exc}") from exc
     truncated_scan = len(pr_list) >= PR_LIST_LIMIT
-
-    base_sha = _run(["git", "rev-parse", base_ref], repo_root).strip()
-    result: dict[str, dict[str, list[Window]]] = {}
-    pr_merge_base: dict[str, str] = {}
-    for entry in pr_list:
-        label = f"PR #{entry['number']}"
-        head_sha = fetch_pr_head(repo_root, entry["number"])
-        merge_base, windows = pr_windows_from_git(repo_root, base_sha, head_sha)
-        if windows:
-            result[label] = windows
-            pr_merge_base[label] = merge_base
+    pr_numbers = {entry["number"] for entry in pr_list}
+    result, pr_merge_base = gather_live_pr_windows_for_numbers(repo_root, base_ref, pr_numbers)
     return result, pr_merge_base, truncated_scan
+
+def resolve_subject_pr_number() -> int:
+    """Subject PR number for the SUBJECT-SCOPED default. Reads
+    `GITHUB_EVENT_PATH`'s `pull_request.number` — set automatically by
+    the `pull_request:` trigger, no workflow-file edit needed — falling
+    back to `GITHUB_REF`'s `refs/pull/<N>/...` shape. Never falls back to
+    "all open PRs" silently: pass `--all-open` explicitly instead."""
+    event_path = os.environ.get("GITHUB_EVENT_PATH")
+    if event_path:
+        try:
+            payload = json.loads(Path(event_path).read_text())
+            number = payload.get("pull_request", {}).get("number")
+            if isinstance(number, int):
+                return number
+        except (OSError, json.JSONDecodeError):
+            pass
+    match = re.match(r"refs/pull/(\d+)/", os.environ.get("GITHUB_REF", ""))
+    if match:
+        return int(match.group(1))
+    raise CollisionCheckError(
+        "could not determine the subject PR number (GITHUB_EVENT_PATH has no "
+        "pull_request.number and GITHUB_REF is not refs/pull/<N>/...) -- pass "
+        "--all-open for the repo-wide legacy scan, or run this inside a "
+        "pull_request-triggered job"
+    )
+
+def gather_armed_candidate_pr_numbers(
+    repo_root: Path, repo_slug: str, subject_number: int, limit: int = PR_LIST_LIMIT
+) -> dict[str, Candidate]:
+    """ONE `gh api graphql` call per page fetching every open PR's
+    `autoMergeRequest`/`mergeQueueEntry`/`isInMergeQueue` state.
+    Candidates = open PRs armed OR queued, EXCLUDING the subject — the
+    cure for the over-match measured on PR #6058 (35 pairs / 40 open
+    PRs, none involving #6058). A query failure is an OPERATIONAL
+    failure (rc 2 via CollisionCheckError) -- NEVER a silent fallback to
+    `--all-open`, which would reintroduce the over-match."""
+    try:
+        owner, name = repo_slug.split("/", 1)
+    except ValueError as exc:
+        raise CollisionCheckError(f"--repo must be OWNER/NAME, got {repo_slug!r}") from exc
+
+    query = (
+        "query($owner: String!, $name: String!, $cursor: String) { "
+        "repository(owner: $owner, name: $name) { "
+        "pullRequests(states: OPEN, first: 100, after: $cursor) { "
+        "pageInfo { hasNextPage endCursor } "
+        "nodes { number autoMergeRequest { enabledAt } "
+        "mergeQueueEntry { position } isInMergeQueue } } } }"
+    )
+    candidates: dict[str, Candidate] = {}
+    cursor: str | None = None
+    fetched = 0
+    while True:
+        cmd = ["gh", "api", "graphql", "-f", f"query={query}", "-f", f"owner={owner}", "-f", f"name={name}"]
+        if cursor:
+            cmd += ["-f", f"cursor={cursor}"]
+        raw = _run(cmd, repo_root)
+        try:
+            payload = json.loads(raw)
+            errors = payload.get("errors")
+            if errors:
+                # GitHub can return partial `data` ALONGSIDE `errors` -- never
+                # continue on a partial armed/queued set, that could print a
+                # false CLEAN (review finding, codex-gpt-5.6-sol).
+                raise CollisionCheckError(f"the armed-state query returned errors: {errors[0]}")
+            conn = payload["data"]["repository"]["pullRequests"]
+        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            # Never "no candidates" -- must surface as CANNOT VERIFY (rc 2).
+            raise CollisionCheckError(f"the armed-state query failed: {exc}") from exc
+        for node in conn["nodes"]:
+            number = node["number"]
+            fetched += 1
+            if number == subject_number:
+                continue
+            armed = node.get("autoMergeRequest") is not None
+            mqe = node.get("mergeQueueEntry")
+            queued = mqe is not None or bool(node.get("isInMergeQueue"))
+            if armed or queued:
+                position = mqe.get("position") if mqe else None
+                candidates[f"PR #{number}"] = Candidate(armed=armed, queue_position=position)
+        if not conn["pageInfo"]["hasNextPage"]:
+            break
+        if fetched >= limit:
+            # More pages remain past the cap -- an INCOMPLETE armed/queued
+            # scan must never read as CLEAN (review finding, codex-gpt-5.6-sol).
+            raise CollisionCheckError(
+                f"the open-PR set exceeded the {limit}-PR scan cap with more "
+                "pages remaining -- armed/queued candidates beyond the cap "
+                "were never seen"
+            )
+        cursor = conn["pageInfo"]["endCursor"]
+    return candidates
+
+def gather_fixture_pr_candidates(fixture_path: Path) -> tuple[str | None, dict[str, Candidate]]:
+    """Fixture-mode counterpart of gather_armed_candidate_pr_numbers: a
+    fixture declares `"subject": "<label>"` at the top level and, per PR,
+    `"armed": true/false` and/or `"queued": true/false/<position int>`.
+    Omitting `"subject"` gets `(None, {})` -- main() reads that as "fall
+    back to the pre-existing repo-wide fixture behavior", exactly like
+    every fixture written before this key existed."""
+    try:
+        data = json.loads(fixture_path.read_text())
+    except json.JSONDecodeError as exc:
+        raise CollisionCheckError(f"--fixture {fixture_path} is not valid JSON: {exc}") from exc
+    subject = data.get("subject")
+    if subject is None:
+        return None, {}
+    candidates: dict[str, Candidate] = {}
+    for label, files in data.get("prs", {}).items():
+        if label == subject:
+            continue
+        armed = bool(files.get("armed", False))
+        queued_raw = files.get("queued", False)
+        if armed or queued_raw:
+            position = queued_raw if isinstance(queued_raw, int) else None
+            candidates[label] = Candidate(armed=armed, queue_position=position)
+    return subject, candidates
 
 def gather_fixture_pr_windows(fixture_path: Path) -> dict[str, dict[str, list[Window]]]:
     try:
@@ -432,6 +683,8 @@ def gather_fixture_pr_windows(fixture_path: Path) -> dict[str, dict[str, list[Wi
     for label, files in data.get("prs", {}).items():
         by_file: dict[str, list[Window]] = {}
         for path, patch in files.items():
+            if path in RESERVED_PR_KEYS:  # "armed"/"queued" are bools -- never a patch string
+                continue
             windows = parse_add_windows_for_hunks(patch)
             if windows:
                 by_file[path] = windows
@@ -467,21 +720,46 @@ def main(argv: list[str] | None = None) -> int:
         "--fixture", type=Path, default=None,
         help="JSON fixture ({'prs':{'<label>':{'<path>':'<patch>'}}}) — bypasses git/gh entirely",
     )
+    parser.add_argument(
+        "--all-open", action="store_true",
+        help="repo-wide legacy scan (pre-2026-09-10) -- default now compares this PR "
+             "only against ARMED/QUEUED open PRs",
+    )
     args = parser.parse_args(argv)
 
     truncated_scan = False
+    subject_label: str | None = None
+    candidates: dict[str, Candidate] = {}
     try:
         if args.fixture:
             pr_windows = gather_fixture_pr_windows(args.fixture)
             pr_merge_base = gather_fixture_pr_merge_base(args.fixture)
-        else:
+            if not args.all_open:
+                subject_label, candidates = gather_fixture_pr_candidates(args.fixture)
+        elif args.all_open:
             pr_windows, pr_merge_base, truncated_scan = gather_live_pr_windows(
                 args.repo_root, args.repo, args.base_ref
+            )
+        else:
+            subject_number = resolve_subject_pr_number()
+            subject_label = f"PR #{subject_number}"
+            candidates = gather_armed_candidate_pr_numbers(args.repo_root, args.repo, subject_number)
+            candidate_numbers = {int(label.split("#", 1)[1]) for label in candidates}
+            pr_windows, pr_merge_base = gather_live_pr_windows_for_numbers(
+                args.repo_root, args.base_ref, {subject_number} | candidate_numbers
             )
     except CollisionCheckError as exc:
         print(f"CANNOT VERIFY — collision scan could not be assembled:\n{exc}", file=sys.stderr)
         return 2
 
+    if subject_label is not None:
+        collisions, not_compared = find_subject_collisions_and_uncompared(
+            pr_windows, pr_merge_base, subject_label, sorted(candidates)
+        )
+        print(format_subject_report(subject_label, collisions, not_compared, candidates, truncated_scan))
+        return 1 if collisions else 0
+
+    # `--all-open`, or a `--fixture` declaring no "subject" -- legacy repo-wide path.
     collisions, not_compared = find_collisions_and_uncompared(pr_windows, pr_merge_base)
 
     # K7: "shared by 2+ PRs" means exactly that -- a path's touch-count
