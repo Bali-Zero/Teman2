@@ -1,0 +1,67 @@
+gear: 3
+brief_ref: evidence/2026-09/agent-nuzantara-infra-vercel-autopromote-120s-6ce0c387/brief.yml
+council_run: council-journal.jsonl
+lanes:
+  - lane: build
+    role: build
+    seat: claude-fable-5-1
+  - lane: independent-diff-review
+    role: review
+    seat: codex-gpt-5.6
+spend:
+  wall_clock_hours: 0.6
+  adversarial_rounds: 3
+appetite_exceeded: none
+pii_scan: clean
+receipts:
+  - claim: "organ-corpora: the plist cadence is read out of the file, rotation fires over 5 MB and not under, every existing wrapper outcome still distinct."
+    probe: organ-corpora
+    cmd: bash scripts/tests/test_mini_vercel_autopromote_wrapper.sh
+    result: passed 20, failed 0 (17 existing + 3 new cases; rotation cases seed a marker and a pre-existing .1 after the Codex review)
+    exit: 0
+    ts: "2026-09-09T11:49:03Z"
+    seat: claude-fable-5-1
+  - claim: "organ-corpora: the fetch retry ends inside the 120s tick (2 x 45s + 5s = 95s) and the other three cure corpora are unchanged."
+    probe: organ-corpora
+    cmd: apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_vercel_prod_deploy_fetch_retry.py scripts/tests/test_vercel_prod_deploy_promote_only.py scripts/tests/test_frontend_live_sentinel.py scripts/tests/test_vercel_prod_deploy_target_rule.py -q
+    result: "51 passed in 12.86s (re-run after the Kimi and Codex cures: 45s ceiling, two attempts, timed gh fallback, timed merge-base)"
+    exit: 0
+    ts: "2026-09-09T11:49:03Z"
+    seat: claude-fable-5-1
+  - claim: The plist still parses and the wrapper still parses.
+    cmd: plutil -lint infra/launchagents/com.nuzantara.vercel-autopromote.plist && bash -n infra/launchagents/wrappers/mini-vercel-autopromote.sh
+    result: OK / OK
+    exit: 0
+    ts: "2026-09-09T11:49:03Z"
+    seat: claude-fable-5-1
+dissent:
+  - seat: kimi-code/k3
+    objection: "FETCH_TIMEOUT_S=30 sat below the PR's own measured 39s slow fetch: on a persistently slow network every attempt of every tick would time out — permanent blindness where the old 120s ceiling recovered. Also: _main_head's gh api fallback had no timeout, so the tick bound did not hold on the degraded path it exists for; three comment blocks still quoted 900s / 372s / 15 minutes."
+    status: CONFIRMED
+    disposition: "Ceiling raised to 45s with two attempts and a 5s backoff (95s worst case, inside the tick, clears the measured case); gh fallback timed with FETCH_TIMEOUT_S; the three comment blocks rewritten; _git's local-read timeout set to 60s with a comment saying it is not the network ceiling. Corpora re-run: 51 passed, wrapper 20/20."
+  - seat: kimi-code/k3
+    objection: "The new shell cases validate the repo copy of the wrapper, never the live one on Mini, so repo-to-live drift is not covered by this corpus."
+    status: PLAUSIBLE
+    disposition: "By design: repo-to-live parity is the declared-pair lint's job (infra/home-fork/declared-pairs.json lists both the wrapper and the plist for mini; scripts/lint_home_fork.py compares live to origin/main), and the pending mini-install proof reads the interval out of launchd itself."
+  - seat: codex-gpt-5.6-sol
+    objection: "_production_includes runs git merge-base with no timeout on the ordinary --promote-only path, so one tick can still hang indefinitely; the rotation corpus never proves a small log is preserved nor that a pre-existing .1 is overwritten; three comments claim more than the code gives (the pidfile makes overlap 'never a race'; fetch is 'the only network step'; a '15-minute cadence' survives in the promote-only comment)."
+    status: CONFIRMED
+    disposition: "merge-base timed at 60s and closed on expiry; rotation cases seed MARKER + old .1 and assert both directions; the three comments rewritten to what the code and launchd actually guarantee. Corpora re-run: 51 passed, wrapper 20/20."
+  - seat: codex-gpt-5.6-sol
+    objection: "120s is not an end-to-end bound: the post-promote probe loop, the Vercel listing scan and the gh fallback can each push a run past one tick, and the cadence test only proves the isolated fetch retry."
+    status: PLAUSIBLE
+    disposition: "By design, now stated in the wrapper: launchd never starts a second instance of a label while one runs (it skips that fire) and the pidfile is the second line for manual runs, so a long promote costs one skipped fire, visible as a warning heartbeat. The cadence bounds the FETCH — the step every idle tick takes — so a dead network degrades this tick instead of wedging the next. An end-to-end budget would mean cutting the promote's own proof, which is the organ's reason to exist."
+pending_proofs:
+  - probe: mini-install
+    owner: Fable Pro session 997ab3e1 (shipper)
+    command: launchctl print gui/$(id -u)/com.nuzantara.vercel-autopromote | grep 'run interval'; tail -20 ~/logs/mini-vercel_autopromote/run.log
+    expected: run interval = 120 seconds; run start lines 2 minutes apart.
+  - probe: next-mouth-merge
+    owner: Fable Pro session 997ab3e1 (shipper)
+    command: tail -40 ~/logs/mini-vercel_autopromote/run.log on Mini after PR #6021 merges
+    expected: PROMOTED — production moved, logged within 2 minutes of the deployment's ready timestamp, no vercel_prod_deploy.py run by hand.
+residual_risks:
+  - risk: The undocumented Vercel setting that leaves production deployments STAGED is untouched; the organ remains the cure, not the fix.
+    mitigation: Cure latency is now bounded at 2 minutes after READY; the sentinel still alerts if production lags 30 minutes.
+  - risk: A wedged run (hung network call) makes every later tick a visible skip.
+    mitigation: The skip writes a warning heartbeat, never ok; the stale detector reads warning.

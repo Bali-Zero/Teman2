@@ -1,0 +1,26 @@
+task_id: vercel-autopromote-120s
+gear: 3
+objective: Make a merged apps/mouth commit reach production without a hand, within 2 minutes of its Vercel build reaching READY, by ticking the mini.vercel_autopromote organ every 120s instead of 900s.
+constraints:
+  - Keep --promote-only semantics — the organ promotes an existing READY build and never creates one; no unattended rebuild loop at the faster cadence.
+  - The whole fetch retry (attempts x timeout + backoff) must end inside one tick, read from the plist by the existing corpus, so a dead network degrades THIS tick instead of wedging into the next.
+  - The idle tick must stay free of Vercel API calls (the cure returns before the API when production already includes the target).
+  - No credential is printed, moved or added; the organ keeps reading the Vercel CLI's own auth.json on Mini.
+  - Do not guess at the undocumented Vercel project setting that leaves deployments STAGED; this shortens the cure, it does not diagnose the cause.
+acceptance:
+  - text: WHEN the plist declares StartInterval 120, the wrapper corpus SHALL read that number out of the file and the fetch-retry corpus SHALL prove the worst-case fetch ends inside it.
+    probe: organ-corpora
+  - text: WHEN run.log exceeds 5 MB, the wrapper SHALL rotate it to run.log.1 intact before writing, and SHALL leave a smaller log alone.
+    probe: organ-corpora
+  - text: WHEN the merged plist is bootstrapped on Mini, launchctl SHALL report a 120 second run interval and run.log SHALL show run-start lines two minutes apart.
+    probe: mini-install
+  - text: WHEN the next apps/mouth PR merges, the organ SHALL log PROMOTED within 2 minutes of the build's ready timestamp with no human command.
+    probe: next-mouth-merge
+consumer_map:
+  - launchd on Mini (com.nuzantara.vercel-autopromote) running the wrapper every 120s.
+  - Frontend Live Sentinel, whose 30-minute grace window now comfortably contains build + promote.
+  - The next session that merges an apps/mouth PR and expects it live without running vercel_prod_deploy.py by hand.
+risks:
+  - A promote run takes ~2 minutes (probe loop), so the tick after a promote lands in the single-instance skip and writes a warning heartbeat once; visible, not a race.
+  - A fetch that genuinely needs more than 30s times out and degrades that tick; the cost is 2 minutes, not 15.
+pii: none

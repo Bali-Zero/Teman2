@@ -284,7 +284,8 @@ FETCH_TIMEOUT_S = 45
 def _fetch_main() -> tuple[bool, str]:
     """Refresh origin/main, riding out a TRANSIENT failure instead of degrading on it.
 
-    This is the only network step on the unattended path, and it runs every 120s on a machine
+    This is the one network step EVERY tick takes (the health probe, the Vercel listing and
+    the promote only run while a build is pending), and it runs every 120s on a machine
     whose network measurably flaps. Measured on Mini the day the organ was armed: of the first
     five runs one could not fetch, the system log showed three network-configuration changes
     and a Wi-Fi change in the five minutes before it, and the good run that followed took 39s
@@ -362,9 +363,14 @@ def _production_includes(target: str, live: str | None) -> bool:
         return False
     if live == target:
         return True
-    rc = subprocess.run(
-        ["git", "merge-base", "--is-ancestor", target, live], capture_output=True, text=True
-    )
+    try:
+        rc = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", target, live],
+            capture_output=True, text=True, timeout=60,
+        )
+    except subprocess.TimeoutExpired:
+        # A local read that hangs is a wedged repo, not an answer; closed, like the 128 case.
+        return False
     # 0 = ancestor, 1 = not, 128 = an object we do not have. Only 0 is currency.
     return rc.returncode == 0
 
@@ -542,7 +548,7 @@ def main() -> int:
         return 0
 
     # --promote-only is the CRON contract, and it is a restriction, not an optimisation.
-    # Unattended, "no READY build exists" must never buy a rebuild: at a 15-minute cadence
+    # Unattended, "no READY build exists" must never buy a rebuild: at a 2-minute cadence
     # that is a build loop nobody asked for, and the condition itself is an anomaly worth a
     # human's eyes (Vercel skipped the commit, or the build failed). Exit 2 says exactly that
     # and is deliberately NOT 1 — a wrapper reading one failure bit cannot tell "the promote

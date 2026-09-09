@@ -200,19 +200,24 @@ rot_case() { # $1 = bytes to pre-seed; echoes "<has .1>\t<run.log has run start>
     mkdir -p "$tmp/bin" "$tmp/home/nuzantara/scripts" "$tmp/home/logs/mini-vercel_autopromote"
     printf '#!/bin/bash\necho Mini-Pro2\n' > "$tmp/bin/hostname"; chmod +x "$tmp/bin/hostname"
     printf 'import sys\nprint("nothing to do")\nsys.exit(0)\n' > "$tmp/home/nuzantara/scripts/vercel_prod_deploy.py"
-    head -c "$seed" /dev/zero | tr '\0' 'x' > "$tmp/home/logs/mini-vercel_autopromote/run.log"
+    # Seed the log with a MARKER line and a pre-existing .1 (7 bytes), so the corpus proves
+    # both directions of the promise: a small log is PRESERVED (marker still there, .1
+    # untouched), a big one OVERWRITES .1 (its size becomes the seed's, not 7).
+    { printf 'MARKER-PRE-EXISTING\n'; head -c "$seed" /dev/zero | tr '\0' 'x'; } > "$tmp/home/logs/mini-vercel_autopromote/run.log"
+    printf 'old .1\n' > "$tmp/home/logs/mini-vercel_autopromote/run.log.1"
     env -i HOME="$tmp/home" PATH="$tmp/bin:/usr/bin:/bin" /bin/bash "$WRAPPER" >/dev/null 2>&1
-    local one="NO"; [ -f "$tmp/home/logs/mini-vercel_autopromote/run.log.1" ] && one="YES"
+    local one="NO"; grep -q "MARKER-PRE-EXISTING" "$tmp/home/logs/mini-vercel_autopromote/run.log.1" 2>/dev/null && one="YES"
     local fresh="NO"; grep -q "run start" "$tmp/home/logs/mini-vercel_autopromote/run.log" 2>/dev/null && fresh="YES"
-    local size=0; [ "$one" = YES ] && size="$(wc -c < "$tmp/home/logs/mini-vercel_autopromote/run.log.1" | tr -d ' ')"
-    printf '%s\t%s\t%s' "$one" "$fresh" "$size"
+    local kept="NO"; grep -q "MARKER-PRE-EXISTING" "$tmp/home/logs/mini-vercel_autopromote/run.log" 2>/dev/null && kept="YES"
+    local size; size="$(wc -c < "$tmp/home/logs/mini-vercel_autopromote/run.log.1" | tr -d ' ')"
+    printf '%s\t%s\t%s\t%s' "$one" "$fresh" "$size" "$kept"
 }
 r=$(rot_case 5242881)
-[ "$(echo "$r" | cut -f1)" = "YES" ] && [ "$(echo "$r" | cut -f2)" = "YES" ] && [ "$(echo "$r" | cut -f3)" = "5242881" ] \
-    && ok "run.log over 5 MB -> rotated to run.log.1 intact, tick lands in a fresh run.log" || bad "log rotation (guilt)" "$r"
+[ "$(echo "$r" | cut -f1)" = "YES" ] && [ "$(echo "$r" | cut -f2)" = "YES" ] && [ "$(echo "$r" | cut -f3)" = "5242901" ] && [ "$(echo "$r" | cut -f4)" = "NO" ] \
+    && ok "run.log over 5 MB -> rotated to run.log.1 intact (old .1 overwritten), tick lands in a fresh run.log" || bad "log rotation (guilt)" "$r"
 r=$(rot_case 1024)
-[ "$(echo "$r" | cut -f1)" = "NO" ] && [ "$(echo "$r" | cut -f2)" = "YES" ] \
-    && ok "run.log under 5 MB -> left alone, no run.log.1" || bad "log rotation (innocence)" "$r"
+[ "$(echo "$r" | cut -f1)" = "NO" ] && [ "$(echo "$r" | cut -f2)" = "YES" ] && [ "$(echo "$r" | cut -f3)" = "7" ] && [ "$(echo "$r" | cut -f4)" = "YES" ] \
+    && ok "run.log under 5 MB -> preserved in place (marker kept, old .1 untouched)" || bad "log rotation (innocence)" "$r"
 
 echo
 printf 'passed %d, failed %d\n' "$PASS" "$FAIL"

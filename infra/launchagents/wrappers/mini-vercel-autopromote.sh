@@ -65,7 +65,12 @@ trap 'rm -f "$PIDFILE"' EXIT
 # nothing on the happy path: `vercel_prod_deploy.py` returns before touching the Vercel API
 # when production already includes the target, so an idle tick is one `git fetch` and one
 # GET on /api/health; the Vercel listing is only asked while a build is actually pending.
-# The single-instance guard above makes overlapping ticks a visible skip, never a race.
+# A run may legitimately outlive a tick (a promote proves itself with up to ~2 minutes of
+# probes). That is not a race: launchd never starts a second instance of a label while one
+# is running — it skips that fire — and the pidfile above is the second line for a manual
+# run. What a long run costs is one skipped fire, visible as a warning heartbeat. The number
+# the cadence really bounds is the FETCH (the step every idle tick takes), so a dead network
+# degrades this tick instead of wedging the organ into the next one.
 #
 # WHAT THIS CLOSES
 # On 2026-08-21 balizero.com served a ~22h-old build while three READY production builds sat
