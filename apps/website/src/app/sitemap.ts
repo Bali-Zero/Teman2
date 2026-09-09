@@ -13,6 +13,7 @@ const staticPaths = [
   "/services/tax",
   "/services/property",
   "/news",
+  "/visa-oracle",
   "/team",
   "/contact",
   "/about",

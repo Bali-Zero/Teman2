@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import type { SearchParams } from "../../../features/kbli/catalog.server";
 export const dynamic = "force-dynamic";
 export default async function Page({
@@ -21,5 +21,7 @@ export default async function Page({
     else if (Array.isArray(value))
       value.forEach((item) => query.append(key, item));
   }
-  redirect(`/kbli${path ? `/${path}` : ""}${query.size ? `?${query}` : ""}`);
+  permanentRedirect(
+    `/kbli${path ? `/${path}` : ""}${query.size ? `?${query}` : ""}`,
+  );
 }

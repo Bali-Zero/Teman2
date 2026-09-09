@@ -2,18 +2,27 @@ import type { Metadata } from "next";
 import { describe, expect, it } from "vitest";
 import { journalCategories } from "../content/journal-categories";
 import { getAllCodes, getSections } from "../features/kbli/catalog.server";
+import { metadata as rootMetadata } from "./layout";
 import { metadata as homeMetadata } from "./page";
 import { generateMetadata as categoryMetadata } from "./[category]/page";
 import { generateMetadata as sectorMetadata } from "./kbli/sectors/[id]/page";
 import { generateMetadata as codeMetadata } from "./kbli/[code]/page";
 import { metadata as newsMetadata } from "./news/page";
+import { metadata as proposalMetadata } from "./prime/proposal/[token]/page";
 import { metadata as oracleMetadata } from "./visa-oracle/page";
 import { metadata as unlockMetadata } from "./visa-oracle/unlock/layout";
 import { metadata as oraclePrivacyMetadata } from "./visa-oracle/privacy/layout";
+import { metadata as clockMetadata } from "./visa/clock/[hash]/page";
+import { metadata as matchMetadata } from "./visa/match/[hash]/page";
+import { metadata as visaPrivacyMetadata } from "./visa/privacy/page";
+import { metadata as visaTermsMetadata } from "./visa/terms/page";
 import { metadata as voaMetadata } from "./visa/voa/page";
 import { metadata as primeMetadata } from "./prime/page";
+import { metadata as cookiesMetadata } from "./v2/cookies/page";
 import { metadata as careersMetadata } from "./v2/company/careers/page";
 import { metadata as pressMetadata } from "./v2/company/press/page";
+import { metadata as privacyMetadata } from "./v2/privacy/page";
+import { metadata as termsMetadata } from "./v2/terms/page";
 
 function expectNoIndex(metadata: Metadata): void {
   expect(metadata.robots).toMatchObject({ index: false, follow: false });
@@ -31,7 +40,14 @@ function expectMetadata(
 }
 
 describe("cutover metadata", () => {
-  it("keeps explicit noindex on the six private or retained routes", () => {
+  it("removes the global noindex and publishes the approved root title without a duplicate suffix template", () => {
+    expect(rootMetadata.robots).toBeUndefined();
+    expect(rootMetadata.title).toBe(
+      "Bali Zero | Immigration, Company Setup, Tax & Property in Indonesia",
+    );
+  });
+
+  it("keeps explicit noindex on every private or retained route", () => {
     for (const metadata of [
       unlockMetadata,
       oraclePrivacyMetadata,
@@ -39,6 +55,14 @@ describe("cutover metadata", () => {
       primeMetadata,
       careersMetadata,
       pressMetadata,
+      privacyMetadata,
+      termsMetadata,
+      cookiesMetadata,
+      visaPrivacyMetadata,
+      visaTermsMetadata,
+      proposalMetadata,
+      matchMetadata,
+      clockMetadata,
     ]) {
       expectNoIndex(metadata);
     }
@@ -48,6 +72,7 @@ describe("cutover metadata", () => {
     expectMetadata(homeMetadata, "/", "Bali Zero Indonesia | Bali Zero");
     expectMetadata(newsMetadata, "/news", "The Bali Zero Journal | Bali Zero");
     expectMetadata(oracleMetadata, "/visa-oracle", "Visa Oracle | Bali Zero");
+    expect(oracleMetadata.robots).toBeUndefined();
   });
 
   it("derives category metadata from the canonical category registry", async () => {

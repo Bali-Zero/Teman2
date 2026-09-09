@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
 const preservedQueryKeys = ["category", "q", "page"] as const;
 
@@ -17,5 +17,5 @@ export default async function JournalRedirect({
       query.append(key, value);
     }
   }
-  redirect(`/news${query.size ? `?${query}` : ""}`);
+  permanentRedirect(`/news${query.size ? `?${query}` : ""}`);
 }

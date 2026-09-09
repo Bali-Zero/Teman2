@@ -93,7 +93,7 @@ const config: NextConfig = {
       ...exact.map(([source, destination]) => ({
         source,
         destination,
-        permanent: false,
+        permanent: true,
       })),
       ...[
         ...categories,
@@ -104,36 +104,26 @@ const config: NextConfig = {
         {
           source: `/insights/${source}`,
           destination: `/${destination}`,
-          permanent: false,
+          permanent: true,
         },
         {
           source: `/insights/${source}/:slug([a-z0-9][a-z0-9-]{0,199})`,
           destination: `/${destination}/:slug`,
-          permanent: false,
+          permanent: true,
         },
       ]),
       ...categories.flatMap(([source, destination]) => [
         {
           source: `/${source}`,
           destination: `/${destination}`,
-          permanent: false,
+          permanent: true,
         },
         {
           source: `/${source}/:slug([a-z0-9][a-z0-9-]{0,199})`,
           destination: `/${destination}/:slug`,
-          permanent: false,
+          permanent: true,
         },
       ]),
-    ];
-  },
-  async headers() {
-    return [
-      {
-        source: "/:path*",
-        headers: [
-          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
-        ],
-      },
     ];
   },
 };

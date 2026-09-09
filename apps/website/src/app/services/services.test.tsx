@@ -17,7 +17,7 @@ import LegacyCompanyRoute from "./company/page";
 afterEach(cleanup);
 
 describe("service journeys", () => {
-  it("keeps legacy visa and company links resolvable", () => {
+  it("permanently redirects legacy visa and company links", () => {
     for (const [route, target] of [
       [LegacyVisaRoute, "/services/immigration"],
       [LegacyCompanyRoute, "/services/company-setup"],
@@ -26,7 +26,9 @@ describe("service journeys", () => {
         route();
         throw new Error("Expected redirect");
       } catch (error) {
-        expect((error as { digest: string }).digest).toContain(`;${target};`);
+        expect((error as { digest: string }).digest).toContain(
+          `;${target};308;`,
+        );
       }
     }
   });

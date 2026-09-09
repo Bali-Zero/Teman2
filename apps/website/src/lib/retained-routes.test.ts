@@ -174,14 +174,27 @@ describe("explicit retained route inventory", () => {
       expect(redirects).toContainEqual({
         source,
         destination,
-        permanent: false,
+        permanent: true,
       });
+    expect(redirects.every((entry) => entry.permanent)).toBe(true);
     expect(
       redirects.every(
         (entry) =>
           entry.destination.startsWith("/") && !entry.source.includes(":path*"),
       ),
     ).toBe(true);
+  });
+  it("does not attach a global X-Robots-Tag header", async () => {
+    const configuredHeaders = nextConfig.headers
+      ? await nextConfig.headers()
+      : [];
+    expect(
+      configuredHeaders.some((entry) =>
+        entry.headers.some(
+          (header) => header.key.toLowerCase() === "x-robots-tag",
+        ),
+      ),
+    ).toBe(false);
   });
 });
 

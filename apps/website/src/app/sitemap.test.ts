@@ -62,7 +62,6 @@ describe("public sitemap", () => {
       "/services/company",
       "/visa",
       `/${"jour"}nal`,
-      "/visa-oracle",
       "/visa/voa",
       "/prime",
       "/legacy/news",
@@ -70,6 +69,9 @@ describe("public sitemap", () => {
     ]) {
       expect(paths, route).not.toContain(route);
     }
+    expect(paths).toContain("/visa-oracle");
+    expect(paths).not.toContain("/visa-oracle/unlock");
+    expect(paths).not.toContain("/visa-oracle/privacy");
     expect(urls.some((url) => url.includes("?lang="))).toBe(false);
   });
 

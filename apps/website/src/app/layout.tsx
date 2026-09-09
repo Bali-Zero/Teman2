@@ -8,10 +8,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.WEBSITE_PUBLIC_ORIGIN || "https://balizero.com",
   ),
-  title: "Bali Zero — Website development",
+  title: "Bali Zero | Immigration, Company Setup, Tax & Property in Indonesia",
   description:
     "Immigration, company setup, tax and property guidance in Indonesia.",
-  robots: { index: false, follow: false },
   icons: { icon: "/assets/logo.png" },
 };
 export default function RootLayout({ children }: { children: ReactNode }) {
