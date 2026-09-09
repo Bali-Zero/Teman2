@@ -219,7 +219,11 @@ Codex task):**
   measurements") stays below the time it saves. Baseline for the comparison: the same Gear-2 task run
   as a plain modus loop (one conductor, one builder, one verifier). No baseline recorded yet.
 - No external seat (Astra, Sol, Kimi, Qwen, GLM, Gemini) merges, arms or deploys. Parity between the
-  imperators does not widen Astra's permissions.
+  imperators does not widen Astra's permissions. **Narrowed 2026-09-10 at one named seat per mission
+  (PARABELLUM, §1bis and RULED 2026-09-10):** the single Sol session appointed Dux of a mission Zero
+  declared ORANGE releases that one mission, and a fresh Sol session outside the chain signs its gate
+  and only signs. Every other seat on every colour, Sol included when it is not the appointed Dux,
+  stays prepare-only, and an undeclared mission is BLUE.
 - Generator is never grader, in either direction; changing skills inside a session does not create
   independence.
 - PII never leaves the output boundary in cleartext, at any rank.
