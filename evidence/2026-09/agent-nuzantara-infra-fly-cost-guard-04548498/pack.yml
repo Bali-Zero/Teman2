@@ -20,17 +20,17 @@ seat_override: >-
   authoring session, not merely relayed.
 diff:
   net_lines: >-
-    5 files, +730/-157 (net +573) measured by `git diff --numstat
-    origin/main...HEAD` at e4441c7eb8, which includes the cure of the three
-    P1 dissent items below (new ceiling, fail-closed parsing, wrapped app
-    listing, 4 new/renamed tests) on top of the first cut. Per file: the
-    workflow edit (cron-fly-cost-alert.yml) replaces the inline python with
-    a script call and carries the six ceilings; the guard script
-    (fly_cost_guard.py) is 280 lines; the live-inventory fixture is 102
-    lines; the test module is 321 lines (17 cases); the superseded
-    inline-guard test is removed (62 lines deleted from
-    test_fly_workflow_guards.py). Zero frontend, zero fly.toml, zero
-    migration.
+    Code diff at the graded sha e4441c7eb8: the workflow edit
+    (cron-fly-cost-alert.yml) replaces the inline python with a script call
+    and carries the six ceilings; the guard script (fly_cost_guard.py) is
+    new; the live-inventory fixture (fly_inventory_2026-09-10.json) is new;
+    the test module (test_fly_cost_guard.py, 17 cases) is new; the
+    superseded inline-guard test is removed from
+    test_fly_workflow_guards.py. Zero frontend, zero fly.toml, zero
+    migration. Exact line counts are not narrated here on purpose: the
+    evidence pack itself is part of the PR diff, so any figure written into
+    it drifts with every pack edit — the gate's own receipt records the
+    `git diff --numstat` it observed.
   behaviour_change: >-
     The weekly guard (cron-fly-cost-alert.yml, Mon 01:00 UTC) moves from
     `::warning::`-only (never failed the job, 8/8 scheduled runs "success"
