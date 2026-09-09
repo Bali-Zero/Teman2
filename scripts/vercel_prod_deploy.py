@@ -243,7 +243,7 @@ def _api(method: str, path: str, body: dict | None = None) -> tuple[int, dict]:
 def _main_head() -> str:
     out = subprocess.run(
         ["gh", "api", f"/repos/{REPO_ORG}/{REPO_NAME}/commits/main", "--jq", ".sha"],
-        capture_output=True, text=True, check=True,
+        capture_output=True, text=True, check=True, timeout=FETCH_TIMEOUT_S,
     )
     return out.stdout.strip()
 
@@ -252,39 +252,51 @@ def _git(*args: str) -> str | None:
     """stdout on success, None on ANY failure. Never conflate the two: `git fetch` succeeds
     with empty stdout, so an empty string is a result and None is 'could not look'."""
     try:
-        # A TIMEOUT, because this is now called unattended every 900s. Without one, a fetch
-        # that half-opens against the network hangs forever; the wrapper's pidfile then sees a
-        # live pid on every later tick and skips, and the organ is wedged with no upper bound.
-        # 120s is far above a normal fetch here and far below the 900s cadence.
+        # A TIMEOUT, because this is called unattended every 120s. Without one, a git that
+        # hangs (a stuck lock, a wedged filesystem) hangs forever; the wrapper's pidfile then
+        # sees a live pid on every later tick and skips, and the organ is wedged with no upper
+        # bound. Only LOCAL reads come through here (rev-parse, log, merge-base) — the network
+        # fetch has its own, tighter ceiling in _fetch_main — so 60s is far above normal and
+        # still inside the cadence.
         out = subprocess.run(
-            ["git", *args], capture_output=True, text=True, check=True, timeout=120
+            ["git", *args], capture_output=True, text=True, check=True, timeout=60
         )
     except Exception:  # noqa: BLE001 — missing git, not a repo, network, timeout: all "unknown"
         return None
     return out.stdout.strip()
 
 
-# Three attempts at a 120s timeout plus 3s+9s backoff worst-case at 372s — comfortably inside
-# 900s cadence, so a genuinely dead network degrades on THIS tick instead of wedging the organ
-# into the next one.
-FETCH_ATTEMPTS = 3
-FETCH_BACKOFF_S = (3.0, 9.0)
+# Two attempts at a 45s timeout plus 5s backoff, worst case 95s — inside the 120s cadence, so
+# a genuinely dead network degrades on THIS tick instead of wedging the organ into the next one.
+# The whole retry (attempts x timeout + backoff) must end INSIDE one tick of the organ's plist,
+# and test_vercel_prod_deploy_fetch_retry.py reads all three numbers to hold it there.
+#
+# Why 45s and not less: the slowest fetch ever measured here took 39s (under a Wi-Fi flap, see
+# _fetch_main). A ceiling below that turns a persistently slow network into PERMANENT blindness
+# — every attempt of every tick times out — where the old 120s ceiling recovered; a cross-family
+# refuter caught exactly this in the first cut (30s). Two attempts rather than three is the
+# price of a ceiling that clears the measured case.
+FETCH_ATTEMPTS = 2
+FETCH_BACKOFF_S = (5.0,)
+FETCH_TIMEOUT_S = 45
 
 
 def _fetch_main() -> tuple[bool, str]:
     """Refresh origin/main, riding out a TRANSIENT failure instead of degrading on it.
 
-    This is the only network step on the unattended path, and it runs every 900s on a machine
+    This is the one network step EVERY tick takes (the health probe, the Vercel listing and
+    the promote only run while a build is pending), and it runs every 120s on a machine
     whose network measurably flaps. Measured on Mini the day the organ was armed: of the first
     five runs one could not fetch, the system log showed three network-configuration changes
     and a Wi-Fi change in the five minutes before it, and the good run that followed took 39s
-    against a usual 4s. Degrading on a lone blip is correct but expensive — it costs 15 minutes
-    of blindness — so the one-shot network action is wrapped in a bounded retry (superscar #8).
+    against a usual 4s. Degrading on a lone blip is correct but expensive — it cost 15 minutes
+    of blindness at the 900s cadence, 2 at 120s — so the one-shot network action is wrapped in
+    a bounded retry (superscar #8).
 
     Returns (ok, detail). On failure `detail` is what git actually SAID. `_git` deliberately
     collapses every cause into `None`, which is right for a caller that only needs "could not
     look" — but it left the operator-facing message unable to name the cause, and a refused
-    connection, DNS, a dead credential and a 120s timeout call for four different answers. The
+    connection, DNS, a dead credential and a timeout call for four different answers. The
     discriminator that was available that day and invisible in the log: `gh api` answered over
     HTTPS in the same second the SSH fetch failed. A message that does not name its cause sends
     the reader away from it (W106).
@@ -294,10 +306,10 @@ def _fetch_main() -> tuple[bool, str]:
         try:
             subprocess.run(
                 ["git", "fetch", "--no-tags", "--quiet", "origin", "main"],
-                capture_output=True, text=True, check=True, timeout=120,
+                capture_output=True, text=True, check=True, timeout=FETCH_TIMEOUT_S,
             )
         except subprocess.TimeoutExpired:
-            detail = "timed out after 120s"
+            detail = f"timed out after {FETCH_TIMEOUT_S}s"
         except subprocess.CalledProcessError as exc:
             said = ((exc.stderr or "") + " " + (exc.output or "")).strip()
             detail = (" ".join(said.split())[:200]) or f"git exited {exc.returncode}"
@@ -351,9 +363,14 @@ def _production_includes(target: str, live: str | None) -> bool:
         return False
     if live == target:
         return True
-    rc = subprocess.run(
-        ["git", "merge-base", "--is-ancestor", target, live], capture_output=True, text=True
-    )
+    try:
+        rc = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", target, live],
+            capture_output=True, text=True, timeout=60,
+        )
+    except subprocess.TimeoutExpired:
+        # A local read that hangs is a wedged repo, not an answer; closed, like the 128 case.
+        return False
     # 0 = ancestor, 1 = not, 128 = an object we do not have. Only 0 is currency.
     return rc.returncode == 0
 
@@ -531,7 +548,7 @@ def main() -> int:
         return 0
 
     # --promote-only is the CRON contract, and it is a restriction, not an optimisation.
-    # Unattended, "no READY build exists" must never buy a rebuild: at a 15-minute cadence
+    # Unattended, "no READY build exists" must never buy a rebuild: at a 2-minute cadence
     # that is a build loop nobody asked for, and the condition itself is an anomaly worth a
     # human's eyes (Vercel skipped the commit, or the build failed). Exit 2 says exactly that
     # and is deliberately NOT 1 — a wrapper reading one failure bit cannot tell "the promote

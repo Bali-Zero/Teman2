@@ -160,7 +160,7 @@ hb=$(echo "$r" | cut -f1)
     && ok "rc=3 with a DEGRADED target -> error, not warning" || bad "degraded target" "$hb"
 
 # A SKIP IS NOT HEALTH. If a run ever wedges, its pid stays alive and every later tick lands
-# in the single-instance branch — an "ok" heartbeat every 15 minutes while the organ cures
+# in the single-instance branch — an "ok" heartbeat every 2 minutes while the organ cures
 # nothing. The pidfile path is fixed and outside HOME, so this case saves and restores it.
 PIDFILE=/tmp/nuzantara-mini-vercel_autopromote.pid
 SAVED=""; [ -f "$PIDFILE" ] && SAVED="$(cat "$PIDFILE")"
@@ -184,6 +184,40 @@ r=$(run_case 0 'nothing to do' Mini-Pro2 MINI_VERCEL_AUTOPROMOTE_ENABLED=false)
 hb=$(echo "$r" | cut -f1); ran=$(echo "$r" | cut -f2)
 [ "$(field "$hb" status)" = "disabled" ] && [ "$ran" = "NOT-RUN" ] \
     && ok "kill switch -> disabled AND cure never ran" || bad "kill switch" "$hb / $ran"
+
+echo "== cadence: a 120s tick must not grow the log without bound =="
+
+# The plist is the other half of the cadence promise the wrapper's comments make. Read the
+# number out of the file rather than trusting the comment (superscar #2: exists != armed).
+PLIST="$REPO_ROOT/infra/launchagents/com.nuzantara.vercel-autopromote.plist"
+grep -qE '<key>StartInterval</key><integer>120</integer>' "$PLIST" \
+    && ok "plist StartInterval is 120s (the cadence the wrapper documents)" || bad "plist cadence" "$(grep StartInterval "$PLIST")"
+
+# Guilt: a run.log over 5 MB is rotated to run.log.1 before the tick writes, and the tick
+# still lands in a fresh run.log. Innocence: a small log is left alone (no .1 appears).
+rot_case() { # $1 = bytes to pre-seed; echoes "<has .1>\t<run.log has run start>\t<.1 size>"
+    local seed="$1" tmp; tmp="$(mktemp -d)"
+    mkdir -p "$tmp/bin" "$tmp/home/nuzantara/scripts" "$tmp/home/logs/mini-vercel_autopromote"
+    printf '#!/bin/bash\necho Mini-Pro2\n' > "$tmp/bin/hostname"; chmod +x "$tmp/bin/hostname"
+    printf 'import sys\nprint("nothing to do")\nsys.exit(0)\n' > "$tmp/home/nuzantara/scripts/vercel_prod_deploy.py"
+    # Seed the log with a MARKER line and a pre-existing .1 (7 bytes), so the corpus proves
+    # both directions of the promise: a small log is PRESERVED (marker still there, .1
+    # untouched), a big one OVERWRITES .1 (its size becomes the seed's, not 7).
+    { printf 'MARKER-PRE-EXISTING\n'; head -c "$seed" /dev/zero | tr '\0' 'x'; } > "$tmp/home/logs/mini-vercel_autopromote/run.log"
+    printf 'old .1\n' > "$tmp/home/logs/mini-vercel_autopromote/run.log.1"
+    env -i HOME="$tmp/home" PATH="$tmp/bin:/usr/bin:/bin" /bin/bash "$WRAPPER" >/dev/null 2>&1
+    local one="NO"; grep -q "MARKER-PRE-EXISTING" "$tmp/home/logs/mini-vercel_autopromote/run.log.1" 2>/dev/null && one="YES"
+    local fresh="NO"; grep -q "run start" "$tmp/home/logs/mini-vercel_autopromote/run.log" 2>/dev/null && fresh="YES"
+    local kept="NO"; grep -q "MARKER-PRE-EXISTING" "$tmp/home/logs/mini-vercel_autopromote/run.log" 2>/dev/null && kept="YES"
+    local size; size="$(wc -c < "$tmp/home/logs/mini-vercel_autopromote/run.log.1" | tr -d ' ')"
+    printf '%s\t%s\t%s\t%s' "$one" "$fresh" "$size" "$kept"
+}
+r=$(rot_case 5242881)
+[ "$(echo "$r" | cut -f1)" = "YES" ] && [ "$(echo "$r" | cut -f2)" = "YES" ] && [ "$(echo "$r" | cut -f3)" = "5242901" ] && [ "$(echo "$r" | cut -f4)" = "NO" ] \
+    && ok "run.log over 5 MB -> rotated to run.log.1 intact (old .1 overwritten), tick lands in a fresh run.log" || bad "log rotation (guilt)" "$r"
+r=$(rot_case 1024)
+[ "$(echo "$r" | cut -f1)" = "NO" ] && [ "$(echo "$r" | cut -f2)" = "YES" ] && [ "$(echo "$r" | cut -f3)" = "7" ] && [ "$(echo "$r" | cut -f4)" = "YES" ] \
+    && ok "run.log under 5 MB -> preserved in place (marker kept, old .1 untouched)" || bad "log rotation (innocence)" "$r"
 
 echo
 printf 'passed %d, failed %d\n' "$PASS" "$FAIL"
