@@ -267,6 +267,7 @@ def test_claude_readonly_child_never_cleans_sibling_dirty_tree(
 def test_claude_child_ignores_parent_window_and_never_weakens_deny(
     claude_env: dict, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setenv("NUZANTARA_MANDATE_ID", "strict-test")
     monkeypatch.setenv("CONTEXT_GUARD_ROLE", "imperator")
     monkeypatch.setenv("CONTEXT_WINDOW_TOKENS", "1000")
     p = {

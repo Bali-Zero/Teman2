@@ -95,8 +95,9 @@ def test_config_routing_and_project_changes_invalidate(
 
 @pytest.mark.parametrize("reason", ["tokens", "tools", "time", "known"])
 def test_budget_returns_checkpoint_without_grace_or_reopening(
-    calibrated: Path, reason: str
+    calibrated: Path, reason: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setenv("NUZANTARA_MANDATE_ID", "strict-test")
     transcript = calibrated / "subagents" / "agent-a.jsonl"
     transcript.parent.mkdir()
     transcript.write_text(row(80000 if reason == "known" else 64000))
@@ -117,7 +118,7 @@ def test_budget_returns_checkpoint_without_grace_or_reopening(
             elif reason == "time":
                 state["budget_started_at"] = ctx.time.time() - ctx.MAX_SECONDS - 1
         if reason == "tokens":
-            transcript.write_text(row(64000).replace("child-model", "uncalibrated"))
+            transcript.write_text(row(400000).replace("child-model", "uncalibrated"))
     guard = {"_read_tail": lambda _: transcript.read_text()}
     assert child.context_guard(payload, guard) == 2
     transcript.write_text(row(10))
@@ -148,6 +149,7 @@ def test_permissions_do_not_invalidate_capacity(calibrated: Path) -> None:
 def test_missing_tail_allows_short_child_and_idle_does_not_consume_budget(
     calibrated: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setenv("NUZANTARA_MANDATE_ID", "strict-test")
     transcript = calibrated / "subagents" / "agent-a.jsonl"
     transcript.parent.mkdir()
     transcript.write_text("{}")
@@ -181,7 +183,7 @@ def test_missing_tail_allows_short_child_and_idle_does_not_consume_budget(
         assert state["budget_elapsed"] == 10
         assert state["pretool_count"] == 2
         assert state["measurement"] == "UNKNOWN"
-    monkeypatch.setattr(child.time, "time", lambda: 10900)
+    monkeypatch.setattr(child.time, "time", lambda: 13600)
     assert child.context_guard(payload, guard) == 2
 
 

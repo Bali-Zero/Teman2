@@ -43,10 +43,34 @@ Fable review, fleet evidence and the distinction between installation and
 observed native execution.
 
 The capacity follow-up adds expiring, host/profile/model/version-specific Claude
-calibration from a successful native CLI result. Unknown capacity uses an
-absolute token/tool/active-time budget. A fresh Air-M5 desktop task also proved
+calibration from a successful native CLI result. Claude interactive sessions
+observe token, tool, time and concurrency limits without denying tools. Explicit
+mandates enforce eight concurrent children, 120 tools per child, 3,600 active
+seconds and 40% of a measured window. Unknown capacity emits a warning per tool;
+strict mode retains time/tool limits and a 400,000 measured-token emergency
+ceiling, without claiming a percentage. A fresh Air-M5 desktop task also proved
 native Codex parent and child hook consumption; its evidence is linked in the
 rollout record.
+
+SubagentStop releases dispatch accounting and pauses the child's clock before
+any verification recovery flag is checked. Resume retains spent time and attempts.
+After 30 minutes without transcript or hook activity, a known transcript's child
+becomes `suspect_zombie`: its slot is reclaimable but its record remains. A recent
+transcript keeps its slot even without recent tools; an unavailable transcript
+retains the slot as UNKNOWN. A returning suspect child must reacquire capacity
+before an ordinary tool can execute. This does not terminate or fence a process
+or a previously started command. Leaf ownership and independent review still apply.
+
+Use the existing virtualenv to run `native_claude_child_probe.py --model opus
+--warmup`, then repeat without `--warmup` to prove the calibrated consumer. The
+model aliases are `haiku`, `sonnet`, and `opus`; the probe verifies the native
+model identity. `--candidate` tests the branch adapter for this invocation while
+preserving global rollback and normal recovery settings. `--children 4` verifies
+one parallel dispatch. Set `CLAUDE_CHILD_PROBE_CWD` to the normal repository path
+so the capacity binds to that routing scope. Each run keeps its own metadata and
+reports UNKNOWN usage as an incomplete consumer proof. Warmup alone does not prove
+tool enforcement. The calibration receptor remains the separately authorized D3
+pilot; this correction does not implement or arm it.
 
 ## Installation and rollback
 

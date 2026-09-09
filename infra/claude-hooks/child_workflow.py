@@ -33,8 +33,8 @@ def budget_reserve(*args: Any, **kwargs: Any) -> str | None:
     return budget_module().reserve(*args, **kwargs)
 
 
-def budget_observe(*args: Any, **kwargs: Any) -> None:
-    budget_module().observe(*args, **kwargs)
+def budget_observe(*args: Any, **kwargs: Any) -> str | None:
+    return budget_module().observe(*args, **kwargs)
 
 
 CONTRACT = (
@@ -51,11 +51,12 @@ CONTRACT = (
 
 def child_identity(payload: dict[str, Any]) -> tuple[str, str] | None:
     # Same detection as orchestrate_gate, but Stop's transcript is explicitly the parent.
-    from orchestrate_gate import is_subagent_context
-
     stop = payload.get("hook_event_name") == "SubagentStop"
-    if not stop and not is_subagent_context(payload):
-        return None
+    if not stop:
+        from orchestrate_gate import is_subagent_context
+
+        if not is_subagent_context(payload):
+            return None
     transcript = str(
         payload.get("agent_transcript_path" if stop else "transcript_path") or ""
     )
@@ -113,7 +114,11 @@ def context_guard(payload: dict[str, Any], guard: dict[str, Any]) -> int | None:
                 budget_dir(),
                 root,
                 str(payload.get("tool_use_id") or ""),
-                {"strict": bool(os.environ.get("NUZANTARA_MANDATE_ID"))},
+                {
+                    "strict": bool(os.environ.get("NUZANTARA_MANDATE_ID")),
+                    "active_ttl": 1800,
+                    "max_active": 8,
+                },
                 target=(payload.get("tool_input") or {}).get("resume"),
             )
             if reason:
@@ -123,6 +128,17 @@ def context_guard(payload: dict[str, Any], guard: dict[str, Any]) -> int | None:
     key, transcript = identity
     import child_context
 
+    lease_error = budget_observe(
+        budget_dir(),
+        mandate_id(payload, guard),
+        str(payload.get("agent_id") or "UNKNOWN"),
+        transcript=transcript or None,
+    )
+    if lease_error:
+        sys.stderr.write(
+            lease_error + "; return an incomplete checkpoint to the parent.\n"
+        )
+        return 0 if payload.get("tool_name") in ("SendMessage", "TaskStop") else 2
     if payload.get("tool_name") in ("Agent", "Task"):
         sys.stderr.write(
             "Child delegation depth reached. Return remaining work to the parent.\n"
@@ -163,26 +179,39 @@ def context_guard(payload: dict[str, Any], guard: dict[str, Any]) -> int | None:
             else "UNKNOWN"
         )
         state.setdefault("budget_started_at", time.time())
+        strict = bool(os.environ.get("NUZANTARA_MANDATE_ID"))
+        state["budget_mode"] = "enforced" if strict else "interactive_observation"
         state["token_limit"] = (
             int(state["window"] * 0.4)
             if state["window"]
             else child_context.FALLBACK_TOKENS
         )
         over = state["used"] is not None and state["used"] >= state["token_limit"]
+        state["time_budget_exceeded"] = (
+            state.get("budget_elapsed", 0) + time.time() - state["budget_started_at"]
+            >= child_context.MAX_SECONDS
+        )
         if state["pretool_count"] > child_context.MAX_TOOL_CALLS:
             state["budget_reason"] = "tool_calls"
             over = True
-        elif (
-            state.get("budget_elapsed", 0) + time.time() - state["budget_started_at"]
-            >= child_context.MAX_SECONDS
-        ):
+        elif state["time_budget_exceeded"]:
             state["budget_reason"] = "elapsed_time"
             over = True
         elif over:
             state["budget_reason"] = "context_tokens"
         if over:
-            state["return_required"] = True
-        if state.get("return_required") and tool not in ("SendMessage", "TaskStop"):
+            state.update(
+                status="needs_attention",
+                reason=state["budget_reason"],
+                budget_attention=True,
+            )
+            if strict:
+                state["return_required"] = True
+        if (
+            strict
+            and state.get("return_required")
+            and tool not in ("SendMessage", "TaskStop")
+        ):
             state["denials"] = state.get("denials", 0) + 1
             sys.stderr.write(
                 "Child context budget reached. Return a checkpoint and remaining work to the parent. "
@@ -190,6 +219,30 @@ def context_guard(payload: dict[str, Any], guard: dict[str, Any]) -> int | None:
                 + "\n"
             )
             return 2  # Repeated denials never grant normal tools.
+        warnings = []
+        if state["measurement"] == "UNKNOWN":
+            warnings.append(
+                "Child capacity/usage UNKNOWN; no percentage is claimed. "
+                "Strict mandates enforce 3600 active seconds, 120 tools and an emergency "
+                "ceiling of 400000 measured tokens. Calibrate the actual model."
+            )
+        if not strict and over:
+            warnings.append(
+                "Interactive budget observation: "
+                + state["budget_reason"]
+                + "; needs_attention, no denial."
+            )
+        if warnings:
+            print(
+                json.dumps(
+                    {
+                        "hookSpecificOutput": {
+                            "hookEventName": "PreToolUse",
+                            "additionalContext": " ".join(warnings),
+                        }
+                    }
+                )
+            )
     return 0
 
 
@@ -237,10 +290,18 @@ def mandate_id(payload: dict[str, Any], guard: dict[str, Any] | None = None) -> 
     return sid
 
 
-def _stop_guard(payload: dict[str, Any], legacy: dict[str, Any]) -> int:
+def stop_lifecycle(payload: dict[str, Any]) -> None:
+    """Always release and pause, including recovery bypass and broken verification."""
     identity = child_identity({**payload, "hook_event_name": "SubagentStop"})
     assert identity is not None
-    key, transcript = identity
+    key, _ = identity
+    # Release first: verification or local-state failure must not pin a mandate.
+    budget_observe(
+        budget_dir(),
+        mandate_id(payload),
+        str(payload.get("agent_id") or "UNKNOWN"),
+        stopped=True,
+    )
     with child_state(key) as (_, state):
         if "budget_started_at" in state:
             state["budget_elapsed"] = state.get("budget_elapsed", 0) + max(
@@ -249,6 +310,18 @@ def _stop_guard(payload: dict[str, Any], legacy: dict[str, Any]) -> int:
         state.update(
             transport="stopped", acceptance="unverified", heartbeat=time.time()
         )
+        state["status"] = (
+            "needs_attention"
+            if state.get("budget_attention")
+            else "returned_unverified"
+        )
+
+
+def _stop_guard(payload: dict[str, Any], legacy: dict[str, Any]) -> int:
+    identity = child_identity({**payload, "hook_event_name": "SubagentStop"})
+    assert identity is not None
+    key, transcript = identity
+    with child_state(key) as (_, state):
         message = str(payload.get("last_assistant_message") or "")
         # Only the child's current, explicit declaration counts, not quoted tools,
         # a parent's transcript, or the word "checkpoint" in old instructions.
@@ -271,7 +344,11 @@ def _stop_guard(payload: dict[str, Any], legacy: dict[str, Any]) -> int:
         problem = None
         if not identifiable:
             problem = "Child identity, transcript or ownership evidence is UNKNOWN."
-        elif state.get("return_required") and not declared:
+        elif (
+            state.get("return_required")
+            and os.environ.get("NUZANTARA_MANDATE_ID")
+            and not declared
+        ):
             problem = "Child context budget requires an incomplete checkpoint."
         elif state.get("mutation_possible"):
             lane = legacy.get("_lane_check")
@@ -304,20 +381,17 @@ def _stop_guard(payload: dict[str, Any], legacy: dict[str, Any]) -> int:
                 + " Return an explicit 'incomplete: <remaining work and owner>' or 'leave-dirty: <owner and reason>'. Commit only your explicitly assigned paths when appropriate; never stage, stash, reset or remove sibling files to satisfy this reminder. Parent must verify the result independently.\n"
             )
             return 2
-        state["status"] = "returned_unverified"
+        state["status"] = (
+            "needs_attention"
+            if state.get("budget_attention")
+            else "returned_unverified"
+        )
         return 0
 
 
 def stop_guard(payload: dict[str, Any], legacy: dict[str, Any]) -> int:
-    result = _stop_guard(payload, legacy)
-    if result == 0:
-        budget_observe(
-            budget_dir(),
-            mandate_id(payload),
-            str(payload.get("agent_id") or "UNKNOWN"),
-            stopped=True,
-        )
-    return result
+    stop_lifecycle(payload)
+    return _stop_guard(payload, legacy)
 
 
 def main() -> None:
@@ -348,6 +422,13 @@ def main() -> None:
     payload = json.load(sys.stdin)
     event = payload.get("hook_event_name")
     mode = sys.argv[1] if len(sys.argv) > 1 else "start"
+    if mode == "stop":
+        stop_lifecycle(payload)
+        if (
+            os.environ.get("SUBAGENT_STOP_VERIFY_OFF") == "1"
+            or os.environ.get("STOP_VERIFY_ALLOW_DIRTY") == "1"
+        ):
+            raise SystemExit(0)
     if mode in ("context", "stop"):
         name = "context_window_guard" if mode == "context" else "subagent_stop_verify"
         spec = importlib.util.spec_from_file_location(
@@ -375,13 +456,8 @@ def main() -> None:
                             }
                         )
                     )
-        elif (
-            os.environ.get("SUBAGENT_STOP_VERIFY_OFF") == "1"
-            or os.environ.get("STOP_VERIFY_ALLOW_DIRTY") == "1"
-        ):
-            result = 0
         else:
-            result = stop_guard(payload, vars(legacy))
+            result = _stop_guard(payload, vars(legacy))
         raise SystemExit(result or 0)
     if event == "SubagentStart":
         budget_observe(

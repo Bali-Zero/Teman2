@@ -32,6 +32,16 @@ def route_settings(settings: dict, shared_hooks: Path) -> dict:
         if matches:
             handler = matches[0]
             argv = shlex.split(handler["command"])
+            adapter = [
+                i for i, a in enumerate(argv) if a.endswith("/child_workflow.py")
+            ]
+            if adapter:
+                if len(adapter) != 1 or argv[adapter[0] + 1 :] != [mode]:
+                    raise ValueError(
+                        "Unsupported adapter command; preserve it for review"
+                    )
+                argv[adapter[0]] = str(shared_hooks / "child_workflow.py")
+                handler["command"] = shlex.join(argv)
             if filename:
                 positions = [
                     i for i, a in enumerate(argv) if a.endswith("/" + filename)

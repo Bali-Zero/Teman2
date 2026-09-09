@@ -16,9 +16,9 @@ from pathlib import Path
 from typing import Any
 
 TTL = 7 * 86400
-FALLBACK_TOKENS = 64000
-MAX_TOOL_CALLS = 60
-MAX_SECONDS = 900
+FALLBACK_TOKENS = 400000
+MAX_TOOL_CALLS = 120
+MAX_SECONDS = 3600
 
 
 def seat() -> Path:
@@ -121,6 +121,7 @@ def capacity(model: str | None, version: str | None, cwd: str) -> int | None:
             0 <= age <= TTL
             and record["model"] == model
             and record["version"] == version
+            and record["scope"] == scope(cwd)
             and type(window) is int
             and 16000 <= window <= 2000000
         ):
@@ -143,7 +144,17 @@ def calibrate(
     records = []
     for observed in observations:
         model, version = observed.get("model"), observed.get("version")
-        window = (result.get("modelUsage", {}).get(model) or {}).get("contextWindow")
+        # CLI can key this map by a routing spelling (e.g. opus-5[1m]) while
+        # the native transcript uses opus-5. Only explicit canonicalModel binds
+        # those identities; never guess by removing an arbitrary suffix.
+        windows = [
+            entry.get("contextWindow")
+            for key, entry in result.get("modelUsage", {}).items()
+            if key == model or entry.get("canonicalModel") == model
+        ]
+        window = (
+            windows[0] if windows and all(w == windows[0] for w in windows) else None
+        )
         used = observed.get("used")
         if not (
             model
