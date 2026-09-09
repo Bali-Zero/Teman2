@@ -257,6 +257,36 @@ receipts:
     exit: 0
     ts: "2026-09-09T17:37:43Z"
     seat: claude-opus-5
+  - claim: >-
+      Rerun of the two apt-flaked jobs (run 34382963914, ATTEMPT 2, same head
+      e4441c7eb8) confirms the diagnosis and does NOT change the verdict:
+      "Visa Oracle fullstack smoke" (job 102575719863) failed again at
+      17:39:32Z at the identical step and on the identical line —
+      `E: Failed to fetch
+      https://dl.google.com/linux/chrome-stable/deb/dists/stable/main/binary-amd64/Packages.gz
+      Hash Sum mismatch` / "Failed to install browsers" — so the Google apt
+      mirror was still serving a stale index, a persisting upstream
+      condition and not a one-shot; "E2E Tests (Playwright)" was CANCELLED
+      mid-flight at 17:40:13Z (not failed) and the attempt concluded
+      "cancelled" because the conductor pushed the evidence commit
+      95fe453e54 to the branch, which the workflow's cancel-in-progress
+      concurrency honours. Neither outcome is reachable from this diff: both
+      jobs die before any repo code executes, and 95fe453e54 adds only
+      evidence/ — `git diff --numstat e4441c7eb8 95fe453e54 -- ':!evidence'`
+      prints nothing, i.e. the graded code tree is byte-identical at the new
+      head.
+    cmd: >-
+      gh api repos/Bali-Zero/Teman2/actions/runs/34382963914/attempts/2/jobs;
+      gh run view --job 102575719863 --log-failed; git diff --numstat
+      e4441c7eb8 95fe453e54 -- ':!evidence'
+    result: >-
+      attempt 2 = cancelled (Visa Oracle fullstack smoke failure at "Install
+      Playwright browsers" — Hash Sum mismatch; E2E Tests (Playwright)
+      cancelled by the 95fe453e54 push; Test Summary failure as their
+      fan-in); code delta e4441c7eb8..95fe453e54 outside evidence/ = 0 lines.
+    exit: 0
+    ts: "2026-09-09T17:42:29Z"
+    seat: claude-opus-5
 spend:
   wall_clock_hours: 2.5
   adversarial_rounds: 1
