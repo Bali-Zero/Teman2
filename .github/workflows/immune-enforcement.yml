@@ -523,10 +523,21 @@ jobs:
         run: python3 scripts/tests/test_gateway_callers_read_the_verdict.py
 
       - name: Unit tests (guilt + innocence per tool)
+        # One pytest invocation under pytest-xdist instead of one interpreter
+        # per file. Measured on M5 2026-09-09, same 66 files / 1879 tests:
+        # sequential loop 288s, single `pytest <files>` 258s, `-n 4` 161s,
+        # identical pass/skip set (1879 passed, 1 skipped). The `for t in \`
+        # shell loop below is kept UNCHANGED on purpose — it is the shape
+        # scripts/tests/test_immune_enforcement_trigger_symmetry.py parses
+        # (a `for ... in \` opener through a line closing with `; do`) to pair
+        # every looped test with a sentinel trigger path; only the loop BODY
+        # changed, from "run pytest on $t now" to "collect $t into an array",
+        # with the single pytest call moved after the loop.
         if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
-          python -m pip install --quiet pytest PyYAML==6.0.3
+          python -m pip install --quiet pytest pytest-xdist PyYAML==6.0.3
           fail=0
+          tests=()
           for t in \
             scripts/tests/test_yaml_strict_policy_loader.py \
             scripts/tests/test_cve_exception_package_scope.py \
@@ -597,13 +608,16 @@ jobs:
             scripts/tests/test_lint_trigger_symmetry.py \
             scripts/tests/test_door_canon_parity.py ; do
             if [ -f "$t" ]; then
-              echo "::group::$t"
-              python -m pytest "$t" -q || fail=1
-              echo "::endgroup::"
+              tests+=("$t")
             else
               echo "::notice::skip (absent) $t — expected only in the window before its lane's PR merges"
             fi
           done
+          if [ ${#tests[@]} -gt 0 ]; then
+            echo "::group::pytest -n 4 (${#tests[@]} files)"
+            python -m pytest -q -p no:cacheprovider -n 4 "${tests[@]}" || fail=1
+            echo "::endgroup::"
+          fi
           exit $fail
 
       - name: "Ledger-only diff: run the ledger's own readers"
