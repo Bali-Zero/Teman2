@@ -6,8 +6,8 @@ CLI for fresh continuations. It does not modify the Claude/Fable hook files.
 
 ## Installed behavior
 
-- Six additive events: SessionStart, PreToolUse, PostToolUse, PreCompact,
-  PostCompact, Stop. Existing hook definitions and their ordering are retained.
+- Eight additive events: SessionStart, PreToolUse, PostToolUse, PreCompact,
+  PostCompact, Stop, SubagentStart, SubagentStop. Existing hook definitions and their ordering are retained.
 - Context usage is `last_token_usage.total_tokens / model_context_window` from
   the current Codex rollout, never cumulative lifetime tokens or a guessed 1M
   window. The policy is 20% for imperator and 40% for other roles. The role is
@@ -34,12 +34,20 @@ production deployment check, or a global gate on other hooks' memory writes.
 Codex executes matching hooks concurrently, so this adapter does not claim to
 serialize unrelated Stop hooks.
 
+Version 1.1 adds native child identity, child-local checkpoints, bounded stop
+reminders, shared dispatch accounting and owned continuation cancellation.
+Children use their own measured context and return to their parent. A separate
+Claude adapter wraps the installed legacy guards without replacing them.
+See [the child rollout record](CHILD-ROLLOUT-2026-09-09.md) for enforcement limits,
+Fable review, fleet evidence and the distinction between installation and
+observed native execution.
+
 ## Installation and rollback
 
 Run install.py using the host's existing project virtualenv, once per seat,
 with --seat, one or more --root arguments, and --trust-reviewed-hooks. The
 installer backs up the original config and hooks, copies only this adapter,
-enables the hooks feature, and records trust for only the six exact definitions
+enables the hooks feature, and records trust for only the eight exact definitions
 through Codex's own config API. It never copies auth.json between machines and
 never uses a hook-trust or sandbox bypass switch.
 
@@ -68,6 +76,11 @@ must not be assumed to have reloaded their hook snapshot.
 - handoff_smoke.py: two real native continuations, exact IDs, unchanged model and
   permissions, then an injected launch failure proving source retention.
 - installation_status.py: read-only installation evidence for each account seat.
+- test_child_lifecycle.py: child state, dispatch accounting, wrapper routing and
+  continuation lifetime regression cases.
+- native_child_probe.py and native_claude_child_probe.py: real read-only child
+  execution followed by an independent parent check; Codex also resumes the
+  same child once.
 
 The native CLI is intentional: in this installation a custom app-server client
 was rejected for Astra although the official CLI successfully used the same

@@ -1,5 +1,7 @@
 # Codex workflow rollout — 9 September 2026
 
+Historical v1.0 evidence below. Child-adapter v1.1 installation and coverage are recorded separately in CHILD-ROLLOUT-2026-09-09.md.
+
 The context and verification adapter is installed on all three hosts and seven
 Codex profiles. The final source hash, six trusted event definitions, and
 preservation of previous hooks were independently checked on every profile.
