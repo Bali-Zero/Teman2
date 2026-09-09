@@ -659,24 +659,46 @@ def test_native_child_threshold_follows_the_policy_not_a_literal(
     assert not state.get("return_required")
 
 
-def test_dux_role_resolves_to_its_declared_threshold(
+def test_dux_role_resolves_and_the_declared_key_is_what_moves_its_wall(
     setup: tuple, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """`dux` was undeclared, so a Dux seat silently ran at the 0.4 fallback."""
+    """Two seats, same role, same usage, opposite verdicts — the key decides.
+
+    The earlier version of this test asserted only that a declared `dux: 0.6`
+    denies at 601/1000, which an UNDECLARED `dux` does too via the 0.4
+    fallback: it could not fail on the code it was written to protect. The
+    parent-side lookup always honoured an arbitrary role key; what was missing
+    was `install.py` declaring one. So the discriminating fact is the CONTRAST
+    at a single usage point — 500 of 1000 is over 0.4 and under 0.6 — and that
+    is what is asserted here, in both directions.
+    """
     _, log, e = setup
     monkeypatch.setenv("CODEX_CONTEXT_ROLE", "DUX")
     seat = bridge.codex_home()
-    policy = bridge.load(seat / "nuzantara-context-policy.json")
-    policy["thresholds"] = {"imperator": 0.6, "builder": 0.6, "dux": 0.6}
-    bridge.save(seat / "nuzantara-context-policy.json", policy)
-    e = {**e, "session_id": "dux-session-123"}
-    bridge.hook(e)
-    assert bridge.load(bridge.state_path("dux-session-123"))["role"] == "dux"
-    pre = {**e, "hook_event_name": "PreToolUse", "tool_name": "Bash"}
-    token(log, 500, 1000)
-    assert bridge.hook(pre) == {}
-    token(log, 601, 1000)
-    assert bridge.hook(pre)["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+    def verdict(session: str, thresholds: dict, used: int) -> dict:
+        policy = bridge.load(seat / "nuzantara-context-policy.json")
+        policy["thresholds"] = thresholds
+        bridge.save(seat / "nuzantara-context-policy.json", policy)
+        event = {**e, "session_id": session}
+        bridge.hook(event)
+        assert bridge.load(bridge.state_path(session))["role"] == "dux"
+        token(log, used, 1000)
+        return bridge.hook(
+            {**event, "hook_event_name": "PreToolUse", "tool_name": "Bash"}
+        )
+
+    undeclared = verdict("dux-undeclared-123", {"builder": 0.6}, 500)
+    assert undeclared["hookSpecificOutput"]["permissionDecision"] == "deny"
+    declared = verdict("dux-declared-1234", {"builder": 0.6, "dux": 0.6}, 500)
+    assert declared == {}
+    # And the declared wall is a real wall, not merely a higher number.
+    assert (
+        verdict("dux-over-the-wall", {"builder": 0.6, "dux": 0.6}, 601)[
+            "hookSpecificOutput"
+        ]["permissionDecision"]
+        == "deny"
+    )
 
 
 def test_installer_adds_dux_without_overwriting_a_tuned_threshold() -> None:
@@ -690,3 +712,55 @@ def test_installer_adds_dux_without_overwriting_a_tuned_threshold() -> None:
         "dux": 0.6,
     }
     assert merge_thresholds({}) == THRESHOLD_DEFAULTS
+def test_one_mission_deadline_is_shared_renewed_explicitly_and_resets_nothing(
+    tmp_path: Path,
+) -> None:
+    """The supervisor and the ledger used to run two clocks for one mission."""
+    limits = {"strict": True, "max_seconds": 100}
+    assert budget.reserve(tmp_path, "root", "one", limits) is None
+    opened = budget.mandate_deadline(tmp_path, "root")
+    # A later reader cannot lengthen a mission that is already running, whatever
+    # default it happens to carry. This is what context_bridge.launch() now calls.
+    assert budget.mandate_deadline(tmp_path, "root", 99999) == opened
+    with budget.ledger(tmp_path, "root") as state:
+        state["deadline"] = 0
+    denial = budget.reserve(tmp_path, "root", "two", limits)
+    for field in ("counter=mission_deadline", "overrun=", "mandate_budget.renew()"):
+        assert field in denial, field
+    with budget.ledger(tmp_path, "root") as state:
+        # Its own key, so a renewal cannot silence an attempts alarm by accident.
+        assert state["attention_key"] == "mandate_deadline"
+        spent = len(state["reservations"])
+    record = budget.renew(tmp_path, "root", 3600, "coordinator-test")
+    assert record["previous_deadline"] == 0 and record["new_deadline"] > time.time()
+    with budget.ledger(tmp_path, "root") as state:
+        assert state["renewals"][-1]["who"] == "coordinator-test"
+        assert state["renewals"][-1]["previous_deadline"] == 0
+        assert len(state["reservations"]) == spent  # only the wall clock moved
+        assert state.get("attention_key") != "mandate_deadline"
+    assert budget.reserve(tmp_path, "root", "three", limits) is None
+    with pytest.raises(ValueError):
+        budget.renew(tmp_path, "root", 0, "coordinator-test")
+
+
+def test_observe_refuses_to_guess_between_two_unbound_reservations(
+    tmp_path: Path,
+) -> None:
+    """`next(reserved)` was a coin flip that the ledger could never show as one."""
+    limits = {"strict": True, "max_active": 3}
+    assert budget.reserve(tmp_path, "root", "dispatch-a", limits) is None
+    assert budget.reserve(tmp_path, "root", "dispatch-b", limits) is None
+    assert budget.observe(tmp_path, "root", "child-x") is None
+    with budget.ledger(tmp_path, "root") as state:
+        assert state["attention_key"] == "binding_unknown"
+        assert "candidates=2" in state["reason"]
+        # Ambiguity consumed nothing: both slots are still unattributed.
+        assert all(not r.get("child") for r in state["reservations"].values())
+    with budget.ledger(tmp_path, "root") as state:
+        list(state["reservations"].values())[0]["child"] = "child-y"
+    # One unbound candidate is not a guess, so it still binds and clears the doubt.
+    assert budget.observe(tmp_path, "root", "child-z") is None
+    with budget.ledger(tmp_path, "root") as state:
+        rows = [r for r in state["reservations"].values() if r.get("child") == "child-z"]
+        assert len(rows) == 1 and rows[0]["binding"] == "sole_unbound_reservation"
+        assert state.get("attention_key") != "binding_unknown"

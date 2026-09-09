@@ -1,4 +1,32 @@
-"""Small locked mandate ledger shared by both hook adapters; no worker launcher."""
+"""Small locked mandate ledger shared by both hook adapters; no worker launcher.
+
+ONE MISSION DEADLINE — the contract, in ten lines (PARABELLUM §4.3).
+
+1.  There is ONE mission deadline. It belongs to the ROOT MANDATE, never to a
+    session, a child or a continuation, and this ledger file is its only home.
+2.  `reserve()` and the `context_bridge.py` continuation supervisor both read it
+    through `mandate_deadline()`. Neither computes a clock of its own; before
+    2026-09-10 the supervisor ran `time.time() + MANDATE_SECONDS` against this
+    ledger's `created + max_seconds` and the two mission clocks disagreed by
+    however long the mission had already been running.
+3.  `created + max_seconds` stops being a deadline SOURCE. `max_seconds` is only
+    the default used to derive the deadline the first time a root mandate opens.
+4.  A continuation INHERITS the deadline unchanged and can never manufacture a
+    later one. A fresh seat joining an old mandate joins its remaining time.
+5.  Renewal is EXPLICIT: `renew()`, called by a coordinator. Never a side effect
+    of dispatching, resuming or replacing.
+6.  Every renewal is appended to `renewals` with who, when, the previous deadline
+    and the new one. The history is never rewritten.
+7.  A renewal NEVER resets a spent counter. Attempts, depth, concurrency and
+    reservations survive it untouched; only the wall clock moves.
+8.  An expired deadline SUSPENDS the mandate. It never silently extends, and it
+    never denies the reporting path — a capped worker still checkpoints out.
+9.  Child ACTIVE TIME (`child_context.MAX_SECONDS`, measured per child in
+    `child_workflow.py`) is a SEPARATE counter, reported separately and never
+    conflated with this one. A short-lived child says nothing about the mission.
+10. A deny naming the deadline carries the deadline, the now, the overrun and who
+    may renew it — the same reporting rule every other counter here obeys.
+"""
 
 from __future__ import annotations
 
@@ -30,6 +58,56 @@ ACKNOWLEDGE_SECONDS = 240
 # A default here cures the policies already on disk, which an install-time-only
 # fix would not: none of the three live seats has the key.
 ACTIVE_TTL_SECONDS = 1800
+
+# Default mission length, used ONLY to derive the deadline when a root mandate is
+# first opened. context_bridge.py imports this name so the two sides cannot drift
+# to different defaults the way they drifted to different clocks.
+MANDATE_SECONDS = 3600
+
+
+def _stamp(when: float) -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(when))
+
+
+def mandate_deadline(
+    root: Path, mandate: str, max_seconds: float = MANDATE_SECONDS
+) -> float:
+    """Read the root mandate's deadline, opening it once if it does not exist.
+
+    Every consumer of the mission clock goes through here. `max_seconds` is a
+    default for the FIRST call on a mandate and is ignored afterwards, so a
+    continuation that happens to carry a different limit cannot lengthen a
+    mission that is already running.
+    """
+    with ledger(root, mandate) as state:
+        state.setdefault("created", time.time())
+        state.setdefault("deadline", state["created"] + max_seconds)
+        return float(state["deadline"])
+
+
+def renew(root: Path, mandate: str, seconds: float, who: str) -> dict[str, Any]:
+    """Move the mission clock, on purpose, on the record, counters untouched.
+
+    Only the wall clock moves: `reservations`, attempts, depth and concurrency
+    are not touched here, so a renewal can never launder a spent budget into a
+    fresh one. The raise this supersedes is `mandate_deadline` specifically --
+    an attempts or concurrency alarm says nothing about the clock and must
+    survive, which is why the deadline carries its own attention key.
+    """
+    if seconds <= 0:
+        raise ValueError("a renewal must extend the mission, not shorten it")
+    with ledger(root, mandate) as state:
+        previous = state.get("deadline")
+        state["deadline"] = time.time() + seconds
+        record = {
+            "who": who,
+            "at": time.time(),
+            "previous_deadline": previous,
+            "new_deadline": state["deadline"],
+        }
+        state.setdefault("renewals", []).append(record)
+        _resolve(state, "mandate_deadline")
+        return record
 
 
 def _attend(state: dict[str, Any], reason: str, key: str) -> None:
@@ -100,7 +178,11 @@ def reserve(
         return None
     with ledger(root, mandate) as state:
         state.setdefault("created", time.time())
-        state.setdefault("deadline", state["created"] + limits.get("max_seconds", 3600))
+        # The SAME clock the continuation supervisor reads. `max_seconds` only
+        # opens it; it never re-derives a deadline that already exists.
+        state.setdefault(
+            "deadline", state["created"] + limits.get("max_seconds", MANDATE_SECONDS)
+        )
         reservations = state.setdefault("reservations", {})
         state["budget_mode"] = (
             "enforced" if limits.get("strict", True) else "interactive_observation"
@@ -180,9 +262,27 @@ def reserve(
             if r["status"] in ("reserved", "active")
         }
         reason = None
+        key_for_reason = "mandate_limit"
         strict = limits.get("strict", True)
-        if time.time() >= state["deadline"] and strict:
-            reason = "Mandate deadline reached"
+        now = time.time()
+        if now >= state["deadline"] and strict:
+            # The deadline gets its OWN attention key so an explicit renewal can
+            # supersede exactly this alarm and leave an attempts alarm standing.
+            key_for_reason = "mandate_deadline"
+            reason = (
+                "Mandate deadline reached: counter=mission_deadline deadline="
+                + _stamp(state["deadline"])
+                + " now="
+                + _stamp(now)
+                + " overrun="
+                + str(round(now - state["deadline"]))
+                + "s mandate="
+                + str(state.get("mandate_id"))
+                + " mode="
+                + str(state["budget_mode"])
+                + ". Only the coordinator may extend it, by calling"
+                " mandate_budget.renew(); a replacement dispatch cannot"
+            )
         elif depth > limits.get("max_depth", 1) and strict:
             # Gated like its four siblings. It was the only limit in this chain
             # enforced under interactive_observation too — an asymmetry nobody
@@ -190,20 +290,42 @@ def reserve(
             # ABOVE this ledger, so an ungated copy here duplicated a decision it
             # does not own and would have denied an interactive caller that the
             # other four limits let through.
-            reason = "Mandate child depth reached"
+            reason = (
+                "Mandate child depth reached: counter=depth used="
+                + str(depth)
+                + " limit="
+                + str(limits.get("max_depth", 1))
+                + " mandate="
+                + str(state.get("mandate_id"))
+            )
         elif len(reservations) >= limits.get("max_attempts", 24) and strict:
-            reason = "Mandate total dispatch attempts reached"
+            reason = (
+                "Mandate total dispatch attempts reached: counter=attempts used="
+                + str(len(reservations))
+                + " limit="
+                + str(limits.get("max_attempts", 24))
+                + " mandate="
+                + str(state.get("mandate_id"))
+            )
         elif (
             strict
             and len(active) >= limits.get("max_active", 3)
             and child not in active
         ):
-            reason = "Mandate concurrent dispatch limit reached"
+            reason = (
+                "Mandate concurrent dispatch limit reached: counter=concurrency used="
+                + str(len(active))
+                + " limit="
+                + str(limits.get("max_active", 3))
+                + " mandate="
+                + str(state.get("mandate_id"))
+            )
         if reason:
-            _attend(state, reason, "mandate_limit")
+            _attend(state, reason, key_for_reason)
             return (
                 reason
-                + "; return the remaining work. Do not reset the budget with a replacement."
+                + ". Required next action: return the remaining work to the coordinator."
+                " Do not reset the budget with a replacement."
             )
         reservations[key] = {
             "status": "active" if child else "reserved",
@@ -261,6 +383,7 @@ def observe(
             )
         )
         reservations = state.get("reservations", {})
+        ambiguous = False
         bound = next(
             (
                 r
@@ -275,11 +398,39 @@ def observe(
             # the claim was gated on `not stopped` the row stayed `reserved` while the
             # child was recorded stopped, so the slot leaked until unstarted_ttl swept
             # it and the ledger reported attention for a child that had returned fine.
-            bound = next(
-                (r for r in reservations.values() if r["status"] == "reserved"), None
-            )
-            if bound is not None:
+            #
+            # But "the first reserved row" is only the right row when there IS only
+            # one candidate. A reservation is keyed by the dispatching tool_use_id
+            # and the child identity arrives later, so with two unbound rows in
+            # flight the old `next(...)` was a coin flip that silently attributed
+            # one child's work to another child's slot -- and the ledger, being
+            # internally consistent afterwards, could never show the mistake.
+            # Ambiguity is now recorded as ambiguity.
+            unbound = [
+                r
+                for r in reservations.values()
+                if r["status"] == "reserved" and not r.get("child")
+            ]
+            if len(unbound) == 1:
+                bound = unbound[0]
                 bound["child"] = child
+                bound["binding"] = "sole_unbound_reservation"
+            elif len(unbound) > 1:
+                ambiguous = True
+                _attend(
+                    state,
+                    "Child dispatch reservation UNKNOWN: counter=binding candidates="
+                    + str(len(unbound))
+                    + " child="
+                    + hashlib.sha256(child.encode()).hexdigest()[:12]
+                    + " mandate="
+                    + str(state.get("mandate_id"))
+                    + ". Two or more unbound reservations are in flight, so this"
+                    " child cannot be attributed to one of them. Required next"
+                    " action: the coordinator reconciles the slot before the next"
+                    " dispatch; no reservation was consumed.",
+                    "binding_unknown",
+                )
         if bound is not None:
             if not stopped and bound["status"] not in ("active", "reserved"):
                 active = {
@@ -303,7 +454,12 @@ def observe(
             # This child DID have a reservation and its lease DID resume, which is
             # exactly what those two alarms claimed was untrue. Any other alarm
             # (a mandate limit, an unknown resume target) is untouched.
-            _resolve(state, "observed_without_reservation", "lease_cannot_resume")
+            _resolve(
+                state,
+                "observed_without_reservation",
+                "lease_cannot_resume",
+                "binding_unknown",
+            )
             # One child may have multiple resume reservations. Refresh them all.
             for row in reservations.values():
                 if row.get("child") == child:
@@ -312,7 +468,9 @@ def observe(
                 for row in reservations.values():
                     if row.get("child") == child:
                         row["status"] = "returned_unverified"
-        else:
+        elif not ambiguous:
+            # Genuinely no candidate at all, which is a different fact from
+            # "too many candidates to choose" and keeps its own key.
             _attend(
                 state,
                 "Child observed without a dispatch reservation",

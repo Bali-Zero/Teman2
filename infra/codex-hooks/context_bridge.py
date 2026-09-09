@@ -26,7 +26,12 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from rpc import binary_path
-from mandate_budget import observe as budget_observe, reserve as budget_reserve
+from mandate_budget import (
+    MANDATE_SECONDS,
+    mandate_deadline as budget_deadline,
+    observe as budget_observe,
+    reserve as budget_reserve,
+)
 
 VERSION = "1.2.0"
 HANDSHAKE_SECONDS = 45  # one Stop hook blocks at most this long waiting for the destination
@@ -36,7 +41,7 @@ HANDSHAKE_SECONDS = 45  # one Stop hook blocks at most this long waiting for the
 from mandate_budget import ACKNOWLEDGE_SECONDS  # noqa: E402
 MAX_LAUNCH_ATTEMPTS = 3
 POLL_SECONDS = 1
-MANDATE_SECONDS = 3600
+# MANDATE_SECONDS now comes from mandate_budget: one default, one owner.
 # Launch failures the next Stop may retry on its own (bounded by MAX_LAUNCH_ATTEMPTS).
 TRANSIENT_FAILURES = frozenset(
     {
@@ -921,8 +926,15 @@ def launch(sid: str, max_hops: int) -> dict[str, Any]:
         if state.get("rollover") != "requested":
             return {}
         state.setdefault("mandate_root", os.environ.get("NUZANTARA_MANDATE_ID") or sid)
-        if not state.get("mandate_deadline"):
-            state["mandate_deadline"] = time.time() + MANDATE_SECONDS
+        # ONE mission clock, owned by the root mandate's ledger. This used to be
+        # `time.time() + MANDATE_SECONDS`, a second clock started fresh at every
+        # launch: a continuation could outlive the mandate that authorized it,
+        # and `mandate_budget.reserve()` on the same mission was meanwhile
+        # counting down from `created`. The two disagreed by however long the
+        # mission had already been running. See mandate_budget's module docstring.
+        state["mandate_deadline"] = budget_deadline(
+            state_dir() / "mandates", state["mandate_root"], MANDATE_SECONDS
+        )
         if state.get("cancel_requested") or time.time() >= state["mandate_deadline"]:
             state.update(
                 rollover="needs_attention", failure="mandate_cancelled_or_expired"
