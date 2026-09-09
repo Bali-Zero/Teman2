@@ -321,13 +321,26 @@ def test_grace_under_30_turns_allows():
 # ── 1M window detection ──────────────────────────────────────────────────────
 
 def test_1m_model_widens_window():
-    # 300K tokens: 150% of the 200K default window (deny), but 30% of a 1M
+    # 150K tokens: 75% of the 200K default window (deny), but 15% of a 1M
     # window (allow, below the 40% default threshold) once the transcript's
-    # own last assistant record names a `[1m]` model.
-    rc_normal, _, _, _ = run_gate("Bash", {"command": "ls"}, tokens=300_000, model="claude-sonnet-5")
-    rc_1m, _, _, _ = run_gate("Bash", {"command": "ls"}, tokens=300_000, model="claude-opus-5[1m]")
-    assert rc_normal == 2, f"300K/200K must deny on a normal-window model, got {rc_normal}"
-    assert rc_1m == 0, f"300K/1M must allow on a [1m] model, got {rc_1m}"
+    # own last assistant record names a `[1m]` model. (Below 200K on purpose:
+    # above it the evidence rule widens the window regardless of the label —
+    # see test_context_beyond_200k_is_evidence_of_a_1m_window.)
+    rc_normal, _, _, _ = run_gate("Bash", {"command": "ls"}, tokens=150_000, model="claude-sonnet-5")
+    rc_1m, _, _, _ = run_gate("Bash", {"command": "ls"}, tokens=150_000, model="claude-opus-5[1m]")
+    assert rc_normal == 2, f"150K/200K must deny on a normal-window model, got {rc_normal}"
+    assert rc_1m == 0, f"150K/1M must allow on a [1m] model, got {rc_1m}"
+
+
+def test_context_beyond_200k_is_evidence_of_a_1m_window():
+    # 458K tokens on a model string WITHOUT the [1m] suffix (the transcript never
+    # carries it — measured 2026-09-09 on M5, denied at "229%"). A context that
+    # already exceeds 200K cannot live in a 200K window: 458K/1M = 45.8% denies
+    # at the 40% default, 300K/1M = 30% allows — neither is "229%".
+    rc_300, _, _, _ = run_gate("Bash", {"command": "ls"}, tokens=300_000, model="claude-fable-5-1")
+    rc_458, _, err, _ = run_gate("Bash", {"command": "ls"}, tokens=458_000, model="claude-fable-5-1")
+    assert rc_300 == 0, f"300K on an unlabelled seat is >200K, so 1M window, 30% must allow; got {rc_300}"
+    assert rc_458 == 2 and "229%" not in err, f"458K/1M = 46% must deny at 40%, got rc={rc_458} err={err!r}"
 
 
 def test_context_window_tokens_env_override():

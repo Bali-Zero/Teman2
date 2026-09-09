@@ -412,6 +412,12 @@
       "machines": ["all"]
     },
     {
+      "live": "~/.claude/hooks/context_window_guard.py",
+      "repo": "infra/claude-hooks/context_window_guard.py",
+      "_note": "Declared at birth (2026-09-09, PR #5969 follow-up) and armed the same day on M5/Pro/Mini by the shipping session per Ruling Zero 2026-09-09 (HOME registrations are the session's job); the healer keeps the three live copies aligned to canon. The per-seat window override lives in ~/.claude/settings.json env (CONTEXT_WINDOW_TOKENS), not in this file.",
+      "machines": ["all"]
+    },
+    {
       "live": "~/.claude/hooks/gate_coverage.py",
       "repo": "infra/claude-hooks/gate_coverage.py",
       "_note": "K1 (2026-08-27, spec §5bis K1 in 2026-08-26-PIANO-SPEC-receptor-live.md): shared library the 4 PreToolUse gates (host_boundary/worktree_isolation/orchestrate_gate/model_routing_gate) call at every one of their own exit paths to record allow/deny/exempt — the gap between what the transcript proves was gate-eligible and what got recorded IS the fail-open rate (timeout/crash/fork failure per the official Claude Code hooks doc: a `type=command` hook that times out does not block), read by gate_coverage_report.py. New file, declared at birth so it never has an undeclared window.",

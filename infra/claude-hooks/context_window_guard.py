@@ -204,7 +204,7 @@ def _estimate_tokens(transcript_path: str):
         return None
 
 
-def _window_size(tail_text: str) -> int:
+def _window_size(tail_text: str, tokens: int | None = None) -> int:
     env_val = os.environ.get("CONTEXT_WINDOW_TOKENS")
     if env_val:
         try:
@@ -214,6 +214,16 @@ def _window_size(tail_text: str) -> int:
     model = os.environ.get("CONTEXT_GUARD_MODEL") or _last_assistant_model(tail_text) or ""
     model_l = model.lower()
     if model_l.endswith("[1m]") or "1m" in model_l:
+        return LARGE_WINDOW
+    # EVIDENCE BEATS THE LABEL (measured 2026-09-09 on M5): the transcript's
+    # `message.model` never carries the `[1m]` suffix — it is a CLI alias, not
+    # a model id — so a 1M seat looked like 200K and a 458K-token session was
+    # denied at "229%". A context that already holds more than the small window
+    # cannot be running in it: treat it as the large one. (A 1M seat BELOW 200K
+    # is indistinguishable from a 200K seat by the transcript alone: set
+    # CONTEXT_WINDOW_TOKENS in that seat's settings.json env — the sanctioned
+    # override above.)
+    if tokens is not None and tokens > DEFAULT_WINDOW:
         return LARGE_WINDOW
     return DEFAULT_WINDOW
 
@@ -350,7 +360,7 @@ def main() -> int:
         _gc_record("context_window_guard", "exempt", payload)  # estimator unavailable
         return 0
 
-    window = _window_size(tail_text)
+    window = _window_size(tail_text, tokens)
     pct = (tokens / window) if window else 0.0
     role, threshold = _role_and_threshold()
 
