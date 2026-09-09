@@ -1,0 +1,129 @@
+task_id: clients-phone-core-expression-indexes
+gear: 3
+gate_class: opus
+brief_ref: evidence/2026-09/agent-nuzantara-backend-phone-core-indexes-a007f7e5/brief.yml
+date: 2026-09-10
+machine: Pro
+
+seat_override: >-
+  Build commit authored directly by Zero (Antonello Siano) on Pro —
+  not a multi-seat agent council; owner-is-builder exception applies.
+  The verifier seat (Sonnet 4.6 orchestrating session, Pro) is distinct from
+  the builder as required (generator != grader), completes this evidence pack
+  and posts probe receipts below. The Opus gate verdict (gate_class: opus) must
+  still be obtained via scripts/harness_fable_gate.py before arming.
+
+lanes:
+  - lane: build
+    role: build
+    seat: Zero (Antonello Siano, direct commit 3f7906cc on Pro)
+    note: >-
+      Commit message: "perf(db): expression indexes for the upsert-by-phone
+      core matcher on clients". Migration 308, test file, brief. No agent session
+      intermediary.
+  - lane: verify
+    role: review
+    seat: claude-sonnet-4-6 (Pro orchestrating session, 2026-09-10)
+    note: >-
+      Completed evidence pack: ran all acceptance probes A1/A2/A3 from worktree
+      backend-phone-core-indexes; results recorded below.
+
+bites:
+  consumer: >-
+    UPSERT_MATCH_SQL (three CASE/regexp_replace expressions) via
+    POST /api/crm/clients/upsert-by-phone, invoked by
+    com.balizero.wa-mirror-auto-promote on Pro every ~12 min (345 calls/cycle)
+  where: production — observable after merge triggers fly-deploy.yml migration
+  observe: >-
+    SELECT idx_scan FROM pg_stat_user_indexes
+    WHERE indexrelname LIKE 'idx_clients_phone_core_%'
+  expect: >-
+    Three rows, each idx_scan > 0, within one full wa-mirror-auto-promote cycle
+    (~12-13 min post-deploy). Concurrently: seq_scan on public.clients stops
+    growing (was 2 540 720 at 2026-09-09T16:17Z).
+
+diff:
+  files: 3
+  changed: >-
+    apps/backend-rag/db/migrations_v2/308_clients_phone_core_expression_indexes.sql
+    (migration: 3 CREATE INDEX + ROLLBACK section),
+    apps/backend-rag/backend/tests/migrations/test_migration_308_phone_core_index_parity.py
+    (4 test cases: expression-parity, per-column coverage, rollback symmetry,
+    one-character-drift guilt),
+    evidence/2026-09/agent-nuzantara-backend-phone-core-indexes-a007f7e5/brief.yml
+    (this brief, added in the evidence commit).
+  floor_source: path — apps/backend-rag/db/migrations_v2/ is a declared hot-zone path.
+  gear_declared: 3 (matches floor, see A3 receipt below).
+  shape: >-
+    Additive only. Three IF NOT EXISTS expression indexes; no column, trigger, table or
+    query text change. Plain CREATE INDEX (not CONCURRENTLY) inside a migration
+    transaction — sub-second lock on ~50 MB / ~12 k-row table. ROLLBACK section drops
+    exactly the three. Migration number 308 is unique in the tree (A2).
+
+receipts:
+  - probe: A1
+    claim: >-
+      WHEN test_migration_308_phone_core_index_parity.py is run SHALL pass all four
+      cases (expression-parity, per-column coverage, rollback symmetry, one-character-drift guilt).
+    cmd: >-
+      cd .worktrees/backend-phone-core-indexes &&
+      PYTHONPATH=apps/backend-rag:apps/crm-cell
+      apps/backend-rag/.venv/bin/python -m pytest
+      apps/backend-rag/backend/tests/migrations/test_migration_308_phone_core_index_parity.py
+      -p no:cacheprovider
+    result: "4 passed, 1 warning in 0.48s"
+    exit: 0
+    ts: "2026-09-10T09:30:00+08:00"
+    seat: claude-sonnet-4-6 (Pro verifier session)
+
+  - probe: A2-rollback
+    claim: lint_migration_rollback.py reports zero violations.
+    cmd: python3 scripts/lint_migration_rollback.py
+    result: "✅ migration-rollback lint: 180 post-cutoff migrations, all have ROLLBACK marker"
+    exit: 0
+    ts: "2026-09-10T09:30:10+08:00"
+    seat: claude-sonnet-4-6 (Pro verifier session)
+
+  - probe: A2-numbers
+    claim: lint_migration_numbers.py reports zero violations.
+    cmd: python3 scripts/lint_migration_numbers.py
+    result: "✅ migration-numbers lint: 185 files, all unique prefixes"
+    exit: 0
+    ts: "2026-09-10T09:30:10+08:00"
+    seat: claude-sonnet-4-6 (Pro verifier session)
+
+  - probe: A2-ruff-check
+    claim: ruff check on the new test file reports zero violations.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python -m ruff check
+      apps/backend-rag/backend/tests/migrations/test_migration_308_phone_core_index_parity.py
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-09-10T09:30:15+08:00"
+    seat: claude-sonnet-4-6 (Pro verifier session)
+
+  - probe: A2-ruff-format
+    claim: ruff format --check on the new test file reports already formatted.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python -m ruff format --check
+      apps/backend-rag/backend/tests/migrations/test_migration_308_phone_core_index_parity.py
+    result: "1 file already formatted"
+    exit: 0
+    ts: "2026-09-10T09:30:15+08:00"
+    seat: claude-sonnet-4-6 (Pro verifier session)
+
+  - probe: A3
+    claim: >-
+      Deterministic floor recomputed from this PR's changed-file set equals 3,
+      matching the declared gear exactly.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file /tmp/pci-changed.txt --numstat-file /tmp/pci-numstat.txt
+    result: "3"
+    exit: 0
+    ts: "2026-09-10T09:30:20+08:00"
+    seat: claude-sonnet-4-6 (Pro verifier session)
+    note: >-
+      /tmp/pci-changed.txt and /tmp/pci-numstat.txt generated from
+      `git diff --name-only origin/main...HEAD` and `git diff --numstat origin/main...HEAD`
+      respectively, from worktree backend-phone-core-indexes at HEAD 3f7906cc.
