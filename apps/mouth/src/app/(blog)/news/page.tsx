@@ -40,12 +40,29 @@ export const metadata: Metadata = {
   },
 };
 
+interface NewsRouteProps {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
 /**
  * /news route - Same editorial layout as homepage
  * Uses real MDX articles from filesystem via ISR
+ *
+ * The homepage topic pills link here with ?category= or ?q=; both are read
+ * server-side. `category` filters the fetch, `q` is seeded into the client
+ * search box so the text filter runs on first paint (no Suspense boundary,
+ * no flash of the unfiltered list).
  */
-export default async function NewsRoute() {
-  const { articles } = await getAllArticles({});
+export default async function NewsRoute({ searchParams }: NewsRouteProps) {
+  const sp = await searchParams;
 
-  return <NewsPageClient articles={articles} />;
+  const rawCategory = Array.isArray(sp.category) ? sp.category[0] : sp.category;
+  const category = rawCategory?.trim() ? rawCategory : undefined;
+
+  const rawQuery = Array.isArray(sp.q) ? sp.q[0] : sp.q;
+  const initialQuery = rawQuery ?? "";
+
+  const { articles } = await getAllArticles(category ? { category } : {});
+
+  return <NewsPageClient articles={articles} initialQuery={initialQuery} />;
 }
