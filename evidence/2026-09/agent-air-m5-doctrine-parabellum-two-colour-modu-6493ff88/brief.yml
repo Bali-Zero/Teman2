@@ -1,0 +1,58 @@
+gear: 2
+objective: >-
+  Make PARABELLUM law — the modus runs in two colours (BLUE Claude-native, ORANGE
+  Codex-native), and on a declared orange mission the ONE appointed Dux Sol session
+  gates through a fresh Sol seat and releases its own work. Docs and config only.
+scope:
+  - docs/rules/RULINGS.md
+  - docs/rules/operations.md
+  - docs/architecture/dual-consul/army-map.md
+  - CLAUDE.md
+  - AGENTS.md
+  - GEMINI.md
+  - QWEN.md
+  - FLEET_TOPOLOGY.json
+  - .claude/skills/modus/SKILL.md
+  - .claude/skills/modus/battle-window-spec.md
+  - .claude/skills/modus/PENDING-ARMS.md
+  - research/operations/2026-09-10-parabellum/
+constraints:
+  - No Python, no infra/*.py — lane 2 owns the harness code and runs in parallel.
+  - The colour table exists in exactly ONE place (army-map.md §1bis); every other
+    door references it and none duplicates it.
+  - role_chains.gear3_final_gate (the BLUE chain) is byte-identical to origin/main.
+  - The canon Builder Contract block is edited in CLAUDE.md and copied VERBATIM
+    outward; a reworded copy fails door_canon_parity.
+  - No automatic colour fallback anywhere: a dead seat SUSPENDS.
+acceptance:
+  - text: >-
+      The canon block SHALL be byte-identical across CLAUDE.md, AGENTS.md,
+      GEMINI.md and QWEN.md after the Builder Contract §5 amendment.
+    probe: door_canon_parity
+  - text: >-
+      FLEET_TOPOLOGY.json SHALL remain valid JSON, gear3_final_gate SHALL still
+      read claude-opus-5, and gear3_final_gate_orange SHALL read codex gpt-5.6-sol
+      with on_exhaustion suspend.
+    probe: json-tool-and-key-read
+  - text: >-
+      The four new PENDING-ARMS rows SHALL parse with no MALFORMED entry and no
+      PHANTOM-OPERATOR owner.
+    probe: pending_arms_report
+assumptions:
+  - assumption: >-
+      The mission that consumes this doctrine is BLUE unless Zero declares
+      otherwise, so nothing here changes the default path.
+    status: verified
+    evidence: >-
+      RULED 2026-09-10 states an undeclared mission is BLUE, and the RULED
+      2026-09-06→08 sentences are kept verbatim for it.
+  - assumption: >-
+      ORANGE has never executed; this PR installs the authority, not the proof.
+    status: open
+    evidence: >-
+      Four PENDING-ARMS rows opened 2026-09-10 name the unobserved parts with
+      owners and closing observations.
+consumer_map:
+  - scripts/proprioception.py door_canon_parity reads the canon block of all four doors.
+  - scripts/pending_arms_report.py reads the four new ledger rows.
+  - FLEET_TOPOLOGY.json is parsed by every seat-dispatch consumer and by json.tool.

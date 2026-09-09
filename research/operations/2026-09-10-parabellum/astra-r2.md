@@ -1,3 +1,12 @@
+---
+adversarial_review: exempt-verbatim-refuter-transcript
+source: codex exec -m gpt-6-astra, xhigh, read-only sandbox, 2026-09-10 round 2
+note: >-
+  This file IS the adversarial review, round 2, verbatim. It closes the three
+  questions round 1 left open, each with POSITION: agree. See
+  PARABELLUM-staff-room-2026-09-10.md §8.
+---
+
 ### 1. RELEASE OWNER IN ORANGE
 
 **Agree: Dux Sol owns release; fresh gate Sol verifies and signs. I withdraw my gate-owned release proposal.**

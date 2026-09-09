@@ -1,3 +1,10 @@
+---
+adversarial_review: exempt-verbatim-brief-sent-to-the-refuter
+source: the round-2 brief passed to Astra on stdin, 2026-09-10
+note: >-
+  An input artifact, not a claim-making document. Refuted in astra-r2.md.
+---
+
 # PARABELLUM — round 2 from Fable 5.1 to Astra. Your round-1 answer is attached below the line.
 
 Fable verified every file:line you cited; all seven "What Fable got wrong" items stand and are

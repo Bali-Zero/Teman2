@@ -1,3 +1,9 @@
+---
+adversarial_review: codex
+reviewer_seat: codex gpt-6-astra (xhigh, read-only sandbox), two rounds, 2026-09-10
+author_seat: claude-fable-5-1 (owner-opened imperator window, session ec87ed52)
+---
+
 # PARABELLUM — the two-colour modus. Staff-room record, 10 September 2026
 
 Status: DRAFT written by the Fable 5.1 imperator window (session ec87ed52, jump 3) after two
@@ -135,3 +141,38 @@ stdin" when run without a TTY; pass the brief on stdin with `-` instead. Both ro
 `CODEX_CONTEXT_ROLE=builder` (0.6) because the imperator threshold (0.2 of 258k ≈ 52k) is below
 the measured Codex boot — an Astra consultation at the imperator threshold would park at its
 first tool. That number belongs in the AGENTS.md diet acceptance.
+
+## Adversarial review
+
+Reviewer: **Astra** (`codex exec -m gpt-6-astra`, xhigh, read-only sandbox), two rounds on
+2026-09-10, read-only against this checkout. Author: the Fable 5.1 imperator window. Transcripts
+verbatim in `astra-r1.md` and `astra-r2.md`; briefs in `parabellum-brief-r1.md` and
+`parabellum-brief-r2.md`.
+
+**Round 1 — seven objections raised, seven SURVIVED and were adopted.** Every one was a factual
+correction to a premise this record was built on, and every one was re-verified on disk by the
+author before adoption; the corrected statements are §2's table, and none of the original claims
+survived contact. In short: the builder 0.6 threshold does not fix the Codex wall because native
+children hardcode 0.4 and an undeclared `dux` role falls back to 0.4; the child CAN report in both
+families through existing exemptions; the pilot never tested Sol at 0.6 because it met an expired
+root mandate first; `.lane-check.json` is not a write perimeter; the missing lint pairs are the
+CODEX_HOME ones, not the Claude ones; the ship sequence is five steps and only push/create/merge
+are the three separate commands; and amending Builder Contract §5 alone is not enough because
+`AGENTS.md` §0.0 and §17.1 and `operations.md` repeat the ban and must move with it.
+
+**Round 1 — two disagreements and one open question, carried to round 2.** Who owns release in
+orange; whether an exhausted child gets a ship reserve; what the minimum gate receipt is.
+
+**Round 2 — all three closed, each `POSITION: agree`, and on two of them the reviewer withdrew its
+own round-1 proposal.** Release belongs to the Dux Sol and the gate only signs (Astra withdrew its
+gate-owned-release proposal: with the same repository credential available to both sessions it
+creates no credential-enforced separation, while costing one accountable release owner). No ship
+reserve, N = 0: an exhausted child checkpoints and returns, and shipping consumes the Dux's mandate
+budget. The PR-comment receipt suffices as the FIRST-MISSION floor, with one correction that
+changed the instruction this record gives: `--conditions-ref` is silently ignored on a plain PASS,
+so PASS must use `--description` with a short reference, and descriptions truncate at 140
+characters.
+
+**Nothing was left unrefuted and unadopted.** The one thing both rounds agree is NOT settled is
+empirical: orange has never executed, and the receipt's independence is procedurally checked rather
+than mechanically authenticated. Both are carried as PENDING-ARMS rows rather than as confidence.

@@ -1,3 +1,13 @@
+---
+adversarial_review: exempt-verbatim-refuter-transcript
+source: codex exec -m gpt-6-astra, xhigh, read-only sandbox, 2026-09-10 round 1
+note: >-
+  This file IS the adversarial review. It is Astra's own output, reproduced
+  verbatim below, and refuting it here would be the generator grading the grader.
+  Its seven corrections were each re-verified on disk by the Fable window and are
+  recorded in PARABELLUM-staff-room-2026-09-10.md §2.
+---
+
 ## A. ORANGE Dux
 
 **Decision: use one Sol coordinator, with native Codex leaf builders only when the gear warrants delegation. Do not reproduce the pilot’s extra Capo/support hierarchy.** PARABELLUM should parameterize the existing modus.

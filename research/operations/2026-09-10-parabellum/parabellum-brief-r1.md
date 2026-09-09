@@ -1,3 +1,11 @@
+---
+adversarial_review: exempt-verbatim-brief-sent-to-the-refuter
+source: the round-1 brief passed to Astra on stdin, 2026-09-10
+note: >-
+  An input artifact, not a claim-making document: this is what was SENT to the
+  refuter. Its claims were refuted in astra-r1.md, which is the review of record.
+---
+
 # PARABELLUM — round 1 brief from Fable 5.1 (imperator) to Astra (imperator)
 
 You are Astra (codex gpt-6-astra, xhigh), co-imperator with Fable 5.1 under RULINGS.md
