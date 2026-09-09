@@ -104,7 +104,7 @@ export const destinations = {
     kind: "editorial",
     access: "public",
     releaseStatus: "approved",
-    href: toSafeDestinationHref("/journal"),
+    href: toSafeDestinationHref("/news"),
     intent: "Open the public Bali Zero editorial index.",
     unavailableFallback:
       "Keep the local Journal entry visible and omit unavailable filters.",

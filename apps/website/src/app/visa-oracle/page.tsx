@@ -1,4 +1,8 @@
-import { isLoopback, oracleBackendUrl } from "../../features/visa-oracle/evaluate.server";
+import {
+  isLoopback,
+  oracleBackendUrl,
+} from "../../features/visa-oracle/evaluate.server";
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { OracleShell } from "../../features/visa-oracle/_components/OracleShell";
 import {
@@ -15,6 +19,13 @@ import {
  */
 export const dynamic = "force-dynamic";
 
+export const metadata: Metadata = {
+  title: "Visa Oracle | Bali Zero",
+  description:
+    "Explore a guided visa assessment for living, working and investing in Indonesia.",
+  alternates: { canonical: "/visa-oracle" },
+};
+
 export default async function VisaOraclePage() {
   const cookieStore = await cookies();
   const internalMode = verifyInternalAccessToken(
@@ -23,6 +34,9 @@ export default async function VisaOraclePage() {
 
   const backend = oracleBackendUrl(process.env.WEBSITE_VISA_ORACLE_BACKEND_URL);
   const local = backend !== null && isLoopback(backend);
-  const localProof = local && process.env.WEBSITE_VISA_ORACLE_LOCAL_PROOF === "unsigned-proposal" ? "unsigned-proposal" : local;
+  const localProof =
+    local && process.env.WEBSITE_VISA_ORACLE_LOCAL_PROOF === "unsigned-proposal"
+      ? "unsigned-proposal"
+      : local;
   return <OracleShell internalMode={internalMode} localProof={localProof} />;
 }

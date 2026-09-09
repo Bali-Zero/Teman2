@@ -7,6 +7,16 @@ const config: NextConfig = {
   // KBLI imports the existing guarded engine and traces its immutable data.
   outputFileTracingRoot: path.resolve(__dirname, "../.."),
   outputFileTracingIncludes: {
+    "/sitemap.xml": [
+      "../mouth/src/content/articles/**/*.mdx",
+      "../mouth/data/kbli-dataset-version.json",
+      "../mouth/data/KBLI_2025_FINAL_CLEAN.json",
+      "../mouth/data/kbli-gold-all.json",
+      "../mouth/data/kbli-risk-disputes.json",
+      "../mouth/data/kbli-perpres-slice-disclosures.json",
+      "../mouth/data/perpres-locators.json",
+      "../../data/kbli-filiera/pma-editorial-certifications.json",
+    ],
     "/\\[category\\]/\\[slug\\]": ["../mouth/src/content/articles/**/*.mdx"],
     "/kbli{,/**,-explorer}": [
       "./data/*.json",
@@ -44,6 +54,7 @@ const config: NextConfig = {
       ["/v2/news", "/news"],
       ["/insights", "/"],
       ["/insights/news", "/news"],
+      ["/visa/second-home-e33", "/visa/second-home"],
       ["/tax-for-freelancers-indonesia-2026", "/taxes/freelancer-tax-guide"],
       [
         "/id/tax-for-freelancers-indonesia-2026",

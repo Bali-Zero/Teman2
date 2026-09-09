@@ -6,7 +6,7 @@ import type { EditorialFeed } from "../lib/editorial-feed";
 import type { JournalArticle } from "../content/journal";
 export function Journal({
   articles,
-  indexHref = "/journal",
+  indexHref = "/news",
   status = articles.length ? "ready" : "empty",
   fixture = false,
   featuredCount = 2,
@@ -67,7 +67,9 @@ export function Journal({
           </a>
         </div>
         <FeedNotice status={status} fixture={fixture} />
-        <div className={`editorial-grid${side.length ? "" : " editorial-grid-compact"}`}>
+        <div
+          className={`editorial-grid${side.length ? "" : " editorial-grid-compact"}`}
+        >
           {current ? (
             <article
               aria-label="Featured editorial stories"
@@ -81,22 +83,32 @@ export function Journal({
               className="feature"
               tabIndex={0}
             >
-              {current.image ? <img
-                alt={current.image.alt}
-                id="feature-image"
-                src={current.image.src}
-                loading="lazy"
-              /> : null}
+              {current.image ? (
+                <img
+                  alt={current.image.alt}
+                  id="feature-image"
+                  src={current.image.src}
+                  loading="lazy"
+                />
+              ) : null}
               <div className="feature-copy">
                 <span className="eyebrow" id="feature-category">
                   {current.category}
                 </span>
                 <h3>
-                  <ArticleDestination article={current} id="feature-link" inline>
+                  <ArticleDestination
+                    article={current}
+                    id="feature-link"
+                    inline
+                  >
                     {current.title}
                   </ArticleDestination>
                 </h3>
-                {current.editorial?.amended ? <p className="article-amended">Amended · Revision {current.editorial.revision}</p> : null}
+                {current.editorial?.amended ? (
+                  <p className="article-amended">
+                    Amended · Revision {current.editorial.revision}
+                  </p>
+                ) : null}
                 {fixture ? <p>Sample story</p> : null}
                 {current.date ? (
                   <time id="feature-date" dateTime={current.date.iso}>
@@ -104,27 +116,29 @@ export function Journal({
                   </time>
                 ) : null}
               </div>
-              {stories.length > 1 ? <div className="carousel-controls">
-                <button
-                  aria-label="Previous editorial story"
-                  id="previous-story"
-                  onClick={() => move(-1)}
-                >
-                  {"←"}
-                </button>
-                <span aria-live="polite" id="story-counter">
-                  {String(currentIndex + 1).padStart(2, "0") +
-                    " / " +
-                    String(stories.length).padStart(2, "0")}
-                </span>
-                <button
-                  aria-label="Next editorial story"
-                  id="next-story"
-                  onClick={() => move(1)}
-                >
-                  {"→"}
-                </button>
-              </div> : null}
+              {stories.length > 1 ? (
+                <div className="carousel-controls">
+                  <button
+                    aria-label="Previous editorial story"
+                    id="previous-story"
+                    onClick={() => move(-1)}
+                  >
+                    {"←"}
+                  </button>
+                  <span aria-live="polite" id="story-counter">
+                    {String(currentIndex + 1).padStart(2, "0") +
+                      " / " +
+                      String(stories.length).padStart(2, "0")}
+                  </span>
+                  <button
+                    aria-label="Next editorial story"
+                    id="next-story"
+                    onClick={() => move(1)}
+                  >
+                    {"→"}
+                  </button>
+                </div>
+              ) : null}
             </article>
           ) : null}
           <div className="news-main">
@@ -136,11 +150,13 @@ export function Journal({
             ) : null}
             {archive ? (
               <ArticleDestination className="archive-pick" article={archive}>
-                {archive.image ? <img
-                  alt={archive.image.alt}
-                  loading="lazy"
-                  src={archive.image.src}
-                /> : null}
+                {archive.image ? (
+                  <img
+                    alt={archive.image.alt}
+                    loading="lazy"
+                    src={archive.image.src}
+                  />
+                ) : null}
                 <div>
                   <p className="article-category">{archive.category}</p>
                   <h3>{archive.title}</h3>
@@ -149,18 +165,20 @@ export function Journal({
               </ArticleDestination>
             ) : null}
           </div>
-          {side.length ? <div className="news-side">
-            <span className="eyebrow">On our radar</span>
-            {side.map((article, position) => (
-              <article key={article.slug}>
-                <span aria-hidden="true" className="story-index">
-                  {String(position + 1).padStart(2, "0")}
-                </span>
-                <StoryLink article={article} />
-                <StoryDate article={article} fixture={fixture} />
-              </article>
-            ))}
-          </div> : null}
+          {side.length ? (
+            <div className="news-side">
+              <span className="eyebrow">On our radar</span>
+              {side.map((article, position) => (
+                <article key={article.slug}>
+                  <span aria-hidden="true" className="story-index">
+                    {String(position + 1).padStart(2, "0")}
+                  </span>
+                  <StoryLink article={article} />
+                  <StoryDate article={article} fixture={fixture} />
+                </article>
+              ))}
+            </div>
+          ) : null}
         </div>
       </section>
     </div>
@@ -170,7 +188,9 @@ export function Journal({
 function StoryLink({ article }: { article: JournalArticle }) {
   return (
     <ArticleDestination article={article} className="story-destination">
-      {article.image ? <img alt={article.image.alt} loading="lazy" src={article.image.src} /> : null}
+      {article.image ? (
+        <img alt={article.image.alt} loading="lazy" src={article.image.src} />
+      ) : null}
       {article.category ? (
         <p className="article-category">{article.category}</p>
       ) : null}
@@ -179,7 +199,13 @@ function StoryLink({ article }: { article: JournalArticle }) {
   );
 }
 
-function StoryDate({ article, fixture = false }: { article: JournalArticle; fixture?: boolean }) {
+function StoryDate({
+  article,
+  fixture = false,
+}: {
+  article: JournalArticle;
+  fixture?: boolean;
+}) {
   return article.date ? (
     <p className="article-meta">
       {fixture ? <span>Sample story · </span> : null}

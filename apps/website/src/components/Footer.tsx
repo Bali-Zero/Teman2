@@ -23,7 +23,7 @@ export function Footer() {
             <a href="/services">{"Our services"}</a>
             <a href="/#evoa">{"E-VOA"}</a>
             <a href="/visa/second-home/studio">{"Second Home Studio"}</a>
-            <a href="/journal">{"The Bali Zero Journal"}</a>
+            <a href="/news">{"The Bali Zero Journal"}</a>
             <a href="/book">{"The Bali Zero book"}</a>
           </div>
           <div className={styles.column}>

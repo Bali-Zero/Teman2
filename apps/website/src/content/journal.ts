@@ -1,8 +1,5 @@
 export type JournalVerificationStatus =
-  | "pending"
-  | "verified"
-  | "unavailable"
-  | "development-only";
+  "pending" | "verified" | "unavailable" | "development-only";
 
 export interface JournalImage {
   readonly src: string;
@@ -41,8 +38,15 @@ export interface JournalArticle {
     readonly revision: number;
     readonly amended: boolean;
     readonly updatedAt: JournalDate;
-    readonly evidence: readonly { publisher: string; citation: string | null; url: string | null }[];
-    readonly revisions: readonly { version: number; publishedAt: JournalDate }[];
+    readonly evidence: readonly {
+      publisher: string;
+      citation: string | null;
+      url: string | null;
+    }[];
+    readonly revisions: readonly {
+      version: number;
+      publishedAt: JournalDate;
+    }[];
   };
 }
 
@@ -61,7 +65,7 @@ export interface JournalArticleDocument {
 
 /**
  * The source records are a direct inventory of the six stories already present
- * in the approved R19 homepage. A record is not public on /journal until its
+ * in the approved R19 homepage. A record is not public on /news until its
  * destination has been checked and its status has been changed to `verified`.
  */
 export const journalArticleRecords: readonly JournalArticle[] = [
@@ -98,8 +102,7 @@ export const journalArticleRecords: readonly JournalArticle[] = [
   {
     title:
       "Indonesia's KBLI 2025 Shake-Up: The Transition Rules Every Business Must Know",
-    slug:
-      "indonesias-kbli-2025-shake-up-the-transition-rules-every-business-must-know",
+    slug: "indonesias-kbli-2025-shake-up-the-transition-rules-every-business-must-know",
     image: {
       src: "/assets/kbli.jpg",
       alt: "Published cover for the KBLI 2025 transition story",

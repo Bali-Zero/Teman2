@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CodePage } from "../../../features/kbli/KbliPages";
 import { getCode } from "../../../features/kbli/catalog.server";
@@ -6,13 +7,17 @@ export async function generateMetadata({
   params,
 }: {
   params: Promise<{ code: string }>;
-}) {
+}): Promise<Metadata> {
   const { code: id } = await params;
   const code = /^\d{5}$/.test(id) ? getCode(id) : undefined;
   return {
     title: code
       ? "KBLI " + id + " · " + code.titleEn + " | Bali Zero"
       : "Activity not found | Bali Zero",
+    description: code
+      ? `KBLI ${id}: ${code.titleEn}. Review the activity scope and business requirements in Indonesia.`
+      : "The requested KBLI business activity could not be found.",
+    alternates: { canonical: `/kbli/${id}` },
   };
 }
 export default async function Page({

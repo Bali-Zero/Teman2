@@ -28,7 +28,7 @@ describe("SiteHeader", () => {
     for (const [name, href] of [
       ["Explore", "/#tools"],
       ["Services", "/services"],
-      ["Journal", "/journal"],
+      ["Journal", "/news"],
       ["Our story", "/about"],
       ["Our team", "/team"],
       ["Contact", "/contact"],

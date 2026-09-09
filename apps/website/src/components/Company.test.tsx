@@ -1,16 +1,13 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import AboutPage, { metadata } from "../app/about/page";
-import LegacyAboutPage, {
-  metadata as legacyMetadata,
-} from "../app/v2/company/about/page";
+import AboutPage, { metadata as aboutMetadata } from "../app/about/page";
 import TeamPage from "../app/team/page";
 import { responsibilityGroups } from "../content/team";
 
 describe("company content and responsibility journeys", () => {
-  it("retains the company alias with the same content contract", () => {
-    expect(LegacyAboutPage).toBe(AboutPage);
-    expect(legacyMetadata).toEqual(metadata);
+  it("keeps the public company story on its canonical route", () => {
+    expect(aboutMetadata.title).not.toBe("Bali Zero — Website development");
+    expect(AboutPage).toEqual(expect.any(Function));
   });
 
   it("restores factual company context and practical steps without unsupported historical claims", () => {

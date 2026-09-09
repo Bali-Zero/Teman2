@@ -21,7 +21,7 @@ export const contactSourcePages = [
   "/team",
   "/contact",
   "/services",
-  "/journal",
+  "/news",
   "/services/immigration",
   "/services/company-setup",
   "/services/tax",
@@ -93,7 +93,7 @@ export function contactSourcePage(value: unknown): ContactSourcePage {
   const visa = /^\/visa\/(voa|clock|match)\/[A-Za-z0-9_-]{1,200}$/.exec(value);
   if (visa) return `/visa/${visa[1]}` as ContactSourcePage;
   if (value === "/visa" || value === "/visa-v2") return "/visa-oracle";
-  return articleCategory(value) ? "/journal" : "/contact";
+  return articleCategory(value) ? "/news" : "/contact";
 }
 
 export function inferContactTopic(pathname: string): ContactTopic {

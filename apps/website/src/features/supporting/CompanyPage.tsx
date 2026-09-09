@@ -129,7 +129,7 @@ export function CompanyPage({ kind }: { kind: keyof typeof content }) {
                 <span aria-hidden="true">↗</span>
               </a>
             ))}
-            <a className={styles.textLink} href="/journal">
+            <a className={styles.textLink} href="/news">
               Read the journal ↗
             </a>
           </div>

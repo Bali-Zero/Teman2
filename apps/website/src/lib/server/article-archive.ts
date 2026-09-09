@@ -1,11 +1,12 @@
-import { lstat, readdir, readFile, realpath, stat } from "node:fs/promises";
 import type { Dirent } from "node:fs";
+import * as fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
 import { isJournalCategory } from "../../content/journal-categories";
 import { isArticleSlug } from "../article-slug";
 
 export const articleArchiveMaxBytes = 250_000;
+const articleArchiveMemoMaxAgeMs = 5 * 60 * 1000;
 
 // Exact reading order from Mouth's getArticleByLocale. Originals remain
 // read-only in the publisher content tree.
@@ -56,6 +57,26 @@ export interface AuthoredArchiveEntry extends AuthoredArticleSource {
   slug: string;
 }
 
+interface ArchiveFolderSnapshot {
+  category: string;
+  folder: string;
+  canonicalFolder: string;
+  files: Dirent<string>[];
+  mtimeMs: number;
+}
+
+interface ArticleArchiveMemo {
+  fingerprint: string;
+  cachedAt: number;
+  entries: AuthoredArchiveEntry[];
+}
+
+let articleArchiveMemo: ArticleArchiveMemo | null = null;
+
+export function resetArticleArchiveMemo(): void {
+  articleArchiveMemo = null;
+}
+
 export function articleArchiveRoot(): string {
   return path.resolve(process.cwd(), "../mouth/src/content/articles");
 }
@@ -70,7 +91,7 @@ async function canonicalArchiveRoot(): Promise<{
 } | null> {
   const root = articleArchiveRoot();
   try {
-    return { root, canonicalRoot: await realpath(root) };
+    return { root, canonicalRoot: await fs.realpath(root) };
   } catch {
     return null;
   }
@@ -85,10 +106,10 @@ async function readArchiveFile(
   const unresolvedFile = path.join(root, folder, filename);
   let file: string;
   try {
-    file = await realpath(unresolvedFile);
+    file = await fs.realpath(unresolvedFile);
   } catch {
     try {
-      await lstat(unresolvedFile);
+      await fs.lstat(unresolvedFile);
       return { status: "rejected" };
     } catch {
       return { status: "absent" };
@@ -96,10 +117,10 @@ async function readArchiveFile(
   }
   if (!contained(canonicalRoot, file)) return { status: "rejected" };
   try {
-    const info = await stat(file);
+    const info = await fs.stat(file);
     if (!info.isFile() || info.size > articleArchiveMaxBytes)
       return { status: "rejected" };
-    return { status: "ready", source: await readFile(file, "utf8") };
+    return { status: "ready", source: await fs.readFile(file, "utf8") };
   } catch {
     return { status: "rejected" };
   }
@@ -188,51 +209,82 @@ export async function listAuthoredEnglishArticles(): Promise<
 > {
   const archive = await canonicalArchiveRoot();
   if (!archive) return [];
-  const entries: AuthoredArchiveEntry[] = [];
-  const identities = new Set<string>();
+  const snapshots: ArchiveFolderSnapshot[] = [];
+  const fingerprintParts: string[] = [];
   for (const [category, folders] of Object.entries(articleFolders)) {
     if (!isJournalCategory(category)) continue;
     for (const folder of folders) {
       let canonicalFolder: string;
       try {
-        canonicalFolder = await realpath(path.join(archive.root, folder));
+        canonicalFolder = await fs.realpath(path.join(archive.root, folder));
       } catch {
+        fingerprintParts.push(`${category}/${folder}:absent`);
         continue;
       }
-      if (!contained(archive.canonicalRoot, canonicalFolder)) continue;
-      let files: Dirent<string>[];
+      if (!contained(archive.canonicalRoot, canonicalFolder)) {
+        fingerprintParts.push(`${category}/${folder}:rejected`);
+        continue;
+      }
       try {
-        files = await readdir(canonicalFolder, { withFileTypes: true });
-      } catch {
-        continue;
-      }
-      for (const entry of files) {
-        if (
-          !(entry.isFile() || entry.isSymbolicLink()) ||
-          !entry.name.endsWith(".mdx")
-        )
+        const [info, files] = await Promise.all([
+          fs.stat(canonicalFolder),
+          fs.readdir(canonicalFolder, { withFileTypes: true }),
+        ]);
+        if (!info.isDirectory()) {
+          fingerprintParts.push(`${category}/${folder}:not-directory`);
           continue;
-        const slug = entry.name.slice(0, -4);
-        if (/\.(?:en|id|it|fr|ru)$/.test(slug) || !isArticleSlug(slug))
-          continue;
-        const identity = `${category}/${slug}`;
-        if (identities.has(identity)) continue;
-        identities.add(identity);
-        const file = await readArchiveFile(
-          archive.root,
-          archive.canonicalRoot,
-          folder,
-          entry.name,
-        );
-        if (file.status !== "ready") continue;
-        const article = decodeAuthoredArticleSource(
-          file.source,
+        }
+        snapshots.push({
           category,
-          slug,
+          folder,
+          canonicalFolder,
+          files,
+          mtimeMs: info.mtimeMs,
+        });
+        fingerprintParts.push(
+          `${category}/${folder}:${info.mtimeMs}:${files.length}`,
         );
-        if (article) entries.push({ category, slug, ...article });
+      } catch {
+        fingerprintParts.push(`${category}/${folder}:unreadable`);
       }
     }
   }
+
+  const fingerprint = fingerprintParts.join("|");
+  const now = Date.now();
+  if (
+    articleArchiveMemo?.fingerprint === fingerprint &&
+    now - articleArchiveMemo.cachedAt >= 0 &&
+    now - articleArchiveMemo.cachedAt < articleArchiveMemoMaxAgeMs
+  ) {
+    return articleArchiveMemo.entries;
+  }
+
+  const entries: AuthoredArchiveEntry[] = [];
+  const identities = new Set<string>();
+  for (const { category, folder, files } of snapshots) {
+    for (const entry of files) {
+      if (
+        !(entry.isFile() || entry.isSymbolicLink()) ||
+        !entry.name.endsWith(".mdx")
+      )
+        continue;
+      const slug = entry.name.slice(0, -4);
+      if (/\.(?:en|id|it|fr|ru)$/.test(slug) || !isArticleSlug(slug)) continue;
+      const identity = `${category}/${slug}`;
+      if (identities.has(identity)) continue;
+      identities.add(identity);
+      const file = await readArchiveFile(
+        archive.root,
+        archive.canonicalRoot,
+        folder,
+        entry.name,
+      );
+      if (file.status !== "ready") continue;
+      const article = decodeAuthoredArticleSource(file.source, category, slug);
+      if (article) entries.push({ category, slug, ...article });
+    }
+  }
+  articleArchiveMemo = { fingerprint, cachedAt: now, entries };
   return entries;
 }

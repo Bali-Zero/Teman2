@@ -1,25 +1,29 @@
-import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import JournalPage, { metadata } from "./page";
+import { redirect } from "next/navigation";
+import JournalRedirect from "./page";
 
-vi.mock("next/server", () => ({ connection: vi.fn(async () => {}) }));
-vi.mock("../../lib/server/journal-feed", () => ({ loadJournalFeed: vi.fn(async () => ({ status: "empty", articles: [], rejected: 0 })) }));
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn((destination: string) => {
+    throw new Error(`NEXT_REDIRECT:${destination}`);
+  }),
+}));
 
-describe("/journal", () => {
-  it("renders one editorial index heading with no local article route", async () => {
-    render(await JournalPage({}));
-
-    expect(
-      screen.getByRole("heading", { level: 1, name: "The Bali Zero Journal" }),
-    ).toBeInTheDocument();
-    for (const link of screen.queryAllByRole("link")) {
-      const href = link.getAttribute("href") ?? "";
-      expect(href.startsWith("/journal/")).toBe(false);
-    }
-  });
-
-  it("describes the Magazine publication index", () => {
-    expect(metadata.title).toBe("The Bali Zero Journal");
-    expect(metadata.description).toMatch(/Bali Zero Journal/i);
+describe("legacy Journal redirect", () => {
+  it("temporarily redirects to News while preserving supported query values", async () => {
+    await expect(
+      JournalRedirect({
+        searchParams: Promise.resolve({
+          category: "taxes",
+          q: "company tax",
+          page: "2",
+          ignored: "private",
+        }),
+      }),
+    ).rejects.toThrow(
+      "NEXT_REDIRECT:/news?category=taxes&q=company+tax&page=2",
+    );
+    expect(redirect).toHaveBeenCalledExactlyOnceWith(
+      "/news?category=taxes&q=company+tax&page=2",
+    );
   });
 });

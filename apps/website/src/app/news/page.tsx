@@ -1,2 +1,43 @@
-// Preserve the public News entry point while sharing the new Journal design.
-export { default, metadata } from "../journal/page";
+import type { Metadata } from "next";
+import { connection } from "next/server";
+import { JournalIndex } from "../../components/journal/JournalIndex";
+import { isJournalCategory } from "../../content/journal-categories";
+import { loadJournalFeed } from "../../lib/server/journal-feed";
+
+export const metadata: Metadata = {
+  title: "The Bali Zero Journal | Bali Zero",
+  description:
+    "News and practical analysis from the Bali Zero Journal: visas, business, taxes, property, living and technology in Indonesia.",
+  alternates: { canonical: "/news" },
+};
+
+export default async function NewsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  await connection();
+  const params = (await searchParams) ?? {};
+  const q =
+    typeof params.q === "string" ? params.q.trim().slice(0, 120) : undefined;
+  const category =
+    typeof params.category === "string" && isJournalCategory(params.category)
+      ? params.category
+      : undefined;
+  const page =
+    typeof params.page === "string" && /^\d{1,4}$/.test(params.page)
+      ? Math.max(1, Math.min(1000, Number(params.page)))
+      : 1;
+  const feed = await loadJournalFeed({ q, category, page, limit: 12 });
+  return (
+    <JournalIndex
+      articles={feed.articles}
+      status={feed.status}
+      fixture={feed.provenance === "fixture"}
+      query={{ q, category, page }}
+      hasMore={feed.hasMore}
+      catalogSize={feed.catalogSize}
+      total={feed.total}
+    />
+  );
+}

@@ -70,7 +70,7 @@ describe("editorial carousel", () => {
     expect(feature).not.toHaveTextContent(/min read/);
     expect(
       screen.getByRole("link", { name: /Explore the Journal/ }),
-    ).toHaveAttribute("href", "/journal");
+    ).toHaveAttribute("href", "/news");
     expect(feature).toHaveTextContent("02 / 02");
     feature.focus();
     await user.keyboard("{ArrowRight}");

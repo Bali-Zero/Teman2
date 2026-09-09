@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "Prime zoning atlas | Bali Zero",
   description:
     "Explore the public zoning polygons, compare recorded limits and request a property coordinate analysis.",
+  robots: { index: false, follow: false },
 };
 export default function PrimePage() {
   return (
