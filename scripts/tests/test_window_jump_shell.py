@@ -6,6 +6,13 @@ answers per MODE, and the test asserts the ORDER of gestures, what is typed
 where, and the log line for every miss — the contract that failed live on
 2026-09-09 (Pro 15:36, M5 17:59: ⌘N without a new front window, and the
 guard already claiming "AVVIATO").
+
+Since v2.1 both routes stand on the SAME pre-gesture snapshot (`window-names`
+is the first call either way) and only a window whose name was ABSENT from it
+may be typed into — the native route cross-checks the name of the window its
+own API handed back. The name-level guilt/innocence lives in
+infra/claude-hooks/test_window_jump_gesture.sh; what this file pins is the
+ORDER of the two routes and the ending of the old session.
 """
 from __future__ import annotations
 
@@ -28,16 +35,23 @@ pytestmark = pytest.mark.skipif(platform.system() != "Darwin",
 STUB = r'''#!/bin/bash
 # osascript stub: $1 = script path, $2 = action, rest = args. MODE from env.
 echo "$(basename "$1") $2 ${3:-} ${4:-}" >> "$STUB_LOG"
+d="$(dirname "$STUB_LOG")"
 case "$(basename "$1")|$2|$STUB_MODE" in
-  *native*"|old-id|native-disabled"|*native*"|old-id|keys-"*) echo "execution error: AppleScript is disabled by the macos-applescript configuration. (-1743)" >&2; exit 1 ;;
+  *native*"|"*"|native-disabled"|*native*"|"*"|keys-"*) echo "execution error: AppleScript is disabled by the macos-applescript configuration. (-1743)" >&2; exit 1 ;;
+  *native*"|window-names|"*)           echo "old title"; exit 0 ;;
   *native*"|old-id|native-no-old")     echo ""; exit 0 ;;
   *native*"|old-id|"*)                 echo "win-OLD"; exit 0 ;;
   *native*"|new-window|"*)             echo "win-NEW"; exit 0 ;;
+  *native*"|name-of-id|"*)             if [ "${3:-}" = "win-NEW" ]; then echo "new title"; else echo "old title"; fi; exit 0 ;;
   *native*"|type-into|"*)              echo "ok"; exit 0 ;;
   *native*"|close-window|"*)           echo "ok"; exit 0 ;;
+  window_jump.applescript"|window-names|keys-front-stuck") echo "old title"; exit 0 ;;
+  window_jump.applescript"|window-names|"*)
+    # first call = the snapshot; every later one also shows the new window
+    n=$(cat "$d/wn" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > "$d/wn"
+    if [ "$n" = 1 ]; then echo "old title"; else printf 'old title\nnew title\n'; fi; exit 0 ;;
   window_jump.applescript"|front-name|"*)  echo "old title"; exit 0 ;;
-  window_jump.applescript"|new-window|keys-front-stuck") echo "old title"; exit 0 ;;
-  window_jump.applescript"|new-window|"*)  echo "new title"; exit 0 ;;
+  window_jump.applescript"|cmd-n|"*)       echo "ok"; exit 0 ;;
   window_jump.applescript"|type-here|"*)   echo "ok"; exit 0 ;;
   window_jump.applescript"|raise-type|"*)  echo "ok"; exit 0 ;;
 esac
@@ -65,7 +79,7 @@ def _run(home: Path, mode: str, *, claim_after: float | None = 0.5, from_pid: in
     pending = home / ".organism" / "context-guard" / "pending-jump-sess-1234-abcd.json"
     env = {"HOME": str(home), "PATH": "/usr/bin:/bin", "OSASCRIPT": str(home.parent / "osascript"),
            "STUB_MODE": mode, "STUB_LOG": str(home / "calls.log"),
-           "JUMP_WAIT_S": "6", "EXIT_WAIT_S": "1"}
+           "JUMP_WAIT_S": "6", "EXIT_WAIT_S": "1", "JUMP_POLL_MAX_S": "2"}
     p = subprocess.Popen(["bash", str(SCRIPT), "sess-1234-abcd"], env=env,
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if claim_after is not None:
@@ -93,9 +107,12 @@ def test_native_route_opens_by_id_types_into_new_then_exits_and_closes_old(tmp_p
     finally:
         old.kill()
     assert rc == 0, log
-    assert calls[:3] == ["window_jump_native.applescript old-id sess-123 ",
+    assert calls[:5] == ["window_jump_native.applescript window-names  ",
+                         "window_jump_native.applescript old-id sess-123 ",
                          "window_jump_native.applescript new-window /tmp/wd ",
+                         "window_jump_native.applescript name-of-id win-NEW ",
                          "window_jump_native.applescript type-into win-NEW nz-jump sess-1234-abcd"]
+    assert "name='new title' (absent from the snapshot)" in log, "the id is a handle; the NAME authorises the keystroke"
     assert "window_jump_native.applescript type-into win-OLD /exit" in calls
     assert calls[-1] == "window_jump_native.applescript close-window win-OLD "
     assert not any(c.startswith("window_jump.applescript") for c in calls), "native route must never touch System Events"
@@ -134,21 +151,24 @@ def test_native_disabled_falls_back_to_keystrokes(tmp_path):
     home, _ = _home(tmp_path, 0)
     rc, calls, log = _run(home, "native-disabled")
     assert rc == 0, log
-    assert "native route unavailable" in log and "AppleScript is disabled" in log
-    assert calls[1:] == ["window_jump.applescript front-name  ",
-                         "window_jump.applescript new-window  ",
-                         "window_jump.applescript type-here new title nz-jump sess-1234-abcd",
+    # the dictionary is refused at the very first call — the snapshot itself
+    assert "native window list unavailable" in log and "AppleScript is disabled" in log
+    assert calls[1:] == ["window_jump.applescript window-names  ",
+                         "window_jump.applescript cmd-n  ",
+                         "window_jump.applescript window-names  ",
+                         "window_jump.applescript raise-type new title nz-jump sess-1234-abcd",
                          "window_jump.applescript raise-type old title /exit"]
     assert "'nz-jump sess-1234-abcd' typed" in log and "/exit typed into old window" in log
 
 
-def test_keystroke_route_types_nothing_when_no_new_window_came_to_front(tmp_path):
-    # The 2026-09-09 17:59 failure on M5: ⌘N, front window unchanged.
+def test_keystroke_route_types_nothing_when_no_new_window_was_born(tmp_path):
+    # The 2026-09-09 17:59 failure on M5: ⌘N, and no window with a name that
+    # was not already on the desktop. Nothing may be typed.
     home, _ = _home(tmp_path, 0)
     rc, calls, log = _run(home, "keys-front-stuck", claim_after=None)
     assert rc == 1
     assert not any("type-here" in c or "raise-type" in c for c in calls)
-    assert "did not bring a new window to front" in log and "nothing typed" in log
+    assert "no new window within" in log and "nothing typed" in log
 
 
 # ---------------- innocence ----------------
