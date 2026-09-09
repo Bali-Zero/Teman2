@@ -29,7 +29,7 @@
  *
  * Regenerate with:
  *
- *     npm run visa-oracle:walk-corpus -w apps/mouth
+ *     npx tsx proofs/visa-oracle/generate-walk-corpus.ts
  *
  * A PR that changes the interview tree (a new question, a new branch, a
  * reordered spine) MUST regenerate the corpus in that same PR and update
