@@ -36,9 +36,9 @@ export function KBLISectorTable({ sections }: { sections: KBLISection[] }) {
   });
 
   const headCell =
-    "px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400";
+    "px-3 py-0 text-[11px] font-semibold uppercase tracking-wider text-zinc-400";
   const sortBtn =
-    "inline-flex items-center gap-1 transition-colors hover:text-accent-warm";
+    "inline-flex min-h-[44px] items-center gap-1 transition-colors hover:text-accent-warm";
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
@@ -78,7 +78,10 @@ export function KBLISectorTable({ sections }: { sections: KBLISection[] }) {
                 Codes <ArrowUpDown size={12} />
               </button>
             </th>
-            <th scope="col" className={`${headCell} hidden sm:table-cell`}>
+            <th
+              scope="col"
+              className={`${headCell} hidden py-2.5 sm:table-cell`}
+            >
               Share
             </th>
           </tr>
