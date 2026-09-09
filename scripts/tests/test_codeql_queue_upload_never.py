@@ -3,10 +3,11 @@
 WHY: the queue's temporary ref (refs/heads/gh-readonly-queue/main/pr-N-<sha>) is
 deleted as soon as the group is rebuilt or merged. `codeql-action/analyze` uploads
 its SARIF at the END of a ~15-minute python analysis, and that upload then fails
-with "ref ... not found" — 4 of the 14 merge_group Security Scanning runs on
-2026-09-09 went red this way, on commits the queue had already moved past. The
-PR lane uploaded the same findings minutes earlier and the daily schedule covers
-main, so the queue run only has to prove the analysis builds and passes.
+with "ref ... not found" — 10 of the 54 merge_group Security Scanning runs on
+2026-09-09 went red this way (all 10 checked share the identical error), on
+commits the queue had already moved past. The PR lane uploaded the same
+findings earlier and the daily schedule covers main, so the queue run only
+has to prove the analysis builds and passes.
 
 Guilt + innocence on the SUBJECT (security.yml), entity match on the step's
 `with.upload` expression — not a substring grep of the file.
