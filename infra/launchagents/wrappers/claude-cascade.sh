@@ -404,6 +404,85 @@ print(sys.argv[1])
 PY
 }
 
+cascade_cap_escalation() {
+    # $1 = seat label, $2 = hops taken, $3 = the still-pending jump file.
+    # Receptor for the headless cap (Ruling Zero 2026-09-09 «tutto ciò che
+    # succede nel sistema non deve aspettare me per un fix»): a chain that hits
+    # JUMP_MAX_HOPS with a jump still pending is a mandate that silently ended
+    # INCOMPLETE — superscar #2 (Esiste≠Armato) with a green exit code. It
+    # becomes one HIGH line on the escalations board so the next SessionStart
+    # surfaces it. Board: CASCADE_ESCALATIONS_FILE, else the first known
+    # checkout's shared/escalations_pro.jsonl. Dedupe: one line per pending
+    # session id (the file's from_session). Kill switch:
+    # CASCADE_CAP_ESCALATION_OFF=1. Never fails the run: the emitted hops are
+    # real work; a broken board is a stderr warning, not a lost answer.
+    [ "${CASCADE_CAP_ESCALATION_OFF:-0}" = "1" ] && return 0
+    local board="${CASCADE_ESCALATIONS_FILE:-}" cand
+    if [ -z "$board" ]; then
+        for cand in "$HOME/nuzantara/shared/escalations_pro.jsonl" \
+                    "$HOME/Desktop/nuzantara/shared/escalations_pro.jsonl"; do
+            [ -f "$cand" ] && { board="$cand"; break; }
+        done
+    fi
+    if [ -z "$board" ]; then
+        echo "  [jump] $1 — cap escalation NOT written: no escalations board found (set CASCADE_ESCALATIONS_FILE)" >&2
+        return 0
+    fi
+    CAP_SEAT="$1" CAP_HOPS="$2" CAP_JUMP_FILE="$3" CAP_BOARD="$board" CAP_MAX="$JUMP_MAX_HOPS" \
+    python3 - <<'PY' 2>&1 | sed 's/^/  [jump] /' >&2
+import json, os, socket, time
+seat, hops, jf, board = (os.environ[k] for k in ("CAP_SEAT", "CAP_HOPS", "CAP_JUMP_FILE", "CAP_BOARD"))
+try:
+    j = json.load(open(jf))
+except Exception:
+    j = {}
+sid = str(j.get("from_session") or os.path.basename(jf)[len("pending-jump-"):-len(".json")])
+try:
+    for line in open(board, encoding="utf-8"):
+        try:
+            d = json.loads(line)
+        except Exception:
+            continue
+        if d.get("type") == "cascade_headless_cap" and d.get("session") == sid:
+            print(f"{seat} — cap escalation already on the board for session {sid[:8]} (dedupe)")
+            raise SystemExit(0)
+except FileNotFoundError:
+    pass
+host = socket.gethostname().split(".")[0].lower()
+rec = {
+    "job": f"cascade-headless-cap-{seat}",
+    "type": "cascade_headless_cap",
+    "priority": "HIGH",
+    "status": "pending",
+    "error_summary": (
+        f"headless window jump hit cap {os.environ['CAP_MAX']} on seat {seat} with a jump still "
+        f"pending: the mandate ended INCOMPLETE with exit 0 ({hops} hops); "
+        f"handoff {j.get('handoff_path') or '?'}"
+    ),
+    "seat": seat,
+    "hops": int(hops),
+    "session": sid,
+    "jump_file": jf,
+    "handoff_path": j.get("handoff_path"),
+    "cwd": j.get("cwd"),
+    "model": j.get("model"),
+    "cure_lane": {
+        "owner": "session",
+        "note": "read the handoff first; continue the mandate in a fresh seat run "
+                "(claude -p with the handoff as context) or raise JUMP_MAX_HOPS for this job; "
+                "never rerun blind (Builder Contract §1)",
+    },
+    "machine": host,
+    "_writer": host,
+    "ts": str(time.time()),
+}
+with open(board, "a", encoding="utf-8") as fh:
+    fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+print(f"{seat} — cap escalation HIGH written to {board} (session {sid[:8]})")
+PY
+    return 0
+}
+
 claude_seat_invoke() {
     # $1 = session id for this invocation; $2 = previous session id (hop) or "".
     # Uses try_claude's own locals (bin, oauth_token, config_dir, label,
@@ -508,6 +587,7 @@ try_claude() {
     done
     if [ "$hop" -ge "$JUMP_MAX_HOPS" ] && jump_file="$(headless_jump_raised_by "$run_sid")" && [ -n "$jump_file" ]; then
         echo "  [jump] $label — cap $JUMP_MAX_HOPS reached with a jump still pending ($(basename "$jump_file")): mandate may be INCOMPLETE" >&2
+        cascade_cap_escalation "$label" "$hop" "$jump_file"
     fi
 
     cat "$acc"

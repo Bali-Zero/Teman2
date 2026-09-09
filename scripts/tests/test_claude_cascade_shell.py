@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import json
 import subprocess
 import time
 from pathlib import Path
@@ -1450,3 +1451,88 @@ def test_seat_never_sees_the_operators_terminal_program(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     assert result.stdout == "term=unset ver=unset\n"
     assert _labels(call_log) == ["token1"]
+
+
+# ── headless cap receptor: a chain that ends at the cap with a jump still
+# pending is an INCOMPLETE mandate with exit 0 — it must reach the
+# escalations board as one HIGH line (Ruling Zero 2026-09-09).
+
+def _cap_scenario(tmp_path: Path) -> tuple[dict[str, str], Path]:
+    bodies = _default_bodies()
+    bodies["token1"] = (
+        'n="$HOME/jump-calls"; c=$(cat "$n" 2>/dev/null || echo 0); c=$((c+1)); echo "$c" > "$n"; '
+        + _JUMP_WRITER + '"$sid" headless; printf "part%s\\n" "$c"; exit 0'
+    )
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    board = tmp_path / "escalations.jsonl"
+    env["CASCADE_ESCALATIONS_FILE"] = str(board)
+    return env, board
+
+
+def test_headless_cap_writes_one_high_escalation(tmp_path: Path) -> None:
+    env, board = _cap_scenario(tmp_path)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "part1\npart2\npart3\npart4\n"  # the hops' work is still emitted
+    lines = [json.loads(l) for l in board.read_text(encoding="utf-8").splitlines()]
+    assert len(lines) == 1, lines
+    rec = lines[0]
+    assert rec["type"] == "cascade_headless_cap" and rec["priority"] == "HIGH"
+    assert rec["status"] == "pending" and rec["seat"] == "claude-token-1-env" and rec["hops"] == 3
+    assert rec["session"] == _sids(tmp_path)[-1]  # the still-pending session
+    assert rec["jump_file"].endswith(f"pending-jump-{rec['session']}.json")
+    assert "INCOMPLETE" in rec["error_summary"] and rec["cure_lane"]["owner"] == "session"
+    assert "cap escalation HIGH written" in result.stderr
+
+
+def test_headless_cap_escalation_dedupes_on_the_pending_session(tmp_path: Path) -> None:
+    # the 4th (last, still-pending) run seeds the board with a line for ITS OWN
+    # session before returning — as a receptor re-run by hand would have — so
+    # the wrapper's receptor must recognise it and add nothing
+    bodies = _default_bodies()
+    bodies["token1"] = (
+        'n="$HOME/jump-calls"; c=$(cat "$n" 2>/dev/null || echo 0); c=$((c+1)); echo "$c" > "$n"; '
+        + _JUMP_WRITER + '"$sid" headless; '
+        'if [ "$c" = 4 ]; then printf \'{"type":"cascade_headless_cap","session":"%s","seed":true}\\n\' "$sid" '
+        '>> "$CASCADE_ESCALATIONS_FILE"; fi; printf "part%s\\n" "$c"; exit 0'
+    )
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    board = tmp_path / "escalations.jsonl"
+    env["CASCADE_ESCALATIONS_FILE"] = str(board)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert "(dedupe)" in result.stderr, result.stderr
+    lines = [json.loads(l) for l in board.read_text(encoding="utf-8").splitlines()]
+    assert len(lines) == 1 and lines[0].get("seed") is True, lines
+
+
+def test_headless_cap_escalation_kill_switch_keeps_the_warning_only(tmp_path: Path) -> None:
+    env, board = _cap_scenario(tmp_path)
+    env["CASCADE_CAP_ESCALATION_OFF"] = "1"
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert "INCOMPLETE" in result.stderr and not board.exists()
+
+
+def test_headless_cap_without_a_board_warns_and_still_answers(tmp_path: Path) -> None:
+    env, board = _cap_scenario(tmp_path)
+    del env["CASCADE_ESCALATIONS_FILE"]  # temp HOME has no known checkout either
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "part1\npart2\npart3\npart4\n"
+    assert "cap escalation NOT written: no escalations board found" in result.stderr
+    assert not board.exists()
+
+
+def test_clean_headless_chain_writes_no_escalation(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = _counting_body(
+        _JUMP_WRITER + '"$sid" headless; printf "first\\n"; exit 0', 'printf "second\\n"; exit 0'
+    )
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    board = tmp_path / "escalations.jsonl"
+    env["CASCADE_ESCALATIONS_FILE"] = str(board)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "first\nsecond\n" and not board.exists()
+
