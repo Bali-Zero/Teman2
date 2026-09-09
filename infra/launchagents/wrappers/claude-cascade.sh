@@ -380,6 +380,18 @@ build_claude_args() {
 # the chain as well). Kill switch: CONTEXT_JUMP_OFF=1 (same as the guard).
 # ---------------------------------------------------------------------------
 JUMP_MAX_HOPS="${JUMP_MAX_HOPS:-3}"
+# Guard threshold for a headless seat. The guard's default (40% of the
+# window) exists for CONTEXT QUALITY (Zero, 2026-09-09: short windows per
+# role reason better than a full or compacted one). Measured live on Pro
+# 2026-09-09 (pro-healer tick, Sonnet 200K): the tick needs ~90K, tripped at
+# 80K, and every hop restarted at ~47K (system prompt + injected handoff),
+# redid ~35 tool calls and tripped again — the chain reached the cap
+# INCOMPLETE, so the quality rule bought nothing and cost 3x. A cron tick
+# that cannot finish inside 40% must be allowed to finish; 80% is a measured
+# exception for the headless tier, not a new default for windows (Astra,
+# 2026-09-09: 80% of 200K is 160K; Codex's 40% of 258K is already 103K).
+# An explicit CONTEXT_GUARD_PCT in the caller's env wins.
+JUMP_GUARD_PCT="${JUMP_GUARD_PCT:-80}"
 JUMP_STATE_DIR="${JUMP_STATE_DIR:-$HOME/.organism/context-guard}"
 
 new_session_id() {
@@ -404,13 +416,123 @@ print(sys.argv[1])
 PY
 }
 
+cascade_cap_escalation() {
+    # $1 = seat label, $2 = hops taken, $3 = the pending jump file ("" when the
+    # guard refused to write one), $4 = session id of the run that tripped.
+    # Receptor for the headless cap (Ruling Zero 2026-09-09 «tutto ciò che
+    # succede nel sistema non deve aspettare me per un fix»): a chain that hits
+    # JUMP_MAX_HOPS with a jump still pending is a mandate that silently ended
+    # INCOMPLETE — superscar #2 (Esiste≠Armato) with a green exit code. It
+    # becomes one HIGH line on the escalations board so the next SessionStart
+    # surfaces it. Board: CASCADE_ESCALATIONS_FILE, else the first known
+    # checkout's shared/escalations_pro.jsonl. Dedupe: one line per pending
+    # session id (the file's from_session). Kill switch:
+    # CASCADE_CAP_ESCALATION_OFF=1. Never fails the run: the emitted hops are
+    # real work; a broken board is a stderr warning, not a lost answer. No
+    # ~/Desktop candidate on purpose: a launchd wrapper touching Desktop trips
+    # macOS TCC (W84-tcc-dead, scripts/lint_tcc_desktop_paths.py) — every
+    # machine has ~/nuzantara, and NUZANTARA_ROOT names any other checkout.
+    [ "${CASCADE_CAP_ESCALATION_OFF:-0}" = "1" ] && return 0
+    local board="${CASCADE_ESCALATIONS_FILE:-}" cand
+    if [ -z "$board" ]; then
+        for cand in "${NUZANTARA_ROOT:+$NUZANTARA_ROOT/shared/escalations_pro.jsonl}" \
+                    "$HOME/nuzantara/shared/escalations_pro.jsonl"; do
+            [ -n "$cand" ] && [ -f "$cand" ] && { board="$cand"; break; }
+        done
+    fi
+    if [ -z "$board" ]; then
+        echo "  [cap] $1 — cap escalation NOT written: no escalations board found (set CASCADE_ESCALATIONS_FILE)" >&2
+        return 0
+    fi
+    CAP_SEAT="$1" CAP_HOPS="$2" CAP_JUMP_FILE="$3" CAP_SID="${4:-}" CAP_BOARD="$board" CAP_MAX="$JUMP_MAX_HOPS" \
+    CAP_HANDOFF="$HOME/.claude/state/precompact-handoff-${4:-}.json" \
+    python3 - <<'PY' 2>&1 | sed 's/^/  [cap] /' >&2
+import json, os, socket, time
+seat, hops, jf, board, sid_env = (os.environ[k] for k in ("CAP_SEAT", "CAP_HOPS", "CAP_JUMP_FILE", "CAP_BOARD", "CAP_SID"))
+j = {}
+if jf:
+    try:
+        j = json.load(open(jf))
+    except Exception:
+        j = {}
+sid = str(j.get("from_session") or sid_env or (os.path.basename(jf)[len("pending-jump-"):-len(".json")] if jf else "unknown"))
+handoff = j.get("handoff_path") or (os.environ["CAP_HANDOFF"] if sid_env and os.path.exists(os.environ["CAP_HANDOFF"]) else None)
+try:
+    for line in open(board, encoding="utf-8"):
+        try:
+            d = json.loads(line)
+        except Exception:
+            continue
+        if d.get("type") == "cascade_headless_cap" and d.get("session") == sid:
+            print(f"{seat} — cap escalation already on the board for session {sid[:8]} (dedupe)")
+            raise SystemExit(0)
+except FileNotFoundError:
+    pass
+host = socket.gethostname().split(".")[0].lower()
+rec = {
+    "job": f"cascade-headless-cap-{seat}-{sid[:8]}",
+    "type": "cascade_headless_cap",
+    "priority": "HIGH",
+    "status": "pending",
+    "error_summary": (
+        f"headless window jump hit cap {os.environ['CAP_MAX']} on seat {seat} with a jump still "
+        f"pending: the mandate ended INCOMPLETE with exit 0 ({hops} hops"
+        f"{'' if jf else ', guard refused the jump: its chain cap or CONTEXT_JUMP_OFF'}); "
+        f"handoff {handoff or '?'}"
+    ),
+    "seat": seat,
+    "hops": int(hops),
+    "session": sid,
+    "jump_file": jf or None,
+    "handoff_path": handoff,
+    "cwd": j.get("cwd"),
+    "model": j.get("model"),
+    "cure_lane": {
+        "owner": "session",
+        "note": "read the handoff first; continue the mandate in a fresh headless seat run "
+                "with the handoff as its first context, then mark this job resolved; "
+                "raising JUMP_MAX_HOPS does not help (the guard caps the chain at 3 on its own); "
+                "never rerun blind (Builder Contract §1)",
+    },
+    "machine": host,
+    "_writer": host,
+    # a NUMBER: scripts/sentinel_lib/escalations.py sorts entries on the raw
+    # value and the live board carries floats — one string would TypeError
+    # the whole read (codex #1, 2026-09-09)
+    "ts": time.time(),
+}
+os.makedirs(os.path.dirname(os.path.abspath(board)), exist_ok=True)
+with open(board, "a", encoding="utf-8") as fh:
+    fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+print(f"{seat} — cap escalation HIGH written to {board} (session {sid[:8]})")
+PY
+    return 0
+}
+
+guard_tripped_in_run() {
+    # $1 = session id. True when context_window_guard.py tripped in that run.
+    # Signals, either one: (a) the guard's OWN marker
+    # ~/.claude/state/context-window-guard/<session>.last-handoff, written by
+    # _mark_handoff_written() after a successful handoff — NOT the handoff
+    # file itself, which precompact-mnemos.py also writes on an ordinary
+    # compaction (codex #2, 2026-09-09: a compaction would read as INCOMPLETE);
+    # (b) the pending-jump file for that session, whatever its state — the
+    # guard creates it even when the handoff write failed (codex #3). The
+    # pending file alone is not enough: at the guard's chain cap the run trips,
+    # marks, and refuses the jump (kimi #1, seen live on Pro hop 2). The jump
+    # kill switch does not silence detection: the operator turned off the
+    # jump, not the report (codex #4).
+    [ -f "${CONTEXT_GUARD_STATE_DIR:-$HOME/.claude/state/context-window-guard}/$1.last-handoff" ] \
+        || [ -f "$JUMP_STATE_DIR/pending-jump-$1.json" ]
+}
+
 claude_seat_invoke() {
     # $1 = session id for this invocation; $2 = previous session id (hop) or "".
     # Uses try_claude's own locals (bin, oauth_token, config_dir, label,
     # tmpout, tmperr) — zsh dynamic scoping — so hops run the SAME seat.
     local -a hop_env
-    hop_env=()
-    [ -n "${2:-}" ] && hop_env=(NZ_JUMP_FROM="$2")
+    hop_env=(CONTEXT_GUARD_PCT="${CONTEXT_GUARD_PCT:-$JUMP_GUARD_PCT}")
+    [ -n "${2:-}" ] && hop_env+=(NZ_JUMP_FROM="$2")
     if [ -n "$oauth_token" ]; then
         run_bounded "$tmpout" "$tmperr" "$label" "${ISOLATED_PROVIDER_ENV[@]}" \
             CLAUDE_CONFIG_DIR="$config_dir" \
@@ -506,8 +628,22 @@ try_claude() {
         fi
         cat "$tmpout" >>"$acc"
     done
-    if [ "$hop" -ge "$JUMP_MAX_HOPS" ] && jump_file="$(headless_jump_raised_by "$run_sid")" && [ -n "$jump_file" ]; then
-        echo "  [jump] $label — cap $JUMP_MAX_HOPS reached with a jump still pending ($(basename "$jump_file")): mandate may be INCOMPLETE" >&2
+    # The loop ends either because the last run did not trip (clean chain) or
+    # because nobody will continue it: our cap, or the guard's own chain cap /
+    # kill switch (it tripped, wrote the handoff, refused the jump file). Both
+    # are an INCOMPLETE mandate wearing exit 0 — say so and raise it.
+    if guard_tripped_in_run "$run_sid"; then
+        jump_file="$(headless_jump_raised_by "$run_sid" || true)"
+        if [ "${CONTEXT_JUMP_OFF:-0}" = "1" ]; then
+            echo "  [cap] $label — guard tripped on session $run_sid, jump disabled (CONTEXT_JUMP_OFF=1): mandate may be INCOMPLETE" >&2
+        elif [ "$hop" -ge "$JUMP_MAX_HOPS" ]; then
+            local pending_desc="no jump file: guard refused"
+            [ -n "$jump_file" ] && pending_desc="$(basename "$jump_file")"
+            echo "  [cap] $label — cap $JUMP_MAX_HOPS reached with a jump still pending ($pending_desc): mandate may be INCOMPLETE" >&2
+        else
+            echo "  [cap] $label — guard tripped on session $run_sid after hop $hop but raised no jump (its chain cap): mandate may be INCOMPLETE" >&2
+        fi
+        cascade_cap_escalation "$label" "$hop" "${jump_file:-}" "$run_sid"
     fi
 
     cat "$acc"
