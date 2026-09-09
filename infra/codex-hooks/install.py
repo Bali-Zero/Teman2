@@ -39,7 +39,7 @@ def install(seat: Path, roots: list[str], trust: bool = False) -> dict:
             shutil.copy2(old, backup / old.name)
             (backup / old.name).chmod(0o600)
     hashes = {}
-    for name in ("context_bridge.py", "rpc.py"):
+    for name in ("context_bridge.py", "rpc.py", "mandate_budget.py"):
         source = Path(__file__).parent / name
         if (dest / name).exists():
             shutil.copy2(dest / name, backup / name)
@@ -74,6 +74,10 @@ def install(seat: Path, roots: list[str], trust: bool = False) -> dict:
     policy.update(version=VERSION, enabled=True, roots=roots)
     policy.setdefault("thresholds", {"imperator": 0.2, "builder": 0.4})
     policy.setdefault("max_hops", 3)
+    policy.setdefault(
+        "child_limits",
+        {"max_attempts": 24, "max_active": 3, "max_depth": 1, "max_seconds": 3600},
+    )
     save(seat / "nuzantara-context-policy.json", policy)
     # Only the current seat is selected for this subprocess. Credentials stay put.
     previous = os.environ.get("CODEX_HOME")

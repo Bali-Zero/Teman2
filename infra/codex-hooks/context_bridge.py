@@ -26,9 +26,12 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from rpc import binary_path
+from mandate_budget import observe as budget_observe, reserve as budget_reserve
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 HANDSHAKE_SECONDS = 45
+POLL_SECONDS = 1
+MANDATE_SECONDS = 3600
 SELF = Path(__file__).resolve()
 EVENTS = (
     "SessionStart",
@@ -37,6 +40,8 @@ EVENTS = (
     "PreCompact",
     "PostCompact",
     "Stop",
+    "SubagentStart",
+    "SubagentStop",
 )
 
 
@@ -107,8 +112,9 @@ def git_fingerprint(cwd: str) -> str:
     return h.hexdigest()
 
 
-def records(path: str, tail: bool = False) -> Iterator[dict[str, Any]]:
+def records(path: str, tail: bool = False, offset: int = 0) -> Iterator[dict[str, Any]]:
     with open(path, "rb") as stream:
+        stream.seek(offset)
         if tail:
             stream.seek(0, 2)
             size = stream.tell()
@@ -124,9 +130,9 @@ def records(path: str, tail: bool = False) -> Iterator[dict[str, Any]]:
                 continue
 
 
-def measure(path: str) -> dict[str, Any]:
+def measure(path: str, offset: int = 0) -> dict[str, Any]:
     result: dict[str, Any] = {}
-    for rec in records(path, tail=True):
+    for rec in records(path, tail=not offset, offset=offset):
         data = rec.get("payload") or {}
         if rec.get("type") == "turn_context":
             result.update(
@@ -329,8 +335,182 @@ def instructions(sid: str) -> str:
         "Codex accepts it. The continuation uses the same model and permission policy. "
         "For code changes, record real checks using the same helper with verb verify and "
         '{"commands":[["absolute/path/to/venv/bin/python","-m","pytest","specific_test.py"]]}. '
-        "Verify again after editing; a successful tool invocation alone is not proof-live."
+        "Verify again after editing; a successful tool invocation alone is not proof-live. "
+        "For each child assign objective, write scope, expected result, constraints and checks. "
+        "Use the existing worktree broker or serialize writers, including shell/MCP mutations. "
+        "Children return checkpoints to their parent; never start replacement chains. "
+        "The coordinator owns a total deadline and all attempts, retries, replacements, depth "
+        "and concurrent children. Receipt success is execution evidence, not independent acceptance."
     )
+
+
+def native_child(payload: dict[str, Any]) -> tuple[str, str, str] | None:
+    """Identity comes from the FIRST native metadata record, before inherited history.
+
+    0.153.4 SubagentStart reports the parent session_id and CHILD transcript_path.
+    Never search later session_meta records: forked history contains the parent.
+    """
+    event = payload.get("hook_event_name")
+    transcript = str(
+        payload.get("agent_transcript_path") or payload.get("transcript_path") or ""
+    )
+    explicit = str(payload.get("agent_id") or "")
+    try:
+        first = next(records(transcript))
+        meta = first.get("payload", {}) if first.get("type") == "session_meta" else {}
+        parent = meta.get("parent_thread_id")
+        child = meta.get("id")
+        subagent = (
+            (meta.get("source") or {}).get("subagent")
+            if isinstance(meta.get("source"), dict)
+            else None
+        )
+        if (
+            parent
+            and child
+            and isinstance(subagent, dict)
+            and "thread_spawn" in subagent
+            and (not explicit or child == explicit)
+        ):
+            state_path(child)
+            state_path(parent)
+            return child, parent, transcript
+    except (OSError, ValueError, StopIteration):
+        pass
+    if explicit or event in ("SubagentStart", "SubagentStop"):
+        # Missing or parent transcript is UNKNOWN, never a fallback measurement.
+        child = (
+            explicit
+            or "unknown-" + digest(str(payload.get("session_id")).encode())[:24]
+        )
+        state_path(child)
+        return child, str(payload.get("session_id") or ""), ""
+    return None
+
+
+def child_hook(
+    payload: dict[str, Any], identity: tuple[str, str, str]
+) -> dict[str, Any]:
+    sid, parent, transcript = identity
+    event = payload["hook_event_name"]
+    source = os.environ.get("CODEX_CONTEXT_FROM_SESSION")
+    if source and load(state_path(parent)).get("from_session") != source:
+        reason = (
+            "Native child has no acknowledged continuation parent. Return incomplete."
+        )
+        return (
+            context_output(event, reason, deny=True)
+            if event == "PreToolUse"
+            else {"continue": False, "stopReason": reason}
+        )
+    parent_state = load(state_path(parent))
+    mandate = os.environ.get("NUZANTARA_MANDATE_ID") or parent_state.get(
+        "mandate_root", parent
+    )
+    if event == "SubagentStart":
+        first = next(records(transcript), {}) if transcript else {}
+        budget_observe(
+            state_dir() / "mandates",
+            mandate,
+            sid,
+            alias=first.get("payload", {}).get("agent_path"),
+            nickname=first.get("payload", {}).get("agent_nickname"),
+        )
+    if event == "PreToolUse" and payload.get("tool_name") in (
+        "collaborationspawn_agent",
+        "spawn_agent",
+        "collaborationfollowup_task",
+        "followup_task",
+    ):
+        return context_output(
+            event,
+            "Child delegation depth reached. Return remaining work to the parent.",
+            deny=True,
+        )
+    helper = (
+        helper_call(payload, sid) if event in ("PreToolUse", "PostToolUse") else None
+    )
+    if (
+        event == "PreToolUse"
+        and helper
+        and helper[0] == "checkpoint"
+        and helper[1] is not None
+    ):
+        with locked(sid) as (path, initial):
+            initial["cwd"] = str(Path(payload.get("cwd") or os.getcwd()).resolve())
+            save(path, initial)
+        checkpoint(sid, helper[1])
+    with locked(sid) as (path, state):
+        if event == "PreToolUse" and state.get("transport_status") == "stopped":
+            state.pop("stop_reminded", None)
+            state.pop("checkpoint", None)
+            state["transport_status"] = "running"
+        state.update(
+            session_id=sid,
+            parent_session=parent,
+            topology="child",
+            role="builder",
+            cwd=str(Path(payload.get("cwd") or os.getcwd()).resolve()),
+            last_event=event,
+            heartbeat=time.time(),
+            acceptance_status="unverified",
+        )
+        counts = state.setdefault("event_counts", {})
+        counts[event] = counts.get(event, 0) + 1
+        if event == "SubagentStart" and transcript and "transcript_offset" not in state:
+            state["transcript_offset"] = Path(transcript).stat().st_size
+            state["transcript"] = transcript
+            state["model"] = payload.get("model")
+        if transcript and "transcript_offset" in state:
+            state.update(measure(transcript, offset=state["transcript_offset"]))
+        state["measurement"] = (
+            "observed" if state.get("window") and state.get("observed") else "UNKNOWN"
+        )
+        if state.get("used", 0) >= state.get("window", float("inf")) * 0.4:
+            state["return_required"] = True
+        message = (
+            "Native child "
+            + sid
+            + ": task role builder; return checkpoint and remaining work "
+            "to parent "
+            + parent
+            + ". Never launch an autonomous continuation or modify a "
+            "parent handoff. Use assigned scope, checks and shared mandate budget. "
+            "A result remains unverified until the coordinator independently accepts it. "
+            "Checkpoint helper: "
+            + shlex.join([sys.executable, str(SELF), "checkpoint", sid])
+            + ' with JSON {"objective":"...","next_action":"return to parent","remaining":["..."],"risks":[]}.'
+        )
+        if event in ("SubagentStop", "Stop"):
+            state.update(
+                transport_status="stopped",
+                claimed_complete=state.get("checkpoint", {}).get("remaining") == [],
+            )
+            incomplete = state.get("return_required") and not state.get("checkpoint")
+            unknown = not transcript
+            if incomplete or unknown:
+                state["completion_status"] = "needs_attention"
+                if not payload.get("stop_hook_active") and not state.get(
+                    "stop_reminded"
+                ):
+                    state["stop_reminded"] = True
+                    state["transport_status"] = "stop_blocked"
+                    save(path, state)
+                    return {
+                        "decision": "block",
+                        "reason": "Child context or checkpoint is incomplete/UNKNOWN. "
+                        + message,
+                    }
+            else:
+                state["completion_status"] = "returned_unverified"
+        save(path, state)
+        if event == "PreToolUse" and state.get("return_required") and not helper:
+            return context_output(event, message, deny=True)
+        if event == "SubagentStart":
+            return context_output(event, message)
+    if event in ("SubagentStop", "Stop"):
+        budget_observe(state_dir() / "mandates", mandate, sid, stopped=True)
+    return {}
 
 
 def hook(payload: dict[str, Any]) -> dict[str, Any]:
@@ -343,6 +523,9 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
     roots = [str(Path(p).expanduser().resolve()) for p in policy.get("roots", [])]
     if not any(cwd == p or cwd.startswith(p + os.sep) for p in roots):
         return {}
+    child = native_child(payload)
+    if child:
+        return child_hook(payload, child)
     source_id = os.environ.get("CODEX_CONTEXT_FROM_SESSION")
     if (
         source_id
@@ -353,6 +536,29 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
         if event == "PreToolUse":
             return context_output(event, reason, deny=True)
         return {"continue": False, "stopReason": reason}
+    if event == "PreToolUse" and payload.get("tool_name") in (
+        "collaborationspawn_agent",
+        "spawn_agent",
+        "collaborationfollowup_task",
+        "followup_task",
+    ):
+        parent_state = load(state_path(sid))
+        mandate = os.environ.get("NUZANTARA_MANDATE_ID") or parent_state.get(
+            "mandate_root", sid
+        )
+        limits = dict(policy.get("child_limits", {}))
+        limits["strict"] = bool(os.environ.get("NUZANTARA_MANDATE_ID"))
+        reason = budget_reserve(
+            state_dir() / "mandates",
+            mandate,
+            str(payload.get("tool_use_id") or ""),
+            limits,
+            target=(payload.get("tool_input") or {}).get("target")
+            if "followup" in payload.get("tool_name", "")
+            else None,
+        )
+        if reason:
+            return context_output(event, reason, deny=True)
     helper = (
         helper_call(payload, sid) if event in ("PreToolUse", "PostToolUse") else None
     )
@@ -427,6 +633,8 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
                         root_transcripts=paths,
                         hops=source.get("hops", 0) + 1,
                         role=source.get("role", "builder"),
+                        mandate_root=source.get("mandate_root", source_id),
+                        mandate_deadline=source.get("mandate_deadline"),
                     )
             state.setdefault(
                 "role",
@@ -456,6 +664,7 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
             "requested",
             "starting",
             "accepted",
+            "needs_attention",
         ):
             if not helper_command(payload, sid):
                 return context_output(
@@ -475,6 +684,11 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
         if state.get("rollover") == "requested":
             if not state.get("checkpoint"):
                 if payload.get("stop_hook_active"):
+                    with locked(sid) as (path, latest):
+                        latest.update(
+                            rollover="needs_attention", failure="checkpoint_missing"
+                        )
+                        save(path, latest)
                     return {
                         "systemMessage": "Context handoff incomplete; source preserved. "
                         + instructions(sid)
@@ -493,6 +707,9 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
                 "stopReason": "Continuation accepted: " + state["to_session"],
             }
         current = git_fingerprint(cwd)
+        with locked(sid) as (path, latest):
+            latest.update(transport_status="stopped", acceptance_status="unverified")
+            save(path, latest)
         if state.get("baseline") and current != state["baseline"]:
             proof = state.get("verification", {})
             if proof.get("fingerprint") != current or not proof.get("passed"):
@@ -502,6 +719,12 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
                 )
                 if not payload.get("stop_hook_active"):
                     return {"decision": "block", "reason": message}
+                with locked(sid) as (path, latest):
+                    latest.update(
+                        completion_status="needs_attention",
+                        failure="verification_missing_or_stale",
+                    )
+                    save(path, latest)
                 return {"systemMessage": "Completion remains unverified. " + message}
     return {}
 
@@ -570,6 +793,17 @@ def launch(sid: str, max_hops: int) -> dict[str, Any]:
     with locked(sid) as (path, state):
         if state.get("rollover") != "requested":
             return {}
+        state.setdefault("mandate_root", os.environ.get("NUZANTARA_MANDATE_ID") or sid)
+        if not state.get("mandate_deadline"):
+            state["mandate_deadline"] = time.time() + MANDATE_SECONDS
+        if state.get("cancel_requested") or time.time() >= state["mandate_deadline"]:
+            state.update(
+                rollover="needs_attention", failure="mandate_cancelled_or_expired"
+            )
+            save(path, state)
+            return {
+                "systemMessage": "Continuation mandate cancelled or expired; source preserved."
+            }
         if state.get("hops", 0) >= max_hops:
             state["rollover"] = "needs_attention"
             save(path, state)
@@ -581,10 +815,25 @@ def launch(sid: str, max_hops: int) -> dict[str, Any]:
                 "decision": "block",
                 "reason": "Worktree changed after checkpoint. " + instructions(sid),
             }
+        limits = load(codex_home() / "nuzantara-context-policy.json").get(
+            "child_limits", {}
+        )
+        limits = {**limits, "strict": bool(os.environ.get("NUZANTARA_MANDATE_ID"))}
+        reason = budget_reserve(
+            state_dir() / "mandates",
+            state["mandate_root"],
+            f"continuation:{sid}:{state.get('launch_attempts', 0) + 1}",
+            limits,
+        )
+        if reason:
+            state.update(rollover="needs_attention", failure="mandate_dispatch_budget")
+            save(path, state)
+            return {"systemMessage": reason}
         state.update(
             rollover="starting",
             launch_deadline=time.time() + HANDSHAKE_SECONDS,
             launch_nonce=uuid.uuid4().hex,
+            launch_attempts=state.get("launch_attempts", 0) + 1,
         )
         for field in ("claimed_by", "failure", "to_session"):
             state.pop(field, None)
@@ -620,6 +869,7 @@ def launch(sid: str, max_hops: int) -> dict[str, Any]:
 
 def continue_session(sid: str) -> None:
     proc = None
+    to = None
     try:
         state = load(state_path(sid))
         paths = list(dict.fromkeys([*state["root_transcripts"], state["transcript"]]))
@@ -660,6 +910,14 @@ def continue_session(sid: str) -> None:
             stderr=subprocess.DEVNULL,
             text=True,
         )
+        with locked(sid) as (path, latest):
+            latest.update(
+                supervisor_pid=os.getpid(),
+                owned_pid=proc.pid,
+                supervisor_started=time.time(),
+                acceptance_status="unverified",
+            )
+            save(path, latest)
         assert proc.stdin and proc.stdout
         proc.stdin.write(text)
         proc.stdin.close()
@@ -674,15 +932,32 @@ def continue_session(sid: str) -> None:
                     continue
             messages.put({"type": "bridge/eof"})
 
-        threading.Thread(target=read_events, daemon=True).start()
+        reader = threading.Thread(target=read_events, daemon=True)
+        reader.start()
         accepted, to = False, None
         while True:
+            latest = load(state_path(sid))
+            if latest.get("launch_nonce") != state["launch_nonce"]:
+                raise RuntimeError("launch ownership changed")
+            if latest.get("cancel_requested"):
+                raise RuntimeError("continuation cancelled")
+            if time.time() >= latest.get(
+                "mandate_deadline", state["launch_deadline"] + MANDATE_SECONDS
+            ):
+                raise TimeoutError("mandate deadline exceeded")
             try:
-                msg = messages.get(timeout=1 if not accepted else 600)
+                msg = messages.get(timeout=POLL_SECONDS)
             except queue.Empty:
-                if not accepted and time.time() < state["launch_deadline"]:
+                if proc.poll() is not None:
+                    reader.join(timeout=2)
+                    if not messages.empty():
+                        continue
+                    raise RuntimeError(
+                        "owned destination exited without completion"
+                    ) from None
+                if accepted or time.time() < state["launch_deadline"]:
                     continue
-                raise TimeoutError("destination did not make progress") from None
+                raise TimeoutError("destination handshake expired") from None
             kind, item = msg.get("type"), msg.get("item", {})
             if kind == "thread.started":
                 to = msg["thread_id"]
@@ -704,10 +979,20 @@ def continue_session(sid: str) -> None:
                     )
                     save(path, latest)
                 accepted = True
+                budget_observe(
+                    state_dir() / "mandates", state.get("mandate_root", sid), to
+                )
             if kind in ("turn.completed", "turn.failed", "bridge/eof"):
                 status = "completed" if kind == "turn.completed" else "failed"
                 with locked(sid) as (path, latest):
                     latest["destination_status"] = status
+                    latest["transport_status"] = status
+                    latest["completion_status"] = "returned_unverified"
+                    latest["acceptance_status"] = "unverified"
+                    destination = load(state_path(to)) if to else {}
+                    latest["claimed_complete"] = (
+                        destination.get("checkpoint", {}).get("remaining") == []
+                    )
                     if not accepted or status != "completed":
                         latest.update(
                             rollover="needs_attention", failure="destination_" + status
@@ -716,7 +1001,11 @@ def continue_session(sid: str) -> None:
                 break
     except Exception as exc:
         with locked(sid) as (path, latest):
-            latest.update(rollover="needs_attention", failure=type(exc).__name__)
+            latest.update(
+                rollover="needs_attention",
+                completion_status="needs_attention",
+                failure=type(exc).__name__,
+            )
             save(path, latest)
     finally:
         if proc and proc.poll() is None:
@@ -729,6 +1018,26 @@ def continue_session(sid: str) -> None:
                 except subprocess.TimeoutExpired:
                     proc.kill()
                     proc.wait()
+        if proc:
+            with locked(sid) as (path, latest):
+                latest.update(
+                    supervisor_finished=time.time(), owned_exit_code=proc.returncode
+                )
+                save(path, latest)
+            if to:
+                budget_observe(
+                    state_dir() / "mandates",
+                    state.get("mandate_root", sid),
+                    to,
+                    stopped=True,
+                )
+
+
+def cancel(sid: str) -> None:
+    """Signal only the supervisor that owns this exact launch; never kill by guessed PID."""
+    with locked(sid) as (path, state):
+        state.update(cancel_requested=True, completion_status="needs_attention")
+        save(path, state)
 
 
 def main() -> int:
@@ -739,6 +1048,26 @@ def main() -> int:
             return 0
         if verb == "status":
             print(json.dumps(load(state_path(sys.argv[2])), indent=2))
+            return 0
+        if verb == "cancel":
+            cancel(sys.argv[2])
+            print('{"cancellation_requested":true}')
+            return 0
+        if verb == "attention":
+            print(
+                json.dumps(
+                    [
+                        {
+                            "session_id": p.stem,
+                            "failure": s.get("failure"),
+                            "to_session": s.get("to_session"),
+                        }
+                        for p in state_dir().glob("*.json")
+                        if (s := load(p)).get("rollover") == "needs_attention"
+                        or s.get("completion_status") == "needs_attention"
+                    ]
+                )
+            )
             return 0
         data = json.loads(sys.argv[3]) if len(sys.argv) > 3 else json.load(sys.stdin)
         if not isinstance(data, dict):

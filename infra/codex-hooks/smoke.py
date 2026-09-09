@@ -6,7 +6,7 @@ import argparse
 import json
 import subprocess
 
-from context_bridge import codex_home, load, save, state_path
+from context_bridge import EVENTS, codex_home, load, save, state_path
 from rpc import RPC, binary_path
 
 
@@ -42,7 +42,7 @@ def main() -> None:
             for h in entries["hooks"]
             if "nuzantara-context/context_bridge.py" in h.get("command", "")
         ]
-        if len(hooks) != 6 or any(
+        if len(hooks) != len(EVENTS) or any(
             h["trustStatus"] != "trusted" or not h["enabled"] for h in hooks
         ):
             raise RuntimeError("bridge hooks not trusted and enabled")

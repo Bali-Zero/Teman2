@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from context_bridge import codex_home, digest, load
+from context_bridge import EVENTS, codex_home, digest, load
 from rpc import RPC, binary_path
 
 
@@ -61,7 +61,7 @@ def main() -> None:
         "handoff_probe": load(seat / "state" / "nuzantara-context-handoff-smoke.json"),
     }
     result["installed"] = (
-        len(result["trusted_events"]) == 6
+        len(result["trusted_events"]) == len(EVENTS)
         and result["enabled"]
         and result["artifact_matches_manifest"]
         and result["existing_hooks_preserved"]
