@@ -1,0 +1,952 @@
+Independent implementation review of Dual Consul v4 FIRST SYNTHETIC SLICE. Review code provided below, not historical design. No tools, no file writes, no network. Find concrete blocking correctness issues only; do not demand production activation, remote effects, OS identity separation or unimplemented native invocation: these are explicitly unqualified future stages. This is a same-database synthetic effect with trusted caller, not a public API. Check fencing concurrency and expiry, review binding, canonical hashes, replay/atomicity, and fail-closed text admission. Existing AutonomousLabWorker now checks false heartbeat/pause/success replies. Real PG17 disposable tests are in progress. Return concise verdict PASS/REWORK plus findings with exact file/symbol and concrete trigger. If no blocking issue say so and list precise residual limits. Do not claim you ran tools/tests. End with END_DUAL_CONSUL_REVIEW.
+
+FILE apps/backend-rag/backend/services/autonomous_lab/consul_store.py
+"""PostgreSQL fencing for the synthetic Dual Consul lifecycle slice.
+
+Only the trusted broker calls ``bind``, after validating authority and the frozen
+review; hashes supplied by a model are not admission. ``guard`` encloses ONLY a
+same-connection synthetic receipt write. Its locks give no remote-effect atomicity
+and this module does not establish a separate operating-system service identity.
+"""
+
+from __future__ import annotations
+
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+
+import asyncpg
+
+
+@dataclass(frozen=True)
+class Lease:
+    run_id: str
+    owner_id: str
+    generation: int
+
+
+async def _lock_parent(conn: asyncpg.Connection, run_id: str) -> asyncpg.Record | None:
+    return await conn.fetchrow(
+        "SELECT worker_id, status FROM autonomous_lab_runs WHERE run_id = $1 FOR UPDATE",
+        run_id,
+    )
+
+
+async def bind(
+    conn: asyncpg.Connection,
+    *,
+    run_id: str,
+    owner_id: str,
+    resource: str,
+    intent_hash: str,
+    approval_hash: str,
+    review_hash: str,
+    packet_hash: str,
+    grant_expires_at: datetime,
+    lease_seconds: int = 60,
+) -> Lease:
+    """Bind a freshly authorized grant; rebind fences every earlier generation."""
+    if not 1 <= lease_seconds <= 3600:
+        raise ValueError("lease_seconds must be between 1 and 3600")
+    if grant_expires_at.utcoffset() is None:
+        raise ValueError("grant expiry must be timezone-aware")
+    async with conn.transaction():
+        parent = await _lock_parent(conn, run_id)
+        if not parent or parent["status"] != "running" or parent["worker_id"] != owner_id:
+            raise PermissionError("run is not owned by this running worker")
+        previous = await conn.fetchrow(
+            "SELECT revoked_approval_hashes FROM autonomous_lab_consul_leases "
+            "WHERE run_id = $1 FOR UPDATE",
+            run_id,
+        )
+        if previous and approval_hash in previous["revoked_approval_hashes"]:
+            raise PermissionError("approval was revoked")
+        now = await conn.fetchval("SELECT clock_timestamp()")
+        if grant_expires_at <= now:
+            raise PermissionError("grant has expired")
+        generation = await conn.fetchval(
+            """
+            INSERT INTO autonomous_lab_consul_leases
+                (run_id, owner_id, generation, resource, intent_hash, approval_hash,
+                 review_hash, packet_hash, lease_expires_at, grant_expires_at)
+            VALUES ($1, $2, 1, $3, $4, $5, $6, $7, $8, $9)
+            ON CONFLICT (run_id) DO UPDATE SET
+                owner_id = EXCLUDED.owner_id,
+                generation = autonomous_lab_consul_leases.generation + 1,
+                resource = EXCLUDED.resource, intent_hash = EXCLUDED.intent_hash,
+                approval_hash = EXCLUDED.approval_hash, review_hash = EXCLUDED.review_hash,
+                packet_hash = EXCLUDED.packet_hash,
+                lease_expires_at = EXCLUDED.lease_expires_at,
+                grant_expires_at = EXCLUDED.grant_expires_at, revoked_at = NULL
+            RETURNING generation
+            """,
+            run_id,
+            owner_id,
+            resource,
+            intent_hash,
+            approval_hash,
+            review_hash,
+            packet_hash,
+            min(now + timedelta(seconds=lease_seconds), grant_expires_at),
+            grant_expires_at,
+        )
+        return Lease(run_id, owner_id, generation)
+
+
+async def revoke(conn: asyncpg.Connection, lease: Lease) -> bool:
+    """Revoke this generation and remember its approval across future rebinds."""
+    async with conn.transaction():
+        await _lock_parent(conn, lease.run_id)
+        row = await conn.fetchrow(
+            """
+            UPDATE autonomous_lab_consul_leases
+            SET revoked_at = clock_timestamp(),
+                revoked_approval_hashes = array_append(revoked_approval_hashes, approval_hash)
+            WHERE run_id = $1 AND owner_id = $2 AND generation = $3 AND revoked_at IS NULL
+            RETURNING run_id
+            """,
+            lease.run_id,
+            lease.owner_id,
+            lease.generation,
+        )
+        return row is not None
+
+
+@asynccontextmanager
+async def guard(
+    conn: asyncpg.Connection,
+    *,
+    lease: Lease,
+    resource: str,
+    intent_hash: str,
+    approval_hash: str,
+    review_hash: str,
+    packet_hash: str,
+) -> AsyncIterator[datetime]:
+    """Hold parent/lease locks and recheck all authority pins before a DB effect."""
+    async with conn.transaction():
+        parent = await _lock_parent(conn, lease.run_id)
+        row = await conn.fetchrow(
+            "SELECT * FROM autonomous_lab_consul_leases WHERE run_id = $1 FOR UPDATE",
+            lease.run_id,
+        )
+        now = await conn.fetchval("SELECT clock_timestamp()")
+        expected = {
+            "owner_id": lease.owner_id,
+            "generation": lease.generation,
+            "resource": resource,
+            "intent_hash": intent_hash,
+            "approval_hash": approval_hash,
+            "review_hash": review_hash,
+            "packet_hash": packet_hash,
+        }
+        if (
+            not parent
+            or parent["status"] != "running"
+            or parent["worker_id"] != lease.owner_id
+            or not row
+            or any(row[key] != value for key, value in expected.items())
+            or row["revoked_at"] is not None
+            or approval_hash in row["revoked_approval_hashes"]
+            or row["lease_expires_at"] <= now
+            or row["grant_expires_at"] <= now
+        ):
+            raise PermissionError("lease, authorization or frozen review is no longer current")
+        yield now
+
+
+FILE apps/backend-rag/backend/db/migrations_v2/306_autonomous_lab_consul_leases.sql
+-- Synthetic Dual Consul slice; ownership belongs to the existing Lab run.
+-- Slot 306 was free on origin/main and Pro HEAD at implementation. Recheck at merge.
+-- Broker connections own admission; model processes receive no database connection.
+-- Retained approval tombstones prevent revoke A -> bind B -> resurrect A.
+SET LOCAL lock_timeout = '5s';
+
+CREATE TABLE public.autonomous_lab_consul_leases (
+    run_id TEXT PRIMARY KEY REFERENCES public.autonomous_lab_runs(run_id),
+    owner_id TEXT NOT NULL CHECK (owner_id ~ '^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,191}$'),
+    generation BIGINT NOT NULL CHECK (generation > 0),
+    resource TEXT NOT NULL CHECK (resource ~ '^synthetic:[A-Za-z0-9][A-Za-z0-9_.:/-]{0,191}$'),
+    intent_hash TEXT NOT NULL CHECK (intent_hash ~ '^[a-f0-9]{64}$'),
+    approval_hash TEXT NOT NULL CHECK (approval_hash ~ '^[a-f0-9]{64}$'),
+    review_hash TEXT NOT NULL CHECK (review_hash ~ '^[a-f0-9]{64}$'),
+    packet_hash TEXT NOT NULL CHECK (packet_hash ~ '^[a-f0-9]{64}$'),
+    lease_expires_at TIMESTAMPTZ NOT NULL CHECK (isfinite(lease_expires_at)),
+    grant_expires_at TIMESTAMPTZ NOT NULL CHECK (isfinite(grant_expires_at)),
+    revoked_at TIMESTAMPTZ CHECK (revoked_at IS NULL OR isfinite(revoked_at)),
+    revoked_approval_hashes TEXT[] NOT NULL DEFAULT '{}'
+        CHECK (array_position(revoked_approval_hashes, NULL) IS NULL
+            AND array_to_string(revoked_approval_hashes, ',') ~ '^([a-f0-9]{64}(,[a-f0-9]{64})*)?$'),
+    CHECK (lease_expires_at <= grant_expires_at),
+    CHECK (revoked_at IS NULL OR approval_hash = ANY (revoked_approval_hashes))
+);
+
+-- === ROLLBACK ===
+DROP TABLE IF EXISTS public.autonomous_lab_consul_leases;
+
+
+FILE apps/backend-rag/backend/services/autonomous_lab/consul_executor.py
+"""Dual Consul's first slice: one fenced, same-database synthetic effect.
+
+The caller is a trusted broker, not a model-facing API. It supplies authenticated
+grants and reviewer observations. This does not establish service-UID isolation
+or qualify a shell, remote tool, model invocation, or production effect.
+"""
+
+from __future__ import annotations
+
+import json
+from collections.abc import Mapping
+from dataclasses import dataclass
+from datetime import datetime
+from hashlib import sha256
+from typing import Any, Literal, TypeVar
+from uuid import NAMESPACE_URL, uuid5
+
+import asyncpg
+
+from backend.services.research_os import _core_path as _core_path
+
+# isort: split
+
+from research_os.hashing import canonicalize, object_hash
+from research_os.models.action_intent import ActionIntent
+from research_os.models.approval_receipt import ApprovalReceipt, authorizes_action_intent
+from research_os.models.execution_attempt import (
+    ExecutionAttempt,
+    validate_execution_attempt_authorization,
+)
+from research_os.models.operational_receipt import OperationalReceipt, close_execution_attempt
+from research_os.models.verification_receipt import VerificationReceipt
+from research_os.primitives import FrozenCoreModel
+
+from backend.services.autonomous_lab import consul_store
+from backend.services.autonomous_lab.runtime_contracts import (
+    LabArtifactKind,
+    LabStageName,
+    LabStageStatus,
+)
+from backend.services.autonomous_lab.stages import LabStageRiskClass, StageResult
+from backend.services.autonomous_lab.state_store import (
+    LabRunRecord,
+)
+
+EFFECT = "com.balizero.consul.synthetic_checkpoint"
+CRITERIA = "dual-consul/v4-synthetic"
+PRODUCER = {"name": "com.balizero.consul.synthetic_executor", "version": "4.0.0"}
+Model = TypeVar("Model", bound=FrozenCoreModel)
+
+
+@dataclass(frozen=True)
+class FrozenInputs:
+    """Actual bytes received by the executor; only their digests are persisted."""
+
+    run_id: str
+    artifact: bytes
+    effective_input: bytes
+    configuration: bytes
+    evidence: bytes
+    runtime_binding: bytes
+    builder: Literal["astra", "fable"]
+    reviewer: Literal["astra", "fable"]
+
+    @property
+    def digest(self) -> str:
+        packet = {
+            "run_id": self.run_id,
+            "builder": self.builder,
+            "reviewer": self.reviewer,
+            **{
+                key: sha256(getattr(self, key)).hexdigest()
+                for key in (
+                    "artifact",
+                    "effective_input",
+                    "configuration",
+                    "evidence",
+                    "runtime_binding",
+                )
+            },
+        }
+        return sha256(canonicalize(packet)).hexdigest()
+
+    @property
+    def arguments_hash(self) -> str:
+        return sha256(canonicalize({"run_id": self.run_id, "effect": EFFECT})).hexdigest()
+
+
+@dataclass(frozen=True)
+class ConsulRequest:
+    inputs: FrozenInputs
+    intent: ActionIntent
+    approval: ApprovalReceipt
+    review: VerificationReceipt
+
+    @property
+    def pins(self) -> dict[str, str]:
+        return {
+            "resource": f"synthetic:{self.inputs.run_id}",
+            "intent_hash": self.intent.object_hash,
+            "approval_hash": self.approval.object_hash,
+            "review_hash": self.review.object_hash,
+            "packet_hash": self.inputs.digest,
+        }
+
+    def validate(self, at: datetime) -> None:
+        """Check canonical grants plus the effect, resource, and frozen review."""
+        intent, approval, review, inputs = self.intent, self.approval, self.review, self.inputs
+        # Frozen Pydantic models still permit nested mutation / model_copy(update).
+        # Revalidate their wire forms at the trust boundary, including every hash.
+        for model in (intent, approval, review):
+            type(model).model_validate_json(model.model_dump_json(exclude_unset=True))
+        authorizes_action_intent(approval, intent, at=at)
+        if inputs.builder not in {"astra", "fable"} or {inputs.builder, inputs.reviewer} != {
+            "astra",
+            "fable",
+        }:
+            raise PermissionError("independent_consul_required")
+        if (
+            intent.action_type != EFFECT
+            or approval.authorized_effects != (EFFECT,)
+            or intent.target.system != "com.balizero.autonomous_lab"
+            or intent.target.object_ref is None
+            or intent.target.object_ref.object_kind != "com.balizero.lab_run"
+            or intent.target.object_ref.object_id != inputs.run_id
+            or intent.target.object_ref.object_hash != inputs.digest
+            or intent.input_revision_hash != inputs.digest
+            or intent.arguments_hash != inputs.arguments_hash
+            or intent.risk_class != "green"
+            or intent.sensitivity != "internal"
+        ):
+            raise PermissionError("synthetic_scope_or_input_mismatch")
+        if (
+            approval.authority.role != "consul.synthetic_broker"
+            or intent.authority_required.role != approval.authority.role
+            or approval.authority.scope != inputs.run_id
+            or intent.authority_required.scope != inputs.run_id
+            or not (approval.authority.verified_at <= approval.issued_at <= at)
+            or (approval.expires_at - approval.issued_at).total_seconds()
+            > intent.authority_required.expires_after_seconds
+        ):
+            raise PermissionError("authority_scope_mismatch")
+        target = _ref("action_intent", intent.action_intent_id, intent.object_hash)
+        if (
+            review.verdict != "pass"
+            or review.limits
+            or not review.checks
+            or any(check.result != "pass" for check in review.checks)
+            or [ref.model_dump(mode="json") for ref in review.target_objects] != [target]
+            or review.verifier.name != f"com.balizero.consul.{inputs.reviewer}"
+            or review.verifier.independence_class != "cross_family"
+            or review.criteria_version != CRITERIA
+            or review.classification != approval.classification
+            or review.expires_at is None
+            or not (review.issued_at <= review.recorded_at <= at < review.expires_at)
+            or not (intent.created_at <= review.temporal_scope.checked_at <= review.issued_at)
+        ):
+            raise PermissionError("review_missing_stale_or_mismatched")
+
+
+def _ref(kind: str, identifier: object, digest: str) -> dict[str, str]:
+    return {"object_kind": kind, "object_id": str(identifier), "object_hash": digest}
+
+
+def seal(model: type[Model], payload: dict[str, Any]) -> Model:
+    """Create a canonical ROS object without bypassing its validators."""
+    return model.model_validate({**payload, "object_hash": object_hash(payload)})
+
+
+async def _persist(
+    conn: asyncpg.Connection, kind: str, identifier: object, model: FrozenCoreModel
+) -> None:
+    payload = model.model_dump(mode="json", exclude_unset=True)
+    await conn.execute(
+        """INSERT INTO research_os_objects
+           (object_kind, object_id, object_hash, contract_version, tenant, payload)
+           VALUES ($1, $2, $3, $4, 'bali-zero', $5::jsonb)
+           ON CONFLICT (object_id) DO NOTHING""",
+        kind,
+        str(identifier),
+        payload["object_hash"],
+        payload["contract_version"],
+        json.dumps(payload),
+    )
+    stored = await conn.fetchval(
+        "SELECT object_hash FROM research_os_objects WHERE object_id = $1", str(identifier)
+    )
+    if stored != payload["object_hash"]:
+        raise PermissionError("immutable_object_collision")
+
+
+async def execute_synthetic(
+    conn: asyncpg.Connection, *, lease: consul_store.Lease, request: ConsulRequest
+) -> OperationalReceipt:
+    """Commit attempt, synthetic checkpoint and result atomically under PG locks.
+
+    No external callback is accepted: a local timeout cannot be misrepresented as
+    remote cancellation. On a lost commit acknowledgement, replay reads the same
+    immutable receipt instead of repeating the effect.
+    """
+    if lease.run_id != request.inputs.run_id:
+        raise PermissionError("mission_mismatch")
+    async with consul_store.guard(conn, lease=lease, **request.pins) as at:
+        request.validate(at)
+        intent, approval, review = request.intent, request.approval, request.review
+        identity = f"dual-consul:{intent.action_intent_id}:{intent.object_hash}"
+        result_id = uuid5(NAMESPACE_URL, identity + ":result")
+        existing = await conn.fetchval(
+            "SELECT payload FROM research_os_objects WHERE object_id = $1", str(result_id)
+        )
+        if existing is not None:
+            return (
+                OperationalReceipt.model_validate(existing)
+                if isinstance(existing, Mapping)
+                else OperationalReceipt.model_validate_json(existing)
+            )
+        for kind, identifier, obj in (
+            ("action_intent", intent.action_intent_id, intent),
+            ("approval_receipt", approval.approval_receipt_id, approval),
+            ("verification_receipt", review.verification_receipt_id, review),
+        ):
+            await _persist(conn, kind, identifier, obj)
+        stamp = at.isoformat().replace("+00:00", "Z")
+        base = {
+            "contract_version": "research-os/v1.0.0",
+            "tenant": "bali-zero",
+            "producer": PRODUCER,
+            "lineage": {"input_hashes": [intent.object_hash]},
+            "retention": {"retention_class": "audit", "legal_hold": False},
+        }
+        attempt = seal(
+            ExecutionAttempt,
+            {
+                **base,
+                "execution_attempt_id": str(uuid5(NAMESPACE_URL, identity + ":attempt")),
+                "action_intent_ref": {
+                    "action_intent_id": str(intent.action_intent_id),
+                    "object_hash": intent.object_hash,
+                },
+                "approval_receipt_ref": {
+                    "approval_receipt_id": str(approval.approval_receipt_id),
+                    "object_hash": approval.object_hash,
+                },
+                "attempt_number": 1,
+                "state": "started",
+                "idempotency_key": identity,
+                "executor": PRODUCER,
+                "started_at": stamp,
+                "extensions": {
+                    "com.balizero.dual_consul": {
+                        "extension_version": "1.0.0",
+                        "payload": {
+                            "lease_generation": lease.generation,
+                            "bound_context_digest": request.inputs.digest,
+                        },
+                    }
+                },
+            },
+        )
+        validate_execution_attempt_authorization(attempt, intent=intent, receipt=approval)
+        await _persist(conn, "execution_attempt", attempt.execution_attempt_id, attempt)
+        # This is the ONLY effect this implementation can perform.
+        # Expiry remains live while locks are held. Recheck it in the effect
+        # statement itself, even if an earlier receipt insert was delayed.
+        effect_at = await conn.fetchval(
+            """INSERT INTO autonomous_lab_events_outbox (run_id, event_type, payload)
+               SELECT run_id, 'run_checkpointed', $3::jsonb
+               FROM autonomous_lab_consul_leases
+               WHERE run_id = $1 AND generation = $2 AND revoked_at IS NULL
+                 AND clock_timestamp() < lease_expires_at
+                 AND clock_timestamp() < grant_expires_at
+               RETURNING clock_timestamp()""",
+            lease.run_id,
+            lease.generation,
+            json.dumps(
+                {
+                    "run_id": lease.run_id,
+                    "stage": "experiment",
+                    "result": "synthetic_confirmed",
+                    "checkpoint_fingerprint": request.inputs.digest,
+                }
+            ),
+        )
+        if effect_at is None:
+            raise PermissionError("lease_expired_before_effect")
+        stamp = effect_at.isoformat().replace("+00:00", "Z")
+        receipt = seal(
+            OperationalReceipt,
+            {
+                **base,
+                "operational_receipt_id": str(result_id),
+                "operational_receipt_family_id": "com.balizero.consul.synthetic_result",
+                "receipt_type": "execution.result",
+                "subject_refs": [
+                    _ref("action_intent", intent.action_intent_id, intent.object_hash)
+                ],
+                "execution_attempt_ref": {
+                    "execution_attempt_id": str(attempt.execution_attempt_id),
+                    "object_hash": attempt.object_hash,
+                },
+                "classification": approval.classification.model_dump(mode="json"),
+                "actor_or_executor": {"producer": PRODUCER},
+                "terminal_outcome": "succeeded",
+                "outcome_code": "com.balizero.consul.synthetic_confirmed",
+                "effects": [{"effect_type": EFFECT, "status": "confirmed"}],
+                "artifact_refs": [],
+                "evidence_refs": [
+                    _ref("verification_receipt", review.verification_receipt_id, review.object_hash)
+                ],
+                "observed_at": stamp,
+                "recorded_at": stamp,
+                "idempotency_key": identity + ":result",
+                "reconciliation": {"state": "confirmed", "checked_at": stamp, "evidence_refs": []},
+            },
+        )
+        close_execution_attempt(receipt, attempt)
+        await _persist(conn, "operational_receipt", result_id, receipt)
+        return receipt
+
+
+@dataclass
+class ConsulSyntheticStage:
+    """Opt-in stage for AutonomousLabWorker; no scheduler or default activation."""
+
+    conn: asyncpg.Connection
+    request: ConsulRequest
+    owner_id: str
+    name = LabStageName.EXPERIMENT
+    input_data_class = "ConsulRequest"
+    output_data_class = "OperationalReceipt"
+    risk_class = LabStageRiskClass.LOW
+
+    async def run(self, run: LabRunRecord, context: Mapping[str, Any]) -> StageResult:
+        if run.run_id != self.request.inputs.run_id:
+            raise PermissionError("mission_mismatch")
+        at = await self.conn.fetchval("SELECT clock_timestamp()")
+        self.request.validate(at)
+        lease = await consul_store.bind(
+            self.conn,
+            run_id=run.run_id,
+            owner_id=self.owner_id,
+            **self.request.pins,
+            grant_expires_at=min(self.request.approval.expires_at, self.request.review.expires_at),
+        )
+        result = await execute_synthetic(self.conn, lease=lease, request=self.request)
+        return StageResult(
+            stage=self.name,
+            status=LabStageStatus.SUCCEEDED,
+            artifact_kind=LabArtifactKind.SANDBOX_RUN_RESULT,
+            summary="synthetic checkpoint confirmed under current ownership",
+            payload={
+                "run_id": run.run_id,
+                "result": "synthetic_confirmed",
+                "checkpoint_fingerprint": result.object_hash,
+            },
+        )
+
+
+FILE scripts/conductor/adapter_contracts.py
+"""Pure dual-consul admission and selected-response contracts; never launches a seat.
+
+Discovery is supplied by a trusted runtime collector. These checks confer no effect
+authority and qualify neither tool execution, native resume nor remote cancellation.
+TP1 envelopes reuse the existing transport's shape, but not its reasoning fallback.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+import json
+import sys
+from typing import Any, Literal, Mapping
+
+from scripts.conductor.contracts import TaskClass, TaskIntent
+
+
+IdentityEvidence = Literal["response_observed", "request_observed", "unknown"]
+
+
+@dataclass(frozen=True)
+class Surface:
+    model: str | None
+    text_qualified: bool = False
+    effort: str | None = None
+    operations: frozenset[str] = frozenset()
+
+
+# Qualification belongs to each surface, never to a compatible protocol/family.
+SURFACES = {
+    "codex_app_server": Surface(None),
+    "claude_interactive_text": Surface("claude-fable-5-1", True),
+    "kimi_text": Surface("k3", True, "max"),
+    "kimi_native": Surface("k3"),
+    "qwen_tp1": Surface("qwen3.8-max", True, "medium"),
+    "qwen_native": Surface(None),
+    "deepseek_tp1": Surface("deepseek-v4-pro", True),
+    "gemini_agy": Surface("gemini-3.1-pro-high", True),
+    "glm_tp1": Surface("glm-5.2", True),
+    "local_r1": Surface("deepseek-r1:32b"),
+}
+
+
+@dataclass(frozen=True)
+class DiscoveryKey:
+    runtime_version: str
+    config_hash: str
+    host: str
+    auth_context_hash: str
+
+
+@dataclass(frozen=True)
+class DiscoveryObservation:
+    key: DiscoveryKey
+    surface_id: str
+    requested_model: str
+    actual_model: str | None
+    identity_evidence: IdentityEvidence
+    observed_at: datetime
+    expires_at: datetime
+    capabilities: frozenset[str] = frozenset()
+    enforced_caps: tuple[tuple[str, int], ...] = ()
+    worker_limit: int | None = None
+    delegation_observable: bool = False
+
+
+@dataclass(frozen=True)
+class Requirements:
+    exact_model: bool = False
+    output_cap: int | None = None
+    total_cap: int | None = None
+    workers: int = 0
+    effort: str | None = None
+    high_effort_authorized: bool = False
+    operation: str = "text_consultation"
+
+
+def admit(
+    surface_id: str,
+    requested_model: str,
+    task: TaskIntent,
+    observation: DiscoveryObservation,
+    expected_key: DiscoveryKey,
+    now: datetime,
+    requirements: Requirements = Requirements(),
+) -> tuple[str, ...]:
+    """Return all rejection reasons; an empty tuple admits text preparation only."""
+    surface = SURFACES.get(surface_id)
+    if surface is None:
+        return ("unknown_surface",)
+    reasons: list[str] = []
+    if not surface.text_qualified:
+        reasons.append("surface_unqualified")
+    if requirements.operation != "text_consultation":
+        reasons.append("operation_unqualified")
+    if task.mutation or task.required_tools:
+        reasons.append("effects_unqualified")
+    if task.contains_pii:
+        reasons.append("pii_lane_unqualified")
+    if (
+        observation.key != expected_key
+        or observation.surface_id != surface_id
+        or not all(vars(expected_key).values())
+    ):
+        reasons.append("discovery_context_mismatch")
+    timestamps = (observation.observed_at, observation.expires_at, now)
+    if any(value.tzinfo is None for value in timestamps) or not (
+        observation.observed_at <= now < observation.expires_at
+    ):
+        reasons.append("discovery_expired_or_invalid")
+    if (
+        observation.requested_model != requested_model
+        or surface.model is not None
+        and surface.model != requested_model
+    ):
+        reasons.append("requested_model_mismatch")
+    if requirements.exact_model and (
+        observation.identity_evidence != "response_observed"
+        or observation.actual_model != requested_model
+    ):
+        reasons.append("actual_model_unproven")
+    if (
+        observation.identity_evidence == "response_observed"
+        and observation.actual_model != requested_model
+    ):
+        reasons.append("actual_model_mismatch")
+    if (
+        not ({"text"} | task.requires | task.required_modalities)
+        <= observation.capabilities
+    ):
+        reasons.append("capabilities_unproven")
+    if requirements.effort not in (None, surface.effort):
+        reasons.append("effort_unqualified")
+    if surface.effort == "max" and not requirements.high_effort_authorized:
+        reasons.append("high_effort_requires_explicit_admission")
+    for name, requested in (
+        ("output_tokens", requirements.output_cap),
+        ("total_tokens", requirements.total_cap),
+    ):
+        enforced = dict(observation.enforced_caps).get(name)
+        if requested is not None and (
+            type(requested) is not int
+            or requested <= 0
+            or type(enforced) is not int
+            or not 0 < enforced <= requested
+        ):
+            reasons.append(f"{name}_hard_cap_unproven")
+    if type(requirements.workers) is not int or not 0 <= requirements.workers <= 4:
+        reasons.append("worker_limit_invalid")
+    elif requirements.workers == 0 and observation.worker_limit not in (None, 0):
+        reasons.append("delegation_must_be_disabled")
+    elif requirements.workers and (
+        not observation.delegation_observable
+        or type(observation.worker_limit) is not int
+        or not 0 < observation.worker_limit <= requirements.workers
+    ):
+        reasons.append("delegation_limit_unproven")
+    return tuple(reasons)
+
+
+@dataclass(frozen=True)
+class Reply:
+    content: str
+    status: Literal["complete", "incomplete", "unknown"]
+    actual_model: str | None
+    identity_evidence: IdentityEvidence
+    finish_reason: str | None = None
+    native_usage: tuple[tuple[str, int], ...] = ()
+    remote_effect: str = "unknown"
+    local_cancelled: bool = False
+    remote_cancelled: bool | None = None
+
+
+def normalize_text(
+    content: object,
+    finish_reason: object,
+    *,
+    actual_model: str | None = None,
+    identity_evidence: IdentityEvidence = "unknown",
+    local_cancelled: bool = False,
+    remote_cancelled: bool | None = None,
+) -> Reply:
+    """Normalize collector-selected text; native lifecycle outcomes stay separate."""
+    text = content if isinstance(content, str) else ""
+    status = (
+        "complete"
+        if finish_reason in ("stop", "end_turn") and text.strip()
+        else "unknown"
+    )
+    if finish_reason in ("length", "max_tokens") or local_cancelled:
+        status = "incomplete"
+    return Reply(
+        text,
+        status,
+        actual_model,
+        identity_evidence,
+        finish_reason=finish_reason if isinstance(finish_reason, str) else None,
+        local_cancelled=local_cancelled,
+        remote_cancelled=remote_cancelled,
+    )
+
+
+def normalize_tp1(
+    payload: Mapping[str, Any],
+    *,
+    local_cancelled: bool = False,
+    remote_cancelled: bool | None = None,
+) -> Reply:
+    """Accept content only; preserve native counters without adding reasoning twice."""
+    choices = payload.get("choices")
+    choice = choices[0] if isinstance(choices, list) and choices else {}
+    choice = choice if isinstance(choice, dict) else {}
+    message = choice.get("message", {})
+    message = message if isinstance(message, dict) else {}
+    model = payload.get("model")
+    model = model if isinstance(model, str) and model else None
+    finish_reason = choice.get("finish_reason")
+    result = normalize_text(
+        message.get("content"),
+        finish_reason if finish_reason in ("stop", "length") else None,
+        actual_model=model,
+        identity_evidence="response_observed" if model else "unknown",
+        local_cancelled=local_cancelled,
+        remote_cancelled=remote_cancelled,
+    )
+    usage = payload.get("usage", {})
+    usage = usage if isinstance(usage, dict) else {}
+    counters: list[tuple[str, int]] = []
+    for name in ("prompt_tokens", "completion_tokens", "total_tokens"):
+        value = usage.get(name)
+        if type(value) is int and value >= 0:
+            counters.append((name, value))
+    for group, name in (
+        ("completion_tokens_details", "reasoning_tokens"),
+        ("prompt_tokens_details", "cached_tokens"),
+    ):
+        details = usage.get(group, {})
+        if isinstance(details, dict) and type(details.get(name)) is int:
+            if details[name] >= 0:
+                counters.append((f"{group}.{name}", details[name]))
+    return Reply(
+        **{
+            **vars(result),
+            "native_usage": tuple(counters),
+            "finish_reason": finish_reason if isinstance(finish_reason, str) else None,
+        }
+    )
+
+
+def tp1_payload(surface_id: str, prompt: str, output_cap: int) -> dict[str, Any]:
+    """Prepare the existing TP1 user-only transport shape, never a network call."""
+    if surface_id not in {"qwen_tp1", "deepseek_tp1", "glm_tp1"}:
+        raise ValueError("not a qualified TP1 text surface")
+    if type(output_cap) is not int or output_cap <= 0:
+        raise ValueError("output_cap must be positive")
+    surface = SURFACES[surface_id]
+    body: dict[str, Any] = {
+        "model": surface.model,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": output_cap,
+    }
+    if surface.effort is not None:
+        body["reasoning_effort"] = surface.effort
+    return body
+
+
+def main() -> int:
+    """Offline JSON admission: python -m scripts.conductor.adapter_contracts < packet.json.
+
+    Packet fields: surface_id, requested_model, expected_key, now (ISO timestamp),
+    task (TaskIntent), observation (DiscoveryObservation), requirements (optional).
+    Both discovery keys carry runtime_version/config_hash/host/auth_context_hash.
+    Observation timestamps are ISO strings; sets and cap pairs are JSON arrays.
+    Stdout contains only admission/rejection metadata; no task content is echoed.
+    """
+    try:
+        packet = json.load(sys.stdin)
+        required = {
+            "surface_id",
+            "requested_model",
+            "expected_key",
+            "now",
+            "task",
+            "observation",
+        }
+        if not required <= set(packet) <= required | {"requirements"}:
+            raise ValueError("invalid fields")
+        task = dict(packet["task"])
+        observed = dict(packet["observation"])
+        requirements = dict(packet.get("requirements", {}))
+        for record, fields in (
+            (task, ("mutation", "contains_pii")),
+            (observed, ("delegation_observable",)),
+            (requirements, ("exact_model", "high_effort_authorized")),
+        ):
+            if any(
+                field in record and type(record[field]) is not bool for field in fields
+            ):
+                raise ValueError("invalid boolean")
+        task["task_class"] = TaskClass(task["task_class"])
+        task["files"] = tuple(task["files"])
+        for field in ("requires", "required_modalities", "required_tools"):
+            task[field] = frozenset(task[field])
+        observed["key"] = DiscoveryKey(**observed["key"])
+        for field in ("observed_at", "expires_at"):
+            observed[field] = datetime.fromisoformat(observed[field])
+        observed["capabilities"] = frozenset(observed.get("capabilities", []))
+        observed["enforced_caps"] = tuple(
+            tuple(pair) for pair in observed.get("enforced_caps", [])
+        )
+        reasons = admit(
+            packet["surface_id"],
+            packet["requested_model"],
+            TaskIntent(**task),
+            DiscoveryObservation(**observed),
+            DiscoveryKey(**packet["expected_key"]),
+            datetime.fromisoformat(packet["now"]),
+            Requirements(**requirements),
+        )
+    except (KeyError, TypeError, ValueError):
+        sys.stderr.write("invalid admission packet; no preparation admitted\n")
+        return 1
+    sys.stdout.write(
+        json.dumps(
+            {
+                "admitted": not reasons,
+                "reasons": reasons,
+                "scope": "text_preparation_only",
+            }
+        )
+        + "\n"
+    )
+    return 2 if reasons else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
+FILE docs/architecture/dual-consul/common-contract.md
+# Dual Consul Harness: common contract v4
+
+**Design:** Astra and Fable; consolidated from the owner's accepted v4 plan, 2026-09-06.
+**Implementation status:** initial synthetic slice; operational qualification and fleet activation remain separate.
+
+This contract defines one governance layer with two native consul integrations and route-specific adapters. Either consul may lead a mission; the other reviews the frozen artifact. A model, account, runtime, or role change confers no authority and preserves no review automatically. Environment permissions and the owner's scope, interruption, and revocation remain effective. This design adds no mandatory human reapproval or general CI gate.
+
+## Reuse and ownership
+
+Autonomous Lab owns mission state and lifecycle. Research OS owns canonical intents, attempts, handoffs, evidence, and receipts. The existing conductor owns binding discovery and registry integration. There is no second scheduler or parallel canonical ledger.
+
+Reuse the [Research OS canonical contracts](../../../research/operations/specs/evidence-to-action-freeze-2026-08-15/CONTRACTS.md) unchanged. Add route-specific data through versioned reverse-DNS extensions. An extension cannot weaken canonical semantics, become an authorization, or acquire release-gate authority by itself. Canonical semantic changes follow the existing freeze-change protocol.
+
+PostgreSQL is authoritative for mission ownership, scoped grants, expiry, revocation, and monotonically increasing fencing versions. Redis is auxiliary. A trusted executor under a distinct service identity rechecks the grant, current owner and fence, exact resource, action, and input immediately before every effect. The model process receives no general service credentials. Hooks, worktree conventions, and a local lease check alone do not establish this boundary.
+
+An ownership claim succeeds only if its authoritative transaction succeeds. Renewal, takeover, cancellation, and resume never restore a stale owner or expired grant. Tests of simulated ownership are identified as synthetic tests, not evidence of a deployed distinct-identity executor.
+
+## Admission and binding evidence
+
+A binding records requested and observed model, provider and route, runtime version, host, authentication-context digest, effective configuration digest, supported schema, tested capabilities, evidence references, and expiry. Capability eligibility is computed for the specific mission; configured or participation-observed does not imply effects-qualified.
+
+| Identity assurance | Evidence | Exact-model requirement |
+| --- | --- | --- |
+| `response_observed` | Native response metadata matches the requested binding | May satisfy the identity requirement while current |
+| `request_observed` | Requested/resolved alias seen on the request wire only | Insufficient |
+| `unknown` | Effective identity absent or unverified | Insufficient |
+
+These are observation levels, not cryptographic model signatures. Self-assertions, commit trailers, and session links do not authenticate a model. A historical report of metadata is distinguished from original metadata inspected during qualification.
+
+Cache discovery by runtime version, configuration, host, and authentication context, with an explicit expiry. Revalidate after a relevant change. A mission demanding a hard output, total-consumption, tool, identity, or cancellation bound is ineligible when the adapter cannot enforce that requirement; never silently lower the requirement.
+
+## Execution, outcomes, and review
+
+Record an `ActionIntent`, scoped authorization through the existing grant and receipt contracts, and an immutable started `ExecutionAttempt`. Record the actual result separately through `OperationalReceipt`. A local action journal may project `pending`, `started`, `confirmed`, and `reconcile_required`; these names do not redefine canonical closed enums. Journal entries bind action, exact resource, input, and idempotency key.
+
+Text completeness is separate: `complete`, `incomplete`, or `unknown`, based on provider termination evidence. Missing finish metadata means unknown completeness; short length or HTTP 200 does not prove completion. Truncated text is incomplete. An uncertain consequential effect requires reconciliation against the remote system where possible. A local timeout proves neither remote cancellation nor absence of an effect. Replay requires authoritative status/idempotency checks, not an optimistic retry.
+
+A review receipt binds the artifact/tree hash, actual input packet, effective binding/configuration, tool/runtime versions, and evidence set. Material changes invalidate it. The reviewer must be independent of the artifact's generator; receipt construction is not evidence that a review occurred. Resolve disagreements in at most two cycles, suspend the disputed point, and continue independent work.
+
+Resume the same native mission/session only after fresh authorization, ownership/fence, configuration, and input checks. Do not reuse sessions across unrelated missions. Native compaction is context management, not company memory authority. Keep transactional state, working context, episodes, and documentary knowledge separate; retrieved prose and summaries remain untrusted evidence.
+
+## Adapter surface and economy
+
+Each adapter implements discovery, mission admission, invocation, checkpoint/handoff, and cancellation through the existing contracts. Native runtimes retain their own session and tool semantics. Cancellation reports local interruption and remote cancellation separately.
+
+Use one lead, a narrow review packet, and at most four workers: a ceiling, not a target. Admit native delegation only when observable and controllable under that ceiling. Avoid repeated unchanged discovery and context reads. Preserve provider-native usage counters with unknown fields explicit; reasoning already included in output is never added again. An output-token limit is not a total-spend limit, and hiding reasoning does not save generated tokens.
+
+Share executor conformance tests. Add focused adapter fixtures for incompatible parameters, identity gaps, incomplete/unknown responses, excluded fields, and late responses. Run bounded real smoke tests on introduction or relevant changes, not on every PR or every host. Preserve `change_map`, `impact_map`, and advisory exclusions from `merge_group`. Delete tests only for demonstrated redundancy or lack of useful coverage; do not relocate a general harness suite into every PR.
+
+## First slice and rollout boundaries
+
+The first slice connects a synthetic mission through the existing `AutonomousLabWorker(stage_nodes=...)` lifecycle, uses a narrow synthetic grant, binds a review receipt to a frozen packet, and rejects an expired or superseded owner. PostgreSQL parent/lease locks serialize resource, packet hash, owner, epoch, expiry, and revocation checks with a same-database synthetic receipt effect. Canonical `ActionIntent.input_revision_hash` binds the artifact, effective input, configuration, evidence, toolchain, builder, and reviewer identifiers; `VerificationReceipt` targets the exact intent hash. Extensions remain observational.
+
+Acceptance evidence must distinguish the successful path, stale-owner refusal, changed-artifact refusal, and revoked-authority refusal. Synthetic reviewer identifiers exercise independence checks but do not claim an actual model performed a semantic review. Pure adapter admission/normalization fixtures establish only their tested rules. This increment does not qualify remote effects, native launch/resume/cancellation, a distinct-service-identity boundary, provider entitlement, or production reliability.
+
+Activation progresses through local development, shadow without external effects, staging, an authorized canary, and operations. Each transition requires versioned bindings, comparable metrics, evidence for the required capabilities, and rollback to the prior binding. Rollback does not revive revoked ownership or authorization. Pro hosts the authoritative broker; Air-M5 remains a thin client; Mini runs executors only where required and qualified. Host eligibility is verified independently, never inferred from another host's configuration.
+
+## Design provenance
+
+The [evidence manifest](../../../evidence/dual-consul-v4/design/manifest.json) verifies three Fable assistant text blocks from native session `433c29dd-e09f-4070-b1e9-a8da0136970c`, with `message.model=claude-fable-5-1` and runtime `2.1.261`. The final response accepts the design with five corrections. This is historical design review, not review of the implementation.
+
+[Astra](astra-native.md), [Claude](claude-native.md), and the [five adapters](adapters.md) specify their own surfaces. Selected original tool outputs preserve the other-family contributions and their metadata. Four original answer hashes match the packet; Gemini's selected response has its own computed hash because its original stdout bytes are unavailable. Remaining observation gaps are explicit. No consultation is presented as a comparable benchmark.
+

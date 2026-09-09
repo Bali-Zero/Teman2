@@ -211,6 +211,19 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="frontend_metrics", process_groups=_API, tags=("observability", "frontend")),
     # ── Funnel (cross-funnel lead tracking, pre-auth) ──
     RouterEntry(name="funnel", process_groups=_API, tags=("funnel",)),
+    # ── GARUDA assignee enumeration (CRM-side of the contract-frozen prefix) ──
+    # NOT part of the frozen /api/visa/voa contract, and deliberately not under
+    # that prefix: the staff picker this serves was fed by the CRM roster
+    # (GET /api/team/members) before it, and the roster lists rows
+    # `assignPractice` refuses. Same actor resolution and same admin test as
+    # garuda_staff_router; no GARUDA_PUBLIC_ENABLED mount condition — see
+    # garuda_assignment_targets.py's module docstring for why a fourth copy of
+    # that reader would buy nothing.
+    RouterEntry(
+        name="garuda_assignment_targets",
+        process_groups=_API,
+        tags=("visa", "garuda", "staff", "crm"),
+    ),
     # ── GARUDA VOA L3 checkout + orders (contract-frozen) ──
     # No mount-time condition: mirrors garuda_voa_public below — the flag
     # (GARUDA_PUBLIC_ENABLED) is re-checked per-request by the router's own
@@ -245,6 +258,25 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
         name="garuda_portal_auth",
         process_groups=_API,
         tags=("visa", "garuda", "public", "auth"),
+    ),
+    # ── GARUDA VOA documents + OCR hinge (contract-frozen, L5) ──
+    # Same no-mount-time-condition posture as the other three garuda_voa*
+    # routers above. Production store defaults fail-closed (503) until L1's
+    # retention-covered store exists — see garuda_documents_router.py's
+    # module docstring for the full three-blocker chain.
+    RouterEntry(
+        name="garuda_documents_router",
+        process_groups=_API,
+        tags=("visa", "garuda", "documents"),
+    ),
+    # ── GARUDA VOA staff surface (step 8, contract-frozen PR-02..PR-11) ──
+    # Same no-mount-time-condition posture as the other four garuda_voa*
+    # routers above: GARUDA_PUBLIC_ENABLED is re-checked per-request by the
+    # router's own dependency, not gated at mount.
+    RouterEntry(
+        name="garuda_staff_router",
+        process_groups=_API,
+        tags=("visa", "garuda", "staff"),
     ),
     # ── Google Drive / Integrations ──
     RouterEntry(name="google_drive", process_groups=_API, tags=("integrations",)),

@@ -1,0 +1,31 @@
+{
+  "observed_model": "claude-fable-5-1",
+  "native_session": "9db691ab-8167-459b-a921-54857dde0d49",
+  "native_runtime": "Claude Code 2.1.261",
+  "mode": "interactive plan, tools empty",
+  "effort": "xhigh",
+  "timestamp": "2026-09-06T02:14:55.311Z",
+  "finish_reason": "end_turn",
+  "verdict": "PASS-WITH-CONDITIONS",
+  "input_sha256": "e00e42048cc3eb166195a0d1683eed72a531bb1942d06f71748fe7aae2929321",
+  "input_native_user_text_match": true,
+  "response_sha256": "c71f4ae9aaa82e2479b33ed3567a1eb032b3c97e9873b3a4dae2549aab0dcfe2",
+  "source_manifest": {
+    "scripts/conductor/adapter_contracts.py": "a17c922a4d29d7817c3999c600cc4c4084510cb7b81693a7ba96c29ffc05a1ea",
+    "scripts/conductor/app_server_rpc.py": "46c94e71dc0f8c7dacec011ecc63ff81c27e15072afb2abf6645e30d65c02538",
+    "scripts/conductor/codex_shadow.py": "a2b447d5cb9b23b56dc6b78324042ded1f3dc5625881f72197435a74f0e1e306",
+    "scripts/conductor/codex_shadow_launch.py": "a249d222ecf070ebbd09cf72b45ec8e891c4d38da20c207603653178f64b2948",
+    "scripts/conductor/codex_shadow_probe.py": "2b60f0e5b22dcc4681c82d221fbf678771db346f15fcfe2937e117b865caf0a2",
+    "scripts/tests/test_conductor_adapter_contracts.py": "0f31732407dba4995acc938faca73388a6df146c28d8bde0a714473377bac0af",
+    "scripts/tests/test_conductor_app_server_rpc.py": "fa4ad9489392c431119d3e63ec5615fa3aa6ae5b9ca4d494cef0ed73eabbcec7",
+    "scripts/tests/test_codex_shadow.py": "38fa46b92ae4a68d7c9d6d4f4fa767561812416b9a7ce19162ab51dcb96269a9",
+    "scripts/tests/test_codex_shadow_launch.py": "c312bc24192aff68ada9438ef7e7ad1e4f96f103a267d68c3cc0c9448227f68d"
+  },
+  "scope": "Nine-file native shadow source only; three provenance/vocabulary conditions open at review1; no execution by reviewer, no operational qualification or deployment",
+  "native_usage": {
+    "input_tokens": 2,
+    "output_tokens": 27220,
+    "cache_creation_input_tokens": 51240,
+    "cache_read_input_tokens": 94315
+  }
+}

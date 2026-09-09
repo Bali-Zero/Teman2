@@ -1,0 +1,13 @@
+gear: 1
+objective:
+  Let the missing-timeout negative fixture reach the existing guard when the workflow already
+  lacks the key.
+constraints:
+  - Change only the existing pop call to supply None as default.
+  - Keep the workflow, timeout assertion and application behavior unchanged.
+acceptance:
+  - The existing suite SHALL pass all 21 cases.
+  - With timeout absent upstream, the negative fixture SHALL reach its expected assertion without KeyError.
+  - The real workflow guard SHALL still reject a missing timeout.
+consumer_map:
+  - The required antidotes job executing scripts/tests/test_required_context_map.py from its candidate checkout.

@@ -278,5 +278,5 @@ Gemini CLI è DEPRECATO (2026-06-18) — la porta Google è **agy/Antigravity**.
 - Verdetto Gear-2 da famiglia diversa dal builder; Gear-3 sempre check Fable.
 - Fence agy invariata (MODEL_TOPOLOGY notes): candidate-only, no KG writes, no merge identità, no credenziali, no scraping account privati.
 - Quota AI Ultra: refresh ~5h + cap settimanali; overage a crediti = spesa per-token → richiede GO di Zero.
-- PII: mai. Quote cliente: mai. Legge 5: mai pubblicare.
+- PII: mai. Quote cliente: mai. Legge 5: mai pubblicare **di propria iniziativa** — l'unica deroga nominata (ordine esplicito di Zero o Damar da canale autenticato, gate dell'artefatto verdi) è definita in `AGENTS.md` §0.0 punto 2, che governa anche te; non ri-derivarne l'estensione da questa riga.
 - Roster completo modelli × punti di forza × effort di TUTTA la flotta: `MODEL_ROSTER.md` (repo root) — leggilo prima di scegliere un seat (ruling Zero 2026-08-14).

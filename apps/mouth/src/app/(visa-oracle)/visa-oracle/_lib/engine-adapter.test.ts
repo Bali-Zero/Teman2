@@ -8,6 +8,8 @@ import {
   buildEngineOutcome,
 } from "./engine-adapter";
 import { TEST_NOW, makeVisaOracleResponse } from "./visa-oracle-test-fixture";
+import { translate, type I18nKey } from "./i18n";
+import { QUESTIONS } from "./tree";
 
 describe("Visa Oracle authoritative outcome adapter", () => {
   it("shows each source's own dates, not the decision's evaluation clock", () => {
@@ -280,7 +282,9 @@ describe("Visa Oracle authoritative outcome adapter", () => {
   });
 
   it("maps missing engine facts back to editable interview questions", () => {
-    const outcome = buildEngineOutcome(makeVisaOracleResponse("NEEDS_INPUT"));
+    const outcome = buildEngineOutcome(makeVisaOracleResponse("NEEDS_INPUT"), {
+      editableQuestionIds: ["stay_days"],
+    });
     expect(outcome.state).toBe("NEEDS_INPUT");
     if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
     expect(outcome.missingInputs[0]).toMatchObject({
@@ -288,6 +292,193 @@ describe("Visa Oracle authoritative outcome adapter", () => {
       questionId: "stay_days",
     });
   });
+
+  it.each([
+    ["work.indonesia_source_compensation", "remote_compensation"],
+    ["work.indonesia_source_compensation", "work_indonesia_compensation"],
+    ["investment.pt_pma_committed", "investment_pt_pma"],
+    ["investment.pt_pma_committed", "remote_pt_pma"],
+    ["immigration.current_status_code", "stay_permit_code"],
+  ] as const)(
+    "routes missing %s to the visited %s question",
+    (factPath, questionId) => {
+      const response = makeVisaOracleResponse("NEEDS_INPUT");
+      response.decision.missing_facts = [factPath];
+      const outcome = buildEngineOutcome(response, {
+        editableQuestionIds: ["category", questionId, "stay_days"],
+      });
+      if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+      expect(outcome.missingInputs[0]).toMatchObject({
+        code: factPath,
+        questionId,
+        message: {
+          en: translate("en", QUESTIONS[questionId].i18nKey as I18nKey),
+          id: translate("id", QUESTIONS[questionId].i18nKey as I18nKey),
+        },
+      });
+    },
+  );
+
+  it("retains both missing fact codes when neither has a visited question", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = [
+      "work.indonesia_source_compensation",
+      "investment.pt_pma_committed",
+    ];
+    const outcome = buildEngineOutcome(response, {
+      editableQuestionIds: ["stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs.map((input) => input.code)).toEqual(
+      response.decision.missing_facts,
+    );
+    expect(outcome.missingInputs.map((input) => input.questionId)).toEqual([
+      undefined,
+      undefined,
+    ]);
+    expect(outcome.missingInputs[0].message).toEqual(
+      outcome.missingInputs[1].message,
+    );
+  });
+
+  // ── 2026-09-06 decisiveness wave (PR-3): the follow-up loop ──────────
+  // Before this, a NEEDS_INPUT naming a fact whose question exists in
+  // QUESTIONS but was never asked on this walk rendered an unanswerable
+  // row: `questionForFact` only ever looked inside the interview history.
+
+  it("names a modelled-but-unasked question as a FOLLOW-UP, not as an edit", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["process.wants_onshore_conversion"];
+    const outcome = buildEngineOutcome(response, {
+      facts: { in_indonesia: "no", category: "tourism" },
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0]).toMatchObject({
+      code: "process.wants_onshore_conversion",
+      questionId: "wants_onshore_conversion",
+      followUp: true,
+    });
+    // The row carries the question's own copy, never the raw fact path.
+    expect(JSON.stringify(outcome.missingInputs[0].message)).not.toContain(
+      "process.wants_onshore_conversion",
+    );
+  });
+
+  // Adversarial review 2026-09-06, finding 1 (accepted, narrowed): the
+  // follow-up may not bypass the tree's prerequisite ordering. Exactly one
+  // question collects `family.marriage_registered`, and the family branch
+  // asks it only for a SPOUSE or PARENT relation.
+  it("guilt: a prerequisite-bearing fact the answers contradict is NOT pushed", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["family.marriage_registered"];
+    const outcome = buildEngineOutcome(response, {
+      facts: {
+        in_indonesia: "no",
+        category: "family",
+        family_relation: "CHILD",
+      },
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0].questionId).toBeUndefined();
+    expect(outcome.missingInputs[0].followUp).toBeUndefined();
+  });
+
+  it("innocence: the same fact IS pushed once the relation satisfies it", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["family.marriage_registered"];
+    const outcome = buildEngineOutcome(response, {
+      facts: {
+        in_indonesia: "no",
+        category: "family",
+        family_relation: "SPOUSE",
+      },
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0]).toMatchObject({
+      questionId: "family_marriage_registered",
+      followUp: true,
+    });
+  });
+
+  it("guilt: no facts supplied means no follow-up — fail-closed", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["process.wants_onshore_conversion"];
+    const outcome = buildEngineOutcome(response, {
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0].questionId).toBeUndefined();
+  });
+
+  it("innocence: an ALREADY-ASKED question stays a plain edit, with no followUp marker", () => {
+    const outcome = buildEngineOutcome(makeVisaOracleResponse("NEEDS_INPUT"), {
+      editableQuestionIds: ["stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0].questionId).toBe("stay_days");
+    expect(outcome.missingInputs[0].followUp).toBeUndefined();
+  });
+
+  it.each([
+    "work.indonesia_source_compensation",
+    "investment.pt_pma_committed",
+    "immigration.current_status_code",
+  ] as const)(
+    "innocence: %s is collected by two questions, so it is never followed up",
+    (factPath) => {
+      // Splicing in one of two candidate branches' questions would be the
+      // adapter guessing which branch the applicant belongs to.
+      const response = makeVisaOracleResponse("NEEDS_INPUT");
+      response.decision.missing_facts = [factPath];
+      const outcome = buildEngineOutcome(response, {
+        editableQuestionIds: ["category", "stay_days"],
+      });
+      if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+      expect(outcome.missingInputs[0].questionId).toBeUndefined();
+      expect(outcome.missingInputs[0].followUp).toBeUndefined();
+      expect(outcome.missingInputs[0].message.en).toContain("Bali Zero");
+    },
+  );
+
+  it("innocence: a fact no question collects still falls back to the handoff", () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["intent.requested_product_code"];
+    const outcome = buildEngineOutcome(response, {
+      editableQuestionIds: ["category", "stay_days"],
+    });
+    if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+    expect(outcome.missingInputs[0].questionId).toBeUndefined();
+    expect(outcome.missingInputs[0].followUp).toBeUndefined();
+  });
+
+  it.each([
+    { editableQuestionIds: undefined },
+    { editableQuestionIds: [] },
+    { editableQuestionIds: ["stay_days"] },
+    {
+      editableQuestionIds: [
+        "remote_compensation",
+        "work_indonesia_compensation",
+      ],
+    },
+  ])(
+    "offers no arbitrary edit when the target is absent or ambiguous: %j",
+    ({ editableQuestionIds }) => {
+      const response = makeVisaOracleResponse("NEEDS_INPUT");
+      response.decision.missing_facts = ["work.indonesia_source_compensation"];
+      const outcome = buildEngineOutcome(response, { editableQuestionIds });
+      if (outcome.state !== "NEEDS_INPUT") throw new Error("unexpected state");
+      expect(outcome.missingInputs[0].questionId).toBeUndefined();
+      expect(outcome.missingInputs[0].message.en).toContain("Bali Zero");
+      expect(outcome.missingInputs[0].message.id).toContain("Bali Zero");
+      expect(JSON.stringify(outcome.missingInputs[0].message)).not.toContain(
+        "work.indonesia_source_compensation",
+      );
+    },
+  );
 });
 
 describe("support reasons are sentences, not machine codes", () => {
@@ -395,6 +586,85 @@ describe("support reasons are sentences, not machine codes", () => {
     // rules stopped parsing, would make the assertion below vacuously true.
     expect(codes.length).toBeGreaterThanOrEqual(13);
     expect(codes.filter((code) => !(code in SUPPORT_REASON_COPY))).toEqual([]);
+  });
+
+  /**
+   * The tripwire above walks SUPPORT effects only, but an EXCLUDE code reaches
+   * a reader through the SAME `reasonMessage` fallback: `NO_SUPPORTED_PATH`
+   * maps `no_path_reasons` through `reason()`. So a new hard filter can print
+   * a machine code on the no-path sheet without failing anything above. seq-20
+   * adds exactly one such rule — `hf.d2.indonesia-source-compensation`,
+   * CL-D2-01's local-compensation prohibition — and its code is read OUT of
+   * the highest-sequence pack on disk rather than typed here, so a rename in
+   * the fold moves this test with it instead of leaving it quietly stale.
+   */
+  function highestSequencePack(): { rules?: Array<Record<string, unknown>> } {
+    let best: {
+      payload: { sequence: number; rules?: Array<Record<string, unknown>> };
+      sequence: number;
+    } | null = null;
+    for (const full of productionPackFiles()) {
+      const payload = JSON.parse(fs.readFileSync(full, "utf-8")) as {
+        sequence?: unknown;
+        rules?: Array<Record<string, unknown>>;
+      };
+      // A pack without a numeric `sequence` cannot be compared — skip it
+      // rather than let it win via a sentinel default.
+      if (typeof payload.sequence !== "number") continue;
+      if (best === null || payload.sequence > best.sequence) {
+        best = {
+          payload: payload as {
+            sequence: number;
+            rules?: Array<Record<string, unknown>>;
+          },
+          sequence: payload.sequence,
+        };
+      }
+    }
+    if (best === null) {
+      throw new Error(`no pack under ${PACKS_DIR} had a numeric sequence`);
+    }
+    return best.payload;
+  }
+
+  function excludeReasonCodeOfRule(ruleId: string): string {
+    for (const rule of highestSequencePack().rules ?? []) {
+      if (rule.rule_id !== ruleId) continue;
+      const effect = rule.effect as Record<string, unknown> | undefined;
+      if (
+        effect &&
+        effect.type === "EXCLUDE" &&
+        typeof effect.reason_code === "string"
+      ) {
+        return effect.reason_code;
+      }
+      throw new Error(`${ruleId} is no longer an EXCLUDE rule`);
+    }
+    throw new Error(`${ruleId} is absent from the highest-sequence pack`);
+  }
+
+  function firstNoPathReason(code: string) {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons[0].code = code;
+    const outcome = buildEngineOutcome(response);
+    if (outcome.state !== "NO_SUPPORTED_PATH")
+      throw new Error("unexpected state");
+    return outcome.noPathReasons[0].message;
+  }
+
+  it("explains the seq-20 local-compensation exclusion in prose, in every locale", () => {
+    const code = excludeReasonCodeOfRule("hf.d2.indonesia-source-compensation");
+    expect(code).toBe("BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED");
+    expect(code in SUPPORT_REASON_COPY).toBe(true);
+
+    const message = firstNoPathReason(code);
+    expect(message.en).not.toMatch(/^Verified reason: /);
+    expect(message.en).not.toContain(code);
+    expect(message.en).toMatch(/Indonesian source/i);
+    expect(message.en).toMatch(/work route/i);
+    expect(message.id).not.toContain(code);
+    expect(message.id).toMatch(/sumber di Indonesia/i);
+    expect(message.id).toMatch(/jalur kerja/i);
   });
 });
 
@@ -516,11 +786,14 @@ describe("review reasons cover every code the current pack can emit", () => {
     "E28F_IKN_THRESHOLD_MANUAL_CHECK",
     "E33B_EXPERTISE_QUALIFICATION_CHECK",
     "E33G_EXCLUDES_LOCAL_COMPANY_OWNERSHIP",
-    // E5 increment 3 seq-9 fold (2026-08-19): review.e33g.income-evidence
-    // (OD-1 pattern — the USD 60,000/year income floor is un-modelable, no
-    // work-income FactPath exists, see cure-e33g.md). QW-4b (copy-deck
-    // approval) still owns writing the actual sentence.
-    "E33G_INCOME_EVIDENCE_REVIEW",
+    // `E33G_INCOME_EVIDENCE_REVIEW` was here from the E5 increment 3 seq-9
+    // fold (2026-08-19) until the seq-20 decisiveness fold retired the rule
+    // that emitted it: `review.e33g.income-evidence`'s `when` was a
+    // byte-for-byte copy of `el.e33g.remote-work`'s, so it vetoed E33G on
+    // the product's own success condition and E33G could never be
+    // recommended (2026-09-06 investigation §2.3 L3-b). It is removed here,
+    // not merely left unmapped, because the test below fails on a gap-list
+    // entry naming a code the highest-sequence pack no longer emits.
     "E33_WORK_RANGKAP_KEGIATAN_GATED",
     "GOVT_INVITATION_REQUIRED",
     // Pack-independent (evaluate_path.py):

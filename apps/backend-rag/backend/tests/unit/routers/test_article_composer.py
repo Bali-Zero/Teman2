@@ -13,10 +13,12 @@ Tests cover:
 import base64
 import json
 from datetime import datetime, timezone
+from io import BytesIO
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from backend.app.routers.article_composer import (
     BaliZeroTake,
@@ -25,6 +27,7 @@ from backend.app.routers.article_composer import (
     NextSteps,
     PublishRequest,
     TLDRSection,
+    _plain_text_snippet,
     build_enrichment_prompt,
     generate_mdx_content,
     generate_slug,
@@ -35,8 +38,34 @@ from backend.services.article_composer.claude_client import (
     _TextBlock,
     _Usage,
 )
+from backend.services.cover_images import _cover_as_jpeg, cover_card_as_jpeg
 
 # --- FIXTURES ---
+
+
+def _png_bytes(width: int = 64, height: int = 40) -> bytes:
+    """Create a valid RGB PNG for cover publication tests."""
+    output = BytesIO()
+    Image.new("RGB", (width, height), color="navy").save(output, format="PNG")
+    return output.getvalue()
+
+
+def test_cover_helper_converts_png_to_jpeg_and_crops_card_to_16_10() -> None:
+    """Covers stay full-size while cards are cropped, never stretched or padded."""
+    hero = _cover_as_jpeg(_png_bytes(width=2100, height=900))
+    card = cover_card_as_jpeg(hero)
+
+    with Image.open(BytesIO(hero)) as hero_image:
+        assert hero_image.format == "JPEG"
+        assert hero_image.mode == "RGB"
+        assert hero_image.size == (2100, 900)
+
+    with Image.open(BytesIO(card)) as card_image:
+        assert card_image.format == "JPEG"
+        assert card_image.mode == "RGB"
+        assert abs((card_image.width / card_image.height) - 1.6) < 0.01
+        assert card_image.width <= 2100
+        assert card_image.height <= 900
 
 
 @pytest.fixture
@@ -401,7 +430,7 @@ async def test_publish_article_with_cover_image(
     )
 
     # Create base64 image
-    image_data = b"fake-image-data"
+    image_data = _png_bytes()
     image_base64 = base64.b64encode(image_data).decode("utf-8")
 
     # Call endpoint
@@ -424,9 +453,18 @@ async def test_publish_article_with_cover_image(
     # Verify atomic commit was called via the pull-request path
     mock_publisher.create_commit_with_files.assert_called_once()
     call_args = mock_publisher.create_commit_with_files.call_args
-    assert len(call_args[1]["files"]) == 2  # MDX + image
+    files = call_args[1]["files"]
+    assert {entry["path"] for entry in files} == {
+        "apps/mouth/public/static/news/test-article.jpg",
+        "apps/mouth/public/static/news/test-article_card.jpg",
+        "apps/mouth/src/content/articles/immigration/indonesia-tightens-visa-rules-what-expats-need-to-know.mdx",
+    }
+    mdx = next(entry["content"] for entry in files if entry["path"].endswith(".mdx"))
+    assert 'cardImage: "/static/news/test-article_card.jpg"' in mdx
     assert call_args[1]["pull_request"] is True
-    assert call_args[1]["must_not_exist_paths"] == [call_args[1]["files"][1]["path"]]
+    assert call_args[1]["must_not_exist_paths"] == [
+        "apps/mouth/src/content/articles/immigration/indonesia-tightens-visa-rules-what-expats-need-to-know.mdx"
+    ]
 
 
 @pytest.mark.asyncio
@@ -469,6 +507,55 @@ async def test_publish_article_without_cover_image(
     assert call_args[1]["pull_request"] is True
     assert call_args[1]["must_not_exist_paths"] == [call_args[1]["files"][0]["path"]]
 
+    # The returned article_url uses the SERVED category ("visas"), not the
+    # content folder the MDX was written to ("immigration" — see
+    # category_map above). Regression guard for the folder-vs-served-category
+    # bug: see backend/services/article_routes.py.
+    assert call_args[1]["files"][0]["path"].startswith(
+        "apps/mouth/src/content/articles/immigration/"
+    )
+    assert data["article_url"].startswith("https://balizero.com/visas/")
+
+
+@pytest.mark.asyncio
+@patch("backend.services.integrations.github_publisher.github_publisher")
+async def test_publish_article_url_uses_served_category_not_content_folder(
+    mock_publisher,
+    test_client,
+    sample_enriched_article,
+):
+    """A ``business_regulations`` article is written to the
+    ``business_regulations`` content folder (unmapped in ``category_map`` so
+    it passes through as its own folder name) but MUST be served at
+    ``/business/`` — the site only routes served categories, not folder
+    names. Measured live 2026-09-05: the folder-named URL 404s.
+    """
+    mock_publisher.is_configured = True
+    mock_publisher.check_file_exists = AsyncMock(return_value=False)
+    mock_publisher.create_commit_with_files = AsyncMock(
+        return_value={
+            "success": True,
+            "commit_sha": "regcat1",
+            "files_count": 1,
+            "branch": "auto-publish/regcat1",
+            "pull_request_number": 91,
+            "auto_merge_enabled": True,
+        },
+    )
+
+    article = sample_enriched_article.model_copy(update={"category": "business_regulations"})
+    request = PublishRequest(article=article, position="normal", slug="new-kbli-rules")
+    response = test_client.post("/api/articles/publish", json=request.model_dump())
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+
+    call_args = mock_publisher.create_commit_with_files.call_args
+    mdx_path = call_args[1]["files"][0]["path"]
+    assert mdx_path == "apps/mouth/src/content/articles/business_regulations/new-kbli-rules.mdx"
+    assert data["article_url"] == "https://balizero.com/business/new-kbli-rules"
+
 
 @pytest.mark.asyncio
 @patch("backend.services.integrations.github_publisher.github_publisher")
@@ -486,7 +573,7 @@ async def test_hero_publication_commits_article_cover_and_layout_atomically(
             "auto_merge_enabled": True,
         }
     )
-    image_base64 = base64.b64encode(b"fake-image-data").decode("utf-8")
+    image_base64 = base64.b64encode(_png_bytes()).decode("utf-8")
     request = PublishRequest(
         article=sample_enriched_article,
         cover_image_base64=image_base64,
@@ -503,6 +590,7 @@ async def test_hero_publication_commits_article_cover_and_layout_atomically(
     paths = {entry["path"] for entry in files}
     assert paths == {
         "apps/mouth/public/static/news/hero.jpg",
+        "apps/mouth/public/static/news/hero_card.jpg",
         "apps/mouth/src/content/articles/immigration/new-hero-story.mdx",
     }
     assert mock_publisher.create_commit_with_files.await_args.kwargs[
@@ -743,6 +831,101 @@ def test_generate_mdx_content_reading_time(sample_enriched_article):
     assert match
     reading_time = int(match.group(1))
     assert reading_time >= 3
+
+
+def test_plain_text_snippet_strips_heading_markdown():
+    """A '## Facts' heading and inline markdown must render as plain prose."""
+    raw = "## Facts\n\nIndonesia is **moving forward** with a [sweeping reform](https://x.io)."
+    snippet = _plain_text_snippet(raw, 280)
+
+    assert "#" not in snippet
+    assert "**" not in snippet
+    assert "[" not in snippet and "](" not in snippet
+    assert snippet.startswith("Indonesia is moving forward")
+
+
+def test_plain_text_snippet_truncates_at_word_boundary():
+    """Truncation never splits a word and only appends an ellipsis when cut."""
+    raw = "Indonesia is moving forward with a sweeping set of Usaha Menengah reforms today"
+    snippet = _plain_text_snippet(raw, 40)
+
+    assert len(snippet) <= 41  # 40 chars + the ellipsis character
+    assert snippet.endswith("…")
+    body = snippet[:-1].rstrip()
+    assert raw.startswith(body)
+    # The character right after the kept text in the source is a word
+    # boundary (space), proving no word was cut mid-way.
+    assert raw[len(body) : len(body) + 1] in (" ", "")
+
+
+def test_plain_text_snippet_no_ellipsis_when_untruncated():
+    """Short input is returned as-is — no trailing ellipsis added."""
+    snippet = _plain_text_snippet("Short headline", 70)
+    assert snippet == "Short headline"
+    assert not snippet.endswith("…")
+
+
+def test_generate_mdx_content_excerpt_and_seo_description_strip_markdown_fallback(
+    sample_enriched_article,
+):
+    """excerpt/seoDescription must be plain prose even when the only
+
+    available source is raw markdown content (e.g. the intel staging
+    conversion falling back to ``content[:280]`` when no '## Summary'
+    section exists — see backend/app/routers/intel_scraper.py
+    ``convert_staging_to_enriched_article``).
+    """
+    sample_enriched_article.ai_summary = (
+        "## Facts\n\nIndonesia is moving forward with a sweeping set of Usaha "
+        "Menengah reforms that will change how small and medium businesses "
+        "register for a KBLI code across the archipelago starting in Ma"
+    )
+    sample_enriched_article.seo_title = None
+    sample_enriched_article.seo_description = None
+
+    mdx = generate_mdx_content(sample_enriched_article, "seo-fallback-plain", None)
+
+    import yaml
+
+    frontmatter = yaml.safe_load(mdx.split("---", 2)[1])
+
+    expected_excerpt = _plain_text_snippet(sample_enriched_article.ai_summary, 280)
+    expected_seo_desc = _plain_text_snippet(sample_enriched_article.ai_summary, 155)
+    expected_seo_title = _plain_text_snippet(sample_enriched_article.headline, 70)
+
+    assert frontmatter["excerpt"] == expected_excerpt
+    assert frontmatter["seoDescription"] == expected_seo_desc
+    assert frontmatter["seoTitle"] == expected_seo_title
+
+    for field, value in (
+        ("excerpt", frontmatter["excerpt"]),
+        ("seoDescription", frontmatter["seoDescription"]),
+        ("seoTitle", frontmatter["seoTitle"]),
+    ):
+        assert "#" not in value, f"{field} still carries a markdown heading: {value!r}"
+        assert "\n" not in value
+        if value.endswith("…"):
+            # Whatever precedes the ellipsis must end at a real word — in
+            # the fully markdown-stripped source, the character right after
+            # the kept text is a space (or the kept text runs to the end),
+            # never mid-word.
+            body = value[:-1].rstrip()
+            plain_source = _plain_text_snippet(
+                sample_enriched_article.ai_summary, len(sample_enriched_article.ai_summary) + 10
+            )
+            assert plain_source[len(body) : len(body) + 1] in (" ", "")
+
+
+def test_generate_mdx_content_seo_title_prefers_short_headline_untruncated(
+    sample_enriched_article,
+):
+    """A headline at or under 70 chars is used verbatim — no ellipsis added."""
+    sample_enriched_article.headline = "Indonesia Tightens Visa Rules for Expats"
+    sample_enriched_article.seo_title = None
+
+    mdx = generate_mdx_content(sample_enriched_article, "seo-title-short", None)
+
+    assert 'seoTitle: "Indonesia Tightens Visa Rules for Expats"' in mdx
 
 
 def test_build_enrichment_prompt_truncates_content():

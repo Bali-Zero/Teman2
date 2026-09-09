@@ -215,6 +215,80 @@ describe("OutcomeSheet — honest five-state rendering", () => {
     expect(onEditMissingInput).toHaveBeenCalledWith("stay_days");
   });
 
+  it.each<Language>(["en", "id"])(
+    "shows repeated unroutable details only once in %s without an Edit action",
+    (language) => {
+      const message = text("Additional detail needed", "Perlu detail tambahan");
+      const outcome: OutcomeViewModel = {
+        ...common(),
+        state: "NEEDS_INPUT",
+        candidates: [],
+        missingInputs: [
+          { code: "missing.a", message, sourceIds: [] },
+          { code: "missing.b", message, sourceIds: [] },
+        ],
+      };
+      const { container } = renderSheet("NEEDS_INPUT", language, {
+        outcome,
+        onEditMissingInput: vi.fn(),
+      });
+      expect(screen.getAllByText(message[language])).toHaveLength(1);
+      expect(
+        container.querySelectorAll(".oracle-action-list > li"),
+      ).toHaveLength(1);
+      expect(
+        screen.queryByRole("button", { name: /edit|ubah/i }),
+      ).not.toBeInTheDocument();
+      expect(outcome.missingInputs.map((input) => input.code)).toEqual([
+        "missing.a",
+        "missing.b",
+      ]);
+    },
+  );
+
+  it("keeps editable details distinct from identical fallback copy and each other", () => {
+    const message = text("Detail needed");
+    const onEditMissingInput = vi.fn();
+    const outcome: OutcomeViewModel = {
+      ...common(),
+      state: "NEEDS_INPUT",
+      candidates: [],
+      missingInputs: [
+        { code: "missing.a", message, sourceIds: [] },
+        {
+          code: "missing.stay",
+          message,
+          sourceIds: [],
+          questionId: "stay_days",
+        },
+        { code: "missing.b", message, sourceIds: [] },
+        {
+          code: "missing.entry",
+          message,
+          sourceIds: [],
+          questionId: "entry_pattern",
+        },
+        { code: "missing.c", message: text("Different detail"), sourceIds: [] },
+      ],
+    };
+    const { container } = renderSheet("NEEDS_INPUT", "en", {
+      outcome,
+      onEditMissingInput,
+    });
+    expect(screen.getAllByText("Detail needed")).toHaveLength(3);
+    expect(screen.getByText("Different detail")).toBeInTheDocument();
+    expect(container.querySelectorAll(".oracle-action-list > li")).toHaveLength(
+      4,
+    );
+    const buttons = screen.getAllByRole("button", { name: "Edit" });
+    expect(buttons).toHaveLength(2);
+    buttons.forEach((button) => fireEvent.click(button));
+    expect(onEditMissingInput.mock.calls).toEqual([
+      ["stay_days"],
+      ["entry_pattern"],
+    ]);
+  });
+
   it("has no always-on WhatsApp/QR handoff and renders only an explicit slot", () => {
     const first = renderSheet("NEEDS_INPUT");
     expect(first.container.querySelector("[href*='wa.me']")).toBeNull();

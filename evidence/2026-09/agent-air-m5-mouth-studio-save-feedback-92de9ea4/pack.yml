@@ -1,0 +1,58 @@
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: studio-plan-persistence
+    role: build
+    seat: gpt-6-astra
+dissent: []
+pii_scan: clean
+seat_override: >-
+  R8 applicability only: this visa-route UI change authors no immigration or pricing claim.
+  It handles browser storage and clipboard failures using the existing plan codec and relevance filter,
+  and reserves the actual local consent-banner height so recovery controls remain reachable.
+receipts:
+  - claim: Plan persistence, manual recovery, Studio integration and copy-claim regressions pass.
+    cmd: >-
+      cd apps/mouth && npx --no-install vitest run
+      src/lib/secondhome-studio/__tests__/plan-codec.test.ts
+      src/app/visa/second-home/studio/components/SavePlanBar.test.tsx
+      src/app/visa/second-home/studio/StudioApp.test.tsx
+      src/lib/secondhome-studio/__tests__/forbidden-claims.test.ts
+      --maxWorkers=1 --reporter=json --outputFile=/tmp/s01-clearance-fixed.json
+    result: "4 test files passed; 180 tests passed; 0 failed."
+    exit: 0
+    ts: "2026-09-05T07:24:55.903Z"
+    seat: gpt-6-astra
+  - claim: Real Chrome preserves all three recovery paths and keeps the full manual input above the open banner at 320 pixels.
+    cmd: >-
+      ssh pro 'cd /Users/nuzantara/nuzantara/.worktrees/mouth-studio-s01-clearance-qa &&
+      /opt/homebrew/bin/node /Users/nuzantara/.npm/_npx/31e32ef8478fbf80/node_modules/@playwright/cli/playwright-cli.js
+      --session s01-clearance-320 run-code --filename output/playwright/s01-clearance/exercise-320.js'
+    result: >-
+      PASS: input bottom 510.828125 < banner top 699 at maximum scroll;
+      reservation 145 equals banner height 145; all three pointer hit targets reach the input;
+      keyboard and pointer selection 380/380. Resize and enlarged text update the reservation;
+      dismissed and absent banner reserve zero; print display none and zero height.
+    exit: 0
+    ts: "2026-09-05T07:28:20.650Z"
+    seat: gpt-6-astra
+  - claim: Real Chrome confirms the same recovery and banner lifecycle at 390 pixels.
+    cmd: >-
+      ssh pro 'cd /Users/nuzantara/nuzantara/.worktrees/mouth-studio-s01-clearance-qa &&
+      /opt/homebrew/bin/node /Users/nuzantara/.npm/_npx/31e32ef8478fbf80/node_modules/@playwright/cli/playwright-cli.js
+      --session s01-clearance-390 run-code --filename output/playwright/s01-clearance/exercise-390.js'
+    result: >-
+      PASS: input bottom 531.90625 < banner top 699; document/body widths equal 390;
+      reservation equals actual banner height and tracks enlarged text to 199.25 pixels.
+      All storage/clipboard, selection, resize, dismiss, reload and print checks passed.
+    exit: 0
+    ts: "2026-09-05T07:28:45.138Z"
+    seat: gpt-6-astra
+notes:
+  - The same final codec and component regressions on original HEAD sources failed 10 tests and passed 56; corrected sources were restored byte-for-byte afterward.
+  - Failure injection targets window.localStorage because the test setup uses LocalStorageMock, not the browser Storage prototype.
+  - The parent independently reran all four suites including StudioApp at 2026-09-05 15:27:39 WITA and reported 180/180 passing; existing React act and styled-jsx warnings remain.
+  - The exact cce13f6e baseline browser receipt records 9.90625 pixels of input occlusion with the banner open. The single local StudioApp correction adds no guessed spacing or global banner change.
+  - Browser source identity is cce13f6e plus StudioApp SHA-256 9b904e19f3da96203b532998aaa885163da78a62c208ae9d42d103a510951a8a; app-resolved Next CLI and runtime are both 16.3.3.
+  - The earlier root-CLI 16.3.1/app-runtime 16.3.3 receipt is retained as historical; current browser evidence uses aligned versions. Local telemetry HTTP 500 responses are expected with the backend intentionally unavailable.
+  - Independent Anthropic review, updated CI and production proof remain pending; no independent verdict is asserted.
+  - The Fable consul owns independent review and the controlled shipping path.

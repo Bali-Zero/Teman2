@@ -380,6 +380,14 @@ class TestGarudaVoaAuthAllowlistIsExactNotPrefix:
         assert is_public_path("/api/visa/voa/auth/magic-links")
         assert is_public_path("/api/visa/voa/auth/sessions")
 
+    def test_the_preview_lookup_route_is_public(self):
+        """previewMagicLink (not in the frozen contract, see
+        garuda_portal_auth.py's module docstring) must be reachable by an
+        anonymous caller exactly like its two frozen siblings — it is the
+        route that lets the continue page show the recipient before the
+        customer spends the token."""
+        assert is_public_path("/api/visa/voa/auth/magic-links/preview")
+
     def test_an_unrelated_future_path_under_the_same_root_is_not_public(self):
         """The literal repro from the finding -- this must be False now."""
         assert not is_public_path("/api/visa/voa/auth/anything-future-added-here")

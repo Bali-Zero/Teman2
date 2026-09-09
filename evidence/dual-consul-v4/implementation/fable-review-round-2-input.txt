@@ -1,0 +1,798 @@
+Final bounded delta review, round 2 for the SAME synthetic mission implementation. Your first verdict was PASS. No new scope or external effects. Re-evaluate your concrete findings and changes below against round 1; return PASS/REWORK with remaining blockers/limits and END_DUAL_CONSUL_REVIEW. No tools. Do not claim independent test execution.
+
+Resolved: revoke_approval now records superseded authorization by hash; zero workers requires exact int 0. Existing revoke(lease) retains False for obsolete generation. Fresh-lease replay requirement deliberately remains (no authority revival). Also real PG with production codec exposed double JSON encoding and invalid extension namespace: these are corrected below. Intent producer is now bound to the declared builder. Existing state_store transport gets text::jsonb casts; worker refuses false ownership updates.
+
+--- round1/apps/backend-rag/backend/services/autonomous_lab/consul_store.py
++++ final/apps/backend-rag/backend/services/autonomous_lab/consul_store.py
+@@ -8,6 +8,7 @@
+ 
+ from __future__ import annotations
+ 
++import re
+ from collections.abc import AsyncIterator
+ from contextlib import asynccontextmanager
+ from dataclasses import dataclass
+@@ -110,6 +111,28 @@
+         return row is not None
+ 
+ 
++async def revoke_approval(conn: asyncpg.Connection, *, run_id: str, approval_hash: str) -> bool:
++    """Trusted broker revocation, including superseded grants; False if unchanged."""
++    if not re.fullmatch(r"[a-f0-9]{64}", approval_hash):
++        raise ValueError("approval_hash must be lowercase SHA-256 hex")
++    async with conn.transaction():
++        if await _lock_parent(conn, run_id) is None:
++            return False
++        row = await conn.fetchrow(
++            """
++            UPDATE autonomous_lab_consul_leases
++            SET revoked_approval_hashes = array_append(revoked_approval_hashes, $2),
++                revoked_at = CASE WHEN approval_hash = $2
++                    THEN COALESCE(revoked_at, clock_timestamp()) ELSE revoked_at END
++            WHERE run_id = $1 AND NOT ($2 = ANY (revoked_approval_hashes))
++            RETURNING run_id
++            """,
++            run_id,
++            approval_hash,
++        )
++        return row is not None
++
++
+ @asynccontextmanager
+ async def guard(
+     conn: asyncpg.Connection,
+@@ -151,4 +174,3 @@
+         ):
+             raise PermissionError("lease, authorization or frozen review is no longer current")
+         yield now
+-
+
+--- round1/apps/backend-rag/backend/db/migrations_v2/306_autonomous_lab_consul_leases.sql
++++ final/apps/backend-rag/backend/db/migrations_v2/306_autonomous_lab_consul_leases.sql
+@@ -25,4 +25,3 @@
+ 
+ -- === ROLLBACK ===
+ DROP TABLE IF EXISTS public.autonomous_lab_consul_leases;
+-
+
+--- round1/apps/backend-rag/backend/services/autonomous_lab/consul_executor.py
++++ final/apps/backend-rag/backend/services/autonomous_lab/consul_executor.py
+@@ -111,10 +111,15 @@
+         for model in (intent, approval, review):
+             type(model).model_validate_json(model.model_dump_json(exclude_unset=True))
+         authorizes_action_intent(approval, intent, at=at)
+-        if inputs.builder not in {"astra", "fable"} or {inputs.builder, inputs.reviewer} != {
+-            "astra",
+-            "fable",
+-        }:
++        if (
++            inputs.builder not in {"astra", "fable"}
++            or {inputs.builder, inputs.reviewer}
++            != {
++                "astra",
++                "fable",
++            }
++            or intent.producer.name != f"com.balizero.consul.{inputs.builder}"
++        ):
+             raise PermissionError("independent_consul_required")
+         if (
+             intent.action_type != EFFECT
+@@ -174,7 +179,7 @@
+     await conn.execute(
+         """INSERT INTO research_os_objects
+            (object_kind, object_id, object_hash, contract_version, tenant, payload)
+-           VALUES ($1, $2, $3, $4, 'bali-zero', $5::jsonb)
++           VALUES ($1, $2, $3, $4, 'bali-zero', $5::text::jsonb)
+            ON CONFLICT (object_id) DO NOTHING""",
+         kind,
+         str(identifier),
+@@ -247,7 +252,7 @@
+                 "executor": PRODUCER,
+                 "started_at": stamp,
+                 "extensions": {
+-                    "com.balizero.dual_consul": {
++                    "com.balizero.dual-consul": {
+                         "extension_version": "1.0.0",
+                         "payload": {
+                             "lease_generation": lease.generation,
+@@ -264,7 +269,7 @@
+         # statement itself, even if an earlier receipt insert was delayed.
+         effect_at = await conn.fetchval(
+             """INSERT INTO autonomous_lab_events_outbox (run_id, event_type, payload)
+-               SELECT run_id, 'run_checkpointed', $3::jsonb
++               SELECT run_id, 'run_checkpointed', $3::text::jsonb
+                FROM autonomous_lab_consul_leases
+                WHERE run_id = $1 AND generation = $2 AND revoked_at IS NULL
+                  AND clock_timestamp() < lease_expires_at
+@@ -354,4 +359,3 @@
+                 "checkpoint_fingerprint": result.object_hash,
+             },
+         )
+-
+
+--- round1/scripts/conductor/adapter_contracts.py
++++ final/scripts/conductor/adapter_contracts.py
+@@ -148,7 +148,9 @@
+             reasons.append(f"{name}_hard_cap_unproven")
+     if type(requirements.workers) is not int or not 0 <= requirements.workers <= 4:
+         reasons.append("worker_limit_invalid")
+-    elif requirements.workers == 0 and observation.worker_limit not in (None, 0):
++    elif requirements.workers == 0 and (
++        type(observation.worker_limit) is not int or observation.worker_limit != 0
++    ):
+         reasons.append("delegation_must_be_disabled")
+     elif requirements.workers and (
+         not observation.delegation_observable
+@@ -336,4 +338,3 @@
+ 
+ if __name__ == "__main__":
+     raise SystemExit(main())
+-
+
+--- round1/docs/architecture/dual-consul/common-contract.md
++++ final/docs/architecture/dual-consul/common-contract.md
+@@ -19,11 +19,11 @@
+ 
+ A binding records requested and observed model, provider and route, runtime version, host, authentication-context digest, effective configuration digest, supported schema, tested capabilities, evidence references, and expiry. Capability eligibility is computed for the specific mission; configured or participation-observed does not imply effects-qualified.
+ 
+-| Identity assurance | Evidence | Exact-model requirement |
+-| --- | --- | --- |
++| Identity assurance  | Evidence                                               | Exact-model requirement                            |
++| ------------------- | ------------------------------------------------------ | -------------------------------------------------- |
+ | `response_observed` | Native response metadata matches the requested binding | May satisfy the identity requirement while current |
+-| `request_observed` | Requested/resolved alias seen on the request wire only | Insufficient |
+-| `unknown` | Effective identity absent or unverified | Insufficient |
++| `request_observed`  | Requested/resolved alias seen on the request wire only | Insufficient                                       |
++| `unknown`           | Effective identity absent or unverified                | Insufficient                                       |
+ 
+ These are observation levels, not cryptographic model signatures. Self-assertions, commit trailers, and session links do not authenticate a model. A historical report of metadata is distinguished from original metadata inspected during qualification.
+ 
+@@ -53,6 +53,8 @@
+ 
+ Acceptance evidence must distinguish the successful path, stale-owner refusal, changed-artifact refusal, and revoked-authority refusal. Synthetic reviewer identifiers exercise independence checks but do not claim an actual model performed a semantic review. Pure adapter admission/normalization fixtures establish only their tested rules. This increment does not qualify remote effects, native launch/resume/cancellation, a distinct-service-identity boundary, provider entitlement, or production reliability.
+ 
++The [implementation evidence and reproduction commands](../../../evidence/dual-consul-v4/implementation/README.md) identify the opt-in consumer, real PostgreSQL proof, and remaining activation boundaries.
++
+ Activation progresses through local development, shadow without external effects, staging, an authorized canary, and operations. Each transition requires versioned bindings, comparable metrics, evidence for the required capabilities, and rollback to the prior binding. Rollback does not revive revoked ownership or authorization. Pro hosts the authoritative broker; Air-M5 remains a thin client; Mini runs executors only where required and qualified. Host eligibility is verified independently, never inferred from another host's configuration.
+ 
+ ## Design provenance
+@@ -60,4 +62,3 @@
+ The [evidence manifest](../../../evidence/dual-consul-v4/design/manifest.json) verifies three Fable assistant text blocks from native session `433c29dd-e09f-4070-b1e9-a8da0136970c`, with `message.model=claude-fable-5-1` and runtime `2.1.261`. The final response accepts the design with five corrections. This is historical design review, not review of the implementation.
+ 
+ [Astra](astra-native.md), [Claude](claude-native.md), and the [five adapters](adapters.md) specify their own surfaces. Selected original tool outputs preserve the other-family contributions and their metadata. Four original answer hashes match the packet; Gemini's selected response has its own computed hash because its original stdout bytes are unavailable. Remaining observation gaps are explicit. No consultation is presented as a comparable benchmark.
+-
+
+diff --git a/apps/backend-rag/backend/services/autonomous_lab/state_store.py b/apps/backend-rag/backend/services/autonomous_lab/state_store.py
+index 908b2d9f05..da235599b8 100644
+--- a/apps/backend-rag/backend/services/autonomous_lab/state_store.py
++++ b/apps/backend-rag/backend/services/autonomous_lab/state_store.py
+@@ -294,7 +294,7 @@ WITH inserted AS (
+         priority,
+         max_attempts
+     )
+-    VALUES ($1, $2, $3, $4::jsonb, $5::text[], $6::jsonb, $7, $8)
++    VALUES ($1, $2, $3, $4::text::jsonb, $5::text[], $6::text::jsonb, $7, $8)
+     ON CONFLICT (idempotency_key) DO NOTHING
+     RETURNING
+         run_id,
+@@ -415,7 +415,7 @@ WITH updated AS (
+ ),
+ event_insert AS (
+     INSERT INTO autonomous_lab_events_outbox (run_id, event_type, payload)
+-    SELECT run_id, 'run_succeeded', $3::jsonb
++    SELECT run_id, 'run_succeeded', $3::text::jsonb
+     FROM updated
+     RETURNING event_id
+ )
+@@ -429,7 +429,7 @@ WITH updated AS (
+     UPDATE autonomous_lab_runs
+     SET
+         status = 'paused',
+-        metadata = metadata || $3::jsonb,
++        metadata = metadata || $3::text::jsonb,
+         worker_id = NULL,
+         updated_at = NOW(),
+         last_error = NULL
+@@ -440,7 +440,7 @@ WITH updated AS (
+ ),
+ event_insert AS (
+     INSERT INTO autonomous_lab_events_outbox (run_id, event_type, payload)
+-    SELECT run_id, 'run_paused', $4::jsonb
++    SELECT run_id, 'run_paused', $4::text::jsonb
+     FROM updated
+     RETURNING event_id
+ )
+@@ -468,7 +468,7 @@ WITH updated AS (
+ ),
+ event_insert AS (
+     INSERT INTO autonomous_lab_events_outbox (run_id, event_type, payload)
+-    SELECT run_id, 'run_failed', $5::jsonb
++    SELECT run_id, 'run_failed', $5::text::jsonb
+     FROM updated
+     RETURNING event_id
+ )
+@@ -551,7 +551,7 @@ updated AS (
+     UPDATE autonomous_lab_runs
+     SET
+         status = $4,
+-        metadata = metadata || $5::jsonb,
++        metadata = metadata || $5::text::jsonb,
+         worker_id = NULL,
+         next_attempt_at = CASE WHEN $4 = 'pending' THEN NOW() ELSE next_attempt_at END,
+         updated_at = NOW()
+@@ -565,7 +565,7 @@ updated AS (
+ ),
+ event_insert AS (
+     INSERT INTO autonomous_lab_events_outbox (run_id, event_type, payload)
+-    SELECT run_id, 'curator_decision_recorded', $6::jsonb
++    SELECT run_id, 'curator_decision_recorded', $6::text::jsonb
+     FROM updated
+     RETURNING event_id
+ )
+@@ -591,7 +591,7 @@ updated AS (
+     UPDATE autonomous_lab_runs
+     SET
+         status = 'cancelled',
+-        metadata = metadata || $3::jsonb,
++        metadata = metadata || $3::text::jsonb,
+         worker_id = NULL,
+         updated_at = NOW()
+     WHERE run_id = $1
+@@ -604,7 +604,7 @@ updated AS (
+ ),
+ event_insert AS (
+     INSERT INTO autonomous_lab_events_outbox (run_id, event_type, payload)
+-    SELECT run_id, 'run_cancelled', $4::jsonb
++    SELECT run_id, 'run_cancelled', $4::text::jsonb
+     FROM updated
+     RETURNING event_id
+ )
+@@ -990,7 +990,7 @@ class AutonomousLabStateStore:
+                 payload,
+                 max_attempts
+             )
+-            VALUES ($1, $2, $3::jsonb, $4)
++            VALUES ($1, $2, $3::text::jsonb, $4)
+             RETURNING event_id
+             """,
+             run_id,
+@@ -1149,6 +1149,8 @@ def _optional_note_reference(note: str | None) -> str | None:
+ 
+ 
+ def _jsonb(value: Mapping[str, Any]) -> str:
++    # Bind these serialized values as SQL text, then cast to jsonb. Passing
++    # them as jsonb parameters would run the pool's JSON encoder a second time.
+     return json.dumps(dict(value), allow_nan=False, ensure_ascii=False, sort_keys=True)
+ 
+ 
+
+diff --git a/apps/backend-rag/backend/services/autonomous_lab/worker.py b/apps/backend-rag/backend/services/autonomous_lab/worker.py
+index fa93065494..fdd5700738 100644
+--- a/apps/backend-rag/backend/services/autonomous_lab/worker.py
++++ b/apps/backend-rag/backend/services/autonomous_lab/worker.py
+@@ -103,9 +103,7 @@ class LabWorkerDryRun:
+             "created_at": self.created_at.isoformat(),
+             "placement": self.placement.to_receipt(),
+             "sandbox_policy": self.sandbox_policy.to_receipt(),
+-            "checkpoints": [
+-                checkpoint.to_receipt() for checkpoint in self.checkpoints
+-            ],
++            "checkpoints": [checkpoint.to_receipt() for checkpoint in self.checkpoints],
+             "paused_at_stage": self.paused_at_stage.value,
+             "execution_allowed": self.execution_allowed,
+             "manual_promotion_required": self.manual_promotion_required,
+@@ -142,11 +140,12 @@ class AutonomousLabWorker:
+ 
+         checkpoints: list[LabCheckpoint] = []
+         try:
+-            await self.state_store.heartbeat_run(
++            if not await self.state_store.heartbeat_run(
+                 conn,
+                 run_id=record.run_id,
+                 worker_id=worker_id,
+-            )
++            ):
++                raise PermissionError("worker no longer owns the run")
+             context: dict[str, Any] = {}
+             for node in _nodes_after_resume(self.stage_nodes, record):
+                 result = await node.run(record, context)
+@@ -160,13 +159,14 @@ class AutonomousLabWorker:
+                 )
+                 context[result.stage.value] = checkpoint.fingerprint
+                 if result.status is LabStageStatus.PAUSED:
+-                    await self.state_store.mark_run_paused(
++                    if not await self.state_store.mark_run_paused(
+                         conn,
+                         run_id=record.run_id,
+                         worker_id=worker_id,
+                         stage=result.stage.value,
+                         checkpoint=checkpoint.to_receipt(),
+-                    )
++                    ):
++                        raise PermissionError("worker lost ownership before pause")
+                     return LabWorkerTickResult.paused(
+                         worker_id=worker_id,
+                         record=record,
+@@ -174,12 +174,13 @@ class AutonomousLabWorker:
+                         paused_at_stage=result.stage,
+                     )
+ 
+-            await self.state_store.mark_run_succeeded(
++            if not await self.state_store.mark_run_succeeded(
+                 conn,
+                 run_id=record.run_id,
+                 worker_id=worker_id,
+                 summary={"checkpoint_count": len(checkpoints)},
+-            )
++            ):
++                raise PermissionError("worker lost ownership before completion")
+             return LabWorkerTickResult.succeeded(
+                 worker_id=worker_id,
+                 record=record,
+
+
+EXISTING CANONICAL VALIDATORS packages/research-os-core/research_os/primitives.py:415-445
+class Classification(FrozenCoreModel):
+    risk_class: RiskClass
+    sensitivity: Sensitivity
+
+
+class ValidTime(FrozenCoreModel):
+    valid_from: UtcDateTime
+    valid_to: UtcDateTime | None
+
+    @model_validator(mode="after")
+    def validate_half_open_interval(self) -> ValidTime:
+        if self.valid_to is not None and self.valid_to <= self.valid_from:
+            raise PydanticCustomError(
+                "valid_time_not_increasing",
+                "valid_to must be strictly later than valid_from",
+            )
+        return self
+
+
+class ExtensionValue(FrozenCoreModel):
+    extension_version: str
+    payload: dict[str, Any]
+
+    @model_validator(mode="after")
+    def validate_semantic_version(self) -> ExtensionValue:
+        try:
+            SemanticVersion.parse(self.extension_version)
+        except ValueError as exc:
+            raise PydanticCustomError(
+                "extension_version_not_semver",
+                "extension_version must be semantic version",
+
+FINAL PG TEST SOURCE apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py
+"""Opt-in real PostgreSQL proof; exact disposable database only, never models.
+
+DUAL_CONSUL_TEST_DSN must explicitly name dual_consul_test. The fixture resets
+only this slice's tables there and serializes schema setup with an advisory lock.
+Run on Pro against a disposable PostgreSQL instance, not an operational database.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import os
+from collections.abc import AsyncIterator
+from contextlib import suppress
+from pathlib import Path
+from typing import Any
+from urllib.parse import unquote, urlsplit
+
+import asyncpg
+import pytest
+
+from backend.app.core.database import init_asyncpg_connection
+from backend.db.migration_base import split_migration_sql
+from backend.migrations.migration_124_autonomous_lab_runtime import apply as apply_lab
+from backend.services.autonomous_lab import consul_executor, consul_store
+from backend.services.autonomous_lab.consul_executor import ConsulSyntheticStage, execute_synthetic
+from backend.services.autonomous_lab.state_store import (
+    AutonomousLabStateStore,
+    LabRunQueueItem,
+    resolve_runtime_placement,
+)
+from backend.services.autonomous_lab.worker import AutonomousLabWorker
+from backend.tests.unit.services.autonomous_lab.consul_fixtures import make_request
+
+pytestmark = pytest.mark.integration
+MIGRATIONS = Path(__file__).resolve().parents[2] / "db" / "migrations_v2"
+OWNER = "consul-astra"
+
+
+def _dsn() -> str:
+    value = os.environ.get("DUAL_CONSUL_TEST_DSN")
+    if not value:
+        pytest.skip("DUAL_CONSUL_TEST_DSN is required for isolated PostgreSQL proof")
+    parsed = urlsplit(value)
+    if (
+        parsed.scheme not in {"postgres", "postgresql"}
+        or unquote(parsed.path) != "/dual_consul_test"
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError("Dual Consul tests require exactly dual_consul_test without DSN overrides")
+    return value
+
+
+@pytest.fixture
+async def dual_db() -> AsyncIterator[asyncpg.Connection]:
+    conn = await asyncpg.connect(_dsn())
+    try:
+        await init_asyncpg_connection(conn)
+        if await conn.fetchval("SELECT current_database()") != "dual_consul_test":
+            raise RuntimeError("connected database is not dual_consul_test")
+        await conn.execute("SELECT pg_advisory_lock(hashtext('dual-consul-test-schema'))")
+        await conn.execute("""
+            DROP TABLE IF EXISTS autonomous_lab_consul_leases,
+                autonomous_lab_events_outbox, autonomous_lab_runs, research_os_objects CASCADE;
+            DROP FUNCTION IF EXISTS public.reject_research_os_objects_mutation();
+        """)
+        async with conn.transaction():
+            await apply_lab(conn)
+            for name in (
+                "279_research_os_contract_core.sql",
+                "280_research_os_objects_truncate_guard.sql",
+                "306_autonomous_lab_consul_leases.sql",
+            ):
+                forward, _ = split_migration_sql((MIGRATIONS / name).read_text())
+                await conn.execute(forward)
+        yield conn
+    finally:
+        await conn.close()
+
+
+def _store() -> AutonomousLabStateStore:
+    store = AutonomousLabStateStore()
+    store.placement = resolve_runtime_placement("Nuzantara", "nuzantara")
+    return store
+
+
+async def _enqueue(conn: asyncpg.Connection, run_id: str) -> AutonomousLabStateStore:
+    store = _store()
+    await store.enqueue_run(
+        conn,
+        LabRunQueueItem(
+            run_id=run_id,
+            idempotency_key=run_id,
+            objective="Synthetic Consul ownership proof",
+            receipt={"run_id": run_id, "blocked": False, "summary": "Synthetic proof only"},
+        ),
+    )
+    return store
+
+
+async def _admit(conn: asyncpg.Connection, run_id: str = "consul-db-proof") -> tuple[Any, Any]:
+    store = await _enqueue(conn, run_id)
+    assert await store.claim_next_run(conn, worker_id=OWNER) is not None
+    request = make_request(await conn.fetchval("SELECT clock_timestamp()"), run_id)
+    request.validate(await conn.fetchval("SELECT clock_timestamp()"))
+    lease = await consul_store.bind(
+        conn,
+        run_id=run_id,
+        owner_id=OWNER,
+        **request.pins,
+        grant_expires_at=request.review.expires_at,
+    )
+    return request, lease
+
+
+async def _counts(conn: asyncpg.Connection) -> tuple[int, int, int]:
+    return (
+        await conn.fetchval(
+            "SELECT count(*) FROM research_os_objects WHERE object_kind='execution_attempt'"
+        ),
+        await conn.fetchval(
+            "SELECT count(*) FROM research_os_objects WHERE object_kind='operational_receipt'"
+        ),
+        await conn.fetchval(
+            "SELECT count(*) FROM autonomous_lab_events_outbox WHERE payload->>'result'='synthetic_confirmed'"
+        ),
+    )
+
+
+async def test_migration_306_rollback_and_reapply_preserve_existing_lifecycle(
+    dual_db: asyncpg.Connection,
+) -> None:
+    forward, rollback = split_migration_sql(
+        (MIGRATIONS / "306_autonomous_lab_consul_leases.sql").read_text()
+    )
+    assert rollback is not None
+    async with dual_db.transaction():
+        await dual_db.execute(rollback)
+    assert await dual_db.fetchval(
+        "SELECT to_regclass('public.autonomous_lab_consul_leases') IS NULL"
+    )
+    assert await dual_db.fetchval(
+        "SELECT to_regclass('public.autonomous_lab_runs') IS NOT NULL "
+        "AND to_regclass('public.research_os_objects') IS NOT NULL"
+    )
+    async with dual_db.transaction():
+        await dual_db.execute(forward)
+    assert await dual_db.fetchval(
+        "SELECT to_regclass('public.autonomous_lab_consul_leases') IS NOT NULL"
+    )
+    request, lease = await _admit(dual_db, "consul-after-reapply")
+    await execute_synthetic(dual_db, lease=lease, request=request)
+    assert await _counts(dual_db) == (1, 1, 1)
+
+
+@pytest.mark.parametrize("builder", ["astra", "fable"])
+async def test_worker_tick_commits_started_attempt_result_and_one_effect(
+    dual_db: asyncpg.Connection, builder: Any
+) -> None:
+    run_id = f"consul-worker-{builder}"
+    store = await _enqueue(dual_db, run_id)
+    request = make_request(
+        await dual_db.fetchval("SELECT clock_timestamp()"), run_id, builder=builder
+    )
+    stage = ConsulSyntheticStage(dual_db, request, OWNER)
+    worker = AutonomousLabWorker(placement=store.placement, state_store=store, stage_nodes=(stage,))
+    result = await worker.tick(dual_db, worker_id=OWNER)
+    assert result.status.value == "succeeded"
+    assert await _counts(dual_db) == (1, 1, 1)
+    assert (
+        await dual_db.fetchval("SELECT status FROM autonomous_lab_runs WHERE run_id=$1", run_id)
+        == "succeeded"
+    )
+    assert (
+        await dual_db.fetchval(
+            "SELECT payload->>'state' FROM research_os_objects WHERE object_kind='execution_attempt'"
+        )
+        == "started"
+    )
+
+
+async def test_exact_replay_returns_same_receipt_without_duplicate_effect(
+    dual_db: asyncpg.Connection,
+) -> None:
+    request, lease = await _admit(dual_db)
+    first = await execute_synthetic(dual_db, lease=lease, request=request)
+    second = await execute_synthetic(dual_db, lease=lease, request=request)
+    assert first == second
+    assert await _counts(dual_db) == (1, 1, 1)
+
+
+@pytest.mark.parametrize("new_owner", [OWNER, "consul-fable"])
+async def test_takeover_fences_old_generation_even_when_owner_name_is_reused(
+    dual_db: asyncpg.Connection, new_owner: str
+) -> None:
+    request, stale = await _admit(dual_db)
+    await dual_db.execute(
+        "UPDATE autonomous_lab_runs SET worker_id=$1 WHERE run_id=$2", new_owner, stale.run_id
+    )
+    current = await consul_store.bind(
+        dual_db,
+        run_id=stale.run_id,
+        owner_id=new_owner,
+        **request.pins,
+        grant_expires_at=request.review.expires_at,
+    )
+    assert current.generation == stale.generation + 1
+    with pytest.raises(PermissionError):
+        await execute_synthetic(dual_db, lease=stale, request=request)
+    assert await _counts(dual_db) == (0, 0, 0)
+
+
+@pytest.mark.parametrize("condition", ["lease_expired", "grant_expired", "revoked", "cancelled"])
+async def test_lapsed_authority_never_reaches_effect(
+    dual_db: asyncpg.Connection, condition: str
+) -> None:
+    request, lease = await _admit(dual_db)
+    if condition == "revoked":
+        assert await consul_store.revoke(dual_db, lease)
+    elif condition == "cancelled":
+        await dual_db.execute(
+            "UPDATE autonomous_lab_runs SET status='cancelled' WHERE run_id=$1", lease.run_id
+        )
+    elif condition == "grant_expired":
+        await dual_db.execute(
+            "UPDATE autonomous_lab_consul_leases SET lease_expires_at=clock_timestamp()-interval '2 seconds', grant_expires_at=clock_timestamp()-interval '1 second'"
+        )
+    else:
+        await dual_db.execute(
+            "UPDATE autonomous_lab_consul_leases SET lease_expires_at=clock_timestamp()-interval '1 second'"
+        )
+    with pytest.raises(PermissionError):
+        await execute_synthetic(dual_db, lease=lease, request=request)
+    assert await _counts(dual_db) == (0, 0, 0)
+
+
+async def test_revoked_approval_cannot_return_after_new_grant(dual_db: asyncpg.Connection) -> None:
+    request, lease = await _admit(dual_db)
+    assert await consul_store.revoke(dual_db, lease)
+    fresh = make_request(
+        await dual_db.fetchval("SELECT clock_timestamp()"), lease.run_id, grant_revision=2
+    )
+    await consul_store.bind(
+        dual_db,
+        run_id=lease.run_id,
+        owner_id=OWNER,
+        **fresh.pins,
+        grant_expires_at=fresh.review.expires_at,
+    )
+    with pytest.raises(PermissionError, match="revoked"):
+        await consul_store.bind(
+            dual_db,
+            run_id=lease.run_id,
+            owner_id=OWNER,
+            **request.pins,
+            grant_expires_at=request.review.expires_at,
+        )
+
+
+async def test_broker_revokes_superseded_approval_without_revoking_current_grant(
+    dual_db: asyncpg.Connection,
+) -> None:
+    previous, old_lease = await _admit(dual_db)
+    current = make_request(
+        await dual_db.fetchval("SELECT clock_timestamp()"), old_lease.run_id, grant_revision=2
+    )
+    new_lease = await consul_store.bind(
+        dual_db,
+        run_id=old_lease.run_id,
+        owner_id=OWNER,
+        **current.pins,
+        grant_expires_at=current.review.expires_at,
+    )
+    assert new_lease.generation == old_lease.generation + 1
+    assert not await consul_store.revoke(dual_db, old_lease)
+    assert await consul_store.revoke_approval(
+        dual_db, run_id=old_lease.run_id, approval_hash=previous.approval.object_hash
+    )
+    assert not await consul_store.revoke_approval(
+        dual_db, run_id=old_lease.run_id, approval_hash=previous.approval.object_hash
+    )
+    with pytest.raises(PermissionError, match="revoked"):
+        await consul_store.bind(
+            dual_db,
+            run_id=old_lease.run_id,
+            owner_id=OWNER,
+            **previous.pins,
+            grant_expires_at=previous.review.expires_at,
+        )
+    result = await execute_synthetic(dual_db, lease=new_lease, request=current)
+    assert result.terminal_outcome == "succeeded"
+    assert await _counts(dual_db) == (1, 1, 1)
+    assert await dual_db.fetchval(
+        "SELECT revoked_approval_hashes FROM autonomous_lab_consul_leases WHERE run_id=$1",
+        old_lease.run_id,
+    ) == [previous.approval.object_hash]
+
+
+async def test_broker_revocation_of_current_approval_refuses_effect(
+    dual_db: asyncpg.Connection,
+) -> None:
+    request, lease = await _admit(dual_db)
+    assert await consul_store.revoke_approval(
+        dual_db, run_id=lease.run_id, approval_hash=request.approval.object_hash
+    )
+    assert not await consul_store.revoke(dual_db, lease)
+    with pytest.raises(PermissionError):
+        await execute_synthetic(dual_db, lease=lease, request=request)
+    assert await _counts(dual_db) == (0, 0, 0)
+
+
+async def test_failure_after_effect_rolls_back_all_ros_objects_and_effect(
+    dual_db: asyncpg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request, lease = await _admit(dual_db)
+    original = consul_executor._persist
+
+    async def fail_result(
+        conn: asyncpg.Connection, kind: str, identifier: object, model: Any
+    ) -> None:
+        if kind == "operational_receipt":
+            raise RuntimeError("synthetic injected result-store failure")
+        await original(conn, kind, identifier, model)
+
+    monkeypatch.setattr(consul_executor, "_persist", fail_result)
+    with pytest.raises(RuntimeError, match="injected"):
+        await execute_synthetic(dual_db, lease=lease, request=request)
+    assert await _counts(dual_db) == (0, 0, 0)
+    assert await dual_db.fetchval("SELECT count(*) FROM research_os_objects") == 0
+
+
+async def test_expiry_between_guard_and_effect_rolls_back(
+    dual_db: asyncpg.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request, lease = await _admit(dual_db)
+    original = consul_executor._persist
+
+    async def expire_after_attempt(
+        conn: asyncpg.Connection, kind: str, identifier: object, model: Any
+    ) -> None:
+        await original(conn, kind, identifier, model)
+        if kind == "execution_attempt":
+            await conn.execute(
+                "UPDATE autonomous_lab_consul_leases SET lease_expires_at=clock_timestamp()-interval '1 second' WHERE run_id=$1",
+                lease.run_id,
+            )
+
+    monkeypatch.setattr(consul_executor, "_persist", expire_after_attempt)
+    with pytest.raises(PermissionError):
+        await execute_synthetic(dual_db, lease=lease, request=request)
+    assert await _counts(dual_db) == (0, 0, 0)
+    assert await dual_db.fetchval("SELECT count(*) FROM research_os_objects") == 0
+
+
+async def test_concurrent_takeover_waits_for_guard_then_fences_it(
+    dual_db: asyncpg.Connection,
+) -> None:
+    request, lease = await _admit(dual_db)
+    other = await asyncpg.connect(_dsn())
+    await init_asyncpg_connection(other)
+    started = asyncio.Event()
+    task: asyncio.Task[Any] | None = None
+
+    async def takeover() -> Any:
+        started.set()
+        return await consul_store.bind(
+            other,
+            run_id=lease.run_id,
+            owner_id=OWNER,
+            **request.pins,
+            grant_expires_at=request.review.expires_at,
+        )
+
+    try:
+        async with consul_store.guard(dual_db, lease=lease, **request.pins):
+            task = asyncio.create_task(takeover())
+            await started.wait()
+            async with asyncio.timeout(5):
+                while not await dual_db.fetchval(
+                    "SELECT $1::int = ANY(pg_blocking_pids($2::int))",
+                    dual_db.get_server_pid(),
+                    other.get_server_pid(),
+                ):
+                    assert not task.done(), "takeover passed a held owner lock"
+            assert not task.done()
+        newer = await asyncio.wait_for(task, timeout=5)
+        assert newer.generation == lease.generation + 1
+        with pytest.raises(PermissionError):
+            await execute_synthetic(dual_db, lease=lease, request=request)
+    finally:
+        if task and not task.done():
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+        await other.close()
+
+
+OBSERVED TEST RESULTS (builder executed, independent reviewer may only assess source)
+{
+  "schema_version": 1,
+  "scope": "synthetic_local_and_disposable_postgresql_only",
+  "checks": [
+    {
+      "name": "lab",
+      "cmd": ". /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/activate\nPYTHONPATH=apps/backend-rag python -m pytest apps/backend-rag/backend/tests/unit/services/autonomous_lab/ --tb=short --color=no",
+      "started_at": "2026-09-05 23:37:54 UTC",
+      "finished_at": "2026-09-05 23:38:10 UTC",
+      "exit": 0,
+      "stdout": "........................................................................ [ 31%]\n........................................................................ [ 62%]\n........................................................................ [ 93%]\n...............                                                          [100%]\n============================= slowest 10 durations =============================\n0.15s call     backend/tests/unit/services/autonomous_lab/test_mass_invariants.py::test_planner_reviewer_and_receipt_store_mass_invariants\n0.07s call     backend/tests/unit/services/autonomous_lab/test_draft_cli.py::test_cli_blocks_workspace_write_requests\n0.07s call     backend/tests/unit/services/autonomous_lab/test_draft_cli.py::test_cli_invalid_input_returns_receipt_safe_json_error\n0.07s call     backend/tests/unit/services/autonomous_lab/test_draft_cli.py::test_cli_writes_receipt_and_omits_raw_text\n0.01s call     backend/tests/unit/services/autonomous_lab/test_router.py::test_draft_endpoint_can_persist_orchestration_receipt\n0.01s call     backend/tests/unit/services/autonomous_lab/test_router.py::test_draft_endpoint_can_persist_lab_ui_receipt\n0.01s call     backend/tests/unit/services/autonomous_lab/test_router.py::test_draft_endpoint_returns_receipt_safe_agent_fleet\n0.01s call     backend/tests/unit/services/autonomous_lab/test_router.py::test_run_detail_endpoint_returns_receipt_safe_persisted_run\n0.01s call     backend/tests/unit/services/autonomous_lab/test_router.py::test_draft_endpoint_accepts_lab_ui_target_paths\n0.01s call     backend/tests/unit/services/autonomous_lab/test_router.py::test_draft_endpoint_refuses_persistence_when_flag_disabled\n231 passed in 1.03s\n"
+    },
+    {
+      "name": "conductor",
+      "cmd": ". /Users/balizero/nuzantara/.venv/bin/activate\npython -m pytest scripts/tests/test_conductor_model_registry.py scripts/tests/test_conductor_host_identity.py scripts/tests/test_conductor_host_seat_maps.py scripts/tests/test_conductor_calibration.py scripts/tests/test_conductor_adapter_contracts.py -q --tb=short",
+      "started_at": "2026-09-05 23:37:54 UTC",
+      "finished_at": "2026-09-05 23:38:10 UTC",
+      "exit": 0,
+      "stdout": ".................................................................. [ 74%]\n.......................                                                  [100%]\n89 passed, 798 subtests passed in 4.41s\n"
+    },
+    {
+      "name": "postgres",
+      "cmd": "ssh pro 'cd /Users/nuzantara/nuzantara/.worktrees/infra-dual-consul-proof/apps/backend-rag && source .venv/bin/activate && PGHOST=/tmp/dual-consul-pg.aoqbxz PGPORT=55487 DUAL_CONSUL_TEST_DSN=postgresql:///dual_consul_test PYTHONPATH=. python -m pytest backend/tests/integration/test_dual_consul_postgres.py --tb=short --color=no'",
+      "started_at": "2026-09-05 23:37:54 UTC",
+      "finished_at": "2026-09-05 23:38:10 UTC",
+      "exit": 0,
+      "stdout": "................                                                         [100%]\n============================= slowest 10 durations =============================\n0.16s setup    backend/tests/integration/test_dual_consul_postgres.py::test_migration_306_rollback_and_reapply_preserve_existing_lifecycle\n0.07s setup    backend/tests/integration/test_dual_consul_postgres.py::test_lapsed_authority_never_reaches_effect[revoked]\n0.07s setup    backend/tests/integration/test_dual_consul_postgres.py::test_expiry_between_guard_and_effect_rolls_back\n0.07s setup    backend/tests/integration/test_dual_consul_postgres.py::test_broker_revocation_of_current_approval_refuses_effect\n0.06s setup    backend/tests/integration/test_dual_consul_postgres.py::test_lapsed_authority_never_reaches_effect[cancelled]\n0.06s setup    backend/tests/integration/test_dual_consul_postgres.py::test_concurrent_takeover_waits_for_guard_then_fences_it\n0.06s setup    backend/tests/integration/test_dual_consul_postgres.py::test_takeover_fences_old_generation_even_when_owner_name_is_reused[consul-fable]\n0.05s setup    backend/tests/integration/test_dual_consul_postgres.py::test_lapsed_authority_never_reaches_effect[lease_expired]\n0.05s setup    backend/tests/integration/test_dual_consul_postgres.py::test_failure_after_effect_rolls_back_all_ros_objects_and_effect\n0.05s setup    backend/tests/integration/test_dual_consul_postgres.py::test_exact_replay_returns_same_receipt_without_duplicate_effect\n16 passed in 1.95s\n"
+    }
+  ]
+}
+
+
+BOUNDARY: same-database synthetic only; no native provider invocation, OS UID enforcement, billing proof or fleet activation; two distinct intents may yield two checkpoints per run, tombstones persist; these are not hidden claims.

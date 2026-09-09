@@ -1,6 +1,6 @@
 {
   "_doc": "Advisory snapshot of main's required-status-check contexts (Merge-OS v2 Wave 0, research/operations/2026-08-10-merge-os-v2-submission-system.md §4). Read by scripts/ci/check_required_workflow_conformance.py. Drift vs live branch protection is expected and cured by REGEN, never hand-edit — see regen_command below.",
-  "generated_at": "2026-08-27",
+  "generated_at": "2026-09-05",
   "source": "api",
   "derived_from_pr": null,
   "repo": "Bali-Zero/Teman2",
@@ -56,10 +56,22 @@
       "job_id": "harness-floor"
     },
     {
+      "name": "Merah Putih DAY palette holds its contrast law",
+      "app_id": 15368,
+      "workflow_file": ".github/workflows/merah-putih-day-contrast.yml",
+      "job_id": "contrast-guard"
+    },
+    {
       "name": "R1 gate — adversarial review present",
       "app_id": null,
       "workflow_file": ".github/workflows/adversarial-review-gate.yml",
       "job_id": "gate"
+    },
+    {
+      "name": "Visa Oracle fullstack smoke",
+      "app_id": 15368,
+      "workflow_file": ".github/workflows/tests.yml",
+      "job_id": "visa-oracle-fullstack-smoke"
     },
     {
       "name": "actionlint — workflow schema + expression gate",

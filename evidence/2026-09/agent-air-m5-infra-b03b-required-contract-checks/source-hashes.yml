@@ -1,0 +1,7 @@
+files:
+  .github/workflows/tests.yml: dd2eb76fe7bc55eb83b4ead6d79a7c5b0c35e14d65e4f7d06c4bf6d85c85fac0 # pragma: allowlist secret - verified artifact SHA-256, not credential
+  scripts/ci/change_map.py: 320bee25c9ead00504b63f4a1224ab589c48803f07f021a94ebb97ebde939dac # pragma: allowlist secret - verified artifact SHA-256, not credential
+  scripts/ci/test_change_map.py: cd6f7422f4d23c088e2a8048fb096ad52d4c382cab0faa198e2d046e46ab29dc # pragma: allowlist secret - verified artifact SHA-256, not credential
+  scripts/tests/test_required_context_map.py: 2de4575544d7a9efc18ce3a6bd6a815e7c4099876e1feb8be9a67dbe393b2030 # pragma: allowlist secret - verified artifact SHA-256, not credential
+  products/garuda-voa/contracts/README.md: 62aae5c7665a32da365cda7a9fdbf94b846e5f71ecb8e1da055c5f8d651c132f # pragma: allowlist secret - verified artifact SHA-256, not credential
+prompt_sha256: 0c480de3d56ed76d3906f2a5e408ba62af5ea5c4c4c122540f9e2225017f191a # pragma: allowlist secret - verified artifact SHA-256, not credential

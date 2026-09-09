@@ -365,6 +365,9 @@ def main(argv: list[str] | None = None) -> int:
     violations += check_bridge(
         registry["surfaces"]["casual_conversation_gate"], wf_text, label="casual-gate"
     )
+    violations += check_bridge(
+        registry["surfaces"]["bites_parse_observe_allowlist"], wf_text, label="bites-parse"
+    )
     violations += check_simple_surfaces(registry, wf_text)
 
     bridge_count = len(registry["surfaces"]["bridge_reply_guards"]["guards"])
@@ -372,6 +375,7 @@ def main(argv: list[str] | None = None) -> int:
     pregate_count = len(registry["surfaces"]["wr2_editorial_pregate"]["guards"])
     evidence_pack_count = len(registry["surfaces"]["evidence_pack_lint"]["guards"])
     required_wf_count = len(registry["surfaces"]["required_workflow_conformance"]["guards"])
+    bites_parse_count = len(registry["surfaces"]["bites_parse_observe_allowlist"]["guards"])
 
     if as_json:
         print(json.dumps({
@@ -381,6 +385,7 @@ def main(argv: list[str] | None = None) -> int:
             "wr2_pregate_checks": pregate_count,
             "evidence_pack_lint_checks": evidence_pack_count,
             "required_workflow_conformance_checks": required_wf_count,
+            "bites_parse_guards": bites_parse_count,
             "violations": violations,
             "conformant": not violations,
         }, indent=2))
@@ -389,6 +394,7 @@ def main(argv: list[str] | None = None) -> int:
             f"guard-conformance: {bridge_count} bridge guards, {hook_count} hook entries, "
             f"{pregate_count} wr2-pregate checks, {evidence_pack_count} evidence-pack-lint "
             f"checks, {required_wf_count} required-workflow-conformance checks, "
+            f"{bites_parse_count} bites-parse guards, "
             f"{len(violations)} violation(s)"
         )
         for v in violations:

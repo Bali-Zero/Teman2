@@ -1,0 +1,62 @@
+{
+  "status": "selected_original_recorded_tool_outputs_recovered",
+  "routes": [
+    {
+      "family": "Qwen",
+      "evidence_status": "original_recorded_tool_output_recovered",
+      "answer_path": "tp1-qwen-answer.txt",
+      "answer_sha256": "11c735dd1e741f1ba5aea9dee3aa49c986e82a55cb15726f3e53ec97d0bd7074",
+      "metadata_path": "tp1-qwen-metadata.json",
+      "identity_assurance": "response_observed",
+      "original_answer_sha256_verified": true
+    },
+    {
+      "family": "DeepSeek",
+      "evidence_status": "original_recorded_tool_output_recovered",
+      "answer_path": "tp1-deepseek-answer.txt",
+      "answer_sha256": "d0eac772539f324e759a6ed6095ecd62cbe6202d7d6ab210b05c1db9aadd0f50",
+      "metadata_path": "tp1-deepseek-metadata.json",
+      "identity_assurance": "response_observed",
+      "original_answer_sha256_verified": true
+    },
+    {
+      "family": "GLM",
+      "evidence_status": "original_recorded_tool_output_recovered",
+      "answer_path": "tp1-glm-answer.txt",
+      "answer_sha256": "2d30f0dcb3b74959601c2cea721a80413216687aca502b5c55d8faa4c9ae7067",
+      "metadata_path": "tp1-glm-metadata.json",
+      "identity_assurance": "response_observed",
+      "original_answer_sha256_verified": true
+    },
+    {
+      "family": "Kimi",
+      "evidence_status": "original_recorded_tool_output_recovered",
+      "answer_path": "kimi-answer.txt",
+      "answer_sha256": "165cf07b9f6e5617e11b4b7f2b8717a073aa6db0d1c643b92d4ff02b6c27cf81",
+      "metadata_path": "kimi-metadata.json",
+      "identity_assurance": "request_observed",
+      "original_answer_sha256_verified": true
+    },
+    {
+      "family": "Gemini",
+      "evidence_status": "response_and_parsed_result_recovered_original_stdout_bytes_unavailable",
+      "answer_path": "gemini-answer.txt",
+      "answer_sha256": "3e17794372af183688e3a2ac56b1bede5804ac03b08d1ddb44641ebc87d61061",
+      "metadata_path": "gemini-metadata.json",
+      "identity_assurance": "unknown",
+      "original_stdout_sha256_verified": false
+    }
+  ],
+  "qualification": "Historical text participation only. Recorded tool metadata is observation evidence, not a cryptographic provider attestation or operational effect qualification.",
+  "consultation_count": {
+    "Kimi": 1,
+    "Qwen": 1,
+    "DeepSeek": 1,
+    "Gemini": 1,
+    "GLM": 1
+  },
+  "new_live_calls_during_document_extraction": 0,
+  "benchmark_comparability": false,
+  "finish_reason_correction": "All three original TP1 tool records carry finish_reason=stop. This directly confirms the user plan correction to the missing-field premise in Fable final review.",
+  "retention": "Selected final answer text and allowlisted metadata only. Original output proposals are not instructions; rejected flags, costly probes, and governance claims remain historical."
+}

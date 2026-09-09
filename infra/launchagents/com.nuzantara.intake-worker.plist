@@ -30,8 +30,12 @@
 		<string>900</string>
 		<key>INTAKE_LOG_LEVEL</key>
 		<string>INFO</string>
+		<!-- 15m, not 5s (tokenaudit 2026-09-02, action 50): with 5s the worker unloads the
+		     vision/text model after every poll and reloads it on the next one — measured 13
+		     llama-server loads/h on Pro before, 5-6/h after (night windows, ollama-single-manager.log).
+		     ollama-single-manager caps MAX_LOADED=2 / KEEP_ALIVE=30m, so 15m stays inside its budget. -->
 		<key>INTAKE_OLLAMA_KEEP_ALIVE</key>
-		<string>5s</string>
+		<string>15m</string>
 		<key>INTAKE_OLLAMA_MAX_INFLIGHT</key>
 		<string>1</string>
 		<key>INTAKE_NAMEID_AUTO_ATTACH_ENABLED</key>

@@ -68,24 +68,25 @@ export interface OutcomeMissingInput extends OutcomeReason {
   /** Present when the missing engine fact maps to a question the interview
    * can reopen. Omitted facts require a human handoff instead of a fake field. */
   questionId?: string;
+  /**
+   * `true` when `questionId` names a question this interview has NOT yet
+   * asked (added 2026-09-06). The two cases must not be conflated in the
+   * UI: an ALREADY-ASKED question is reopened by truncating history back to
+   * it (destructive — every answer after it is discarded), while a
+   * never-asked one is APPENDED to the interview and nothing is lost. Only
+   * ever set alongside `questionId`.
+   */
+  followUp?: true;
 }
 
 export type LegalSupportStatus =
-  | "SUPPORTED"
-  | "CONDITIONAL"
-  | "NOT_SUPPORTED"
-  | "UNKNOWN";
+  "SUPPORTED" | "CONDITIONAL" | "NOT_SUPPORTED" | "UNKNOWN";
 
 export type OperationalAvailabilityStatus =
-  | "AVAILABLE"
-  | "TEMPORARILY_UNAVAILABLE"
-  | "UNKNOWN";
+  "AVAILABLE" | "TEMPORARILY_UNAVAILABLE" | "UNKNOWN";
 
 export type ServiceAvailabilityStatus =
-  | "AVAILABLE"
-  | "CONTACT_REQUIRED"
-  | "NOT_OFFERED"
-  | "UNKNOWN";
+  "AVAILABLE" | "CONTACT_REQUIRED" | "NOT_OFFERED" | "UNKNOWN";
 
 export interface OutcomeStatusAxis<Status extends string> {
   status: Status;

@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: d4447087b67244cbed18855d24c8b920d2fe52063ad9f2827a79e0ac3f016a72
+checksum: 88ee800ce53c07dba4c6213a8bb11dda00e2c4e331962ec1addc27b22be6118d
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -113,7 +113,8 @@ organs:
 - id: pro.claude_max_watcher
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 3600
+  # 7200 = 2x this organ's own 3600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 7200
   owner_module: scripts/claude-max-usage-watcher.py
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -164,7 +165,8 @@ organs:
 - id: m5.auth_sentinel
   runtime: air_launchd
   type: cron
-  expected_hb_seconds: 25200
+  # 43200 = 2x this organ's own 21600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.167x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
+  expected_hb_seconds: 43200
   owner_module: scripts/auth_sentinel_cron.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -298,7 +300,8 @@ organs:
 - id: pro.dlq_autopilot
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 2700
+  # 3600 = 2x this organ's own 1800s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
+  expected_hb_seconds: 3600
   owner_module: scripts/dlq_autopilot.py
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -1315,7 +1318,8 @@ organs:
   type: cron
   enabled: false
   disabled_reason: 'manual-only since 2026-09-01 — Zero ruling: WR2 runs only on command (runtime booted out + launchctl disabled on Pro; rollback in ~/.tokenaudit/rollback.sh)'
-  expected_hb_seconds: 600
+  # 7200 = 2x this organ's own 3600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 7200
   owner_module: scripts/wr2-deploy-pull.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -1902,7 +1906,8 @@ organs:
 - id: pro.bali_zero_magazine_breaking
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 600
+  # 1200 = 2x this organ's own 600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 1200
   owner_module: infra/launchagents/wrappers/bali-zero-magazine-publish.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -1973,7 +1978,8 @@ organs:
 - id: mini.healer
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 14400
+  # 21600 = 1.5x this organ's own 14400s plist cadence (self-reporting cron, not bridge-fed) - error severity gets the faster-detection floor: a flat 1x margin let the sidecar's own age cross 'stale' every cycle at the exact instant the next run was due.
+  expected_hb_seconds: 21600
   owner_module: infra/healer/healer-run.sh
   dependencies: []
   recovery_action: human_only
@@ -1996,7 +2002,8 @@ organs:
 - id: pro.healer
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 21600
+  # 32400 = 1.5x this organ's own 21600s plist cadence (self-reporting cron, not bridge-fed) - error severity gets the faster-detection floor: a flat 1x margin let the sidecar's own age cross 'stale' every cycle at the exact instant the next run was due.
+  expected_hb_seconds: 32400
   owner_module: infra/launchagents/wrappers/pro-healer.sh
   dependencies: []
   recovery_action: human_only
@@ -2016,7 +2023,8 @@ organs:
 - id: pro.tg_digest_flush
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 43200
+  # 86400 = 2x this organ's own 43200s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 86400
   owner_module: infra/launchagents/wrappers/pro-tg-digest-flush.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2036,7 +2044,8 @@ organs:
 - id: mini.tg_digest_flush
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 43200
+  # 86400 = 2x this organ's own 43200s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 86400
   owner_module: infra/launchagents/wrappers/mini-tg-digest-flush.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2185,7 +2194,8 @@ organs:
 - id: mini.fleet_watch
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 900
+  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 1800
   owner_module: infra/launchagents/wrappers/mini-fleet-watch.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2206,7 +2216,8 @@ organs:
 - id: pro.fleet_watch
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 900
+  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 1800
   owner_module: infra/launchagents/wrappers/pro-fleet-watch.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2318,7 +2329,8 @@ organs:
 - id: pro.git_pull_main
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 900
+  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 1800
   owner_module: infra/launchagents/wrappers/pro-git-pull-main.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2385,7 +2397,8 @@ organs:
 - id: pro.log_rotate
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 86400
+  # 172800 = 2x this organ's own 86400s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 172800
   owner_module: infra/launchagents/wrappers/log-rotate-run.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2494,7 +2507,8 @@ organs:
 - id: army.jules_harvest
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 10800
+  # 21600 = 2x this organ's own 10800s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 21600
   owner_module: scripts/army/jules_lane_harvest_wrapper.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2516,7 +2530,8 @@ organs:
 - id: army.spark_lane
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 7200
+  # 14400 = 2x this organ's own 7200s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 14400
   owner_module: scripts/army/spark_lane.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2561,7 +2576,8 @@ organs:
 - id: pro.wa_mirror_freshness_liveness
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 1350
+  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
+  expected_hb_seconds: 1800
   owner_module: scripts/wa_mirror_freshness_liveness.py
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2584,7 +2600,8 @@ organs:
 - id: mini.secrets_perms_sweep
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 21600
+  # 43200 = 2x this organ's own 21600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 43200
   owner_module: infra/launchagents/wrappers/mini-secrets-perms-sweep.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2604,7 +2621,8 @@ organs:
 - id: pro.visa_freshness_sentinel
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 21600
+  # 43200 = 2x this organ's own 21600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 43200
   owner_module: infra/launchagents/wrappers/pro-visa-freshness-sentinel.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2625,7 +2643,8 @@ organs:
 - id: pro.llm_burn_alarm
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 3600
+  # 7200 = 2x this organ's own 3600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 7200
   owner_module: infra/launchagents/wrappers/pro-llm-burn-alarm.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2644,7 +2663,8 @@ organs:
 - id: mini.vercel_autopromote
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 900
+  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 1800
   owner_module: infra/launchagents/wrappers/mini-vercel-autopromote.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2663,7 +2683,8 @@ organs:
 - id: mini.voa_probe
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 900
+  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 1800
   owner_module: infra/launchagents/wrappers/voa-probe-wrapper.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2689,7 +2710,8 @@ organs:
 - id: mini.voa_deadman
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 450
+  # 600 = 2x this organ's own 300s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
+  expected_hb_seconds: 600
   owner_module: infra/launchagents/wrappers/voa-deadman-wrapper.sh
   dependencies:
   - mini.voa_probe
@@ -2719,7 +2741,8 @@ organs:
 - id: pro.wa_bot_throughput_sentinel
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 1350
+  # 1800 = 2x this organ's own 900s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
+  expected_hb_seconds: 1800
   owner_module: scripts/wa_bot_throughput_sentinel.py
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2746,7 +2769,8 @@ organs:
 - id: pro.iqoo_radar_relay
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 60
+  # 120 = 2x this organ's own 60s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 120
   owner_module: infra/launchagents/wrappers/pro-iqoo-radar-relay.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2765,7 +2789,8 @@ organs:
 - id: mini.iqoo_radar_relay
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 60
+  # 120 = 2x this organ's own 60s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value gave zero margin against ordinary launchd jitter.
+  expected_hb_seconds: 120
   owner_module: infra/launchagents/wrappers/mini-iqoo-radar-relay.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2784,7 +2809,8 @@ organs:
 - id: mini.journey_sentinel
   runtime: mini_launchd
   type: cron
-  expected_hb_seconds: 5400
+  # 7200 = 2x this organ's own 3600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
+  expected_hb_seconds: 7200
   owner_module: scripts/journey_sentinel.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2835,7 +2861,8 @@ organs:
 - id: pro.queue_shepherd
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 900
+  # 1200 = 2x this organ's own 600s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.5x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
+  expected_hb_seconds: 1200
   owner_module: scripts/queue_shepherd.py
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -2898,7 +2925,8 @@ organs:
 - id: pro.price_review_sentinel
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 90000
+  # 172800 = 2x this organ's own 86400s plist cadence (self-reporting cron, not bridge-fed) - one full missed run of slack before going stale; the old value already had ~1.042x margin (not zero) against its own cadence; 2x is deliberate additional headroom against ordinary launchd jitter, not a zero-margin correction.
+  expected_hb_seconds: 172800
   owner_module: infra/launchagents/wrappers/pro-price-review-sentinel.sh
   dependencies: []
   recovery_action: launchctl_kickstart

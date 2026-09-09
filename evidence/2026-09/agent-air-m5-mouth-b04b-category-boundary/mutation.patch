@@ -1,0 +1,8 @@
+--- a/apps/mouth/src/app/(blog)/[category]/[slug]/page.tsx
++++ b/apps/mouth/src/app/(blog)/[category]/[slug]/page.tsx
+@@ -86,3 +86,4 @@
+   // could resolve them. Reject the raw segment before either lookup.
+-  if (!VALID_CATEGORIES.includes(category)) {
++  const canonicalCategory = resolveCategoryAlias(category);
++  if (!canonicalCategory || !VALID_CATEGORIES.includes(canonicalCategory)) {
+     return {

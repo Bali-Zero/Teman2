@@ -120,6 +120,17 @@ const HUMAN_REVIEW_PERSONAS: readonly GoldOraclePersona[] = [
     // Empirically verified via evaluator.evaluate + apply_public_policy_adapters
     // (see file doc comment) — remote worker, uncertain whether the employer
     // is an Indonesian entity; every other REMOTE_WORK-relevant fact known.
+    //
+    // REACHABILITY (2026-09-06): this persona's `work_payer` answer was
+    // UNREACHABLE from a real browser walk until PR-3 of the decisiveness
+    // wave — `work_payer` was in the `work` branch only, never in `remote`,
+    // so no remote interview could ever produce these facts and the
+    // baseline could never match live SHADOW traffic. Adding the question
+    // to the remote branch (it is the only input to
+    // `work.employer_is_indonesian_entity`) makes the persona live. The
+    // predicted outcome is unchanged: an "unsure" answer anywhere still
+    // yields `NOT_CERTAIN` -> `HUMAN_REVIEW_REQUIRED`. Pinned by
+    // `gold-oracle-baseline.test.ts`.
     personaId: "remote-worker-payer-unsure",
     label: "remote worker, unsure whether employer is an Indonesian entity",
     matches: (facts) =>

@@ -1,0 +1,54 @@
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+lanes:
+  - lane: b03b-tidy
+    role: build
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - lane: sol-review
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: kimi-review
+    role: review
+    seat: kimi-code/k3
+pii_scan: clean
+receipts:
+  - claim: Existing required-context guard suite passes on the final source.
+    cmd: python -m pytest scripts/tests/test_required_context_map.py -q -p no:cacheprovider
+    result: 19 passed, including the existing disarmament cases.
+    exit: 0
+    ts: "2026-09-05T13:54:04.819249+00:00"
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - claim: Existing change-map suite passes.
+    cmd: python scripts/ci/test_change_map.py
+    result: 69 passed.
+    exit: 0
+    ts: "2026-09-05T13:54:58.149813+00:00"
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - claim: The exact repository-local compiler invocation succeeds from mouth.
+    cmd: cd apps/mouth && ../../node_modules/.bin/tsc --noEmit
+    exit: 0
+    ts: "2026-09-05T13:54:58.149813+00:00"
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - claim: Workflow syntax is valid.
+    cmd: actionlint -shellcheck= .github/workflows/tests.yml
+    exit: 0
+    ts: "2026-09-05T13:54:58.149813+00:00"
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+dissent:
+  - seat: kimi-code/k3
+    objection:
+      The direct path assumes TypeScript remains installed in root node_modules; future workspace relocation
+      needs a command update.
+    status: PLAUSIBLE
+    disposition: Current root binary and exact invocation were verified; the PR body records this dependency.
+  - seat: codex-gpt-5.6-sol
+    objection: The PR must disclose the parent contracts-only routing reduction from six to three jobs.
+    status: CONFIRMED
+    disposition: The PR body explicitly names run_all true to false and all three suggested/skipped jobs.
+notes:
+  - Two source hashes match the immutable final council input; the only correction after first review was docstring
+    wording.
+  - Non-guard check timestamps record capture; guard and council timestamps are actual completion times.
+  - The parent classifier is unchanged here. Registry and timeout work are outside this bounded follow-up.
+  - Corrected-head CI execution and final independent Anthropic grading remain pending.

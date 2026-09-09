@@ -1,0 +1,51 @@
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: s01b-consent-reservation
+    role: build
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - lane: kimi-cross-family-review
+    role: review
+    seat: kimi-code/k3
+dissent: []
+pii_scan: clean
+receipts:
+  - claim: "wrapper-removed: Test Files  1 failed | 1 passed (2); Tests  2 failed | 52 passed (54)"
+    cmd:
+      git apply --unidiff-zero evidence/2026-09/agent-air-m5-mouth-s01b-consent-reservation/wrapper-removed.patch
+      && (cd apps/mouth && npx vitest run src/app/visa/second-home/studio/StudioApp.test.tsx src/app/visa/second-home/studio/components/SavePlanBar.test.tsx)
+    exit: 1
+    ts: "2026-09-05T11:34:13.072144+00:00"
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - claim: "banner-outside: Test Files  1 failed | 1 passed (2); Tests  2 failed | 52 passed (54)"
+    cmd:
+      git apply --unidiff-zero evidence/2026-09/agent-air-m5-mouth-s01b-consent-reservation/banner-outside.patch
+      && (cd apps/mouth && npx vitest run src/app/visa/second-home/studio/StudioApp.test.tsx src/app/visa/second-home/studio/components/SavePlanBar.test.tsx)
+    exit: 1
+    ts: "2026-09-05T11:34:18.835216+00:00"
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - claim: "print-rule-removed: Test Files  1 failed | 1 passed (2); Tests  1 failed | 53 passed (54)"
+    cmd:
+      git apply --unidiff-zero evidence/2026-09/agent-air-m5-mouth-s01b-consent-reservation/print-rule-removed.patch
+      && (cd apps/mouth && npx vitest run src/app/visa/second-home/studio/StudioApp.test.tsx src/app/visa/second-home/studio/components/SavePlanBar.test.tsx)
+    exit: 1
+    ts: "2026-09-05T11:34:24.582806+00:00"
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - claim: "candidate-restored: Test Files  2 passed (2); Tests  54 passed (54)"
+    cmd: cd apps/mouth && npx vitest run src/app/visa/second-home/studio/StudioApp.test.tsx src/app/visa/second-home/studio/components/SavePlanBar.test.tsx
+    exit: 0
+    ts: "2026-09-05T11:34:30.122636+00:00"
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - claim:
+      Kimi K3 returned PASS with only nonblocking brittleness notes. Review content and receipt are
+      committed.
+    cmd: kimi -m kimi-code/k3 -p <supplied test diff and runtime context>
+    exit: 0
+    ts: "2026-09-05T11:33:55.502117+00:00"
+    seat: kimi-code/k3
+notes:
+  - Gear floor is 1 for the single changed test path.
+  - The historical browser manifest identifies existing 320/390 receipts; this PR does not claim a current
+    browser rerun.
+  - Restored StudioApp source matches the recorded historical source; see historical-browser-manifest.yml.
+  - Kimi notes exact selector, fixed class and inline stylesheet pinning may require intentional test updates
+    after refactors. No source changed after review. Independent Anthropic gate and CI pending.

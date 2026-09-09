@@ -112,6 +112,8 @@ const VERDICT_SCHEMA = {
 
 // ----- the pipeline: gather → verify (per finding) → collect survivors -------
 phase("Gather");
+// model pinned on every agent() call per .claude/skills/workflow/SKILL.md §1.1
+// (Zero 2026-07-14, corrected 2026-08-20) — enforced by model_routing_gate.py.
 const perAngle = await pipeline(
   ANGLES,
   (a) =>
@@ -119,7 +121,12 @@ const perAngle = await pipeline(
       a.prompt +
         "\n\nReturn structured findings. Cite a REAL source you actually checked; " +
         "mark INFERENCE if it is not from a source.",
-      { label: `gather:${a.key}`, phase: "Gather", schema: FINDING_SCHEMA },
+      {
+        label: `gather:${a.key}`,
+        phase: "Gather",
+        schema: FINDING_SCHEMA,
+        model: "sonnet",
+      },
     ),
   // verify each finding of this angle with independent skeptic(s) on fresh context
   (res, a) => {
@@ -140,6 +147,7 @@ const perAngle = await pipeline(
                     label: `verify:${a.key}`,
                     phase: "Verify",
                     schema: VERDICT_SCHEMA,
+                    model: "opus", // adversarial skeptic/gate lane
                   },
                 ),
             ),
@@ -177,7 +185,7 @@ const corpus = survivors
 const synthesis = survivors.length
   ? await agent(
       `${SYNTH_PROMPT}\n\nVERIFIED FINDINGS (survived refutation):\n${corpus}`,
-      { label: "synthesize", phase: "Synthesize" },
+      { label: "synthesize", phase: "Synthesize", model: "sonnet" },
     )
   : "No findings survived adversarial refutation — the question needs better sources or re-scoping.";
 

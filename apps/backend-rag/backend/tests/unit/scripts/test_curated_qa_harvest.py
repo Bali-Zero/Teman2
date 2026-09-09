@@ -1232,3 +1232,78 @@ async def test_load_batch_dry_run_never_persists_commit_markers(tmp_path: Path) 
     assert manifest["qdrant_committed"] is False
     assert manifest["faq_committed"] is False
     assert not manifest_path.exists()
+
+
+# ── the government-fee pre-ingest gate (cycle 359) ─────────────────────────
+
+
+def test_a_row_stating_a_government_fee_figure_is_refused_from_BOTH_sinks(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """GUILT — the exact live text of curated_qa point 59da08d9, the row that
+    taught the split as doctrine ("We always keep these two costs distinct").
+
+    The assertion that matters is that the row never reaches `valid_rows`, so
+    it is refused from the FAQ sink AND the Qdrant sink together: the two are
+    loaded separately downstream, and a gate that guards only one is not a
+    gate. Removing the `government_fee_row_is_refused` call in
+    `_load_and_gate_batches` makes this test go green with the offending row
+    ingested, which is what makes it evidence."""
+    monkeypatch.setattr(harvest, "_DEFAULT_DATA_DIR", tmp_path)
+    offender = _row(
+        question="Is the PNBP the same as your fee?",
+        answer=(
+            "No — the PNBP figures (Rp 7,000,000 for 1 year, Rp 9,500,000 for 2 "
+            "years) are the government's own fees; they are not Bali Zero's "
+            "service fee. We always keep these two costs distinct."
+        ),
+        confidence_class="JELAS",
+    )
+    clean = _row(
+        question="What does the government fee depend on?",
+        answer=(
+            "The government fee (PNBP) is set by immigration and can change over "
+            "time — rather than quote a figure that may age, ask our team."
+        ),
+        confidence_class="JELAS",
+    )
+    path = _write_jsonl(tmp_path / "batch.jsonl", [offender, clean])
+    harvest.write_batch_manifest(path, dry_run=False)
+    stats = harvest.HarvestStats()
+
+    batches = harvest._load_and_gate_batches([path], stats)
+
+    assert stats.government_fee_refused == 1
+    assert len(batches) == 1
+    surviving = batches[0][3]
+    assert [r["question"] for r in surviving] == [
+        "What does the government fee depend on?"
+    ], "the compliant row must survive; only the figure-bearing one is refused"
+
+
+def test_the_review_marker_lets_an_all_inclusive_explainer_through(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """INNOCENCE — 17 of the live collection's government-fee rows state a
+    figure legitimately, saying our price ALREADY contains it. They are
+    ingestable, with an explicit per-row note."""
+    monkeypatch.setattr(harvest, "_DEFAULT_DATA_DIR", tmp_path)
+    reviewed = _row(
+        question="Are government fees included?",
+        answer=(
+            "Yes — our E33 price is one all-inclusive figure of Rp 20.000.000 "
+            "that already contains the statutory PNBP, so you will never be "
+            "asked to pay a government fee on top."
+        ),
+        confidence_class="JELAS",
+        government_fee_reviewed=True,
+        government_fee_review_note="all-inclusive explainer; the figure IS our price",
+    )
+    path = _write_jsonl(tmp_path / "batch.jsonl", [reviewed])
+    harvest.write_batch_manifest(path, dry_run=False)
+    stats = harvest.HarvestStats()
+
+    batches = harvest._load_and_gate_batches([path], stats)
+
+    assert stats.government_fee_refused == 0
+    assert len(batches) == 1 and len(batches[0][3]) == 1

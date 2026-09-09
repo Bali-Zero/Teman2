@@ -252,6 +252,26 @@ const SPONSOR_TYPES = [
   "GOVERNMENT",
 ] as const satisfies readonly SponsorTypeValue[];
 
+/**
+ * Every tile now has a purpose. Typed `Partial` deliberately, even though
+ * it is total over `CategoryKey`: `facts.category` is a raw browser string
+ * cast to `CategoryKey`, so the lookup below CAN miss at runtime and
+ * `mapPurposes`'s `undefined` branch must stay reachable to the compiler.
+ * `fact-mapper.test.ts` pins the totality instead of the type doing it.
+ *
+ * `second_home` emits `SECOND_HOME` ALONE and never alongside `RETIREMENT`
+ * (owner ruling 3, 2026-09-06): the pack's
+ * `hit_policy.eligibility = COVER_ALL_DECLARED_PURPOSES` drops E33 the
+ * moment a second purpose is declared, so a joined purpose would be a
+ * silent no-path. One tile, one purpose is what makes that safe here.
+ *
+ * `diaspora` maps to `FAMILY` (owner ruling 4, 2026-09-06). It previously
+ * mapped to nothing at all, so `mapPurposes` returned
+ * `UNKNOWN(NOT_APPLICABLE)` and every diaspora interview dead-ended on
+ * `intent.purposes` — a fact the interview HAD collected. The products a
+ * diaspora applicant actually reaches (E31C/E31F) are family-reunification
+ * products, and `flow.ts` now serves the family question set on this tile.
+ */
 export const CATEGORY_TO_PURPOSE: Partial<Record<CategoryKey, Purpose>> = {
   tourism: "TOURISM",
   business: "BUSINESS_MEETINGS",
@@ -260,13 +280,22 @@ export const CATEGORY_TO_PURPOSE: Partial<Record<CategoryKey, Purpose>> = {
   remote: "REMOTE_WORK",
   family: "FAMILY",
   retirement: "RETIREMENT",
+  second_home: "SECOND_HOME",
   study: "STUDY",
+  diaspora: "FAMILY",
   other: "OTHER",
-  // Diaspora is intentionally represented only by request_category.
 };
 
+/**
+ * `request_category` is an OPTIONAL query parameter whose vocabulary is
+ * owned by the backend operation, not by this file. `second_home` has no
+ * member there yet, so the tile deliberately sends NO `request_category`
+ * rather than borrowing `retirement`'s — a wrong label is worse than an
+ * absent optional one, and the decision itself is driven by
+ * `intent.purposes`, never by this parameter. Hence `Partial`.
+ */
 const CATEGORY_TO_REQUEST_CATEGORY: Readonly<
-  Record<CategoryKey, VisaOracleRequestCategory>
+  Partial<Record<CategoryKey, VisaOracleRequestCategory>>
 > = {
   tourism: "long_tourism",
   business: "business",
@@ -399,6 +428,65 @@ const REVIEW_FLAG_MAP: Readonly<
   activity_boundary: "ACTIVITY_BOUNDARY",
 };
 
+/**
+ * ACTIVITY_BOUNDARY is a HOLD, not a label: any disclosed flag makes the
+ * backend rewrite the decision to HUMAN_REVIEW_REQUIRED with `candidates=()`
+ * (`evaluate_path.py::_apply_disclosed_review_flags`), and `models.py` forbids
+ * a non-empty candidate list in any other state — so raising it DELETES a
+ * product the signed pack had already proven. It may be raised only for an
+ * answer the signed vocabulary cannot decide, never for the mere fact that a
+ * question was answered.
+ *
+ * Keyed by question id (`tree.ts`), listing per question the answers the pack
+ * decides on its own. Every OTHER answer holds, including an option added to
+ * `tree.ts` later without revisiting this table — fail-closed on purpose. A
+ * question absent from the table never raises this flag at all. Rationale per
+ * row, and the rows deliberately NOT here (`work_role`, engine-inert per the
+ * owner ruling of 2026-09-06 decision 6; `tourism_duration`/`remote_income`,
+ * question ids that exist nowhere in `tree.ts`): research/visa/
+ * 2026-09-06-visa-oracle-decisiveness-investigation.md §4 PR-4 and §6 R3.
+ * `diaspora_connection`/`diaspora_documents` decided 2026-09-07: measured in
+ * production with `disclosed_review_flags=[]`, all 15 corpus diaspora walks
+ * resolved to `SUPPORTED_CANDIDATES` with real candidates (C1, plus
+ * E31A/E31C/E31F/E31G per the declared link) — the pack already decides
+ * `former_wni`/`descendant`/`family` and both document answers on its own, so
+ * holding on their mere presence was discarding a proven answer, the same
+ * defect this table exists to cure for the other questions. `dual` (Indonesian
+ * dual citizenship) and `other` stay undecidable on purpose: `dual` is the
+ * legally most sensitive diaspora status the owner named as a legitimate
+ * human-review case, and no corpus walk exercises it — releasing it would
+ * open a branch never tested on the point that matters most; `other` is
+ * fail-closed by construction, it names no specific status the pack can
+ * reason about.
+ * Guilt, innocence and the per-walk census: `activity-boundary.test.ts`.
+ */
+export const ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS = {
+  business_activity: ["meetings", "negotiation", "conference"],
+  investment_vehicle: ["pt_pma"],
+  retirement_basis: ["bank_deposit", "passive_income"],
+  diaspora_connection: ["former_wni", "descendant", "family"],
+  diaspora_documents: ["yes", "no"],
+  other_purpose: [],
+  other_paid_activity: [],
+} as const satisfies Readonly<Record<string, readonly string[]>>;
+
+/** Question ids the ACTIVITY_BOUNDARY table classifies. */
+export type ActivityBoundaryQuestionId =
+  keyof typeof ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS;
+
+/** True when this interview answered a classified question with a value the
+ * signed pack cannot decide. Unanswered questions never hold. */
+function hasUndecidableActivityAnswer(facts: OracleFacts): boolean {
+  for (const [questionId, decidable] of Object.entries(
+    ACTIVITY_BOUNDARY_DECIDABLE_ANSWERS,
+  ) as [ActivityBoundaryQuestionId, readonly string[]][]) {
+    const answer = facts[questionId];
+    if (answer === undefined) continue;
+    if (!decidable.includes(answer)) return true;
+  }
+  return false;
+}
+
 export function mapDisclosedReviewFlags(
   facts: OracleFacts,
 ): DisclosedReviewFlagWire[] {
@@ -409,25 +497,10 @@ export function mapDisclosedReviewFlags(
   }
   if (Object.values(facts).includes("unsure")) flags.add("NOT_CERTAIN");
   if (facts.trip_scope === "multiple") flags.add("MULTI_PURPOSE_TRIP");
-  // Human-context answers that cannot be represented by a signed FactPath
-  // may only lower the result to review. They must never be silently ignored
-  // while a broader generic purpose still produces a candidate.
-  if (
-    facts.category === "diaspora" ||
-    facts.business_activity !== undefined ||
-    facts.work_role !== undefined ||
-    facts.tourism_duration !== undefined ||
-    facts.remote_income !== undefined ||
-    facts.diaspora_connection !== undefined ||
-    facts.diaspora_documents !== undefined ||
-    facts.other_purpose !== undefined ||
-    facts.other_paid_activity !== undefined ||
-    facts.retirement_basis === "property" ||
-    (facts.investment_vehicle !== undefined &&
-      facts.investment_vehicle !== "pt_pma") ||
-    facts.retirement_basis === "family_sponsor" ||
-    facts.retirement_basis === "undecided"
-  ) {
+  // Human-context answers the signed vocabulary cannot decide may only lower
+  // the result to review. An answer it CAN decide must not: this flag is a
+  // hold that deletes candidates, never a label (see the table above).
+  if (hasUndecidableActivityAnswer(facts)) {
     flags.add("ACTIVITY_BOUNDARY");
   }
   if (

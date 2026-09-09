@@ -1,0 +1,24 @@
+• **PASS** (conditional) — the supplied diff implements the stated contract with no demonstrable defect, but three conditions remain open below and none are proven by anything in the supplied material.
+
+  ## Findings
+
+  **Medium**
+
+  - **M1 — Timeout headroom unmeasured.** `frontend-tests` carries `timeout-minutes: 16`, justified in the job's own comment as "a cap one minute above the healthy path" (9m13s measured). Adding a full `tsc --noEmit` over `apps/mouth` into that leg consumes part of that margin. If tsc pushes the mouth leg past the cap, the job reports `cancelled` and the required context `Frontend Tests (Next.js) (mouth, true)` goes red on an infrastructure limit, not a code failure — the exact failure family the comment documents. "Full tsc in progress" locally does not measure CI runner time. This must be closed with an observed CI duration before the change can be called safe.
+  - **M2 — Backend-parity claim is prose-only in this diff.** Requirement "backend parity reads that exact OpenAPI file" is asserted in `contracts/README.md` and in the prefix-rule comment, but nothing in the supplied diff pins that `test_garuda_voa_openapi_parity.py` actually references `products/garuda-voa/contracts/openapi.yaml`, nor that the parity test is collected by the `backend-tests` job that `backend_python` selects. If the parity test reads a different path (or lives outside backend-tests' collection), the backend half of the coupling is decorative. The "19 workflow mapping tests pass" result may cover this; it is not shown.
+
+  **Low**
+
+  - **L1 — `npx tsc` resolution is not pinned.** The GARUDA step uses `./node_modules/.bin/openapi-typescript` (deterministic, local). The new step uses `npx tsc`, which falls back to a registry fetch if no local `typescript` binary is reachable from `apps/mouth` — introducing network dependence and version drift into a required leg. Confirm `typescript` is a pinned devDependency resolvable from `apps/mouth` (hoisted root `node_modules` counts), or switch to the `./node_modules/.bin/tsc` form for symmetry.
+  - **L2 — Guard brittleness by name.** `_assert_required_mouth_typecheck` orders via `names.index("Check GARUDA generated contract")` / `names.index("Run tests (with coverage)")`. A rename of either neighbor step raises `ValueError`, not `AssertionError` — it still fails the positive test, so this is acceptable brittleness, but the failure message will be opaque.
+  - **L3 — Guard covers only the new step.** The mutation suite correctly rejects remove/move/reorder/wrong-if/wrong-cwd/continue-on-error/`|| true`/missing-needs/success-only for `mouth-typecheck`, and pins `needs`, `if: !cancelled()`, and matrix-derived context names. It does not pin the pre-existing GARUDA freshness step against its own disarmament (`|| true`, `continue-on-error`). If no other guard covers that step, "generator/check semantics preserved" rests on review discipline, not a test.
+  - **L4 — Prefix is directory-wide, not OpenAPI-only.** `products/garuda-voa/contracts/` routes README and any future nested file to backend+mouth. This matches the stated requirement and the fail-open sibling tests (`contracts-extra`, `other-product`, `products/README.md`) are correct, so it is conservative rather than wrong — noted only because the requirement is phrased as "an OpenAPI contract-only edit."
+
+  ## Unresolved conditions (must close before merge)
+
+  1. **Remote CI proof absent.** 69 change-map + 19 workflow-mapping tests, generator freshness, and actionlint are local. No PR run demonstrates the `mouth-typecheck` step executing green inside the required context, nor that a contract-only diff actually produces `run_frontend_tests=true` end-to-end (the wiring from `suggested_jobs` to `needs.changes.outputs.run_frontend_tests` is not in the supplied diff).
+  2. **M1 timing.** Measured CI duration of the mouth leg with tsc included, vs. the 16-minute cap.
+  3. **M2 verification.** Confirmation that `test_garuda_voa_openapi_parity.py` reads exactly `products/garuda-voa/contracts/openapi.yaml` and runs under `backend-tests`.
+  4. **L1 verification.** Confirmation `npx tsc` resolves locally (no registry fallback) in the `apps/mouth` cwd on a clean runner.
+
+  No scope holes beyond these: the change-map tests cover the fail-open requirement, the guard's mutation matrix matches every disarmament vector enumerated in the required behavior, matrix/`needs`/`!cancelled()` semantics are untouched, and no runtime or contract files are modified.

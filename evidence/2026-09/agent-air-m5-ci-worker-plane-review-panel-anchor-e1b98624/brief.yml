@@ -1,0 +1,127 @@
+task_id: ci-worker-plane-review-panel-anchor
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor computed this run:
+#   python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source \
+#     --changed-files-file <changed> --numstat-file <numstat>
+# returns `3` and floor-source `path`. The size is small (76 added, 12 removed across two
+# files); what floors this PR at Gear 3 is the PATH: it edits
+# .github/workflows/worker-plane-review-tests.yml, a hot-zone file, because the
+# second half of the cure IS a trigger change. A CI-trigger edit cannot be made
+# outside the hot zone by making it smaller.
+objective: >-
+  Cure the `worker-plane review panel — test suite` check, red on `main` since
+  Actions run 33994100645, and close the reason it reached `main` unseen.
+  `scripts/tests/test_gate_seat_conformance.py` deliberately does not hardcode
+  which model doctrine retired from automated routing: it reads the name out of
+  the ruling's own sentence ("… is simply not routed to by any doctrine …"), so
+  a future ruling updates the test by updating doctrine. It read that sentence
+  from the root `CLAUDE.md`. The 2026-09-04 context diet (#5631, ed06cba9e6)
+  turned `CLAUDE.md` into an index and moved §5 "Agent/LLM Routing & Bans"
+  verbatim into `docs/rules/RULINGS.md`. `git log -S` on the sentence over both
+  files returns TWO commits, and the distinction matters: 23b7098061 WROTE the
+  sentence into `CLAUDE.md` on 2026-08-20, and ed06cba9e6 is the only one that
+  MOVED it. Within the guard's own lifetime — it was born 2026-08-29 — exactly
+  one commit touched the sentence, and it is the move. The
+  ruling did not change and the sentence was not deleted, so this PR re-points
+  the guard at the canonical file rather than copying prose back into an index
+  that deliberately no longer carries it. It then fixes the blindness: the
+  workflow did not trigger on the doctrine file the guard reads, so the PR that
+  moved the sentence was green and `main` went red hours later on an unrelated
+  push.
+constraints:
+  - >-
+    `CLAUDE.md` IS NOT TOUCHED. Its `THE BUILDER CONTRACT` block is compared
+    byte-for-byte against AGENTS.md/GEMINI.md/QWEN.md by
+    `scripts/proprioception.py`'s door_canon_parity probe, so an edit there is
+    never a one-file edit. Not editing it at all is the cheapest way to be sure,
+    and it is also the correct cure: the sentence already lives in its canonical
+    home.
+  - >-
+    `scripts/launch_worker_plane_review_panel.py` IS NOT TOUCHED, though its
+    docstring still points at "CLAUDE.md §5" for the ruling's location and that
+    pointer is now stale. The correction was written and then reverted after it
+    turned three tests in `test_detect_secrets_auto_triage.py` red: that file
+    pins code-signing identity lines in the launcher BY LINE NUMBER, so adding
+    two docstring lines moves them. Fixing the prose requires re-pinning those
+    line lists, which is a different change from this one — the fix-of-a-fix
+    depth this lane forbids. Recorded here so the next reader finds a known
+    leftover rather than a surprise.
+  - >-
+    The guard must still be able to go RED. A re-anchor that silently stops
+    matching is worse than the failure it replaces, because green would look the
+    same (superscar #2). Both halves are proven by mutation on a scratch copy,
+    never by reading the regex.
+  - >-
+    No `--no-verify`, no `--amend`, no force-push. The branch was armed before
+    this evidence commit; auto-merge was confirmed not to have entered the merge
+    queue (mergeStateStatus BLOCKED on this very check) before adding to it.
+acceptance:
+  - text: >-
+      A1: WHEN the seat-conformance guard resolves the retired model, it SHALL
+      read `docs/rules/RULINGS.md` and SHALL resolve to `claude-fable-5` — the
+      same model the ruling of 2026-08-20 named, unchanged by the move.
+    probe: >-
+      python3 -m pytest -p no:cacheprovider -q
+      scripts/tests/test_gate_seat_conformance.py
+  - text: >-
+      A2: WHERE the retirement sentence is reworded or removed from
+      `docs/rules/RULINGS.md`, the guard SHALL go red on the premise check
+      rather than pass vacuously — the same failure mode it had on `CLAUDE.md`,
+      now pointed at the file that actually carries the ruling.
+    probe: >-
+      the re-anchored guard still goes RED when the ruling sentence is reworded
+  - text: >-
+      A3: WHEN `worker-plane-review-tests.yml` is read, it SHALL name
+      `docs/rules/RULINGS.md` in BOTH trigger surfaces — `push.paths` and the
+      pull_request sentinel regex — so the PR that moves the ruling runs this
+      guard, instead of `main` discovering it later.
+    probe: >-
+      the three previously red tests, and the two workflow pins, pass at this head
+  - text: >-
+      A4: WHERE `docs/rules/RULINGS.md` is dropped from either trigger surface,
+      the new pin SHALL go red. A symmetry test that cannot fail is decoration.
+    probe: >-
+      the trigger-symmetry pin goes RED when the doctrine file is dropped from a
+      trigger surface
+  - text: >-
+      A5: WHEN the full six-file suite this workflow executes is run at this
+      head, it SHALL be green — the re-anchor SHALL NOT move any neighbouring
+      test, including the line-number-pinned secrets-triage corpus.
+    probe: >-
+      python3 -m pytest -p no:cacheprovider -q
+      scripts/tests/test_check_worker_plane_review.py
+      scripts/tests/test_launch_worker_plane_review_panel.py
+      scripts/tests/test_worker_plane_review_packet.py
+      scripts/tests/test_v3_final_gate_parity.py
+      scripts/tests/test_detect_secrets_auto_triage.py
+      scripts/tests/test_gate_seat_conformance.py
+  - text: >-
+      A6: WHEN the `worker-plane review panel — test suite` check runs on THIS
+      PR, it SHALL be SUCCESS — the check that is red on `main` is the consumer,
+      and it runs here because this PR touches both the workflow and the test.
+    probe: >-
+      gh pr checks 5862 --json name,state --jq '.[] | select(.name|test("worker-plane"))'
+assumptions:
+  - text: >-
+      The 2026-08-20 ruling itself is unchanged and Fable 5 is still the model
+      retired from every automated route — the move was editorial, not
+      substantive.
+    status: verified
+    probe: >-
+      git log -S"is simply not routed to by any doctrine" -- CLAUDE.md
+      docs/rules/RULINGS.md returns 23b7098061 (the 2026-08-20 ruling that wrote
+      the sentence) and ed06cba9e6 (the 2026-09-04 move). Only the second is a
+      move, and it removes and adds in one change with the words identical on
+      both sides. Corrected after two cross-family reviewers independently
+      caught this claim overstated as "exactly one commit".
+  - text: >-
+      `docs/rules/RULINGS.md` is the canonical home of §5 and not itself a
+      staging post — the root `CLAUDE.md` INDICE points at it by name.
+    status: verified
+    probe: >-
+      grep for "docs/rules/RULINGS.md" in CLAUDE.md's INDICE section, which
+      reads "docs/rules/RULINGS.md ← §5 Agent/LLM Routing & Bans".
+appetite:
+  wall_clock_hours: 3

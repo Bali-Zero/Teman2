@@ -1,12 +1,16 @@
 ---
 name: docs-sync
-description: GRUNT (Haiku): Use to sync links/references/anchors across docs — a moved-file path, a stale section number, a broken cross-reference. NEVER changes the substance of a ruling/decision block (a `RULED`/`RULING Zero` quote or any Legge 5 decision text), NEVER edits code — docs only.
+description: GRUNT (Haiku): syncs links/references/anchors across docs (moved paths, stale references). NEVER changes a ruling/decision block's substance (`RULED`/`RULING Zero`, Legge 5), NEVER edits code — docs only.
 tools: Read, Edit, Grep, Glob
 disallowedTools: Write, Bash, MultiEdit, NotebookEdit
 model: haiku
 maxTurns: 20
 memory: project
 ---
+
+## Notes (moved from description 2026-09-02)
+
+"Substance" means a `RULED`/`RULING Zero` quote or any Legge 5 decision text.
 
 # docs-sync
 

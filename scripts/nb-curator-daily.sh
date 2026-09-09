@@ -66,6 +66,23 @@ DAY=$(TZ=Asia/Makassar date +%-d)  # day-of-month
 
 mkdir -p "$HOME/logs" "$OUTPUT_DIR"
 
+# The OPERATIVE SPEC is the git-tracked `.claude/agents/<name>.md`: reviewed, gated by
+# scripts/tests/test_agent_defs_model_pins.py, and identical on every checkout. It is named
+# by absolute path below rather than reached by cd: making the repo copy the one the HARNESS
+# loads would require the process cwd to be the repo, which drags the project CLAUDE.md,
+# .claude/settings.json hooks and git visibility into a headless cron -- two cross-family
+# reviewers independently showed that re-opens autonomous `git commit` against the main
+# checkout (the failure this repo already closed three times). Left to its own PR.
+# WHERE the checkout is absent (not yet pulled), fall back to the machine-local copy -- the
+# only spec that exists today -- and say so in the log, so a run is never silently spec-less.
+NUZ_ROOT="${NUZ_ROOT:-$HOME/nuzantara}"
+SPEC_PATH="$NUZ_ROOT/.claude/agents/nb-curator.md"
+if [ ! -f "$SPEC_PATH" ]; then
+  SPEC_PATH="$HOME/.claude/agents/nb-curator.md"
+  echo "[$(date)] WARN: $NUZ_ROOT/.claude/agents/nb-curator.md absent -- using the machine-local spec $SPEC_PATH instead" >> "$LOG"
+fi
+echo "[$(date)] spec: $SPEC_PATH" >> "$LOG"
+
 # The sidecar must carry the REAL outcome and must be written on EVERY exit
 # path. One unconditional write at the end would say "alive" for a run that
 # reported ALL TIERS FAILED — the same cron-theater the exit codes below were
@@ -206,7 +223,7 @@ else
     REPORT_PATH="$OUTPUT_DIR/${DATE_STR}-health.md"
 fi
 
-MODE_PROMPT="Run nb-curator daily pass. FIRST read your full operating spec at ~/.claude/agents/nb-curator.md (use your file-read tool) and follow it exactly. You have shell + file tools: use them to write the report file. Today is $DATE_STR.
+MODE_PROMPT="Run nb-curator daily pass. FIRST read your full operating spec at $SPEC_PATH (use your file-read tool) and follow it exactly. You have shell + file tools: use them to write the report file. Today is $DATE_STR.
 
 HARD LIMITS — violating these = failure:
 - Do NOT write, create, or run ANY python/bash analysis or diff scripts. Read files and reason directly.

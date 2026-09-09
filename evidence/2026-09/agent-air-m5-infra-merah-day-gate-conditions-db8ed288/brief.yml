@@ -1,0 +1,50 @@
+task_id: merah-day-gate-conditions
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  #5614 gave `.github/workflows/merah-putih-day-contrast.yml` the shape a
+  REQUIRED status context needs, and the Gear-3 gate passed it WITH TWO
+  CONDITIONS. Both conditions lived only in that PR's body, and a verdict that
+  exists only in prose is not in force. This puts each in the file and gives
+  each a test that goes red without it. They are what stands between the
+  workflow and its branch-protection entry.
+
+  Condition 1: `cancel-in-progress` was an unconditional `true`; it is now
+  conditional on the event, so a merge_group run is never cancelled while a
+  pull_request run still is.
+
+  Condition 2: the sentinel reads its guarded-path list from the BASE ref's
+  copy of the workflow — a list the PR cannot edit — but `if base.returncode
+  == 0` treated "the base ref is unreachable" and "the base genuinely has no
+  such file" as one event and fell back to the PR-controlled head list in
+  both. Those are separated with `git cat-file -e`, and an unreadable base now
+  runs the whole guard.
+constraints:
+  - "The branch-protection entry is NOT added here. #5614's own header states
+    the order: merge the shape, observe a real merge_group run, and only then
+    add the context and re-snapshot infra/required.d/contexts.json."
+  - "`git rev-parse <sha>:<path>` is NOT used to probe existence — it returns a
+    hash-shaped non-answer either way. `git cat-file -e` is the probe."
+  - "The innocence case must stay innocent: a PR that INTRODUCES a workflow has
+    no base copy by construction, and must not be forced through the full
+    corpus."
+acceptance:
+  - "Both condition tests FAIL against main's copy of the workflow and pass on
+    this branch."
+  - "The innocence test passes against main too — the cure does not over-match."
+  - "The full corpus stays green: 52 passed."
+open_findings:
+  - id: MERAH-1
+    title: "Condition 1 may cure a bug that does not exist in this repo"
+    detail: >-
+      Measured 2026-09-04: merge-queue refs are
+      `gh-readonly-queue/main/pr-<N>-<sha>`, so two entries never share
+      `github.ref` and cannot cancel one another — ten entries, ten distinct
+      refs. `.github/workflows/security.yml` carries a 2026-07-27 comment that
+      already investigated and refuted the same collision. Yet eleven workflows
+      were patched against it on 2026-09-02, and the Gear-3 gate demanded it
+      here as a promotion condition. The change is harmless and matches the
+      house pattern, so it ships; its STATED reason is the part under doubt,
+      and the council was asked to falsify the measurement rather than confirm
+      it. Recorded rather than quietly dropped.

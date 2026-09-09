@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "scope": "independent text review of the initial synthetic implementation, not runtime qualification or release approval",
+  "session_id": "9db691ab-8167-459b-a921-54857dde0d49",
+  "requested_model": "claude-fable-5-1",
+  "observed_model": "claude-fable-5-1",
+  "runtime_version": "2.1.261",
+  "runtime_surface": "interactive CLI",
+  "permission_mode": "plan",
+  "tools": [],
+  "requested_effort": "xhigh",
+  "finish_reason": "end_turn",
+  "timestamp": "2026-09-05T23:35:42.202Z",
+  "response_sha256": "1f043fa8080d26d86c9552d9a760189fbee6b70bacc80b5fa17121685a03c621",
+  "input_packet_sha256": "0ac386d2b0b51401a78fd64b42eb34650b683fe5eb73f679abafdef9179f88e6",
+  "input_file_sha256": {
+    "apps/backend-rag/backend/services/autonomous_lab/consul_store.py": "b9b4b767c40be0fd47905579d9c90ccf82c87bbd1ff9f8677a4069c7bee94bc1",
+    "apps/backend-rag/backend/db/migrations_v2/306_autonomous_lab_consul_leases.sql": "1b8f61eb1bc68babefaa75c8b1f38fdaa68460ade58c82136a505166f984483f",
+    "apps/backend-rag/backend/services/autonomous_lab/consul_executor.py": "3077ebb61daf776a996a9b65cf0ea95d155e4770ece28c5ef68542f53e3ac03f",
+    "scripts/conductor/adapter_contracts.py": "bb966047aac025e0b14bf12727c1ec0c7abe1bed665a5e2ce1115ca6b6e0b132",
+    "docs/architecture/dual-consul/common-contract.md": "e0db78dfb1ff418d6ab80c27bf0f19f6c57ad38eef8c48860f2f8a07441be1ec"
+  },
+  "claim_limit": "Reviewer inspected the supplied packet with tools disabled. Test execution is evidenced separately. Later changes require a new review.",
+  "input_packet_path": "fable-review-round-1-input.txt"
+}

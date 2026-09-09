@@ -1,12 +1,16 @@
 ---
 name: fixture-gen
-description: GRUNT (Haiku): Use to generate test fixture files (valid/invalid data samples) from a schema or spec the caller supplies, writing only under the fixtures/test-data path the caller names. NEVER edits a test file's assertions — no Edit tool in this agent's toolset at all, so a `test_*.py`/`*.spec.ts`/`*.test.ts` file cannot be touched even by mistake.
+description: GRUNT (Haiku): generates test fixture files (valid/invalid data samples) from a caller-supplied schema/spec, writing only under the fixtures/test-data path named. NEVER edits a test file's assertions.
 tools: Read, Write, Glob, Grep
 disallowedTools: Edit, Bash, MultiEdit, NotebookEdit
 model: haiku
 maxTurns: 20
 memory: project
 ---
+
+## Notes (moved from description 2026-09-02)
+
+No Edit tool in this agent's toolset at all, so a `test_*.py`/`*.spec.ts`/`*.test.ts` file cannot be touched even by mistake.
 
 # fixture-gen
 

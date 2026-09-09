@@ -147,12 +147,47 @@ describe("GET /visa/voa/auth", () => {
     ["no parameters at all", ""],
     ["token only", `?magic_token=${TOKEN}`],
     ["result_id only", `?result_id=${RESULT_ID}`],
-  ])("rejects %s and sets no pending cookie", async (_label, query) => {
-    const { GET } = await import("./route");
-    const res = await GET(makeGet(query));
+  ])(
+    "rejects %s and EXPIRES any pending cookie instead of leaving it live",
+    async (_label, query) => {
+      const { GET } = await import("./route");
+      const res = await GET(makeGet(query));
 
-    expect(res.headers.get("location")).toBe(FAILURE);
-    expect(pendingCookie(res)).toBeUndefined();
-    expect(res.headers.get("location")).not.toContain(TOKEN);
+      expect(res.headers.get("location")).toBe(FAILURE);
+      expect(res.headers.get("location")).not.toContain(TOKEN);
+
+      // This assertion used to read `toBeUndefined()`, i.e. "no cookie at
+      // all". That was WEAKER than it looked: emitting nothing leaves a
+      // pending credential from a PREVIOUS good link alive in the browser
+      // for the rest of its Max-Age, redeemable from another tab while the
+      // customer is looking at the failure page. What has to be true is not
+      // "this response sets no cookie" but "no live pending credential
+      // survives this response" — so the expiry is now required, and its
+      // shape is pinned.
+      const cookie = pendingCookie(res);
+      expect(cookie).toBeDefined();
+      expect(cookie).toContain("Max-Age=0");
+      // Empty VALUE, not merely the right name: `garuda_magic_pending=x` with
+      // Max-Age=0 would still be a cookie carrying something.
+      expect(cookie?.startsWith(`${PENDING_COOKIE}=;`)).toBe(true);
+      // Same Path as the one that was set, or the browser keeps the old one
+      // and the "expiry" clears nothing.
+      expect(cookie).toContain("Path=/visa/voa/auth");
+      expect(cookie).not.toContain(TOKEN);
+    },
+  );
+
+  // INNOCENCE CONTROL for the guilt case above: the expiry must fire only on
+  // the failure branch. Without this, deleting the `usable` test entirely —
+  // and expiring the cookie unconditionally — would leave every guilt
+  // assertion green while breaking the whole flow.
+  it("does NOT expire the pending cookie on a well-formed link", async () => {
+    const { GET } = await import("./route");
+    const res = await GET(makeGet());
+
+    const cookie = pendingCookie(res);
+    expect(cookie).toBeDefined();
+    expect(cookie).not.toContain("Max-Age=0");
+    expect(cookie).toContain(`Max-Age=600`);
   });
 });
