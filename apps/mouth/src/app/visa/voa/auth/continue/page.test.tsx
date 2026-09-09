@@ -1,13 +1,26 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Mock } from "vitest";
 import { PENDING_COOKIE } from "../contract";
 
 /**
- * The only page of the magic-link flow a human sees. Two invariants:
- * it redeems nothing at render time, and it holds no credential anywhere in
- * the document — the token lives in an HttpOnly cookie the page cannot read
- * into its markup.
+ * The only page of the magic-link flow a human sees. Three invariants: it
+ * redeems nothing at render time (it may PREVIEW the token via the
+ * non-consuming `previewMagicLink` backend lookup, but never calls the
+ * consuming `exchangeMagicLink` endpoint), it holds no credential anywhere
+ * in the document — the token lives in an HttpOnly cookie the page cannot
+ * read into its markup, and it never offers Continue when that preview
+ * lookup fails.
  */
+
+const MASKED_EMAIL = "jo***@example.com";
+
+function previewResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
 
 const notFoundMock = vi.hoisted(() =>
   vi.fn(() => {
@@ -43,7 +56,14 @@ describe("/visa/voa/auth/continue", () => {
     notFoundMock.mockClear();
     process.env.GARUDA_PUBLIC_ENABLED = "true";
     cookieStore.value = `${RESULT_ID}.${TOKEN}`;
-    vi.stubGlobal("fetch", vi.fn());
+    // Default: the preview lookup succeeds. Tests for the failure path
+    // override this per-test.
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(previewResponse({ masked_email: MASKED_EMAIL })),
+    );
   });
 
   afterEach(() => {
@@ -52,19 +72,26 @@ describe("/visa/voa/auth/continue", () => {
     vi.unstubAllGlobals();
   });
 
-  it("renders the form and redeems nothing at render time", async () => {
+  it("renders the form, previews (never exchanges) the token, and shows the recipient", async () => {
     const { container } = render(await renderPage({}));
 
-    expect(fetch).not.toHaveBeenCalled();
+    // Exactly one call, and it is the NON-consuming preview -- never the
+    // consuming exchange endpoint.
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [target] = (fetch as Mock).mock.calls[0];
+    expect(String(target)).toContain("/api/visa/voa/auth/magic-links/preview");
+    expect(String(target)).not.toContain("/sessions");
+
     const form = container.querySelector("form");
     expect(form?.getAttribute("method")).toBe("post");
     expect(form?.getAttribute("action")).toBe("/visa/voa/auth/exchange");
     expect(
       screen.getByRole("button", { name: /continue/i }),
     ).toBeInTheDocument();
+    expect(screen.getByText(MASKED_EMAIL)).toBeInTheDocument();
   });
 
-  it("puts NO token and NO field of any kind in the document", async () => {
+  it("puts NO token, NO raw email, and NO field of any kind in the document", async () => {
     const { container } = render(await renderPage({}));
 
     // The whole reason ../route.ts redirects instead of rendering: this
@@ -78,6 +105,10 @@ describe("/visa/voa/auth/continue", () => {
     // from the token; both halves now ride in the cookie (council, 2026-08-28).
     expect(container.querySelector("input")).toBeNull();
     expect(container.innerHTML).not.toContain(RESULT_ID);
+    // Only the MASKED identifier the backend returned may appear -- never
+    // an unmasked address (masking itself is pinned server-side; this only
+    // proves the page never reconstructs or displays anything else).
+    expect(container.innerHTML).toContain(MASKED_EMAIL);
   });
 
   it("404s when the dark-launch flag is off", async () => {
@@ -122,5 +153,72 @@ describe("/visa/voa/auth/continue", () => {
 
     expect(container.querySelector("form")).toBeNull();
     expect(screen.getByText(/no longer valid/i)).toBeInTheDocument();
+  });
+
+  // ============================================================
+  // previewMagicLink lookup -- the residual login-CSRF finding this
+  // revision closes. These are the safety property that matters: a
+  // well-formed cookie is NOT enough to offer Continue if the backend says
+  // the token itself is no longer live.
+  // ============================================================
+
+  it("offers no form when the preview lookup says the token is invalid", async () => {
+    // A well-formed pending cookie (passes the earlier check) but a token
+    // the backend no longer recognises -- expired, consumed, or foreign.
+    // This is exactly the mutation-verify property from the brief: if the
+    // page offered Continue here, this test must fail.
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          previewResponse({ code: "MAGIC_LINK_INVALID" }, 401),
+        ),
+    );
+
+    const { container } = render(await renderPage({}));
+
+    expect(container.querySelector("form")).toBeNull();
+    expect(screen.getByText(/no longer valid/i)).toBeInTheDocument();
+  });
+
+  it("offers no form when the preview lookup transport fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("ECONNRESET")));
+
+    const { container } = render(await renderPage({}));
+
+    expect(container.querySelector("form")).toBeNull();
+    expect(screen.getByText(/no longer valid/i)).toBeInTheDocument();
+  });
+
+  it("offers no form when the preview lookup returns a malformed body", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(previewResponse({})));
+
+    const { container } = render(await renderPage({}));
+
+    expect(container.querySelector("form")).toBeNull();
+    expect(screen.getByText(/no longer valid/i)).toBeInTheDocument();
+  });
+
+  it("gives the SAME failure copy for an invalid-cookie failure and a preview-lookup failure", async () => {
+    // DECISIONS.md Q1's non-enumeration requirement is about the wire
+    // response, but this page must not let a human reading it infer WHICH
+    // failure they hit either -- both dead-ends read identically.
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          previewResponse({ code: "MAGIC_LINK_INVALID" }, 401),
+        ),
+    );
+    const previewFailure = render(await renderPage({}));
+
+    cookieStore.value = undefined;
+    const cookieFailure = render(await renderPage({}));
+
+    expect(previewFailure.container.innerHTML).toBe(
+      cookieFailure.container.innerHTML,
+    );
   });
 });

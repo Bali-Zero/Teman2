@@ -264,6 +264,32 @@ SUBAGENT EXEMPTION note). The contract that closes both gaps:
    never as done — same discipline as `final-gate-discipline`: re-run the
    check yourself before trusting the claim.
 
+## Context-window guard self-cure (2026-09-09)
+
+`infra/claude-hooks/context_window_guard.py` (PreToolUse `*`) can also
+hard-block a lane's tool calls once its estimated context crosses the
+role's percent-of-window threshold — same shape as `orchestrate_gate.py`
+above, different trigger. On 2026-09-09 a Pro session got denied at 85K
+tokens because `~/.claude/settings.json`'s `env` block lacked
+`CONTEXT_WINDOW_TOKENS=1000000` on that seat, and the cure (editing that
+file) was itself a denied tool call. The deny message now states its own
+evidence (model seen, window assumed and why) and three routes in order:
+
+1. `/resume` in a brand-new window; 2. if the WINDOW is wrong on that
+   machine, a `! python3 -c "..."` one-liner typed at the prompt bar — a
+   `!`-prefixed line runs in the session's own shell, not through PreToolUse
+   hooks, so it is not itself denied — which backs up and patches
+   `~/.claude/settings.json`'s env block; 3. `CONTEXT_GUARD_OFF=1` as last
+   resort. See the module docstring's SELF-CURE section for the exact
+   one-liner and rationale.
+
+A sibling disarmed-guard reminder exists for `host_boundary` (Zero ruling,
+2026-09-09: stays off on Pro/M5/Mini via `HOST_BOUNDARY_OFF=1` until Zero
+decides otherwise): `scripts/hooks/host_boundary_reminder_sessionstart.sh`,
+a SessionStart receptor that prints a short re-arm reminder (same
+`! python3 -c "..."` prompt-bar route, different one-liner) whenever that
+env var is `1`, and stays silent otherwise.
+
 ## Broker-aware spawn convention (W62 ANTIBODY #4)
 
 Il TTL da solo non basta: nessun consumer lo applicava. La hygiene è ora a 3 livelli, in ordine di affidabilità decrescente:

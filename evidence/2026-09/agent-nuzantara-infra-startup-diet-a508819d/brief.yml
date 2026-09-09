@@ -1,0 +1,121 @@
+task_id: startup-diet
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Cut SessionStart injection size after a Fable session measured ~49K tokens
+  injected before the first action, with organism_alert_sessionstart.sh
+  (scripts/hooks/) the single biggest offender: it printed EVERY open
+  heartbeat finding from organism_stale_detector.py, unbounded, including 27
+  WR2 organs stale BY DECISION (Zero ruled 2026-09-01, "WR2 runs only on
+  command", memory decision_wr2_runs_only_on_command_2026_09_01) and every
+  finding the session had already seen last time.
+
+  New scripts/organism_heartbeat_brief.py sits between the UNMODIFIED
+  organism_stale_detector.py (kept untouched — it has ~40 other callers/
+  tests) and the hook: drops organs matching
+  infra/organism/on_command_organs.json's patterns (wr2.*, pro.wr2_*,
+  mata_garuda.wr2_bridge* — cross-referenced against
+  apps/organism/organism/organs_registry.yaml's 27 enabled:false WR2 entries,
+  all carrying the same 2026-09-01 disabled_reason), shows only findings NEW
+  or CHANGED (kind, status) since the last session on this machine via a
+  self-pruning per-host state file under ~/.organism/session_brief/, and
+  hard-caps the emitted block at 1.5KB.
+
+  escalations_alert_sessionstart.sh now groups HIGH items by (source, job,
+  normalized cause) instead of exact-tuple dedupe: the live shape this was
+  built from is healer_pro_tick re-escalating the SAME "N dead organs ...
+  none curable" condition every tick, with only the count/timestamp changed —
+  14 distinct HIGH lines for one standing condition. Normalization strips
+  digits/ISO-timestamps/shas before grouping, so the same cause collapses
+  into one line, "(xN, latest <date>)", capped at 6 groups (was 12 raw
+  items).
+
+  Gear is 2 via the SIZE term alone (908 net lines; three mandated test files
+  — test_organism_heartbeat_brief.py, test_organism_alert_sessionstart.py,
+  and the extension to test_escalations_alert_sessionstart.py — account for
+  roughly half of that). No hot-zone path is touched: this PR edits
+  scripts/hooks/*.sh, scripts/organism_heartbeat_brief.py,
+  infra/organism/on_command_organs.json (a declarative allow-list, not
+  code), and scripts/tests/*.
+constraints:
+  - >-
+    Both hooks keep their fail-open contract unchanged: any error (malformed
+    findings JSON, missing/corrupt on-command file, corrupt state file,
+    missing sidecar dir) degrades to "print nothing, exit 0" — never blocks
+    a session start, never crashes back into the pre-diet flood. Verified by
+    dedicated fail-open tests in both new/extended test files, not asserted
+    only in prose.
+  - >-
+    organism_stale_detector.py itself is UNTOUCHED — the diet is a filter
+    layer (organism_heartbeat_brief.py) between the detector and the hook,
+    so the detector's own ~40 callers/tests (proprioception.py, the healer,
+    launchagent-state-bridge.py, etc.) are unaffected. The hook now calls the
+    detector with --json instead of the prior human-report text, which
+    required updating one pre-existing cross-artifact-pin test in
+    test_organism_stale_detector.py (the old hook branched on a SUBSTRING
+    match against "all organs breathing" prose; the new hook branches on an
+    EXACT match against "[]" from --json, which structurally closes the
+    substring-over-match failure mode the old pin was written to guard
+    against). That test was updated in place to pin the new contract with
+    the same guilt/innocence shape, not deleted.
+  - >-
+    On-command exclusion is declarative (infra/organism/on_command_organs.json),
+    not hardcoded in the hook or the brief script — re-arming WR2, or adding
+    a future manual-only organ, is a one-line JSON edit. A missing or
+    malformed on-command file fails open to "exclude nothing" (show
+    everything), never to "hide everything silently".
+  - >-
+    No PII: findings carry only organ_id/kind/status/detail strings already
+    written by the organism's own heartbeat sidecars (internal operational
+    telemetry, no client data).
+acceptance:
+  - >-
+    WHEN organism_alert_sessionstart.sh runs against this machine's real
+    ~/.organism/last_seen/ (43 open findings, 27 of them WR2 organs stale by
+    the 2026-09-01 ruling), THEN the injected block drops from 4601 bytes
+    (uncapped, pre-diet) to 1481 bytes on the first post-diet session and to
+    355 bytes on the next (steady-state, unchanged) session. probe: measured
+    live via `bash scripts/hooks/organism_alert_sessionstart.sh` before and
+    after this diff, byte counts captured in the PR description; also
+    test_organism_alert_sessionstart.py::TestWiring::test_guilt_wr2_organ_excluded_end_to_end
+    and ::test_second_run_collapses_unchanged_end_to_end.
+  - >-
+    WHEN an organ_id matches an on-command pattern (wr2.*, pro.wr2_*,
+    mata_garuda.wr2_bridge*), THEN it is excluded from the brief regardless
+    of staleness; a non-matching organ with the same staleness is never
+    excluded. probe: test_organism_heartbeat_brief.py::TestOnCommandExclusion
+    (5 tests, guilt+innocence).
+  - >-
+    WHEN a finding's (kind, status) is identical to the prior session's
+    state on this machine, THEN it collapses into the "+N unchanged" count
+    instead of repeating the line; WHEN it changed, or the organ healed and
+    dropped out of the current findings entirely, THEN the delta reflects
+    that correctly (new/changed shown, cured organs vanish, never a
+    graveyard). probe: test_organism_heartbeat_brief.py::TestSessionDelta
+    (5 tests).
+  - >-
+    WHEN the same HIGH job/cause escalates repeatedly with only a
+    count/timestamp/sha changed, THEN it renders as ONE line "(xN, latest
+    <date>)"; WHEN the cause or the job genuinely differs, THEN it stays a
+    separate group; WHEN more than 6 groups exist, THEN only 6 render with a
+    "+N more" trailer. probe:
+    test_escalations_alert_sessionstart.py::TestCauseGrouping (5 tests).
+  - >-
+    WHEN findings JSON on stdin is empty, malformed, or the on-command/state
+    files are missing or corrupt, THEN both the brief script and both hooks
+    exit 0 with no output and no crash. probe:
+    test_organism_heartbeat_brief.py::TestFailOpen (5 tests) and
+    scripts/tests/test_organism_alert_sessionstart.py's malformed-sidecar and
+    missing-on-command-file cases.
+  - >-
+    WHEN a very large findings set or escalations board is fed in, THEN the
+    emitted JSON payload never exceeds --max-bytes / SESSIONSTART_HOOK_MAX_BYTES.
+    probe: test_organism_heartbeat_brief.py::TestOutputCap (2 tests) and
+    test_organism_alert_sessionstart.py::test_output_stays_under_default_cap.
+  - >-
+    organism_digest_sessionstart.sh was suspected as a third offender but
+    measured, not assumed: already capped at 1.5KB (1290 bytes on this
+    machine) from a prior 2026-09-04 PR — no change made, confirmed by direct
+    measurement in the PR description.
+pii_scan: clean

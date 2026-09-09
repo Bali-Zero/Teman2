@@ -788,6 +788,18 @@ _VISA_ORACLE = (
         "GARUDA_PUBLIC_ENABLED re-checked per-request by the handler itself",
         match="exact",
     ),
+    PublicEndpoint(
+        "/api/visa/voa/auth/magic-links/preview",
+        Category.AUTH,
+        "GARUDA VOA previewMagicLink (L4, garuda_portal_auth.py) — anonymous, "
+        "non-consuming lookup so the continue page can show whose application "
+        "a link opens before the customer spends it (2026-08-28 council "
+        "residual login-CSRF finding). NOT part of the frozen contract "
+        "(products/garuda-voa/contracts/openapi.yaml — LANES.md reserves that "
+        "file to the orchestrator); GARUDA_PUBLIC_ENABLED re-checked "
+        "per-request by the handler itself, same as its two frozen siblings",
+        match="exact",
+    ),
 )
 
 _BRIDGE = (

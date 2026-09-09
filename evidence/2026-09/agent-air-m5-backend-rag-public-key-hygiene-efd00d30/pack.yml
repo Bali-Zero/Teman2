@@ -1,0 +1,76 @@
+gear: 1
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: public-key-hygiene
+    role: build
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - lane: comment-review
+    role: review
+    seat: kimi-code/k3
+pii_scan: clean
+seat_override:
+  "R8 applicability: scanner comments only. No immigration rule, eligibility, claim or price is authored;
+  no NotebookLM query is claimed."
+receipts:
+  - claim: Four identical 32-byte Ed25519 public verification keys retain the same literal, AST and compiled code.
+    cmd:
+      AST parse including locations; Ed25519PublicKey.from_public_bytes; compile and marshal equality against parent.
+      No source module executed.
+    result: All four source ASTs and compiled bytes identical; public key SHA-256 identical across all four files.
+    exit: 0
+    ts: "2026-09-05T20:29:36.935716+00:00"
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - claim: The real scanner removes exactly the four assigned public-key findings and still detects a separate canary.
+    cmd:
+      detect-secrets 1.5.0 SecretsCollection.scan_file under default_settings, before and after four comments;
+      scan synthetic canary separately.
+    result:
+      Four targeted Base64 findings become zero; five other findings remain unchanged. Canary line 1 still emits
+      Hex High Entropy and Secret Keyword.
+    exit: 0
+    ts: "2026-09-05T20:29:36.935716+00:00"
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - claim: Existing CI auto-triage already accepts the five unchanged payload-hash findings.
+    cmd:
+      scripts/detect_secrets_auto_triage.py::triage on an isolated copy of the five scanner findings; no baseline
+      file written.
+    result: auto_approved=5, hard_blocked=0, no_rule=0, residue=0.
+    exit: 0
+    ts: "2026-09-05T20:29:56.223382+00:00"
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - claim: Independent bounded static review PASS.
+    cmd: kimi -m kimi-code/k3 -p <supplied redacted diff and proof metadata>
+    exit: 0
+    ts: "2026-09-05T20:31:21.776871+00:00"
+    seat: kimi-code/k3
+dissent:
+  - seat: kimi-code/k3
+    objection: The same-line pragma suppresses all detector types on that line.
+    status: CONFIRMED
+    disposition: Accepted line-level scope, stated in PR. Future edits to these lines still need review.
+  - seat: kimi-code/k3
+    objection: Reviewer did not independently verify decoder, triage or canary execution from the supplied excerpt.
+    status: CONFIRMED
+    disposition:
+      These are builder-executed checks, with local receipt hashes below; no independent execution by Kimi
+      is claimed.
+parent: 6d296f6707abd3e3b9d33aee58df204c42a6a2c3 # pragma: allowlist secret - verified public Git or artifact hash, not credential
+key_sha256: f189e13b8e8a02e7ed5910223f3c96689662de01ea11b63bf7886eb6ee6a57e9 # pragma: allowlist secret - verified public Git or artifact hash, not credential
+source_sha256:
+  apps/backend-rag/backend/scripts/visa_engine/gold_replay_driver.py: 1557e579618088f09d5876edd1d4347e7b99f31e277210c6ddef9cddf2cf1065 # pragma: allowlist secret - verified public Git or artifact hash, not credential
+  apps/backend-rag/backend/tests/services/visa_engine/test_prod_sequence2_bundle.py: 5b5103302533a9da854e1aea351e7b18d70502170eef5da329eb45ae6aa8dd55 # pragma: allowlist secret - verified public Git or artifact hash, not credential
+  apps/backend-rag/backend/tests/services/visa_engine/test_seq17_freshness_restamp.py: 35d2fc660d55de04dd9c2b3e04098779c0d658037bcdd3a0f845670b6cfcd42e # pragma: allowlist secret - verified public Git or artifact hash, not credential
+  apps/backend-rag/backend/tests/services/visa_engine/test_seq18_freshness_window.py: 0604062c963a3ee9bdd035316012453cf586a6ecc6de3ec1d794c7e8f284320d # pragma: allowlist secret - verified public Git or artifact hash, not credential
+local_receipt_sha256:
+  proof.json: 21858803cb5659c63e4e7bf9d8be0329e98612a5e70992837b55c40c274b5841 # pragma: allowlist secret - verified public Git or artifact hash, not credential
+  existing-hashes-triage.json: 87dfd5d981cb748d503669f1f1b8b822280964254b433f84d89d8dbb9279bd90 # pragma: allowlist secret - verified public Git or artifact hash, not credential
+  canary-findings.json: b005a283b1d7e27a45ac0ecd11fe35854646c71a054c1732108d8a7ac7e95913 # pragma: allowlist secret - verified public Git or artifact hash, not credential
+review_artifacts:
+  committed_answer_sha256: e5fad0930d27c0a4b1ad3d670f7a9e7ad928b3777dc46805555d064e0fc0f09e # pragma: allowlist secret - verified formatted artifact hash, not credential
+  prompt_sha256: 01e4291ac01cc632dd7e82732545ec533f5cfbf6947c4e0671649b64b7c4d82c # pragma: allowlist secret - verified public Git or artifact hash, not credential
+  raw_stdout_sha256: 18517ffa740b1738a8a9ea6b2e81390585f11c5f43ece89ff43b674ef2ba2743 # pragma: allowlist secret - verified public Git or artifact hash, not credential
+notes:
+  - Local receipts are under .agent/public-key/; only hashes are carried here. No public key value is transcribed
+    into this evidence.
+  - No new tests were added for comments. Ruff and whitespace checks passed. Final CI and independent Anthropic gate
+    remain separate.

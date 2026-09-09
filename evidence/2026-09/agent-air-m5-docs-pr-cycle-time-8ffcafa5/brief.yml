@@ -1,0 +1,56 @@
+task_id: pr-cycle-time-diet-0905
+gear: 2
+l_level: L2
+gate_class: opus
+objective: |
+  Deep-research capture ordered by Zero, 2026-09-04/05: "studia come diminuire drasticamente il
+  tempo delle PR". Not a re-summary of the 2026-09-04 evening numbers (110-114 CPU-min,
+  15-17 min wall, 12 required contexts on a single 3-file PR) — a fresh, independent
+  `gh api`/GraphQL measurement of the last 30 merged PRs on Bali-Zero/Teman2 (both `pull_request`
+  and `merge_group` runs, per-job timing, live merge-queue config introspection), cross-checked
+  against the evening numbers, plus SOTA sourcing (GitHub merge-queue/status-check docs,
+  Nx/Turborepo affected-testing, CodeQL cadence/caching, flaky-test quarantine) and a ranked
+  levers plan with three empirically-grounded targets for a trivial PR (certain/base/stretch).
+
+  Central finding: the entire 30-PR sample fell inside a now-closed window (2026-09-04
+  14:59-16:25Z) where tests.yml's change-map classifier was broken (#5679 introduced a second
+  corpus-staleness bug on top of the first, both since fixed by #5692) — so every measured number
+  in this report, including three PRs that touched only `.md` files, reflects the CI system's
+  worst case (`run_all=True` fail-open), not its designed steady state. This PR itself
+  (research-only) is the first PR created against a base carrying the #5692 fix, and its own CI
+  run is offered as the live falsification test for the report's central claim (§2 of the main
+  file) — the observation goes in the PR's Bites section, not the file, since the file predates
+  the run.
+
+  STUDY-ONLY: no CI/workflow file is touched. Every lever (L1-L9) is a recommendation, ranked and
+  scoped (Gear, decider: session vs Zero), not executed.
+
+  Gear 2 by SIZE: 2 new markdown files, +473 net lines, no code, no `.github/workflows/` touch
+  (so no hot-zone floor 3 — the report is ABOUT workflow files, it does not edit any), no
+  consumer surface.
+constraints:
+  - "Docs-only diff: research/operations/2026-09-05-pr-cycle-time-diet.md and its
+    -lane-measurements.md sibling, plus this evidence dir. No `.github/workflows/*` edit — every
+    number about CI behavior comes from `gh api`/GraphQL read calls executed live in this
+    session, and every code-reading claim (change_map.py, security.yml, tests.yml) cites the
+    exact lines read this turn."
+  - "Anti-hallucination: every PR-title quote (#5676, #5679, #5692) and every merge-queue config
+    value (checkResponseTimeout, mergingStrategy, etc.) was fetched live via `gh api`/`gh api
+    graphql` in this session, not recalled from the team lead's earlier brief. The two GitHub
+    Docs page fetches that 404'd (managing-a-merge-queue) are flagged as unreached, not
+    silently treated as confirming the inference built on the GraphQL enum text alone."
+  - "Generator != grader: the synthesis author is the conducting Claude session; the adversarial
+    review seat is codex (GPT-5, `codex exec --sandbox read-only`), dispatched on the full draft
+    with a red-team prompt. First pass returned BLOCK with 10 findings (1 blocker on the
+    per-PR/per-batch merge_group attribution, 9 major on arithmetic/enumeration/overclaim); every
+    finding was checked against the raw JSON in the scratchpad (not just reworded) — one was
+    rebutted with a new direct check (zero shared head_sha across PR-tagged merge_group runs)
+    and logged as such, the other nine produced real data/text corrections, all dispositioned in
+    the main file's Adversarial review section with the exact fix."
+acceptance:
+  - "Report exists at research/operations/2026-09-05-pr-cycle-time-diet.md with frontmatter
+    (date/domain/client_case/sources/adversarial_review) per research/CLAUDE.md §15."
+  - "The raw-measurement sibling sits beside it with the -lane-measurements suffix, and every
+    number the main file cites traces to a table in the sibling."
+  - "R1 gate satisfied: adversarial_review seat declared (codex), ## Adversarial review section
+    present with all 10 findings dispositioned against verifiable data, not reworded prose."

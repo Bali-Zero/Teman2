@@ -1,0 +1,30 @@
+{
+  "host": "Nuzantara",
+  "installed_binding_observed": false,
+  "isolated_import": {
+    "exit_code": 0,
+    "stderr": "",
+    "stdout": "{\"status\": \"release_verified\", \"uid\": 501}"
+  },
+  "manifest_entries": 1532,
+  "negative_protocol_probe": {
+    "exit_code": 0,
+    "stderr": "",
+    "stdout": "{\"probe\": \"invalid_ungranted_stdin\", \"reply\": {\"version\": 1, \"ok\": false, \"error\": \"request_refused\"}, \"exit_code\": 1, \"network_or_process_audit_events\": [], \"uid\": 501, \"environment_keys\": [\"HOME\", \"LC_CTYPE\", \"PATH\", \"__CF_USER_TEXT_ENCODING\"]}"
+  },
+  "observed_at": "2026-09-06T04:32:52.323596+00:00",
+  "read_only_preflight": {
+    "exit_code": 0,
+    "stderr": "",
+    "stdout": "Plan: Pro only; new _nuz_consul identity; immutable release; fixed no-argument sudo target.\nPrepare reviewed bundle + SHA256SUMS digest, service DB role/config, and preissued UUID grant.\nhost=Nuzantara uid=501\nreviewed_bundle_hashes_verified; installation authorization remains separate"
+  },
+  "release_path": "/tmp/consul-broker-build.5xSE42/release-final",
+  "release_sha256": "ad2fc4b24a11d1eda3798044414a105a4459d905bbfc6dbcafe200edfb72807c",
+  "service_uid_observed": null,
+  "sudoers_parse": {
+    "exit_code": 0,
+    "stderr": "",
+    "stdout": "/tmp/consul-broker-build.5xSE42/release-final/control/sudoers: parsed OK"
+  },
+  "uid": 501
+}

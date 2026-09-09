@@ -465,7 +465,11 @@ describe("intelligence.api", () => {
 
       vi.mocked(api.request).mockResolvedValue(mockResponse);
 
-      const result = await intelligenceApi.publishItem("news", "news-456");
+      const result = await intelligenceApi.publishItem(
+        "news",
+        "news-456",
+        "latest",
+      );
 
       expect(api.request).toHaveBeenCalledWith(
         "/api/intel/staging/publish/news/news-456",
@@ -480,6 +484,14 @@ describe("intelligence.api", () => {
         "news-456",
       );
       expect(result).toEqual(mockResponse);
+    });
+
+    it("should reject news publication without an explicit position", async () => {
+      await expect(
+        intelligenceApi.publishItem("news", "news-without-position"),
+      ).rejects.toThrow("requires an explicit homepage position");
+
+      expect(api.request).not.toHaveBeenCalled();
     });
 
     it("should handle and log errors", async () => {

@@ -1,0 +1,3 @@
+# Empty quoted argument string is mandatory: no command-line arguments allowed.
+Defaults!/usr/local/libexec/nuzantara-consul-broker env_reset
+nuzantara ALL = (_nuz_consul) NOPASSWD: NOSETENV: /usr/local/libexec/nuzantara-consul-broker ""

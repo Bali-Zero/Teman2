@@ -18,10 +18,10 @@ the whole reason this script can exist. What does NOT work:
   * Deploy Hooks — refused outright: "This project is not connected to a Git repository,
     so it cannot have deploy hooks."
 
-ONE PROJECT, EIGHT DOMAINS
---------------------------
-balizero.com and every subdomain (www, kita, my, prime, visa, tax, zantara) are served by
-the single `mouth` project. A stale frontend is stale everywhere, never on one page.
+PRODUCTION PROOF SOURCE
+-----------------------
+The canonical frontend commit probe is https://kita.balizero.com/api/health. Other
+domains and Vercel deployment records do not prove which build the kita domain serves.
 
 THE ALIAS IS NOT AUTOMATIC HERE
 -------------------------------
@@ -104,7 +104,7 @@ TEAM_ID = "team_jX3mEbUemBs0Zy4i8aFYZsjS"  # nuzantara-2026
 PROJECT_ID = "prj_LcXb9ZgeUvWpxaIM9K47tQYPeuee"  # mouth
 REPO_ORG = "Bali-Zero"
 REPO_NAME = "Teman2"
-HEALTH_URL = "https://balizero.com/api/health"
+HEALTH_URL = "https://kita.balizero.com/api/health"
 AUTH_JSON = "~/Library/Application Support/com.vercel.cli/auth.json"
 
 BUILD_TIMEOUT_S = 600
@@ -117,17 +117,8 @@ POLL_S = 20
 # scripts/tests/test_vercel_prod_deploy_target_rule.py, which reads the list back out of the
 # workflow — so editing one without the other fails CI rather than drifting quietly.
 #
-# apps/mouth/e2e is excluded: those specs run in CI and never reach the bundle, so demanding
-# a deploy for them manufactures work with no user-visible referent.
-#
-# A THIRD file also decides what reaches the bundle — scripts/ci/vercel_should_build.sh, the
-# Vercel Ignored Build Step — and it deliberately does NOT exclude e2e. That asymmetry is
-# correct and must not be "tidied": that script is fail-open by construction (a build we did
-# not need costs minutes; a build we needed and skipped freezes eight domains), so it errs
-# toward building. This pair errs toward not nagging. Same paths, opposite safe directions —
-# they are not the same question and must not be merged into one constant.
 BUNDLE_PATHS = ("apps/mouth", "packages", "package.json", "package-lock.json", "vercel.json")
-BUNDLE_EXCLUDE = (":(exclude)apps/mouth/e2e",)
+BUNDLE_EXCLUDE: tuple[str, ...] = ()
 
 
 def _read_auth() -> dict:
@@ -550,11 +541,11 @@ def main() -> int:
             fb_sha, fb_dpl, _ = fallback
             if _promote(fb_dpl, fb_sha):
                 print(
-                    f"OK — balizero.com serves {fb_sha[:9]} (promoted {fb_dpl}, no rebuild; "
+                    f"OK — kita.balizero.com serves {fb_sha[:9]} (promoted {fb_dpl}, no rebuild; "
                     f"newest bundle-relevant commit {sha[:9]} still awaits its own build)"
                 )
                 return 0
-            print(f"::error::promote of {fb_dpl} did not move the domains to {fb_sha[:9]}")
+            print(f"::error::promote of {fb_dpl} did not prove kita.balizero.com serves {fb_sha[:9]}")
             return 1
         if not existing:
             print(f"no READY production build for {sha[:9]} — --promote-only will not create one")
@@ -565,18 +556,18 @@ def main() -> int:
             # not imagined: running --promote-only against the pre-merge copy on Mini exits 2.
             return 3
         if _promote(existing[0], sha):
-            print(f"OK — balizero.com serves {sha[:9]} (promoted {existing[0]}, no rebuild)")
+            print(f"OK — kita.balizero.com serves {sha[:9]} (promoted {existing[0]}, no rebuild)")
             return 0
-        print(f"::error::promote of {existing[0]} did not move the domains to {sha[:9]}")
+        print(f"::error::promote of {existing[0]} did not prove kita.balizero.com serves {sha[:9]}")
         return 1
 
     if existing:
         if _promote(existing[0], sha):
-            print(f"OK — balizero.com serves {sha[:9]} (promoted {existing[0]}, no rebuild)")
+            print(f"OK — kita.balizero.com serves {sha[:9]} (promoted {existing[0]}, no rebuild)")
             return 0
         # Fall through rather than fail: the build may be genuinely unusable (an alias
         # conflict, a deployment deleted mid-flight). A rebuild is slower, never wrong.
-        print("promote did not move the domains — falling back to a rebuild")
+        print("promote did not prove kita.balizero.com current — falling back to a rebuild")
 
     status, deployment = _api("POST", "/v13/deployments", {
         "name": "mouth",
@@ -596,17 +587,17 @@ def main() -> int:
         return 1
 
     if _probe_until(sha, attempts=8):
-        print(f"OK — balizero.com serves {sha[:9]} (deployment {deployment_id})")
+        print(f"OK — kita.balizero.com serves {sha[:9]} (deployment {deployment_id})")
         return 0
 
     # READY but the domains never moved: the alias did not follow. This is the documented
     # fallback, not the normal path — and it is the observed path for a sha-ref deployment.
     print("production still on the old build at terminal READY → promote")
     if _promote(deployment_id, sha):
-        print(f"OK after promote — balizero.com serves {sha[:9]}")
+        print(f"OK after promote — kita.balizero.com serves {sha[:9]}")
         return 0
 
-    print(f"::error::deployment {deployment_id} is READY but the domains still do not serve {sha[:9]}")
+    print(f"::error::deployment {deployment_id} is READY but kita.balizero.com did not prove it serves {sha[:9]}")
     return 1
 
 

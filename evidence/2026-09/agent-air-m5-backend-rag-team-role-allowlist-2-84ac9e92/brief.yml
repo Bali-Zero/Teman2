@@ -1,0 +1,78 @@
+task_id: team-role-allowlist-2
+gear: 2
+# Floor computed this run: `python3 scripts/evidence_pack_lint.py --print-floor
+# --changed-files-file ... --numstat-file ...` returns `size` (12 files,
+# +365/-38 lines, churn 403 >= 400) — the SIZE term alone floors this PR at
+# Gear 2, regardless of the change's authored-logic footprint.
+objective: >-
+  Convert `apps/backend-rag/backend/app/utils/service_accounts.py::is_human_team_member`
+  from a denylist (client/monitoring/partner) into an allow-list built from
+  `TEAM_ROLES`: the 2026-09-06 census of production `team_members.role` values
+  (16 team roles, counts only, via read-only scripts/pg.sh) plus the repo
+  roster (`backend/data/team_members.json`) plus the two legacy tokens
+  `admin`/`team`. Make `middleware/hybrid_auth.py` map an absent JWT role
+  claim to "" instead of "member". Mirror `TEAM_ROLES` in
+  `apps/mouth/src/hooks/useTeamMembers.ts`. PENDING-ARMS row 88.
+constraints:
+  - "NON_HUMAN_ROLES and its SQL renderings unchanged."
+  - "No production data written — the census is read-only counts, no emails."
+  - "Unknown or role-less tokens stay denied."
+  - >-
+    Fixture contract: colleague test principals carry a census role;
+    role-less/unknown principals expect 401/403.
+acceptance:
+  - text: >-
+      WHEN a JWT carries partner, client, monitoring, user, "", None,
+      internal, public or an unknown role, THEN require_team_member SHALL
+      answer 403.
+    probe: >-
+      SKIP_SENTRY_INIT=1 PYTHONPATH=. pytest
+      backend/tests/unit/utils/test_service_accounts.py
+      backend/tests/unit/app/test_dependencies_critical.py
+      backend/tests/unit/middleware/test_hybrid_auth_role_claim.py
+  - text: >-
+      WHEN a JWT carries any census or roster role, THEN the gate SHALL
+      pass.
+    probe: >-
+      SKIP_SENTRY_INIT=1 PYTHONPATH=. pytest
+      backend/tests/unit/utils/test_service_accounts.py
+      backend/tests/unit/app/test_dependencies_critical.py
+      backend/tests/unit/middleware/test_hybrid_auth_role_claim.py
+  - text: >-
+      WHEN a JWT has no role claim, THEN both middleware paths SHALL yield
+      role "" and the gate SHALL refuse it.
+    probe: >-
+      SKIP_SENTRY_INIT=1 PYTHONPATH=. pytest
+      backend/tests/unit/utils/test_service_accounts.py
+      backend/tests/unit/app/test_dependencies_critical.py
+      backend/tests/unit/middleware/test_hybrid_auth_role_claim.py
+  - text: >-
+      WHERE the TypeScript mirror drifts from the Python source of truth,
+      THEN test_service_accounts_ts_sync.py SHALL fail.
+    probe: backend/tests/unit/utils/test_service_accounts_ts_sync.py
+  - text: >-
+      WHEN the DB-backed GARUDA staff suites run on a CI-parity Postgres
+      with colleague fixtures carrying census roles, THEN they SHALL pass.
+    probe: >-
+      PYTHONPATH=.:../crm-cell pytest backend/tests/services/garuda_portal
+      backend/tests/unit/services/garuda_portal
+consumer_map:
+  - "`deps/auth.py::require_team_member`"
+  - "`routers/portal_invite.py`"
+  - "`routers/crm_portal_integration.py`"
+  - "`routers/auth.py` — magic link + auto clock-in"
+  - "`routers/agentic_rag.py` — ab-test"
+  - "`services/garuda_portal/staff_auth.py::_is_staff_role`"
+  - "`routers/e33_cases.py`"
+  - "`routers/crm_intelligence.py`"
+risks:
+  - >-
+    A job title added to `team_members` without adding it to `TEAM_ROLES`
+    locks that colleague out. Mitigated by a roster tripwire test and a
+    refused-role warning log.
+  - >-
+    A live Founder probe needs a fresh owner-held JWT — not exercised by
+    this PR's fixture suite.
+pii: >-
+  none — this PR's diff carries only role-name counts from the census, no
+  emails or other client/team PII.

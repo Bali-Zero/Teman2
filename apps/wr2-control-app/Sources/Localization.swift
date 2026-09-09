@@ -161,7 +161,7 @@ enum L10n {
         "detail.rerender":     [.it: "Ri-renderizza",                                   .id: "Render ulang"],
         "detail.publishIG":    [.it: "Pubblica su IG",                                  .id: "Terbitkan ke IG"],
         "detail.publishIGTitle":[.it: "Pubblicare su Instagram?",                        .id: "Terbitkan ke Instagram?"],
-        "detail.publishIGInfo":[.it: "Il carosello + caption andranno LIVE su @balizero0. Controlla prima con «Verifica».", .id: "Karosel + caption akan TAYANG di @balizero0. Cek dulu dengan «Periksa»."],
+        "detail.publishIGInfo":[.it: "Il carosello + questa caption andranno LIVE su @balizero0. «Pubblica ora» si abilita solo dopo una Verifica riuscita; ogni modifica alla caption la annulla.", .id: "Karosel + caption ini akan TAYANG di @balizero0. «Terbitkan sekarang» aktif hanya setelah Periksa berhasil; perubahan caption membatalkannya."],
         "detail.publishIGCheck":[.it: "Verifica (dry-run)",                              .id: "Periksa (dry-run)"],
         "detail.publishIGConfirm":[.it: "Pubblica ora",                                  .id: "Terbitkan sekarang"],
         "detail.publishIGCancel":[.it: "Annulla",                                        .id: "Batal"],

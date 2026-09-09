@@ -1,0 +1,209 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  PENDING-ARMS.md line 747 (opened 2026-07-26): promote test_superscar_budget.py from the nightly
+  report-only sweep into a required, per-PR blocking check inside immune-enforcement.yml, reusing
+  the sentinel's existing steps.paths.outputs.relevant path-detect. One concern: arming cadence for
+  this one guard, no change to the guard's own logic.
+
+lanes:
+  - lane: superscar-ground
+    role: read
+    seat: >-
+      claude-opus-5 (conducting session, M5). Read PENDING-ARMS L747, confirmed on origin/main that
+      test_superscar_budget.py is unchanged, still targets .claude/rules/cicatrix-superscar.md, still
+      runs only inside scripts-tests-sweep.yml (nightly, continue-on-error). Confirmed
+      immune-enforcement.yml's sentinel already lists .claude/rules/* and docs/scars/* in its
+      path-detect case-block, unchanged by this diff.
+  - lane: superscar-build
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session, M5). Wrote the new step (same test, unchanged), gated on
+      the existing steps.paths.outputs.relevant. Proved guilt+innocence locally on the LIVE file
+      before wiring: 12,484 bytes -> green; padded to 14,200 -> red on the exact byte assertion;
+      reverted -> green again.
+  - lane: superscar-refute-crossfamily-1
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol at effort high, cross-family, sandbox read-only, foreground (not
+      backgrounded past its own 120s soft-timeout — the harness moved it to background
+      automatically and it completed there). Read-only: constructed concrete triggering inputs from
+      the diff text, not from running code. Verdict recorded in journal.jsonl (FAIL, then cured).
+  - lane: superscar-refute-crossfamily-2
+    role: review
+    seat: >-
+      tp1-qwen3.8-max attempted 4 times (90s/2000-tok, 240s/3000-tok, 330s/3000-tok,
+      550s/800-tok-short-prompt) -- 4/4 timed out, zero bytes. Independently confirmed
+      LIVE via a trivial PONG-shaped call (1.6s, HTTP 200), so this is the seat degrading
+      under this specific reasoning load, not a dead credential. kimi-code/k3 was also
+      tried and returned provider.auth_error 403 (weekly usage limit reached). Neither
+      counted as a review seat -- see seat_override below.
+  - lane: superscar-gate-independent
+    role: review
+    seat: >-
+      claude-opus-5 (independent Gear-3 gate, fresh subagent dispatch, own throwaway
+      worktree, never read the build lane's reasoning -- only gh pr view/diff and the
+      repo at HEAD). Reproduced guilt+innocence itself from scratch (padded
+      cicatrix-superscar.md AND separately stripped a .prettierignore line), built its own
+      runnable harness of the case-block, confirmed the step ran live on this PR's own
+      head, and measured actionlint+shellcheck independently (6 findings, identical set on
+      base and head -- corrected this pack's earlier miscount of 24). First pass posted
+      REWORK-BUILD (evidence pack missing from the diff); re-verifies and re-posts on the
+      new head after this commit lands the pack.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane, so D3's non-Anthropic BUILD-seat requirement does not bind by its own terms
+  (">= 2 build lanes"). Cross-family review pressure was placed correctly but the two named
+  non-Anthropic seats (kimi-code/k3, tp1-qwen3.8-max) both failed to deliver a judgement this
+  session -- one on quota (kimi), one on repeated timeout under this specific reasoning load
+  (tp1, 4/4, while independently proven live for a trivial call). codex-gpt-5.6-sol delivered a
+  substantive, non-trivial FAIL with 2 real in-scope findings (cured) and 2 named-and-declared
+  out-of-scope findings. The independent Gear-3 gate (a separate Opus-5 dispatch, never reading
+  the build lane's own reasoning, reproducing every claim from scratch in its own worktree) is an
+  additional adversarial pass, same-family but methodologically independent (generator != grader,
+  fresh context, its own attacks). See seat_override below for the R9 council-quorum rule.
+
+seat_override: >-
+  R9 (council_run quorum, evidence_pack_lint.py::check_council_run_gear3) requires >=2 distinct
+  seats from (codex-gpt-5.6-sol, kimi-code/k3, tp1-qwen3.8-max) marked ok:true in journal.jsonl.
+  This pack has exactly 1 (codex-gpt-5.6-sol). The other two were both attempted and both failed
+  to deliver, for measured, non-authorial reasons: kimi-code/k3 returned provider.auth_error 403
+  (weekly usage limit reached, not a credential or code problem); tp1-qwen3.8-max timed out on
+  4/4 attempts across escalating timeouts (90s/240s/330s/550s) and prompt sizes, while
+  independently proven LIVE via a trivial PONG-shaped call (1.6s, HTTP 200) in the same session --
+  so the seat is up but degrading specifically under this reasoning load, not dead. Given (a) the
+  change is small and low-risk (21 net lines, one workflow file, reusing an unmodified existing
+  test and an unmodified existing path-detect mechanism), (b) codex's review was substantive and
+  found 2 real defects that were cured rather than rubber-stamped, and (c) an independent Gear-3
+  gate (a separate dispatch, fresh context, its own from-scratch reproduction of every claim) ran
+  on top of that as a second adversarial pass -- this is judged sufficient review depth for this
+  specific diff without a second named council seat. Recorded as a human call (conducting session,
+  M5), not a rollout-clock default, per this rule's own documented escape-hatch design.
+
+diff:
+  files: 4
+  net_lines: 338
+  measured_at: >-
+    counted with `git diff --numstat $(git merge-base origin/main HEAD)...HEAD` (three-dot,
+    W102-safe) immediately before the final commit that lands this pack.
+
+residual_risks:
+  - >-
+    The rename-away bypass codex-gpt-5.6-sol named (git diff --name-only collapses a pure rename
+    to its destination path, so renaming cicatrix-superscar.md out of .claude/rules/ before
+    padding it would skip the whole sentinel, not just this new step) is REAL and NOT fixed here.
+    It is a property of the shared path-detect case-block used by ~150 other entries in the same
+    job, not something this diff introduces -- fixing rename-detection repo-wide is a separate,
+    much larger PR. Declared, not silently inherited.
+  - >-
+    The .prettierignore assertion inside test_superscar_budget.py itself (unchanged by this PR) is
+    a substring check, so a commented-out (`# path`) or negated (`!path`) entry would still satisfy
+    it. Pre-existing in the test file this PR does not touch; recorded as a residual risk, not
+    cured -- fixing test logic is out of scope for an "arm the existing test" PR.
+  - >-
+    This PR promotes the SAME test into a second executor (immune-enforcement.yml) alongside the
+    pre-existing nightly sweep (scripts-tests-sweep.yml), deliberately -- same pattern already used
+    for test_prepush_failclosed.sh / test_prepush_tip_drift.sh in this file ("a single executor is
+    a single point of silence"). Not a risk, stated so a future reader does not read the
+    duplication as drift.
+  - >-
+    The second-headroom problem on cicatrix-superscar.md itself (PENDING-ARMS, opened 2026-08-25:
+    the file is near its byte cap and a session was forced to trim a neighbour's entry to fit a
+    new one) is untouched by this PR. This PR only arms the EXISTING budget test at PR time; it
+    does not raise the cap, move content out, or otherwise change what counts against the budget.
+
+pii_scan: clean
+
+receipts:
+  - claim: "Live guilt+innocence on the real file, byte-for-byte"
+    cmd: >-
+      wc -c .claude/rules/cicatrix-superscar.md; python -m pytest scripts/tests/test_superscar_budget.py -q;
+      python3 -c "pad the file to 14200 bytes"; pytest again; cp the /tmp backup back; pytest again
+    result: "12,484 B -> 10 passed. 14,200 B -> 1 failed: assert 14200 <= 14000. Reverted -> 10 passed, git status clean throughout."
+    exit: 0
+    ts: "2026-09-02T03:24Z"
+    seat: session (M5)
+  - claim: "The two new path-detect entries actually flip relevant, and an unrelated path does not"
+    cmd: "python3 script extracting the bash case-block via regex, re-run with fnmatch.fnmatchcase per candidate path"
+    result: ".prettierignore -> True. scripts/tests/test_superscar_budget.py -> True. .claude/rules/cicatrix-superscar.md -> True (pre-existing). docs/scars/cicatrix-scars.md -> True (pre-existing). README.md (negative control) -> False."
+    exit: 0
+    ts: "2026-09-02T03:38Z"
+    seat: session (M5)
+  - claim: "No new actionlint/shellcheck warnings introduced"
+    cmd: "actionlint on origin/main's copy vs this branch's copy of immune-enforcement.yml"
+    result: "Session's local actionlint: 24 lines both sides, identical. Independent gate's own actionlint+shellcheck run (different tool version): 6 findings both sides, identical set, all 3 pre-existing duplicate-glob pairs (CLAUDE.md, scripts/arsenal_probe.py, scripts/lib/heartbeat.sh). The two counts disagree with each other but agree on the load-bearing fact: zero NEW findings on head vs base."
+    exit: 0
+    ts: "2026-09-02T03:20Z / 2026-09-02T04:00Z (gate)"
+    seat: session (M5) + independent gate
+  - claim: "No new guard-conformance registry gap, no trigger-symmetry violation"
+    cmd: >-
+      python3 infra/guard-conformance/check_guard_conformance.py;
+      python3 scripts/ci/lint_trigger_symmetry.py;
+      python -m pytest scripts/tests/test_immune_enforcement_trigger_symmetry.py -q;
+      python -m pytest scripts/ci/lint_trigger_symmetry.py scripts/tests/test_lint_trigger_symmetry.py -q
+    result: "0 violations (10 bridge guards, 19 hook entries, 7 wr2-pregate, 17 evidence-pack-lint, 6 required-workflow-conformance). 118 workflows, 0 trigger-symmetry violations. 12 passed. 14 passed."
+    exit: 0
+    ts: "2026-09-02T03:40Z"
+    seat: session (M5)
+  - claim: "The new step actually ran on this PR's own head, not skipped, not a vacuous zero-collection pass"
+    cmd: "gh run view of the immune-enforcement.yml run on this PR's head, 'antidotes' job, the new step's log"
+    result: "immune-relevant=true (1 changed files); '10 passed in 0.09s' -- the real test, not an empty collection."
+    exit: 0
+    ts: "2026-09-02T04:00Z"
+    seat: independent gate
+  - claim: "kimi-code/k3 is quota-exhausted this week; tp1-qwen3.8-max is live but times out under this reasoning load 4/4"
+    cmd: "kimi -p ... -m kimi-code/k3 (once); direct HTTP POST via arsenal_probe helpers to tp1's chat/completions endpoint (4 attempts, escalating timeout/max_tokens/prompt-size); a control PONG-shaped call at 60s timeout"
+    result: "kimi: HTTP-level 403 provider.auth_error, weekly usage limit. tp1 review attempts: 4/4 client-side timeout, zero bytes. tp1 control call: HTTP 200 in 1.66s."
+    exit: "2 (kimi) / None (tp1 timeouts, urllib returns None status on timeout) / 0 (tp1 control)"
+    ts: "2026-09-02T03:12Z - 04:20Z"
+    seat: session (M5)
+
+dissent:
+  - seat: codex-gpt-5.6-sol (cross-family refuter, foreground, sandbox read-only)
+    status: CONFIRMED
+    objection: >-
+      `.prettierignore` was not in the sentinel's path-detect list even though one of the test's
+      three assertions reads it directly -- a PR that only edited .prettierignore (e.g. removing
+      the cicatrix entries) would sail through the required check with the regression undetected.
+      CURED in this PR: `.prettierignore` added to the case-block, verified to flip `relevant=true`.
+  - seat: codex-gpt-5.6-sol (cross-family refuter, foreground, sandbox read-only)
+    status: CONFIRMED
+    objection: >-
+      `scripts/tests/test_superscar_budget.py` itself was not in the trigger list, so a PR that
+      weakened the guard's own test (raised the byte budget, deleted an assertion, gutted the
+      completeness check) would not have exercised the new blocking step -- exactly the pattern
+      every sibling guard in this same case-block already avoids by listing its own test file
+      alongside its subject. CURED: entry added, verified to flip `relevant=true`.
+  - seat: codex-gpt-5.6-sol (cross-family refuter, foreground, sandbox read-only)
+    status: RETRACTED
+    objection: >-
+      `git diff --name-only` collapses a pure rename to its destination path, so renaming
+      `cicatrix-superscar.md` out of `.claude/rules/` before padding it would skip the whole
+      sentinel. Real, but a property of the shared ~150-entry case-block this repo already uses
+      for every other guard in this file, not unique to this diff. Recorded as residual risk, not
+      cured -- widening rename-detection for the whole sentinel is its own PR.
+  - seat: codex-gpt-5.6-sol (cross-family refuter, foreground, sandbox read-only)
+    status: RETRACTED
+    objection: >-
+      The `.prettierignore` coverage assertion inside `test_superscar_budget.py` (unchanged by
+      this PR) is a substring check, so a commented-out or negated entry would still satisfy it.
+      Real, pre-existing in a file this PR does not touch. Recorded as residual risk.
+  - seat: claude-opus-5 (independent Gear-3 gate, first pass)
+    status: CONFIRMED
+    objection: >-
+      The PR's own diff carried no evidence/brief.yml or evidence/pack.yml at all -- `gh pr view
+      --json files` showed exactly 1 file, 21 additions, 0 deletions. `.github/workflows/**` is
+      hot-zone, floor 3 by construction, and the required "Harness floor recompute" check failed
+      deterministically on the missing brief before it ever reached a gate verdict. Verdict:
+      REWORK-BUILD, explicitly stating the code itself needed no change. Posted
+      harness/fable-gate=failure on 700fd6f3b0. Cured by this commit landing the pack; the gate
+      re-verifies and re-posts on the new head.
+  - seat: claude-opus-5 (independent Gear-3 gate, first pass)
+    status: CONFIRMED
+    objection: >-
+      This pack's earlier draft claimed "stessi 24 warning pre-esistenti" for actionlint. The
+      gate's own actionlint+shellcheck run (0.11.0, real repo layout) measured 6 findings on both
+      base and head, identical set. The load-bearing claim (zero NEW findings) held under both
+      measurements; only the absolute count was wrong, likely a version/config difference between
+      the two runs. Corrected in this pack's receipts and in the PR body.

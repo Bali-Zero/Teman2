@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, MessageCircle } from "lucide-react";
 import { useReducedMotion } from "framer-motion";
 import {
   restoreInterviewSnapshot,
@@ -64,7 +64,7 @@ import { QuestionScreen } from "./QuestionScreen";
 import { ConfirmationCard } from "./ConfirmationCard";
 import { VerdictReveal } from "./VerdictReveal";
 import { OutcomeSheet } from "./OutcomeSheet";
-import { ConsentHandoff } from "./ConsentHandoff";
+import { ConsentHandoff, type ConsentHandoffProps } from "./ConsentHandoff";
 import { ThemeToggle, type OracleTheme } from "./ThemeToggle";
 import { LanguageToggle } from "./LanguageToggle";
 
@@ -98,6 +98,7 @@ function isMinorForHandoff(
 
 const SESSION_COPY = {
   en: {
+    consultant: "Talk to a consultant",
     loading: "Restoring your private browser session…",
     evaluating: "Checking the verified Visa Oracle engine…",
     resume:
@@ -107,6 +108,7 @@ const SESSION_COPY = {
     retry: "Retry verified evaluation",
   },
   id: {
+    consultant: "Bicara dengan konsultan",
     loading: "Memulihkan sesi browser privat Anda…",
     evaluating: "Memeriksa mesin Visa Oracle terverifikasi…",
     resume:
@@ -116,6 +118,46 @@ const SESSION_COPY = {
     retry: "Coba lagi evaluasi terverifikasi",
   },
 } as const;
+
+function ConsultantContact(props: ConsentHandoffProps) {
+  const [open, setOpen] = useState(props.context === "ASSESSMENT");
+  const toggleRef = useRef<HTMLButtonElement>(null);
+
+  return (
+    <div
+      className="oracle-consultant oracle-no-print"
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && open) {
+          event.preventDefault();
+          setOpen(false);
+          toggleRef.current?.focus();
+        }
+      }}
+    >
+      <button
+        ref={toggleRef}
+        id="oracle-consultant-toggle"
+        type="button"
+        className="oracle-question__back oracle-consultant__toggle"
+        aria-expanded={open}
+        aria-controls="oracle-consultant-panel"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <MessageCircle aria-hidden="true" size={18} />
+        {SESSION_COPY[props.language].consultant}
+      </button>
+      <div
+        id="oracle-consultant-panel"
+        className="oracle-handoff-slot oracle-consultant__panel"
+        role="region"
+        aria-labelledby="oracle-consultant-toggle"
+        hidden={!open}
+      >
+        <ConsentHandoff {...props} />
+      </div>
+    </div>
+  );
+}
 
 interface HydratedShell {
   snapshot: InterviewSnapshot | null;
@@ -410,6 +452,7 @@ function OracleShellRuntime({
     advance,
     back,
     edit,
+    askFollowUp,
     selectCategory,
     reviewAnswers,
     restart,
@@ -470,6 +513,23 @@ function OracleShellRuntime({
       edit(questionId);
     },
     [edit, leaveOutcome],
+  );
+
+  /**
+   * NEEDS_INPUT follow-up (2026-09-06): the engine named a fact whose
+   * question this interview never asked. Append it and re-evaluate —
+   * `leaveOutcome` drops the cached decision so the answer produces a
+   * fresh evaluation rather than replaying the one that asked for it.
+   * Deliberately NOT `handleEdit`: `EDIT` on an absent target resets the
+   * entire interview (flow.ts's `EDIT` case), which would throw away every
+   * answer in order to collect one.
+   */
+  const handleAskFollowUp = useCallback(
+    (questionId: string) => {
+      leaveOutcome();
+      askFollowUp(questionId);
+    },
+    [askFollowUp, leaveOutcome],
   );
 
   const handleSelectCategory = useCallback(
@@ -599,6 +659,9 @@ function OracleShellRuntime({
                   assumptions,
                   facts: state.facts,
                   interviewBranchesRemaining,
+                  editableQuestionIds: state.history.flatMap((node) =>
+                    node.kind === "question" ? [node.questionId] : [],
+                  ),
                 });
                 emitVisaOracleTelemetry({
                   event: "visa_oracle_v2_engine_result",
@@ -629,6 +692,9 @@ function OracleShellRuntime({
                 assumptions,
                 facts: state.facts,
                 interviewBranchesRemaining,
+                editableQuestionIds: state.history.flatMap((node) =>
+                  node.kind === "question" ? [node.questionId] : [],
+                ),
               });
               emitVisaOracleTelemetry({
                 event: "visa_oracle_v2_engine_result",
@@ -715,6 +781,7 @@ function OracleShellRuntime({
     retryNonce,
     state.attempt,
     state.facts,
+    state.history,
   ]);
 
   useEffect(() => {
@@ -744,6 +811,7 @@ function OracleShellRuntime({
   }, [clearAllEvaluationIdentities]);
 
   const lane = useMemo(() => getLane(state.facts), [state.facts]);
+  // Leaving a verdict or starting/retrying evaluation clears outcome before contact renders.
   const outcomeAssessmentReference =
     outcome?.provenance === "ENGINE" ? outcome.assessment.publicId : undefined;
   const guardianConsentRequired = isMinorForHandoff(
@@ -798,6 +866,19 @@ function OracleShellRuntime({
             />
           </div>
         </header>
+
+        <ConsultantContact
+          key={outcome ? "assessment" : "consultation"}
+          language={language}
+          guardianConsentRequired={guardianConsentRequired}
+          {...(outcome
+            ? {
+                context: "ASSESSMENT",
+                state: outcome.state as VisaOracleTelemetryState,
+                assessmentReference: outcomeAssessmentReference,
+              }
+            : { context: "CONSULTATION" })}
+        />
 
         <main className="oracle-main">
           <div className="oracle-main__tree">
@@ -867,6 +948,7 @@ function OracleShellRuntime({
                   state.blockedAnswer,
                 )}
                 currentAnswer={state.facts[current.questionId]}
+                facts={state.facts}
               />
             )}
 
@@ -905,14 +987,7 @@ function OracleShellRuntime({
                     facts={state.facts}
                     onSelectCategory={handleSelectCategory}
                     onEditMissingInput={handleEdit}
-                    handoffSlot={
-                      <ConsentHandoff
-                        language={language}
-                        state={outcome.state as VisaOracleTelemetryState}
-                        assessmentReference={outcomeAssessmentReference}
-                        guardianConsentRequired={guardianConsentRequired}
-                      />
-                    }
+                    onAskMissingInput={handleAskFollowUp}
                   />
                   <div
                     className="oracle-no-print"

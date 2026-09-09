@@ -4,23 +4,24 @@ The guard is two decisions written in shell inside a workflow, so both are EXTRA
 the workflow text here rather than retyped: a retyped copy would pass forever while the
 real gate rots (W65 — never build on a citation you did not re-read).
 
-  1. WHICH commit must production include — a `git log -1` pathspec. It must exclude
-     apps/mouth/e2e/**: on 2026-07-27 17:19Z the sentinel went red for a commit that
-     touched only e2e specs, which cannot change what the browser receives.
+  1. WHICH commit must production include — the latest apps/mouth/** or shared-input
+     commit, including e2e under the September 6 follow-up contract.
   2. WHETHER production includes it — `git merge-base --is-ancestor "$SHA" "$live"`.
      Argument ORDER is the whole meaning: reversed, it asserts that production is BEHIND,
      which passes on exactly the outage this guard exists to catch.
 
 Superscar #3 discipline: guilt (it fires on a genuinely stale production) AND innocence
-(it stays quiet when production is legitimately AHEAD, and an e2e-only commit never becomes
-the thing demanded). Plus fail-closed on a sha that is not in history — an unknown commit
+(it stays quiet when production is legitimately AHEAD, and docs-only commits are not
+demanded). Plus fail-closed on a sha that is not in history — an unknown commit
 is not evidence of health.
 """
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -110,24 +111,17 @@ def _includes(repo: Path, expected: str, served: str) -> bool:
     )
 
 
-def test_pathspec_excludes_e2e_specs() -> None:
-    """INNOCENCE: a spec file cannot change the bundle, so it must not demand a deploy."""
+def test_pathspec_includes_all_mouth_changes() -> None:
     args = _extract_pathspec()
-    assert ":(exclude)apps/mouth/e2e" in args, (
-        f"the e2e exclusion is gone from the pathspec: {args}. "
-        "Without it, a test-only commit makes production look stale."
-    )
+    assert not any("exclude" in path for path in args)
     assert "apps/mouth" in args, f"apps/mouth dropped from the pathspec: {args}"
 
 
-def test_expected_commit_is_the_last_bundle_relevant_one(repo: Path) -> None:
-    """INNOCENCE: the newest commit is e2e-only + docs; neither may be what we demand."""
+def test_expected_commit_is_the_last_mouth_commit_not_docs(repo: Path) -> None:
     relevant, e2e_only, unrelated = (repo / ".shas").read_text().split()
     expected = _expected_commit(repo)
-    assert expected == relevant, (
-        f"expected {relevant[:9]} (the page.tsx commit), got {expected[:9]}"
-    )
-    assert expected not in (e2e_only, unrelated)
+    assert expected == e2e_only
+    assert expected not in (relevant, unrelated)
 
 
 def test_guilt_production_behind_the_relevant_commit_is_flagged(repo: Path) -> None:
@@ -166,3 +160,102 @@ def test_schedule_trigger_is_present() -> None:
         "frontend code, which is exactly not the failure it guards"
     )
     assert re.search(r'cron:\s*"\*/\d+ \* \* \* \*"', text), "no recurring cron expression found"
+
+
+@pytest.mark.parametrize("kita_current", [True, False])
+def test_probe_follows_kita_when_the_apex_disagrees(
+    repo: Path, tmp_path: Path, kita_current: bool
+) -> None:
+    relevant, _e2e, newest = (repo / ".shas").read_text().split()
+    before = _git(repo, "rev-parse", f"{relevant}~1")
+    match = re.search(
+        r"      - name: Poll [^\n]+\n.*?        run: \|\n"
+        r"(?P<shell>(?:          [^\n]*\n|\n)+)",
+        _workflow_text(),
+        re.DOTALL,
+    )
+    assert match, "production poll step must be executable by this test"
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    calls = tmp_path / "curl-calls"
+    curl = bin_dir / "curl"
+    curl.write_text(
+        '#!/bin/bash\n'
+        'url="${@: -1}"\n'
+        'printf "%s\\n" "$url" >> "$CURL_CALLS"\n'
+        'case "$url" in\n'
+        '  https://kita.balizero.com/api/health) commit="$KITA_COMMIT" ;;\n'
+        '  https://balizero.com/api/health) commit="$APEX_COMMIT" ;;\n'
+        '  *) exit 22 ;;\n'
+        'esac\n'
+        'printf \'{"commit":"%s"}\\n\' "$commit"\n',
+        encoding="utf-8",
+    )
+    curl.chmod(0o755)
+    sleep = bin_dir / "sleep"
+    sleep.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    sleep.chmod(0o755)
+    outcome = subprocess.run(
+        ["bash", "-e", "-c", textwrap.dedent(match.group("shell"))],
+        cwd=repo,
+        env={
+            **os.environ,
+            "PATH": f"{bin_dir}:{os.environ['PATH']}",
+            "SHA": relevant,
+            "ATTEMPTS": "1",
+            "CURL_CALLS": str(calls),
+            "KITA_COMMIT": newest if kita_current else before,
+            "APEX_COMMIT": before if kita_current else newest,
+        },
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert calls.read_text().splitlines() == ["https://kita.balizero.com/api/health"]
+    assert outcome.returncode == (0 if kita_current else 1), outcome.stdout + outcome.stderr
+    if kita_current:
+        assert "OK - kita.balizero.com includes this commit." in outcome.stdout
+    else:
+        assert "kita.balizero.com did not prove inclusion" in outcome.stdout
+
+
+@pytest.mark.parametrize("event", ["push", "schedule", "workflow_dispatch"])
+@pytest.mark.parametrize("age_seconds", [0, 1799, 1800, 3600])
+def test_grace_window_uses_commit_age(
+    repo: Path, tmp_path: Path, event: str, age_seconds: int
+) -> None:
+    match = re.search(
+        r"      - name: Which commit[^\n]+\n.*?        run: \|\n"
+        r"(?P<shell>(?:          [^\n]*\n|\n)+)",
+        _workflow_text(), re.DOTALL,
+    )
+    assert match
+    bin_dir = tmp_path / "clock-bin"
+    bin_dir.mkdir()
+    expected = _expected_commit(repo)
+    timestamp = int(_git(repo, "show", "-s", "--format=%ct", expected))
+    date_command = bin_dir / "date"
+    date_command.write_text(f"#!/bin/sh\necho {timestamp + age_seconds}\n")
+    date_command.chmod(0o755)
+    output_path = tmp_path / "outputs"
+    outcome = subprocess.run(
+        ["bash", "-e", "-c", textwrap.dedent(match.group("shell"))], cwd=repo,
+        env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}",
+             "EVENT": event, "GITHUB_OUTPUT": str(output_path)},
+        capture_output=True, text=True, timeout=10,
+    )
+    assert outcome.returncode == 0, outcome.stderr
+    outputs = dict(line.split("=", 1) for line in output_path.read_text().splitlines())
+    assert outputs["sha"] == expected
+    assert (outputs["skip"] == "true") == (event == "schedule" and age_seconds < 1800)
+    if event != "schedule" and age_seconds < 1800:
+        assert age_seconds + (int(outputs["attempts"]) - 1) * 60 >= 1800
+    else:
+        assert outputs["attempts"] == "3"
+
+
+def test_sentinel_self_change_runs_on_main() -> None:
+    push_paths = _workflow_text().split("  schedule:", 1)[0]
+    assert '".github/workflows/frontend-live-sentinel.yml"' in push_paths
+    assert "ref: main" in _workflow_text()
+    assert "timeout-minutes: 45" in _workflow_text()

@@ -30,7 +30,7 @@ Ask Codex CLI for an adversarial second opinion before commit/push. Pattern B (r
    The helper handles:
    - anti-pattern guard (empty diff → hard refuse; small diff → 3-line warning + 5s countdown). Small-diff threshold uses TOTAL diff (committed + uncommitted) so large WIP edits don't slip through as "small".
    - diff capture, including uncommitted-diff body and full content of untracked files (head -200 each, max 25 files, binary/>500KB skipped) so newly created files are visible to Codex
-   - dispatch via `codex exec --full-auto --sandbox read-only -c model_reasoning_effort=xhigh` for Pattern B (review), and `codex exec --full-auto` for Pattern A (exec). Note: `codex review --base` doesn't accept stdin context, so both patterns use `codex exec` with our custom [SPALLA] prompt.
+   - dispatch via `codex exec --sandbox read-only -c model_reasoning_effort=xhigh` for Pattern B (review), and `codex exec --sandbox workspace-write -c model_reasoning_effort=xhigh` for Pattern A (exec). `--full-auto` was removed in codex-cli 0.149.1 — never reintroduce it; the wrapper also exits 6 when codex returns 0 without a verdict line (the 0.151.0 "never ran at exit 0" shape, ledger 2026-09-01). Note: `codex review --base` doesn't accept stdin context, so both patterns use `codex exec` with our custom [SPALLA] prompt.
    - transcript saved to `~/logs/codex-spalla/<ts>-<rand>-<mode>-<slug>.md` with race-safe noclobber creation (concurrent same-second runs don't clobber each other)
    - BLOCKER-grade transcripts also copied to `docs/codex-reviews/<ts>-<rand>-blocker-<slug>.md`
    - telemetry one-line JSON to `~/logs/codex-spalla.jsonl`

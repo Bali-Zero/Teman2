@@ -1,0 +1,20 @@
+task_id: lane-e-bot-wa-greeting
+gear: 2
+l_level: L2
+gate_class: client-facing
+objective: >-
+  Answer a bare greeting on WhatsApp from a deterministic script instead of the
+  five-attempt retry ladder. Measured on real delivery, cycle 359: a bare "halo"
+  cost 7m45s and answered an English technical-error stub to an Indonesian
+  greeting, because QueryDomain.GREETING maps to zero collections by design and
+  the Gemini leg was cut on 2026-08-27, leaving no second generator.
+grader: codex-sol
+pii: none
+notes: >-
+  Floor 2 is reached via the SIZE term alone (474 net lines), and most of that
+  size is the guilt+innocence corpus, not the cure: the matcher is 250 lines of
+  which the vocabulary tables are the bulk, and the tests are 185. Adversarial
+  gate ran BEFORE this brief existed — Codex GPT-5.6 Sol at effort high, on the
+  frozen diff, returned BLOCK with six findings; four cured in code (over-match
+  on "Halo admin?", two under-matches, a language tie-break) and two answered in
+  prose in the module docstring. Generator never graded its own diff.

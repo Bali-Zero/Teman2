@@ -93,7 +93,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from arsenal_probe import (  # noqa: E402  (sibling import, see module docstring)
     TP1_CHAT_COMPLETIONS_URL,
     TP1_SEAT_MODELS,
-    http_post_json,
     load_tp1_settings_key,
     scrub,
 )
@@ -397,8 +396,84 @@ def stream_chat_completion(
             }
         ]
     }
-    full = scrub(json.dumps(reassembled), secret_values)
-    return 200, full, full[-160:]
+    # RAW, UNSCRUBBED: this is what extract_answer()'s json.loads() sees. The
+    # pre-fix version scrubbed here, which mutates the JSON ENVELOPE, not just
+    # the text a human or a log will see — scrub()'s generic 24+-char pattern
+    # rewrites a JSON KEY in place (measured live: a TP1 "usage" object's
+    # "completion_tokens_details" is 26 chars), and its `Bearer\s+\S+` clause
+    # eats straight through a closing quote and the next field boundary the
+    # moment the model's own answer says the word "Bearer" (a plausible thing
+    # for a technical answer to contain) — \S+ has no notion of JSON syntax.
+    # Redaction is an OUTPUT boundary: it still runs on the evidence tail
+    # below (for anyone logging/displaying it), and main() runs it again on
+    # whatever text it actually prints — but never on the bytes handed to a
+    # JSON parser.
+    raw_full = json.dumps(reassembled)
+    return 200, raw_full, scrub(raw_full, secret_values)[-160:]
+
+
+def no_stream_chat_completion(
+    url: str, headers: dict, body: dict, timeout: float, secret_values: list[str]
+) -> tuple[Optional[int], str, str]:
+    """Single-shot POST. Same contract as arsenal_probe.http_post_json —
+    (status_code_or_None, full_body, evidence_tail) — with one deliberate
+    departure: on HTTP 200, full_body is the RAW response text exactly as the
+    gateway sent it. Not scrub()'d, and not newline-collapsed either — a
+    server that pretty-prints can put a raw byte between tokens, and
+    collapsing it before json.loads is still a transport-layer mutation of
+    the thing about to be parsed, the same class of bug as scrubbing it.
+
+    WHY THIS DUPLICATES arsenal_probe.http_post_json RATHER THAN CALLING IT:
+    that function scrubs (and newline-collapses) unconditionally, inside the
+    transport, before its caller ever sees the text — exactly right for
+    arsenal_probe.py's own callers (a liveness verdict never gets handed to a
+    JSON parser) and exactly wrong for this one, whose extract_answer() runs
+    json.loads() on full_body. Measured live 2026-09-02 against qwen3.8-max:
+    a normal HTTP 200 whose "usage" object carries "completion_tokens_details"
+    (26 chars — past scrub()'s generic 24-char threshold) or whose answer text
+    contains the word "Bearer" (scrub()'s Bearer-plus-nonspace clause then
+    eats through the next closing quote and field boundary, since it has no
+    notion of JSON syntax) turned into `json.JSONDecodeError` on three
+    separate calls, including a --no-stream one — this function is the fix
+    for that call site. Same reasoning as why stream_chat_completion above
+    already duplicates instead of importing: this is that fix applied to the
+    other transport, not a second decision.
+
+    On a non-200 status, or on any transport exception, nothing here is ever
+    handed to json.loads — full_body and evidence_tail are scrub()'d exactly
+    as arsenal_probe.http_post_json does, so a header/token still never
+    reaches stderr on an error path."""
+
+    def _scrub_evidence(raw: str) -> tuple[str, str]:
+        full = scrub((raw or "").strip().replace("\n", " "), secret_values)
+        return full, full[-160:]
+
+    data = json.dumps(body).encode("utf-8")
+    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+            if resp.status == 200:
+                # RAW — see docstring. The tail is still scrubbed: it exists
+                # for logging/display (an output-boundary use) even though
+                # the 200 case's only current caller (main()) does not print
+                # it today.
+                _, tail = _scrub_evidence(raw)
+                return resp.status, raw, tail
+            full, tail = _scrub_evidence(raw)
+            return resp.status, full, tail
+    except urllib.error.HTTPError as e:
+        raw = e.read().decode("utf-8", errors="replace") if e.fp else ""
+        full, tail = _scrub_evidence(raw)
+        return e.code, full, tail
+    except urllib.error.URLError as e:
+        full, tail = _scrub_evidence(f"{type(e).__name__}: {e.reason}")
+        return None, full, tail
+    except TimeoutError:
+        return None, "timed out", "timed out"
+    except Exception as e:  # never crash a caller that only wanted an answer
+        full, tail = _scrub_evidence(f"{type(e).__name__}: {e}")
+        return None, full, tail
 
 
 def build_body(model: str, prompt: str, max_tokens: int, effort: Optional[str]) -> dict:
@@ -424,7 +499,15 @@ def extract_answer(
     bare LIVE/dead bool — a build seat needs the ANSWER, a probe
     (arsenal_probe.py) only needs a verdict. Mirrors _tp1_has_live_answer's
     content/reasoning_content/finish_reason="length" handling; ports the
-    reasoning, not the boolean."""
+    reasoning, not the boolean.
+
+    full_body is expected RAW (unscrubbed) on the HTTP-200 path — see
+    stream_chat_completion / no_stream_chat_completion. This function does no
+    redaction of its own on purpose: it is the single parser of what counts
+    as an answer, nothing else. Anything it returns (answer, warning, the
+    error text below, which quotes a slice of full_body verbatim) still has
+    to pass through scrub() at whatever point the caller actually emits it —
+    that is main()'s job, not this function's."""
     try:
         parsed = json.loads(full_body)
         choice = parsed["choices"][0]
@@ -543,7 +626,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 TP1_CHAT_COMPLETIONS_URL, headers, body, args.timeout, [token]
             )
         else:
-            status_code, full_body, ev = http_post_json(
+            status_code, full_body, ev = no_stream_chat_completion(
                 TP1_CHAT_COMPLETIONS_URL, headers, body, args.timeout, [token]
             )
     except StillGenerating as e:
@@ -557,12 +640,19 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 1
 
     answer, warning, error = extract_answer(full_body)
+    # extract_answer() does no redaction (see its docstring) — full_body was RAW
+    # on the 200 path specifically so json.loads() could see it unmutated, which
+    # means `error` can quote an unscrubbed slice of it (the unparseable-response
+    # branch) and `answer`/`warning` can carry the model's raw text verbatim. This
+    # is the actual OUTPUT boundary: scrub() runs here, on what is about to leave
+    # the process, never upstream where it would corrupt the JSON parse.
     if error:
-        sys.stderr.write(f"tp1_call: {error}\n")
+        sys.stderr.write(f"tp1_call: {scrub(error, [token])}\n")
         return 3
     if warning:
-        sys.stderr.write(f"tp1_call: warning: {warning}\n")
+        sys.stderr.write(f"tp1_call: warning: {scrub(warning, [token])}\n")
     assert answer is not None
+    answer = scrub(answer, [token])
     sys.stdout.write(answer if answer.endswith("\n") else answer + "\n")
     return 0
 

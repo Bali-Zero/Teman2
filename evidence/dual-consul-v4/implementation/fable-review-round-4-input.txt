@@ -1,0 +1,31 @@
+Final acknowledgment of your exact prescribed one-line change. Added SET LOCAL search_path = public, pg_catalog; adjacent to lock_timeout, outside snapshot markers. Strengthened existing absence-path test to enter with dual_consul_alternate,public and assert tables land in public. No other changes. This closes your stated environment hazard; approve/reject this exact delta to the already accepted migration. No tools, no new broad review. Return concise PASS/REWORK and END_DUAL_CONSUL_REVIEW.
+diff --git a/apps/backend-rag/backend/db/migrations_v2/306_autonomous_lab_consul_leases.sql b/apps/backend-rag/backend/db/migrations_v2/306_autonomous_lab_consul_leases.sql
+index b27a3f93dc..2dc699d40d 100644
+--- a/apps/backend-rag/backend/db/migrations_v2/306_autonomous_lab_consul_leases.sql
++++ b/apps/backend-rag/backend/db/migrations_v2/306_autonomous_lab_consul_leases.sql
+@@ -3,6 +3,7 @@
+ -- Broker connections own admission; model processes receive no database connection.
+ -- Retained approval tombstones prevent revoke A -> bind B -> resurrect A.
+ SET LOCAL lock_timeout = '5s';
++SET LOCAL search_path = public, pg_catalog;
+ 
+ -- The legacy Python migration 124 is not guaranteed to have run before the SQL
+ -- migration chain. Backfill its canonical Lab tables/indexes before the lease FK.
+diff --git a/apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py b/apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py
+index 3966a2066e..1ee37fb3b2 100644
+--- a/apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py
++++ b/apps/backend-rag/backend/tests/integration/test_dual_consul_postgres.py
+@@ -163,7 +163,13 @@ async def test_migration_306_bootstraps_absent_lab_and_preserves_rows_on_rollbac
+         (MIGRATIONS / "306_autonomous_lab_consul_leases.sql").read_text()
+     )
+     async with dual_db.transaction():
++        await dual_db.execute("CREATE SCHEMA IF NOT EXISTS dual_consul_alternate")
++        await dual_db.execute("SET LOCAL search_path = dual_consul_alternate, public")
+         await dual_db.execute(forward)
++        assert await dual_db.fetchval(
++            "SELECT to_regclass('public.autonomous_lab_runs') IS NOT NULL "
++            "AND to_regclass('dual_consul_alternate.autonomous_lab_runs') IS NULL"
++        )
+     run_id = "consul-bootstrap-proof"
+     store = await _enqueue(dual_db, run_id)
+     request = make_request(await dual_db.fetchval("SELECT clock_timestamp()"), run_id)

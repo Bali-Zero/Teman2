@@ -86,7 +86,28 @@ async def _seed(conn: asyncpg.Connection, price: int | None) -> None:
 
     CREATE TABLE IF NOT EXISTS rather than assuming the schema: this suite runs
     both against CI's freshly-migrated database and against developer machines
-    whose local copy is behind.
+    whose local copy is behind. In CI that CREATE is a silent no-op — the real
+    migration-221-seeded table (an `id serial` PK, `practices.practice_type_id`
+    FK-ing onto it) already exists under this exact name, so every statement
+    below actually lands on the shared catalogue row, not a private fixture.
+
+    For a KNOWN price, upsert rather than delete-then-insert: `UPDATE` never
+    trips `practices_practice_type_id_fkey` because it does not touch the `id`
+    a `practices` row references, so this path is safe even when another
+    suite's leaked row (or a genuinely concurrent xdist worker's live one) is
+    pointed at 'visa_b1_voa' right now. This is the exact path
+    `test_forward_moves_the_superseded_price_to_the_ruled_one` exercises, and
+    the one whose `DELETE` was observed to hit that FK in CI.
+
+    The `price is None` branch is unavoidably still a real DELETE: that
+    branch's entire point (`test_an_absent_row_raises_instead_of_recording_
+    success`) is to prove migration 303 raises when the row is genuinely
+    absent, which cannot be simulated without removing it. It therefore keeps
+    the same exposure this whole function used to have. A full cure needs this
+    suite to own a private schema (`CREATE SCHEMA` + `search_path`) rather than
+    aliasing the shared one — deliberately not done here: that changes how
+    every statement in this file resolves `practice_types`, which is a second
+    concern, not a fix to the one FK violation actually seen in CI.
     """
     await conn.execute(
         "CREATE TABLE IF NOT EXISTS practice_types ("
@@ -95,11 +116,13 @@ async def _seed(conn: asyncpg.Connection, price: int | None) -> None:
         "  base_price numeric,"
         "  updated_at timestamptz DEFAULT now())"
     )
-    await conn.execute("DELETE FROM practice_types WHERE code = 'visa_b1_voa'")
-    if price is not None:
+    if price is None:
+        await conn.execute("DELETE FROM practice_types WHERE code = 'visa_b1_voa'")
+    else:
         await conn.execute(
             "INSERT INTO practice_types (code, name, base_price) "
-            "VALUES ('visa_b1_voa', 'B1 - VOA', $1)",
+            "VALUES ('visa_b1_voa', 'B1 - VOA', $1) "
+            "ON CONFLICT (code) DO UPDATE SET base_price = EXCLUDED.base_price",
             price,
         )
 

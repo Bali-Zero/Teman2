@@ -700,6 +700,7 @@ async def test_publish_staging_item_qdrant_failure(client_with_auth, mock_db_con
         async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
             response = await ac.post(
                 "/api/intel/staging/publish/news/test-item-123",
+                json={"position": "latest"},
             )
 
     assert response.status_code == 500
@@ -737,6 +738,7 @@ async def test_publish_staging_item_success(client_with_auth, mock_db_conn):
         async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
             response = await ac.post(
                 "/api/intel/staging/publish/news/test-item-123",
+                json={"position": "latest"},
             )
 
     # Accept 200 or 500 (500 if article_composer import fails in test env — that's OK)

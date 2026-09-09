@@ -1,7 +1,11 @@
 ---
 name: intake
-description: "Intake corner — the live shared context for the document-intake organism (WhatsApp/Drive docs → OCR → classify → extract → route → attach-to-client). Load BEFORE touching the intake pipeline, the review_pending queue, the refinery pilot, the auto-attach gates, or the CRM writer — or when Zero says /intake, 'coda intake', 'review queue', 'auto-attach', 'refinery'. Holds: the north star (drain the queue with ZERO mis-attribution), the anatomy map (every table/file/gate/flag), the tier logic, LIVE STATE, and the blood-bought rules (2026-05-17 identity-hallucination scar)."
+description: "Intake corner — shared context for the document-intake organism (WhatsApp/Drive → OCR → classify → attach-to-client). Load before touching the pipeline, or when Zero says /intake, 'coda intake'."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Also covers: the review_pending queue, the refinery pilot, the auto-attach gates, the CRM writer. Additional triggers: 'review queue', 'auto-attach', 'refinery'. Holds: the north star (drain the queue with ZERO mis-attribution), the anatomy map (every table/file/gate/flag), the tier logic, LIVE STATE, and the blood-bought rules (2026-05-17 identity-hallucination scar).
 
 # INTAKE — the document-intake organism
 

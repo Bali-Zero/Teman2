@@ -24,17 +24,40 @@ logger = logging.getLogger(__name__)
 
 
 async def apply(conn: Any) -> None:
-    await conn.execute("""
-        ALTER TABLE practices
-        ADD COLUMN IF NOT EXISTS family_member_id BIGINT
-            REFERENCES client_family_members(id) ON DELETE SET NULL;
+    column_exists = await conn.fetchval("""
+        SELECT EXISTS (
+            SELECT FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'practices'
+              AND column_name = 'family_member_id'
+        )
+    """)
+    index_exists = await conn.fetchval("""
+        SELECT EXISTS (
+            SELECT FROM pg_indexes
+            WHERE schemaname = 'public'
+              AND tablename = 'practices'
+              AND indexname = 'idx_practices_family_member_id'
+        )
     """)
 
-    await conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_practices_family_member_id "
-        "ON practices (family_member_id) "
-        "WHERE family_member_id IS NOT NULL;"
-    )
+    if column_exists and index_exists:
+        logger.info("Migration 121 already applied — no DDL, no lock")
+        return
+
+    if not column_exists:
+        await conn.execute("""
+            ALTER TABLE practices
+            ADD COLUMN IF NOT EXISTS family_member_id BIGINT
+                REFERENCES client_family_members(id) ON DELETE SET NULL;
+        """)
+
+    if not index_exists:
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_practices_family_member_id "
+            "ON practices (family_member_id) "
+            "WHERE family_member_id IS NOT NULL;"
+        )
 
     logger.info("Migration 121: practices.family_member_id + partial index applied")
 

@@ -1,7 +1,11 @@
 ---
 name: pipeline-ship
-description: Use when opening/arming/merging a PR, pushing a branch, or wondering why CI or the merge queue is behaving oddly. Covers the merge-queue-era ship mechanics (live since 2026-07-27), the path-aware pre-push gate, the machine-wide suite lock, and the specific ways this pipeline lies to you. Complements agent-session-discipline (which owns worktree creation).
+description: "Use when opening/arming/merging a PR, pushing a branch, or CI/merge-queue behaves oddly. Covers merge-queue-era ship mechanics, the path-aware pre-push gate, and the ways this pipeline lies to you."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Also covers the machine-wide suite lock. Merge-queue-era ship mechanics have been live since 2026-07-27. Complements agent-session-discipline, which owns worktree creation.
 
 > **CANON**: repo `.claude/` — shadows the `~/.claude/` HOME copy. Edit HERE, never in `$HOME`.
 
@@ -189,8 +193,32 @@ Merged is not live. After a merge, verify on the **consuming surface**:
 - a dependency/security fix → read the alert state, and if it is unchanged, check whether the
   alert's `manifest_path` is the file you fixed and whether its `updated_at` predates your
   merge (⇒ rescan lag, not a wrong fix);
-- a deployed surface → curl/screenshot it; `curl` on `nuzantara-rag` returns 401 **before**
-  routing, so an anonymous curl is never proof an endpoint is alive.
+- a deployed surface → curl/screenshot it; an anonymous 401 from backend authentication
+  middleware is not proof that the target endpoint routed or its behavior changed.
+
+### Backend and frontend release evidence
+
+After the merge, record its SHA and fetch current `origin/main` history. Backend releases
+require a successful `fly-deploy.yml` run, then `curl -fsS https://nuzantara-rag.fly.dev/health`
+and its `build_sha`. Frontend releases require
+`curl -fsS https://kita.balizero.com/api/health` and its `commit`.
+Run `git merge-base --is-ancestor <merge-sha> <served-sha>`: equality or a descendant passes;
+missing, malformed, unknown or older SHAs do not. GitHub deployments API records are NOT
+live evidence, even when marked active, successful or inactive.
+
+Then make one HTTP probe that observes the changed behavior itself, authenticated when
+required. Build identity alone does not prove the feature works. Record both the ancestry
+command and the behavioral HTTP observation; never persist credentials or response PII.
+
+The Frontend Live Sentinel uses kita's health commit against the newest commit touching
+`apps/mouth/**` or shared build inputs (`packages/**`, root package manifests, `vercel.json`).
+The September 6 follow-up contract includes mouth e2e changes too, superseding the old
+exclusion and matching the Vercel build trigger. The grace window is **30 minutes from the
+expected commit's committer timestamp**. Push/manual runs poll through the remaining window;
+scheduled runs defer younger commits and fail/alert on unproven inclusion after the window.
+Its `*/30` schedule is a backstop, not a delivery SLA: GitHub can delay scheduled jobs.
+For a sentinel change, retain the **post-merge main run URL and expected/served comparison
+log** as its Bites evidence. Other domains are not inferred from kita's response.
 
 ## 7. See also
 
@@ -199,3 +227,7 @@ Merged is not live. After a merge, verify on the **consuming surface**:
 - `.claude/rules/cicatrix-superscar.md` — the 10 scar families these traps belong to
   (#2 esiste≠armato, #3 over/under-match, #9 the proxy lies)
 - `docs/runbooks/merge-queue-discipline.md` — queue ruleset, canary, rollback
+- `docs/runbooks/prod-db-writes.md` — when prove-live needs a production ROW changed: the agent
+  has a read path and no write path, so it prepares the exact statement (measurement, rollback,
+  expected row count), the owner runs it, and the read path proves the result. Same standard as
+  §6: "the owner said done" is not the observation, the read-back is
