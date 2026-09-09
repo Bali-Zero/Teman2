@@ -1,0 +1,43 @@
+{
+  "started_at": "2026-09-06T18:25:57.740Z",
+  "finished_at": "2026-09-06T18:27:10.600Z",
+  "executable": "/Users/nuzantara/.local/bin/agy",
+  "observed_cli_version": "1.1.27",
+  "requested_model": "gemini-3.1-pro-high",
+  "requested_effort": "high",
+  "command_arguments": [
+    "--model",
+    "gemini-3.1-pro-high",
+    "--effort",
+    "high",
+    "--mode",
+    "plan",
+    "--sandbox",
+    "--disable-slash-commands",
+    "--output-format",
+    "stream-json",
+    "--print-timeout",
+    "3m",
+    "--print",
+    "[contents of gemini-research-input.md]"
+  ],
+  "working_directory": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro",
+  "input_sha256": "9ccea1486ab3a0ad8cca07140c14855518488924d61c82f3913f6f47859e416a",
+  "removed_credential_variable_names": [
+    "ANTHROPIC_API_KEY",
+    "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "OPENAI_API_KEY"
+  ],
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "output_limit_characters": 2000000,
+  "stdout_characters": 23548,
+  "stderr_characters": 78,
+  "research_question_count": 1,
+  "cli_research_launch_count": 2,
+  "earlier_launch_note": "First launch failed argument validation before model execution; evidence preserved in gemini-launch-validation.*. This launch corrects only the --print argument.",
+  "authentication_note": "Existing agy CLI session requested; no auth configuration or credential values inspected. No new key or paid endpoint configured. Account tier not independently attested."
+}

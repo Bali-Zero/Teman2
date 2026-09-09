@@ -1,0 +1,615 @@
+{
+  "checkedAt": "2026-09-06T19:13:11.946Z",
+  "head": "b740b2cc3e94b1a46c9e9811bb369289fc21ea3d",
+  "branch": "codex/website-pro-continuation",
+  "comparedFiles": 101,
+  "mismatches": [],
+  "files": [
+    {
+      "path": "apps/bali-zero-magazine/lib/contracts/audit-anchor.ts",
+      "beforeSha256": "a36090cd6ddb86459c29aa7907d7934da8beeade8e7385283aabba5d0c153793",
+      "currentSha256": "a36090cd6ddb86459c29aa7907d7934da8beeade8e7385283aabba5d0c153793",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/contracts/collector.ts",
+      "beforeSha256": "f971ff1d90310bf4474ae2c77de35e05463c9c466526fafcd45da47a821330e4",
+      "currentSha256": "f971ff1d90310bf4474ae2c77de35e05463c9c466526fafcd45da47a821330e4",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/contracts/publication.ts",
+      "beforeSha256": "de1ebad0e58f873537e14cad2d5efafd24a97fe7239c88585d29ccab1d0ee1a3",
+      "currentSha256": "de1ebad0e58f873537e14cad2d5efafd24a97fe7239c88585d29ccab1d0ee1a3",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/contracts/release-attestation.ts",
+      "beforeSha256": "cd4d41bc8ea62d2bf146be25cb44aef5541e8245f6bdd7f25d2b20aafb16cd4b",
+      "currentSha256": "cd4d41bc8ea62d2bf146be25cb44aef5541e8245f6bdd7f25d2b20aafb16cd4b",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/contracts/website-read.ts",
+      "beforeSha256": "57704dc06525abfad3b9199992f974ae7dcc53e5f7b1b48f2172f669a5055619",
+      "currentSha256": "57704dc06525abfad3b9199992f974ae7dcc53e5f7b1b48f2172f669a5055619",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/asset-eligibility.ts",
+      "beforeSha256": "c101fc92f9a8f97d96112d3a88adaa4d1cb25ea217c5398e627577a056e42a7d",
+      "currentSha256": "c101fc92f9a8f97d96112d3a88adaa4d1cb25ea217c5398e627577a056e42a7d",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/audit-chain.ts",
+      "beforeSha256": "df00b09fadf93138bc7b39cf9013bdb3cde6394bb3744e9b120e7bf6d3d593e8",
+      "currentSha256": "df00b09fadf93138bc7b39cf9013bdb3cde6394bb3744e9b120e7bf6d3d593e8",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/authorization.ts",
+      "beforeSha256": "d96d201ecbcb36fc027a00f076dda12efa89f0d7acbe6f210b16c3e851376d46",
+      "currentSha256": "d96d201ecbcb36fc027a00f076dda12efa89f0d7acbe6f210b16c3e851376d46",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/hmac.ts",
+      "beforeSha256": "111b4c148d2b2fb14351685d7b09d99b6d375715790be0941ca097705b8ef7aa",
+      "currentSha256": "111b4c148d2b2fb14351685d7b09d99b6d375715790be0941ca097705b8ef7aa",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/identity.ts",
+      "beforeSha256": "8bb04ab75f9329fb60f5b802cc8ecc03963ece314b04c974c5354b3b7d7b75fa",
+      "currentSha256": "8bb04ab75f9329fb60f5b802cc8ecc03963ece314b04c974c5354b3b7d7b75fa",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/machine-ingress.ts",
+      "beforeSha256": "16e0937f43c9ecb5056c183839681da15b01219f13c01e1d92e3484f45d98ff0",
+      "currentSha256": "16e0937f43c9ecb5056c183839681da15b01219f13c01e1d92e3484f45d98ff0",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/magazine-read-model.ts",
+      "beforeSha256": "c8dfa31682be99aa8c844a244f4683cb0e915c4620aac054ca79f62f8fb324ba",
+      "currentSha256": "c8dfa31682be99aa8c844a244f4683cb0e915c4620aac054ca79f62f8fb324ba",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/media.ts",
+      "beforeSha256": "4fa416a89680907a7d3028e9a34d6c0cd9e46ffd95ceb02ff7d6d4e04baecec4",
+      "currentSha256": "4fa416a89680907a7d3028e9a34d6c0cd9e46ffd95ceb02ff7d6d4e04baecec4",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/operations-http.ts",
+      "beforeSha256": "910d3aee534cb75b2b61da6de9d800cf4cce361b0df1b943a1a8b404075305a4",
+      "currentSha256": "910d3aee534cb75b2b61da6de9d800cf4cce361b0df1b943a1a8b404075305a4",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/operations-repository.ts",
+      "beforeSha256": "4726e5020b655b71ff4b462bba29db1fbb41ef2505e56d93bb35994f66af3799",
+      "currentSha256": "4726e5020b655b71ff4b462bba29db1fbb41ef2505e56d93bb35994f66af3799",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/publication-repository.ts",
+      "beforeSha256": "c441339b5bc681d22bf8cab457f2f82f1551c26a2b63d912fca8fb954b110693",
+      "currentSha256": "c441339b5bc681d22bf8cab457f2f82f1551c26a2b63d912fca8fb954b110693",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/research-http.ts",
+      "beforeSha256": "ec9979625e741a6d2801d25d995c3309775b066ef085479ead7656450754117f",
+      "currentSha256": "ec9979625e741a6d2801d25d995c3309775b066ef085479ead7656450754117f",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/research-repository.ts",
+      "beforeSha256": "3aa3fc61036120a3f497a3720b317fbe0b1ea228c109cc90b610987942ceba2a",
+      "currentSha256": "3aa3fc61036120a3f497a3720b317fbe0b1ea228c109cc90b610987942ceba2a",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/runtime-bindings.ts",
+      "beforeSha256": "cfdf4b35ac4a027aafedde674d7d8d8dd2c7c402261feb4cd554c2757684d994",
+      "currentSha256": "cfdf4b35ac4a027aafedde674d7d8d8dd2c7c402261feb4cd554c2757684d994",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/security.ts",
+      "beforeSha256": "b2bd1cfbd77a9a7ed3555bd081fd24ee8cbdd91791ff92d15aa334031a4ad48a",
+      "currentSha256": "b2bd1cfbd77a9a7ed3555bd081fd24ee8cbdd91791ff92d15aa334031a4ad48a",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/verified-media-bytes.ts",
+      "beforeSha256": "0b694686c5cf5c039cde632eabb265471b57c8bb39519cd2d335baebcceffdb5",
+      "currentSha256": "0b694686c5cf5c039cde632eabb265471b57c8bb39519cd2d335baebcceffdb5",
+      "unchanged": true
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/website-read-authority.ts",
+      "beforeSha256": "dc11f112970d80629bb88d04414e57ac3450d00aee7b8cd5ce66a0bb95d0bde5",
+      "currentSha256": "dc11f112970d80629bb88d04414e57ac3450d00aee7b8cd5ce66a0bb95d0bde5",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/next.config.ts",
+      "beforeSha256": "b9b9c50c9ce54f72549144623eb4aec0268dae74b9fa81bdd7f3985cd5e402b4",
+      "currentSha256": "b9b9c50c9ce54f72549144623eb4aec0268dae74b9fa81bdd7f3985cd5e402b4",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/package-lock.json",
+      "beforeSha256": "414cfaca907ab81c25975784b9fa6acba77be775c733fe3cb22a986f95a2ef05",
+      "currentSha256": "414cfaca907ab81c25975784b9fa6acba77be775c733fe3cb22a986f95a2ef05",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/package.json",
+      "beforeSha256": "e8db2d3ce192f324bee75f23c30ead4f1e499bde1089e5f6d067ed1c0dbacb6c",
+      "currentSha256": "e8db2d3ce192f324bee75f23c30ead4f1e499bde1089e5f6d067ed1c0dbacb6c",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/proofs/architecture/README.md",
+      "beforeSha256": "3392b463d552b7aac1936c07eaae39767953708fb85bcc9774883c073d21a3b4",
+      "currentSha256": "3392b463d552b7aac1936c07eaae39767953708fb85bcc9774883c073d21a3b4",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/proofs/architecture/cache-shim.ts",
+      "beforeSha256": "a514f6e9fc79477420bf9dd19aec823c2e8386228a693ff7a6dd24ead615f9ce",
+      "currentSha256": "a514f6e9fc79477420bf9dd19aec823c2e8386228a693ff7a6dd24ead615f9ce",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/proofs/architecture/magazine-integration.test.tsx",
+      "beforeSha256": "9e3880dd27a4cde23daa123bcf513699f01ee10f3e787c3ed81e6cf70ed5af84",
+      "currentSha256": "9e3880dd27a4cde23daa123bcf513699f01ee10f3e787c3ed81e6cf70ed5af84",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/proofs/architecture/magazine-publication.test.tsx",
+      "beforeSha256": "8caef30567f335dce596784ed26b16b7ed7d73330df5cf69a2373ef3063801cc",
+      "currentSha256": "8caef30567f335dce596784ed26b16b7ed7d73330df5cf69a2373ef3063801cc",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/proofs/architecture/magazine-transport.test.tsx",
+      "beforeSha256": "8692240030af76633c1f0089acf986c5c7561fa27efd2ed0a9bb7cede926e57c",
+      "currentSha256": "8692240030af76633c1f0089acf986c5c7561fa27efd2ed0a9bb7cede926e57c",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/proofs/architecture/magazine/http-fixture.ts",
+      "beforeSha256": "5236da00af6425fe28bd23995aefe1b2e2713e4ff3585351a08bb927f38cc0e6",
+      "currentSha256": "5236da00af6425fe28bd23995aefe1b2e2713e4ff3585351a08bb927f38cc0e6",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/proofs/architecture/publishing.test.tsx",
+      "beforeSha256": "c884987f6f8a7a5d6423b5a3f421af75328267df7be81c182fcbf3679ac01b6e",
+      "currentSha256": "c884987f6f8a7a5d6423b5a3f421af75328267df7be81c182fcbf3679ac01b6e",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/app/globals.css",
+      "beforeSha256": "c39d399553740e72aa6f54d61d81ef1e803bdfbf6e96d4d90efb717483ebb3a3",
+      "currentSha256": "c39d399553740e72aa6f54d61d81ef1e803bdfbf6e96d4d90efb717483ebb3a3",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/app/journal/DATA-CONTRACT.md",
+      "beforeSha256": "a7986196cf1497b4f5033dfbc237152c21bfca1afd7858ac6ede6ac4ec4368e5",
+      "currentSha256": "a7986196cf1497b4f5033dfbc237152c21bfca1afd7858ac6ede6ac4ec4368e5",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/app/journal/HOMEPAGE-ADOPTION.md",
+      "beforeSha256": "4a32a9e47cd2e95191ccf7e5fc7d5fa5ad758d1b777bceb235e0b5b9c4f0a9a2",
+      "currentSha256": "4a32a9e47cd2e95191ccf7e5fc7d5fa5ad758d1b777bceb235e0b5b9c4f0a9a2",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/app/journal/page.test.tsx",
+      "beforeSha256": "151fa95633407bdc58ac8562bf69fda928116bcaf4e4a6095c7f9a8ffd3d0f65",
+      "currentSha256": "151fa95633407bdc58ac8562bf69fda928116bcaf4e4a6095c7f9a8ffd3d0f65",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/app/journal/page.tsx",
+      "beforeSha256": "2ea7f43dd4a208e67d538ae6d89af2214d0b190379177c8797c415c3e3be473c",
+      "currentSha256": "2ea7f43dd4a208e67d538ae6d89af2214d0b190379177c8797c415c3e3be473c",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/app/layout.tsx",
+      "beforeSha256": "b27f7769305c4c7a2e9e029733256fcd290311f3d169ba2b844f7a99299c8f18",
+      "currentSha256": "b27f7769305c4c7a2e9e029733256fcd290311f3d169ba2b844f7a99299c8f18",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/app/not-found.module.css",
+      "beforeSha256": "53611cbdc86e62e85bf55283956f7842773038442d35210f022881a25b4b70a0",
+      "currentSha256": "53611cbdc86e62e85bf55283956f7842773038442d35210f022881a25b4b70a0",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/app/not-found.tsx",
+      "beforeSha256": "b1c859cf64e126eea5a4e83a2f49306cabf5989a611f79b1538d9b245e7d74a0",
+      "currentSha256": "b1c859cf64e126eea5a4e83a2f49306cabf5989a611f79b1538d9b245e7d74a0",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/app/page.test.tsx",
+      "beforeSha256": "2aa3358e4aed67651cc9a76b948024bfc84edca7c67581d528bf873f81497f34",
+      "currentSha256": "2aa3358e4aed67651cc9a76b948024bfc84edca7c67581d528bf873f81497f34",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/app/page.tsx",
+      "beforeSha256": "6e2b90286d7f31bd2e2db71d8a36c9d694b9ea66f8b4b102f1b105c1886bf5f4",
+      "currentSha256": "6e2b90286d7f31bd2e2db71d8a36c9d694b9ea66f8b4b102f1b105c1886bf5f4",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/app/services/[slug]/page.tsx",
+      "beforeSha256": "55d8cc1c35f2cd2dd539e2541fd77942131641ec2875c99e0d4426556307dc71",
+      "currentSha256": "55d8cc1c35f2cd2dd539e2541fd77942131641ec2875c99e0d4426556307dc71",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/app/services/page.tsx",
+      "beforeSha256": "b63ef7830c5b2c996e5cc362ff2f34c8a297b7056de9a98aefea6274780f2519",
+      "currentSha256": "b63ef7830c5b2c996e5cc362ff2f34c8a297b7056de9a98aefea6274780f2519",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/app/services/services.test.tsx",
+      "beforeSha256": "02333c30f780810090e7f484b026779462f8d44332a5f09d71280275b7e8c850",
+      "currentSha256": "02333c30f780810090e7f484b026779462f8d44332a5f09d71280275b7e8c850",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/app/team/page.tsx",
+      "beforeSha256": "c575ded24092e4357588fdc7323f083230623a943dede19606e23d2b7e4404ee",
+      "currentSha256": "c575ded24092e4357588fdc7323f083230623a943dede19606e23d2b7e4404ee",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/Contact.tsx",
+      "beforeSha256": "92c3c66753303e2d457191f12fc15a202b23c9b5fbe28b168b3404a83ffe40c5",
+      "currentSha256": "92c3c66753303e2d457191f12fc15a202b23c9b5fbe28b168b3404a83ffe40c5",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/Entry.test.tsx",
+      "beforeSha256": "7a24e1db748d21947ab989f3597e9661d666da0549e82dd5f80918e8c28abfb8",
+      "currentSha256": "7a24e1db748d21947ab989f3597e9661d666da0549e82dd5f80918e8c28abfb8",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/Entry.tsx",
+      "beforeSha256": "c50238498c1b52494dcebbb1caae3344493363fd0d901c051d583f9a33b74db4",
+      "currentSha256": "c50238498c1b52494dcebbb1caae3344493363fd0d901c051d583f9a33b74db4",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/Evoa.tsx",
+      "beforeSha256": "74177ef12e17321b590c7369c1debbd9a831c1af8b422d49586727d8d75af5f9",
+      "currentSha256": "74177ef12e17321b590c7369c1debbd9a831c1af8b422d49586727d8d75af5f9",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/Footer.tsx",
+      "beforeSha256": "ba8de2fdfa36a329e3363c76a705821dab6822a7d3b48959d88d2792e78d0989",
+      "currentSha256": "ba8de2fdfa36a329e3363c76a705821dab6822a7d3b48959d88d2792e78d0989",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/Home.test.tsx",
+      "beforeSha256": "1cd6f09197de060d88ebd7e478d70fa07bd282c882356f23920916ed00eb2657",
+      "currentSha256": "1cd6f09197de060d88ebd7e478d70fa07bd282c882356f23920916ed00eb2657",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/Journal.test.tsx",
+      "beforeSha256": "a854345dcd9a7c2bad571ecf30f28a9ea0a6862e2435528b697e8730fda5248f",
+      "currentSha256": "a854345dcd9a7c2bad571ecf30f28a9ea0a6862e2435528b697e8730fda5248f",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/Journal.tsx",
+      "beforeSha256": "78abc5133aac88e72a019ebcf7d86c91a094ab1bc189e7cbfef04a862c81a879",
+      "currentSha256": "78abc5133aac88e72a019ebcf7d86c91a094ab1bc189e7cbfef04a862c81a879",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/Portal.tsx",
+      "beforeSha256": "363596695319cc35f26ba2f5c2e475b4d69c152f78c19159d224836b2b53690b",
+      "currentSha256": "363596695319cc35f26ba2f5c2e475b4d69c152f78c19159d224836b2b53690b",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/Reviews.tsx",
+      "beforeSha256": "0cc25523a9e79cb86a8c0ec56b8b14ea859035a008add23c644dfc4b6001570c",
+      "currentSha256": "0cc25523a9e79cb86a8c0ec56b8b14ea859035a008add23c644dfc4b6001570c",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/SecondHome.tsx",
+      "beforeSha256": "53674837bd3becee0f108a4c42095a3deec85981796db02ab092f1a79450ab94",
+      "currentSha256": "53674837bd3becee0f108a4c42095a3deec85981796db02ab092f1a79450ab94",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/Services.tsx",
+      "beforeSha256": "88db9003fba2d4827ac3e8eda73cb1194749aa257fa469af4f0713698b25e62c",
+      "currentSha256": "88db9003fba2d4827ac3e8eda73cb1194749aa257fa469af4f0713698b25e62c",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/Team.module.css",
+      "beforeSha256": "799ad2d8beb9513beb8085c4c5b0dfde0341f0565302a1eedddc655c9b8edec5",
+      "currentSha256": "799ad2d8beb9513beb8085c4c5b0dfde0341f0565302a1eedddc655c9b8edec5",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/Team.test.tsx",
+      "beforeSha256": "fc593d7778b6a9eb308301ab2bcdc62333ffaec3dfb7d157cc8835426b50899a",
+      "currentSha256": "fc593d7778b6a9eb308301ab2bcdc62333ffaec3dfb7d157cc8835426b50899a",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/Team.tsx",
+      "beforeSha256": "7fd64216f2a0534bc7cfe37b0bb6f79c303d788de46ab7986471ad1036b7bff1",
+      "currentSha256": "7fd64216f2a0534bc7cfe37b0bb6f79c303d788de46ab7986471ad1036b7bff1",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/entry.css",
+      "beforeSha256": "dbd35c746ffa594c50bb45d649f0d8b85ae3cf02572f4505ddb64b12c40f7dad",
+      "currentSha256": "dbd35c746ffa594c50bb45d649f0d8b85ae3cf02572f4505ddb64b12c40f7dad",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/journal/ArticleDestination.tsx",
+      "beforeSha256": "657a776536adc67c875b13725db3c4fa9a2116ef601238900368e9b86573050e",
+      "currentSha256": "657a776536adc67c875b13725db3c4fa9a2116ef601238900368e9b86573050e",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/journal/ArticleTemplate.tsx",
+      "beforeSha256": "815da3e9dfa2f4aa7e2655aa2585e76e8226225217200c023281f84dcfb6796b",
+      "currentSha256": "815da3e9dfa2f4aa7e2655aa2585e76e8226225217200c023281f84dcfb6796b",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/journal/FeedNotice.tsx",
+      "beforeSha256": "b8b5ae3dfdfd2908df58111bf8a843f899faba2f121ab138d921755c7f9a8811",
+      "currentSha256": "b8b5ae3dfdfd2908df58111bf8a843f899faba2f121ab138d921755c7f9a8811",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/journal/Journal.module.css",
+      "beforeSha256": "57f0f931bfa77c7026c5ea20acf52ecc573fda74daad6f08c948b83b74a06a51",
+      "currentSha256": "57f0f931bfa77c7026c5ea20acf52ecc573fda74daad6f08c948b83b74a06a51",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/journal/Journal.test.tsx",
+      "beforeSha256": "4e50993c91d9bf2aaac247ba8adf003a97ed7db4422ee2649a076e2f3c09b8f2",
+      "currentSha256": "4e50993c91d9bf2aaac247ba8adf003a97ed7db4422ee2649a076e2f3c09b8f2",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/journal/JournalIndex.tsx",
+      "beforeSha256": "e45fa63e8d076ccf66805527294ed64864c2de4b2aae31d70f29ae94d2ac3c40",
+      "currentSha256": "e45fa63e8d076ccf66805527294ed64864c2de4b2aae31d70f29ae94d2ac3c40",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/services/ServiceJourneys.tsx",
+      "beforeSha256": "d45c4a07845901e368bec1f00f863070fd2cc59f3c5a416523c9c9e491df48b7",
+      "currentSha256": "d45c4a07845901e368bec1f00f863070fd2cc59f3c5a416523c9c9e491df48b7",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/services/service-journeys.module.css",
+      "beforeSha256": "9c013b5affadf4d6d50bd3c53a82f7bf3b0296475eac0bfa77288ba7dd47736b",
+      "currentSha256": "9c013b5affadf4d6d50bd3c53a82f7bf3b0296475eac0bfa77288ba7dd47736b",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/ui/Actions.tsx",
+      "beforeSha256": "5eb229fb5df75dd096cf12561b03ebe32fcd99f5944eab95abbd6c5cc69f97dd",
+      "currentSha256": "5eb229fb5df75dd096cf12561b03ebe32fcd99f5944eab95abbd6c5cc69f97dd",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/ui/Card.tsx",
+      "beforeSha256": "5409fc89432626cf7d0886840579a317f42600107277a87d7037d0e00755b261",
+      "currentSha256": "5409fc89432626cf7d0886840579a317f42600107277a87d7037d0e00755b261",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/ui/Container.tsx",
+      "beforeSha256": "a3097957612324e3fd688c1ac893d0e182e7ab49451040d9b6b3e6ac49a554dc",
+      "currentSha256": "a3097957612324e3fd688c1ac893d0e182e7ab49451040d9b6b3e6ac49a554dc",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/ui/DesignSystem.test.tsx",
+      "beforeSha256": "c1813f0bf552e832d5676418c6380af55c82ca59b2e9dcee6021d57e2baa8822",
+      "currentSha256": "c1813f0bf552e832d5676418c6380af55c82ca59b2e9dcee6021d57e2baa8822",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/ui/DesignSystemFixture.tsx",
+      "beforeSha256": "e64adccdb41787497bda454b0e97b431d764adea2d3f541dd6d2b01f0b83a823",
+      "currentSha256": "e64adccdb41787497bda454b0e97b431d764adea2d3f541dd6d2b01f0b83a823",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/ui/SectionHeading.tsx",
+      "beforeSha256": "4b2a0ee67009331e748fae8d5cfddaef593e8f8e12cf59e4317bb4b505bdc563",
+      "currentSha256": "4b2a0ee67009331e748fae8d5cfddaef593e8f8e12cf59e4317bb4b505bdc563",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/ui/classNames.ts",
+      "beforeSha256": "1ace811987495757099ccbcb0cff314b271b54ea2fadce50db999a165d47f1c9",
+      "currentSha256": "1ace811987495757099ccbcb0cff314b271b54ea2fadce50db999a165d47f1c9",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/components/ui/index.ts",
+      "beforeSha256": "49b9c52f5cd474c7004b040ff041d13bde46615c24b8ca924abdd1e36c701eb3",
+      "currentSha256": "49b9c52f5cd474c7004b040ff041d13bde46615c24b8ca924abdd1e36c701eb3",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/content/destinations.ts",
+      "beforeSha256": "d517c29e09d02c6a622f03ad135fd7a3d4703d3a809c2f62dfd3652cd05a7c58",
+      "currentSha256": "d517c29e09d02c6a622f03ad135fd7a3d4703d3a809c2f62dfd3652cd05a7c58",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/content/evidence/destinations-2026-09-06.ts",
+      "beforeSha256": "31abec170867e93f52be9122d0c601676262b49c17eab3db1a7866d80e26d9a9",
+      "currentSha256": "31abec170867e93f52be9122d0c601676262b49c17eab3db1a7866d80e26d9a9",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/content/journal.test.ts",
+      "beforeSha256": "dc062588dace5d0e57e5e7567ab994b5951c6a62a759280994b94a05233d4c0d",
+      "currentSha256": "dc062588dace5d0e57e5e7567ab994b5951c6a62a759280994b94a05233d4c0d",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/content/journal.ts",
+      "beforeSha256": "49c1244cb5d7646264be9f3140b04120a0a451cbae6cda6dbd45d292470cf9cf",
+      "currentSha256": "49c1244cb5d7646264be9f3140b04120a0a451cbae6cda6dbd45d292470cf9cf",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/content/service-pages.ts",
+      "beforeSha256": "910366154f443dd5245141162e74d36f868959d616123f5399da10bf1f75aca5",
+      "currentSha256": "910366154f443dd5245141162e74d36f868959d616123f5399da10bf1f75aca5",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/content/services.ts",
+      "beforeSha256": "27445f3cd4050753dd3f21d0571698a7dbf6be967a762d78d9db58cfa846d5fa",
+      "currentSha256": "27445f3cd4050753dd3f21d0571698a7dbf6be967a762d78d9db58cfa846d5fa",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/content/stories.ts",
+      "beforeSha256": "2bf642f6a4de103f2c77f1470c722c19cdfdc9a50a2269979675d62c74e9c49b",
+      "currentSha256": "2bf642f6a4de103f2c77f1470c722c19cdfdc9a50a2269979675d62c74e9c49b",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/content/team.ts",
+      "beforeSha256": "17df40a6e8584fa494da1b45ceb1c7e74ad640e203e6476edfc273517d2304f3",
+      "currentSha256": "17df40a6e8584fa494da1b45ceb1c7e74ad640e203e6476edfc273517d2304f3",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/lib/destinations/destinations.test.ts",
+      "beforeSha256": "3807dbc2e828deb4ccee34cc10a2f12912947bddf1445c02a659f496822fd3f7",
+      "currentSha256": "3807dbc2e828deb4ccee34cc10a2f12912947bddf1445c02a659f496822fd3f7",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/lib/destinations/index.ts",
+      "beforeSha256": "3d3a849ec52e03853623e31d9db4246174c74f6cba299c59dbe7e9c8d410d664",
+      "currentSha256": "3d3a849ec52e03853623e31d9db4246174c74f6cba299c59dbe7e9c8d410d664",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/lib/destinations/intents.ts",
+      "beforeSha256": "526c6aefc1594f8af6ee15175af5f88cc925fbf61ecd9c080ab65e858d4cac12",
+      "currentSha256": "526c6aefc1594f8af6ee15175af5f88cc925fbf61ecd9c080ab65e858d4cac12",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/lib/destinations/safe-href.ts",
+      "beforeSha256": "65b8ebf84118126cad671ab92b846cfb905cc84d412d977d67b4f9c7c8e04866",
+      "currentSha256": "65b8ebf84118126cad671ab92b846cfb905cc84d412d977d67b4f9c7c8e04866",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/lib/editorial-feed.test.ts",
+      "beforeSha256": "64c96daf8535e2d1b7287852827ae12f4698fddceea1acf8ff14de4bc1f818db",
+      "currentSha256": "64c96daf8535e2d1b7287852827ae12f4698fddceea1acf8ff14de4bc1f818db",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/lib/editorial-feed.ts",
+      "beforeSha256": "7b2c56b7a2fb5629b4b0769176c47de41ec0d9b7d985220495b5293a9696a4f1",
+      "currentSha256": "7b2c56b7a2fb5629b4b0769176c47de41ec0d9b7d985220495b5293a9696a4f1",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/lib/server/journal-feed.ts",
+      "beforeSha256": "b48deba28004bc61785f1566dee32ea1df448ba07df8679c38fff553e77bfe67",
+      "currentSha256": "b48deba28004bc61785f1566dee32ea1df448ba07df8679c38fff553e77bfe67",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/lib/server/magazine-fixture.ts",
+      "beforeSha256": "eaf3e5becbfa9c1f50ffcf2682c4553249763f17d2ddf85927e001daee78a378",
+      "currentSha256": "eaf3e5becbfa9c1f50ffcf2682c4553249763f17d2ddf85927e001daee78a378",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/lib/server/magazine-publication.ts",
+      "beforeSha256": "2b3429b1e511703643334db968bf2ea096a96109a39363d9d43d831d8f59cc0d",
+      "currentSha256": "2b3429b1e511703643334db968bf2ea096a96109a39363d9d43d831d8f59cc0d",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/lib/server/magazine-transport.ts",
+      "beforeSha256": "fb0ec6c047171c7509990b72a29077355ea83fd17e223bb03393de3c3aec1095",
+      "currentSha256": "fb0ec6c047171c7509990b72a29077355ea83fd17e223bb03393de3c3aec1095",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/styles/design-system.module.css",
+      "beforeSha256": "0af18266c88577601ac36dbeb7678af12e8ec599a49b2fad5e82b60e1671c5ac",
+      "currentSha256": "0af18266c88577601ac36dbeb7678af12e8ec599a49b2fad5e82b60e1671c5ac",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/src/test-setup.ts",
+      "beforeSha256": "475c7500129ce15530c7b8070b2838a840f96ac75ce83a0a413ef66ae24b5d64",
+      "currentSha256": "475c7500129ce15530c7b8070b2838a840f96ac75ce83a0a413ef66ae24b5d64",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/tsconfig.json",
+      "beforeSha256": "94cd4b2ac2a43c361a42d37912546d2721e6b4e60f66f15da24892cffdb8b6f8",
+      "currentSha256": "94cd4b2ac2a43c361a42d37912546d2721e6b4e60f66f15da24892cffdb8b6f8",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/vitest.architecture.config.ts",
+      "beforeSha256": "0f1de1acb78253321785de8298787ff62c744ab3128c5afb711b82aa8a512bdf",
+      "currentSha256": "0f1de1acb78253321785de8298787ff62c744ab3128c5afb711b82aa8a512bdf",
+      "unchanged": true
+    },
+    {
+      "path": "apps/website/vitest.config.ts",
+      "beforeSha256": "4f3a67242ff8be8c1a95f0a447768eb8e018565cc0a64b862a9abaabd3fabddd",
+      "currentSha256": "4f3a67242ff8be8c1a95f0a447768eb8e018565cc0a64b862a9abaabd3fabddd",
+      "unchanged": true
+    }
+  ]
+}

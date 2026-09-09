@@ -1,0 +1,62 @@
+{
+  "scope": "Track A local Journal read contract; production unarmed",
+  "recordedAt": "2026-09-06T19:05:44.122Z",
+  "worktree": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro",
+  "branch": "codex/website-pro-continuation",
+  "base": "b740b2cc3e94b1a46c9e9811bb369289fc21ea3d",
+  "files": [
+    {
+      "path": "apps/bali-zero-magazine/lib/contracts/website-read.ts",
+      "lines": 114,
+      "sha256": "57704dc06525abfad3b9199992f974ae7dcc53e5f7b1b48f2172f669a5055619"
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/website-read-authority.ts",
+      "lines": 228,
+      "sha256": "dc11f112970d80629bb88d04414e57ac3450d00aee7b8cd5ce66a0bb95d0bde5"
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/verified-media-bytes.ts",
+      "lines": 53,
+      "sha256": "0b694686c5cf5c039cde632eabb265471b57c8bb39519cd2d335baebcceffdb5"
+    },
+    {
+      "path": "apps/bali-zero-magazine/lib/server/media.ts",
+      "lines": 518,
+      "sha256": "4fa416a89680907a7d3028e9a34d6c0cd9e46ffd95ceb02ff7d6d4e04baecec4"
+    },
+    {
+      "path": "apps/website/src/lib/server/magazine-transport.ts",
+      "lines": 132,
+      "sha256": "fb0ec6c047171c7509990b72a29077355ea83fd17e223bb03393de3c3aec1095"
+    },
+    {
+      "path": "apps/website/proofs/architecture/magazine-transport.test.tsx",
+      "lines": 435,
+      "sha256": "8692240030af76633c1f0089acf986c5c7561fa27efd2ed0a9bb7cede926e57c"
+    },
+    {
+      "path": "apps/website/proofs/architecture/magazine/http-fixture.ts",
+      "lines": 113,
+      "sha256": "5236da00af6425fe28bd23995aefe1b2e2713e4ff3585351a08bb927f38cc0e6"
+    },
+    {
+      "path": "apps/website/vitest.architecture.config.ts",
+      "lines": 21,
+      "sha256": "0f1de1acb78253321785de8298787ff62c744ab3128c5afb711b82aa8a512bdf"
+    }
+  ],
+  "verification": [
+    {
+      "command": "npm --prefix apps/website run test:architecture -- magazine-transport.test.tsx",
+      "result": "46/46 passed",
+      "durationSeconds": 11.75
+    },
+    {
+      "command": "npm --prefix apps/website run typecheck",
+      "exitCode": 0,
+      "note": "After server-only source marker and installed guard semantics proof."
+    }
+  ],
+  "independentReview": "Await independent reviewer verdict; not self-certified"
+}

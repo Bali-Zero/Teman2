@@ -1,0 +1,75 @@
+{
+  "scope": "Independent local Track A boundary test; no production or full negative Next client build",
+  "reviewer": "/root/local_transport_consumer",
+  "node": "v26.5.0",
+  "startedAt": "2026-09-06T19:05:57.025Z",
+  "finishedAt": "2026-09-06T19:05:59.350Z",
+  "command": "npm run test:architecture -- proofs/architecture/magazine-transport.test.tsx",
+  "cwd": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/apps/website",
+  "exitCode": 0,
+  "signal": null,
+  "error": null,
+  "sourceStable": true,
+  "files": {
+    "apps/bali-zero-magazine/lib/contracts/website-read.ts": {
+      "sha256": "57704dc06525abfad3b9199992f974ae7dcc53e5f7b1b48f2172f669a5055619",
+      "bytes": 6910
+    },
+    "apps/bali-zero-magazine/lib/server/website-read-authority.ts": {
+      "sha256": "dc11f112970d80629bb88d04414e57ac3450d00aee7b8cd5ce66a0bb95d0bde5",
+      "bytes": 15566
+    },
+    "apps/bali-zero-magazine/lib/server/verified-media-bytes.ts": {
+      "sha256": "0b694686c5cf5c039cde632eabb265471b57c8bb39519cd2d335baebcceffdb5",
+      "bytes": 1911
+    },
+    "apps/bali-zero-magazine/lib/server/media.ts": {
+      "sha256": "4fa416a89680907a7d3028e9a34d6c0cd9e46ffd95ceb02ff7d6d4e04baecec4",
+      "bytes": 17114
+    },
+    "apps/bali-zero-magazine/lib/server/hmac.ts": {
+      "sha256": "111b4c148d2b2fb14351685d7b09d99b6d375715790be0941ca097705b8ef7aa",
+      "bytes": 12498
+    },
+    "apps/bali-zero-magazine/lib/server/security.ts": {
+      "sha256": "b2bd1cfbd77a9a7ed3555bd081fd24ee8cbdd91791ff92d15aa334031a4ad48a",
+      "bytes": 3699
+    },
+    "apps/bali-zero-magazine/lib/server/asset-eligibility.ts": {
+      "sha256": "c101fc92f9a8f97d96112d3a88adaa4d1cb25ea217c5398e627577a056e42a7d",
+      "bytes": 2245
+    },
+    "apps/website/src/lib/server/magazine-transport.ts": {
+      "sha256": "fb0ec6c047171c7509990b72a29077355ea83fd17e223bb03393de3c3aec1095",
+      "bytes": 8193
+    },
+    "apps/website/proofs/architecture/magazine-transport.test.tsx": {
+      "sha256": "8692240030af76633c1f0089acf986c5c7561fa27efd2ed0a9bb7cede926e57c",
+      "bytes": 27640
+    },
+    "apps/website/proofs/architecture/magazine/http-fixture.ts": {
+      "sha256": "5236da00af6425fe28bd23995aefe1b2e2713e4ff3585351a08bb927f38cc0e6",
+      "bytes": 7649
+    },
+    "apps/website/vitest.architecture.config.ts": {
+      "sha256": "0f1de1acb78253321785de8298787ff62c744ab3128c5afb711b82aa8a512bdf",
+      "bytes": 737
+    },
+    "apps/website/src/lib/server/journal-feed.ts": {
+      "sha256": "b48deba28004bc61785f1566dee32ea1df448ba07df8679c38fff553e77bfe67",
+      "bytes": 560
+    },
+    "apps/website/src/lib/server/magazine-fixture.ts": {
+      "sha256": "eaf3e5becbfa9c1f50ffcf2682c4553249763f17d2ddf85927e001daee78a378",
+      "bytes": 11077
+    },
+    "apps/website/src/lib/editorial-feed.ts": {
+      "sha256": "7b2c56b7a2fb5629b4b0769176c47de41ec0d9b7d985220495b5293a9696a4f1",
+      "bytes": 9435
+    },
+    "apps/website/src/components/journal/JournalIndex.tsx": {
+      "sha256": "e45fa63e8d076ccf66805527294ed64864c2de4b2aae31d70f29ae94d2ac3c40",
+      "bytes": 5959
+    }
+  }
+}

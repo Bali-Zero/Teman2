@@ -1,0 +1,10 @@
+{
+  "command": "npm --prefix apps/website run typecheck",
+  "cwd": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro",
+  "startedAt": "2026-09-06T19:10:56.278Z",
+  "finishedAt": "2026-09-06T19:10:57.791Z",
+  "exitCode": 0,
+  "signal": null,
+  "log": "apps/website/docs/reviews/2026-09-07-full-site-review/integrated-typecheck.log",
+  "sha256": "6d32a87cb757acf1234ccd5182eb619acdbf1a699d686ca8fd6eb971de79e98e"
+}

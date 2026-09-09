@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-09-06T19:09:28.333Z",
+  "pid": 12876,
+  "ppid": 12825,
+  "cwd": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/apps/website",
+  "parentCwd": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro",
+  "processLine": "12876 12825 next-server (v16.3.1)",
+  "parentLine": "12825  1126 npm start",
+  "listing": "COMMAND   PID      USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME\nnode    12876 nuzantara   12u  IPv4 0x690690426ca4915b      0t0  TCP 127.0.0.1:3100 (LISTEN)\n",
+  "action": "SIGTERM only verified listener and launcher"
+}

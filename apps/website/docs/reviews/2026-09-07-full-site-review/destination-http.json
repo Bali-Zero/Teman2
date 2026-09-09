@@ -1,0 +1,303 @@
+{
+  "generatedAt": "2026-09-06T18:50:07.876Z",
+  "scope": "Public destination reachability only; no form submission, authentication, account access, messages, or client actions.",
+  "limits": [
+    "HTTP and server-rendered title/H1 are not hydrated browser or workflow proof.",
+    "Public tool legal, price and performance claims were not validated or copied into R19.",
+    "Redirect query strings are omitted; no response cookies, bodies or credentials are retained."
+  ],
+  "results": [
+    {
+      "id": "evoa",
+      "requestedUrl": "https://balizero.com/visa/voa",
+      "checkedAt": "2026-09-06T18:50:00.782Z",
+      "method": "GET without credentials or browser cookies",
+      "redirects": [],
+      "status": 200,
+      "finalUrl": "https://balizero.com/visa/voa",
+      "contentType": "text/html; charset=utf-8",
+      "authChallengePresent": false,
+      "title": "Visa on Arrival — Bali Zero",
+      "h1": [
+        "Visa on Arrival"
+      ],
+      "hasPasswordInput": false,
+      "hasEmailInput": false,
+      "rawBodyPersisted": false
+    },
+    {
+      "id": "secondHomeStudio",
+      "requestedUrl": "https://balizero.com/visa/second-home/studio",
+      "checkedAt": "2026-09-06T18:50:00.830Z",
+      "method": "GET without credentials or browser cookies",
+      "redirects": [],
+      "status": 200,
+      "finalUrl": "https://balizero.com/visa/second-home/studio",
+      "contentType": "text/html; charset=utf-8",
+      "authChallengePresent": false,
+      "title": "Second Home Studio — check your fit",
+      "h1": [
+        "Check your fit"
+      ],
+      "hasPasswordInput": false,
+      "hasEmailInput": false,
+      "rawBodyPersisted": false
+    },
+    {
+      "id": "myBaliZero",
+      "requestedUrl": "https://my.balizero.com/",
+      "checkedAt": "2026-09-06T18:50:00.833Z",
+      "method": "GET without credentials or browser cookies",
+      "redirects": [
+        {
+          "status": 307,
+          "url": "https://my.balizero.com/portal/login"
+        },
+        {
+          "status": 308,
+          "url": "https://my.balizero.com/portal/login-upgraded"
+        }
+      ],
+      "status": 200,
+      "finalUrl": "https://my.balizero.com/portal/login-upgraded",
+      "contentType": "text/html; charset=utf-8",
+      "authChallengePresent": false,
+      "title": "Login | Bali Zero",
+      "h1": [
+        "Your Bali Life."
+      ],
+      "hasPasswordInput": false,
+      "hasEmailInput": true,
+      "rawBodyPersisted": false
+    },
+    {
+      "id": "visaOracle",
+      "requestedUrl": "https://visa.balizero.com/",
+      "checkedAt": "2026-09-06T18:50:02.422Z",
+      "method": "GET without credentials or browser cookies",
+      "redirects": [
+        {
+          "status": 302,
+          "url": "https://balizero.com/visa"
+        }
+      ],
+      "status": 200,
+      "finalUrl": "https://balizero.com/visa",
+      "contentType": "text/html; charset=utf-8",
+      "authChallengePresent": false,
+      "title": "Bali Visa Eligibility & Selection | Bali Zero",
+      "h1": [
+        "24 visa types. One fits you."
+      ],
+      "hasPasswordInput": false,
+      "hasEmailInput": false,
+      "rawBodyPersisted": false
+    },
+    {
+      "id": "kbliNavigator",
+      "requestedUrl": "https://balizero.com/kbli",
+      "checkedAt": "2026-09-06T18:50:02.423Z",
+      "method": "GET without credentials or browser cookies",
+      "redirects": [],
+      "status": 200,
+      "finalUrl": "https://balizero.com/kbli",
+      "contentType": "text/html; charset=utf-8",
+      "authChallengePresent": false,
+      "title": "KBLI 2025 Navigator — Indonesia Business Classification Guide | Bali Zero",
+      "h1": [
+        "KBLI 2025"
+      ],
+      "hasPasswordInput": false,
+      "hasEmailInput": false,
+      "rawBodyPersisted": false
+    },
+    {
+      "id": "taxCalendar",
+      "requestedUrl": "https://tax.balizero.com/",
+      "checkedAt": "2026-09-06T18:50:02.424Z",
+      "method": "GET without credentials or browser cookies",
+      "redirects": [],
+      "status": 200,
+      "finalUrl": "https://tax.balizero.com/",
+      "contentType": "text/html; charset=utf-8",
+      "authChallengePresent": false,
+      "title": "Tax Compliance Calendar | Bali Zero",
+      "h1": [
+        "Tax Compliance Calendar"
+      ],
+      "hasPasswordInput": false,
+      "hasEmailInput": false,
+      "rawBodyPersisted": false
+    },
+    {
+      "id": "propertyCheck",
+      "requestedUrl": "https://balizero.com/property/eligibility",
+      "checkedAt": "2026-09-06T18:50:03.924Z",
+      "method": "GET without credentials or browser cookies",
+      "redirects": [],
+      "status": 200,
+      "finalUrl": "https://balizero.com/property/eligibility",
+      "contentType": "text/html; charset=utf-8",
+      "authChallengePresent": false,
+      "title": "Property Eligibility Check — Bali Zoning & Legal Structure | Bali Zero",
+      "h1": [
+        "Property Eligibility Check"
+      ],
+      "hasPasswordInput": false,
+      "hasEmailInput": false,
+      "rawBodyPersisted": false
+    },
+    {
+      "id": "legacyJournal",
+      "requestedUrl": "https://balizero.com/news",
+      "checkedAt": "2026-09-06T18:50:03.925Z",
+      "method": "GET without credentials or browser cookies",
+      "redirects": [],
+      "status": 200,
+      "finalUrl": "https://balizero.com/news",
+      "contentType": "text/html; charset=utf-8",
+      "authChallengePresent": false,
+      "title": "Indonesia News & Regulatory Intelligence | Bali Zero",
+      "h1": [],
+      "hasPasswordInput": false,
+      "hasEmailInput": false,
+      "rawBodyPersisted": false
+    },
+    {
+      "id": "googleReviews",
+      "requestedUrl": "https://maps.app.goo.gl/whiMUTNchcDR5naz8",
+      "checkedAt": "2026-09-06T18:50:03.925Z",
+      "method": "GET without credentials or browser cookies",
+      "redirects": [
+        {
+          "status": 302,
+          "url": "https://www.google.com/maps/place/Bali+Zero/@-8.6481094,115.1588939,17z/data=!3m1!4b1!4m6!3m5!1s0x2dd247b7b741eb69:0xb3ec70896b8f8fbb!8m2!3d-8.6481094!4d115.1614688!16s%2Fg%2F11smvrwv0x?[query omitted]"
+        }
+      ],
+      "status": 200,
+      "finalUrl": "https://www.google.com/maps/place/Bali+Zero/@-8.6481094,115.1588939,17z/data=!3m1!4b1!4m6!3m5!1s0x2dd247b7b741eb69:0xb3ec70896b8f8fbb!8m2!3d-8.6481094!4d115.1614688!16s%2Fg%2F11smvrwv0x?[query omitted]",
+      "contentType": "text/html; charset=UTF-8",
+      "authChallengePresent": false,
+      "title": "Google Maps",
+      "h1": [],
+      "hasPasswordInput": false,
+      "hasEmailInput": false,
+      "rawBodyPersisted": false
+    },
+    {
+      "id": "googleLocation",
+      "requestedUrl": "https://maps.google.com/?q=Bali+Zero+Kerobokan",
+      "checkedAt": "2026-09-06T18:50:05.763Z",
+      "method": "GET without credentials or browser cookies",
+      "redirects": [
+        {
+          "status": 302,
+          "url": "https://maps.google.com/maps?[query omitted]"
+        },
+        {
+          "status": 302,
+          "url": "https://www.google.com/maps?[query omitted]"
+        }
+      ],
+      "status": 200,
+      "finalUrl": "https://www.google.com/maps?[query omitted]",
+      "contentType": "text/html; charset=UTF-8",
+      "authChallengePresent": false,
+      "title": "Google Maps",
+      "h1": [],
+      "hasPasswordInput": false,
+      "hasEmailInput": false,
+      "rawBodyPersisted": false
+    },
+    {
+      "id": "companyAbout",
+      "requestedUrl": "https://balizero.com/v2/company/about",
+      "checkedAt": "2026-09-06T18:50:05.765Z",
+      "method": "GET without credentials or browser cookies",
+      "redirects": [],
+      "status": 200,
+      "finalUrl": "https://balizero.com/v2/company/about",
+      "contentType": "text/html; charset=utf-8",
+      "authChallengePresent": false,
+      "title": "About Bali Zero",
+      "h1": [
+        "We spend our days fixing what most people get wrong in their first month in Bali."
+      ],
+      "hasPasswordInput": false,
+      "hasEmailInput": false,
+      "rawBodyPersisted": false
+    },
+    {
+      "id": "legacyTeam",
+      "requestedUrl": "https://balizero.com/team",
+      "checkedAt": "2026-09-06T18:50:05.765Z",
+      "method": "GET without credentials or browser cookies",
+      "redirects": [],
+      "status": 200,
+      "finalUrl": "https://balizero.com/team",
+      "contentType": "text/html; charset=utf-8",
+      "authChallengePresent": false,
+      "title": "Team | Bali Zero",
+      "h1": [
+        "Real people.Real licenses. Real files."
+      ],
+      "hasPasswordInput": false,
+      "hasEmailInput": false,
+      "rawBodyPersisted": false
+    },
+    {
+      "id": "privacy",
+      "requestedUrl": "https://balizero.com/v2/privacy",
+      "checkedAt": "2026-09-06T18:50:07.124Z",
+      "method": "GET without credentials or browser cookies",
+      "redirects": [],
+      "status": 200,
+      "finalUrl": "https://balizero.com/v2/privacy",
+      "contentType": "text/html; charset=utf-8",
+      "authChallengePresent": false,
+      "title": "Privacy Policy | Bali Zero",
+      "h1": [
+        "Privacy Policy"
+      ],
+      "hasPasswordInput": false,
+      "hasEmailInput": false,
+      "rawBodyPersisted": false
+    },
+    {
+      "id": "terms",
+      "requestedUrl": "https://balizero.com/v2/terms",
+      "checkedAt": "2026-09-06T18:50:07.141Z",
+      "method": "GET without credentials or browser cookies",
+      "redirects": [],
+      "status": 200,
+      "finalUrl": "https://balizero.com/v2/terms",
+      "contentType": "text/html; charset=utf-8",
+      "authChallengePresent": false,
+      "title": "Terms of Service | Bali Zero",
+      "h1": [
+        "Terms of Service"
+      ],
+      "hasPasswordInput": false,
+      "hasEmailInput": false,
+      "rawBodyPersisted": false
+    },
+    {
+      "id": "cookies",
+      "requestedUrl": "https://balizero.com/v2/cookies",
+      "checkedAt": "2026-09-06T18:50:07.141Z",
+      "method": "GET without credentials or browser cookies",
+      "redirects": [],
+      "status": 200,
+      "finalUrl": "https://balizero.com/v2/cookies",
+      "contentType": "text/html; charset=utf-8",
+      "authChallengePresent": false,
+      "title": "Cookie Policy | Bali Zero",
+      "h1": [
+        "Cookie Policy"
+      ],
+      "hasPasswordInput": false,
+      "hasEmailInput": false,
+      "rawBodyPersisted": false
+    }
+  ]
+}

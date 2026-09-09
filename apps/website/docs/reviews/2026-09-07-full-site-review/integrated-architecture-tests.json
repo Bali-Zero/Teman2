@@ -1,0 +1,10 @@
+{
+  "command": "npm --prefix apps/website run test:architecture",
+  "cwd": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro",
+  "startedAt": "2026-09-06T19:08:41.802Z",
+  "finishedAt": "2026-09-06T19:08:53.572Z",
+  "exitCode": 0,
+  "signal": null,
+  "log": "apps/website/docs/reviews/2026-09-07-full-site-review/integrated-architecture-tests.log",
+  "sha256": "c9aae5bd07fddd6cfa14c85fa5b6f8b8bd8e70774dae6f3e23b632280071c866"
+}

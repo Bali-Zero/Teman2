@@ -1,0 +1,27 @@
+{
+  "checkedAt": "2026-09-06T18:21:06.190Z",
+  "rows": [
+    {
+      "route": "/",
+      "status": 200,
+      "robots": "noindex, nofollow, noarchive",
+      "cache": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "fixtureNotice": true,
+      "fixtureStory": true,
+      "sampleMarker": true,
+      "containsInternalSentinel": false,
+      "canonicalClickable": false
+    },
+    {
+      "route": "/journal",
+      "status": 200,
+      "robots": "noindex, nofollow, noarchive",
+      "cache": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "fixtureNotice": true,
+      "fixtureStory": true,
+      "sampleMarker": true,
+      "containsInternalSentinel": false,
+      "canonicalClickable": false
+    }
+  ]
+}

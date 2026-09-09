@@ -1,0 +1,202 @@
+{
+  "startedAt": "2026-09-06T19:17:15.368Z",
+  "finishedAt": "2026-09-06T19:24:02.564Z",
+  "vendor": "Anthropic",
+  "route": "claude CLI / claude.ai firstParty MAX subscription; paid key and alternate endpoint env removed",
+  "cliVersion": "2.1.261 (Claude Code)",
+  "args": [
+    "--print",
+    "--model",
+    "opus",
+    "--effort",
+    "xhigh",
+    "--safe-mode",
+    "--restricted",
+    "--tools",
+    "Read",
+    "--allowedTools",
+    "Read",
+    "--permission-mode",
+    "dontAsk",
+    "--permission-prompts",
+    "none",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}",
+    "--no-session-persistence",
+    "--disable-slash-commands",
+    "--no-chrome",
+    "--output-format",
+    "stream-json",
+    "--verbose"
+  ],
+  "requestedModel": "opus",
+  "runtimeModels": [
+    "claude-opus-5",
+    "claude-haiku-4-5-20251001"
+  ],
+  "backendIdentityLimit": "Runtime model identifiers are reported by CLI/provider response; backend infrastructure is not independently attestable.",
+  "auth": {
+    "exitCode": 0,
+    "loggedIn": true,
+    "authMethod": "claude.ai",
+    "apiProvider": "firstParty",
+    "subscriptionType": "max"
+  },
+  "exitCode": 0,
+  "signal": null,
+  "timedOut": false,
+  "status": "success",
+  "isError": false,
+  "durationMs": 405577,
+  "numTurns": 51,
+  "observedTools": [
+    "Read"
+  ],
+  "restriction": "Read only; safe mode; restricted; strict empty MCP; no Chrome; no permission prompts; no session persistence. Runtime tool inventory recorded in sanitized trace. Not an independent OS sandbox penetration test.",
+  "inputPromptSha256": "c43b6a6f9852f82288497d49207baec1f91ae0f8ed21452ad4396dcea5e718bc",
+  "rawStreamSha256": "5ceae1a8bf8ceb2b7860a7e91fff39bf016e9d8a4a26efadaa1e3a701bb9bea8",
+  "rawStreamRetained": false,
+  "rawThoughtsRetained": false,
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderrBytes": 0,
+  "stderrRetained": false,
+  "parseErrors": 0,
+  "readInputs": [
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/metrics.json",
+      "sha256AtRead": "ae74456c16711be01abaa101c783c6cb0326f53da7091f3cdca192714b3a6e8d",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/focused-metrics.json",
+      "sha256AtRead": "595ba30801c83a675b10aa552ca851e7271882e35b32961060b01004c50ec4ad",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/home-1440-viewport.png",
+      "sha256AtRead": "d9c62974ab27eec0d6f7e43a202763c4b09afdaee6bfc541a964e677ccb80d92",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/home-390-viewport.png",
+      "sha256AtRead": "25c79311260b70a2c55bd46f5d6352c5d3243dd91cd6a7ec37e89a1cf2de5b10",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/home-tools-1440.png",
+      "sha256AtRead": "1558e5e37583757cb0ba5acdf47937d217e3853b3d07bab5d418b03f1bb6c166",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/home-evoa-390.png",
+      "sha256AtRead": "d8a4c4ecc1cd023369092b507296a064f7769a9266a96a4fde7cdfcada99b910",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/home-client-portal-1440.png",
+      "sha256AtRead": "0320dfa004ddbaa8e75611fc636d54a94e64ca2f9a31ad7e353bc875d0409cb7",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/home-390.png",
+      "sha256AtRead": "25ed881b880b5bf2de7df176e719d92add032d8675b2a91629e9c418d7160bf3",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/services-1440.png",
+      "sha256AtRead": "eff60101eee54e89ffe5581b31a8680d41b3bf7b127e5be0f63889243b05f789",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/services-390.png",
+      "sha256AtRead": "ed04aca024faef6a84668c31c94c2904e73d6fff8827ca358ab7e2656163139a",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/services-immigration-1440.png",
+      "sha256AtRead": "9dd3b45008136a89e1add6d8f4f11ee8859f518c5a38092789c2e6031489a693",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/services-company-setup-390.png",
+      "sha256AtRead": "9b7bd16c4292603169e7fb3b5f9acee79a3d1f1c197187704da934fbac9dc962",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/services-tax-390.png",
+      "sha256AtRead": "4e26ac1e3d74bb50a9778e09a2bf53c900aca7499185085d5a74504d65b22c3d",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/services-property-1440.png",
+      "sha256AtRead": "f93716a326849045a2b27c21adbc9f56c010a263750c36d76afb7c31bc8b3e03",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/team-1440.png",
+      "sha256AtRead": "14c1875a9206a57182f42e93652174c083f81c01768c10676b1c3e9866a31ae9",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/team-390.png",
+      "sha256AtRead": "7b49ba1bc381392cab2a1eb15b5f8829628c56c475af6e33ee3f10d543491154",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/journal-1440.png",
+      "sha256AtRead": "33cd047306a6d33b3a58a04789b6d0c689861ac21349c3b2535802d899cf3433",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/journal-390.png",
+      "sha256AtRead": "9878e54ff7e8299bac02fb43c9526d9ef35ef4ffdc952e29d38d76553d74ae46",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/home-menu-360.png",
+      "sha256AtRead": "02e01877bb0e5354f7efecedd7fce4bb5ebcbf2fef6b8062708173d1c481e03a",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/services-missing-review-probe-390.png",
+      "sha256AtRead": "e1bd437c59601cd6e4c1be80386341858b732e8f49a338b36018c1c4111c902c",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/apps/website/src/app/page.tsx",
+      "sha256AtRead": "6e2b90286d7f31bd2e2db71d8a36c9d694b9ea66f8b4b102f1b105c1886bf5f4",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/apps/website/src/components/Services.tsx",
+      "sha256AtRead": "88db9003fba2d4827ac3e8eda73cb1194749aa257fa469af4f0713698b25e62c",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/apps/website/src/app/globals.css",
+      "sha256AtRead": "c39d399553740e72aa6f54d61d81ef1e803bdfbf6e96d4d90efb717483ebb3a3",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/apps/website/src/components/entry.css",
+      "sha256AtRead": "dbd35c746ffa594c50bb45d649f0d8b85ae3cf02572f4505ddb64b12c40f7dad",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/final/home-client-portal-390.png",
+      "sha256AtRead": "81b0e8117fe365d5884e7dd7dbd5028f718b16700fd77bbdd7197080831612d5",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/apps/website/src/components/Team.module.css",
+      "sha256AtRead": "799ad2d8beb9513beb8085c4c5b0dfde0341f0565302a1eedddc655c9b8edec5",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/apps/website/src/app/not-found.tsx",
+      "sha256AtRead": "b1c859cf64e126eea5a4e83a2f49306cabf5989a611f79b1538d9b245e7d74a0",
+      "unchangedAtCompletion": true
+    }
+  ]
+}

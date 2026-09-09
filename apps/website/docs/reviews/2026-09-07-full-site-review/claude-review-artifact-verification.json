@@ -1,0 +1,32 @@
+{
+  "review": "initial full-site visual review",
+  "verifier": "/root/final_visual_receipt (review executor; did not author product code)",
+  "verificationMethod": "Read complete result and receipt, stat output files, and independently compute SHA-256 using shasum after CLI completion.",
+  "executionStatus": "success",
+  "acceptanceVerdict": "FAIL",
+  "blockingFinding": "Homepage Explore all services link is occluded by the lifted tool cards at desktop and tablet widths.",
+  "checkpointAllowed": false,
+  "artifacts": [
+    {"path": "claude-visual-review.md", "bytes": 4477, "sha256": "1f38e94250d351c735c2a670b81d5ac0a7a12f5251424f6979dc88b6f34b5af8"},
+    {"path": "claude-review-receipt.json", "bytes": 9447, "sha256": "2bc33470d93a5fef3510e65308b3f528b03095101d36c702e06a15efd002cd8d"},
+    {"path": "claude-tool-trace.json", "bytes": 7120, "sha256": "6b5a4c47509a13a73a87dbd26feef7c1a87990f7f116a3ffee769c8ac70b09e0"},
+    {"path": "claude-auth-route.json", "bytes": 129, "sha256": "e7554ed14fac6e49c76f4ec9ba6ff5736da17d82b2f117b9efe3ae5314f20849"}
+  ],
+  "runtimeIdentity": {
+    "initialModel": "claude-opus-5",
+    "reportedModelUsage": ["claude-opus-5", "claude-haiku-4-5-20251001"],
+    "limit": "Provider-reported identity only; the auxiliary model's role is not independently observable and does not constitute a separate reviewer."
+  },
+  "observability": {
+    "readInvocations": 39,
+    "uniqueReadPaths": 27,
+    "pngPaths": 19,
+    "metricsPaths": 2,
+    "sourcePaths": 6,
+    "readInputsStableAtCompletion": 27,
+    "toolFamily": "Read",
+    "rawThoughtsRetained": false,
+    "limit": "Tool invocations and local hashes were recorded; raw tool responses and raw stream were not persisted. Stable-at-completion is the runner's contemporaneous observation, not a claim that source can never change after this failed candidate."
+  },
+  "scopeLimit": "Static screenshot and source review, with partial main metrics and complete focused metrics. No live browser control, test execution, tablet PNG review, or production approval by Claude."
+}

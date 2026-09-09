@@ -1,0 +1,265 @@
+{
+  "scope": "Public server-rendered entry text and controls; no hydration or interaction and no form submission.",
+  "results": [
+    {
+      "requested": "https://balizero.com/visa/voa",
+      "checkedAt": "2026-09-06T18:57:27.264Z",
+      "finalUrl": "https://balizero.com/visa/voa",
+      "status": 200,
+      "title": "Visa on Arrival — Bali Zero",
+      "headings": [
+        "Visa on Arrival"
+      ],
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": null,
+          "label": "Open menu"
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Get a new Visa on ArrivalFirst time, or a fresh entry"
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Extend a Visa on Arrival I already haveYou're already in Indonesia"
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Next"
+        }
+      ],
+      "excerpt": "Step 1 of 4Your caseWhat are you here for?Get a new Visa on ArrivalFirst time, or a fresh entryExtend a Visa on Arrival I already haveYou're already in Indonesia— Purpose ↓Next"
+    },
+    {
+      "requested": "https://balizero.com/visa/second-home/studio",
+      "checkedAt": "2026-09-06T18:57:27.443Z",
+      "finalUrl": "https://balizero.com/visa/second-home/studio",
+      "status": 200,
+      "title": "Second Home Studio — check your fit",
+      "headings": [
+        "Check your fit",
+        "First, how old are you?"
+      ],
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": null,
+          "label": "Open menu"
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Under 55"
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "55–59"
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "60 or over"
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Back"
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Continue"
+        }
+      ],
+      "excerpt": "First, how old are you?Your age helps us show the routes that may apply to you.Why we askIndonesia has separate Second Home pathways for applicants aged 55 and over. Ages 55–59 require extra care because the regulation uses different age thresholds in different articles.Under 5555–5960 or overBackContinue"
+    },
+    {
+      "requested": "https://visa.balizero.com/",
+      "checkedAt": "2026-09-06T18:57:27.718Z",
+      "finalUrl": "https://balizero.com/visa",
+      "status": 200,
+      "title": "Bali Visa Eligibility & Selection | Bali Zero",
+      "headings": [
+        "24 visa types. One fits you."
+      ],
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": null,
+          "label": "Open menu"
+        }
+      ],
+      "excerpt": "Ambient · BaliAre you already in Indonesia?Yes, I'm hereTell us which visa and when you entered. We'll build your expiry timeline.→No, I'm planningAnswer 4 short questions. We'll recommend the right visa and show the cost.→Have a USD 130,000 deposit in your own name at a state-owned (BUMN) Indonesian bank, or a USD 1,000,000 completed strata unit? See the Second Home Visa (E33) →"
+    },
+    {
+      "requested": "https://balizero.com/kbli",
+      "checkedAt": "2026-09-06T18:57:28.242Z",
+      "finalUrl": "https://balizero.com/kbli",
+      "status": 200,
+      "title": "KBLI 2025 Navigator — Indonesia Business Classification Guide | Bali Zero",
+      "headings": [
+        "KBLI 2025",
+        "Browse by Sector"
+      ],
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": null,
+          "label": "Open menu"
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "label": "Search KBLI codes (e.g. restaurant, villas, consulting)..."
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Restaurant"
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Tech"
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Real Estate"
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Retail"
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Manufacturing"
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Cards"
+        },
+        {
+          "tag": "BUTTON",
+          "type": "button",
+          "label": "Table"
+        },
+        {
+          "tag": "BUTTON",
+          "type": null,
+          "label": "What KBLI do I need for a restaurant in Bali?"
+        },
+        {
+          "tag": "BUTTON",
+          "type": null,
+          "label": "Can foreigners own a villa rental business?"
+        },
+        {
+          "tag": "BUTTON",
+          "type": null,
+          "label": "What changed from KBLI 2020 to 2025?"
+        },
+        {
+          "tag": "BUTTON",
+          "type": null,
+          "label": "What's the difference between 55101 and 55203?"
+        },
+        {
+          "tag": "TEXTAREA",
+          "type": null,
+          "label": "Chat with Zantara AI"
+        },
+        {
+          "tag": "BUTTON",
+          "type": null,
+          "label": "Send message"
+        }
+      ],
+      "excerpt": "We don't sell services.We offer intelligence.KBLI 2025Your Indonesian Business Codes1,559 codes · 22 sectors · PMA rulesExplore All KBLI Sectors →Where do you want to begin?Starting a BusinessFind your KBLI code, check license requirements, understand risk class.Foreign Investor (PMA)See which sectors allow 100% foreign ownership and which are restricted.I Have a Specific CodeKnow what you need — go straight to the search.1,559KBLI Codes22Industry Sectors~1%Blocked in BaliAIPowered by ZantaraQuick:RestaurantTechReal EstateRetailManufacturingBrowse by Sector Cards TableSection AAgriculture, Forestry & Fishing122 codesSection BMining & Quarrying44 codesSection CManufacturing464 codesLargeSection DElectricity & Gas Supply16 codesSection EWater Supply & Waste Management19 codesSection FConstruction62 codesSection GWholesale & Retail Trade199 codesSection HTransportation & Storage103 codesSection IAccommodation & Food Service26 codesSection JInformation & Communication56 codesSection KFinancial & Insurance Activities102 codesSection LReal Estate Activities14 codesSection MProfessional, Scientific & Technical55 codesSection NAdministrative & Support Services55 codesSection OPublic Admini"
+    },
+    {
+      "requested": "https://tax.balizero.com/",
+      "checkedAt": "2026-09-06T18:57:28.466Z",
+      "finalUrl": "https://tax.balizero.com/",
+      "status": 200,
+      "title": "Tax Compliance Calendar | Bali Zero",
+      "headings": [
+        "Tax Compliance Calendar"
+      ],
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": null,
+          "label": "Open menu"
+        },
+        {
+          "tag": "BUTTON",
+          "type": null,
+          "label": "ALL"
+        },
+        {
+          "tag": "BUTTON",
+          "type": null,
+          "label": "PPh"
+        },
+        {
+          "tag": "BUTTON",
+          "type": null,
+          "label": "PPN"
+        },
+        {
+          "tag": "BUTTON",
+          "type": null,
+          "label": "LKPM"
+        },
+        {
+          "tag": "BUTTON",
+          "type": null,
+          "label": "PB1"
+        },
+        {
+          "tag": "SELECT",
+          "type": null,
+          "label": "All regenciesBadungGianyar"
+        }
+      ],
+      "excerpt": "Tax Compliance CalendarDeadlines, reminders and compliance for businesses in Bali.ALLPPhPPNLKPMPB1All regenciesBadungGianyarExport iCaloverduePPh 25 — monthlyPPhPayment due by the 15th of the following month (JCSS 2025 shifted it from the 10th to the 15th).Delegate to usoverduePPN SPT MasaPPNVAT return (SPT Masa) due by the end of the following month.Delegate to usoverdueLKPM Q1 2026LKPMQuarterly investment activity report (Laporan Kegiatan Penanaman Modal).Delegate to usoverduePB1 BadungPB1 · BadungHotel and restaurant tax, 10%.Delegate to usoverduePB1 GianyarPB1 · GianyarPB1 for Gianyar regency.Delegate to usoverdueSPT Tahunan — Individual 2025PPhExtended to April 30 (was March 31).Delegate to us"
+    },
+    {
+      "requested": "https://balizero.com/property/eligibility",
+      "checkedAt": "2026-09-06T18:57:28.570Z",
+      "finalUrl": "https://balizero.com/property/eligibility",
+      "status": 200,
+      "title": "Property Eligibility Check — Bali Zoning & Legal Structure | Bali Zero",
+      "headings": [
+        "Property Eligibility Check"
+      ],
+      "controls": [
+        {
+          "tag": "BUTTON",
+          "type": null,
+          "label": "Open menu"
+        },
+        {
+          "tag": "INPUT",
+          "type": null,
+          "label": "Paste from Google Maps (e.g. 8°39'17.4\"S 115°08'22.3\"E) or lat, lng"
+        },
+        {
+          "tag": "BUTTON",
+          "type": null,
+          "label": "Analyze"
+        }
+      ],
+      "excerpt": "Property Eligibility CheckEnter Bali property coordinates to receive zoning classification, eligible legal structure (Hak Pakai / HGB via PMA / leasehold 30yr), applicable taxes (PBB, BPHTB), and risk score.Analyze"
+    }
+  ]
+}

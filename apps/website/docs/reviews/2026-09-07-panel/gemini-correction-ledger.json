@@ -1,0 +1,142 @@
+[
+  {
+    "conversation_id": "f270e12b-943a-4b20-9df4-62c1ce1a0a1e",
+    "step_index": 2,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "duration_seconds": 4.080989,
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "006/PUU-II/2004 Article 31 UU 18/2003"
+      }
+    }
+  },
+  {
+    "conversation_id": "f270e12b-943a-4b20-9df4-62c1ce1a0a1e",
+    "step_index": 3,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "duration_seconds": 6.491308,
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "\"PMK 55/2026\" site:jdih.kemenkeu.go.id"
+      }
+    }
+  },
+  {
+    "conversation_id": "f270e12b-943a-4b20-9df4-62c1ce1a0a1e",
+    "step_index": 4,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "duration_seconds": 10.103553,
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "\"measuring service success\" site:gov.uk/service-manual"
+      }
+    }
+  },
+  {
+    "conversation_id": "f270e12b-943a-4b20-9df4-62c1ce1a0a1e",
+    "step_index": 5,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "duration_seconds": 13.713993,
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "\"how to write a start page\" site:gov.uk/service-manual"
+      }
+    }
+  },
+  {
+    "conversation_id": "f270e12b-943a-4b20-9df4-62c1ce1a0a1e",
+    "step_index": 6,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "duration_seconds": 18.166818,
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "Emerhub Indonesia visa services pricing"
+      }
+    }
+  },
+  {
+    "conversation_id": "f270e12b-943a-4b20-9df4-62c1ce1a0a1e",
+    "step_index": 7,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "duration_seconds": 21.332298,
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "LetsMoveIndonesia visa services pricing"
+      }
+    }
+  },
+  {
+    "conversation_id": "f270e12b-943a-4b20-9df4-62c1ce1a0a1e",
+    "step_index": 9,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "duration_seconds": 2.913321,
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "\"Putusan Mahkamah Konstitusi Nomor 006/PUU-II/2004\" filetype:pdf OR site:mkri.id"
+      }
+    }
+  },
+  {
+    "conversation_id": "f270e12b-943a-4b20-9df4-62c1ce1a0a1e",
+    "step_index": 10,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "duration_seconds": 6.093856,
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "\"PMK 55/2026\" site:jdih.kemenkeu.go.id"
+      }
+    }
+  },
+  {
+    "conversation_id": "f270e12b-943a-4b20-9df4-62c1ce1a0a1e",
+    "step_index": 11,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "duration_seconds": 10.340588,
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "\"Measuring service success\" site:gov.uk/service-manual"
+      }
+    }
+  },
+  {
+    "conversation_id": "f270e12b-943a-4b20-9df4-62c1ce1a0a1e",
+    "step_index": 17,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "read_url_content",
+    "duration_seconds": 0.09073,
+    "tool_info": {
+      "name": "read_url_content",
+      "parameters": {
+        "Url": "https://design-system.service.gov.uk/patterns/start-using-a-service/"
+      }
+    }
+  }
+]

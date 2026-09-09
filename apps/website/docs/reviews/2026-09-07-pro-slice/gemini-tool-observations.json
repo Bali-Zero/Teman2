@@ -1,0 +1,51 @@
+{
+  "provenance": "Observed agy stream events, not inferred from the final answer.",
+  "tool_response_bodies_exported": false,
+  "completed_calls": [
+    {
+      "original_stream_line": 5,
+      "step_index": 2,
+      "tool_name": "search_web",
+      "state": "DONE",
+      "parameters": {
+        "query": "\"Cross-Origin-Resource-Policy\" site:developer.mozilla.org"
+      }
+    },
+    {
+      "original_stream_line": 7,
+      "step_index": 3,
+      "tool_name": "search_web",
+      "state": "DONE",
+      "parameters": {
+        "query": "\"connection\" site:nextjs.org/docs"
+      }
+    },
+    {
+      "original_stream_line": 9,
+      "step_index": 4,
+      "tool_name": "search_web",
+      "state": "DONE",
+      "parameters": {
+        "query": "\"D1\" \"Sessions\" site:developers.cloudflare.com"
+      }
+    },
+    {
+      "original_stream_line": 12,
+      "step_index": 6,
+      "tool_name": "read_url_content",
+      "state": "DONE",
+      "parameters": {
+        "Url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cross-Origin-Resource-Policy"
+      }
+    },
+    {
+      "original_stream_line": 14,
+      "step_index": 7,
+      "tool_name": "read_url_content",
+      "state": "DONE",
+      "parameters": {
+        "Url": "https://nextjs.org/docs/app/api-reference/functions/connection"
+      }
+    }
+  ]
+}

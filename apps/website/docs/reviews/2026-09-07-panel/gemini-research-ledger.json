@@ -1,0 +1,244 @@
+[
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 2,
+    "state": "ACTIVE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "\"fee transparency\" \"tax consultant\" indonesia regulation advertising"
+      }
+    }
+  },
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 2,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "duration_seconds": 6.409639,
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "\"fee transparency\" \"tax consultant\" indonesia regulation advertising"
+      }
+    }
+  },
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 3,
+    "state": "ACTIVE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "site:bps.go.id \"izin tinggal\" OR \"kitas\" bali kewarganegaraan"
+      }
+    }
+  },
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 3,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "duration_seconds": 8.69566,
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "site:bps.go.id \"izin tinggal\" OR \"kitas\" bali kewarganegaraan"
+      }
+    }
+  },
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 4,
+    "state": "ACTIVE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "site:imigrasi.go.id statistik izin tinggal terbatas WNA bali"
+      }
+    }
+  },
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 4,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "duration_seconds": 11.128637,
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "site:imigrasi.go.id statistik izin tinggal terbatas WNA bali"
+      }
+    }
+  },
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 5,
+    "state": "ACTIVE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "\"gov.uk\" service design \"eligibility\" tool conversion rate"
+      }
+    }
+  },
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 5,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "\"gov.uk\" service design \"eligibility\" tool conversion rate"
+      }
+    }
+  },
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 6,
+    "state": "ACTIVE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "site:emerhub.com pricing OR fees bali"
+      }
+    }
+  },
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 6,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "duration_seconds": 20.003045,
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "site:emerhub.com pricing OR fees bali"
+      }
+    }
+  },
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 7,
+    "state": "ACTIVE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "site:letsmoveindonesia.com pricing OR fees"
+      }
+    }
+  },
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 7,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "duration_seconds": 24.273037,
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "site:letsmoveindonesia.com pricing OR fees"
+      }
+    }
+  },
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 9,
+    "state": "ACTIVE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "\"UU Advokat\" \"legal advice\" indonesia unlicensed \"legal consultant\""
+      }
+    }
+  },
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 9,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "duration_seconds": 5.933423,
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "\"UU Advokat\" \"legal advice\" indonesia unlicensed \"legal consultant\""
+      }
+    }
+  },
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 10,
+    "state": "ACTIVE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "\"LKPM\" \"BPJS\" \"SPT\" compliance recurrence \"retention\" advisory"
+      }
+    }
+  },
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 10,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "duration_seconds": 11.46771,
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "\"LKPM\" \"BPJS\" \"SPT\" compliance recurrence \"retention\" advisory"
+      }
+    }
+  },
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 11,
+    "state": "ACTIVE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "site:cekindo.com \"disclaimer\" OR \"legal advice\""
+      }
+    }
+  },
+  {
+    "conversation_id": "b3655070-00af-4432-b976-e15acfcedfe6",
+    "step_index": 11,
+    "state": "DONE",
+    "step_type": "tool",
+    "tool_name": "search_web",
+    "duration_seconds": 15.043831,
+    "tool_info": {
+      "name": "search_web",
+      "parameters": {
+        "query": "site:cekindo.com \"disclaimer\" OR \"legal advice\""
+      }
+    }
+  }
+]

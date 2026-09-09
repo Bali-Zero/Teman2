@@ -1,0 +1,282 @@
+{
+  "generatedAt": "2026-09-06T18:54:47.164Z",
+  "preview": "http://127.0.0.1:3100",
+  "phase": "Inherited built preview before coordinated Track A/B build and restart; does not contain newly written UI fixes.",
+  "limits": [
+    "Server response HTML only, not hydrated DOM or browser interaction.",
+    "Streamed not-found markup may arrive in framework transport rather than parsed document landmarks.",
+    "Parent CUA separately observed a visible default 404 on the unknown service slug."
+  ],
+  "results": [
+    {
+      "path": "/",
+      "startedAt": "2026-09-06T18:54:45.949Z",
+      "status": 200,
+      "robotsHeader": "noindex, nofollow, noarchive",
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "robotsMeta": [
+        "noindex, nofollow"
+      ],
+      "h1": [
+        "What’s your next stepin Indonesia?"
+      ],
+      "main": [
+        {
+          "id": "main",
+          "tabIndexAttribute": null
+        }
+      ],
+      "formCount": 0,
+      "inputCount": 0,
+      "linkCount": 53,
+      "buttonCount": 6,
+      "unresolvedSameDocumentFragments": []
+    },
+    {
+      "path": "/services",
+      "startedAt": "2026-09-06T18:54:46.487Z",
+      "status": 200,
+      "robotsHeader": "noindex, nofollow, noarchive",
+      "cacheControl": "s-maxage=31536000",
+      "robotsMeta": [
+        "noindex, nofollow"
+      ],
+      "h1": [
+        "Start with the decision in front of you."
+      ],
+      "main": [
+        {
+          "id": "main",
+          "tabIndexAttribute": null
+        }
+      ],
+      "formCount": 0,
+      "inputCount": 0,
+      "linkCount": 12,
+      "buttonCount": 0,
+      "unresolvedSameDocumentFragments": []
+    },
+    {
+      "path": "/services/immigration",
+      "startedAt": "2026-09-06T18:54:46.559Z",
+      "status": 200,
+      "robotsHeader": "noindex, nofollow, noarchive",
+      "cacheControl": "s-maxage=31536000",
+      "robotsMeta": [
+        "noindex, nofollow"
+      ],
+      "h1": [
+        "Immigration and residence"
+      ],
+      "main": [
+        {
+          "id": "main",
+          "tabIndexAttribute": null
+        }
+      ],
+      "formCount": 0,
+      "inputCount": 0,
+      "linkCount": 12,
+      "buttonCount": 0,
+      "unresolvedSameDocumentFragments": []
+    },
+    {
+      "path": "/services/company-setup",
+      "startedAt": "2026-09-06T18:54:46.608Z",
+      "status": 200,
+      "robotsHeader": "noindex, nofollow, noarchive",
+      "cacheControl": "s-maxage=31536000",
+      "robotsMeta": [
+        "noindex, nofollow"
+      ],
+      "h1": [
+        "Company setup"
+      ],
+      "main": [
+        {
+          "id": "main",
+          "tabIndexAttribute": null
+        }
+      ],
+      "formCount": 0,
+      "inputCount": 0,
+      "linkCount": 12,
+      "buttonCount": 0,
+      "unresolvedSameDocumentFragments": []
+    },
+    {
+      "path": "/services/tax",
+      "startedAt": "2026-09-06T18:54:46.666Z",
+      "status": 200,
+      "robotsHeader": "noindex, nofollow, noarchive",
+      "cacheControl": "s-maxage=31536000",
+      "robotsMeta": [
+        "noindex, nofollow"
+      ],
+      "h1": [
+        "Tax and accounting"
+      ],
+      "main": [
+        {
+          "id": "main",
+          "tabIndexAttribute": null
+        }
+      ],
+      "formCount": 0,
+      "inputCount": 0,
+      "linkCount": 12,
+      "buttonCount": 0,
+      "unresolvedSameDocumentFragments": []
+    },
+    {
+      "path": "/services/property",
+      "startedAt": "2026-09-06T18:54:46.704Z",
+      "status": 200,
+      "robotsHeader": "noindex, nofollow, noarchive",
+      "cacheControl": "s-maxage=31536000",
+      "robotsMeta": [
+        "noindex, nofollow"
+      ],
+      "h1": [
+        "Property and due diligence"
+      ],
+      "main": [
+        {
+          "id": "main",
+          "tabIndexAttribute": null
+        }
+      ],
+      "formCount": 0,
+      "inputCount": 0,
+      "linkCount": 12,
+      "buttonCount": 0,
+      "unresolvedSameDocumentFragments": []
+    },
+    {
+      "path": "/team",
+      "startedAt": "2026-09-06T18:54:46.751Z",
+      "status": 200,
+      "robotsHeader": "noindex, nofollow, noarchive",
+      "cacheControl": "s-maxage=31536000",
+      "robotsMeta": [
+        "noindex, nofollow"
+      ],
+      "h1": [
+        "Good advice starts with people."
+      ],
+      "main": [
+        {
+          "id": "main",
+          "tabIndexAttribute": null
+        }
+      ],
+      "formCount": 0,
+      "inputCount": 0,
+      "linkCount": 10,
+      "buttonCount": 0,
+      "unresolvedSameDocumentFragments": []
+    },
+    {
+      "path": "/journal",
+      "startedAt": "2026-09-06T18:54:46.791Z",
+      "status": 200,
+      "robotsHeader": "noindex, nofollow, noarchive",
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "robotsMeta": [
+        "noindex, nofollow"
+      ],
+      "h1": [
+        "The Bali Zero Journal"
+      ],
+      "main": [
+        {
+          "id": "journal-content",
+          "tabIndexAttribute": "-1"
+        }
+      ],
+      "formCount": 0,
+      "inputCount": 0,
+      "linkCount": 5,
+      "buttonCount": 0,
+      "unresolvedSameDocumentFragments": []
+    },
+    {
+      "path": "/services/missing-review-probe",
+      "startedAt": "2026-09-06T18:54:46.952Z",
+      "status": 404,
+      "robotsHeader": "noindex, nofollow, noarchive",
+      "cacheControl": "s-maxage=31536000",
+      "robotsMeta": [
+        "noindex",
+        "noindex, nofollow"
+      ],
+      "h1": [],
+      "main": [],
+      "formCount": 0,
+      "inputCount": 0,
+      "linkCount": 0,
+      "buttonCount": 0,
+      "unresolvedSameDocumentFragments": []
+    },
+    {
+      "path": "/tools",
+      "startedAt": "2026-09-06T18:54:47.043Z",
+      "status": 404,
+      "robotsHeader": "noindex, nofollow, noarchive",
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "robotsMeta": [
+        "noindex",
+        "noindex, nofollow"
+      ],
+      "h1": [
+        "404"
+      ],
+      "main": [],
+      "formCount": 0,
+      "inputCount": 0,
+      "linkCount": 0,
+      "buttonCount": 0,
+      "unresolvedSameDocumentFragments": []
+    },
+    {
+      "path": "/portal",
+      "startedAt": "2026-09-06T18:54:47.129Z",
+      "status": 404,
+      "robotsHeader": "noindex, nofollow, noarchive",
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "robotsMeta": [
+        "noindex",
+        "noindex, nofollow"
+      ],
+      "h1": [
+        "404"
+      ],
+      "main": [],
+      "formCount": 0,
+      "inputCount": 0,
+      "linkCount": 0,
+      "buttonCount": 0,
+      "unresolvedSameDocumentFragments": []
+    },
+    {
+      "path": "/contact",
+      "startedAt": "2026-09-06T18:54:47.147Z",
+      "status": 404,
+      "robotsHeader": "noindex, nofollow, noarchive",
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "robotsMeta": [
+        "noindex",
+        "noindex, nofollow"
+      ],
+      "h1": [
+        "404"
+      ],
+      "main": [],
+      "formCount": 0,
+      "inputCount": 0,
+      "linkCount": 0,
+      "buttonCount": 0,
+      "unresolvedSameDocumentFragments": []
+    }
+  ]
+}

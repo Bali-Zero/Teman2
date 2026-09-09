@@ -7,3 +7,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Website corner
+
+Before website work, read the shared [website skill](../../../.agents/skills/website/SKILL.md)
+and its dated state reference. This applies to every agent family. Keep this
+development lane isolated: no main updates, merge, auto-merge, or deployment.
+The skill is canonical; do not fork vendor-specific copies of its content.

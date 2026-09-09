@@ -1,0 +1,12 @@
+### Result
+{
+  "viewport": 1440,
+  "scrollWidth": 1440,
+  "robots": "noindex, nofollow",
+  "images": 18,
+  "brokenImages": []
+}
+### Ran Playwright code
+```js
+await page.evaluate('() => (({viewport:innerWidth,scrollWidth:document.documentElement.scrollWidth,robots:document.querySelector("meta[name=robots]").content,images:document.images.length,brokenImages:[...document.images].filter(i=>!i.complete||!i.naturalWidth).map(i=>i.getAttribute("src"))}))');
+```

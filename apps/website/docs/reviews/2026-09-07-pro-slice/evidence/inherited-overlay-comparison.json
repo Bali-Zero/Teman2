@@ -1,0 +1,26 @@
+{
+  "sourceManifest": "/Users/nuzantara/website-handoffs/2026-09-07-r19/source-manifest.json",
+  "total": 152,
+  "unchanged": 134,
+  "changed": [
+    ".agents/skills/website/references/state.md",
+    "apps/website/.gitignore",
+    "apps/website/proofs/architecture/README.md",
+    "apps/website/proofs/architecture/publishing.test.tsx",
+    "apps/website/src/app/globals.css",
+    "apps/website/src/app/journal/page.test.tsx",
+    "apps/website/src/app/journal/page.tsx",
+    "apps/website/src/app/page.test.tsx",
+    "apps/website/src/app/page.tsx",
+    "apps/website/src/components/Journal.test.tsx",
+    "apps/website/src/components/Journal.tsx",
+    "apps/website/src/components/journal/ArticleTemplate.tsx",
+    "apps/website/src/components/journal/Journal.module.css",
+    "apps/website/src/components/journal/Journal.test.tsx",
+    "apps/website/src/components/journal/JournalIndex.tsx",
+    "apps/website/src/content/journal.ts",
+    "apps/website/src/lib/editorial-feed.ts",
+    "apps/website/tsconfig.json"
+  ],
+  "missing": []
+}

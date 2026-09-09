@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-09-06T18:57:06.945Z",
+  "purpose": "Pre-review preservation record; prior checkpoint remains frozen",
+  "files": [
+    {
+      "path": "output/checkpoints/2026-09-07-pro-slice/overlay.tar.gz",
+      "bytes": 57120454,
+      "sha256": "c8f1038464229f7417d8fddce6ea4e1f57542f6cf4affae0c224a964b0e4afdc"
+    },
+    {
+      "path": "output/checkpoints/2026-09-07-pro-slice/CHECKPOINT.json",
+      "bytes": 3543,
+      "sha256": "bc8c534b7cdb2d7e4651b15e527e0353e5feec5f01aafeedabd80b178b9107e5"
+    },
+    {
+      "path": "output/checkpoints/2026-09-07-pro-slice/VERIFIED.json",
+      "bytes": 1025,
+      "sha256": "d5a3de8bcade17091549f6d419544b8c15db9e3b7cc3aa295f72606c4ef9dfd6"
+    },
+    {
+      "path": "output/checkpoints/2026-09-07-pro-slice/source-manifest.json",
+      "bytes": 40973,
+      "sha256": "fdabe43dd53d0b614a67c0d1e2ce87cc71913a4668e7321f19bbf823796fb898"
+    }
+  ]
+}

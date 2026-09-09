@@ -1,0 +1,10 @@
+{
+  "screenshot_path": "/Users/balizero/nuzantara/.worktrees/infra-website-r19/output/playwright/home-panel-desktop.png",
+  "sha256": "3505b13ef5b7bb15ebe29cb3ea9a6ac80137ff99b4d4cafc88cf0e012c16433a",
+  "width": 1440,
+  "height": 8632,
+  "capture": "Parent browser capture after scrolling and decoding all images. Before approved team compaction.",
+  "review_limit": "Desktop static screenshot only. Interaction, focus, responsive usability and business effectiveness require separate checks.",
+  "archived_path": "/Users/balizero/nuzantara/.worktrees/infra-website-r19/apps/website/docs/reviews/2026-09-07-panel/home-baseline-desktop.png",
+  "archived_sha256": "3505b13ef5b7bb15ebe29cb3ea9a6ac80137ff99b4d4cafc88cf0e012c16433a"
+}

@@ -1,0 +1,20 @@
+[
+  {
+    "path": "/",
+    "status": 200,
+    "robots": "noindex, nofollow, noarchive",
+    "cache": "private, no-cache, no-store, max-age=0, must-revalidate",
+    "unavailable": true,
+    "fixtureStory": false,
+    "oldSnapshot": false
+  },
+  {
+    "path": "/journal",
+    "status": 200,
+    "robots": "noindex, nofollow, noarchive",
+    "cache": "private, no-cache, no-store, max-age=0, must-revalidate",
+    "unavailable": true,
+    "fixtureStory": false,
+    "oldSnapshot": false
+  }
+]

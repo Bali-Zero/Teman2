@@ -1,0 +1,90 @@
+{
+  "head": "b740b2cc3e94b1a46c9e9811bb369289fc21ea3d",
+  "files": [
+    {
+      "path": "apps/website/src/app/page.tsx",
+      "sha256": "9f6dfd80aff010d8de09d43197b3e2cdbeb3751232ffa8cdd48cdb4d07558b1f"
+    },
+    {
+      "path": "apps/website/src/app/layout.tsx",
+      "sha256": "b27f7769305c4c7a2e9e029733256fcd290311f3d169ba2b844f7a99299c8f18"
+    },
+    {
+      "path": "apps/website/src/components/Contact.tsx",
+      "sha256": "92c3c66753303e2d457191f12fc15a202b23c9b5fbe28b168b3404a83ffe40c5"
+    },
+    {
+      "path": "apps/website/src/components/Entry.tsx",
+      "sha256": "26d4962ee9f22bcd0c5e9a25e398734f9e0cc6b24b1ee1e843f446617e258fd8"
+    },
+    {
+      "path": "apps/website/src/components/Evoa.tsx",
+      "sha256": "74177ef12e17321b590c7369c1debbd9a831c1af8b422d49586727d8d75af5f9"
+    },
+    {
+      "path": "apps/website/src/components/Footer.tsx",
+      "sha256": "16c2ef9177533ee92622699b87f8f9e6d3d03e0438ab87110c9681c1ef1521be"
+    },
+    {
+      "path": "apps/website/src/components/Journal.tsx",
+      "sha256": "326c5c7c324e1d3b2a35da1b446676044a9c02947e2c63e5c9e530a761d3ac9f"
+    },
+    {
+      "path": "apps/website/src/components/Portal.tsx",
+      "sha256": "363596695319cc35f26ba2f5c2e475b4d69c152f78c19159d224836b2b53690b"
+    },
+    {
+      "path": "apps/website/src/components/Reviews.tsx",
+      "sha256": "0cc25523a9e79cb86a8c0ec56b8b14ea859035a008add23c644dfc4b6001570c"
+    },
+    {
+      "path": "apps/website/src/components/SecondHome.tsx",
+      "sha256": "53674837bd3becee0f108a4c42095a3deec85981796db02ab092f1a79450ab94"
+    },
+    {
+      "path": "apps/website/src/components/Services.tsx",
+      "sha256": "88db9003fba2d4827ac3e8eda73cb1194749aa257fa469af4f0713698b25e62c"
+    },
+    {
+      "path": "apps/website/src/components/Team.tsx",
+      "sha256": "3d213697e449fb4983ce5b451bea486956c0eaeee63d0fe1d4e3b2ff838e5608"
+    },
+    {
+      "path": "apps/website/src/content/destinations.ts",
+      "sha256": "d517c29e09d02c6a622f03ad135fd7a3d4703d3a809c2f62dfd3652cd05a7c58"
+    },
+    {
+      "path": "apps/website/src/content/journal.ts",
+      "sha256": "25361c25a8e229a2524b8054068c38c32c683e6f6842281e56f9362b253ad8d9"
+    },
+    {
+      "path": "apps/website/src/content/service-pages.ts",
+      "sha256": "910366154f443dd5245141162e74d36f868959d616123f5399da10bf1f75aca5"
+    },
+    {
+      "path": "apps/website/src/content/services.ts",
+      "sha256": "27445f3cd4050753dd3f21d0571698a7dbf6be967a762d78d9db58cfa846d5fa"
+    },
+    {
+      "path": "apps/website/src/content/stories.ts",
+      "sha256": "2bf642f6a4de103f2c77f1470c722c19cdfdc9a50a2269979675d62c74e9c49b"
+    },
+    {
+      "path": "apps/website/src/content/evidence/destinations-2026-09-06.ts",
+      "sha256": "31abec170867e93f52be9122d0c601676262b49c17eab3db1a7866d80e26d9a9"
+    },
+    {
+      "path": "apps/website/docs/integrations/destination-audit-2026-09-06.md",
+      "sha256": "0aa1cb12a2344f9a7faa631451224b42360e7910c5d5ba0738f535b86175c4db"
+    },
+    {
+      "path": "apps/website/docs/qa/acceptance-matrix.md",
+      "sha256": "0d6fd7c3d0c263ceccb53bc39b1c5dc44a286aba86c4cd206f7fe147d2162e30"
+    },
+    {
+      "path": "apps/website/src/components/entry.css",
+      "sha256": "dbd35c746ffa594c50bb45d649f0d8b85ae3cf02572f4505ddb64b12c40f7dad"
+    }
+  ],
+  "visual_evidence": "No current screenshot at packet creation. Do not invent rendering measurements."
+}

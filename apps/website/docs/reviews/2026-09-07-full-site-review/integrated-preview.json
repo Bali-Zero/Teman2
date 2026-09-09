@@ -1,0 +1,39 @@
+{
+  "checkedAt": "2026-09-06T19:12:20Z",
+  "command": "WEBSITE_EDITORIAL_FIXTURE=1 npm --prefix apps/website start",
+  "cwd": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro",
+  "branch": "codex/website-pro-continuation",
+  "head": "b740b2cc3e94b1a46c9e9811bb369289fc21ea3d",
+  "managedExecSessionId": 96077,
+  "listenerPid": 10597,
+  "parentPid": 10525,
+  "listenerCwd": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/apps/website",
+  "listenerCommand": "next-server (v16.3.1)",
+  "listenerCount": 1,
+  "bind": "127.0.0.1:3100",
+  "portClearBeforeLaunch": true,
+  "startupReadyMs": 357,
+  "buildRerun": false,
+  "typecheckRerun": false,
+  "routes": [
+    {
+      "path": "/",
+      "status": 200,
+      "xRobotsTag": "noindex, nofollow, noarchive",
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate"
+    },
+    {
+      "path": "/journal",
+      "status": 200,
+      "xRobotsTag": "noindex, nofollow, noarchive",
+      "cacheControl": "private, no-cache, no-store, max-age=0, must-revalidate"
+    }
+  ],
+  "startupLog": "fixture-preview-startup.log",
+  "startupLogOrigin": "Saved exact observed startup stdout from managed execution session 96077; active stream remains in that managed session.",
+  "earlierRejectedAttempt": {
+    "executed": false,
+    "reason": "GUARDRAILS BLOCK: Node -e arbitrary exec",
+    "resolution": "Coordinator authorized the transparent direct npm command in a normal managed session; no guard or configuration change."
+  }
+}

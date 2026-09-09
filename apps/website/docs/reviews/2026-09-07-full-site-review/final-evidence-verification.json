@@ -1,0 +1,93 @@
+{
+  "verifiedAt": "2026-09-06T19:18:04.166Z",
+  "executor": "/root/final_visual_receipt",
+  "scope": "Independent parsing, disk existence, hash and PNG-header verification of existing final captures and completed test logs; no browser/test/build rerun.",
+  "mainSummary": {
+    "count": 24,
+    "routes": [
+      "/",
+      "/services",
+      "/services/immigration",
+      "/services/company-setup",
+      "/services/tax",
+      "/services/property",
+      "/team",
+      "/journal"
+    ],
+    "widths": [
+      1440,
+      390,
+      768
+    ],
+    "all200": true,
+    "documentOverflowCount": 0,
+    "imageDecodeFailures": 0,
+    "pageErrors": 0,
+    "consoleErrors": 0,
+    "navigationRequestEvents": 31,
+    "noindexCount": 24
+  },
+  "assertions": {
+    "sevenSkipLinksFocusMain": true,
+    "four404Recoveries": true,
+    "fourUniqueServiceNames": true,
+    "sixteenSectionCaptures": true,
+    "menu360NoOverflowEscape": true,
+    "serviceHeaderComfort44": true
+  },
+  "focusedSourceSha256": "d320497a3746c401e554d0073cd24459ea2fa8a0fc8b94c1b0505b8654545643",
+  "focusedMetricsSha256": "595ba30801c83a675b10aa552ca851e7271882e35b32961060b01004c50ec4ad",
+  "screenshotCount": 73,
+  "validationLogs": [
+    {
+      "name": "integrated-website-tests",
+      "exitCode": 0,
+      "receiptSha256": "e0ac4b7e2889d8cac6dfac2f321b0dbaa5e1806cf905aeaa08283ea68c87bd38",
+      "logSha256": "40a1ffcc8bf504d2c32a1e740653a08a1f0d05475dbdbb164ca7cd1b0d548dd5",
+      "logBytes": 747,
+      "summaries": [
+        " Test Files  12 passed (12)",
+        "      Tests  56 passed (56)",
+        "   Duration  5.23s (transform 4.30s, setup 5.96s, import 5.76s, tests 5.42s, environment 30.29s)"
+      ]
+    },
+    {
+      "name": "integrated-architecture-tests",
+      "exitCode": 0,
+      "receiptSha256": "8d4fc32d9d19b60ba94ebc8910e615109508b5453790097d619170ae62e7a5bb",
+      "logSha256": "c9aae5bd07fddd6cfa14c85fa5b6f8b8bd8e70774dae6f3e23b632280071c866",
+      "logBytes": 758,
+      "summaries": [
+        " Test Files  4 passed (4)",
+        "      Tests  93 passed (93)",
+        "   Duration  10.45s (transform 1.11s, setup 0ms, import 2.27s, tests 6.82s, environment 1ms)"
+      ]
+    },
+    {
+      "name": "integrated-build",
+      "exitCode": 0,
+      "receiptSha256": "dc80e094ea03770c79cfb99048177cfbbb58ae7653f3f9384c415649bcc55b1d",
+      "logSha256": "31f1a43fe73a8d4253bf6addcbe3e1c8cb9701dda095a4e6fa4fb92d4dc5e5ea",
+      "logBytes": 1051,
+      "summaries": [
+        "✓ Compiled successfully in 6.1s",
+        "  Generating static pages using 8 workers (0/10) ...",
+        "  Generating static pages using 8 workers (2/10) \r",
+        "  Generating static pages using 8 workers (4/10) \r",
+        "  Generating static pages using 8 workers (7/10) \r",
+        "✓ Generating static pages using 8 workers (10/10) in 1529ms"
+      ]
+    },
+    {
+      "name": "integrated-typecheck",
+      "exitCode": 0,
+      "receiptSha256": "7a33872946e102607fdda02ecd29af2341413821ba95d795a4ca4afe6b92de4b",
+      "logSha256": "6d32a87cb757acf1234ccd5182eb619acdbf1a699d686ca8fd6eb971de79e98e",
+      "logBytes": 65,
+      "summaries": [
+        "> tsc --noEmit"
+      ]
+    }
+  ],
+  "captureLimitation": "The unused home-journal-390.png element capture contains sticky-header occlusion. Reviewer input now uses full-page home-390.png. Original capture and 24-view metrics remain unchanged."
+}

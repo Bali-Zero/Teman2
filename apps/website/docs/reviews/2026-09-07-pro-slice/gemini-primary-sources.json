@@ -1,0 +1,55 @@
+{
+  "recorded_at": "2026-09-06T18:29:59.655Z",
+  "verification_is_separate_from_gemini": true,
+  "full_page_snapshots_archived": false,
+  "sources": [
+    {
+      "id": "fetch-corp",
+      "url": "https://fetch.spec.whatwg.org/#cross-origin-resource-policy-check",
+      "verification_actor": "parent coordinator",
+      "observation": "Parent reported opening the primary Fetch specification in this task; distinct-origin no-cors responses are rejected by the same-origin policy. Not retrieved by this Gemini invocation."
+    },
+    {
+      "id": "next-connection",
+      "url": "https://nextjs.org/docs/app/api-reference/functions/connection",
+      "verification_actor": "Gemini and parent coordinator",
+      "observation": "Gemini read_url_content completed; body absent from exported trace. Parent independently reported verifying request-time prerender exclusion. Not a universal cache-invalidation or database snapshot contract."
+    },
+    {
+      "id": "rfc-no-store",
+      "url": "https://www.rfc-editor.org/rfc/rfc9111.html#section-5.2.2.5",
+      "verification_actor": "parent coordinator",
+      "observation": "Parent reported opening response no-store requirements for HTTP caches. Not retrieved by this Gemini invocation."
+    },
+    {
+      "id": "mdn-corp-read",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cross-Origin-Resource-Policy",
+      "verification_actor": "Gemini",
+      "observation": "read_url_content completed; body absent from exported trace."
+    },
+    {
+      "id": "mdn-corp-guide",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Cross-Origin_Resource_Policy",
+      "verification_actor": "audit subagent via web",
+      "observation": "Opened and found no-cors scope; response-body blocking differs from preventing the request. Browser documentation corroboration; Fetch remains normative."
+    },
+    {
+      "id": "mdn-crossorigin",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/crossorigin",
+      "verification_actor": "audit subagent via web",
+      "observation": "Opened and found anonymous/default semantics: explicit crossorigin enables CORS; ordinary media embedding does not use it."
+    },
+    {
+      "id": "d1-sessions",
+      "url": "https://developers.cloudflare.com/d1/best-practices/read-replication/",
+      "verification_actor": "audit subagent via web",
+      "observation": "Opened official Sessions and consistency sections: bookmarks permit later database versions; first-primary controls the first query. This supports the inference that sequential consistency is not a frozen multi-query snapshot."
+    },
+    {
+      "id": "next-cache-scope",
+      "url": "https://nextjs.org/docs/app/guides/caching-without-cache-components",
+      "verification_actor": "audit subagent via web",
+      "observation": "Opened via redirected /app/deep-dive/caching. Explicitly scoped to the previous caching model without Cache Components; documents cacheable fetch and database functions. No assumption that this deployment uses that configuration."
+    }
+  ]
+}

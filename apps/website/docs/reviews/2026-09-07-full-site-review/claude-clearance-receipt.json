@@ -1,0 +1,105 @@
+{
+  "startedAt": "2026-09-06T19:32:03.694Z",
+  "finishedAt": "2026-09-06T19:32:19.005Z",
+  "scope": "Independent follow-up to VR-1 only, with immediate homepage regression surroundings",
+  "vendor": "Anthropic",
+  "route": "claude CLI / claude.ai firstParty MAX subscription; paid key and alternate endpoint env removed",
+  "cliVersion": "2.1.261 (Claude Code)",
+  "args": [
+    "--print",
+    "--model",
+    "opus",
+    "--effort",
+    "xhigh",
+    "--safe-mode",
+    "--restricted",
+    "--tools",
+    "Read",
+    "--allowedTools",
+    "Read",
+    "--permission-mode",
+    "dontAsk",
+    "--permission-prompts",
+    "none",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}",
+    "--no-session-persistence",
+    "--disable-slash-commands",
+    "--no-chrome",
+    "--output-format",
+    "stream-json",
+    "--verbose"
+  ],
+  "requestedModel": "opus",
+  "runtimeModels": [
+    "claude-opus-5"
+  ],
+  "backendIdentityLimit": "Runtime model identifiers are provider-reported; auxiliary model role and backend infrastructure are not independently attestable.",
+  "auth": {
+    "exitCode": 0,
+    "loggedIn": true,
+    "authMethod": "claude.ai",
+    "apiProvider": "firstParty",
+    "subscriptionType": "max"
+  },
+  "exitCode": 143,
+  "signal": null,
+  "timedOut": false,
+  "status": "no_final_result",
+  "isError": null,
+  "acceptanceVerdict": "UNPARSED",
+  "verdictParseLimit": "Text marker extraction; coordinator must read and accept the complete final answer.",
+  "durationMs": null,
+  "numTurns": null,
+  "observedTools": [
+    "Read"
+  ],
+  "restriction": "Read only; safe mode; restricted; strict empty MCP; no Chrome; no permission prompts; no session persistence. Not an independent OS sandbox penetration test.",
+  "inputPromptSha256": "9f6991c7f6fe933cc2fba8012534d3f6390fb764b87f122ff640db688574ca20",
+  "inputPromptUnchangedAtCompletion": true,
+  "rawStreamSha256": "cb25deaef0e01b81aa7696de0532c4635f917ade4201048b3507a2837dbe08cd",
+  "rawStreamRetained": false,
+  "rawThoughtsRetained": false,
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderrBytes": 0,
+  "stderrRetained": false,
+  "parseErrors": 0,
+  "readInputs": [
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/clearance-fix/home-services-clearance-1440.png",
+      "sha256AtRead": "3d8a0bafc6c00a790b47cab538fd2d11ca2a73302df0675b4120c67e656384a3",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/clearance-fix/home-services-clearance-768.png",
+      "sha256AtRead": "f817f73f2767ce0caed4821bb2da15fbf3a05d5c861dd6e40c64bf9aeae8eb38",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/clearance-fix/home-services-clearance-390.png",
+      "sha256AtRead": "3ec603049c1f96ee7471f65b8a49ae0c2c09f8720d91a6bb57ab02b3a07ee7d3",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/clearance-fix/home-services-clearance-360.png",
+      "sha256AtRead": "3388a88ddf0afd98c1e222c434c9f66b98ab1856f3c370171990e786be6aafc2",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/clearance-fix/clearance-metrics.json",
+      "sha256AtRead": "c04959496826e0e1d1da94ad03bb792a6143a7a8fc8271cf45d3307947c4b802",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/output/playwright/website-r19-full-site/clearance-fix/capture-clearance.js",
+      "sha256AtRead": "a4968f124e171aef76072edc96a57ee019949b052d4f8306d08dca629f39cf13",
+      "unchangedAtCompletion": true
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/infra-website-r19-pro/apps/website/src/app/globals.css",
+      "sha256AtRead": "3f0646dcc931a1626d7af0012c112dbd28412a6c31b9848db3974801475df51d",
+      "unchangedAtCompletion": true
+    }
+  ]
+}

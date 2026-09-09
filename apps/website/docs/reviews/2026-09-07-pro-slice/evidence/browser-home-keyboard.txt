@@ -1,0 +1,9 @@
+### Result
+{"before":"01 / 02","after":"02 / 02","titleAfter":"Room to read","restored":"01 / 02","buttonFocused":true}
+### Ran Playwright code
+```js
+await (async page => { await page.setViewportSize({width:1440,height:900}); await page.goto("http://127.0.0.1:3100/"); await page.locator("#journal").scrollIntoViewIfNeeded(); const next=page.locator("#next-story"); await next.focus(); const before=await page.locator("#story-counter").innerText(); await page.keyboard.press("Enter"); const after=await page.locator("#story-counter").innerText(); const titleAfter=await page.locator("#feature-link").innerText(); await page.keyboard.press("ArrowLeft"); const restored=await page.locator("#story-counter").innerText(); return {before,after,titleAfter,restored,buttonFocused:await next.evaluate(el=>document.activeElement===el)}; })(page);
+```
+### Page
+- Page URL: http://127.0.0.1:3100/
+- Page Title: Bali Zero — Website development
