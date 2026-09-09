@@ -1,0 +1,507 @@
+brief_ref: evidence/brief.yml
+plan_ref: "PR #6044 (agent/nuzantara/infra/fly-cost-guard) — owner mandate 2026-09-10 item 4."
+lanes:
+  - lane: fly-cost-guard-build
+    role: build
+    seat: "session (Pro, Fable 5.1 conducting)"
+  - lane: fly-cost-guard-refute
+    role: review
+    seat: "codex-cli-0.153.4 (adversarial refuter, read-only sandbox)"
+seat_override: >-
+  Gear-3 diff is a Fly.io cost-guard cron fix (deterministic threshold script,
+  14-case guilt+innocence corpus, no engine/PII/ground-truth surface touched)
+  — modus anti-sperpero: council convenes only when divergent priors can
+  change the answer AND error cost >15x tokens AND genuine parallel breadth;
+  none apply here. One independent, non-Anthropic adversarial seat (Codex
+  CLI, read-only sandbox) was dispatched instead of assembling a 2-seat
+  COUNCIL_REVIEW_SEATS quorum (codex-gpt-5.6-sol / kimi-code/k3 /
+  tp1-qwen3.8-max) with a journal.jsonl — its findings are recorded in
+  `dissent` below, each independently re-verified against the code by the
+  authoring session, not merely relayed.
+diff:
+  net_lines: >-
+    Code diff at the graded sha e4441c7eb8: the workflow edit
+    (cron-fly-cost-alert.yml) replaces the inline python with a script call
+    and carries the six ceilings; the guard script (fly_cost_guard.py) is
+    new; the live-inventory fixture (fly_inventory_2026-09-10.json) is new;
+    the test module (test_fly_cost_guard.py, 17 cases) is new; the
+    superseded inline-guard test is removed from
+    test_fly_workflow_guards.py. Zero frontend, zero fly.toml, zero
+    migration. Exact line counts are not narrated here on purpose: the
+    evidence pack itself is part of the PR diff, so any figure written into
+    it drifts with every pack edit — the gate's own receipt records the
+    `git diff --numstat` it observed.
+  behaviour_change: >-
+    The weekly guard (cron-fly-cost-alert.yml, Mon 01:00 UTC) moves from
+    `::warning::`-only (never failed the job, 8/8 scheduled runs "success"
+    while the fleet was over the old ceilings since 2026-08-18) to
+    `::error::` + exit 1 on any finding. Ceilings move from the 2026-06-era
+    defaults (6 machines / 60 GB / 1 paid IPv4) to the measured 2026-09-10
+    footprint (7 machines / 6 started / 12288 MB started RAM / 77 GB volumes
+    / 0 paid IPv4) plus two new dimensions (started-machine count,
+    started-memory) the old inline guard never checked at all.
+receipts:
+  - claim: >-
+      Deterministic gear floor recomputed from THIS PR's actual changed-file
+      list is 3 (path term — .github/workflows/cron-fly-cost-alert.yml is
+      hot-zone), matching the declared gear and the "Harness floor recompute"
+      FAIL message that demanded this pack.
+    cmd: >-
+      git diff --name-only origin/main...HEAD > /tmp/6044_changed.txt && git
+      diff --numstat origin/main...HEAD > /tmp/6044_numstat.txt && python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      /tmp/6044_changed.txt --numstat-file /tmp/6044_numstat.txt
+    result: "3"
+    exit: 0
+    ts: "2026-09-09T16:47:25Z"
+    seat: "session (Pro, Fable 5.1 conducting)"
+  - claim: >-
+      The superseded inline `::warning::`-only guard's scheduled runs never
+      went red although the fleet was over the old ceilings since
+      2026-08-18 (third Postgres replica) — 8/8 scheduled runs concluded
+      "success", 2026-07-20 through 2026-09-07 (cicatrix family #2,
+      Esiste≠Armato).
+    cmd: >-
+      gh run list --workflow=cron-fly-cost-alert.yml --limit 8 --json
+      conclusion,createdAt
+    result: >-
+      8/8 conclusion=success: 2026-07-20T04:35:32Z, 2026-07-27T04:36:26Z,
+      2026-08-03T04:30:31Z, 2026-08-10T03:11:03Z, 2026-08-17T02:19:01Z,
+      2026-08-24T02:22:05Z, 2026-08-31T06:43:59Z, 2026-09-07T05:45:09Z.
+    exit: 0
+    ts: "2026-09-09T16:47:26Z"
+    seat: "session (Pro, Fable 5.1 conducting)"
+  - claim: >-
+      The third red check on this PR (Backend Shard 1, job 102555772518)
+      failed at container initialization, not inside this PR's own tests —
+      an unrelated infra flake, not a defect this diff introduced.
+    cmd: >-
+      gh api repos/Bali-Zero/Teman2/actions/jobs/102555772518 --jq
+      '[.steps[]|select(.conclusion=="failure")|.name]'
+    result: '["Initialize containers","Upload shard receipts"]'
+    exit: 0
+    ts: "2026-09-09T16:47:28Z"
+    seat: "session (Pro, Fable 5.1 conducting)"
+  - claim: >-
+      The live Fly footprint measured directly (not just via the checked-in
+      fixture) matches the fixture and the new ceilings exactly: 4+3=7
+      machines (6 started; api 3072 MB, rag 2048 MB, drive 1024 MB x2 one
+      stopped, pg 3x2048 MB), volumes 2x1GB (rag) + 3x25GB (pg) = 77 GB, IPs
+      2 dedicated v6 + 1 shared v4 + zero dedicated v4.
+    cmd: >-
+      fly machine list -a nuzantara-rag; fly machine list -a
+      nuzantara-postgres; fly volumes list -a nuzantara-rag; fly volumes list
+      -a nuzantara-postgres; fly ips list -a nuzantara-rag
+    result: >-
+      nuzantara-rag: 4 machines (7817d92c4117d8 api started 3072MB,
+      48ee717b736948 drive stopped 1024MB, 2874974fe6e158 drive started
+      1024MB, 1781e5eda03438 rag started 2048MB), volumes
+      vol_vde56p7dnjwwew34 1GB + vol_rnzwkm1m8leey98r 1GB. nuzantara-postgres:
+      3 machines all started x2048MB, volumes 3x25GB. rag ips: 2x v6
+      (dedicated ingress) + 1x v4 (shared ingress, 66.241.124.44) — zero
+      dedicated v4.
+    exit: 0
+    ts: "2026-09-09T16:47:35Z"
+    seat: "session (Pro, Fable 5.1 conducting)"
+  - claim: >-
+      GUILT — under the pre-fix default volume ceiling (75 GB), the measured
+      77 GB footprint trips the guard: exit 1 with an `::error::` finding.
+    cmd: >-
+      python3 scripts/fly_cost_guard.py --inventory-json
+      scripts/tests/fixtures/fly_inventory_2026-09-10.json --max-volume-gb 75
+    result: >-
+      "Apps: 2 | Machines: 6/7 started (limit 6/7) | Started RAM: 12288 MB
+      (limit 12288) | Volumes: 77 GB (limit 75) | Dedicated IPv4: 0 (limit
+      0)" then "::error::Fly resource guard: volumes 77GB>75GB"
+    exit: 1
+    ts: "2026-09-09T16:48:16Z"
+    seat: "session (Pro, Fable 5.1 conducting)"
+  - claim: >-
+      INNOCENCE — under the script's shipped default ceilings (now equal to
+      the measured footprint), the same fixture passes clean: exit 0,
+      "within limits".
+    cmd: >-
+      python3 scripts/fly_cost_guard.py --inventory-json
+      scripts/tests/fixtures/fly_inventory_2026-09-10.json
+    result: >-
+      "Apps: 2 | Machines: 6/7 started (limit 6/7) | Started RAM: 12288 MB
+      (limit 12288) | Volumes: 77 GB (limit 77) | Dedicated IPv4: 0 (limit
+      0)" then "Fly resource guard: within limits"
+    exit: 0
+    ts: "2026-09-09T16:48:16Z"
+    seat: "session (Pro, Fable 5.1 conducting)"
+  - claim: >-
+      A3 acceptance probe — any +1 GB breach over the measured footprint
+      (ceiling lowered by 1 to 76) goes red.
+    cmd: >-
+      python3 scripts/fly_cost_guard.py --inventory-json
+      scripts/tests/fixtures/fly_inventory_2026-09-10.json --max-volume-gb 76
+    result: '"::error::Fly resource guard: volumes 77GB>76GB"'
+    exit: 1
+    ts: "2026-09-09T16:48:16Z"
+    seat: "session (Pro, Fable 5.1 conducting)"
+  - claim: >-
+      A1 — both test modules pass in full: 14 cases (guilt+innocence per
+      dimension, unexpected/missing-apps, inventory errors, CLI exit code,
+      env-vs-flag precedence, and the real flyctl JSON shapes for
+      machines/volumes/ips).
+    cmd: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_fly_cost_guard.py
+      scripts/tests/test_fly_workflow_guards.py -q
+    result: "14 passed in 0.88s"
+    exit: 0
+    ts: "2026-09-09T16:48:29Z"
+    seat: "session (Pro, Fable 5.1 conducting)"
+  - claim: ruff is clean on the three changed/added Python files.
+    cmd: >-
+      apps/backend-rag/.venv/bin/python -m ruff check
+      scripts/fly_cost_guard.py scripts/tests/test_fly_cost_guard.py
+      scripts/tests/test_fly_workflow_guards.py
+    result: "All checks passed!"
+    exit: 0
+    ts: "2026-09-09T16:48:32Z"
+    seat: "session (Pro, Fable 5.1 conducting)"
+  - claim: >-
+      A5 — the workflow-timeout-floor lint is clean after the checkout
+      budget fix (timeout-minutes 5→10, to cover the new sparse-checkout
+      step per this repo's own measured ~2 min `actions/checkout` variance).
+    cmd: python3 scripts/lint_workflow_timeout_floor.py
+    result: "workflow timeout floor: clean (157 jobs scanned, floor 10m)"
+    exit: 0
+    ts: "2026-09-09T16:48:32Z"
+    seat: "session (Pro, Fable 5.1 conducting)"
+  - claim: >-
+      CURE of the three P1 dissent items (e4441c7eb8): the corpus grows from
+      14 to 17 cases and passes in full — guilt for one extra started CPU
+      ("started cpus 12>11"), guilt for a started machine without
+      memory_mb/cpus and a volume without an integer size_gb ("inventory
+      errors=...missing", RAM/volume totals exclude the unreadable rows),
+      innocence for the stopped standby carrying no size, guilt for a
+      failing `flyctl apps list` (exit 1, no traceback, "missing apps=" +
+      "inventory errors=apps:list:CalledProcessError", report line still
+      written to GITHUB_OUTPUT).
+    cmd: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      scripts/tests/test_fly_cost_guard.py
+      scripts/tests/test_fly_workflow_guards.py -q -p no:cacheprovider
+    result: "17 passed in 1.03s"
+    exit: 0
+    ts: "2026-09-09T17:28:06Z"
+    seat: "session (Pro, Fable 5.1 conducting)"
+  - claim: >-
+      INNOCENCE after the cure — the live fixture still passes under the
+      shipped ceilings, and the report now carries the sixth dimension
+      ("Started CPUs: 11 (limit 11)").
+    cmd: >-
+      python3 scripts/fly_cost_guard.py --inventory-json
+      scripts/tests/fixtures/fly_inventory_2026-09-10.json
+    result: >-
+      Apps: 2 | Machines: 6/7 started (limit 6/7) | Started RAM: 12288 MB
+      (limit 12288) | Started CPUs: 11 (limit 11) | Volumes: 77 GB (limit
+      77) | Dedicated IPv4: 0 (limit 0) / Fly resource guard: within limits
+    exit: 0
+    ts: "2026-09-09T17:28:06Z"
+    seat: "session (Pro, Fable 5.1 conducting)"
+  - claim: >-
+      GUILT after the cure — the same fixture under a CPU ceiling one below
+      the footprint goes red.
+    cmd: >-
+      python3 scripts/fly_cost_guard.py --inventory-json
+      scripts/tests/fixtures/fly_inventory_2026-09-10.json
+      --max-started-cpus 10
+    result: "::error::Fly resource guard: started cpus 11>10"
+    exit: 1
+    ts: "2026-09-09T17:28:06Z"
+    seat: "session (Pro, Fable 5.1 conducting)"
+  - claim: >-
+      The workflow env block and the script defaults agree on all six
+      ceilings (test_workflow_ceilings_match_script_defaults), the workflow
+      still parses, ruff is clean on both Python files and the
+      workflow-timeout-floor lint is clean after the cure.
+    cmd: >-
+      ruff check scripts/fly_cost_guard.py scripts/tests/test_fly_cost_guard.py
+      && ruff format --check scripts/tests/test_fly_cost_guard.py && python3
+      -c "import yaml; yaml.safe_load(open('.github/workflows/cron-fly-cost-alert.yml'))"
+      && python3 scripts/lint_workflow_timeout_floor.py
+    result: >-
+      All checks passed! / 1 file already formatted / yaml ok / workflow
+      timeout floor: clean (157 jobs scanned, floor 10m)
+    exit: 0
+    ts: "2026-09-09T17:28:06Z"
+    seat: "session (Pro, Fable 5.1 conducting)"
+  - claim: >-
+      CI on the graded head e4441c7eb8: 69 SUCCESS, 2 SKIPPED, 1 NEUTRAL,
+      4 FAILURE. "Harness floor recompute" is red by construction (no gate
+      verdict posted yet). The other three are one upstream apt flake and
+      its aggregate: "E2E Tests (Playwright)" and "Visa Oracle fullstack
+      smoke" both died in the step "Install Playwright browsers" on
+      `E: Failed to fetch https://dl.google.com/linux/chrome-stable/deb/.../Packages.gz
+      Hash Sum mismatch` (the Google apt index was rebuilt mid-run: "Release
+      file created at: 17:16:59" vs "Last modification reported: 09:41:12"),
+      before a single line of repo code ran; "Test Summary" only aggregates
+      them (BACKEND/MCP/EVALUATOR/FRONTEND/PACKAGES_CORE all "success",
+      E2E_RESULT "failure"). This diff contains zero JS/TS, zero frontend and
+      zero package-manifest change, so it cannot reach that step; the same
+      "Tests & Coverage" workflow concluded success on four other refs
+      between 17:05 and 17:21 UTC.
+    cmd: >-
+      gh pr view 6044 --json headRefOid,statusCheckRollup; gh run view --job
+      102572658219 --log-failed; gh run view --job 102572658242 --log-failed;
+      gh run view --job 102575262805 --log-failed
+    result: >-
+      head=e4441c7eb8dc33d878ac2c7fe6706d90cbf33caa; conclusions
+      {"SUCCESS":69,"SKIPPED":2,"NEUTRAL":1,"FAILURE":4}; the three
+      non-harness failures are the Playwright browser install apt hash-sum
+      mismatch and the Test Summary aggregate of it.
+    exit: 0
+    ts: "2026-09-09T17:37:43Z"
+    seat: claude-opus-5
+  - claim: >-
+      Rerun of the two apt-flaked jobs (run 34382963914, ATTEMPT 2, same head
+      e4441c7eb8) confirms the diagnosis and does NOT change the verdict:
+      "Visa Oracle fullstack smoke" (job 102575719863) failed again at
+      17:39:32Z at the identical step and on the identical line —
+      `E: Failed to fetch
+      https://dl.google.com/linux/chrome-stable/deb/dists/stable/main/binary-amd64/Packages.gz
+      Hash Sum mismatch` / "Failed to install browsers" — so the Google apt
+      mirror was still serving a stale index, a persisting upstream
+      condition and not a one-shot; "E2E Tests (Playwright)" was CANCELLED
+      mid-flight at 17:40:13Z (not failed) and the attempt concluded
+      "cancelled" because the conductor pushed the evidence commit
+      95fe453e54 to the branch, which the workflow's cancel-in-progress
+      concurrency honours. Neither outcome is reachable from this diff: both
+      jobs die before any repo code executes, and 95fe453e54 adds only
+      evidence/ — `git diff --numstat e4441c7eb8 95fe453e54 -- ':!evidence'`
+      prints nothing, i.e. the graded code tree is byte-identical at the new
+      head.
+    cmd: >-
+      gh api repos/Bali-Zero/Teman2/actions/runs/34382963914/attempts/2/jobs;
+      gh run view --job 102575719863 --log-failed; git diff --numstat
+      e4441c7eb8 95fe453e54 -- ':!evidence'
+    result: >-
+      attempt 2 = cancelled (Visa Oracle fullstack smoke failure at "Install
+      Playwright browsers" — Hash Sum mismatch; E2E Tests (Playwright)
+      cancelled by the 95fe453e54 push; Test Summary failure as their
+      fan-in); code delta e4441c7eb8..95fe453e54 outside evidence/ = 0 lines.
+    exit: 0
+    ts: "2026-09-09T17:42:29Z"
+    seat: claude-opus-5
+spend:
+  wall_clock_hours: 2.5
+  adversarial_rounds: 1
+appetite_exceeded: >-
+  wall_clock_hours 2.5 vs the brief's 2: the extra half hour is the cure of
+  the three P1 dissent items (e4441c7eb8), which the refuter surfaced after
+  the first cut was complete and which the conducting session chose to fix
+  in-PR rather than ship a guard that fails open on a flyctl schema change.
+pii_scan: clean
+pii_scan_note: >-
+  Nothing in this diff, brief or pack transcribes client/OSINT data. The
+  changed surface is infra billing metadata (Fly machine/volume/IP
+  inventory, machine IDs, app names, GB/MB counts) and CI workflow YAML —
+  no applicant, client or WhatsApp data anywhere in scope. Grepped the full
+  diff for email/phone/passport/KTP/NPWP/WhatsApp/@gmail/@balizero patterns:
+  zero hits.
+bites:
+  consumer: "the scheduled `cron - fly cost alert` run (Mon 01:00 UTC) and its Telegram report"
+  where: ci
+  observe: >-
+    python3 scripts/fly_cost_guard.py --inventory-json
+    scripts/tests/fixtures/fly_inventory_2026-09-10.json
+  expect: exit0
+dissent:
+  - seat: "codex-cli-0.153.4 (adversarial refuter, read-only sandbox, dispatched on the raw diff)"
+    objection: >-
+      [P1] The guard collects `cpus` per machine (`_machine_row()`,
+      fly_cost_guard.py:74) but `evaluate()` never reads it — only
+      `memory_mb` feeds the started-RAM finding. A machine can move from
+      shared-cpu-1x to shared-cpu-8x, or from shared to performance CPU kind,
+      at constant RAM, and the report/findings are byte-identical while the
+      Fly bill rises. `cpu_kind` is not even collected.
+    status: CONFIRMED
+    resolution: >-
+      Verified directly: `grep -n cpus scripts/fly_cost_guard.py` shows
+      `cpus` collected at line 74 and nowhere else in the file; `evaluate()`
+      (lines 113-163) references only `state` and `memory_mb` from each
+      machine row, never `cpus`. Real, unfixed gap in this PR's scope — a
+      CPU-tier upgrade at constant RAM is invisible to this guard. Not fixed
+      here (read-only evidence-authoring mandate); flagged for the
+      conducting session.
+    disposition: >-
+      CURED in e4441c7eb8: `cpus` now feeds a sixth ceiling
+      (`started_cpus`, env MAX_STARTED_CPUS=11 = the measured footprint:
+      api 2 + rag 2 + drive 1 + 3x postgres 2), reported as "Started CPUs:
+      N (limit M)" and proven by test_one_more_started_cpu_is_guilty plus
+      the CLI guilt receipt above. `cpu_kind` (shared vs performance) is
+      still not collected: a performance-CPU switch at equal count stays
+      invisible — accepted as a declared, narrower residual risk, recorded
+      in the PR body for the next ceiling revision.
+  - seat: "codex-cli-0.153.4 (adversarial refuter)"
+    objection: >-
+      [P1] The parser fails OPEN on an unexpected flyctl JSON shape: a
+      missing `config.guest.memory_mb` reads as `0` (line 67), a missing
+      `Machines` key reads as `[]` (line 91), a missing `size_gb` reads as
+      `0` (line 98), a missing `Type` reads as `None` so it never counts as
+      a dedicated IPv4 (line 106/129) — an inventory the parser doesn't
+      understand reads as "zero resources", not as an error. Aggravated by
+      `superfly/flyctl-actions/setup-flyctl` pinning the ACTION by SHA but
+      not the `flyctl` CLI version it installs, which defaults to `latest`.
+    status: CONFIRMED
+    resolution: >-
+      Verified each cited line by reading fly_cost_guard.py directly (all
+      four `or 0`/bare-`.get()` fallbacks are exactly as described) and
+      confirmed the action's own `action.yml`
+      (raw.githubusercontent.com/superfly/flyctl-actions/master/setup-flyctl/action.yml):
+      `version: {default: latest, ...}` — no version pin in this workflow.
+      A future flyctl schema change (e.g. a field rename) would silently
+      read as an empty/cheap inventory rather than as `inventory errors`.
+      Real gap, not fixed here — a `flyctl` version pin plus required-field
+      validation is a natural follow-up, flagged for the conducting session.
+    disposition: >-
+      CURED in e4441c7eb8 for the billed fields: memory_mb, cpus and
+      size_gb are no longer coerced with `or 0`; a started machine or a
+      volume whose size is missing/non-integer is an `inventory errors=`
+      finding and its row is excluded from the totals (proven by
+      test_missing_sizes_fail_closed_only_on_what_is_billed, guilt and
+      innocence). A missing `Machines` key still reads as [] and a missing
+      `Type` as "not dedicated": the first is caught by the started-count
+      dropping below the footprint only if a ceiling is also a floor, which
+      this guard is not — accepted residual, since the expected-apps check
+      and the six ceilings bound the blast radius to "under-report", and
+      the weekly Telegram report shows the counts to a human. The flyctl
+      version pin is deliberately NOT added here: a pinned CLI drifts from
+      the API and is a second concern (owner-visible in the PR body).
+  - seat: "codex-cli-0.153.4 (adversarial refuter)"
+    objection: >-
+      [P1] `apps = fly_json("apps", "list")` (collect_inventory, line 85)
+      sits OUTSIDE every try/except in the function — the first `try:`
+      starts at line 90, after this call. If it raises, `main()` never
+      reaches `write_github_output()`/`print(report)`, so `steps.check.outputs.report`
+      is never set and the Telegram step's `if: always() && ... report != ''`
+      is false — the run goes red with NO alert sent. The new step comment
+      ("the Telegram step (always()) still reports") overclaims for this
+      failure class.
+    status: CONFIRMED
+    resolution: >-
+      Verified: `grep -n "apps = fly_json\|try:" scripts/fly_cost_guard.py`
+      shows the unguarded call at line 85 and the first `try:` at line 90.
+      HOWEVER: this exact shape — `apps = fly_json("apps", "list")` with no
+      surrounding try — was already present, unchanged, in the SUPERSEDED
+      inline guard (see the diff's minus-side under "Inventory billable
+      Fly.io resources"), so this is an INHERITED defect, not a regression
+      this PR introduced; the old `::warning::`-only guard would have failed
+      the exact same way (Python traceback, no GITHUB_OUTPUT) on this same
+      class of failure. Real and worth a follow-up (wrap the apps-list call,
+      or emit a minimal report/alert output before it), but out of THIS PR's
+      claimed scope ("exits 1 on any finding") and not fixed here.
+    disposition: >-
+      CURED in e4441c7eb8: the app listing sits in its own try/except; on
+      failure the error is recorded as `apps:list:<Exc>`, every expected
+      app is reported missing, the report line is still written to
+      GITHUB_OUTPUT (so the Telegram step fires) and the exit is 1 — proven
+      by test_failed_app_listing_is_a_finding_with_a_report through a fake
+      flyctl that exits 2 on `apps list`. The step comment's promise ("the
+      Telegram step (always()) still reports") is now true for this class.
+  - seat: "codex-cli-0.153.4 (adversarial refuter)"
+    objection: >-
+      [P2] The Telegram delivery step has two fail-open paths, both
+      pre-existing and untouched by this diff: missing `BOT`/`CHAT` secrets
+      prints a diagnostic and `exit 0` (workflow line ~64), and any
+      curl/network/HTTP failure is swallowed by `|| true` (line ~72). If the
+      inventory is innocent the whole workflow stays green even with the
+      alert channel disarmed — which now contradicts this PR's own
+      operational promise that findings surface via Telegram.
+    status: CONFIRMED
+    resolution: >-
+      Verified against the current workflow file: `[ -z "$BOT" ] || [ -z
+      "$CHAT" ] && { echo "Telegram secrets missing"; exit 0; }` and `curl
+      ... || true` are both present verbatim and both untouched by this PR's
+      diff (the diff's unified context stops right at the "Telegram alert"
+      step name — the body below it is unchanged). Pre-existing scope, not
+      introduced here; flagged rather than silently accepted, since the new
+      guard's exit-1-on-finding behavior raises the stakes of a silent
+      Telegram failure. Not fixed here (would be a second concern under
+      one-PR-one-concern).
+    disposition: >-
+      ACCEPTED, not cured: pre-existing and out of scope. The exit-1 guard
+      now makes GitHub's own red-run notification the primary alarm; the
+      Telegram message is the secondary channel. Recorded in the PR body as
+      a follow-up candidate (fail the step when the secrets are absent).
+  - seat: "codex-cli-0.153.4 (adversarial refuter)"
+    objection: >-
+      [P2] `test_live_collection_through_flyctl_reads_the_real_json_shapes`
+      claims to verify the real flyctl JSON shapes but only replays a fake
+      `flyctl` binary the test itself hardcodes (Machines/config.guest.memory_mb/size_gb/Type
+      literals at test_fly_cost_guard.py:170-204) — it can catch an internal
+      regression but cannot fail when the REAL flyctl output changes, which
+      is the risk its name claims to cover.
+      Also: `test_workflow_calls_the_script_and_checks_it_out` asserts only
+      two substrings (script call present, `actions/checkout@` present) and
+      would pass with a wrong sparse-checkout path or the checkout placed
+      after the run step; `_workflow_limits()` stringifies every YAML value
+      via `str(v)` before comparison, so it cannot force the ceilings to
+      stay YAML-quoted.
+    status: CONFIRMED
+    resolution: >-
+      Verified the test file directly: the fake flyctl script IS exactly
+      what it claims to validate against, confirming the naming overclaim.
+      Independently cross-checked the REAL shape myself (this pack's own
+      receipts): `flyctl ips list -a nuzantara-rag --json` returns `Type:
+      "v6"/"v6"/"shared_v4"` and the checked-in fixture
+      (fly_inventory_2026-09-10.json, dumped from live flyctl) matches
+      byte-for-byte — so the fake's assumed shape is CORRECT TODAY, this is
+      a test-robustness/naming gap (silent on a future flyctl schema drift)
+      rather than an active bug. The workflow-checkout and ceiling-quoting
+      sub-points are real coverage gaps but Codex's own follow-up correctly
+      downgrades the quoting one: the current YAML IS correctly quoted, and
+      a GitHub Actions `env:` value reaches the process as a string
+      regardless of YAML quoting style, so there is no live runtime path
+      where this actually breaks — test-strength gap only. Not fixed here.
+    disposition: >-
+      PARTLY CURED in e4441c7eb8: the test is renamed
+      test_collection_through_a_fake_flyctl_replaying_the_observed_json_shapes
+      and its docstring states what it proves (parsing of the shapes
+      observed 2026-09-10) and what it cannot (that flyctl still emits
+      them — only the live weekly run does). The workflow-checkout and
+      env-quoting sub-points are left as test-strength gaps with no live
+      failure path, per the refuter's own downgrade.
+  - seat: "codex-cli-0.153.4 (adversarial refuter)"
+    objection: >-
+      Initial attack surface I asked it to probe: are the flyctl `--json`
+      field assumptions themselves wrong (`Type` "v4" vs "shared_v4",
+      `size_gb`, `config.guest.memory_mb`)? After investigation the refuter
+      retracted this line of attack in full: "`Type: 'v4'` indica davvero
+      l'IPv4 dedicato; `shared_v4` è quello condiviso... confermato
+      dall'implementazione ufficiale di flyctl IP rendering.
+      `config.guest.memory_mb` è coerente con i tipi ufficiali di fly-go.
+      `size_gb` è la forma corrente dei volumi. Lo sparse checkout... è
+      valido... Nel workflow attuale i ceiling sono correttamente quotati."
+    status: RETRACTED
+    resolution: >-
+      Independently corroborated, not just relayed: this pack's own live
+      receipts (`fly machine/volumes/ips list --json` against
+      nuzantara-rag/nuzantara-postgres, and the checked-in fixture dump)
+      show the exact same field names/values the script consumes, matching
+      production byte-for-byte. Recorded here rather than omitted, per
+      harness-v2 §5 — a hypothesis the refuter investigated and disproved is
+      still a dissent entry, not silence.
+gate_verdict:
+  verdict: PASS
+  seat: claude-opus-5
+  graded_sha: e4441c7eb8 # pragma: allowlist secret — a git sha, short on purpose; detect-secrets still reads this one as hex entropy
+  conditions: []
+  reasons:
+    - "A1 re-run on the graded head: `apps/backend-rag/.venv/bin/python -m pytest scripts/tests/test_fly_cost_guard.py scripts/tests/test_fly_workflow_guards.py -q -p no:cacheprovider` = 17 passed in 1.18s, exit 0 — matches the pack's cure receipt count."
+    - "A2 innocence re-run: `python3 scripts/fly_cost_guard.py --inventory-json scripts/tests/fixtures/fly_inventory_2026-09-10.json` exits 0 printing all six dimensions — `Apps: 2 | Machines: 6/7 started (limit 6/7) | Started RAM: 12288 MB (limit 12288) | Started CPUs: 11 (limit 11) | Volumes: 77 GB (limit 77) | Dedicated IPv4: 0 (limit 0)`."
+    - "A3 guilt re-run, both directions: `--max-started-cpus 10` exits 1 with `::error::Fly resource guard: started cpus 11>10` and `--max-volume-gb 76` exits 1 with `::error::Fly resource guard: volumes 77GB>76GB` — the guard is not green by construction, and the ::warning::-that-never-failed of cicatrix #2 is gone (the script returns 1 whenever findings is non-empty, fly_cost_guard.py:272-274)."
+    - "Ceilings ARE the measured footprint, in both places at once: DEFAULT_LIMITS (fly_cost_guard.py:47-54) = {7, 6, 12288, 11, 77, 0} and the workflow env block (cron-fly-cost-alert.yml:33-38) carries the same six values; test_workflow_ceilings_match_script_defaults asserts equality, so a ceiling raised in one file alone turns the suite red."
+    - "The three P1 dissent `disposition:` claims verified against the code at e4441c7eb8, not relayed: (a) `cpus` now feeds the sixth ceiling — evaluate() adds it at fly_cost_guard.py:168 and reports/judges it at 194-195 and 207; (b) fail-closed on unreadable billed fields — no `or 0` survives, `_int_or_none` returns None and evaluate() names `<app>:machine <id>:<field> missing` / `<app>:volume <id>:size_gb missing` at 157-174, excluding the row from the totals (proven by test_missing_sizes_fail_closed_only_on_what_is_billed asserting `Started RAM: 9216 MB` after the 3072 MB row is dropped); (c) the app listing is wrapped at 109-113 and returns an inventory carrying `apps:list:<Exc>`, so main() still reaches write_github_output() and the Telegram step's `report != ''` guard holds — proven by test_failed_app_listing_is_a_finding_with_a_report through a fake flyctl that exits 2, asserting exit 1, no `Traceback`, and `report<<EOF\nApps: 0 | Machines: 0/0 started` in $GITHUB_OUTPUT."
+    - "Not W81 theater: the guilt cases mutate the LIVE-captured fixture (fly_inventory_2026-09-10.json, whose totals the pack's own `fly machine/volumes/ips list` receipts corroborate) by exactly one unit per dimension and assert the exact finding string — they would fail if evaluate() stopped judging that dimension. The one test that does replay its own fake binary is now named and documented for exactly that limit (test_collection_through_a_fake_flyctl_replaying_the_observed_json_shapes, docstring: it proves parsing, not that flyctl still emits the shapes)."
+    - "Secret boundary intact: `FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}` appears once, under the `check` step's own `env:` (cron-fly-cost-alert.yml:50-51); the new `actions/checkout@v7` step (the repo's dominant pin, 121 of 128 uses) and the setup-flyctl step receive no token, the sparse-checkout fetches only `scripts/fly_cost_guard.py`, and the script — stdlib-only, so the one-file checkout is sufficient — never prints an env value."
+    - "Countable claims hold: `git diff --numstat origin/main...HEAD` = 5 files, +730/-157, matching `diff.net_lines` verbatim (fixture 102 lines exact, 62 lines deleted from test_fly_workflow_guards.py exact); the pytest count 17 matches the cure receipt. Two ~-qualified figures round low (fly_cost_guard.py is 280 lines, not ~270; test_fly_cost_guard.py is 321, not ~300) and the BRIEF's constraint line still quotes the pre-cure +597/-157 net +440 — stale prose, not a false receipt: the pack's own diff block is measured at the graded sha."
+    - "Static gates re-run clean on the graded head: `ruff check` + `ruff format --check` on both Python files = All checks passed! / 2 files already formatted; `yaml.safe_load` of the workflow parses; `python3 scripts/lint_workflow_timeout_floor.py` = clean (157 jobs scanned, floor 10m), so the 5→10 timeout move is the lint's own floor, not a guess."
+    - "Residual fail-open, declared and bounded, not discovered by me as new: a flyctl status without a `Machines` key still reads as [] and an IP without `Type` still reads as not-dedicated, so a schema rename in those two places under-reports rather than errors. The blast radius is one-directional (ceilings are maxima, never floors, so under-reporting can only hide a breach, never invent one) and the weekly Telegram report prints the counts to a human; `cpu_kind` (shared vs performance) is likewise still uncollected. All three are recorded in the pack's dispositions as accepted residuals for the next ceiling revision — acceptable for a guard whose predecessor could not fail at all."
+    - "Evidence-pack lint re-run exactly as CI stages it (repo-root shim, changed-files and numstat from `git diff ... origin/main...HEAD`) ends `evidence_pack_lint: clean`, exit 0, with only the two NOTICE lines (appetite 2.5h vs 2h acknowledged; council_run overridden by `seat_override` — one non-Anthropic adversarial seat instead of a 2-seat quorum, defensible for a deterministic threshold script)."
+    - "CI on e4441c7eb8: 69 SUCCESS / 2 SKIPPED / 1 NEUTRAL / 4 FAILURE. Only `Harness floor recompute` is red by construction; the other three are infrastructure noise unrelated to this diff — `E2E Tests (Playwright)` and `Visa Oracle fullstack smoke` both died in `Install Playwright browsers` on an apt `Hash Sum mismatch` fetching Google's chrome-stable index (rebuilt mid-run), before any repo code executed, and `Test Summary` merely aggregates them. The diff touches no JS/TS, no frontend, no package manifest, and the same workflow concluded success on four other refs within the preceding 20 minutes."
+pending_proofs: []

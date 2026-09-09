@@ -17,110 +17,42 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # 10, not 5: the job now checks out the guard script and actions/checkout on
+    # this repo intermittently takes ~2 min (lint_workflow_timeout_floor.py).
+    timeout-minutes: 10
     env:
       EXPECTED_APPS: "nuzantara-rag,nuzantara-postgres"
-      MAX_TOTAL_MACHINES: "6"
-      MAX_TOTAL_VOLUME_GB: "60"
-      MAX_DEDICATED_IPV4: "1"
+      # Ceilings sit AT the footprint measured 2026-09-10 (7 machines, 6 started,
+      # 12288 MB started RAM, 11 started shared CPUs, 77 GB volumes, 0 paid
+      # IPv4). The previous values
+      # (6 / 60 / 1) had been breached since the third Postgres node landed on
+      # 2026-08-18 and every weekly run still concluded "success" because the
+      # inline check only emitted ::warning:: — cicatrix #2, Esiste≠Armato.
+      # Lower these when the Postgres node/volume cuts land; never raise them
+      # to silence a finding without a cost decision by the owner.
+      MAX_TOTAL_MACHINES: "7"
+      MAX_STARTED_MACHINES: "6"
+      MAX_STARTED_MEMORY_MB: "12288"
+      MAX_STARTED_CPUS: "11"
+      MAX_TOTAL_VOLUME_GB: "77"
+      MAX_DEDICATED_IPV4: "0"
     steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            scripts/fly_cost_guard.py
+          sparse-checkout-cone-mode: false
+
       - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # master
 
       - name: Inventory billable Fly.io resources
         id: check
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          set -euo pipefail
-          python3 <<'PY'
-          import json
-          import os
-          import subprocess
-
-
-          def fly_json(*args):
-              result = subprocess.run(
-                  ["flyctl", *args, "--json"],
-                  check=True,
-                  capture_output=True,
-                  text=True,
-              )
-              return json.loads(result.stdout)
-
-
-          expected = {
-              name.strip()
-              for name in os.environ["EXPECTED_APPS"].split(",")
-              if name.strip()
-          }
-          apps = fly_json("apps", "list")
-          app_names = {app.get("Name") or app.get("ID") for app in apps}
-          app_names.discard(None)
-
-          machine_count = 0
-          started_count = 0
-          volume_gb = 0
-          dedicated_ipv4 = 0
-          inventory_errors = []
-
-          for app in sorted(app_names):
-              try:
-                  status = fly_json("status", "--app", app)
-                  machines = status.get("Machines") or []
-                  machine_count += len(machines)
-                  started_count += sum(m.get("state") == "started" for m in machines)
-              except Exception as exc:
-                  inventory_errors.append(f"{app}:status:{type(exc).__name__}")
-
-              try:
-                  volumes = fly_json("volumes", "list", "--app", app)
-                  volume_gb += sum(int(v.get("size_gb") or 0) for v in volumes)
-              except Exception as exc:
-                  inventory_errors.append(f"{app}:volumes:{type(exc).__name__}")
-
-              try:
-                  addresses = fly_json("ips", "list", "--app", app)
-                  dedicated_ipv4 += sum(ip.get("Type") == "v4" for ip in addresses)
-              except Exception as exc:
-                  inventory_errors.append(f"{app}:ips:{type(exc).__name__}")
-
-          unexpected_apps = sorted(app_names - expected)
-          missing_apps = sorted(expected - app_names)
-          limits = {
-              "machines": int(os.environ["MAX_TOTAL_MACHINES"]),
-              "volume_gb": int(os.environ["MAX_TOTAL_VOLUME_GB"]),
-              "dedicated_ipv4": int(os.environ["MAX_DEDICATED_IPV4"]),
-          }
-          findings = []
-          if unexpected_apps:
-              findings.append("unexpected apps=" + ",".join(unexpected_apps))
-          if missing_apps:
-              findings.append("missing apps=" + ",".join(missing_apps))
-          if machine_count > limits["machines"]:
-              findings.append(f"machines {machine_count}>{limits['machines']}")
-          if volume_gb > limits["volume_gb"]:
-              findings.append(f"volumes {volume_gb}GB>{limits['volume_gb']}GB")
-          if dedicated_ipv4 > limits["dedicated_ipv4"]:
-              findings.append(
-                  f"dedicated IPv4 {dedicated_ipv4}>{limits['dedicated_ipv4']}"
-              )
-          if inventory_errors:
-              findings.append("inventory errors=" + ",".join(inventory_errors))
-
-          report = (
-              f"Apps: {len(app_names)} | Machines: {started_count}/{machine_count} started | "
-              f"Volumes: {volume_gb} GB | Dedicated IPv4: {dedicated_ipv4}"
-          )
-          alert = "\n".join(findings)
-          output_path = os.environ["GITHUB_OUTPUT"]
-          with open(output_path, "a", encoding="utf-8") as output:
-              output.write("report<<EOF\n" + report + "\nEOF\n")
-              output.write("alert<<EOF\n" + alert + "\nEOF\n")
-
-          print(report)
-          if findings:
-              print("::warning::Fly resource guard: " + "; ".join(findings))
-          PY
+        # Exits 1 on any finding: the run goes RED and the Telegram step (always())
+        # still reports. Logic + guilt/innocence tests live in
+        # scripts/fly_cost_guard.py and scripts/tests/test_fly_cost_guard.py.
+        run: python3 scripts/fly_cost_guard.py
 
       - name: Telegram alert
         if: always() && steps.check.outputs.report != ''
