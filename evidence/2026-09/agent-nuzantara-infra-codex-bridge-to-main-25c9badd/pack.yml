@@ -1,0 +1,214 @@
+brief_ref: evidence/2026-09/agent-nuzantara-infra-codex-bridge-to-main-25c9badd/brief.yml
+
+lanes:
+  - lane: chain-end-build
+    role: build
+    seat: >-
+      claude-fable-5.1 (Air-M5, commit 5f61e14c63, Co-Authored-By in the commit
+      trailer). This session authored NO line of the shipped diff — it is the
+      integration lane and its only acts were `git reset --hard origin/main`
+      and `git cherry-pick 5f61e14c63`.
+  - lane: chain-end-review-codex
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (`codex exec --sandbox read-only`, cross-family, fresh
+      context). Reviewed a SUPERSET of this diff — the full 2918-line code diff
+      of the lane, which contained this file's post-5f61e14c content verbatim.
+      Verdict and findings recorded in dissent below.
+  - lane: chain-end-review-kimi
+    role: review
+    seat: >-
+      kimi-code/k3 (cross-family, fresh context). Scope-limited to install.py
+      and child_context.py — NEITHER of which is in this final diff. Recorded
+      for honesty and counted toward nothing here.
+  - lane: chain-end-review-gemini
+    role: review
+    seat: >-
+      agy / Gemini CLI (cross-family, fresh context, effort high). Same
+      superset input as the Codex seat.
+  - lane: chain-end-gate-opus
+    role: review
+    seat: >-
+      claude-opus-5 read-only on-disk gate, fresh context, separate session
+      from the build lane. Examined the handoff-chain question directly.
+  - lane: chain-end-gate-fable
+    role: review
+    seat: >-
+      claude-fable-5 (nuzantara-40, M5) posting harness/fable-gate. It is the
+      seat that CAUGHT this PR's stale premise, and is named here as the reason
+      the diff was cut down to the residual commit alone.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  ONE build lane, so rule 8's >=2-build-lane non-Anthropic floor does not bind.
+  Reviewed anyway by two cross-family seats plus two Anthropic gates, none of
+  which authored the commit.
+
+diff:
+  files: 2
+  net_lines: 42
+  measured_at: >-
+    `git diff --no-renames --numstat origin/main HEAD` at origin/main
+    4eed90f149: 31/6 infra/codex-hooks/context_bridge.py and 18/1
+    infra/codex-hooks/test_context_bridge.py — 49 insertions, 7 deletions,
+    42 net.
+
+gear_note: >-
+  Deterministic floor is 1 (`--print-floor` = 1, `--print-floor-source` =
+  `none`: no hot-zone path, churn 49 far below SIZE_GEAR3_THRESHOLD 1828).
+  Declared Gear 2 rather than 1 because the file is a LIVE PreToolUse hook on
+  three seats and the change alters what a frozen session is told to do. Gear 3
+  is deliberately NOT declared: at 2 files and 42 net lines the ceiling rule
+  would require a gear_override, and manufacturing one to keep a Gear-3 pack
+  that an earlier, 27-file revision of this branch happened to need would be
+  the ceiling exactly backwards.
+
+pii_scan: clean
+
+receipts:
+  - claim: "The PR's original premise died mid-flight: a sibling landed the lane first"
+    cmd: "git log --oneline -15 origin/main -- infra/codex-hooks/"
+    result: "8300b93d9c feat(hooks): the native-child mandate ledger, its Claude adapter and the Codex context bridge (#6046) — merged 2026-09-09T17:30:33Z from agent/air-m5/infra/child-ledger-ship-0909, whose own message says it shipped 'the reviewed set b23fa5c9f5 + cherry-picked 7fab171563 and nothing else'. That is 11 minutes before PR #6052 opened. Superscar #5, sibling-race."
+    exit: 0
+    ts: "2026-09-09T18:14:00Z"
+    seat: session (Pro)
+  - claim: "main is missing EXACTLY 5f61e14c63 and no more of the lane"
+    cmd: "git show origin/main:infra/codex-hooks/context_bridge.py | shasum -a 256; git show 5f61e14c63^:infra/codex-hooks/context_bridge.py | shasum -a 256; git show 5f61e14c63:infra/codex-hooks/context_bridge.py | shasum -a 256"
+    result: "main = 24234352... and 5f61e14c's PARENT = 24234352... (identical), while 5f61e14c itself = 92c7ad29... So main carries the lane up to b23fa5c9 and stops one commit short."
+    exit: 0
+    ts: "2026-09-09T18:16:00Z"
+    seat: session (Pro)
+  - claim: "What ships is byte-identical to what is already running on Pro"
+    cmd: "git show HEAD:infra/codex-hooks/context_bridge.py | shasum -a 256; shasum -a 256 ~/.codex/hooks/nuzantara-context/context_bridge.py"
+    result: "both 92c7ad29... — superscar #1 in reverse, narrowed to one commit: the seat runs the fix, the repo does not."
+    exit: 0
+    ts: "2026-09-09T18:25:00Z"
+    seat: session (Pro)
+  - claim: "The diff is exactly two files"
+    cmd: "git diff --no-renames --numstat origin/main HEAD"
+    result: "31\t6\tinfra/codex-hooks/context_bridge.py and 18\t1\tinfra/codex-hooks/test_context_bridge.py. Nothing else — no registry.json, no declared-pairs.json, no deletions."
+    exit: 0
+    ts: "2026-09-09T18:24:00Z"
+    seat: session (Pro)
+  - claim: "The rebuild does not delete or downgrade anything #6046 shipped"
+    cmd: 'git diff origin/main...HEAD --diff-filter=D --name-only; git show origin/main:infra/guard-conformance/registry.json | python3 -c "import json,sys;e=json.load(sys.stdin)[''surfaces''][''command_hooks''][''entries''];print([k for k in e if ''child_'' in k])"'
+    result: "empty deletion list. main already registers child_workflow.py and child_context.py with scar tags superscar-2/3/6 — RICHER than the earlier revision of this branch, which would have overwritten them with a two-tag rewrite and deleted FABLE-MEASUREMENTS-2026-09-09.md plus #6046's evidence pack. Resetting onto origin/main is what makes that regression impossible."
+    exit: 0
+    ts: "2026-09-09T18:22:00Z"
+    seat: session (Pro)
+  - claim: "Bridge suite green, including the new regression test"
+    cmd: ".venv/bin/python -m pytest infra/codex-hooks -q; .venv/bin/python -m pytest infra/codex-hooks/test_context_bridge.py -q -k chain"
+    result: "51 passed in 18.43s; the chain-selected subset is 2 passed, 22 deselected"
+    exit: 0
+    ts: "2026-09-09T18:29:00Z"
+    seat: session (Pro)
+  - claim: "ruff clean and guard-conformance green on the new scope"
+    cmd: "ruff check infra/codex-hooks; python3 infra/guard-conformance/check_guard_conformance.py"
+    result: "All checks passed!; guard-conformance exit 0 (this PR touches no hook file and no registry, so the surface it once broke is no longer in the diff at all)"
+    exit: 0
+    ts: "2026-09-09T18:29:00Z"
+    seat: session (Pro)
+
+residual_risks:
+  - >-
+    This PR's premise was invalidated once tonight by a concurrent merge and is
+    only re-verified against origin/main 4eed90f149. If another sibling lands
+    5f61e14c's content first, this PR becomes EMPTY and must be closed rather
+    than forced — the check is one `shasum` on main's copy.
+  - >-
+    Merged is not live, and here the arrow points the unusual way: Pro is
+    ALREADY running this exact byte sequence, so the post-merge proof is not
+    "the fix arrives" but "the repo stops disagreeing with the seat", plus M5
+    and Mini gaining it if they carry a ~/.codex seat at all.
+  - >-
+    Two accepted recommendations against the bridge remain open and are NOT in
+    these two files: release() during an in-flight launch, and
+    TRANSIENT_FAILURES classifying by exception type rather than message. Three
+    independent seats reached them tonight; they are named as follow-ups.
+
+bites:
+  consumer: >-
+    the installed Codex context bridge on Pro, and on M5/Mini if a ~/.codex
+    seat exists there, refreshed from origin/main after this merges.
+  where: pro
+  observation: >-
+    `cmp ~/.codex/hooks/nuzantara-context/context_bridge.py <(git show
+    origin/main:infra/codex-hooks/context_bridge.py)` is SILENT — which it is
+    not today, because main is one commit behind the live file (24234352... vs
+    92c7ad29...). That single cmp is the whole claim: it fails before the merge
+    and passes after, with no reinstall needed on Pro since the live bytes
+    already match the post-merge main.
+
+dissent:
+  - seat: claude-fable-5 (nuzantara-40, M5) via harness/fable-gate
+    status: CONFIRMED
+    objection: >-
+      Posted REWORK-BUILD on 30907098bce3: "the PR premise is stale. #6046
+      landed the whole infra/codex-hooks + claude-hooks child lane on main at
+      01:50 WITA as 8300b93d9c (squash), 11 minutes before #6052 opened. The PR
+      is now DIRTY on infra/codex-hooks/context_bridge.py +
+      test_context_bridge.py. Sibling-race, superscar #5." It named the cure
+      precisely: carry only 5f61e14c63, compare rather than overwrite the
+      registry entries because main's carry scar tags the branch's rewrite
+      drops, drop declared-pairs.json as already identical, and do not delete
+      FABLE-MEASUREMENTS-2026-09-09.md.
+    adjudication: >-
+      CURED, at fix depth 1, exactly as named — and independently re-verified
+      before acting rather than taken on trust: main's file hash matches
+      5f61e14c's parent, the deletion list is empty after the reset, and main's
+      registry entries were read and found richer. The 27-file diff is now 2
+      files. This gate is recorded as CONFIRMED because it was right and it was
+      the only seat that caught it: every other seat, including the Opus gate,
+      reviewed the diff on its own terms and none of them asked whether main had
+      moved underneath it.
+  - seat: codex-gpt-5.6-sol (cross-family, fresh context)
+    status: PLAUSIBLE
+    objection: >-
+      VERDICT: BLOCKER with 12 findings against the lane superset. Only two
+      touch code still in this diff, and both are about context_bridge.py as a
+      whole rather than the chain-end change: (9) git_fingerprint() at lines
+      98-118 read_bytes() every untracked file with no size bound, so a 1T
+      sparse file blocks or OOMs the hook; (10) the 32000-char cap at lines
+      165-208 is checked only after every rollout has been scanned, and the
+      transcript is scanned twice. Its other ten findings target install.py,
+      child_workflow.py, mandate_budget.py and rpc.py — none of which this PR
+      changes, and all of which are already on main via #6046.
+    adjudication: >-
+      NOT CURED, and out of scope by construction: the ten findings against
+      files this PR does not touch are already merged code, and curing them here
+      would re-open a directory that landed an hour ago under someone else's
+      review. Findings 9 and 10 are pre-existing in main's copy of
+      context_bridge.py too — they are not introduced or worsened by
+      chain_summary(), which walks a bounded to_session list and reads no files.
+      Carried as follow-ups.
+  - seat: agy / Gemini CLI (cross-family, fresh context)
+    status: PLAUSIBLE
+    objection: >-
+      Two findings, both against context_bridge.py but outside these 49 lines:
+      release() during an in-flight launch re-freezes the source because the
+      supervisor's except-block writes rollover=needs_attention back to disk
+      after the release, and never terminates the subprocess; and
+      TRANSIENT_FAILURES matching on type(exc).__name__ means an operator's
+      explicit cancel() (RuntimeError) and an expired deadline (TimeoutError)
+      are both auto-relaunched by the Stop hook.
+    adjudication: >-
+      NOT CURED. Both are the recommendations Fable had already recorded as
+      non-blocking against b23fa5c9 — code that is now on main via #6046, not
+      code this PR adds. Three seats reaching them independently is the reason
+      they are written into the PR body as the first follow-up rather than left
+      in a review log.
+  - seat: claude-opus-5 on-disk gate (fresh context, read-only)
+    status: RETRACTED
+    objection: >-
+      On the question this PR now consists of, it cleared the change with
+      file:line evidence: hop accounting, max_hops enforcement and cycle
+      prevention are correct, and 5f61e14c63 — "a frozen source names the END of
+      its handoff chain, not its first hop" — "is a right fix". Reported as a
+      retraction rather than as consent. Its BLOCKER verdict was against a
+      guard-conformance registry gap in the 27-file revision of this branch;
+      that surface is no longer in the diff, and main already registers both
+      hooks with richer scar tags than the fix it prompted would have written.
+    adjudication: >-
+      Superseded by the rebuild rather than cured by a patch. Recorded in full
+      because the honest history is that this session shipped a registry edit,
+      then discovered main had a better one — the edit was dropped, not merged.

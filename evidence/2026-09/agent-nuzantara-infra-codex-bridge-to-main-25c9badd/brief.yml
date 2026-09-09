@@ -1,0 +1,87 @@
+task_id: codex-bridge-chain-end-to-main
+gear: 2
+l_level: L2
+gate_class: session
+objective: |
+  Land the ONE commit of the Codex context-bridge lane that origin/main does
+  not have: 5f61e14c63, "a frozen source names the END of its handoff chain,
+  not its first hop".
+
+  This PR began life as something much larger and was CUT DOWN after a
+  sibling-race (superscar #5). The original mandate was to ship the whole
+  lane, because at the time infra/codex-hooks/ was absent from main. While
+  this session was running its review round, PR #6046 squash-landed that
+  entire directory at 8300b93d9c — 11 minutes before this PR opened — shipping
+  "the reviewed set b23fa5c9f5 + cherry-picked 7fab171563 and nothing else".
+  Fable posted harness/fable-gate=REWORK-BUILD on the stale head and named the
+  cure. The branch was reset onto fresh origin/main and now carries exactly the
+  residual.
+
+  What remains is real and is still superscar #1 in reverse, just narrowed:
+  main's context_bridge.py is byte-identical to 5f61e14c's PARENT
+  (sha256 24234352...), while the LIVE file on Pro is 5f61e14c's version
+  (sha256 92c7ad29...). Pro runs the chain-end fix; main does not.
+
+  The bug it fixes, measured 2026-09-09 23:41 WITA: after acceptance the
+  PreToolUse deny text said "work continues in Codex task <first hop>". The
+  owner pasted a new mandate into source 01a08685 whose chain 87 -> 8b -> 8d
+  had already parked at the hop limit an hour earlier, so the pointer sent them
+  to a dead task and the model checkpointed the mandate into a source nobody
+  would ever resume. chain_summary() now follows to_session links (bounded) to
+  the LAST hop and reports whether it is live, handing off, or parked.
+constraints:
+  - "Carry the commit VERBATIM. This session authored none of it — the commit
+    is Co-Authored-By Claude Fable 5.1 and is already live on Pro."
+  - "Do NOT re-land anything #6046 already shipped, and do not delete what it
+    shipped: an earlier revision of this branch would have removed
+    infra/codex-hooks/FABLE-MEASUREMENTS-2026-09-09.md and #6046's own evidence
+    pack. Resetting onto origin/main is what makes that impossible."
+  - "Do NOT touch infra/guard-conformance/registry.json: main already registers
+    child_workflow.py and child_context.py with RICHER scar tags
+    (superscar-2/3/6) than this branch's earlier rewrite carried. Comparing
+    rather than overwriting is the whole point."
+  - "Do NOT touch infra/home-fork/declared-pairs.json: already 174 entries on
+    main, identical."
+acceptance:
+  - text: >
+      The diff SHALL be exactly the two files of 5f61e14c63 and nothing else.
+    status: verified
+    probe: "git diff --numstat origin/main...HEAD  # 31/6 context_bridge.py, 18/1 test_context_bridge.py"
+  - text: >
+      main SHALL be missing exactly this commit and nothing more of the lane.
+    status: verified
+    probe: "git show origin/main:infra/codex-hooks/context_bridge.py | shasum -a 256  # 24234352... == 5f61e14c^, while 5f61e14c itself is 92c7ad29..."
+  - text: >
+      The shipped file SHALL be byte-identical to what is already running on Pro.
+    status: verified
+    probe: "shasum -a 256 ~/.codex/hooks/nuzantara-context/context_bridge.py  # 92c7ad29... == git show HEAD:infra/codex-hooks/context_bridge.py"
+  - text: >
+      The bridge suite SHALL be green, including the new regression test.
+    status: verified
+    probe: ".venv/bin/python -m pytest infra/codex-hooks -q"
+  - text: >
+      guard-conformance SHALL stay green (this PR touches no hook and no registry).
+    status: verified
+    probe: "python3 infra/guard-conformance/check_guard_conformance.py"
+  - text: >
+      AFTER merge the live bridge on Pro SHALL equal origin/main.
+    status: pending
+    probe: "cmp ~/.codex/hooks/nuzantara-context/context_bridge.py <(git show origin/main:infra/codex-hooks/context_bridge.py)"
+risks:
+  - "The premise of this PR was already invalidated once tonight by a
+    concurrent merge. It is re-verified against origin/main 4eed90f149; if
+    another sibling lands 5f61e14c's content before this merges, this PR
+    becomes empty and should be CLOSED, not forced."
+  - "Two accepted non-blocking recommendations against the bridge (release()
+    during an in-flight launch; TRANSIENT_FAILURES classifying by exception
+    type) remain open. They are NOT in this diff's two files and are named as
+    follow-ups; three seats reached them independently tonight."
+instruction_to_the_grader: |
+  Grade the SCOPE first: confirm the diff is exactly two files and that nothing
+  #6046 shipped is deleted or downgraded — that is the failure this PR already
+  made once and had to be rebuilt to avoid. Then grade chain_summary(): confirm
+  the walk over to_session links is BOUNDED (it must not loop on a cycle), that
+  a parked terminal hop is reported as parked rather than pointed at, and that
+  the regression test actually pins the reported end-of-chain rather than the
+  first hop.
+pii: none
