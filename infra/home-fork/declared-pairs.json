@@ -956,6 +956,12 @@
       "_note": "Child-only router; installed parent guards are invoked without modifying their source. Local installation is recorded in the per-seat child-workflow manifest."
     },
     {
+      "live": "~/.claude/hooks/child_context.py",
+      "repo": "infra/claude-hooks/child_context.py",
+      "machines": ["all"],
+      "_note": "Child-local usage accounting and expiring native CLI capacity calibration; no daemon or API client."
+    },
+    {
       "live": "~/.claude/hooks/mandate_budget.py",
       "repo": "infra/codex-hooks/mandate_budget.py",
       "machines": ["all"],

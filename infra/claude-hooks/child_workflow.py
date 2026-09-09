@@ -121,6 +121,8 @@ def context_guard(payload: dict[str, Any], guard: dict[str, Any]) -> int | None:
                 return 2
         return None  # Top-level behavior stays with the existing guard.
     key, transcript = identity
+    import child_context
+
     if payload.get("tool_name") in ("Agent", "Task"):
         sys.stderr.write(
             "Child delegation depth reached. Return remaining work to the parent.\n"
@@ -145,19 +147,39 @@ def context_guard(payload: dict[str, Any], guard: dict[str, Any]) -> int | None:
         # Edit/Write is never evidence of read-only ownership.
         if tool not in ("Read", "Glob", "Grep", "WebFetch", "WebSearch"):
             state["mutation_possible"] = True
-        state["model"] = guard["_last_assistant_model"](tail) if tail else None
-        state["used"] = guard["_estimate_tokens"](transcript) if tail else None
+        state.update(child_context.snapshot(tail or ""))
         window = (payload.get("context_window") or {}).get("context_window_size")
-        state["window"] = window if isinstance(window, int) and window > 0 else None
+        native = type(window) is int and window > 0
+        state["window"] = (
+            window
+            if native
+            else child_context.capacity(
+                state["model"], state["version"], payload.get("cwd", os.getcwd())
+            )
+        )
         state["measurement"] = (
-            "observed" if state["window"] and state["used"] is not None else "UNKNOWN"
+            ("observed" if native else "calibrated")
+            if state["window"] and state["used"] is not None
+            else "UNKNOWN"
         )
-        turns = guard["_count_assistant_turns"](tail) if tail else 0
-        over = (
-            state["measurement"] == "observed"
-            and turns >= guard["GRACE_TURNS"]
-            and state["used"] >= state["window"] * 0.4
+        state.setdefault("budget_started_at", time.time())
+        state["token_limit"] = (
+            int(state["window"] * 0.4)
+            if state["window"]
+            else child_context.FALLBACK_TOKENS
         )
+        over = state["used"] is not None and state["used"] >= state["token_limit"]
+        if state["pretool_count"] > child_context.MAX_TOOL_CALLS:
+            state["budget_reason"] = "tool_calls"
+            over = True
+        elif (
+            state.get("budget_elapsed", 0) + time.time() - state["budget_started_at"]
+            >= child_context.MAX_SECONDS
+        ):
+            state["budget_reason"] = "elapsed_time"
+            over = True
+        elif over:
+            state["budget_reason"] = "context_tokens"
         if over:
             state["return_required"] = True
         if state.get("return_required") and tool not in ("SendMessage", "TaskStop"):
@@ -220,6 +242,10 @@ def _stop_guard(payload: dict[str, Any], legacy: dict[str, Any]) -> int:
     assert identity is not None
     key, transcript = identity
     with child_state(key) as (_, state):
+        if "budget_started_at" in state:
+            state["budget_elapsed"] = state.get("budget_elapsed", 0) + max(
+                0, time.time() - state.pop("budget_started_at")
+            )
         state.update(
             transport="stopped", acceptance="unverified", heartbeat=time.time()
         )

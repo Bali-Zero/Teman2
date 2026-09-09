@@ -276,7 +276,13 @@ def test_claude_child_ignores_parent_window_and_never_weakens_deny(
         "transcript_path": claude_env["agent_transcript_path"],
     }
     callbacks = {
-        "_read_tail": lambda _: "child",
+        "_read_tail": lambda _: json.dumps(
+            {
+                "type": "assistant",
+                "version": "test",
+                "message": {"model": "child-model", "usage": {"input_tokens": 500}},
+            }
+        ),
         "_last_assistant_model": lambda _: "child-model",
         "_estimate_tokens": lambda _: 500,
         "_count_assistant_turns": lambda _: 31,

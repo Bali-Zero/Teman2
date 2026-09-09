@@ -80,10 +80,13 @@ def install(seat: Path, shared_hooks: Path) -> dict:
     settings_path = seat / "settings.json"
     settings = route_settings(json.loads(settings_path.read_text()), shared_hooks)
     sources = {
+        "child_context.py": Path(__file__).parents[1]
+        / "claude-hooks"
+        / "child_context.py",
+        "mandate_budget.py": Path(__file__).parent / "mandate_budget.py",
         "child_workflow.py": Path(__file__).parents[1]
         / "claude-hooks"
         / "child_workflow.py",
-        "mandate_budget.py": Path(__file__).parent / "mandate_budget.py",
     }
     for n, p in sources.items():
         compile(p.read_text(), n, "exec")
@@ -93,7 +96,9 @@ def install(seat: Path, shared_hooks: Path) -> dict:
     for n, p in sources.items():
         if (shared_hooks / n).exists():
             shutil.copy2(shared_hooks / n, backup / n)
-        shutil.copy2(p, shared_hooks / n)
+        temporary = shared_hooks / (n + ".install-tmp")
+        shutil.copy2(p, temporary)
+        temporary.replace(shared_hooks / n)
     # Symlinked account settings deliberately continue to point to the same file.
     settings_path.write_text(json.dumps(settings, indent=2) + "\n")
     settings_path.chmod(0o600)

@@ -13,7 +13,7 @@ from context_bridge import codex_home, save, load, state_dir
 from rpc import RPC, binary_path
 
 
-def capture(destination: str) -> None:
+def capture(destination: str, extra: dict | None = None) -> None:
     payload = json.load(sys.stdin)
     keep = (
         "hook_event_name",
@@ -28,6 +28,7 @@ def capture(destination: str) -> None:
         "stop_hook_active",
     )
     record = {k: payload[k] for k in keep if k in payload}
+    record.update(extra or {})
     record["keys"] = sorted(payload)
     record["continuation_env_present"] = bool(
         os.environ.get("CODEX_CONTEXT_FROM_SESSION")
