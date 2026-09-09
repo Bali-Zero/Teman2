@@ -177,6 +177,141 @@ def _handoff_path(session_id: str) -> Path:
     return _state_dir() / f"precompact-handoff-{session_id}.json"
 
 
+# ---------------------------------------------------------------------------
+# WINDOW JUMP (Ruling Zero 2026-09-09, research/operations/2026-09-09-window-
+# jump-automatic-handoff-it.md): the first trip of this gate must not end with
+# "apri una finestra nuova" addressed to a human. It writes pending-jump.json
+# and — on a Ghostty interactive seat — spawns window_jump.sh (⌘N, `nz-jump`,
+# then `/exit` into the old window once the new session reports in). Headless
+# seats get only the file: the cascade wrapper re-invokes `claude -p` on it.
+# The new session's SessionStart hook (context_jump_resume.py) injects the
+# handoff and stamps `to_session`. Cap: JUMP_MAX_HOPS per chain — a mandate
+# that never converges must stop and escalate, not hop forever.
+# Kill switch: CONTEXT_JUMP_OFF=1 (the deny itself stays: that is Rule 1).
+# ---------------------------------------------------------------------------
+JUMP_MAX_HOPS = 3
+MANDATE_MAX_CHARS = 6000
+
+
+def _jump_dir() -> Path:
+    return _home() / ".organism" / "context-guard"
+
+
+def _pending_jump_path(from_session: str) -> Path:
+    # One file PER SESSION: two windows tripping at once must never overwrite
+    # each other's jump (cicatrix #5, sibling race on shared state).
+    return _jump_dir() / f"pending-jump-{from_session}.json"
+
+
+def _chain_link(from_session: str) -> dict | None:
+    """The jump that PRODUCED this session (to_session == from_session), if any:
+    it carries the chain's hop count and the ORIGINAL mandate — hop 2's own
+    transcript starts with nz-jump's stub, not with the mandate."""
+    try:
+        for f in _jump_dir().glob("pending-jump-*.json"):
+            try:
+                j = json.loads(f.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if isinstance(j, dict) and j.get("to_session") == from_session:
+                return j
+    except OSError:
+        pass
+    return None
+
+
+def _window_jump_script() -> Path:
+    return _home() / ".claude" / "hooks" / "window_jump.sh"
+
+
+def _first_user_mandate(transcript_path: str) -> str:
+    """The FIRST real user prompt of the transcript, in full (capped). The
+    handoff's `objective` (precompact-mnemos) keeps only prompts under 500
+    chars — measured 2026-09-09: a structured mandate came out as [] — so
+    the jump carries the mandate itself. Head-read, not tail-read: the first
+    prompt of a long session lives outside the 400K tail."""
+    try:
+        with open(transcript_path, "r", encoding="utf-8", errors="ignore") as fh:
+            # The first prompt is within the first few records; past 400 lines
+            # (hook/system injections come first) give up and return "" rather
+            # than scan a multi-MB transcript on every denied call.
+            for _ in range(400):
+                line = fh.readline()
+                if not line:
+                    break
+                if '"user"' not in line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    continue
+                msg = rec.get("message") if isinstance(rec.get("message"), dict) else {}
+                is_user = rec.get("type") == "user" or msg.get("role") == "user"
+                if not is_user:
+                    continue
+                content = msg.get("content", rec.get("content"))
+                text = ""
+                if isinstance(content, str):
+                    text = content
+                elif isinstance(content, list):
+                    text = "\n".join(str(b.get("text", "")) for b in content
+                                     if isinstance(b, dict) and b.get("type") == "text")
+                text = text.strip()
+                if len(text) < 20 or text.startswith("<") or "tool_result" in line[:200]:
+                    continue
+                return text[:MANDATE_MAX_CHARS]
+    except OSError:
+        pass
+    return ""
+
+
+def _write_pending_jump(payload: dict, model: str, handoff_path: Path, mandate: str) -> bool:
+    """Write pending-jump-<session>.json and, on a Ghostty seat, spawn
+    window_jump.sh detached. Returns True when a jump was raised."""
+    if os.environ.get("CONTEXT_JUMP_OFF") == "1":
+        return False
+    from_session = str(payload.get("session_id") or "unknown")
+    path = _pending_jump_path(from_session)
+    if path.exists():
+        return False  # already raised for this session: the file IS the rate limit
+    link = _chain_link(from_session)
+    try:
+        hops = int((link or {}).get("hops", 0)) + 1
+    except (TypeError, ValueError):
+        hops = 1
+    if hops > JUMP_MAX_HOPS:
+        return False
+    jump = {
+        "from_session": from_session,
+        "from_pid": os.getppid(),  # the claude process this hook runs under
+        "to_session": None,
+        "model": model,
+        "permission_mode": payload.get("permission_mode") or "",
+        "cwd": str(payload.get("cwd") or os.getcwd()),
+        "handoff_path": str(handoff_path),
+        "mandate": mandate,
+        "hops": hops,
+        "ts": time.time(),
+        "seat": "ghostty" if os.environ.get("TERM_PROGRAM") == "ghostty" else "headless",
+    }
+    try:
+        _jump_dir().mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(jump, indent=2), encoding="utf-8")
+        tmp.replace(path)
+    except OSError:
+        return False
+    if jump["seat"] == "ghostty" and sys.platform == "darwin" and _window_jump_script().exists() \
+            and os.environ.get("CONTEXT_JUMP_NO_SPAWN") != "1":
+        try:
+            subprocess.Popen(["bash", str(_window_jump_script()), from_session],
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL, start_new_session=True)
+        except OSError:
+            pass
+    return True
+
+
 def _load_module_from_path(path: Path, name: str):
     if not path.is_file():
         return None
@@ -318,7 +453,7 @@ def _mark_handoff_written(session_id: str) -> None:
         pass
 
 
-def _write_handoff(payload: dict):
+def _write_handoff(payload: dict, mandate: str = ""):
     """Write the SAME artifact precompact-mnemos.py's PreCompact hook writes
     (see module docstring's REUSE section), rate-limited to once per
     HANDOFF_RATE_LIMIT_S per session. Returns the path written, or None."""
@@ -338,6 +473,7 @@ def _write_handoff(payload: dict):
             "session_id": session_id,
             "timestamp": datetime.datetime.now().isoformat(),
             "transcript_path": transcript_path,
+            "mandate": mandate,
             **parsed,
         }
         handoff_path.parent.mkdir(parents=True, exist_ok=True)
@@ -424,14 +560,17 @@ def main() -> int:
 
     session_id = str(payload.get("session_id") or "unknown")
     handoff_path = _handoff_path(session_id)
+    model = os.environ.get("CONTEXT_GUARD_MODEL") or _last_assistant_model(tail_text) or "sonnet"
+    link = _chain_link(session_id)
+    mandate = (link or {}).get("mandate") or _first_user_mandate(transcript_path)
     if _should_write_handoff(session_id):
-        _write_handoff(payload)
+        _write_handoff(payload, mandate)
+    jumped = _write_pending_jump(payload, model, handoff_path, mandate)
 
     if _is_allowed_call(tool_name, tool_input, handoff_path):
         _gc_record("context_window_guard", "allow", payload)
         return 0
 
-    model = os.environ.get("CONTEXT_GUARD_MODEL") or _last_assistant_model(tail_text) or "sonnet"
     pct_i = int(round(pct * 100))
     threshold_i = int(round(threshold * 100))
     tokens_k = tokens // 1000
@@ -442,10 +581,13 @@ def main() -> int:
         f"[context_window_guard] Contesto ≈{tokens_k}K token = {pct_i}% della finestra "
         f"(soglia {role} {threshold_i}%). Modello: {model}; finestra assunta {window_k}K ({reason}). "
         f"Handoff: {handoff_str}.\n"
-        f"1) Finestra nuova: claude --model {model} poi /resume.\n"
+        + ("Salto di finestra AVVIATO: la finestra nuova si apre da sola con il mandato; chiudi il turno.\n"
+           if jumped else
+           "Salto non avviato (kill switch, cap salti o già in corso).\n")
+        + f"1) Finestra nuova: claude --model {model} poi /resume.\n"
         f"2) Finestra sbagliata su QUESTA macchina? Dal prompt bar (bypassa i tool-hook): "
         f"! {ESCAPE_ONE_LINER}\n"
-        "3) Ultima risorsa: CONTEXT_GUARD_OFF=1."
+        "3) Ultima risorsa: CONTEXT_GUARD_OFF=1 (gate), CONTEXT_JUMP_OFF=1 (salto)."
     )
     print(msg, file=sys.stderr)
     _gc_record("context_window_guard", "deny", payload)
