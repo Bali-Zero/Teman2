@@ -472,3 +472,91 @@ Prerequisites before any B-3, both Zero's call per Fable's decision 4: builder t
 0.6 on the Codex seat, and the `AGENTS.md` index diet. Plus the deny-message fix from
 decision 3 — a coordinator that cannot see the number cannot manage the budget it is
 being held to.
+
+---
+
+## 11. Arm B-3, and why the pilot closes here
+
+Zero ordered B-3 at 03:10 WITA (confirmed to the Dux directly, not only through Fable):
+same spec, same C1–C6, same repaired denial clause, Codex Capo + Terra + 1 support,
+`max_threads 3`, fresh worktree, kill lines unchanged. **One variable changed** — the seat.
+`~/.codex/nuzantara-context-policy.json` on M5, read before launching:
+
+```
+"thresholds": { "imperator": 0.2, "builder": 0.6 },  "max_hops": 3,
+"child_limits": { "max_attempts": 24, "max_active": 3, "max_depth": 1, "max_seconds": 3600 }
+```
+
+Builder 0.6 of 258 400 puts the wall at **155 040**, up from the 103 360 that killed B-2.
+Worktree forked from `befb71ba00` — a third distinct base commit, recorded as before.
+
+### B-3 measured nothing, and the cause was one of the mission's own terms
+
+It died at **127 s**, not on the context wall. The Capo was denied the delegation itself:
+
+```
+Tool call blocked by PreToolUse hook: Mandate deadline reached; return the remaining
+work. Do not reset the budget with a replacement.. Tool: collaborationspawn_agent
+```
+
+Verified on disk, not inferred:
+
+| | |
+|---|---|
+| mandate `pilot-mission-1-20260910` created | 01:54:06 |
+| `deadline` field | **02:54:06** — exactly `created + 3600` |
+| B-3 launched | **03:15:44**, 21 min 38 s after expiry |
+| Capo context at death | **56 137 / 258 400** — nowhere near the 155 040 wall |
+| threads spawned | **none**; worktree clean, zero lines |
+
+**B-3 is not a test of the 0.6 threshold.** It never approached it.
+
+### Finding: the pilot's two budget models measure different things
+
+The cause is the mission term *"keep `NUZANTARA_MANDATE_ID` so the ledger row
+continues"*, and it turned out to be unsatisfiable. **The ledger's mandate deadline is
+wall-clock from creation; the child's 3600 s cap is accumulated ACTIVE time.** A mission
+that spans more than an hour of human-paced work therefore outlives its own mandate while
+no child has spent anything close to its budget — the mandate had 0 active children for
+most of the hour it was expiring in.
+
+This is the **second budget-model mismatch this pilot found**, and it has the same shape as
+the first:
+
+| | model A | model B | consequence |
+|---|---|---|---|
+| §10 | 40 % of a 1 000 000 window (400 000) | 40 % of 258 400 (103 360) | the two arms were never running the same experiment |
+| §11 | mandate deadline = wall clock from creation | child cap = accumulated active time | a long mission is denied while its budget is untouched |
+
+Neither is a bug in a guard. Both are two honest budgets that answer different questions
+being read as one number.
+
+The deny text is again the operator-facing defect, for the same reason as the Codex
+bridge's in §9: *"Mandate deadline reached"* does not say **when** the deadline was, or
+that it is wall-clock rather than active time. A coordinator that reads it at 03:15 has no
+way to learn the window shut at 02:54.
+
+### Closed, by Zero
+
+Relaunching as B-3b under a fresh mandate id was the obvious repair, and Fable
+recommended it: a new id is a new run, not a reset of an expired budget — which is what
+the deny text forbids. The Dux declined to act on that recommendation alone, because
+keeping the mandate id was a term **Zero** had set and only Zero could lift it, and put
+the choice to him. **His answer was to close the pilot** (03:25 WITA, *"fallo chiudere,
+non ci serve più"*). B-3b was not run.
+
+**So the 0.6 wall is unmeasured, and this report does not claim otherwise.** The D3 answer
+of §10 stands exactly as written and only for what it covers: builder 0.4, the seat as it
+was between 02:15 and 02:29 WITA. Whether a Capo at 0.6 reaches a commit is an open
+question, not a pessimistic one.
+
+### Final state
+
+| item | state |
+|---|---|
+| #6056 — this report | **merged** as `4efcc73e0f` |
+| #6054 — arm A receptor | **open, unarmed**; its fate is Zero's, outside the pilot |
+| arm B-2 work product | committed as evidence `a4ddcac2b9` on `agent/air-m5/infra/pilot1-arm-b2`, **no PR** |
+| arm B, arm B-3 | no commit, clean worktrees |
+| guards | none disabled; `MANDATE_BUDGET_OFF` never set; ledger never edited |
+| calibration state | sha256 manifest identical from 01:53 to close |
