@@ -38,6 +38,12 @@ CASES = {
     "git checkout main": True,
     "git stash": True,
     "git reset --hard": True,
+    # 7th over-match (2026-09-09): `merge` lacked stash's trailing-hyphen
+    # guard, so `git merge-base`/`merge-file`/`merge-tree` — distinct,
+    # read-only-or-informational subcommands — were judged as `git merge`
+    # on a shared prefix. `git merge` itself must keep blocking.
+    "git merge origin/main": True,
+    "git merge --no-ff feature": True,
     # W117 class-audit (2026-08-10): `clean` and `restore` were never in this
     # enumeration, so five shapes of the SAME damage passed in the main checkout
     # while reset/checkout/stash blocked. Both letter tests read the flag CLUSTER,
@@ -68,6 +74,11 @@ CASES = {
     "git log --oneline": False,
     "git diff HEAD": False,
     "git push origin feature": False,
+    # the exact false-positive reported 2026-09-09: `git diff $(git merge-base ...)`
+    "git merge-base origin/main HEAD": False,
+    "git diff $(git merge-base origin/main HEAD) HEAD -- file.py": False,
+    "git merge-file a b c": False,
+    "git merge-tree base a b": False,
 }
 
 

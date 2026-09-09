@@ -31,6 +31,17 @@ Skill `modus` governa (di norma Gear 1-2; mai Gear 3 senza operatore).
    del cron, non la durata della sessione — e la regola 6 qui sotto ti dà ~40 min a tick.
    Un tick che lavora 11 minuti ed esce 0 è CORRETTO. Non allarmare su quelle righe.
    Una sessione morta comunque non si resuscita: al massimo si riporta.
+   `python3 scripts/healer_receptor_main_red.py --no-escalate` (receptor 8 — un check
+   OBBLIGATORIO rosso su `main`: la coda di merge è ferma e ogni PR armata eredita il
+   rosso). Legge lo stato EFFETTIVO per contesto camminando gli sha di main all'indietro
+   fino all'ultima conclusione non-skipped (l'HEAD di un merge docs-only dice «skipped»
+   mentre il rosso vero sta due commit sotto). Il wrapper ha già scritto la riga HIGH sul
+   board (una per contesto+sha, con job/step falliti, coda del log e `cure_lane`): tu la
+   LEGGI e triaggi. Curabile solo se la causa sta sotto `scripts/`, `infra/`, `docs/`;
+   `.github/workflows/**` e `apps/**` sono FUORI perimetro → la riga HIGH resta sul board
+   per la prima sessione Claude che la legge (SessionStart la inietta HIGH-first). MAI
+   `gh run rerun` a cieco: prima i job/step falliti e la coda del log. Exit 2 = il
+   receptor è CIECO (gh o branch protection illeggibili) → codice tuo, curalo.
    `python3 scripts/session_declaration.py scan` (receptor 7 — il rilevatore VERO di
    «un run autonomo è morto e nessuno se n'è accorto», quello che sostituisce le righe
    informative qui sopra). Non misura la DURATA: misura se chi ha lanciato è TORNATO.
