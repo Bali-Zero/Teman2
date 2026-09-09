@@ -265,22 +265,28 @@ def _first_user_mandate(transcript_path: str) -> str:
     return ""
 
 
-def _write_pending_jump(payload: dict, model: str, handoff_path: Path, mandate: str) -> bool:
+def _write_pending_jump(payload: dict, model: str, handoff_path: Path, mandate: str):
     """Write pending-jump-<session>.json and, on a Ghostty seat, spawn
-    window_jump.sh detached. Returns True when a jump was raised."""
+    window_jump.sh detached. Returns what was actually done, so the deny text
+    can say it honestly: "spawned" (the window gesture was STARTED — its
+    outcome is only in jump.log, the hook does not wait for it), "recorded"
+    (file written, no gesture: headless seat or no script) or None (nothing
+    raised). Measured 2026-09-09 on M5 (session 461e7cb5) and Pro (e82f9c09):
+    two of three gestures failed AFTER the hook had already printed AVVIATO,
+    so the operator read "started" and waited for a window that never came."""
     if os.environ.get("CONTEXT_JUMP_OFF") == "1":
-        return False
+        return None
     from_session = str(payload.get("session_id") or "unknown")
     path = _pending_jump_path(from_session)
     if path.exists():
-        return False  # already raised for this session: the file IS the rate limit
+        return None  # already raised for this session: the file IS the rate limit
     link = _chain_link(from_session)
     try:
         hops = int((link or {}).get("hops", 0)) + 1
     except (TypeError, ValueError):
         hops = 1
     if hops > JUMP_MAX_HOPS:
-        return False
+        return None
     jump = {
         "from_session": from_session,
         "from_pid": os.getppid(),  # the claude process this hook runs under
@@ -300,16 +306,17 @@ def _write_pending_jump(payload: dict, model: str, handoff_path: Path, mandate: 
         tmp.write_text(json.dumps(jump, indent=2), encoding="utf-8")
         tmp.replace(path)
     except OSError:
-        return False
+        return None
     if jump["seat"] == "ghostty" and sys.platform == "darwin" and _window_jump_script().exists() \
             and os.environ.get("CONTEXT_JUMP_NO_SPAWN") != "1":
         try:
             subprocess.Popen(["bash", str(_window_jump_script()), from_session],
                              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                              stderr=subprocess.DEVNULL, start_new_session=True)
+            return "spawned"
         except OSError:
-            pass
-    return True
+            return "recorded"
+    return "recorded"
 
 
 def _load_module_from_path(path: Path, name: str):
@@ -581,9 +588,15 @@ def main() -> int:
         f"[context_window_guard] Contesto ≈{tokens_k}K token = {pct_i}% della finestra "
         f"(soglia {role} {threshold_i}%). Modello: {model}; finestra assunta {window_k}K ({reason}). "
         f"Handoff: {handoff_str}.\n"
-        + ("Salto di finestra AVVIATO: la finestra nuova si apre da sola con il mandato; chiudi il turno.\n"
-           if jumped else
-           "Salto non avviato (kill switch, cap salti o già in corso).\n")
+        + (f"Salto di finestra TENTATO (window_jump.sh in background, esito SOLO in "
+           f"{_jump_dir() / 'jump.log'}): se entro ~15s non compare una finestra nuova con il "
+           f"mandato, aprine una tu e scrivi: nz-jump {session_id}. Chiudi il turno.\n"
+           if jumped == "spawned" else
+           f"Salto REGISTRATO ({_pending_jump_path(session_id).name}), nessun gesto di finestra "
+           f"(seat headless: il wrapper claude-cascade fa l'hop; a mano: nz-jump {session_id}). "
+           "Chiudi il turno.\n"
+           if jumped == "recorded" else
+           f"Salto non avviato (kill switch, cap salti o già in corso: esito in {_jump_dir() / 'jump.log'}).\n")
         + f"1) Finestra nuova: claude --model {model} poi /resume.\n"
         f"2) Finestra sbagliata su QUESTA macchina? Dal prompt bar (bypassa i tool-hook): "
         f"! {ESCAPE_ONE_LINER}\n"
