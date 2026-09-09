@@ -30,7 +30,10 @@ from mandate_budget import observe as budget_observe, reserve as budget_reserve
 
 VERSION = "1.2.0"
 HANDSHAKE_SECONDS = 45  # one Stop hook blocks at most this long waiting for the destination
-ACKNOWLEDGE_SECONDS = 240  # the supervisor waits this long for the destination to claim the source
+# Imported, not redeclared: the ledger's unstarted sweep uses the SAME window to
+# decide whether a reserved row is mid-handshake, and two independent literals
+# drifted apart once already (60 s vs 240 s).
+from mandate_budget import ACKNOWLEDGE_SECONDS  # noqa: E402
 MAX_LAUNCH_ATTEMPTS = 3
 POLL_SECONDS = 1
 MANDATE_SECONDS = 3600

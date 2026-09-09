@@ -11,6 +11,17 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
+# The supervisor waits this long for a destination to claim its source. It is the
+# SAME window that decides whether a still-reserved row is mid-handshake or
+# abandoned, so the two must be derived from one another and not merely agree:
+# context_bridge.py imports this name. Until 2026-09-10 the sweep below defaulted
+# to 60 s against this 240 s handshake, so any concurrent reserve() under a shared
+# NUZANTARA_MANDATE_ID swept a HEALTHY mid-handshake row to expired_unstarted —
+# leaving the max_active count (cap drift) and orphaning the later accept, which
+# then found no reserved row to bind and recorded "observed without a dispatch
+# reservation".
+ACKNOWLEDGE_SECONDS = 240
+
 
 @contextmanager
 def ledger(root: Path, mandate: str) -> Iterator[dict[str, Any]]:
@@ -62,7 +73,7 @@ def reserve(
         for row in reservations.values():
             if row["status"] == "reserved" and time.time() - row[
                 "created"
-            ] > limits.get("unstarted_ttl", 60):
+            ] > limits.get("unstarted_ttl", ACKNOWLEDGE_SECONDS):
                 row["status"] = "expired_unstarted"
             elif row["status"] == "active" and limits.get("active_ttl"):
                 heartbeat = max(row.get("heartbeat", row["created"]), row["created"])
@@ -197,7 +208,12 @@ def observe(
             ),
             None,
         )
-        if bound is None and not stopped:
+        if bound is None:
+            # Claim the pending reservation whether this is a start OR a stop. Under
+            # reordered or missing hook delivery a SubagentStop can arrive first; when
+            # the claim was gated on `not stopped` the row stayed `reserved` while the
+            # child was recorded stopped, so the slot leaked until unstarted_ttl swept
+            # it and the ledger reported attention for a child that had returned fine.
             bound = next(
                 (r for r in reservations.values() if r["status"] == "reserved"), None
             )
