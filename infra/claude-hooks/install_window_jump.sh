@@ -1,18 +1,28 @@
 #!/bin/bash
-# install_window_jump.sh — install the WINDOW JUMP trio into $HOME on a seat.
+# install_window_jump.sh — install the WINDOW JUMP quartet into $HOME on a seat.
 #
-# #5987 shipped the three files and DECLARED them in infra/home-fork/declared-
+# The four DECLARED pairs of the jump, in the order the chain uses them:
+#   context_window_guard.py  the PreToolUse gate that decides to jump — and where
+#                            the gesture RETRY and the from_pid chain-walk live,
+#                            so a seat installed without it gets v1 behaviour
+#                            from a v2 checkout;
+#   window_jump.sh           the AppleScript gesture;
+#   nz-jump                  the one word typed into the new window;
+#   context_jump_resume.py   the SessionStart injector that stamps to_session.
+#
+# #5987 shipped the files and DECLARED them in infra/home-fork/declared-
 # pairs.json, but shipped no installer: each machine was armed by hand, which is
 # cicatrix #1 (HOME-fork drift) waiting to happen — the repo moves, the live copy
 # does not, and the guard fires on a seat whose window_jump.sh is the version
 # that typed nothing. This script is the one gesture that closes the gap.
 #
-# It reads the LIVE paths from declared-pairs.json rather than hardcoding them:
+# This script reads the LIVE paths from declared-pairs.json, never hardcoding them:
 # the declaration is the contract, and an installer that disagrees with it is
 # just a second contract.
 #
-# Registers NOTHING in settings.json: context_window_guard.py (the only caller)
-# is registered separately, and this trio is only ever invoked BY it.
+# Registers NOTHING in settings.json: the guard's own PreToolUse registration is
+# a separate, deliberate act (see PENDING-ARMS.md) — this script only makes the
+# four live copies match the checkout, which is cicatrix #1's cure, not #2's.
 #
 #   bash infra/claude-hooks/install_window_jump.sh          # install + self-verify
 #   bash infra/claude-hooks/install_window_jump.sh --check   # report only, write nothing
@@ -33,7 +43,8 @@ CHECK_ONLY=0
 # A while-read loop, not mapfile: /bin/bash on macOS is 3.2 and has no mapfile.
 PY_PAIRS='
 import json, os, sys
-want = {"infra/claude-hooks/window_jump.sh",
+want = {"infra/claude-hooks/context_window_guard.py",
+        "infra/claude-hooks/window_jump.sh",
         "infra/claude-hooks/nz-jump.sh",
         "infra/claude-hooks/context_jump_resume.py"}
 pairs = json.load(open(sys.argv[1]))["pairs"]
@@ -56,9 +67,9 @@ done < <(python3 -c "$PY_PAIRS" "$PAIRS")
 for row in "${ROWS[@]}"; do
     [ "${row%%	*}" = "MISSING" ] && { echo "FATAL: not declared in declared-pairs.json: ${row#*	}"; exit 2; }
 done
-[ "${#ROWS[@]}" -eq 3 ] || { echo "FATAL: expected 3 declared pairs, got ${#ROWS[@]}"; exit 2; }
+[ "${#ROWS[@]}" -eq 4 ] || { echo "FATAL: expected 4 declared pairs, got ${#ROWS[@]}"; exit 2; }
 
-echo "== window jump: ${#ROWS[@]} declared pairs =="
+echo "== window jump: ${#ROWS[@]} declared pairs (guard + gesture + launcher + resume) =="
 CHANGED=0
 for row in "${ROWS[@]}"; do
     rel="${row%%	*}"; live="${row#*	}"

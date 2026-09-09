@@ -11,9 +11,12 @@ objective: >-
   and read `name of window 1`. Ghostty on Pro was slower, so the script said
   "front window changed" and typed NOTHING although the window `~/nuzantara` HAD
   opened. v2 snapshots every window name BEFORE ⌘N and polls every 0.3s up to
-  JUMP_POLL_MAX_S=8 until a name appears that was not in the snapshot (or the
-  front name changes), then AXRaises THAT window by name. Both window lists go
-  to jump.log so a miss is diagnosable.
+  JUMP_POLL_MAX_S=8 until a name appears that was NOT in the snapshot, then
+  AXRaises THAT window by name. Both window lists go to jump.log so a miss is
+  diagnosable. ONLY a new name authorises the keystroke (fix-first round, F1/F3):
+  an unreadable snapshot would make every polled name look new, and a changed
+  front window is a reorder, not a birth — both would land `nz-jump` in a
+  PRE-EXISTING window of Zero's, so both end in nothing typed.
 
   (b) titles collide: Claude Code sets the terminal title to the session title,
   so two sessions are both "Interactive" and only a glyph differs. Matching is on
@@ -25,7 +28,11 @@ objective: >-
   the rate limit for the FILE, not for the GESTURE: if to_session is null and
   jump.log's last line for that session says "nothing typed" (or the file is
   stale past 60s with no landing), the gesture is made again — capped at 3 per
-  session, and the deny says honestly "gesto ritentato (n/3)".
+  session, and the deny says honestly "gesto ritentato (n/3)" — or, when the file
+  could not be written, that the counter did NOT move (never "(0/3)", which would
+  read as an exhausted cap). The gesture's PID is recorded and a retry is refused
+  while that process is still alive: a hung osascript has logged nothing yet and
+  a second gesture on top of it would open a second window (F4).
 
   (d) from_pid was os.getppid(), which outside the hook is a SHELL, so
   window_jump.sh's SIGINT×2 fallback would interrupt the shell and leave the old
@@ -36,11 +43,14 @@ objective: >-
   Plus the two things that make it survive: `.claude/skills/window-jump/SKILL.md`
   (repo-side, so it reaches every machine with the checkout) and
   `infra/claude-hooks/install_window_jump.sh`, which #5987 never shipped — the
-  three pairs were declared in declared-pairs.json and armed by hand.
+  pairs were declared in declared-pairs.json and armed by hand. The installer
+  carries all FOUR declared pairs, context_window_guard.py included: (c) and (d)
+  live in the guard, so a seat installed without it would run v1 behaviour from
+  a v2 checkout (F2).
 
-  Gear is 2 via the SIZE term alone (793 net lines measured on the commit, 100 of
-  them this brief: 202 are the two new test corpora, 94 the skill, 100 the
-  installer). No hot-zone path is touched.
+  Gear is 2 via the SIZE term alone (1004 net lines measured across the two
+  commits, 125 of them this brief; the two new test corpora are the largest
+  single term). No hot-zone path is touched.
 constraints:
   - >-
     No real Ghostty window is ever opened by a test: Zero's screen is the live
@@ -74,6 +84,21 @@ acceptance:
     WHEN two windows are already named "Interactive" with only a glyph differing,
     THEN the keystroke goes to the new window and never to the sibling. probe:
     test_window_jump_gesture.sh case [2].
+  - >-
+    WHEN the window list is unreadable before ⌘N (so every polled name would look
+    new), or the front window merely changed with no new name, THEN nothing is
+    typed and jump.log says which of the two it was. probe:
+    test_window_jump_gesture.sh cases [3] and [3b]; measured — the pre-fix v2
+    script types `nz-jump` into '✳ Interactive di Zero' in case [3b].
+  - >-
+    WHEN the previously spawned gesture PROCESS is still alive, THEN no second
+    gesture is spawned however the log reads; when it has exited, the retry
+    proceeds. probe: test_a_gesture_still_running_is_never_doubled,
+    test_a_dead_gesture_process_is_respawned, test_the_first_gesture_records_its_pid.
+  - >-
+    WHEN the jump file cannot be written, THEN the deny says the counter did not
+    move and never "gesto ritentato (0/3)". probe:
+    test_an_unwritable_jump_file_does_not_claim_a_counted_retry.
   - >-
     WHEN ⌘N opens nothing within JUMP_POLL_MAX_S, THEN not one keystroke is sent,
     jump.log says "nothing typed" and the script exits 1. probe:

@@ -183,6 +183,22 @@ def _spawns(spawn_log: pathlib.Path, want: int, timeout: float = 10.0) -> int:
     return len(spawn_log.read_text().splitlines()) if spawn_log.exists() else 0
 
 
+def _await_gesture_exit(home: pathlib.Path, session: str, timeout: float = 5.0):
+    """Wait for the spawned gesture PROCESS to be gone. The guard refuses to
+    re-spawn while the previous gesture is alive, so a retry test must not race
+    the fake script's own exit."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        pid = (_jump(home, session) or {}).get("gesture_pid")
+        if not pid:
+            return
+        try:
+            os.kill(int(pid), 0)
+        except OSError:
+            return
+        time.sleep(0.05)
+
+
 def _log_miss(home: pathlib.Path, session: str):
     d = home / ".organism" / "context-guard"
     d.mkdir(parents=True, exist_ok=True)
@@ -207,6 +223,7 @@ def test_a_missed_gesture_is_retried_on_the_next_trip():
         assert _jump(home, "s-retry")["gesture_attempts"] == 0
         return
     assert _spawns(spawn_log, 1) == 1 and _jump(home, "s-retry")["gesture_attempts"] == 1
+    _await_gesture_exit(home, "s-retry")
     _log_miss(home, "s-retry")
     rc, _, err, _ = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-retry",
                              home=home, env_extra=env)
@@ -225,11 +242,13 @@ def test_the_retry_stops_at_three_gestures_and_says_so():
     run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-cap", home=home, env_extra=env)
     _spawns(spawn_log, 1)
     for expected in (2, 3):
+        _await_gesture_exit(home, "s-cap")
         _log_miss(home, "s-cap")
         _, _, err, _ = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-cap",
                                 home=home, env_extra=env)
         assert f"gesto ritentato ({expected}/3)" in err
         assert _spawns(spawn_log, expected) == expected
+    _await_gesture_exit(home, "s-cap")
     _log_miss(home, "s-cap")  # a fourth trip after three misses is a human problem
     _, _, err, _ = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-cap",
                             home=home, env_extra=env)
@@ -246,6 +265,7 @@ def test_a_gesture_that_landed_is_never_retried():
     env = {"TERM_PROGRAM": "ghostty"}
     run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-ok", home=home, env_extra=env)
     _spawns(spawn_log, 1)
+    _await_gesture_exit(home, "s-ok")
     _log_typed(home, "s-ok")  # the keystroke landed; the new session is just slow
     _, _, err, _ = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-ok",
                             home=home, env_extra=env)
@@ -264,6 +284,7 @@ def test_a_reported_new_session_is_never_retried_even_after_a_miss():
     _spawns(spawn_log, 1)
     p = home / ".organism" / "context-guard" / "pending-jump-s-done.json"
     j = json.loads(p.read_text()); j["to_session"] = "s-next"; p.write_text(json.dumps(j))
+    _await_gesture_exit(home, "s-done")
     _log_miss(home, "s-done")  # a stale miss line must not outvote to_session
     _, _, err, _ = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-done",
                             home=home, env_extra=env)
@@ -327,3 +348,77 @@ def test_from_pid_survives_a_ps_that_says_nothing():
     run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-pid3", home=home,
              env_extra={"PATH": path})
     assert _jump(home, "s-pid3")["from_pid"] == os.getpid()
+
+
+def test_a_gesture_still_running_is_never_doubled():
+    # osascript can hang for minutes having logged only "old window:"; a second
+    # gesture on top of a live one opens a SECOND window nobody types into.
+    if sys.platform != "darwin":
+        return
+    home = pathlib.Path(tempfile.mkdtemp())
+    spawn_log = _plant_gesture(home)
+    env = {"TERM_PROGRAM": "ghostty"}
+    run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-live", home=home, env_extra=env)
+    _spawns(spawn_log, 1)
+    p = home / ".organism" / "context-guard" / "pending-jump-s-live.json"
+    j = json.loads(p.read_text()); j["gesture_pid"] = os.getpid()  # certainly alive
+    p.write_text(json.dumps(j))
+    _log_miss(home, "s-live")  # even a miss line does not outvote a live process
+    _, _, err, _ = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-live",
+                            home=home, env_extra=env)
+    assert "Salto non avviato" in err and "ritentato" not in err
+    assert _spawns(spawn_log, 2, timeout=2.0) == 1
+    assert _jump(home, "s-live")["gesture_attempts"] == 1
+
+
+def test_a_dead_gesture_process_is_respawned():
+    if sys.platform != "darwin":
+        return
+    home = pathlib.Path(tempfile.mkdtemp())
+    spawn_log = _plant_gesture(home)
+    env = {"TERM_PROGRAM": "ghostty"}
+    run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-dead", home=home, env_extra=env)
+    _spawns(spawn_log, 1)
+    dead = subprocess.Popen([sys.executable, "-c", "pass"])
+    dead.wait()
+    p = home / ".organism" / "context-guard" / "pending-jump-s-dead.json"
+    j = json.loads(p.read_text()); j["gesture_pid"] = dead.pid  # reaped: gone
+    p.write_text(json.dumps(j))
+    _log_miss(home, "s-dead")
+    _, _, err, _ = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-dead",
+                            home=home, env_extra=env)
+    assert "gesto ritentato (2/3)" in err
+    assert _spawns(spawn_log, 2) == 2
+
+
+def test_the_first_gesture_records_its_pid():
+    if sys.platform != "darwin":
+        return
+    home = pathlib.Path(tempfile.mkdtemp())
+    spawn_log = _plant_gesture(home)
+    run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-pidrec", home=home,
+             env_extra={"TERM_PROGRAM": "ghostty"})
+    _spawns(spawn_log, 1)
+    assert isinstance(_jump(home, "s-pidrec")["gesture_pid"], int)
+
+
+def test_an_unwritable_jump_file_does_not_claim_a_counted_retry():
+    # nit (5): "gesto ritentato (0/3)" would read as a cap that already ran out.
+    if sys.platform != "darwin":
+        return
+    home = pathlib.Path(tempfile.mkdtemp())
+    spawn_log = _plant_gesture(home)
+    env = {"TERM_PROGRAM": "ghostty"}
+    run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-ro", home=home, env_extra=env)
+    _spawns(spawn_log, 1)
+    _await_gesture_exit(home, "s-ro")
+    _log_miss(home, "s-ro")
+    d = home / ".organism" / "context-guard"
+    d.chmod(0o500)  # readable, not writable: the atomic replace cannot land
+    try:
+        _, _, err, _ = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-ro",
+                                home=home, env_extra=env)
+    finally:
+        d.chmod(0o700)
+    assert "contatore NON è stato scritto" in err
+    assert "gesto ritentato (0/3)" not in err

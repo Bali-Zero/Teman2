@@ -19,8 +19,10 @@ Ghostty, solo macOS). Dettaglio storico:
    `model`, `cwd`, `hops`, `seat`, `gesture_attempts`, `to_session: null`).
 3. Se il seat è Ghostty su macOS lancia **`window_jump.sh <sid>`** staccato (mai attende).
 4. Il gesto: snapshot dei nomi finestra → ⌘N → **poll ogni 0,3s fino a 8s** finché compare
-   un nome che non era nello snapshot (oppure cambia il nome della finestra frontale) →
-   AXRaise su QUELLA finestra per nome → digita `nz-jump <sid>` + Invio.
+   un nome che **non era nello snapshot** → AXRaise su QUELLA finestra per nome → digita
+   `nz-jump <sid>` + Invio. Solo un nome nuovo autorizza il keystroke: se lo snapshot è
+   illeggibile (Accessibility negata) ogni nome sembrerebbe nuovo, e se cambia solo la
+   finestra frontale è un riordino, non una nascita. In entrambi i casi: **niente digitato**.
 5. **`nz-jump`** (`~/.claude/scripts/nz-jump`) entra nel `cwd` vecchio e lancia un `claude`
    **fresco** — mai `--resume/--continue/--fork-session`, che riporterebbero il contesto.
 6. **`context_jump_resume.py`** (SessionStart della nuova finestra) inietta mandato +
@@ -43,7 +45,8 @@ osascript -e 'tell application "System Events" to tell process "ghostty" to get 
 `jump.log` è l'unica verità sull'esito: il guard stampa «TENTATO», non «avviato», proprio
 perché non aspetta. Righe che contano: `windows before: [...]` / `windows after: [...]`
 (la diagnosi di un miss), `new window '<nome>' opened, 'nz-jump <sid>' typed` (atterrato),
-`nothing typed` (mancato — è la riga che fa scattare il ritento).
+`nothing typed` (mancato — è la riga che fa scattare il ritento, ma solo se il processo
+del gesto precedente è morto: un osascript appeso non viene raddoppiato).
 
 ## Recupero manuale — 2 comandi (usati davvero il 2026-09-09)
 
@@ -86,7 +89,8 @@ con `!` (bypassa i tool-hook), che però è un gesto umano.
 ## Installare / provare
 
 ```bash
-bash infra/claude-hooks/install_window_jump.sh          # le 3 coppie in ~/.claude, 0700
+bash infra/claude-hooks/install_window_jump.sh --check  # cosa cambierebbe, non scrive
+bash infra/claude-hooks/install_window_jump.sh          # le 4 coppie in ~/.claude, 0700
 bash infra/claude-hooks/test_window_jump_gesture.sh     # osascript shimmato, nessuna finestra vera
 CONTEXT_JUMP_NO_SPAWN=1 python3 -m pytest infra/claude-hooks/test_context_window_jump.py -q
 ```

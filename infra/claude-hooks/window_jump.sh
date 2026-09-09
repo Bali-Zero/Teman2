@@ -18,9 +18,10 @@
 # declared "front window changed" and typed NOTHING although the window HAD
 # opened — a human then had to type `nz-jump <sid>` by hand. The fix is to stop
 # betting on a delay: SNAPSHOT every window name BEFORE ⌘N, then poll every
-# 0.3s up to JUMP_POLL_MAX_S until either a name appears that was not in the
-# snapshot, or the front name changes. That window — by name, via AXRaise — is
-# the one that gets `nz-jump`. Titles collide (Claude Code sets the terminal
+# 0.3s up to JUMP_POLL_MAX_S until a name appears that was NOT in the snapshot.
+# That window — by name, via AXRaise — is the one that gets `nz-jump`, and the
+# only one that ever can: an unreadable snapshot, or a front-window change with
+# no new name, both end in nothing typed. Titles collide (Claude Code sets the terminal
 # title to the session title, so two sessions are both "Interactive" with only
 # a glyph differing), so the match is on the EXACT string and both window lists
 # are logged: a miss must be diagnosable from jump.log alone.
@@ -28,8 +29,9 @@
 # Contract: $1 = from_session. Reads ~/.organism/context-guard/pending-jump-<from>.json
 # (per-session file: two windows jumping at once never overwrite each other).
 #   1. snapshot the window names NOW; the front one is the OLD window;
-#   2. ⌘N; poll for a NEW window (name not in the snapshot, else a changed
-#      front name); raise it by name and type `nz-jump <from>`, Enter — nz-jump
+#   2. ⌘N; poll for a NEW window (a name that was NOT in the snapshot — never
+#      a mere front-window change, which is a reorder and not a birth); raise it
+#      by name and type `nz-jump <from>`, Enter — nz-jump
 #      starts a fresh claude; the SessionStart hook context_jump_resume.py
 #      injects the handoff and stamps `to_session`;
 #   3. wait (≤ JUMP_WAIT_S, polled every 1s) for `to_session`; then raise the
@@ -103,11 +105,18 @@ EOF
 BEFORE=$(osascript "$AS" window-names 2>/dev/null || true)
 OLD_NAME=$(printf '%s\n' "$BEFORE" | head -1)
 log "old window: '${OLD_NAME:-?}' pid=${FROM_PID:-?} · windows before: [$(flat "$BEFORE")]"
+# An UNREADABLE window list is not an empty desktop. With BEFORE empty, every
+# name polled after ⌘N looks "new", and the first pre-existing window — Zero's
+# other session — would take the keystroke. No snapshot, no gesture.
+[ -n "$BEFORE" ] || { log "window list unreadable before ⌘N (Accessibility not granted, or Ghostty not up): nothing typed"; exit 1; }
 
 osascript "$AS" cmd-n >/dev/null 2>&1 || { log "⌘N could not be sent (Accessibility?): nothing typed"; exit 1; }
 
-# Poll instead of betting on a delay (v2): a name absent from the snapshot wins,
-# a changed front name is the fallback signal.
+# Poll instead of betting on a delay (v2). ONLY a name that was ABSENT from the
+# snapshot may be typed into: a window that already existed is somebody else's
+# session, and "the front window changed" is not evidence that a window was
+# BORN — windows reorder, focus moves, ⌘N fails. A front change with no new
+# name is therefore logged as a diagnosis and acted on never.
 NEW_NAME=""
 AFTER="$BEFORE"
 POLL_DEADLINE=$(( $(date +%s) + JUMP_POLL_MAX_S ))
@@ -118,14 +127,14 @@ while :; do
         [ -z "$n" ] && continue
         printf '%s\n' "$BEFORE" | grep -Fxq -- "$n" || { NEW_NAME="$n"; break; }
     done <<< "$AFTER"
-    if [ -z "$NEW_NAME" ]; then
-        FRONT=$(printf '%s\n' "$AFTER" | head -1)
-        [ -n "$FRONT" ] && [ "$FRONT" != "$OLD_NAME" ] && NEW_NAME="$FRONT"
-    fi
     [ -n "$NEW_NAME" ] && break
     [ "$(date +%s)" -ge "$POLL_DEADLINE" ] && break
 done
+FRONT=$(printf '%s\n' "$AFTER" | head -1)
 log "windows after: [$(flat "$AFTER")] · new='${NEW_NAME:-}'"
+if [ -z "$NEW_NAME" ] && [ -n "$FRONT" ] && [ "$FRONT" != "$OLD_NAME" ]; then
+    log "front window is now '$FRONT', but that name was already in the snapshot (a reorder, not a new window): nothing typed"
+fi
 
 [ -n "$NEW_NAME" ] || { log "no new window within ${JUMP_POLL_MAX_S}s of ⌘N: nothing typed"; exit 1; }
 osascript "$AS" raise-type "$NEW_NAME" "nz-jump $FROM" >/dev/null 2>&1 \
