@@ -279,7 +279,10 @@ _QUOTA_DEAD_PAT = re.compile(
     re.IGNORECASE,
 )
 _BALANCE_DEAD_PAT = re.compile(r"\b402\b|insufficient balance|out of credits", re.IGNORECASE)
-_MODEL_ERR_PAT = re.compile(r"\b1211\b|unknown model|model is not supported", re.IGNORECASE)
+_MODEL_ERR_PAT = re.compile(
+    r"\b1211\b|unknown model|model is not supported|model requires a newer version",
+    re.IGNORECASE,
+)
 _SHED_PAT = re.compile(r"\b529\b|overloaded", re.IGNORECASE)
 
 
@@ -1212,6 +1215,13 @@ _SELFTEST_CANNED = [
         "The 'gpt-5.3-codex-spark' model is not supported when using Codex with a ChatGPT account.",
         MODEL_ERR,
         "codex-spark model unsupported on ChatGPT plan (real observed evidence, 2026-08-31)",
+    ),
+    (
+        "codex",
+        ":{\"type\":\"invalid_request_error\",\"message\":\"The 'gpt-6-astra' model requires a "
+        'newer version of Codex. Please upgrade to the latest app or CLI and try again."}}',
+        MODEL_ERR,
+        "codex gpt-6-astra needs newer CLI (real observed evidence, 2026-09-07, was UNKNOWN_ERR)",
     ),
 ]
 

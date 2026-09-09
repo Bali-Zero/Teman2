@@ -1,0 +1,100 @@
+task_id: garuda-mail-escape
+gear: 1
+gate_class: none
+brief_ref: evidence/brief.yml
+date: 2026-09-05
+machine: M5
+lanes:
+  - lane: GA-B-1 html-escape outbox mails
+    role: build
+    seat: claude-sonnet-5 (M5 worktree agent)
+    note: >-
+      one new helper `_h()` (html.escape, quote=True) applied at each of the
+      8 HTML f-string sites; 24 new pytest cases (guilt x2 + innocence, one
+      trio per body)
+outcome: >-
+  All 8 HTML outbox-email bodies now html-escape `case_type` at render time.
+  Verified per-body (not just once) because the ground refutation found 9
+  separate constructor sites across 4 dataclasses feeding them, with no
+  single upstream point to patch. The 5 Telegram staff pages (plain text /
+  `_escape_markdown`) are untouched, matching the mandate's scope.
+diff:
+  files: 4
+  net_lines: >-
+    290 insertions, 8 deletions across the 4 changed files (code, its test
+    file, and this evidence pack) — see `git diff --numstat origin/main...HEAD`.
+  shape: >-
+    `import html`, one new `_h(value) -> str` helper, 8 call-site edits
+    (`facts.case_type` -> `_h(facts.case_type)`), plus a new test section:
+    two dataclass-facts factories (`_late_refund_facts`,
+    `_practice_transition_facts`), an `_HTML_BODY_RENDERERS` dict mapping
+    each of the 8 job types to a `case_type -> body` callable (typed
+    `dict[str, Callable[[str], str]]`, `collections.abc.Callable`), and 3
+    parametrized tests (24 cases) driving guilt (`<script>`), guilt
+    (`&`/`"`), and innocence (`issuance`) through all 8.
+pii_scan: clean
+receipts:
+  - claim: "9 constructor sites across 4 dataclasses feed case_type into the module"
+    cmd: "grep -n 'case_type=' apps/backend-rag/backend/services/garuda_orders/outbox_handlers.py"
+    result: "9 hits: lines 230,327,445,535,613,782,1196,1307,1726 (OrderEmailFacts x6, LateRefundFacts, PracticeTransitionEmailFacts, OrderAnomalyFacts)"
+    ts: "2026-09-05T00:00:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 0
+  - claim: "exactly 8 of those reach an HTML body (the other 5 go through Telegram's _escape_markdown)"
+    cmd: "grep -n 'facts\\.case_type' apps/backend-rag/backend/services/garuda_orders/outbox_handlers.py (post-fix: _h(facts.case_type))"
+    result: "8 sites now read _h(facts.case_type) (lines 265,361,479,568,651,837,1229,1345); the 5 Telegram sites still read _escape_markdown(facts.case_type), unchanged"
+    ts: "2026-09-05T00:05:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 0
+  - claim: "the 24 new escaping tests pass"
+    cmd: "PYTHONPATH=backend .venv/bin/python3 -m pytest backend/tests/services/garuda_orders/test_outbox_handlers.py -k html_body"
+    result: "24 passed, 26 deselected"
+    ts: "2026-09-05T00:10:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 0
+  - claim: "guilt is real: reverting one call site to a bare facts.case_type turns exactly that body's 2 tests red, naming it"
+    cmd: "temporarily reverted the payment_paid_email _h() call, reran the same -k html_body selection, then restored from a pre-edit backup"
+    result: "2 failed (test_html_body_escapes_a_script_case_type[payment_paid_email], test_html_body_escapes_ampersand_and_quote_case_type[payment_paid_email]), 22 passed; after restore, 24 passed again"
+    ts: "2026-09-05T00:12:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 1
+  - claim: "no regression to the module's collection or its sibling suites"
+    cmd: "PYTHONPATH=backend .venv/bin/python3 -m pytest backend/tests/services/garuda_orders/ backend/tests/services/garuda_portal/test_practice_producer_crossing.py --collect-only"
+    result: "306 tests collected, 0 collection errors"
+    ts: "2026-09-05T00:15:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 0
+  - claim: "the full pre-existing suite is unaffected apart from the same environmental Postgres gap the ground report already named"
+    cmd: "PYTHONPATH=backend .venv/bin/python3 -m pytest backend/tests/services/garuda_orders/test_outbox_handlers.py"
+    result: >-
+      39 passed, 11 errors, exit 1 (all asyncpg.exceptions.UndefinedTableError:
+      relation "garuda_voa_check_results" does not exist). Environmental, not a
+      regression: rerunning the identical file on a clean origin/main checkout
+      (/Users/balizero/nuzantara/.worktrees/ops-visa-consuls-claude, no
+      html-escape changes present) hits the SAME 11 errors, same table, exit 1
+      — only "15 passed" instead of 39 because that tree lacks this PR's 24 new
+      html_body tests. The scoped `-k html_body` run below (24 passed) is the
+      load-bearing receipt for this PR's change.
+    ts: "2026-09-05T00:18:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 1
+  - claim: "the same 11-error Postgres gap is present on a clean origin/main checkout, unrelated to this branch's changes"
+    cmd: "cd /Users/balizero/nuzantara/.worktrees/ops-visa-consuls-claude/apps/backend-rag && PYTHONPATH=backend .venv/bin/python3 -m pytest backend/tests/services/garuda_orders/test_outbox_handlers.py"
+    result: '15 passed, 11 errors, exit 1 (identical asyncpg.exceptions.UndefinedTableError: relation "garuda_voa_check_results" does not exist across all 11)'
+    ts: "2026-09-05T00:19:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 1
+  - claim: "ruff is clean on both touched files"
+    cmd: ".venv/bin/python3 -m ruff check backend/services/garuda_orders/outbox_handlers.py backend/tests/services/garuda_orders/test_outbox_handlers.py"
+    result: "All checks passed!"
+    ts: "2026-09-05T00:20:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 0
+  - claim: "the gear floor for this diff is 1 (no hot-zone path)"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file cf --numstat-file ns"
+    result: "1"
+    ts: "2026-09-05T00:22:00Z"
+    seat: claude-sonnet-5 (M5 worktree agent)
+    exit: 0
+dissent: []
+appetite_exceeded: ""

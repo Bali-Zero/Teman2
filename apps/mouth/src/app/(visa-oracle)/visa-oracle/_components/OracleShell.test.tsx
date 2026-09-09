@@ -1,5 +1,13 @@
 import { StrictMode } from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const emitVisaOracleTelemetry = vi.hoisted(() => vi.fn());
@@ -46,9 +54,11 @@ const ANSWERS = [
 ] as const;
 type FixtureState = NonNullable<Parameters<typeof makeVisaOracleResponse>[0]>;
 
-function verdictSnapshot(): ReturnType<typeof createInterviewSnapshot> {
+function verdictSnapshot(
+  answers: readonly (readonly [string, string])[] = ANSWERS,
+): ReturnType<typeof createInterviewSnapshot> {
   let state: FlowState = flowReducer(initialFlowState(), { type: "ADVANCE" });
-  for (const [questionId, value] of ANSWERS) {
+  for (const [questionId, value] of answers) {
     state = flowReducer(state, { type: "ANSWER", questionId, value });
   }
   state = flowReducer(state, { type: "ADVANCE" });
@@ -56,10 +66,12 @@ function verdictSnapshot(): ReturnType<typeof createInterviewSnapshot> {
   return createInterviewSnapshot(state, new Date());
 }
 
-function installVerdictResume(): void {
-  expect(saveInterviewResume(verdictSnapshot(), { now: new Date() })).toBe(
-    true,
-  );
+function installVerdictResume(
+  answers: readonly (readonly [string, string])[] = ANSWERS,
+): void {
+  expect(
+    saveInterviewResume(verdictSnapshot(answers), { now: new Date() }),
+  ).toBe(true);
 }
 
 function engineFetch(
@@ -206,6 +218,184 @@ describe("OracleShell authoritative evaluate integration", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Visit Visa C1")).toBeNull();
+    expect(global.fetch).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    {
+      category: "remote",
+      questionId: "remote_compensation",
+      factPath: "work.indonesia_source_compensation",
+      internalMode: false,
+      details: [
+        ["sponsor_category", "NONE"],
+        ["remote_clients", "foreign"],
+        ["remote_compensation", "no"],
+        ["work_payer", "no"],
+        ["remote_employer_country", "US"],
+        ["remote_pt_pma", "no"],
+      ],
+    },
+    {
+      category: "invest",
+      questionId: "investment_pt_pma",
+      factPath: "investment.pt_pma_committed",
+      internalMode: true,
+      details: [
+        ["sponsor_category", "NONE"],
+        ["investment_vehicle", "pt_pma"],
+        ["investment_pt_pma", "yes"],
+        ["investment_capital_idr", "10000000000"],
+        ["investment_paid_up_capital_idr", "10000000000"],
+        ["investment_role", "SHAREHOLDER_DIRECTOR"],
+        ["family_sponsor_confirmed", "no"],
+        ["wants_onshore_conversion", "no"],
+      ],
+    },
+  ] as const)(
+    "missing-input Edit reopens the $category interview question",
+    async ({ category, questionId, factPath, internalMode, details }) => {
+      installVerdictResume([
+        ...ANSWERS.slice(0, 5),
+        ["category", category],
+        ["trip_scope", "single"],
+        ...details,
+        ["stay_days", "30"],
+        ["review_gate", "none"],
+      ]);
+      const response = makeVisaOracleResponse("NEEDS_INPUT");
+      response.mode = internalMode ? "CURATED" : "ENGINE";
+      response.decision.missing_facts = [factPath];
+      global.fetch = vi.fn<typeof fetch>(
+        async () =>
+          new Response(JSON.stringify(response), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+      );
+      render(<OracleShell internalMode={internalMode} />);
+
+      await expectStateHeading("NEEDS_INPUT");
+      fireEvent.click(screen.getByRole("button", { name: /^edit$/i }));
+      expect(
+        await screen.findByRole("heading", {
+          name: translate("en", `q.${questionId}`),
+        }),
+      ).toBeInTheDocument();
+      expect(global.fetch).toHaveBeenCalledOnce();
+    },
+  );
+
+  // 2026-09-06 decisiveness wave (PR-3): the follow-up loop. Before it, a
+  // NEEDS_INPUT naming a fact whose question exists but was never asked on
+  // this walk rendered a row with no affordance at all — the funnel's
+  // dead end. The interview now ASKS it.
+  it("guilt: a NEEDS_INPUT on a modelled-but-unasked fact ADVANCES the interview instead of dead-ending", async () => {
+    // Offshore tourism never reaches `wants_onshore_conversion` (the spine
+    // asks it only when `in_indonesia === "yes"`), yet it is a registered
+    // question mapping exactly one FactPath.
+    installVerdictResume();
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["process.wants_onshore_conversion"];
+    global.fetch = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    render(<OracleShell />);
+
+    await expectStateHeading("NEEDS_INPUT");
+    // The affordance is "Answer this", NOT "Edit" — an edit would truncate
+    // history back to a node that is not there and reset the interview.
+    expect(screen.queryByRole("button", { name: /^edit$/i })).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: translate("en", "outcome.answer_missing_input"),
+      }),
+    );
+    // The OFFSHORE prompt: this fixture never entered Indonesia, and
+    // adversarial review 2026-09-06 finding 9 forbids the present-tense
+    // wording for that audience.
+    expect(
+      await screen.findByRole("heading", {
+        name: translate("en", "q.wants_onshore_conversion.offshore"),
+      }),
+    ).toBeInTheDocument();
+    // Innocence: the interview was appended to, not restarted — the
+    // framing screen's Start button is nowhere on the page.
+    expect(screen.queryByRole("button", { name: /^start$/i })).toBeNull();
+  });
+
+  // Adversarial review 2026-09-06, finding 1 (accepted, narrowed): the
+  // follow-up must not bypass the tree's prerequisite ordering.
+  it("guilt: a NEEDS_INPUT on a prerequisite-bearing fact keeps the handoff row instead of pushing the question", async () => {
+    // A CHILD-relation family walk. `family_marriage_registered` is
+    // registered, collects exactly one FactPath, and was never asked —
+    // but the family branch asks it only for SPOUSE or PARENT, so
+    // appending it would contradict an answer already given.
+    installVerdictResume([
+      ["in_indonesia", "no"],
+      ["holds_stay_permit", "no"],
+      ["overstay_days", "0"],
+      ["nationalities", "US"],
+      ["birth_date", "1990-01-01"],
+      ["category", "family"],
+      ["trip_scope", "single"],
+      ["sponsor_category", "INDIVIDUAL"],
+      ["family_relation", "CHILD"],
+      ["marital_status", "SINGLE"],
+      ["family_sponsor_nationalities", "ID"],
+      ["family_sponsor_confirmed", "yes"],
+      ["stay_days", "180"],
+      ["review_gate", "none"],
+    ]);
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["family.marriage_registered"];
+    global.fetch = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    render(<OracleShell />);
+
+    await expectStateHeading("NEEDS_INPUT");
+    expect(
+      screen.queryByRole("button", {
+        name: translate("en", "outcome.answer_missing_input"),
+      }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: /^edit$/i })).toBeNull();
+    expect(screen.getByText(/Bali Zero can help clarify/)).toBeInTheDocument();
+  });
+
+  it("keeps an unavailable missing question actionable through the existing handoff, without a dead Edit", async () => {
+    const response = makeVisaOracleResponse("NEEDS_INPUT");
+    response.decision.missing_facts = ["work.indonesia_source_compensation"];
+    global.fetch = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    render(<OracleShell />);
+
+    await expectStateHeading("NEEDS_INPUT");
+    expect(screen.queryByRole("button", { name: /^edit$/i })).toBeNull();
+    expect(screen.getByText(/Bali Zero can help clarify/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Talk to a consultant" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByRole("heading", { name: "Continue with Bali Zero" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/work\.indonesia_source_compensation/),
+    ).toBeNull();
     expect(global.fetch).toHaveBeenCalledOnce();
   });
 
@@ -533,5 +723,264 @@ describe("OracleShell authoritative evaluate integration", () => {
     expect(nonReversibleHash).toHaveBeenCalledWith(
       expect.stringMatching(/^[0-9a-f-]{36}$/),
     );
+  });
+});
+
+describe("OracleShell persistent consultant contact", () => {
+  const originalFetch = global.fetch;
+  const consultant = "Talk to a consultant";
+
+  function resumeBeforeVerdict(
+    answers: readonly (readonly [string, string])[],
+  ): void {
+    let state = flowReducer(initialFlowState(), { type: "ADVANCE" });
+    for (const [questionId, value] of answers) {
+      state = flowReducer(state, { type: "ANSWER", questionId, value });
+    }
+    expect(
+      saveInterviewResume(createInterviewSnapshot(state, new Date())),
+    ).toBe(true);
+  }
+
+  function whatsappMessage(): string {
+    const link = screen.getByRole("link", { name: "Open WhatsApp" });
+    return new URL(link.getAttribute("href")!).searchParams.get("text")!;
+  }
+
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    window.localStorage.clear();
+    emitVisaOracleTelemetry.mockReset();
+    vi.stubEnv("NEXT_PUBLIC_VISA_ORACLE_MODE", "ENGINE");
+    vi.stubEnv("NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER", "6280000000000");
+    global.fetch = engineFetch();
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it("withholds consultant consent until browser session hydration completes", () => {
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(<OracleShell />);
+    expect(container.querySelector('[role="status"]')?.textContent).toContain(
+      "Restoring your private browser session",
+    );
+    expect(container.querySelector("#oracle-consultant-toggle")).toBeNull();
+    expect(container.querySelector("#oracle-consultant-panel")).toBeNull();
+    expect(container.querySelector('input[type="checkbox"]')).toBeNull();
+    expect(container.querySelectorAll("#oracle-handoff-title")).toHaveLength(0);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("shows verdict consent immediately while allowing the user to close and reopen contact", async () => {
+    installVerdictResume();
+    render(<OracleShell />);
+    await expectStateHeading("SUPPORTED_CANDIDATES");
+    const toggle = screen.getByRole("button", { name: consultant });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("region", { name: consultant })).toBeVisible();
+    expect(
+      screen.getByRole("checkbox", { name: /minimal Visa Oracle receipt/ }),
+    ).not.toBeChecked();
+    expect(screen.queryByRole("link", { name: "Open WhatsApp" })).toBeNull();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(global.fetch).toHaveBeenCalledOnce();
+  });
+
+  it.each(["framing", "question", "confirmation"] as const)(
+    "offers generic contact during %s without advancing or evaluating",
+    async (stage) => {
+      if (stage !== "framing")
+        resumeBeforeVerdict(
+          stage === "question" ? ANSWERS.slice(0, 7) : ANSWERS,
+        );
+      render(<OracleShell />);
+      const heading = await screen.findByRole("heading", {
+        name: translate(
+          "en",
+          stage === "framing"
+            ? "framing.title"
+            : stage === "question"
+              ? "q.stay_days"
+              : "confirmation.title",
+        ),
+      });
+      if (stage === "question")
+        fireEvent.change(screen.getByRole("spinbutton"), {
+          target: { value: "31" },
+        });
+
+      const toggle = screen.getByRole("button", { name: consultant });
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+      expect(toggle.closest(".oracle-no-print")).not.toBeNull();
+      fireEvent.click(toggle);
+      expect(screen.getByRole("region", { name: consultant })).toBeVisible();
+      fireEvent.click(
+        screen.getByRole("checkbox", {
+          name: /I consent to open WhatsApp to speak/,
+        }),
+      );
+      const message = whatsappMessage();
+      expect(message).toContain("speak with a consultant");
+      expect(message).not.toMatch(
+        /Result state|Assessment reference|1990-01-01|nationalities|stay_days/,
+      );
+      expect(document.querySelectorAll("#oracle-handoff-title")).toHaveLength(
+        1,
+      );
+      fireEvent.click(toggle);
+
+      expect(heading).toBeVisible();
+      if (stage === "question")
+        expect(screen.getByRole("spinbutton")).toHaveValue(31);
+      expect(global.fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it("requires new consent only when an actual verdict replaces generic contact, and clears result context after Edit", async () => {
+    installVerdictResume();
+    let resolveEvaluation!: (response: Response) => void;
+    global.fetch = vi.fn<typeof fetch>(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveEvaluation = resolve;
+        }),
+    );
+    render(<OracleShell />);
+    await screen.findByText("Checking the verified Visa Oracle engine…");
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole("button", { name: consultant }));
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: /I consent to open WhatsApp to speak/,
+      }),
+    );
+    expect(whatsappMessage()).not.toMatch(/Result state|Assessment reference/);
+
+    await act(async () => {
+      resolveEvaluation(
+        new Response(JSON.stringify(makeVisaOracleResponse()), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    });
+    await expectStateHeading("SUPPORTED_CANDIDATES");
+    const resultConsent = screen.getByRole("checkbox", {
+      name: /minimal Visa Oracle receipt/,
+    });
+    expect(resultConsent).not.toBeChecked();
+    expect(screen.queryByRole("link", { name: "Open WhatsApp" })).toBeNull();
+    fireEvent.click(resultConsent);
+    expect(whatsappMessage()).toContain("Result state: SUPPORTED_CANDIDATES");
+    expect(whatsappMessage()).toContain("Assessment reference:");
+    expect(whatsappMessage()).not.toMatch(/1990-01-01|nationalities|stay_days/);
+    expect(document.querySelectorAll("#oracle-handoff-title")).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit answers" }));
+    await screen.findByRole("heading", {
+      name: translate("en", "confirmation.title"),
+    });
+    const interviewToggle = screen.getByRole("button", { name: consultant });
+    expect(interviewToggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(interviewToggle);
+    const genericConsent = screen.getByRole("checkbox", {
+      name: /I consent to open WhatsApp to speak/,
+    });
+    expect(genericConsent).not.toBeChecked();
+    expect(screen.queryByRole("link", { name: "Open WhatsApp" })).toBeNull();
+    fireEvent.click(genericConsent);
+    expect(whatsappMessage()).not.toMatch(/Result state|Assessment reference/);
+    expect(global.fetch).toHaveBeenCalledOnce();
+  });
+
+  it.each(["en", "id"] as const)(
+    "honours %s language and hydrated guardian authority before offering a known minor consent",
+    async (language) => {
+      const birthDate = `${new Date().getUTCFullYear() - 10}-01-01`;
+      resumeBeforeVerdict([...ANSWERS.slice(0, 4), ["birth_date", birthDate]]);
+      render(<OracleShell />);
+      await screen.findByRole("button", { name: consultant });
+      if (language === "id") {
+        fireEvent.click(
+          screen.getByRole("button", {
+            name: translate("en", "language.option.id.aria"),
+          }),
+        );
+      }
+      fireEvent.click(
+        await screen.findByRole("button", {
+          name: language === "en" ? consultant : "Bicara dengan konsultan",
+        }),
+      );
+      const consent = screen.getByRole("checkbox", {
+        name:
+          language === "en"
+            ? /I consent to open WhatsApp to speak/
+            : /Saya setuju membuka WhatsApp untuk berbicara/,
+      });
+      expect(consent).toBeDisabled();
+      fireEvent.click(
+        screen.getByRole("checkbox", {
+          name:
+            language === "en"
+              ? /parent or legal guardian/
+              : /orang tua atau wali sah/,
+        }),
+      );
+      expect(consent).toBeEnabled();
+      fireEvent.click(consent);
+      const link = screen.getByRole("link", {
+        name: language === "en" ? "Open WhatsApp" : "Buka WhatsApp",
+      });
+      expect(
+        new URL(link.getAttribute("href")!).searchParams.get("text"),
+      ).not.toContain(birthDate);
+      expect(global.fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it("supports keyboard disclosure, Escape focus return and Indonesian without resetting the interview", async () => {
+    const user = userEvent.setup();
+    resumeBeforeVerdict(ANSWERS.slice(0, 7));
+    render(<OracleShell />);
+    const toggle = await screen.findByRole("button", { name: consultant });
+    toggle.focus();
+    await user.keyboard("{Enter}");
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await user.tab();
+    expect(
+      screen.getByRole("checkbox", {
+        name: /I consent to open WhatsApp to speak/,
+      }),
+    ).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(toggle).toHaveFocus();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.keyboard(" ");
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await user.click(
+      screen.getByRole("button", {
+        name: translate("en", "language.option.id.aria"),
+      }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Bicara dengan konsultan" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByRole("checkbox", {
+        name: /Saya setuju membuka WhatsApp untuk berbicara/,
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: translate("id", "q.stay_days") }),
+    ).toBeVisible();
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });

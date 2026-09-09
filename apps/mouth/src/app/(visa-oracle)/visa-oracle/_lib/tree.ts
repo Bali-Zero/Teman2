@@ -98,6 +98,17 @@ export const CATEGORY_KEYS = [
   "remote",
   "family",
   "retirement",
+  // Second Home is its OWN tile, not a retirement sub-branch (owner ruling
+  // 3, 2026-09-06). `intent.purposes` must carry `SECOND_HOME` ALONE:
+  // every E33 support rule is gated on `intent.purposes ∩ SECOND_HOME`
+  // while `hit_policy.eligibility = COVER_ALL_DECLARED_PURPOSES` drops the
+  // product the moment a second purpose rides along — so routing second
+  // home through `retirement` (which emits `RETIREMENT`) could never
+  // recommend it, no matter how the `secondhome.*` facts were answered.
+  // Measured 2026-09-06: `purposes = ["SECOND_HOME"]` + a USD 2M property
+  // returns `SUPPORTED_CANDIDATES [E33]` on the signed seq-19 pack, while
+  // the same evidence under `RETIREMENT` returns no path.
+  "second_home",
   "study",
   "diaspora",
   "other",
@@ -382,10 +393,14 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     i18nKey: "q.category",
     kind: "tiles",
     group: "intent",
+    // `unknownValues: ["diaspora"]` removed 2026-09-06 (owner ruling 4):
+    // diaspora now maps to the `FAMILY` purpose like any other tile — see
+    // `CATEGORY_TO_PURPOSE` in fact-mapper.ts. Every tile now yields a
+    // KNOWN `intent.purposes`, so no option on this question serializes as
+    // UNKNOWN any more.
     decisionMapping: {
       kind: "FACT",
       factPaths: ["intent.purposes"],
-      unknownValues: ["diaspora"],
     },
     sensitive: false,
     whyWeAsk: { i18nKey: "why.category" },
@@ -540,23 +555,21 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.work_sponsor_confirmed" },
     notSure: { mode: "human-review" },
   },
-  work_role: {
-    id: "work_role",
-    i18nKey: "q.work_role",
-    kind: "choice",
-    group: "details",
-    decisionMapping: { kind: "HUMAN_CONTEXT" },
-    sensitive: false,
-    options: [
-      { key: "executive", labelI18nKey: "q.work_role.opt.executive" },
-      { key: "manager", labelI18nKey: "q.work_role.opt.manager" },
-      { key: "specialist", labelI18nKey: "q.work_role.opt.specialist" },
-      { key: "performer", labelI18nKey: "q.work_role.opt.performer" },
-      { key: "other", labelI18nKey: "q.work_role.opt.other" },
-    ],
-    whyWeAsk: { i18nKey: "why.work_role" },
-    notSure: { mode: "human-review" },
-  },
+  // `work_role` deleted 2026-09-06 (owner ruling 6, overruling
+  // `research/visa/doctrine-factory/e4/question-registry-audit.md` §3's
+  // REVIEW_ONLY disposition). It was `HUMAN_CONTEXT`: it mapped to no
+  // FactPath, so no rule in any signed pack could read it — the E23 support
+  // rule `el.e23-employment-support` requires only `intent.purposes`,
+  // `work.employer_is_indonesian_entity` and
+  // `work.indonesian_work_sponsor_confirmed`, and the one rule that does
+  // read a role (`el.e23-operational-work-boundary` →
+  // `investment.proposed_role`) is written from the INVEST branch's
+  // `investment_role`, never from here. Its only live effect was the
+  // presence-triggered `ACTIVITY_BOUNDARY` disclosure flag in
+  // fact-mapper.ts, which — because it sat fifth in the fixed `work`
+  // sequence and was therefore ALWAYS answered — suppressed E23 for 100%
+  // of employment interviews. A question that costs the user time and
+  // whose only effect is to hide the answer is worse than no question.
   remote_clients: {
     id: "remote_clients",
     i18nKey: "q.remote_clients",
@@ -755,6 +768,13 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       { key: "PARENT", labelI18nKey: "q.family_relation.opt.PARENT" },
       { key: "SIBLING", labelI18nKey: "q.family_relation.opt.SIBLING" },
       { key: "DEPENDENT", labelI18nKey: "q.family_relation.opt.DEPENDENT" },
+      // STEPCHILD was half-shipped by the 2026-08-23 owner ruling: the
+      // wire vocabulary (`FAMILY_RELATIONS` in fact-mapper.ts), the two
+      // evidence questions, the branch in `getCategoryQuestionIds`
+      // (flow.ts) and BOTH i18n labels all landed — but this option row
+      // never did, so the branch was unreachable and E31D could not be
+      // named by any interview. Added 2026-09-06.
+      { key: "STEPCHILD", labelI18nKey: "q.family_relation.opt.STEPCHILD" },
       { key: "OTHER", labelI18nKey: "q.family_relation.opt.OTHER" },
     ],
     whyWeAsk: { i18nKey: "why.family_relation" },
@@ -999,6 +1019,30 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
       },
     ],
     whyWeAsk: { i18nKey: "why.retirement_basis" },
+    notSure: { mode: "human-review" },
+  },
+  // Router for the `second_home` category (owner ruling 3, 2026-09-06).
+  // HUMAN_CONTEXT on purpose, exactly like its `retirement_basis` sibling:
+  // it selects which evidence questions follow, and the evidence questions
+  // themselves — not this one — carry the signed `secondhome.*` facts the
+  // E33 rules read. Only the two bases E33 actually has support rules for
+  // are offered (`el.e33.deposit-basis`, `el.e33.property-basis`); a third
+  // "neither" option would collect an answer no rule could use.
+  secondhome_basis: {
+    id: "secondhome_basis",
+    i18nKey: "q.secondhome_basis",
+    kind: "choice",
+    group: "details",
+    decisionMapping: { kind: "HUMAN_CONTEXT" },
+    sensitive: false,
+    options: [
+      {
+        key: "bank_deposit",
+        labelI18nKey: "q.secondhome_basis.opt.bank_deposit",
+      },
+      { key: "property", labelI18nKey: "q.secondhome_basis.opt.property" },
+    ],
+    whyWeAsk: { i18nKey: "why.secondhome_basis" },
     notSure: { mode: "human-review" },
   },
   secondhome_deposit_usd: {
@@ -1263,6 +1307,36 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     ],
   },
 };
+
+/**
+ * The prompt to render for `question` given the answers so far.
+ *
+ * Almost every question has exactly one prompt and this returns
+ * `question.i18nKey` unchanged. The exception is
+ * `wants_onshore_conversion`, which two different walks ask from opposite
+ * standpoints: onshore it is about a status change from inside the
+ * country, offshore it is a plan for after arrival. Adversarial review
+ * 2026-09-06 (finding 9) accepted the offshore wording as a fix — asked in
+ * the present tense, it puts an applicant who is not in Indonesia in the
+ * position of answering about a country they have not reached. The
+ * question id, the option keys and the fact sent to the engine are
+ * identical on both walks; only the sentence changes.
+ *
+ * The hint follows the prompt: callers derive it as `<key>.hint`, so the
+ * offshore variant carries its own.
+ */
+export function questionPromptI18nKey(
+  question: OracleQuestion,
+  facts: OracleFacts,
+): string {
+  if (
+    question.id === "wants_onshore_conversion" &&
+    facts.in_indonesia === "no"
+  ) {
+    return "q.wants_onshore_conversion.offshore";
+  }
+  return question.i18nKey;
+}
 
 /** Sub-items shown inside the review-gate checklist (design doc §4 shared
  * review-gate). Finding #5 (adversarial review 2026-07-17): "None of

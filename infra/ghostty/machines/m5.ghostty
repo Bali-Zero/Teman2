@@ -75,6 +75,25 @@ palette = 15=#2A2520
 window-width = 124
 window-height = 36
 
+# ─── Reading comfort (2026-08-29) ──────────────────────────────────────────
+# Ghostty has no line-height key; `adjust-cell-height` IS the line-height knob
+# (it takes px or %). 10% on JetBrains Mono at 15pt lands around the 1.4-1.6x
+# range that reading research treats as comfortable for sustained text — and
+# this window is read as prose all day (Claude Code transcripts), not scanned
+# as code. Raise it before reaching for a different font: it is the cheaper
+# and more reversible of the two levers.
+adjust-cell-height = 10%
+
+# The fleet default is `background` — the padding is painted with the
+# `background` colour, which on this machine is already the ivory, so there is
+# no black frame to fix. `extend` matters for a different case: a full-screen
+# TUI (btop, lazygit, yazi) paints its own darker background, and with
+# `background` that colour stops 12px short of the window edge, leaving an
+# ivory band around the app. `extend` carries the nearest grid cell's colour
+# out to the edge instead. It self-disables on prompt rows and on powerline
+# glyphs, so it cannot smear the starship prompt.
+window-padding-color = extend
+
 # ─── Fleet reach (palette, per-machine) ────────────────────────────────────
 # command-palette-entry ACCUMULATES across included files, so per-machine
 # entries live here. Same convention as keys.ghostty: TYPED, never executed —

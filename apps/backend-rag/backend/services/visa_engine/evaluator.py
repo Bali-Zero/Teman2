@@ -200,11 +200,11 @@ import hashlib
 import hmac
 import json
 import uuid
-from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
+from dataclasses import dataclass, replace
 from datetime import datetime
 from enum import Enum
-from typing import Literal
+from typing import Literal, TypeVar
 
 from backend.services.visa_engine import ast as ast_module
 from backend.services.visa_engine.ast import ConditionResult, FactSnapshot, UnknownFact
@@ -279,6 +279,19 @@ class ProductProof:
     #: Populated for UNSUPPORTED — the declared purposes no TRUE (or
     #: potentially-TRUE-via-an-unresolved-unknown) rule could ever cover.
     missing_purposes: frozenset[str] = frozenset()
+    #: Populated on EVERY status, unlike every field above it. STRUCTURAL and
+    #: fact-independent: whether this product's in-force ELIGIBILITY rules
+    #: even CLAIM to cover the applicant's declared purposes, whatever those
+    #: rules currently evaluate to. ``False`` means the product could not have
+    #: been a candidate for this applicant under any resolution of any fact —
+    #: which is why ``evaluate_with_trace`` drops such a proof's exclusion
+    #: reasons from the applicant-facing ``no_path_reasons``. Deliberately
+    #: NOT the fact-dependent ``naive_potential_coverage`` test that drives
+    #: the UNSUPPORTED return: a product whose SUPPORT rule is definitely
+    #: FALSE right now is still a product this applicant was shopping for,
+    #: and its exclusion reason is still their answer. Defaults to ``True``
+    #: so a hand-built proof in a test is never silently filtered out.
+    purpose_feasible: bool = True
 
 
 # ---------------------------------------------------------------------------
@@ -411,6 +424,75 @@ def _dedupe_reasons(reasons: Iterable[Reason]) -> tuple[Reason, ...]:
         )
         seen.setdefault(key, reason)
     return tuple(seen.values())
+
+
+def merge_reasons_by_code(reasons: Iterable[Reason]) -> tuple[Reason, ...]:
+    """Collapse ``Reason``s that render as the SAME SENTENCE — one entry per
+    ``code`` — UNIONING their ``rule_ids`` and ``source_refs``.
+
+    **Not used by ``evaluate``.** This is a PUBLIC-SHAPING transform and its
+    only caller is ``evaluate_path.apply_public_policy_adapters``; the engine's
+    own output keeps one proof per rule so audit, the trace and the gold
+    harness never lose the fact that two distinct rules fired. It lives here
+    beside ``_dedupe_reasons`` because it is the same reason-algebra, not
+    because the evaluator applies it.
+
+    Stronger than ``_dedupe_reasons``, which keys on the whole triple and so
+    only collapses byte-identical entries. Two DIFFERENT rules on two different
+    products can carry the same code, and then the applicant reads the same
+    sentence twice: the reader-facing copy is keyed by CODE alone
+    (``engine-adapter.ts``'s ``SUPPORT_REASON_COPY``), so two entries differing
+    only in ``rule_ids`` are two identical paragraphs on one sheet. Measured
+    2026-09-07 on seq-20: five ``offshore/retirement/*`` walks and
+    ``onshore/retirement`` render ``AGE_BELOW_55`` twice, once for
+    ``hf.e33e.age-below-55`` and once for ``hf.e33f.age-below-55``.
+
+    The union is the whole point and is why this is not a dedupe. Those two
+    entries do NOT carry the same citations — ``hf.e33f``'s proof cites a
+    source record ``hf.e33e``'s does not — so collapsing on the code and
+    keeping the first-seen entry would silently DROP a citation from a surface
+    where citations are load-bearing (``engine-adapter.ts``'s
+    ``requireDecisiveRefs`` validates every ref on every rendered reason, and
+    still does: unioning gives it MORE to validate, never less). In the
+    measured pair one ref set happens to be a subset of the other, but nothing
+    in the contract guarantees that for the next pair, so the union is taken
+    unconditionally rather than by picking the longer entry.
+
+    First-seen order is preserved for the codes and, within a code, for the
+    merged ids — the ordering the determinism gates depend on. Order-preserving
+    dedupe inside each union also satisfies ``Reason``'s own uniqueness
+    validators for both tuples.
+    """
+
+    merged: dict[str, Reason] = {}
+    for reason in reasons:
+        previous = merged.get(reason.code)
+        if previous is None:
+            merged[reason.code] = reason
+            continue
+        merged[reason.code] = previous.model_copy(
+            update={
+                "rule_ids": _ordered_union(previous.rule_ids, reason.rule_ids),
+                "source_refs": _ordered_union(previous.source_refs, reason.source_refs),
+            }
+        )
+    return tuple(merged.values())
+
+
+#: Only ever bound to ``Identifier`` (str) and ``uuid.UUID`` — both hashable,
+#: which ``_ordered_union``'s dict-backed ordering requires.
+_HashableT = TypeVar("_HashableT", bound=Hashable)
+
+
+def _ordered_union(
+    first: Iterable[_HashableT], second: Iterable[_HashableT]
+) -> tuple[_HashableT, ...]:
+    """``first`` then ``second``, first-seen order, duplicates removed."""
+
+    seen: dict[_HashableT, None] = {}
+    for item in (*first, *second):
+        seen.setdefault(item, None)
+    return tuple(seen)
 
 
 #: Gate round 2 (2026-07-20) P0-R2: cap on the number of UNKNOWN support
@@ -584,11 +666,32 @@ def evaluate_product(
     review_results = _evaluate_stage(by_stage.get(RuleStage.HUMAN_REVIEW, ()), facts)
     support_results = _evaluate_stage(by_stage.get(RuleStage.ELIGIBILITY, ()), facts)
 
+    # PR-2 gate follow-up (2026-09-06): the STRUCTURAL purpose-coverage claim
+    # of this product, computed above every early return so that
+    # `purpose_feasible` rides on EVERY proof this function can produce —
+    # including the EXCLUDED and REVIEW ones that return long before the
+    # fact-dependent `naive_potential_coverage` test further down. It is the
+    # union of `covered_purposes` over ALL in-force ELIGIBILITY rules
+    # regardless of truth value (`STAGE_EFFECT_TYPE` guarantees every
+    # ELIGIBILITY rule carries an `EffectSupport`), so a product with zero
+    # ELIGIBILITY rules — E33A/B/C, E23U/V, E28B/C/D/F under seq-19 — claims
+    # nothing and is feasible for nobody. Pure: no rule is evaluated here
+    # that `_evaluate_stage` did not already evaluate above.
+    declared_coverage: frozenset[str] = (
+        frozenset[str]().union(
+            *(frozenset(rule.effect.covered_purposes) for rule, _ in support_results)  # type: ignore[union-attr]
+        )
+        if support_results
+        else frozenset()
+    )
+    purpose_feasible = purposes <= declared_coverage
+
     def finish(
         proof: ProductProof,
         *,
         applied_rule_ids: frozenset[str],
     ) -> ProductProof:
+        proof = replace(proof, purpose_feasible=purpose_feasible)
         if _trace_sink is not None:
             for rule, result in hard_results + review_results + support_results:
                 _trace_sink.append(
@@ -660,6 +763,50 @@ def evaluate_product(
     support_safety = _safety_unknowns(support_results)
     support_review_unknowns, support_input_unknowns = _partition_unknowns_by_policy(support_safety)
 
+    # P0-A fix (gate round 1 item 1, see module docstring): the previous
+    # check asked "does ANY unknown SUPPORT rule's covered_purposes
+    # intersect ANY missing purpose" — wrong whenever one missing purpose is
+    # permanently uncoverable by anything in this product while ANOTHER is
+    # potentially coverable via an unknown rule. `naive_potential_coverage`
+    # below (the optimistic union, ignoring joint consistency) still answers
+    # exactly that question: any purpose it can't reach is permanently
+    # uncoverable by ANYTHING in this product, full stop, regardless of how
+    # any fact resolves — reported verbatim as `missing_purposes` here,
+    # unchanged from round 1.
+    #
+    # Decisiveness reorder (2026-09-06, research/visa/
+    # 2026-09-06-visa-oracle-decisiveness-investigation.md §4 PR-2): this
+    # test runs BEFORE the `hard_input_unknowns or review_input_unknowns`
+    # block below, not after it. A product whose SUPPORT rules can never
+    # cover the applicant's declared purposes must not get to name the fact
+    # the applicant is asked for — `evaluate`'s
+    # `min(blocked, key=len(missing_facts))` tie-break otherwise lets a
+    # product with ZERO SUPPORT rules (E33A/B/C, E23U/V, E28B/C/D/F under
+    # seq-19) choose the global `NEEDS_INPUT` question for everybody else.
+    # This is a REORDER, not a new computation: `covered`, `support_safety`
+    # and `purposes` are all already resolved above. It cannot fail open —
+    # the only status it can return is UNSUPPORTED, so the reachable
+    # behaviour change is `NEEDS_INPUT` → the honest `NO_SUPPORTED_PATH`,
+    # never `NEEDS_INPUT` → `SUPPORTED`, and every EXCLUDED/REVIEW return
+    # above still runs first. Pinned by
+    # `test_evaluator_purpose_feasibility_precedence.py`.
+    naive_potential_coverage: frozenset[str] = covered | (
+        frozenset[str]().union(
+            *(frozenset(rule.effect.covered_purposes) for rule, _ in support_safety)  # type: ignore[union-attr]
+        )
+        if support_safety
+        else frozenset()
+    )
+    if not (purposes <= naive_potential_coverage):
+        return finish(
+            ProductProof(
+                product=product,
+                status=ProductProofStatus.UNSUPPORTED,
+                missing_purposes=purposes - naive_potential_coverage,
+            ),
+            applied_rule_ids=frozenset(rule.rule_id for rule, _ in true_support),
+        )
+
     if hard_input_unknowns or review_input_unknowns:
         missing = _underlying_applicant_facts(
             hard_input_unknowns + review_input_unknowns, fact_registry
@@ -687,33 +834,6 @@ def evaluate_product(
         )
 
     missing_purposes = purposes - covered
-
-    # P0-A fix (gate round 1 item 1, see module docstring): the previous
-    # check asked "does ANY unknown SUPPORT rule's covered_purposes
-    # intersect ANY missing purpose" — wrong whenever one missing purpose is
-    # permanently uncoverable by anything in this product while ANOTHER is
-    # potentially coverable via an unknown rule. `naive_potential_coverage`
-    # below (the optimistic union, ignoring joint consistency) still answers
-    # exactly that question: any purpose it can't reach is permanently
-    # uncoverable by ANYTHING in this product, full stop, regardless of how
-    # any fact resolves — reported verbatim as `missing_purposes` here,
-    # unchanged from round 1.
-    naive_potential_coverage: frozenset[str] = covered | (
-        frozenset[str]().union(
-            *(frozenset(rule.effect.covered_purposes) for rule, _ in support_safety)  # type: ignore[union-attr]
-        )
-        if support_safety
-        else frozenset()
-    )
-    if not (purposes <= naive_potential_coverage):
-        return finish(
-            ProductProof(
-                product=product,
-                status=ProductProofStatus.UNSUPPORTED,
-                missing_purposes=purposes - naive_potential_coverage,
-            ),
-            applied_rule_ids=frozenset(rule.rule_id for rule, _ in true_support),
-        )
 
     # Gate round 2 (2026-07-20) P0-R2: the optimistic union above says every
     # purpose is INDIVIDUALLY reachable by some unknown rule — but it never
@@ -1425,7 +1545,37 @@ def evaluate_with_trace(
         missing = tuple(sorted(smallest.missing_facts, key=lambda path: path.value))
         return assemble(state=DecisionState.NEEDS_INPUT, missing_facts=missing)
 
-    excluded = [proof for proof in proofs if proof.status is ProductProofStatus.EXCLUDED]
+    # PR-2 gate follow-up (2026-09-06): scope the applicant-facing reasons to
+    # products that ever CLAIMED to cover the declared purposes. Before the
+    # decisiveness reorder this list was near-invisible — 0 of the 43 real
+    # interview walks reached NO_SUPPORTED_PATH — and it aggregated the
+    # exclusion reason of every EXCLUDED product, including products the
+    # applicant was never shopping for: a tourist was told "your sponsor is
+    # not a government body" on behalf of E33A/B/C, products that carry ZERO
+    # ELIGIBILITY rules and so can never cover TOURISM under any sponsor.
+    # That sentence is not false, it is about a product this applicant could
+    # not have had, and after the reorder 23 walks render this list.
+    #
+    # `purpose_feasible` is False for exactly those products and is STRUCTURAL
+    # (see `evaluate_product`), so a product that did claim the purposes and
+    # was then excluded on the facts keeps its reason — that is the
+    # applicant's real blocker. This narrows the reason TEXT only: `excluded`
+    # feeds nothing else, the state is `NO_SUPPORTED_PATH` either way, and
+    # `Decision`'s non-empty invariant is still met by
+    # `_fallback_no_path_reason`, whose OPERATIONAL code says exactly what is
+    # true once the filter empties the list — no product in this pack covers
+    # the declared purposes.
+    excluded = [
+        proof
+        for proof in proofs
+        if proof.status is ProductProofStatus.EXCLUDED and proof.purpose_feasible
+    ]
+    #
+    # `_dedupe_reasons` deliberately, NOT `_merge_reasons_by_code`: this is the
+    # ENGINE's output and it keeps per-rule granularity, so two distinct rules
+    # that fired for the same legal reason remain two proofs here. Collapsing
+    # them into one applicant-facing sentence is a PUBLIC-SHAPING concern and
+    # happens at that boundary — `evaluate_path.apply_public_policy_adapters`.
     no_path_reasons = _dedupe_reasons(reason for proof in excluded for reason in proof.reasons)
     if not no_path_reasons:
         no_path_reasons = (_fallback_no_path_reason(products, compiled_pack),)

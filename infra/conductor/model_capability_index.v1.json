@@ -238,13 +238,18 @@
       "model_card_id": "deepseek-v4-flash-0731",
       "family": "deepseek-v4",
       "kind": "language",
-      "routing_status": "eligible",
+      "routing_status": "probation",
       "automated_routing": false,
       "evidence": [
         {
           "level": "production",
           "ref": "FLEET_TOPOLOGY.json#accounts.alibaba.slots.TP1",
           "observed_at": "2026-08-14"
+        },
+        {
+          "level": "production",
+          "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+          "observed_at": "2026-08-27"
         }
       ]
     },
@@ -432,7 +437,7 @@
       "model_card_id": "glm-5.2",
       "family": "glm",
       "kind": "language",
-      "routing_status": "eligible",
+      "routing_status": "probation",
       "automated_routing": false,
       "evidence": [
         {
@@ -444,6 +449,11 @@
           "level": "declared",
           "ref": "https://help.aliyun.com/en/model-studio/newly-released-models | Newly released models | accessed 2026-08-21 | Exact claim: glm-5.2 documents a 1M-token context and long-horizon reasoning, text generation, and coding capabilities.",
           "observed_at": "2026-08-21"
+        },
+        {
+          "level": "production",
+          "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+          "observed_at": "2026-08-27"
         }
       ]
     },
@@ -1216,6 +1226,11 @@
           "level": "declared",
           "ref": "https://help.aliyun.com/en/model-studio/qwen3-6-flash | qwen3.6-flash Model Info | accessed 2026-08-21 | Exact claim: text, image, and video input; text output; 1,000,000-token context; 65,536-token output limit; Function Calling and related documented features; Batch Inference is region-dependent.",
           "observed_at": "2026-08-21"
+        },
+        {
+          "level": "production",
+          "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+          "observed_at": "2026-08-27"
         }
       ]
     },
@@ -1249,6 +1264,11 @@
           "level": "declared",
           "ref": "https://help.aliyun.com/en/model-studio/qwen3-7-max | qwen3.7-max Model Info | accessed 2026-08-21 | Exact claim: qwen3.7-max has text input/output, a 1,000,000-token context, a 131,072-token output limit, documents Structured Outputs, and has region-dependent documented feature support.",
           "observed_at": "2026-08-21"
+        },
+        {
+          "level": "production",
+          "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+          "observed_at": "2026-08-27"
         }
       ]
     },
@@ -1256,7 +1276,7 @@
       "model_card_id": "qwen3.7-plus",
       "family": "qwen-3",
       "kind": "language",
-      "routing_status": "eligible",
+      "routing_status": "probation",
       "automated_routing": false,
       "evidence": [
         {
@@ -1268,6 +1288,11 @@
           "level": "declared",
           "ref": "https://help.aliyun.com/en/model-studio/coding-plan-faq | FAQ | accessed 2026-08-21 | Exact claim: qwen3.7-plus has a 1,000,000-token context length.",
           "observed_at": "2026-08-21"
+        },
+        {
+          "level": "production",
+          "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+          "observed_at": "2026-08-27"
         }
       ]
     },
@@ -1303,7 +1328,7 @@
       "model_card_id": "qwen3.8-max",
       "family": "qwen-3",
       "kind": "language",
-      "routing_status": "eligible",
+      "routing_status": "probation",
       "automated_routing": false,
       "evidence": [
         {
@@ -1315,6 +1340,11 @@
           "level": "declared",
           "ref": "https://help.aliyun.com/en/model-studio/qwen3-8-max | qwen3.8-max Model Info | accessed 2026-08-21 | Exact claim: qwen3.8-max documents text, image, and video input; text output; Function Calling, Structured Outputs, Web Search, Prefix Completion, and Context Caching; Batch Inference is region-dependent.",
           "observed_at": "2026-08-21"
+        },
+        {
+          "level": "production",
+          "ref": "MODEL_ROSTER.md#Alibaba-Token-Plan-TP1",
+          "observed_at": "2026-08-27"
         }
       ]
     },

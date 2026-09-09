@@ -114,6 +114,38 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
         (bash(f"git -C {WT} checkout main"), "ALLOW", "git mutate inside worktree via -C"),
         (bash("grep -rn 'cp ' infra/ | head"), "ALLOW", "the word cp inside a grep pattern"),
         (bash("echo 'use tee to split output' "), "ALLOW", "the word tee inside a quoted string"),
+        # 7th over-match (2026-09-09): the EXACT command reported blocked in
+        # the main checkout — `git diff $(git merge-base ...)` — plus the
+        # rest of the read-only-verb allowlist this PR opens explicitly.
+        (bash("h40=$(gh pr view 5740 --json headRefOid --jq .headRefOid); "
+              "git diff $(git merge-base origin/main $h40) $h40 -- infra/claude-hooks/worktree_isolation.py"),
+         "ALLOW", "the exact reported false-positive: git diff + git merge-base"),
+        (bash("git merge-base origin/main HEAD"), "ALLOW", "merge-base alone is not git merge"),
+        (bash("git show HEAD~1:apps/mouth/README.md"), "ALLOW", "read-only show"),
+        (bash("git rev-parse --show-toplevel"), "ALLOW", "read-only rev-parse"),
+        (bash("git cat-file -p HEAD"), "ALLOW", "read-only cat-file"),
+        (bash("git ls-files apps/mouth"), "ALLOW", "read-only ls-files"),
+        (bash("git ls-tree HEAD"), "ALLOW", "read-only ls-tree"),
+        (bash("git blame apps/mouth/README.md"), "ALLOW", "read-only blame"),
+        (bash("git describe --tags"), "ALLOW", "read-only describe"),
+        (bash("git rev-list --count HEAD"), "ALLOW", "read-only rev-list"),
+        (bash("git name-rev HEAD"), "ALLOW", "read-only name-rev"),
+        (bash("git branch --list"), "ALLOW", "read-only branch --list"),
+        (bash("git branch -a"), "ALLOW", "read-only branch -a"),
+        (bash("git branch --show-current"), "ALLOW", "read-only branch --show-current"),
+        (bash("git remote -v"), "ALLOW", "read-only remote -v"),
+        (bash("git tag"), "ALLOW", "read-only bare tag listing"),
+        (bash("git tag -l 'v1.*'"), "ALLOW", "read-only tag -l with a glob pattern"),
+        (bash("git shortlog -sn"), "ALLOW", "read-only shortlog"),
+        (bash("git for-each-ref"), "ALLOW", "read-only for-each-ref"),
+        (bash("git config --get user.name"), "ALLOW", "read-only config --get"),
+        (bash("git config --list"), "ALLOW", "read-only config --list"),
+        (bash("git fetch origin"), "ALLOW", "read-only fetch (never touches the working tree)"),
+        (bash("git stash list"), "ALLOW", "read-only stash list"),
+        (bash("git reflog"), "ALLOW", "read-only reflog listing"),
+        (bash("git diff -- infra/claude-hooks/worktree_isolation.py"), "ALLOW", "plain diff, no --output"),
+        (bash("git log --oneline | git diff --stat $(git merge-base main HEAD)"),
+         "ALLOW", "compound command with ONLY read-only gits"),
         # W80 arm-before-remove — INNOCENCE tripwires (no git state needed; these
         # resolve to non-dirty / out-of-scope targets so the guard must stay silent).
         (bash("rm -rf /tmp/scratch-dir"), "ALLOW", "rm -rf outside .worktrees → not a worktree removal"),
@@ -128,6 +160,18 @@ CASES: dict[str, list[tuple[dict, str, str]]] = {
         (bash("git stash"), "BLOCK", "git stash in main (sibling-orphan creator)"),
         (bash("echo poison > infra/claude-hooks/orchestrate_gate.py"), "BLOCK", "shell write into main checkout file"),
         (bash("sed -i 's/a/b/' apps/backend-rag/backend/app/main.py"), "BLOCK", "sed -i on main checkout file"),
+        # 7th over-match PR (2026-09-09): writing siblings of the newly-opened
+        # read-only verbs — previously NOT in BLOCKED_SUBCMD_RE at all, so
+        # before this PR both their read AND write forms were silently allowed.
+        (bash("git branch -d old-feature"), "BLOCK", "git branch -d deletes a ref"),
+        (bash("git branch -D old-feature"), "BLOCK", "git branch -D force-deletes a ref"),
+        (bash("git branch -m old new"), "BLOCK", "git branch -m renames a ref"),
+        (bash("git tag v1.2.3"), "BLOCK", "git tag <name> creates a ref"),
+        (bash("git tag -d v1.2.3"), "BLOCK", "git tag -d deletes a ref"),
+        (bash("git config user.email x@balizero.com"), "BLOCK", "git config <key> <value> writes .git/config"),
+        (bash("git diff --output=/tmp/x.patch HEAD"), "BLOCK", "git diff --output writes a file"),
+        (bash("git diff HEAD --output=/tmp/x.patch"), "BLOCK", "git diff --output writes a file (flag last)"),
+        (bash("git log --oneline && git branch -d stale"), "BLOCK", "compound: read-only git chained with a write git still blocks"),
     ],
     # ---- worktree_file_write_check.py (Edit/Write/MultiEdit)
     "worktree_file_write_check.py": [

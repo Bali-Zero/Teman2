@@ -780,7 +780,7 @@ const InspectorChoreographed = ({
           <div className="flex items-center gap-1">
             <button
               onClick={handleCopy}
-              className="p-2 rounded hover:bg-white/5 text-[#666] hover:text-accent-sand transition-colors"
+              className="p-2 rounded hover:bg-white/5 text-[#666] hover:text-accent-sand transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
               title="Copy details"
               aria-label="Copy details"
             >
@@ -944,7 +944,7 @@ const InspectorChoreographed = ({
               <button
                 key={idx}
                 onClick={() => onInspect?.(rel)}
-                className="px-4 py-2 rounded-full bg-surface-deep text-xs text-[#888] border border-white/5 hover:border-accent-sand/30 hover:text-accent-sand cursor-pointer transition-all"
+                className="px-4 py-2 min-h-[44px] inline-flex items-center rounded-full bg-surface-deep text-xs text-[#888] border border-white/5 hover:border-accent-sand/30 hover:text-accent-sand cursor-pointer transition-all"
               >
                 {rel}
               </button>
@@ -1171,7 +1171,7 @@ export default function KBLIExplorerPage() {
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="md:hidden p-2 rounded text-[#888] hover:text-white"
+            className="md:hidden p-2 rounded text-[#888] hover:text-white min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             <X size={18} />
           </button>
@@ -1264,7 +1264,7 @@ export default function KBLIExplorerPage() {
             {/* Mobile hamburger */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className="md:hidden absolute -left-1 top-1/2 -translate-y-1/2 p-2 rounded text-[#888] hover:text-white z-10"
+              className="md:hidden absolute -left-1 top-1/2 -translate-y-1/2 p-2 rounded text-[#888] hover:text-white z-10 min-h-[44px] min-w-[44px] flex items-center justify-center"
             >
               <Menu size={20} />
             </button>
@@ -1301,7 +1301,7 @@ export default function KBLIExplorerPage() {
                       setCompareMode((prev) => !prev);
                       if (compareMode) setCompareSelection([]);
                     }}
-                    className={`p-2 rounded-md transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center ${
+                    className={`p-2 rounded-md transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${
                       compareMode
                         ? "bg-accent-sand/15 text-accent-sand"
                         : "hover:bg-surface-editorial-elevated text-[#555] hover:text-[#888]"
@@ -1316,7 +1316,7 @@ export default function KBLIExplorerPage() {
                   <button
                     type="button"
                     onClick={handleClearConversation}
-                    className="p-2 rounded-md hover:bg-surface-editorial-elevated text-[#555] hover:text-[#888] transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
+                    className="p-2 rounded-md hover:bg-surface-editorial-elevated text-[#555] hover:text-[#888] transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                     title="Clear conversation"
                     aria-label="Clear conversation"
                   >
@@ -1455,7 +1455,7 @@ export default function KBLIExplorerPage() {
                 </span>
                 <button
                   onClick={() => setCompareOpen(true)}
-                  className="px-4 py-2 rounded-lg bg-accent-sand text-[#050507] text-sm font-medium hover:bg-[#C4A473] transition-colors"
+                  className="px-4 py-2 min-h-[44px] inline-flex items-center rounded-lg bg-accent-sand text-[#050507] text-sm font-medium hover:bg-[#C4A473] transition-colors"
                 >
                   Compare {compareSelection.length} codes &rarr;
                 </button>

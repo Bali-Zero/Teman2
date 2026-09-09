@@ -12,6 +12,7 @@ import pytest
 
 from backend.services.garuda_portal.magic_link import (
     ExchangeOutcome,
+    PeekOutcome,
     PersistencePolicyUnavailable,
     UnconfiguredMagicLinkStore,
 )
@@ -35,6 +36,36 @@ class TestUnconfiguredMagicLinkStoreFailsClosed:
         store = UnconfiguredMagicLinkStore()
         with pytest.raises(PersistencePolicyUnavailable):
             await store.exchange(idempotency_key="k" * 16, token="t" * 43)
+
+    async def test_peek_raises_persistence_policy_unavailable(self):
+        store = UnconfiguredMagicLinkStore()
+        with pytest.raises(PersistencePolicyUnavailable):
+            await store.peek(token="t" * 43)
+
+
+class TestPeekOutcomeRepr:
+    """`email` must never appear in `repr(PeekOutcome(...))` — identical
+    rationale to `ExchangeOutcome.account_session_secret` (see
+    `TestExchangeOutcomeRepr` below): a dataclass repr under an innocuous
+    local-variable key is a leak vector neither Sentry's own scrubber nor
+    this repo's `_scrub` can catch, both being key-based."""
+
+    def test_email_absent_from_repr(self):
+        outcome = PeekOutcome(valid=True, email="visitor@example.com")
+        rendered = repr(outcome)
+        assert "visitor@example.com" not in rendered, f"email leaked into repr(): {rendered!r}"
+        assert "email" not in rendered, (
+            f"field name should not even appear (field(repr=False) omits it "
+            f"entirely, not just its value): {rendered!r}"
+        )
+
+    def test_equality_is_unaffected_by_repr_false(self):
+        a = PeekOutcome(valid=True, email="same@example.com")
+        b = PeekOutcome(valid=True, email="same@example.com")
+        c = PeekOutcome(valid=True, email="different@example.com")
+        assert a == b
+        assert a != c
+        assert a.email == "same@example.com"
 
 
 class TestExchangeOutcomeRepr:

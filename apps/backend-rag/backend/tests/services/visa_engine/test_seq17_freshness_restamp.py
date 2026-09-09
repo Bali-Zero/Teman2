@@ -73,7 +73,7 @@ PROD_TRUST_STORE_JSON = json.dumps(
     [
         {
             "kid": "prod-2026-07-1",
-            "public_key": "gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA",
+            "public_key": "gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA",  # pragma: allowlist secret - pinned Ed25519 public verification key, not a credential
             "environment": "PRODUCTION",
             "valid_from": "2026-07-19T00:00:00Z",
             "valid_to": None,

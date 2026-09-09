@@ -84,6 +84,7 @@ from backend.services.garuda_portal.magic_link import (
     MAGIC_LINK_TTL_MINUTES,
     ExchangeOutcome,
     IssueOutcome,
+    PeekOutcome,
     PersistencePolicyUnavailable,
     RateLimited,
 )
@@ -469,6 +470,44 @@ class PostgresMagicLinkStore:
             account_session_secret=raw_secret,
             idempotency_replayed=False,
         )
+
+    async def peek(self, *, token: str) -> PeekOutcome:
+        """Non-consuming lookup for `previewMagicLink` -- a SELECT, never an
+        UPDATE. `exchange`'s atomic UPDATE is what makes the token single-
+        use; this method must never touch `used_at`, or a preview would
+        spend the very credential it exists to describe without spending.
+
+        Mirrors `exchange`'s WHERE clause exactly (`used_at IS NULL AND
+        expires_at > statement_timestamp()`) so a token this method calls
+        valid is one `exchange` would also currently accept -- an unknown,
+        expired, or already-consumed token all fall through the same "0
+        rows" branch and produce the identical `PeekOutcome(valid=False)`,
+        matching `exchange`'s own non-enumeration posture (DECISIONS.md Q1)
+        rather than inventing a second one for this new read path.
+
+        Deliberately no idempotency reservation and no rate-limit check
+        here, for the identical reasons `exchange` documents for itself:
+        this performs no mutation (nothing to make idempotent) and the
+        anonymous-token-guessing threat this shares with `exchange` is an
+        IP-scoped concern this Protocol's signature carries no IP to key
+        on -- both routes answer under the same generic per-IP `/api/`
+        `RateLimitMiddleware` bucket instead (see the router handler's own
+        docstring).
+        """
+        token_hash = _hash_hex(token)
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT email FROM garuda_magic_link_tokens
+                 WHERE token_hash = $1
+                   AND used_at IS NULL
+                   AND expires_at > statement_timestamp()
+                """,
+                token_hash,
+            )
+        if row is None:
+            return PeekOutcome(valid=False)
+        return PeekOutcome(valid=True, email=row["email"])
 
 
 __all__ = ["PostgresMagicLinkStore"]

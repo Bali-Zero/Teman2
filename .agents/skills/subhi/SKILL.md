@@ -65,6 +65,46 @@ cannot be parsed. Require the Brave Network or Console error from the same
 browser session before changing the capture flow. Do not treat a separate curl
 success as evidence that the browser request succeeded.
 
+## Live handoff saved on 2026-08-12
+
+- PR #4099 is merged but was not yet served when Subhi measured production;
+  production was 12 commits behind `origin/main`, so promotion remains an
+  owner-side action.
+- Measurement correction for the homepage: HTML contained `D01033` twice and
+  `FF2D4C` zero times; CSS bundle `5f405efd3f70e089.css` contained `FF2D4C`
+  once and `D01033` zero times. `D01033` enters through an inline style from
+  `rumahVars.ts`; `FF2D4C` intentionally remains the global token in
+  `primitives.css:15`. Never claim that `FF2D4C` is gone site-wide.
+- PR #4105 removed the dead `robots.txt` block from `proxy.ts` without touching
+  the existing `X-Robots-Tag`. Auto-merge was enabled at
+  `2026-08-12T02:00:44Z` and the PR merged at `2026-08-12T02:48:40Z`, before
+  the instruction to disable it reached Subhi. Any revert is owner-side; do not
+  describe the late instruction as a scope violation by Subhi.
+- PR #4106 adds `X-Robots-Tag: noindex, nofollow` to both Zantara exits in
+  `proxy.ts` and remains a two-line, single-file change. Its failing
+  `guard-pins-pytest` check was traced to a main-branch Telegram-sender lint
+  regression introduced through PR #4102 in `secret_log_redaction.py` and its
+  test. Do not expand #4106 into backend code or touch the guard pins; repair
+  the main-branch blocker separately.
+- `apps/mouth/src/app/robots.ts` is the actual `robots.txt` serving layer. Any
+  Zantara-specific robots change belongs in a separate PR after #4106 is live.
+- Required post-live proof for #4106: verify `X-Robots-Tag` on
+  `zantara.balizero.com/`, `zantara.balizero.com/login`, and the positive control
+  `kita.balizero.com/login`, always naming the served commit.
+- `/visas` baseline is recorded from PageSpeed Insights mobile lab at
+  `2026-08-12 16:06 GMT+8`, Moto G Power with slow-4G throttling, served commit
+  `9894a431c3`: LCP 8.9 s, FCP 1.7 s, TBT 420 ms, CLS 0, Speed Index 7.3 s,
+  performance score 57. There is no field data for this URL.
+- The LCP element was the server-rendered `Visas & Immigration` H1, with TTFB
+  20 ms and element render delay 3.26 s. The trace also reported 5.1 s of main
+  thread work, 8 long tasks, 1.8 s execution time, 773 links, and 1.88 MB HTML.
+  Treat pagination as the scoped next experiment, not as proven causality until
+  the same-tool, same-device after measurement confirms the delta.
+- Crawl evidence at the same served commit remained intact: 305 article `href`
+  occurrences from PR #3982. Report every before/after delta, including zero.
+- An Indonesian reply draft was prepared for Zero. No email was sent by the
+  agent, in accordance with Legge 5.
+
 ## Repository facts
 
 - GitHub repository: `Balizero1987/Teman2`.

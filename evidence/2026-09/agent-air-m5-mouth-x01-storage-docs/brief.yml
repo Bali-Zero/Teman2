@@ -1,0 +1,12 @@
+task_id: x01-storage-docs
+gear: 1
+objective: Align the abridged API-client constructor example with its actual browser-guarded token initialization.
+constraints:
+  - Documentation only; preserve application code, fetch example and existing tests.
+  - Fresh main after PR5775 merged; its branch stays frozen.
+acceptance:
+  - text: The example matches the actual safeStorage import, null token initialization and guarded auth_token read; its constructor performs no storage read without window.
+    probe: apps/mouth/DOCUMENTATION.md
+consumer_map:
+  - A developer reading API Client Base sees the actual constructor token path, including server-side initialization.
+pii: none

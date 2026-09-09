@@ -86,14 +86,23 @@ Env overrides:
   QUEUE_UNSTICK_RECENT_SECONDS  default 300 (second-writer-race guard window)
   QUEUE_UNSTICK_STATE_DIR       default ~/.agent/decisions/state
   QUEUE_UNSTICK_FLEET_MAIL_HOST default "pro" (host arg to fleet_mail.sh —
-                                 WHERE the broadcast write executes, per
-                                 that script's local|pro|mini contract; the
-                                 mailbox itself is fleet-visible regardless)
+                                 WHERE the broadcast write/retract executes,
+                                 per that script's local|pro|mini|air
+                                 contract; the mailbox itself is
+                                 fleet-visible regardless)
+  QUEUE_UNSTICK_DIRTY_TTL_HOURS  default 12 (`--ttl` passed to fleet_mail.sh
+                                 for DIRTY-page broadcasts — see the
+                                 constant's comment: measured 2026-09-02,
+                                 97% of live queue_unstick pages on Pro were
+                                 stale under the fleet-wide 48h default)
 
 Exit codes: 0 = ran (whether or not it acted); 4 = CANNOT-VERIFY (the PR
 list itself could not be fetched — never read this as "nothing to do",
 superscar #2/#9); 1 = ran but at least one action (update-branch or
-signal) failed.
+signal) failed. A failed RETRACTION never contributes to this — see
+`retract_dirty_signal`'s docstring: an un-retracted stale page still
+self-expires via QUEUE_UNSTICK_DIRTY_TTL_HOURS, so it is reported
+(`dirty_retract_failed=N` in the summary line) but never reddens the tick.
 """
 
 from __future__ import annotations
@@ -166,6 +175,16 @@ HOLD_LABELS = {"hold", "suspended"}
 STATE_DIR = Path(os.environ.get("QUEUE_UNSTICK_STATE_DIR", os.path.expanduser("~/.agent/decisions/state")))
 DIRTY_SEEN_FILE = STATE_DIR / "queue_unstick_dirty_seen.json"
 FLEET_MAIL_HOST = os.environ.get("QUEUE_UNSTICK_FLEET_MAIL_HOST", "pro")
+# Measured 2026-09-02 (mailbox retract-stale audit, `research/operations/
+# 2026-09-02-mailbox-broadcast-staleness-audit.md`): of 34 live `queue_unstick:*`
+# broadcasts sampled on Pro against `gh pr view --json state,mergeStateStatus`,
+# 33 (97%) were stale — the PR was already MERGED/CLOSED or no longer DIRTY,
+# yet the page (default 48h TTL) was still live and being delivered fresh to
+# every new session. An "act now, this PR is stuck" page has no value 12h
+# after it was sent — either it got resolved (this script's own
+# `retract_dirty_signal` below removes it sooner) or someone is already
+# aware and repaging every 48h added nothing but token cost.
+DIRTY_SIGNAL_TTL_HOURS = int(os.environ.get("QUEUE_UNSTICK_DIRTY_TTL_HOURS", "12"))
 
 GRAPHQL_QUERY = """
 query($owner:String!, $repo:String!, $cursor:String) {
@@ -744,6 +763,13 @@ def _dirty_fingerprint(sha: str | None, files_desc: str) -> str:
     return f"{sha or 'unknown'}:{digest}"
 
 
+def _mailbox_key(number) -> str:
+    """The fleet-mailbox `key:` this script has ALWAYS used for PR `number`'s
+    DIRTY page — shared between `send_dirty_signal` (writes it) and
+    `retract_dirty_signal` (removes it), so the two can never drift apart."""
+    return f"queue_unstick:{number}"
+
+
 def send_dirty_signal(
     pr: dict, *, dry_run: bool, repo_root: Path = REPO_ROOT, files_desc: str | None = None
 ) -> tuple[bool, str]:
@@ -759,13 +785,13 @@ def send_dirty_signal(
     # each sender's local fingerprint check can't see the others' sends —
     # the mailbox-side `key: queue_unstick:<PR>` still collapses them to
     # the newest, fleet-wide, regardless of which host sent it.
-    mailbox_key = f"queue_unstick:{number}"
+    mailbox_key = _mailbox_key(number)
 
     if dry_run:
         return True, (
             f"[dry-run] would signal DIRTY PR #{number} at {short_sha} "
             f"(conflicting files not computed in dry-run) via fleet_mail.sh {FLEET_MAIL_HOST} "
-            f"broadcast --key {mailbox_key}"
+            f"broadcast --key {mailbox_key} --ttl {DIRTY_SIGNAL_TTL_HOURS}"
         )
 
     if files_desc is None:
@@ -778,11 +804,87 @@ def send_dirty_signal(
     if not fleet_mail.is_file():
         return False, f"signal FAILED PR #{number}: fleet_mail.sh not found at {fleet_mail}"
     rc, out, err = _run(
-        ["bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast", "--key", mailbox_key, msg], timeout=30
+        [
+            "bash", str(fleet_mail), FLEET_MAIL_HOST, "broadcast",
+            "--key", mailbox_key, "--ttl", str(DIRTY_SIGNAL_TTL_HOURS), msg,
+        ],
+        timeout=30,
     )
     if rc != 0:
         return False, f"signal FAILED PR #{number} rc={rc}: {err.strip()[:300]}"
     return True, f"signal OK PR #{number}: {out.strip() or 'sent'}"
+
+
+def resolved_dirty_prs(seen_dirty: dict, prs_by_number: dict) -> list[str]:
+    """PR-number keys (as they appear in `seen_dirty`, i.e. strings — the
+    state file's own JSON key type) that were previously signalled DIRTY but
+    are no longer: either the PR is ABSENT from `prs_by_number` (merged or
+    closed — `prs_by_number` is built from `fetch_open_prs()`, ALL open PRs,
+    not just dirty ones, so absence means it left the open set) or it is
+    still open with a DEFINITE non-DIRTY `merge_state_status` (queue unstuck
+    it, the driver rebased clean, a human resolved it by hand, ...).
+
+    FAIL-CLOSED on `"UNKNOWN"` (round-1 cross-family review, codex-gpt-5.6-sol,
+    CONFIRMED — the pre-fix version compared `!= "DIRTY"`, which reads
+    UNKNOWN as resolved): `UNKNOWN` is this file's OWN documented transient
+    state right after `main` moves — see the module's "Re-warm" section and
+    REWARM_UNKNOWN_RATIO/REWARM_UNKNOWN_MIN above — a PR that is still
+    actually DIRTY can read UNKNOWN for tens of seconds while GitHub
+    recomputes. Retracting on that reading would take back a genuinely live
+    page. `None` (a missing/malformed `mergeStateStatus`) gets the same
+    fail-closed treatment, for the same reason: an instrument that could not
+    read the state is news, not a resolution (superscar #2 spirit) — it must
+    never be treated as silent success. Only a DEFINITE terminal-or-clearly-
+    not-dirty reading (BEHIND, BLOCKED, CLEAN, DRAFT, HAS_HOOKS, UNSTABLE, or
+    any other value that is neither DIRTY nor UNKNOWN) retracts.
+
+    Pure — no I/O, no network — so it is testable in isolation from the
+    retract side-effect (`retract_dirty_signal`, which shells out)."""
+    resolved: list[str] = []
+    for number_str in seen_dirty:
+        try:
+            pr = prs_by_number.get(int(number_str))
+        except (TypeError, ValueError):
+            pr = None  # a state file with a non-numeric key: treat as resolved (merged/closed path), drop it
+        if pr is None:
+            resolved.append(number_str)  # absent from the open set entirely: merged or closed
+            continue
+        status = pr.get("merge_state_status")
+        if status in ("DIRTY", "UNKNOWN", None):
+            continue  # still dirty, or GitHub hasn't recomputed yet — never a retraction signal
+        resolved.append(number_str)
+    return resolved
+
+
+def retract_dirty_signal(number_str: str, *, dry_run: bool, repo_root: Path = REPO_ROOT) -> tuple[bool, str]:
+    """Best-effort sender-side cleanup: ask `fleet_mail.sh ... retract` to
+    remove any live broadcast this script previously sent for this PR
+    (`key: queue_unstick:<number>`), now that it is no longer DIRTY. This is
+    what stops a resolved PR's page from lingering for the full TTL window
+    doing nothing — measured 2026-09-02: 97% of live `queue_unstick:*`
+    broadcasts on Pro were for PRs already MERGED/CLOSED/no-longer-DIRTY (see
+    `research/operations/2026-09-02-mailbox-broadcast-staleness-audit.md`).
+
+    Failure here (host unreachable, fleet_mail.sh missing) is reported but
+    NEVER treated as a tick failure by the caller — an un-retracted stale
+    broadcast still expires on its own via the shortened `--ttl` on
+    `send_dirty_signal`, so a best-effort cleanup step must never be the
+    reason a cron tick goes red (superscar #2 spirit)."""
+    mailbox_key = _mailbox_key(number_str)
+    if dry_run:
+        return True, (
+            f"[dry-run] would retract stale signal for PR #{number_str} via fleet_mail.sh "
+            f"{FLEET_MAIL_HOST} retract --key {mailbox_key}"
+        )
+    fleet_mail = repo_root / "scripts" / "fleet_mail.sh"
+    if not fleet_mail.is_file():
+        return False, f"retract FAILED PR #{number_str}: fleet_mail.sh not found at {fleet_mail}"
+    rc, out, err = _run(
+        ["bash", str(fleet_mail), FLEET_MAIL_HOST, "retract", "--key", mailbox_key], timeout=30
+    )
+    if rc != 0:
+        return False, f"retract FAILED PR #{number_str} rc={rc}: {err.strip()[:300]}"
+    return True, f"retract OK PR #{number_str}: {out.strip() or 'nothing to retract'}"
 
 
 # ── main ─────────────────────────────────────────────────────────────────
@@ -829,7 +931,18 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
 
-    seen_dirty = {} if args.dry_run else load_dirty_seen()
+    # DIRTY_SEEN_FILE passed EXPLICITLY, not via load_dirty_seen()'s default
+    # parameter: a default value is bound ONCE at function-definition time
+    # (import time), so a bare load_dirty_seen() call always reads the path
+    # that existed at import — a test (or any caller) that monkeypatches the
+    # module-level DIRTY_SEEN_FILE afterward is silently ignored and the real
+    # on-disk state file is read/written instead (found while adding this
+    # PR's own main()-level tests: they clobbered the real
+    # ~/.agent/decisions/state/queue_unstick_dirty_seen.json on M5, a
+    # workstation that never runs this cron, until this fix). Referencing
+    # the module global directly here — not as a default-arg snapshot —
+    # resolves it at CALL time and honours a monkeypatch correctly.
+    seen_dirty = {} if args.dry_run else load_dirty_seen(DIRTY_SEEN_FILE)
     plan = plan_actions(prs, now, cap=UPDATE_CAP, recent_seconds=RECENT_COMMIT_SECONDS, seen_dirty=seen_dirty)
 
     updated: list[int] = []
@@ -881,8 +994,35 @@ def main(argv: list[str] | None = None) -> int:
         else:
             signal_failed.append(number)
 
+    # Sender-side retraction (2026-09-02): a PR that WAS signalled dirty and no
+    # longer is (merged, closed, or genuinely un-stuck) gets its mailbox page
+    # taken back instead of lingering for the full TTL — see
+    # `retract_dirty_signal`'s docstring for the measured disease. Computed
+    # against `seen_dirty` (the state as loaded at tick start), not
+    # `new_seen` — a PR just added to `new_seen` THIS tick is by construction
+    # still DIRTY, so it can never appear here regardless of which dict is
+    # used; `seen_dirty` avoids reasoning about mutate-while-computing.
+    # Dry-run: `seen_dirty` is always `{}` (see its load above), so this is
+    # trivially a no-op then, matching the docstring's "ZERO mutations".
+    retracted: list[str] = []
+    retract_failed: list[str] = []
+    for number_str in resolved_dirty_prs(seen_dirty, prs_by_number):
+        ok, detail = retract_dirty_signal(number_str, dry_run=args.dry_run)
+        print(detail)
+        if ok:
+            retracted.append(number_str)
+        else:
+            retract_failed.append(number_str)
+        if not args.dry_run:
+            # Drop regardless of retract success: retrying forever buys
+            # nothing (a failed retract's broadcast still self-expires via
+            # DIRTY_SIGNAL_TTL_HOURS) and keeping a resolved PR in state
+            # would only block it from re-signalling promptly if it goes
+            # dirty again later.
+            new_seen.pop(number_str, None)
+
     if not args.dry_run and new_seen != seen_dirty:
-        save_dirty_seen(new_seen)
+        save_dirty_seen(new_seen, DIRTY_SEEN_FILE)  # explicit path — see load_dirty_seen() call above
 
     skip_reasons: dict[str, int] = {}
     for reason in plan["skipped"].values():
@@ -901,6 +1041,7 @@ def main(argv: list[str] | None = None) -> int:
         f"update_aborted={len(update_aborted)} "
         f"dirty_signalled={len(signalled)} dirty_signal_failed={len(signal_failed)} "
         f"dirty_deduped={len(dirty_deduped)} "
+        f"dirty_retracted={len(retracted)} dirty_retract_failed={len(retract_failed)} "
         f"cap={UPDATE_CAP} "
         f"rewarmed={str(rewarm['rewarmed']).lower()} "
         f"still_blind={str(rewarm['still_blind']).lower()} "

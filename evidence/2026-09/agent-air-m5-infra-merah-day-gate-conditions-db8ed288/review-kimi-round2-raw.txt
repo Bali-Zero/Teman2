@@ -1,0 +1,239 @@
+kimi version 0.39.1
+• The user wants an adversarial review of the diff, under 400 words, citing file:line. I need to verify claims against the actual files. Let me read the workflow file and test file to check line numbers and hunt for defects.
+
+  Key attack angles given:
+  1. Is shell-level fail_closed reachable on every path where base is unreachable — including GITHUB_OUTPUT unset, or function called before defined?
+  2. Does `git ls-tree --name-only <sha> -- <path>` behave as claimed under blob:none? Does empty/non-zero separate absent vs unreadable?
+  3. Can `case "$RUN"` validation be bypassed? Is RUN ever set from a path skipping it?
+  4. Do the tests pin the mechanism or just spelling? Is bash>=4 skip hiding a gap?
+
+  Let me actually examine. First, I can reason about the diff, but I should verify against the real files. Let me read the actual workflow file around the sentinel step.
+
+  Potential defects I can already spot from the diff:
+
+  a) `fail_closed` uses `echo "run=true" >> "$GITHUB_OUTPUT"`. If `set -u` is active and `GITHUB_OUTPUT` is unset... on the runner it's always set, but in the test they set it. Actually the step runs with `set -euo pipefail` presumably at top. With `set -u`, `"$GITHUB_OUTPUT"` unset → error. But runner always sets it. However — the *first* fail_closed call happens for unreachable base. That's fine.
+
+  b) The `if ! git cat-file -e ...; then fail_closed ...; fi` — fail_closed calls `exit 0`. Fine.
+
+  c) The `RUN="$( ... PY )" || fail_closed ...` — wait, with `set -e`, does `||` guard work? Yes, `cmd || fail_closed` prevents set -e. But: inside the `$( )`, if python exits non-zero, command substitution returns that exit status, `||` catches it. OK. But what if python prints partial garbage then exits 0? case catches it.
+
+  d) Real bug: `case "$RUN"` — what if python prints "true\nextra"? `RUN` would be "true\nextra" → case fails → fail_closed. OK. What if stdout is "true" plus trailing whitespace? Python print adds \n, command substitution strips trailing newlines. OK.
+
+  e) Big one: `git ls-tree --name-only <sha> -- <path>` under blob:none — ls-tree only needs the tree object; correct that blob:none clones have trees. But empty stdout means absent — actually if the path is a *directory* prefix... not here, WORKFLOW is a file. Also `ls-tree` exit code: ls-tree returns 0 even when path doesn't exist (empty output). Non-zero when the rev can't be parsed. OK that separation is plausible.
+
+  But wait — the subtle one: after the `ls-tree` check, the code still runs `git show ${base_sha}:${WORKFLOW}` which DOES trigger a lazy blob fetch under blob:none, and if that fetch fails → `_run_everything` (fail-closed, runs full guard). That's fail-closed, acceptable.
+
+  f) The reachability issue: the shell `fail_closed` for unreachable base — but the step also has earlier lines. `BASE_SHA="${{ github.event.pull_request.base.sha }}"` — on a merge_group event... wait, earlier there's presumably a check for event type. The test helper `_sentinel_step_script` extracts from "Did a guarded surface change?" to next step. The `${{ github.event.pull_request.base.sha }}` substitution on merge_group would be empty string → BASE_SHA="" → git cat-file -e "^{commit}" fails → fail_closed fires → run=true. That's fail-closed, fine.
+
+  g) GITHUB_OUTPUT unset: with `set -u`, `>> "$GITHUB_OUTPUT"` fails → step exits non-zero → red. Fail-closed-ish (step fails = red), acceptable? Actually the convention says fail-closed means run the guard; a red step also blocks. OK.
+
+  h) Now the tests: `_sentinel_step_script` splits the workflow text on "Did a guarded surface change?" — brittle spelling-pinning. `test_the_step_refuses_a_verdict_that_is_not_a_verdict_word` is purely structural/string matching — pins spelling not mechanism. Admitted in its own docstring.
+
+  i) The bash>=4 skip: house convention says "a skip is a silent pass" — the innocence test skips on macOS bash 3.2, and CI runs... does CI even run these tests on ubuntu? Presumably. But the skip means on dev machines innocence is never verified. Also — is the claim that bash 3.2 can't parse heredoc inside $() even accurate? Actually bash 3.2 CAN have issues with heredoc inside $( ) — yes, that's a real known limitation (fixed in bash 4). Plausible.
+
+  j) Bigger defect candidate: `test_the_step_itself_runs_the_guard_when_the_base_ref_is_unreachable` — the guilt test with base_sha="0"*40. But wait: `_run_sentinel_step(tmp_path, base_sha="0"*40, ...)` → script replace with base sha 000...; git cat-file fails → fail_closed → run=true, exit 0. OK. But does this test actually prove the fail-closed fires *before* git diff kills the step? Yes since exit code 0.
+
+  k) Critical: in the test, the step's earlier part — does the extracted script include `set -euo pipefail`? The extraction takes the `run: |` body; the workflow step presumably includes `set -euo pipefail` at the top of the run block? Actually `shell: bash` default already uses `-e`; the snippet context says the step runs `set -euo pipefail`. Need to check the actual file.
+
+  l) Another angle: `fail_closed` writes `run=true` but the *test's parsed dict* — the GITHUB_OUTPUT file gets "run=true". Fine.
+
+  m) Real potential bug: order of definitions. `fail_closed` is defined after the `BASE_SHA=` line but before first use. Fine in shell.
+
+  n) What about `git diff --name-only "$BASE_SHA"...HEAD > /tmp/changed.txt` inside `if ! ...; then` — under `set -e`, commands in `if` conditions are exempt. Fine. But the redirect `> /tmp/changed.txt`: if git fails, file is created empty or truncated. fail_closed fires anyway.
+
+  o) The python snippet: `listing = _git("ls-tree", ...)`. But hold on — is `ls-tree` actually immune to promisor fetch? In a blob:none clone, trees are present. `git ls-tree <sha>` needs the commit + root tree, which exist. Correct.
+
+  But: does `ls-tree --name-only <sha> -- <path>` return non-zero if the base tree "could not be listed at all"? If commit exists but tree missing (treeless fetch — filter: tree:0), ls-tree would fetch. With blob:none, fine.
+
+  p) THE trap: empty stdout separation. `git ls-tree --name-only $sha -- .github/workflows/merah-putih-day-contrast.yml` — if path exists but is a *submodule* (gitlink)? Not applicable.
+
+  q) Bypass of case validation: `RUN="$(...)" || fail_closed`. Hmm — assignment with command substitution: `RUN=$(cmd) || fail_closed` — the exit status of the assignment is the exit status of the substitution. OK. But what about `set -o pipefail` and the heredoc python — if python prints "true" AND exits non-zero? Then `|| fail_closed` fires. OK.
+
+  What if the python snippet prints "false" but also the `if [[ "$RUN" == "false" ]]` — fine.
+
+  r) Sneaky one: `case "$RUN" in true|false)` — bash pattern: `true|false` — fine. But what about `RUN` containing "true" with trailing whitespace stripped... command substitution strips only trailing newlines. If python prints "true " (trailing space), case fails → fail_closed. Fail-closed. OK.
+
+  s) Where else is RUN set? Nowhere else. But — wait, does the fail_closed in the *shell* get invoked when event substitution yields... Actually check: is there an early `exit 0` before BASE_SHA for non-PR events? The diff shows `exit 0` at line ~183 context (`exit 0` after some fi). That path — presumably for events that aren't pull_request/merge_group — exits without setting run=. Then downstream steps skip. Is that a silently disarmed guard? Depends on the earlier logic — need to read the file.
+
+  Also: the `exit 0` early path doesn't write run= at all — if downstream steps have `if: steps.sentinel.outputs.run == 'true'`, skipping is correct for events that shouldn't guard.
+
+  t) The GITHUB_OUTPUT-unset path: fail_closed does `echo ... >> "$GITHUB_OUTPUT"`. Under `set -u`, if GITHUB_OUTPUT is unset, this errors with "unbound variable" → step exits non-zero → red, not silently green. OK acceptable, but note the test always sets GITHUB_OUTPUT, so the unset path is untested — but the runner always sets it. Weak finding.
+
+  u) Now the tests pinning mechanism vs spelling: `test_the_step_refuses_a_verdict_that_is_not_a_verdict_word` does string surgery — asserts `'echo "run=$RUN"' not in before_write` and `'true|false' in branch`. This pins spelling, not behavior. E.g., a refactor to `printf 'run=%s\n' "$RUN"` would break the test even though correct... actually that would make the test fail — no wait, the test asserts NOT in before_write; if someone moved echo after case using printf, the test still passes while... Actually the deeper defect: the test never *executes* the rejection path. You could delete `fail_closed` from the `*)` branch and replace with `:` — test checks "fail_closed" in branch string, so it pins the word "fail_closed" appearing. If someone renames the function or makes `*) exit 0 ;;`, test fails on spelling but passes if `*) fail_closed` present but fail_closed redefined to no-op. It pins spelling.
+
+  v) bash>=4 skip: on the CI runner (ubuntu, bash 5) the test runs, so the skip only fires locally on macOS. But house rule: "a skip is a silent pass." The guilt test runs everywhere; innocence test skips on macOS. Gap: the *heredoc-in-$()* parse claim — bash 3.2 actually can't do heredocs inside $()... true. But is CI configured to run these tests? Unknown. Also the skip means the innocence property (readable base → run=false) is never enforced on macOS dev — meh, it's enforced in CI. But the rule says skip = silent pass, so flag it.
+
+  w) Bigger: `_sentinel_step_script` splits on "Did a guarded surface change?" — the step NAME string. If the workflow has the string elsewhere... it splits text, takes [1] — first occurrence is presumably the step name. Then `.split("\n      - name:", 1)[0]` — assumes exact 6-space indentation of the next step. Brittle but functional. But the real issue: does the extracted script include the FULL step body including `set -euo pipefail`? If the step uses `shell: bash` (default -e but NOT -u, NOT pipefail!), then the actual runner behavior differs from what the test executes! GitHub's default bash is `bash --noprofile --norc -eo pipefail {0}` — no `-u`! So if the step doesn't explicitly `set -euo pipefail`, then `set -u` is absent and... Actually round-1 finding said "the step runs `set -euo pipefail`". Need to check the actual file.
+
+  Let me read the actual workflow file to verify line numbers and these details. Also the test file.
+
+  Key thing I want to verify: 
+  1. Whether `set -euo pipefail` is inside the run block (and thus extracted).
+  2. The early `exit 0` path before BASE_SHA.
+  3. Line numbers for citations.
+
+  Let me read the file.
+
+• Let me verify the claims against the actual files before indicting.
+
+• Now let me check the test file for the extraction helper and how the step body is extracted, plus whether the tests run the extracted script with `set -euo pipefail` included (yes, since extraction takes the whole run body starting from `set -euo pipefail`).
+
+  Key attack points to verify:
+
+  1. **`_sentinel_step_script` extraction bug**: `text.split("Did a guarded surface change?", 1)[1]` — the string appears only once (line 173, grep confirmed single match). Then `.split("\n      - name:", 1)[0]`. Then `body.split("run: |\n", 1)[1]` — wait, the step at line 164 "Install the parser..." also has `run: python3 -m pip install...` (single-line, not `run: |`). But body starts AFTER "Did a guarded surface change?", so the first `run: |\n` in body is the sentinel's. OK.
+
+  But — the extraction takes everything after `run: |\n`, including subsequent lines with deeper indentation. textwrap.dedent removes common leading whitespace (10 spaces). Fine.
+
+  2. **The `${{ }}` substitution**: the script replaces `${{ github.event_name }}` and `${{ github.event.pull_request.base.sha }}`. But note line 177-179: event_name appears twice (line 177 and 179) — `str.replace` replaces all occurrences. Good.
+
+  3. **Now the critical one — `if [[ "${{ github.event_name }}" != "pull_request" ]]`**: in the test, event_name defaults to "pull_request". OK.
+
+  4. **GITHUB_OUTPUT unset**: fail_closed does `>> "$GITHUB_OUTPUT"`. With `set -u`, unset → step dies non-zero → red. That's fail-closed-ish (red blocks merge for required check). But the *notice* claim "fails closed by running the full guard" fails — it doesn't run the guard, it just goes red. Acceptable but... the runner always sets GITHUB_OUTPUT. Weak.
+
+  5. **Real defect hunt — the unreachable-base shell check**: `git cat-file -e "${BASE_SHA}^{commit}"`. Under `filter: blob:none` with `fetch-depth: 0`, all commits/trees are present. But what if base sha is from a fork or the checkout doesn't fetch the base? cat-file fails → fail_closed → run=true. Good.
+
+  But WAIT — the big one: **`git diff --name-only "$BASE_SHA"...HEAD` under blob:none can trigger lazy blob fetches for computing the diff** (rename detection off by default for name-only, so no blob fetch needed — `git diff --name-only` only compares blob OIDs in trees, no content fetch). OK fine.
+
+  6. **`ls-tree` separation claim**: `git ls-tree --name-only <sha> -- <path>`. Exit codes: ls-tree returns 0 even when path absent (empty output). Returns non-zero (128) when the revision is bad. So empty/non-zero does separate absent from unreadable. BUT — the subtle flaw: the check `if listing.stdout.strip():` — ls-tree with `--name-only` prints the path. For a *file* path it prints the path itself. OK.
+
+  However! `git ls-tree` under a *partial clone* with `filter: blob:none` — trees are present. But if checkout used `filter: tree:0` it wouldn't be. It's blob:none per line 158. OK.
+
+  7. **The case-validation bypass**: `RUN="$(...)" || fail_closed`. Hmm, actually there's a subtle bash issue: with `set -e`, `RUN=$(cmd) || fail_closed` — the `||` protects. But what if the command substitution *succeeds* (exit 0) and prints "true"? Fine. What if python prints NOTHING and exits 0? RUN="" → case fails → fail_closed. Good.
+
+  BUT — can RUN be set from a path that skips the case? The fail_closed function writes run=true directly and exits — bypasses case, but that's intended (fail-closed = run everything). The early non-PR exit at line 180 writes run=true directly — bypasses case too, but it's a constant. So RUN is only set from the snippet. OK.
+
+  8. **Heredoc parse order issue — the REAL bash bug candidate**: The `RUN="$(... <<'PY' ... PY )"` construct. Inside `$( )`, the heredoc. The `)" || fail_closed` — actually wait, there's a classic pitfall: inside command substitution, `set -e` behavior. If python exits non-zero, the substitution exit status is non-zero, `|| fail_closed` catches. Fine.
+
+  9. **Now, the defect in the guilt test**: `test_the_step_itself_runs_the_guard_when_the_base_ref_is_unreachable` — uses base_sha "0"*40. `git cat-file -e 000...^{commit}` fails → fail_closed fires. Asserts returncode 0 and run=true. This pins the mechanism at the shell layer. Solid.
+
+  BUT — does this test actually prove what it claims? The comment says "the ONLY way run=true reaches $GITHUB_OUTPUT is the step's own fail-closed branch firing before git diff can kill it". True-ish. But the test runs `bash -c script` — the extracted script includes `set -euo pipefail`. OK.
+
+  10. **The innocence test skip**: bash 3.2 heredoc-in-$() — claim is bash 3.2 cannot parse heredoc inside $(). True, that's a known bash 3.2 limitation (fixed in 4.0). The test skips on macOS. House rule: "a skip is a silent pass." On the ubuntu CI runner bash is 5.x, so it runs there. But does the repo's pytest suite actually RUN on the runner that has bash 5? This workflow's own step (line 305) runs pytest on ubuntu-latest — yes bash 5. But on dev Macs it's a silent pass. Per repo convention "a skip is a silent pass" — flag it. Also: the skip is *version-based*, not capability-based — it never tries; if CI image changed to bash 3 (absurd) it would silently skip everywhere.
+
+  11. **The verdict-word test**: purely structural — string surgery on the script. It checks `case "$RUN"` appears once, echo not before it, `true|false` and `fail_closed` in the branch. It never executes the rejection path. You could change `*) fail_closed ...` to `*) : # fail_closed` and... no wait, "fail_closed" must be in branch. You could redefine fail_closed to a no-op after the case — the test wouldn't catch it, though the guilt test would (guilt test depends on fail_closed working). Actually the guilt test exercises fail_closed. Hmm. But you could make the `*)` branch call `fail_closed` and THEN `echo "run=$RUN"` leak... The structural test checks echo is not in `before_write` — the text before `case "$RUN"`. Fine.
+
+  Real hole in the structural test: it splits on `'case "$RUN"'` — if someone writes `case $RUN in` (unquoted) or `case "${RUN}"`, test FAILS (len != 2) even though behavior correct — false red. And conversely it would pass if the case were dead code (e.g., inside a comment `# case "$RUN"`)... actually a comment containing `case "$RUN"` would make split produce 2 parts and checks might pass while real validation absent. Weak but the docstring admits it.
+
+  12. **MORE IMPORTANT — a genuine mechanism bug**: Look at `_run_sentinel_step`: it writes the workflow file into the temp repo, commits "base", then applies changes and commits "head". The step runs with cwd=repo. The script's python reads HEAD_WORKFLOW... `head_copy = pathlib.Path(os.environ.get("HEAD_WORKFLOW", WORKFLOW)).read_text()` — reads the workflow from the working tree (head). OK.
+
+  For the guilt test: changed=["README.md"] — unguarded. base unreachable → fail_closed at shell. Fine.
+
+  Innocence test: base_sha="" → falls back to head_base (first commit). Diff base...HEAD → README.md changed → not guarded → run=false. Good, executes the full path including heredoc — hence bash>=4 requirement.
+
+  13. **Now — the `filter: blob:none` claim about `git show`**: After ls-tree confirms existence, `git show ${base_sha}:${WORKFLOW}` DOES lazy-fetch the blob; if fetch fails (network), returncode != 0 → _run_everything → fail closed. OK, that path is safe.
+
+  14. **Potential real bug — ls-tree and wildcards/pathspec**: `git ls-tree --name-only <sha> -- .github/workflows/merah-putih-day-contrast.yml`. ls-tree with a path that's a file inside subdirs: does plain `git ls-tree <sha> -- a/b/c` recurse? YES — when given a path to a file, ls-tree shows that entry (it traverses trees as needed for pathspec matching). Correct.
+
+  But: ls-tree exit status — ls-tree returns 0 even if the path doesn't match anything. And returns 128 for bad rev. Separates cleanly. One more subtlety: `listing.stdout.strip()` — if the path were a *directory*, --name-only lists... with pathspec a dir, it lists the dir itself (not contents) unless -r. Not applicable.
+
+  15. **THE exit-0-empty-stdout fix is in the shell, but what about the PYTHON snippet's own `_run_everything`?** It prints "true" and exits 0 — verdict word flows through case. Fine.
+
+  16. **`assert patterns` at line 275**: if it fails, python exits non-zero (AssertionError) → `|| fail_closed`. Good.
+
+  17. **Hunt for a REAL defect in the cure... the GITHUB_OUTPUT-unset path**: Under `set -u`, if `GITHUB_OUTPUT` is unset, `fail_closed` aborts with unbound variable → exit non-zero → RED. Repo convention "guards must prove guilt AND innocence" — red is not silent pass. Acceptable. But on the runner GITHUB_OUTPUT is always set. Skip.
+
+  18. **fail_closed defined before use** — line 193, first call line 199. Fine. Function-called-before-defined: no.
+
+  19. **What about `set -e` and `fail_closed` inside `if !`?** `if ! git cat-file...; then fail_closed...; fi` — fail_closed calls exit 0. Works.
+
+  20. **AH — here's a candidate**: the shell's fail-closed on unreachable base writes `run=true` and exits 0 — but it does NOT write `/tmp/changed.txt`. Irrelevant, downstream only reads outputs.run.
+
+  21. **Another candidate — the `case` bypass via fail_closed's own write**: fail_closed writes "run=true" then exit 0. Downstream steps run the guard. Fine.
+
+  22. **Test extraction fragility**: `body.split("run: |\n", 1)[1]` — if the sentinel step's `run:` gained a comment line or the YAML used `run: >` or indentation changed, tests break (false red, acceptable) or... split returns no [1] → IndexError → test ERROR (red). Fail-safe direction.
+
+  But `text.split("Did a guarded surface change?", 1)[1]` — if someone adds the phrase in a *comment* earlier in the file (e.g., the big comment block at line 167-172 mentions "The sentinel..."), no it doesn't contain that exact phrase. Currently grep shows exactly one occurrence. Fragile but red-leaning.
+
+  23. **REAL DEFECT CANDIDATE — the innocence test doesn't pin the diff direction**: `_run_sentinel_step` with base_sha="" substitutes `${{ github.event.pull_request.base.sha }}` → replaced by `head_base`... wait, `base_sha or head_base` — yes, uses the first commit. Diff first_commit...HEAD. README.md changed. run=false asserted. OK. But note: in the innocence test, the temp repo is a FULL clone (no blob:none filter) — so the test does NOT exercise the blob:none laziness at all! The whole finding #3 mechanism (ls-tree vs cat-file under blob:none) is never executed under a partial clone. The tests pin spelling/flow in a vanilla repo, not the promisor-fetch behavior the cure is about. That's a genuine gap: no test creates a blob:none clone, so "empty stdout means absent, non-zero means unreadable" under lazy fetch is asserted only by prose. The python snippet tests (existing, above line 881) execute the snippet directly — in REPO? The existing tests at line 779 etc. run snippet against real repo presumably. Still no partial-clone fixture. GOOD FINDING.
+
+  24. **Another**: the guilt test uses base "0"*40 — cat-file fails. But this doesn't distinguish fail_closed from, e.g., the step failing and... they assert returncode==0, so it proves fail_closed fired rather than set -e death. Good.
+
+  25. **Does the case validation catch the actual round-1 failure mode?** Round 1 finding 3: exit-0 with empty stdout writes `run=`. Now case catches "". Yes. Bypass: none in shell. But — `RUN` could be set by `fail_closed`? No, fail_closed writes to GITHUB_OUTPUT directly. OK.
+
+  26. **One more real one**: `test_the_step_refuses_a_verdict_that_is_not_a_verdict_word` asserts `'echo "run=$RUN"' not in before_write`. But the actual workflow line is `echo "run=$RUN" >> "$GITHUB_OUTPUT"` — contains the substring. It's after case. OK. But note the guilt: this test would ALSO pass if the write were `echo "run=${RUN}"` placed BEFORE the case — spelling-pinned, admitted.
+
+  27. **bash skip hiding a real gap**: On the runner (ubuntu-latest, bash 5), the test executes. But the skip condition checks the LOCAL bash. In CI it's bash 5 → runs. Where's the gap? The *guilt* test for the heredoc path... Actually here's the thing: the innocence test is the ONLY test that executes the full happy path (diff → python → case → write). On macOS dev it silently passes. House rule explicitly says "a skip is a silent pass" — so by repo convention this is a violation. Also the skip is justified by "the runner is ubuntu-latest" — but then why gate on the local bash version instead of just running? It's fine on CI. The real gap: if the repo's CI job that runs `scripts/tests/` runs on macOS anywhere, innocence is never proven there. The workflow itself (line 305) runs on ubuntu. Acceptable-ish, but flag per convention.
+
+  28. **Check for a bypass in the case via trailing content**: `print("true" if hit else "false")` — single word. Command substitution strips trailing newlines only. If python printed "false\n" → RUN="false". Fine.
+
+  29. **What about `RUN` containing "true" when snippet succeeded but diff file missing?** CHANGED_FILE=/tmp/changed.txt always written by the shell before python. If diff succeeded, file exists. OK.
+
+  30. **One more: `${{ github.event.pull_request.base.sha }}` on merge_group** — line 177: non-PR events exit at line 180 with run=true. merge_group hits that. Fine.
+
+  31. **Potential defect: the shell fail-closed check `git cat-file -e "${BASE_SHA}^{commit}"` under blob:none** — could cat-file of a commit trigger a lazy fetch? Commits are all present with fetch-depth: 0 blob:none. If the base sha is NOT in the checkout (force-pushed base, or merge queue sha), cat-file fails → fail_closed → run=true → full guard. Good direction.
+
+  Hmm, but WAIT: what if `BASE_SHA` is empty on pull_request (weird event)? `git cat-file -e "^{commit}"` fails → fail_closed. Good.
+
+  32. **Now, a sneaky one in the test harness**: `_run_sentinel_step` env: `{**os.environ, "GITHUB_OUTPUT": str(out_file)}` — passes the FULL os.environ including any GITHUB_* vars and, importantly, CI vars. Minor.
+
+  Also the parsed dict: `line.split("=", 1)` for lines with "=". If fail_closed writes "run=true" and notice lines don't go to the file — notices go to stdout. OK.
+
+  33. **Does the guilt test actually fail if the shell check were removed?** Without shell fail_closed: `git diff 000...HEAD` fails → set -e kills step → returncode != 0 → assert fails. Yes, pins it.
+
+  34. **The strongest finding — tests don't exercise blob:none**: The cure's central claim (finding #3 fix) is ls-tree vs cat-file under partial clone. No test constructs a partial clone (`git clone --filter=blob:none`), so the exact mechanism — promisor fetch collapsing absent vs unreadable — is verified nowhere. The tests run in a full local repo where cat-file would have worked too. The cure could be wrong about ls-tree semantics under blob:none and no test would know. And worse: the *claim itself* — under blob:none, `git ls-tree` reads trees locally, correct; but `git show` right after still lazy-fetches the blob, so in a disconnected partial clone the "absent vs unreadable" separation holds but readability of an EXISTING file still depends on the promisor — handled fail-closed. Fine but untested.
+
+  35. **Also attack**: `_sentinel_step_script` does `.split("\n      - name:", 1)` — hardcodes 6-space indent of the NEXT step. If YAML reindented, split finds nothing → [0] is whole body → script includes subsequent steps → tests execute MORE than the sentinel (e.g., would try to run pytest step...). Actually if the split fails, script contains following steps' text; bash would likely error → tests red. Fail-safe-ish.
+
+  36. **The concurrency comment**: prose fixed per kimi's requirement. Not the focus.
+
+  37. **One more possible bypass**: `case "$RUN" in true|false)` — in bash, patterns `true|false` — fine. But what if `RUN` is set but the snippet path never runs because... `RUN="$(...)" || fail_closed` — if the assignment itself... fine.
+
+  38. **GITHUB_OUTPUT pointing to a directory or unwritable**: echo fails → set -e → red. Fail-safe.
+
+  39. Hmm — **what about `fail_closed` being called from within `$( )`?** It's not. OK.
+
+  40. **The real remaining hole in finding #2's cure**: `case` validates RUN, but the write at line 293 uses `echo "run=$RUN"` — if RUN contains a newline... can't, case would reject. If RUN contains `=`... case rejects anything not exactly true/false. Fine.
+
+  Now check the test file line numbers for citations. Let me read the relevant part of the test file to get exact line numbers.
+
+• Now the test file for exact line numbers.
+
+• Now let me nail down the defects. Verdict: is the cure defective? Findings:
+
+  **Finding A (strongest): the cure for finding #3 is never exercised under the condition it exists for.** `_run_sentinel_step` (test file:926-947) builds a *full* local repo — no `--filter=blob:none` clone anywhere. The entire ls-tree-vs-cat-file distinction (workflow .github/workflows/merah-putih-day-contrast.yml:254-266) is about promisor-fetch behavior in a partial clone; every test runs in a complete object store where `cat-file -e <sha>:<path>` would also have worked. The tests pin the spelling of the cure, not its semantics. And no test constructs the case "base has the commit, lacks the file" vs "base has commit, ls-tree fails" — actually the absent-file case is covered by the existing test at line ~873 (PR introducing workflow). But the promisor failure mode — untestable as written, unattempted.
+
+  **Finding B: the innocence test's bash>=4 skip is a silent pass** per the repo's own convention, and worse, it's the ONLY test that executes the happy path end-to-end (diff → python → case → write). On macOS (bash 3.2) the guard's innocence is never proven. The docstring claims "the runner is ubuntu-latest (bash 5)" — true for the workflow, but the skip is keyed on the *local* bash, so wherever pytest runs with bash 3.2 the property evaporates silently. Also `_bash_major()` (line 985-987) parses `bash --version` of whatever `bash` is first in PATH — on a Mac with Homebrew bash 5 in PATH the test runs, on one without it skips: the same checkout, different verdict, decided by PATH order, not by the mechanism.
+
+  **Finding C: the verdict-word test pins spelling, and its own guard can be satisfied by dead text.** `test_the_step_refuses_a_verdict_that_is_not_a_verdict_word` (line 1025-1036) does substring checks. Concretely: a `# case "$RUN"` comment plus a real `case ${RUN}` (functionally fine) → red (false guilt, fine); but conversely `*) fail_closed ;;` followed later by an unconditional `echo "run=x"` — wait, no, the echo check only covers before_write. Actually a real bypass: put `echo "run=$RUN"` inside the `*)` branch BEFORE fail_closed? Then "echo run=$RUN" not in before_write (it's after case), branch contains "fail_closed" and "true|false" → test passes while the write happens before fail_closed... hmm, within the *) branch, `echo "run=$RUN" >> $GITHUB_OUTPUT; fail_closed` — fail_closed then appends run=true and exits; output file has both lines, last wins? GitHub outputs: later lines override earlier? Actually for outputs, the LAST occurrence wins when read by the runner? I believe duplicate keys — the last one wins. So benign-ish. But simpler: the test never executes the rejection path; `fail_closed` could be redefined to no-op between definition and case... the guilt test would catch a broken fail_closed. It's spelling-pinned; the docstring admits it. State it briefly.
+
+  **Finding D — a genuine reachability hole the user asked about: GITHUB_OUTPUT unset.** fail_closed (workflow:193-197) does `>> "$GITHUB_OUTPUT"` under `set -u`. If GITHUB_OUTPUT is unset/empty, the fail-closed branch itself dies with "unbound variable" — exit non-zero, red. On the runner it's always set, so this is latent, not live; and red is not a silent pass. Weak — mention in one line or drop.
+
+  **Finding E — is the shell fail_closed reachable on every unreachable-base path?** Yes: defined at :193 before first use at :199, first git contact. One subtlety: `git cat-file -e "${BASE_SHA}^{commit}"` under blob:none with fetch-depth 0 — commits present; a base sha absent from checkout → fail-closed → run=true. Good. BUT: `git diff --name-only` under `if !` — fine.
+
+  Actually — wait. One more real check: **does `ls-tree` behave as claimed?** `git ls-tree --name-only <sha> -- <path>`: returns 0 with empty stdout when path absent — correct. Non-zero when the rev is bad. But there's a subtle flaw: ls-tree also exits 0 if `<sha>` is a valid object that isn't a commit/tree in some cases? `ls-tree <blob>` errors ("not a tree object"). Non-zero → fail closed. OK. The claim holds in a full repo; under blob:none trees are local, so it holds. The problem is purely that no test proves it (Finding A).
+
+  **Finding F: `_sentinel_step_script` extraction brittleness.** Line 905: splits on the literal step name and on `"\n      - name:"` — 6-space indent. If the next step's indentation changes (e.g., YAML reformat), the extraction silently includes subsequent steps into `script`... no — split[0] would just not split, body extends to end of file, script includes ALL following steps → bash executes the pytest step etc. in the temp repo → tests go red (fail-safe). If the phrase "Did a guarded surface change?" appears earlier in a comment → [1] takes the wrong segment → likely red. Fail-safe direction. Minor; mention only if space.
+
+  **Finding G: the substitution in the test misses `${{ }}` expressions?** The step body only contains the two expressions (event_name ×2, base.sha ×1) — both replaced. `replace` hits all occurrences. OK.
+
+  **Finding H — real one: the guilt test asserts the fail-closed fires, but does NOT prove it's the *shell* branch rather than the *snippet* branch.** base "0"*40: shell cat-file fails first → fail_closed → exit 0 before python runs. Could python's branch produce the same? Python never runs. If the shell check were deleted, git diff dies → returncode≠0 → red. So yes it pins the shell layer. OK, not a defect.
+
+  **Finding I: `parsed` dict parsing.** If fail_closed writes "run=true" and notice goes to stdout — fine. But `if "=" in line` — `::notice::` lines don't go to the file. OK.
+
+  **Finding J — check the claimed heredoc/bash3.2 assertion**: accurate, known bash limitation. Fine.
+
+  One more: **`RUN` set from a path skipping case?** fail_closed writes directly to GITHUB_OUTPUT, bypassing the case — by design (fail-closed). Non-PR path :177-180 also writes run=true directly. RUN only ever from the snippet. No bypass.
+
+  Also **the early exit path :177-181**: `run=true` written without any diff — for merge_group, correct (must run). OK.
+
+  Word budget: under 400. Structure: verdict + findings with file:line citations. No praise. Be concise.
+
+  Verdict: BLOCK again? The cure fixes round-1 mechanics correctly at the workflow level, but the test suite — the thing that must pin it — has real gaps: Finding A (blob:none never exercised), Finding B (skip = silent pass for the only happy-path test). Per repo conventions ("a skip is a silent pass", "guards must prove guilt AND innocence"), that's a defect. I'd say BLOCK with 2-3 findings.
+
+  Line citations:
+  - workflow: .github/workflows/merah-putih-day-contrast.yml:264-267 (ls-tree), :193-203 (shell fail_closed), :289-292 (case)
+  - tests: scripts/tests/test_merah_putih_day_contrast.py:926-947 (full clone), :990-1007 (skip), :981-987 (_bash_major PATH), :1025-1036 (spelling test).
+
+• **Verdict: BLOCK.** The workflow-side mechanics survive scrutiny; the proof layer does not.
+
+  **1. The finding-#3 cure is never exercised under the condition it exists for.** The `ls-tree`-vs-`cat-file` distinction only matters in a `filter: blob:none` clone, where a promisor fetch can fail (`.github/workflows/merah-putih-day-contrast.yml:254-267`). Every new test builds a *complete* repo — `git init`, `git add -A`, `git commit`, no partial clone anywhere (`scripts/tests/test_merah_putih_day_contrast.py:938-947`). In that object store, the round-1 `cat-file -e <sha>:<path>` would have behaved identically. No test can distinguish the cure from the disease: delete line 264's `ls-tree` restoration and revert to `cat-file`, and the suite stays green. The one mechanism the round-1 BLOCK hinged on is pinned by prose, not by execution.
+
+  **2. The innocence test is a silent pass by the repo's own convention.** `test_the_step_still_declares_a_no_op_when_the_base_is_readable` skips whenever `_bash_major() < 4` (`scripts/tests/test_merah_putih_day_contrast.py:1003-1007`). This is the *only* test executing the happy path end-to-end (diff → snippet → `case` → write). Worse, `_bash_major()` (`:985-987`) probes whatever `bash` PATH resolves first — the same checkout proves innocence on a Mac with Homebrew bash and silently "passes" on one without. A guard property that evaporates based on PATH order is not pinned; it's weather.
+
+  **3. The verdict-word test pins spelling, and says so.** `:1025-1036` is substring surgery: `case "$RUN"` unquoted-renamed to `case ${RUN}` goes red though correct; conversely a `# case "$RUN"` comment above a validation-free step satisfies `len(guard) == 2` while `before_write`/`branch` checks inspect comment text. The rejection path — malformed stdout → `fail_closed` — is never executed, despite being forgeable via a stubbed `python3` on PATH in `_run_sentinel_step`'s env (`:954` passes `os.environ` through wholesale, so PATH manipulation is available and unused).
+
+  **4. Minor, latent:** `fail_closed` itself dereferences `$GITHUB_OUTPUT` under `set -u` (`merah-putih-day-contrast.yml:193-196`); unset, the fail-closed branch dies mid-recovery — red, not silent, and the runner always sets it, so latent only. No test covers it (`:954` always sets it).
+
+  The shell probe ordering (`:198-203`), the `case` gate (`:289-292`), and the guilt test (`:962-978`) are mechanically sound. But findings 1–2 mean the cure's two load-bearing claims — absent-vs-unreadable separation, and provable innocence — hold everywhere they were tested and nowhere they matter.
+
+To resume this session: kimi -r session_ab858e68-a2dd-419a-b5ae-68b5bb44dd11

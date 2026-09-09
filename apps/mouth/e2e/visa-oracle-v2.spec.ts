@@ -1,3 +1,4 @@
+import { APPLICANT_FACT_COUNT } from "../src/lib/api/applicant-fact-paths";
 import { expect, test, type Page, type Route } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { mkdirSync } from "node:fs";
@@ -184,7 +185,7 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
       // (2026-08-24 F4, question now shipped in tree.ts/flow.ts — this
       // seed never answers `renewal_paid`, so the key is still present but
       // UNKNOWN NOT_ASKED, same count as before) is the correct count.
-      expect(Object.keys(body.facts ?? {})).toHaveLength(45);
+      expect(Object.keys(body.facts ?? {})).toHaveLength(APPLICANT_FACT_COUNT);
 
       if (state === "SUPPORTED_CANDIDATES") {
         await expect(page.getByText("Visit Visa C1")).toBeVisible();
@@ -623,6 +624,12 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     );
     await page.goto("/visa-oracle");
     await expectEngineState(page, "SUPPORTED_CANDIDATES");
+    const contact = page.getByRole("button", {
+      name: "Talk to a consultant",
+      exact: true,
+    });
+    await expect(contact).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator("#oracle-consultant-panel")).toBeVisible();
 
     const consent = page.getByRole("checkbox", {
       name: /i consent to open whatsapp with a minimal visa oracle receipt/i,
@@ -655,6 +662,12 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
     );
     await page.goto("/visa-oracle");
     await expectEngineState(page, "HUMAN_REVIEW_REQUIRED");
+    const contact = page.getByRole("button", {
+      name: "Talk to a consultant",
+      exact: true,
+    });
+    await expect(contact).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator("#oracle-consultant-panel")).toBeVisible();
 
     const guardian = page.getByRole("checkbox", {
       name: /i confirm that i am the parent or legal guardian/i,

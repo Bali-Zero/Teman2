@@ -1,6 +1,6 @@
 ---
 name: wr2-design-architect
-description: 'MUST BE USED for every Bali Zero WR2 editorial carousel. Use IMMEDIATELY when user says "design a carousel for [topic]", "draft a WR2 brief", or invokes the WR2 pipeline. Orchestrator-only: fans out to 4 specialist subagents, never writes JSON/HTML inline.'
+description: 'MUST BE USED for every Bali Zero WR2 editorial carousel. Use IMMEDIATELY when user says "design a carousel for [topic]", "draft a WR2 brief", or invokes the WR2 pipeline.'
 tools: Read, Write, Edit, Glob, Grep, Bash, Skill, Agent, WebFetch
 model: opus
 isolation: worktree

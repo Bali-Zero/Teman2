@@ -1,0 +1,26 @@
+• # Verdict: PASS
+
+  The implementation satisfies every stated requirement, and the test matrix is decisive for each of them.
+
+  ## Requirement trace (all CONFIRMED, code-supported)
+
+  - **Missing principal → 422**: `principal is None: raise unavailable` (e33_cases.py, new block ~line 363). Covered by `missing-principal` scenario; asserts `insert.assert_not_awaited()` and exact detail string.
+  - **Missing/archived principal client → 422**: `principal_client is None or principal_client["deleted_at"] is not None` (~line 366). Covered by `missing-client` / `archived-client` scenarios, both asserting identical `{"detail": "principal case is not available"}` and no insert.
+  - **Helper 403 → same 422**: try/except converts only `status_code == 403` to `unavailable` (~lines 368–373). Covered by `other-staff` and `unassigned` (None assigned_to → 403 path). Exact-detail assertion makes the "identical" clause verifiable, not implied.
+  - **Unexpected errors not disguised**: non-403 HTTPException re-raised (`if exc.status_code != 403: raise`); non-HTTP exceptions never enter the except clause. `test_unexpected_principal_access_error_is_not_masked` proves both (409 passthrough, RuntimeError → 500), with `side_effect=[None, access_error]` proving the requested-client call succeeded first and the error originates from the principal call specifically.
+  - **Requested-client 403 unchanged**: that code path is untouched by the diff, and the conversion `try` wraps only the principal `_assert_client_access` call — a requested-client 403 raises before the principal block is reached.
+  - **Omitted principal → no load**: guarded by `if body.principal_case_id is not None`; the pre-existing happy-path test now asserts `fake_repo.load.assert_not_awaited()`.
+  - **Different client IDs allowed, dual access enforced**: `different-clients` scenario (client 1 vs principal client 2, case-mismatched email `TEAM@…` also exercising the helper's lowercasing) and `admin` role scenario return 201; `test_configured_crm_admin_can_link_different_clients` covers the email-allowlist admin path with `assigned_to=None` on both clients.
+  - **Before insert**: every 422/4xx/5xx scenario asserts `insert.assert_not_awaited()`.
+
+  ## Test-quality checks (CONFIRMED)
+
+  - `conn.fetchrow` ordering assumption (requested client first, principal second) matches `side_effect=rows` sequencing, and `await_count == len(rows)` pins the short-circuit points precisely (e.g., `missing-principal` consumes exactly 1 row).
+  - `await_args.args[1:] == (principal_client_id,)` verifies the second fetch targets the principal's client, not the requested one — including `same-client` where both are 1.
+  - The `_crm_admin_emails` patch in the admin test is self-validating: team_member role + `assigned_to=None` means the test returns 422 if the patch no-ops, so it cannot pass for the wrong reason.
+
+  ## Findings
+
+  **PLAUSIBLE (non-blocking) — no explicit regression test that a requested-client 403 still returns 403 (not 422) when `principal_case_id` is also supplied.** The code structure makes masking impossible (the requested-client check raises before, and outside, the conversion `try`), and the pre-existing suite presumably covers the plain requested-client 403. If you want belt-and-suspenders, one parametrized row with requested-client denied + valid principal asserting `403` would close it. This is hardening, not a defect.
+
+  No CONFIRMED defects. Scope discipline held: no kinship proof, no new schema, no new helpers — the ruling as stated is implemented exactly.

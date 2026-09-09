@@ -1,0 +1,15 @@
+{
+  "package": "@openai/codex@0.153.4-darwin-arm64",
+  "registry_tarball": "https://registry.npmjs.org/@openai/codex/-/codex-0.153.4-darwin-arm64.tgz",
+  "archive_integrity": "sha512-B1qhN3fa1ay0R0wGziXqgwSkB5icpYChNKHhtBHff/0UtSTC7z+l8aTtvMlGjH3E8HEvY3+njIJelM9CAAoVWg==",
+  "archive_integrity_verified": true,
+  "binary_sha256": "b973d440acac501fd2594a43e7ca9ce41e0a65b9dfb28d0d7a7837c99e1261e3",
+  "version_observed": "codex-cli 0.153.4",
+  "installed_path_relative_to_caller_home": ".local/share/nuzantara/codex/0.153.4/bin/codex",
+  "installation": "ordinary-user side-by-side binary; existing interactive npm/cask installs preserved",
+  "source_archive_sha256": "d0b146be41f95aacddbc2da838540edf9824a4ad01edf4af99a7a6be31b9e0e7",
+  "source_receipts": "Each catalog and invocation binds the seven producer files by SHA-256.",
+  "official_release_notes": "https://learn.chatgpt.com/docs/changelog",
+  "tests": "27 passed in 0.22s; Ruff check passed",
+  "test_command": "/Users/balizero/nuzantara/.venv/bin/python -m pytest scripts/tests/test_codex_shadow_launch.py scripts/tests/test_codex_shadow_probe.py -q"
+}

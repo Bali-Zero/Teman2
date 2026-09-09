@@ -147,6 +147,7 @@ jobs:
             '^\.github/workflows/'
             '^\.github/CODEOWNERS$'
             '^\.github/dependabot\.yml$'
+            '^apps/backend-rag/[^/]*\.lock\.txt$'
             '^\.github/actions/'
             '^fly\.toml$'
             '^apps/backend-rag/fly\.toml$'

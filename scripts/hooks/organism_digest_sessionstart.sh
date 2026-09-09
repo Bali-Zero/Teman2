@@ -68,6 +68,84 @@ fi
 OUT="$(python3 "$REPO_ROOT/scripts/organism_digest.py" 2>/dev/null)"
 RC=$?
 if [[ -n "$OUT" ]]; then
+  # Output cap (2026-09-04): reshape + cap WITHOUT touching organism_digest.py
+  # (768 lines, its own selftest asserts exact arsenal_card shape) — this is a
+  # post-filter over the already-rendered text. Two rules, always applied:
+  #   (a) the arsenal card's per-seat rollup line + provider "doors:" line
+  #       collapse into ONE line naming only the NOT-ok seats — the doors map
+  #       is reference material (the report has it in full), the all-seats
+  #       rollup is the single biggest line in a HEALTHY digest and names
+  #       nothing an operator acts on.
+  #   (b) if still over budget: drop low/unknown-severity regulatory lines,
+  #       then the main-landing line, then pending-arms detail lines, before
+  #       ever touching a red item (seat TIMEOUT/dead, silent organ,
+  #       medium+/high regulatory) — and if that alone is not enough, hard
+  #       line-boundary truncate with a trailer naming the real full command.
+  MAX_BYTES="${SESSIONSTART_HOOK_MAX_BYTES:-1500}"
+  CAPPED="$(python3 - "$OUT" "$MAX_BYTES" <<'PYEOF' 2>/dev/null
+import sys
+
+text, max_bytes = sys.argv[1], int(sys.argv[2])
+lines = text.split("\n")
+
+out = []
+i = 0
+while i < len(lines):
+    ln = lines[i]
+    if ln.lstrip().startswith("🔌 arsenal (probe"):
+        out.append(ln)
+        rollup = lines[i + 1] if i + 1 < len(lines) else ""
+        if "no seats" in rollup:
+            out.append("  (report has no seats)")
+        else:
+            not_ok = [tok for tok in rollup.split() if "✗" in tok]
+            out.append("  not ok: " + " ".join(not_ok) if not_ok else "  all seats ok")
+        i += 3  # skip the original rollup + doors lines — always collapsed
+        continue
+    out.append(ln)
+    i += 1
+
+
+def _bytes(ls: list[str]) -> int:
+    return len("\n".join(ls).encode("utf-8"))
+
+
+if _bytes(out) > max_bytes:
+    def _priority(ln: str):
+        s = ln.strip()
+        if s.startswith("⚖️") and ("[low]" in s or "[?]" in s):
+            return 1  # lowest severity regulatory: drop first
+        if s.startswith("⬆️") or s.startswith("🕰️"):
+            return 2  # main-landing / pending-arms detail: droppable second
+        return None  # never droppable here: seats, organs, high/medium reg, errors
+
+    trimmed = list(out)
+    while _bytes(trimmed) > max_bytes:
+        candidates = [(idx, _priority(ln)) for idx, ln in enumerate(trimmed)]
+        candidates = [(idx, p) for idx, p in candidates if p is not None]
+        if not candidates:
+            break
+        candidates.sort(key=lambda t: (-t[1], -t[0]))  # least-important, latest first
+        del trimmed[candidates[0][0]]
+
+    if _bytes(trimmed) > max_bytes:
+        kept, total, reserve = [], 0, 100
+        for ln in trimmed:
+            b = len((ln + "\n").encode("utf-8"))
+            if total + b > max_bytes - reserve:
+                break
+            kept.append(ln)
+            total += b
+        hidden = len(trimmed) - len(kept)
+        if hidden > 0:
+            kept.append(f"… (+{hidden} lines, run: python3 scripts/organism_digest.py)")
+        trimmed = kept
+    out = trimmed
+
+sys.stdout.write("\n".join(out))
+PYEOF
+)"
+  [[ -n "$CAPPED" ]] && OUT="$CAPPED"
   echo "$OUT"
 elif [[ $RC -ne 0 ]]; then
   echo "📰 organismo: receptor error (digest exit $RC) — run: python3 scripts/organism_digest.py"
