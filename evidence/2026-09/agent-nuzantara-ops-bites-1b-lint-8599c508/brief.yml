@@ -1,0 +1,94 @@
+task_id: bites-1b-lint
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  Arm the `Bites:` parser that #5693 landed, and make the security model it stands on
+  visible to the two gates that prove it.
+
+  #5693 put scripts/ci/bites_parse.py on main with a 138-fixture guilt+innocence corpus
+  and nine mutation-proved guards. Nothing calls it. That is superscar #2 in its plainest
+  form — exists is not armed — and the measurement is exact: 209 PRs merged since
+  2026-09-01, 139 of them carrying a prose `Bites` section, and zero files in the tree
+  that read any of them. The parser is a file nothing runs.
+
+  This diff is the LINT half of PR-1b (the docs half landed as #5680, operations.md
+  Sec.1bis). One new step in .github/workflows/harness-floor.yml reads THIS PR's evidence
+  pack out of HEAD, feeds it to the on-main parser over stdin, and reports: NOTICE when the
+  pack carries no `bites:` key or a prose one, RED only when it declares an executable block
+  that is malformed. Design rule D4 from the lane brief is the whole shape of it — 110
+  packs on main carry prose Bites and 67 carry none, and none of them may go retroactively
+  red. The lint judges the pack under review, never history.
+
+  The second half closes the ledger row #5680 opened, which #5693's own pack recorded as
+  deferred in writing: guard-conformance.yml and immune-enforcement.yml never watched
+  scripts/ci/bites_allowlist.yaml or scripts/ci/bites_corpus.yaml. The allow-list that
+  stands between a pull-request-controlled file and a command CI executes lives in those two
+  YAML files, so an edit to the security model AS DATA ran neither gate. Both filters now
+  name all four bites surfaces.
+
+  Gear 3 by PATH, deterministically: every file here is under .github/workflows/, a hot
+  zone, so `--print-floor` returns 3 regardless of size. 3 files, +117/-1 measured from the
+  merge-base. #5693's own pack named this exact follow-up and its exact reason for deferring
+  it ("that alone raised the computed gear floor from 1 to 3 ... open a follow-up PR for the
+  workflow-wiring fix alone"). This is that PR, at that gear, with the council it needs.
+constraints:
+  - "The lint is ADVISORY by construction and must stay so. `absent` and `legacy` are NOTICEs
+    forever (D4). The only red is a block that reaches for the executable form — uses any of
+    where/observe/expect — and gets it wrong. A pack authored before this format existed must
+    pass, and every pack already on main must remain able to pass unchanged."
+  - "The job checks out BASE, so the only copy of bites_parse.py ever executed is the one
+    already on main. HEAD's copy is pull-request-controlled and is read for EXISTENCE alone,
+    never run — that asymmetry is what makes the bootstrap sentinel safe rather than a hole."
+  - "No new required status check. The step rides inside the existing required context
+    'Harness floor recompute'; adding a context to branch protection is operator-only (Sec.7
+    of the lane brief) and is not needed here."
+  - "The step must not become a second judge of what Step 7b already judges. Step 7b fails a
+    Gear-3 PR whose pack.yml is inherited rather than authored; this step NOTICEs the same
+    case and passes, because re-reding an innocent diff on a prior PR's bytes is exactly the
+    over-match half of superscar #3."
+  - "Scope is the lint plus the two path filters, because that is the deliverable #5693
+    deferred by name. The reconciler that EXECUTES an `observe:` line is PR-2 and is
+    deliberately not here: this PR proves the contract parses, never that it runs."
+acceptance:
+  - text: >-
+      WHEN a PR authors an evidence pack whose `bites:` block declares an executable
+      contract that violates the allow-list, the step SHALL exit non-zero and name the
+      parser's own reason as a GitHub error annotation.
+    probe: step-battery-case-1-malformed
+  - text: >-
+      WHEN a PR authors a pack with a prose `bites:` block, or with no `bites:` key at all,
+      the step SHALL exit 0 with a NOTICE and never a red (D4).
+    probe: step-battery-case-2-3-absent-and-prose
+  - text: >-
+      WHEN a pack exists at HEAD but was NOT touched by this diff, the step SHALL exit 0 —
+      it is a prior PR's contract and not this diff's to answer for.
+    probe: step-battery-case-5-inherited
+  - text: >-
+      WHEN scripts/ci/bites_parse.py is absent from the base checkout but present at HEAD,
+      the step SHALL skip with a NOTICE (a PR whose base predates #5693); WHEN it is absent
+      from BOTH, the step SHALL fail closed rather than silently disable itself.
+    probe: step-battery-case-11-12-stale-base
+  - text: >-
+      WHEN scripts/ci/bites_allowlist.yaml or scripts/ci/bites_corpus.yaml is the only file a
+      PR touches, BOTH guard-conformance and the immune unit-test battery SHALL run.
+    probe: path-filter-guilt-and-innocence
+assumptions:
+  - text: >-
+      The parser's exit-code contract is exactly {0 parsed, 2 malformed} and nothing else.
+      Read directly in main()'s two return paths on origin/main; the step still treats any
+      third value as a fail-closed rather than trusting the assumption.
+    status: verified
+  - text: >-
+      `git cat-file -e` and `grep` cannot be removed from a GitHub runner, which is why the
+      two diff-membership checks are inline here rather than delegated to
+      scripts/ci/tracked_file_present_in_diff.sh as Step 7b does. Delegating would create a
+      standing fail-open: a later PR deleting that helper would silently disable this lint
+      with nothing red anywhere.
+    status: verified
+  - text: >-
+      evidence_paths.py --resolve pack either prints exactly one path or fails the job. The
+      empty-string case is still handled, because a base checkout without evidence_paths.py
+      falls back to the root pair and a diff touching neither leaves the output usable but
+      irrelevant.
+    status: verified
