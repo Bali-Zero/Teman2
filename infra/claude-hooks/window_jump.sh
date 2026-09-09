@@ -28,11 +28,22 @@
 #   betting on a delay: poll every 0.3s up to JUMP_POLL_MAX_S until a name
 #   appears that was NOT in the snapshot, and raise THAT window by name.
 #
-# BOTH routes stand on the same snapshot: every window name is read BEFORE any
-# gesture, and both window lists go to jump.log — a miss must be diagnosable
-# from the log alone. Titles collide (Claude Code sets the terminal title to
-# the session title, so two sessions are both "Interactive" with only a glyph
-# differing), so every name comparison is on the EXACT string.
+# BOTH routes stand on the same snapshot, and on the same rule (v2.1): every
+# window name is read BEFORE any gesture, and ONLY a window whose exact name
+# was ABSENT from that snapshot may ever be typed into — including the window
+# the native API hands back by id, whose name is cross-checked before a single
+# character is sent. Two corollaries, both of them cures for a measured way of
+# typing into Zero's OTHER live session:
+#   · an UNREADABLE list is not an empty desktop. With the snapshot empty every
+#     name looks new and the first PRE-EXISTING window takes the keystroke: no
+#     snapshot, no gesture.
+#   · a REORDER is not a birth. "The front window changed" is not evidence that
+#     a window was created — windows reorder, focus moves, ⌘N fails — so it is
+#     logged as a diagnosis and acted on never.
+# Both window lists go to jump.log: a miss must be diagnosable from the log
+# alone. Titles collide (Claude Code sets the terminal title to the session
+# title, so two sessions are both "Interactive" with only a glyph differing),
+# so every name comparison is on the EXACT string, glyph included.
 #
 # Either way: nz-jump starts a fresh claude; SessionStart hook
 # context_jump_resume.py injects the handoff and stamps `to_session`; we wait
@@ -184,6 +195,10 @@ if [ -z "$BEFORE" ]; then
 fi
 OLD_NAME=$(printf '%s\n' "$BEFORE" | head -1)
 log "old window: '${OLD_NAME:-?}' pid=${FROM_PID:-?} · windows before ($SNAP_SRC): [$(flat "$BEFORE")]"
+# An UNREADABLE window list is not an empty desktop. With BEFORE empty, every
+# name read after the gesture looks "new", and the first pre-existing window —
+# Zero's other session — would take the keystroke. No snapshot, no gesture.
+[ -n "$BEFORE" ] || { log "window list unreadable before the gesture (Accessibility not granted, or Ghostty not up): nothing typed"; rm -f "$NERR"; exit 1; }
 
 # ---- NATIVE route -----------------------------------------------------------
 if [ "$SNAP_SRC" = "native" ]; then
@@ -192,10 +207,19 @@ if [ "$SNAP_SRC" = "native" ]; then
         if [ -z "$NEW_ID" ]; then
             log "native: new window FAILED ($(tr '\n' ' ' < "$NERR" | cut -c1-160)): falling back to keystrokes"
         else
+            # The id is a handle, but the RULE is the name: a window whose name
+            # was already in the snapshot is somebody else's, whatever handed
+            # it to us. Unreadable is refused too — no evidence, no keystroke.
             NEW_NAME=$("$OSASCRIPT" "$AS_NATIVE" name-of-id "$NEW_ID" 2>/dev/null || true)
-            if "$OSASCRIPT" "$AS_NATIVE" type-into "$NEW_ID" "nz-jump $FROM" >/dev/null 2>"$NERR"; then
+            if [ -z "$NEW_NAME" ]; then
+                log "native: window id='$NEW_ID' created but its name is unreadable, so it cannot be checked against the snapshot: nothing typed (window left open)"
+                rm -f "$NERR"; exit 1
+            elif in_snapshot "$BEFORE" "$NEW_NAME"; then
+                log "native: window id='$NEW_ID' is named '$NEW_NAME', a name ALREADY in the snapshot (not a birth): nothing typed (window left open)"
+                rm -f "$NERR"; exit 1
+            elif "$OSASCRIPT" "$AS_NATIVE" type-into "$NEW_ID" "nz-jump $FROM" >/dev/null 2>"$NERR"; then
                 ROUTE="native"
-                log "native: old window id='${OLD_ID:-?}' pid=${FROM_PID:-?}; new window id='$NEW_ID' name='${NEW_NAME:-?}' opened, 'nz-jump $FROM' sent"
+                log "native: old window id='${OLD_ID:-?}' pid=${FROM_PID:-?}; new window id='$NEW_ID' name='$NEW_NAME' (absent from the snapshot), 'nz-jump $FROM' sent"
             else
                 log "native: new window id='$NEW_ID' opened but input FAILED ($(tr '\n' ' ' < "$NERR" | cut -c1-160)): nothing typed"
                 rm -f "$NERR"; exit 1
@@ -214,11 +238,13 @@ if [ -z "$ROUTE" ]; then
         BEFORE=$("$OSASCRIPT" "$AS_KEYS" window-names 2>/dev/null || true)
         OLD_NAME=$(printf '%s\n' "$BEFORE" | head -1)
         log "keys: old window: '${OLD_NAME:-?}' · windows before: [$(flat "$BEFORE")]"
+        [ -n "$BEFORE" ] || { log "keys: window list unreadable before ⌘N (Accessibility not granted, or Ghostty not up): nothing typed"; exit 1; }
     fi
     "$OSASCRIPT" "$AS_KEYS" cmd-n >/dev/null 2>&1 || { log "keys: ⌘N could not be sent (Accessibility?): nothing typed"; exit 1; }
 
-    # Poll instead of betting on a delay (v2): a name that was ABSENT from the
-    # snapshot is the window that was BORN.
+    # Poll instead of betting on a delay (v2). ONLY a name that was ABSENT from
+    # the snapshot may be typed into: a window that already existed is somebody
+    # else's session, and a front-window change is not evidence of a birth.
     AFTER="$BEFORE"
     POLL_DEADLINE=$(( $(date +%s) + JUMP_POLL_MAX_S ))
     while :; do
@@ -234,8 +260,7 @@ if [ -z "$ROUTE" ]; then
     FRONT=$(printf '%s\n' "$AFTER" | head -1)
     log "keys: windows after: [$(flat "$AFTER")] · new='${NEW_NAME:-}'"
     if [ -z "$NEW_NAME" ] && [ -n "$FRONT" ] && [ "$FRONT" != "$OLD_NAME" ]; then
-        NEW_NAME="$FRONT"
-        log "keys: no new name, but the front window changed to '$FRONT': typing there"
+        log "keys: front window is now '$FRONT', but that name was already in the snapshot (a reorder, not a new window): nothing typed"
     fi
     [ -n "$NEW_NAME" ] || { log "keys: no new window within ${JUMP_POLL_MAX_S}s of ⌘N: nothing typed"; exit 1; }
     "$OSASCRIPT" "$AS_KEYS" raise-type "$NEW_NAME" "nz-jump $FROM" >/dev/null 2>&1 \

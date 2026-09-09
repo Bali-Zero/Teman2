@@ -108,6 +108,7 @@ import importlib.util
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -310,19 +311,47 @@ def _claude_pid() -> int:
 
 
 def _gesture_available(jump: dict) -> bool:
-    """Can a window gesture be made AT ALL for this jump (seat, platform,
-    installed script, kill switch)? Separate from whether it SHOULD be made."""
-    return (jump.get("seat") == "ghostty" and sys.platform == "darwin"
+    """Can a window gesture be made AT ALL for this jump (seat, osascript,
+    installed script, kill switch)? Separate from whether it SHOULD be made.
+
+    The capability question is `osascript`, the same one window_jump.sh asks of
+    itself — not sys.platform: a Mac with no GUI seat is darwin and cannot make
+    the gesture, and the two must not disagree about who can."""
+    return (jump.get("seat") == "ghostty" and bool(shutil.which("osascript"))
             and _window_jump_script().exists()
             and os.environ.get("CONTEXT_JUMP_NO_SPAWN") != "1")
 
 
-def _spawn_gesture(from_session: str) -> bool:
+def _spawn_gesture(from_session: str) -> int | None:
+    """Spawn the detached gesture; return its PID (recorded in the jump file so
+    a later trip can tell a FINISHED gesture from one still running)."""
     try:
-        subprocess.Popen(["bash", str(_window_jump_script()), from_session],
-                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                         stderr=subprocess.DEVNULL, start_new_session=True)
+        proc = subprocess.Popen(["bash", str(_window_jump_script()), from_session],
+                                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL, start_new_session=True)
+        return proc.pid
+    except OSError:
+        return None
+
+
+def _gesture_alive(jump: dict) -> bool:
+    """Is the gesture spawned last time STILL running? osascript can hang for
+    minutes on a busy window server, having logged only `old window:` — and a
+    second gesture on top of a live one opens a SECOND window into which
+    nothing will ever be typed. A running gesture is not a failed one."""
+    try:
+        pid = int(jump.get("gesture_pid") or 0)
+    except (TypeError, ValueError):
+        return False
+    if pid <= 1:
+        return False
+    try:
+        os.kill(pid, 0)
         return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True   # alive, just not ours to signal
     except OSError:
         return False
 
@@ -341,14 +370,15 @@ def _jump_log_last(from_session: str) -> str:
     return ""
 
 
-def _stamp_gesture_attempt(path: Path) -> int:
-    """Increment gesture_attempts in the jump file, atomically. Returns the new
-    count (0 = unwritable). ts and mandate are never touched: the file is the
-    handoff, only the attempt counter moves."""
+def _stamp_gesture_attempt(path: Path, pid: int | None = None) -> int:
+    """Increment gesture_attempts in the jump file, atomically, and record the
+    gesture's PID. Returns the new count (0 = unwritable). ts and mandate are
+    never touched: the file is the handoff, only the attempt counter moves."""
     try:
         jump = json.loads(path.read_text(encoding="utf-8"))
         n = int(jump.get("gesture_attempts") or 0) + 1
         jump["gesture_attempts"] = n
+        jump["gesture_pid"] = pid
         jump["last_gesture_ts"] = time.time()
         tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(jump, indent=2), encoding="utf-8")
@@ -361,11 +391,13 @@ def _stamp_gesture_attempt(path: Path) -> int:
 def _should_retry_gesture(jump: dict, from_session: str) -> bool:
     """The file exists — is the gesture OWED a second try?
 
-    It is when the new session never reported AND (jump.log's last word on this
-    session is a miss, or the file is older than JUMP_STALE_S and no line ever
-    said the keystroke landed). It is NOT when a gesture was never made in the
-    first place (headless seat / kill switch: gesture_attempts == 0), nor past
-    the cap — three failed gestures are a human problem, not a fourth gesture.
+    It is when the new session never reported, the previous gesture PROCESS has
+    exited, AND (jump.log's last word on this session is a miss, or the file is
+    older than JUMP_STALE_S and no line ever said the keystroke landed). It is
+    NOT when a gesture was never made in the first place (headless seat / kill
+    switch: gesture_attempts == 0), not while the previous gesture is still
+    running (a hung osascript logs nothing and would be read as a miss), and not
+    past the cap — three failed gestures are a human problem, not a fourth one.
     """
     if jump.get("to_session"):
         return False
@@ -374,6 +406,8 @@ def _should_retry_gesture(jump: dict, from_session: str) -> bool:
     except (TypeError, ValueError):
         return False
     if attempts < 1 or attempts >= JUMP_MAX_GESTURES:
+        return False
+    if _gesture_alive(jump):
         return False
     last = _jump_log_last(from_session)
     typed_ok = "opened, 'nz-jump" in last
@@ -399,9 +433,15 @@ def _retry_gesture(path: Path, from_session: str):
         return None
     if not isinstance(jump, dict) or not _should_retry_gesture(jump, from_session):
         return None
-    if not _gesture_available(jump) or not _spawn_gesture(from_session):
+    if not _gesture_available(jump):
         return None
-    return f"retried:{_stamp_gesture_attempt(path) or 0}"
+    pid = _spawn_gesture(from_session)
+    if pid is None:
+        return None
+    n = _stamp_gesture_attempt(path, pid)
+    # An unwritable file means the counter did NOT move: say that, never
+    # "gesto ritentato (0/3)", which would read as a cap that already ran out.
+    return f"retried:{n}" if n else "retried-unrecorded"
 
 
 def _write_pending_jump(payload: dict, model: str, handoff_path: Path, mandate: str):
@@ -411,7 +451,8 @@ def _write_pending_jump(payload: dict, model: str, handoff_path: Path, mandate: 
     outcome is only in jump.log, the hook does not wait for it), "recorded"
     (file written, no gesture: headless seat or no script), "retried:<n>" (the
     file was already there but the gesture had missed, so it was made again —
-    capped at JUMP_MAX_GESTURES) or None (nothing raised). Measured 2026-09-09
+    capped at JUMP_MAX_GESTURES), "retried-unrecorded" (made again, but the
+    counter could not be written) or None (nothing raised). Measured 2026-09-09
     on M5 (session 461e7cb5) and Pro (e82f9c09): two of three gestures failed
     AFTER the hook had already printed AVVIATO, so the operator read "started"
     and waited for a window that never came."""
@@ -442,6 +483,7 @@ def _write_pending_jump(payload: dict, model: str, handoff_path: Path, mandate: 
         "ts": time.time(),
         "seat": "ghostty" if os.environ.get("TERM_PROGRAM") == "ghostty" else "headless",
         "gesture_attempts": 0,
+        "gesture_pid": None,
     }
     try:
         _jump_dir().mkdir(parents=True, exist_ok=True)
@@ -451,9 +493,11 @@ def _write_pending_jump(payload: dict, model: str, handoff_path: Path, mandate: 
     except OSError:
         return None
     # The file must exist BEFORE the gesture: window_jump.sh reads it.
-    if _gesture_available(jump) and _spawn_gesture(from_session):
-        _stamp_gesture_attempt(path)
-        return "spawned"
+    if _gesture_available(jump):
+        pid = _spawn_gesture(from_session)
+        if pid is not None:
+            _stamp_gesture_attempt(path, pid)
+            return "spawned"
     return "recorded"
 
 
@@ -735,6 +779,10 @@ def main() -> int:
            f"{_jump_dir() / 'jump.log'}): se non compare, aprine una tu e scrivi: "
            f"nz-jump {session_id}. Chiudi il turno.\n"
            if str(jumped).startswith("retried:") else
+           f"Salto: gesto ritentato, ma il contatore NON è stato scritto (file salto non "
+           f"scrivibile: il cap di {JUMP_MAX_GESTURES} gesti non avanza). Esito in "
+           f"{_jump_dir() / 'jump.log'}; a mano: nz-jump {session_id}. Chiudi il turno.\n"
+           if jumped == "retried-unrecorded" else
            f"Salto REGISTRATO ({_pending_jump_path(session_id).name}), nessun gesto di finestra "
            f"(seat headless: il wrapper claude-cascade fa l'hop; a mano: nz-jump {session_id}). "
            "Chiudi il turno.\n"

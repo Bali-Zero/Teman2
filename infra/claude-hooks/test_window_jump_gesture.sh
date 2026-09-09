@@ -15,7 +15,9 @@
 # every `raise-type` it is asked to perform. What the corpus proves is exactly
 # the thing that failed: with the front window UNCHANGED for two polls and a
 # new name appearing only on the third, `nz-jump <sid>` is typed into the NEW
-# window — and when no window ever appears, nothing is typed at all.
+# window — and that nothing is typed at all when no window appears, when the
+# window list was unreadable to begin with (every name would look new), or when
+# the front window merely CHANGED without any name being born.
 #
 # Run: bash infra/claude-hooks/test_window_jump_gesture.sh
 # Against an INSTALLED copy: WINDOW_JUMP_SH=~/.claude/hooks/window_jump.sh bash ...
@@ -98,14 +100,31 @@ check "the new window gets the keystroke" \
 check "Zero's other session (✳ Interactive) is never typed into" \
       "$(hasnt "$TYPED" "$(typed_line "✳ Interactive" "nz-jump s-glyph")")"
 
-# --- guilt: no new NAME, but the front changed ------------------------------
-echo "[3] no new name, front window changed (fallback signal)"
+# --- innocence: a REORDER is not a birth -----------------------------------
+# The front window changing is not evidence that a window was created: ⌘N can
+# fail while focus moves, and every name still in the snapshot belongs to a
+# session that is somebody else's. v2.1 refuses this case instead of typing.
+echo "[3] no new name, front window changed (reorder): nothing may be typed"
 setup "s-front" "A
 B" "B
 A"
 run_gesture
-check "the new front window gets the keystroke" \
-      "$(has "$TYPED" "$(typed_line "B" "nz-jump s-front")")"
+check "not one keystroke was sent" "$([ ! -s "$TYPED" ] && echo yes || echo no)"
+check "jump.log names the reorder" "$(has "$LOG" "already in the snapshot (a reorder, not a new window): nothing typed")"
+check "exit 1" "$([ "$RC" = 1 ] && echo yes || echo no)"
+
+# --- innocence: an UNREADABLE snapshot is not an empty desktop --------------
+# If the first `window-names` fails (Accessibility not granted, Ghostty still
+# starting) BEFORE is empty, so every name polled afterwards looks "new" — and
+# the first one is a PRE-EXISTING window of Zero's. No snapshot, no gesture.
+echo "[3b] window list unreadable before ⌘N: nothing may be typed"
+setup "s-blind" "" "✳ Interactive di Zero"
+run_gesture
+check "not one keystroke was sent" "$([ ! -s "$TYPED" ] && echo yes || echo no)"
+check "Zero's pre-existing window is never typed into" \
+      "$(hasnt "$TYPED" "nz-jump s-blind")"
+check "jump.log says the list was unreadable" "$(has "$LOG" "window list unreadable before ⌘N")"
+check "exit 1" "$([ "$RC" = 1 ] && echo yes || echo no)"
 
 # --- innocence: no window ever appears -> NOTHING is typed ------------------
 echo "[4] ⌘N opens nothing: nothing may be typed"
