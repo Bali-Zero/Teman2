@@ -121,7 +121,7 @@ jobs:
       # its self-test is an assertion suite, so a runner-image Node bump could flip this job red
       # — or, worse, change probe behaviour — with no repo change to point at. Both reviewers
       # raised it; the repo has no `.nvmrc` to read, so the version is named here.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
 
