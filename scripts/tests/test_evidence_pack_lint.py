@@ -4285,3 +4285,37 @@ def test_path_term_exemption_innocence_a_real_new_file_header_is_still_a_header(
         ".github/workflows/a.yml",
         ".github/workflows/b.yml",
     }
+
+
+def test_size_term_net_lines_innocence_generated_translation_excluded_2026_09_09():
+    # The 68-duplicate-PR disease: 20 machine-translated .id/.it MDX files,
+    # ~97 lines each, floored every hourly promote batch at Gear 3 by size.
+    numstat = (
+        "97\t0\tapps/mouth/src/content/articles/tax-legal/x.id.mdx\n"
+        "99\t0\tapps/mouth/src/content/articles/tax-legal/x.it.mdx\n"
+        "95\t0\tapps/mouth/src/content/articles/business/y.ru.mdx\n"
+        "95\t0\tapps/mouth/src/content/articles/business/y.fr.mdx\n"
+        "40\t3\tapps/mouth/src/content/articles/tax-legal/x.mdx\n"
+    )
+    # Only the English SOURCE counts (40+3) — it is the reviewable artifact.
+    assert _size_term_net_lines(numstat) == 43
+
+
+def test_size_term_net_lines_guilt_translation_suffix_outside_content_dir_counts_2026_09_09():
+    # Same language suffix, wrong directory: a decoy named like a translation
+    # must not hide behind the exemption (superscar #3, entity not substring).
+    numstat = (
+        "500\t0\tapps/mouth/src/lib/x.id.mdx\n"
+        "500\t0\tdocs/x.it.mdx\n"
+        "500\t0\tapps/mouth/src/content/x.id.mdx\n"  # sibling dir, not articles/
+    )
+    assert _size_term_net_lines(numstat) == 1500
+
+
+def test_size_term_net_lines_guilt_english_source_and_other_mdx_still_count_2026_09_09():
+    numstat = (
+        "900\t900\tapps/mouth/src/content/articles/tax-legal/x.mdx\n"
+        "100\t0\tapps/mouth/src/content/articles/tax-legal/x.en.mdx\n"
+        "100\t0\tapps/mouth/src/content/articles/tax-legal/x.id.md\n"
+    )
+    assert _size_term_net_lines(numstat) == 2000
