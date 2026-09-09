@@ -42,7 +42,7 @@ fi
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
     # WARNING, not ok. A skip is not health: if a run ever wedges (a hung network call, a
     # stopped process), its pid stays alive and EVERY later tick lands here — an "ok"
-    # heartbeat every 15 minutes while the organ cures nothing, which is the exact
+    # heartbeat every 2 minutes while the organ cures nothing, which is the exact
     # green-over-dead shape of superscar #2. The organ that is skipping is not the organ
     # that is working, and the sidecar must not spell them the same way.
     log "previous run still alive (pid $(cat "$PIDFILE")) — skipping"
@@ -54,6 +54,19 @@ trap 'rm -f "$PIDFILE"' EXIT
 
 # ---- payload (cron one-shot; G8_keepalive_sane: plist uses StartInterval, no KeepAlive)
 #
+# WHY EVERY 2 MINUTES AND NOT 15 (2026-09-09)
+# Measured on the last mouth merge of the day (#6010): the PR left the merge queue and landed
+# on main at 19:20:21 WITA, Vercel created the production build 4 seconds later and had it
+# READY at 19:26:11 — and the 900s tick had run at 19:25:06, one minute too early, so the
+# build sat STAGED until the 19:40 tick. Every one of the day's five mouth merges paid the
+# same lottery (0-15 min after READY, promoted by hand each time by a session that would not
+# wait), which is why "the organ works" and "a merge arrives live without a hand" were both
+# true and both useless. At 120s the worst case after READY is 2 minutes. The price is
+# nothing on the happy path: `vercel_prod_deploy.py` returns before touching the Vercel API
+# when production already includes the target, so an idle tick is one `git fetch` and one
+# GET on /api/health; the Vercel listing is only asked while a build is actually pending.
+# The single-instance guard above makes overlapping ticks a visible skip, never a race.
+#
 # WHAT THIS CLOSES
 # On 2026-08-21 balizero.com served a ~22h-old build while three READY production builds sat
 # on Vercel unaliased. The detector (frontend-live-sentinel.yml) had gone red 13 times in a
@@ -62,7 +75,7 @@ trap 'rm -f "$PIDFILE"' EXIT
 #
 # WHY --promote-only AND NOT THE DEFAULT
 # Left at its default the script CREATES a deployment when no READY build exists (~6 min +
-# build minutes). Unattended at a 15-minute cadence that is a build loop nobody asked for.
+# build minutes). Unattended at a 2-minute cadence that is a build loop nobody asked for.
 # --promote-only promotes what is already built and refuses to build, returning 2 for "there
 # was nothing to promote" — an anomaly that wants eyes, not an automatic rebuild.
 #
@@ -79,6 +92,13 @@ export PATH
 
 REPO="$HOME/nuzantara"
 CURE="$REPO/scripts/vercel_prod_deploy.py"
+
+# At 120s the log grows ~7x faster than it did at 900s (a few lines per tick, ~4k lines a
+# day). One generation of size-based rotation keeps `tail` useful and the disk bounded;
+# `wc -c` rather than `stat` because the corpus runs this file on Linux CI too.
+if [ -f "$LOG" ] && [ "$(wc -c < "$LOG" | tr -d ' ')" -gt 5242880 ]; then
+    mv -f "$LOG" "$LOG.1"
+fi
 
 log "run start"
 
