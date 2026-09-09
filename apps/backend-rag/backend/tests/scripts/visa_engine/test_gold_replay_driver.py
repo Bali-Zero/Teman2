@@ -6,6 +6,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 import httpx
 import pytest
@@ -18,7 +19,11 @@ from backend.services.visa_engine.api_models import (
 )
 from backend.services.visa_engine.models import ApplicantFactsData, Decision
 from backend.tests.services.visa_engine import _gold_fixtures as gf
-from backend.tests.services.visa_engine.test_evaluator_gold import PERSONAS
+from backend.tests.services.visa_engine.gold_replay import _persona_expected
+from backend.tests.services.visa_engine.test_evaluator_gold import (
+    PERSONAS,
+    PRODUCTION_REPLAY_EXPECTATIONS,
+)
 
 _GOLD_AT = gf.GOLD_EFFECTIVE_AT
 
@@ -58,13 +63,27 @@ def _fixture_report(
     *,
     explanations: dict[int, driver.AcceptedExplanation] | None = None,
 ) -> dict:
-    return driver.build_report(
-        mode="offline",
-        generated_at=_GOLD_AT,
-        decisions=decisions,
-        pack_source={"kind": "test"},
-        explanations=explanations,
-    )
+    def synthetic_expected(persona) -> dict:
+        expected = _persona_expected(persona)
+        return {
+            "state": expected["state"],
+            "candidate_products": expected["candidates"],
+            "missing_facts": expected["missing_facts"],
+            "review_reason_codes": expected["review_reason_codes"],
+            "no_path_reason_codes": expected["no_path_reason_codes"],
+            "notice_codes": expected["notice_codes"],
+        }
+
+    # These tests isolate report mechanics with the synthetic fixture pack.
+    # The production expectation table has its own signed-pack replay below.
+    with patch.object(driver, "_normalized_expected", synthetic_expected):
+        return driver.build_report(
+            mode="offline",
+            generated_at=_GOLD_AT,
+            decisions=decisions,
+            pack_source={"kind": "test"},
+            explanations=explanations,
+        )
 
 
 def test_all_canonical_personas_map_to_the_real_wire_model() -> None:
@@ -238,7 +257,20 @@ def test_offline_replay_uses_highest_signed_pack_without_claiming_it_is_active()
 def test_offline_replay_match_count_does_not_regress_below_measured_floor() -> None:
     """G-b regression floor for the offline gold-persona replay.
 
-    Measured 2026-08-23 (independently reproduced while wiring this gate):
+    Re-derived 2026-09-10 from the 20 named persona descriptions and the
+    legal citations stored in ``PRODUCTION_REPLAY_EXPECTATIONS``; then
+    independently measured against signed production pack sequence 20:
+    17/20 matched and 3 divergences remained.  The three are deliberately
+    NOT laundered into the expectation:
+
+    * persona 1: an Indonesian citizen remains outside the foreign visa set
+      under UU 6/2011 jo. UU 63/2024;
+    * persona 9: the described direct C1-to-E28A onshore conversion remains
+      unsupported under Permenkumham 22/2023 jo. 11/2024;
+    * persona 10: the described status-bridging route remains adviser-review
+      work under the same regulation.
+
+    The previous floor was measured 2026-08-23:
     ``python -m backend.scripts.visa_engine.gold_replay_driver --offline``
     against the highest-sequence signed PRODUCTION pack then in the
     repository (``rulepack-prod-012.signed.json``, sequence=12) replayed
@@ -249,7 +281,7 @@ def test_offline_replay_match_count_does_not_regress_below_measured_floor() -> N
     so a regression in the match count could land on main with every check
     green.
 
-    4 is a FLOOR to raise as divergences get cured, never a target to hold
+    17 is a FLOOR to raise as divergences get cured, never a target to hold
     steady at and never something to lower back down to make this test pass
     again. This test exists to catch the count going DOWN (a real engine or
     pack regression), not to celebrate it staying flat — if a fix legitimately
@@ -266,13 +298,28 @@ def test_offline_replay_match_count_does_not_regress_below_measured_floor() -> N
 
     summary = report["summary"]
     assert summary["personas_total"] == 20
-    assert summary["personas_match"] >= 4, (
+    assert summary["personas_match"] >= 17, (
         f"gold-persona offline replay regressed below the measured floor: "
-        f"{summary['personas_match']}/20 matched (floor=4), "
+        f"{summary['personas_match']}/20 matched (floor=17), "
         f"{summary['unexplained_divergences']} unexplained divergences "
-        f"(ceiling=16) against pack sequence={report['pack']['sequence']}"
+        f"(ceiling=3) against pack sequence={report['pack']['sequence']}"
     )
-    assert summary["unexplained_divergences"] <= 16
+    assert summary["unexplained_divergences"] <= 3
+    unexplained_persona_ids = {
+        row["persona_id"]
+        for row in report["personas"]
+        if row["divergence"]
+        and (not isinstance(row["explanation"], str) or not row["explanation"].strip())
+    }
+    assert unexplained_persona_ids == {1, 9, 10}
+
+
+def test_every_production_expectation_has_a_named_legal_basis() -> None:
+    assert set(PRODUCTION_REPLAY_EXPECTATIONS) == {persona.id for persona in PERSONAS}
+    for persona in PERSONAS:
+        expectation = PRODUCTION_REPLAY_EXPECTATIONS[persona.id]
+        assert expectation.legal_citations, persona.label
+        assert expectation.rationale, persona.label
 
 
 @pytest.mark.parametrize(
