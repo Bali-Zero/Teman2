@@ -1,0 +1,148 @@
+task_id: infra-queue-cache-0910
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor: .github/workflows/tests.yml is a hot-zone file -> floor 3 (path).
+objective: >-
+  Make the CI caches in tests.yml actually hit on the PR and merge-queue lanes
+  by stopping the churn that evicts main's copies. Measured 2026-09-09 17:45Z
+  (`gh api repos/{owner}/{repo}/actions/cache/usage`): 10.86 GB used against
+  the 10 GB repository cap with only 14 entries, so GitHub's least-recently-
+  accessed eviction is running continuously. Three measured causes, all in
+  tests.yml: (1) the same `**/node_modules + ~/.npm` content is cached under
+  three different keys (`node-mouth`, `node-admin-dashboard`, `node-npm-audit`,
+  ~0.7 GB each) — a ref pays and stores it three times; (2) every ref saves on
+  a miss, including `gh-readonly-queue/*` refs (1.1 GB per batch, 78 batches
+  in the last 24 h) and `refs/pull/N/merge` refs (159 PR runs / 24 h), whose
+  copies can only ever be restored by re-runs of that same ref (GitHub docs:
+  "Workflow runs can restore caches created in either the current branch or
+  the default branch"; a PR-ref cache "can only be restored by re-runs of the
+  pull request") — so those copies are dead weight that evicts main's live
+  ones; (3) the uv cache (~/.cache/uv) is 3.0 GB and buys nothing: on the
+  merge_group run 34382424536 Backend Shard 1 spent 49 s restoring it plus 14 s
+  installing, while the schedule run 34354276221 (miss) installed cold in 39 s
+  — the only package built from source is packages/cell-core (<1 s). Effect on
+  the mandate's Bites: the .next/cache seed that #6032 added is saved on main
+  by the next scheduled run, then evicted within hours, so PR lanes never see
+  "Cache restored". Cure, one concern (cache hygiene in tests.yml):
+  (a) ONE key for the node_modules+~/.npm cache across the Frontend Tests
+  matrix and npm audit jobs; (b) main is the SOLE WRITER of every lockfile- or
+  content-keyed cache that tests.yml owns (node workspace cache, .next/cache):
+  `actions/cache/restore@v6` everywhere, `actions/cache/save@v6` only when
+  `github.ref == 'refs/heads/main'` (schedule / workflow_dispatch on main —
+  the schedule run executes every job that has a cache step, verified on run
+  34354276221) and the restore was not an exact hit; (c) `uv cache prune --ci`
+  right after every `uv pip install` that sits behind a uv cache step, so the
+  saved uv cache keeps only source-built wheels (uv's documented CI pattern)
+  instead of 3 GB of registry wheels that download faster than they restore.
+constraints:
+  - >-
+    One workflow file only: .github/workflows/tests.yml (+ this evidence dir).
+    semgrep.yml / sonarqube.yml node caches and setup-node `cache: npm` in
+    packages-core-tests are OUT of scope (note them in the pack; once cap
+    pressure drops they self-heal because main's schedule run seeds them).
+  - >-
+    Do NOT change any job's topology, name, `needs`, `if` at job level, or
+    required-context wiring; do NOT touch the Playwright browser cache blocks
+    (stable key, read every run, not part of the churn).
+  - >-
+    The node cache restore keeps NO restore-keys (unchanged semantics: a
+    lockfile-bump PR installs cold; adding a stale node_modules fallback is a
+    behaviour change this PR does not make). The .next/cache restore keeps its
+    existing two restore-keys.
+  - >-
+    Every `save` step for node caches sits right after the corresponding
+    install step (content complete there) and carries the SAME step-level
+    `if` guard the restore has (e.g. `steps.decide.outputs.run == 'true'` in
+    the Frontend Tests matrix) AND-ed with the main-only + not-exact-hit
+    condition. The .next/cache save sits after "Run E2E tests" with
+    `!cancelled() &&` so a failed test run on main still seeds a completed
+    build cache.
+  - >-
+    `uv cache prune --ci` is appended inside the SAME run block as the install
+    it follows (no new step), in the three jobs that own a uv cache step
+    (Backend Static ~l.684, Backend Shards ~l.964, Visa Oracle fullstack
+    smoke ~l.2605); the E2E job has no uv cache step and is left alone.
+  - >-
+    No `--no-verify`, no `--amend` on a pushed commit, no force-push; this
+    worktree only (branch agent/air-m5/infra/queue-cache-0910).
+  - >-
+    actionlint and prettier must pass on the workflow file; the workflow-shape
+    pin suite must pass unchanged.
+acceptance:
+  - text: >-
+      A1: one node-workspace cache key expression is used everywhere (4
+      textual occurrences: restore+save in 2 jobs) and the three old keys
+      are gone.
+    probe: >-
+      grep -c "node-workspace-" .github/workflows/tests.yml;
+      ! grep -nE "node-\\$\\{\\{ matrix.app \\}\\}|node-npm-audit-" .github/workflows/tests.yml
+  - text: >-
+      A2: no `actions/cache@v6` (combined restore+save) remains for the node
+      workspace cache or the .next/cache; each is a restore@v6 + save@v6 pair,
+      every save guarded by `github.ref == 'refs/heads/main'`.
+    probe: >-
+      grep -n "actions/cache/save@v6" -A0 -B3 .github/workflows/tests.yml |
+      grep -c "refs/heads/main"   # == number of save steps
+  - text: "A3: actionlint reports no error on the workflow."
+    probe: /opt/homebrew/bin/actionlint .github/workflows/tests.yml
+  - text: "A4: prettier reports the workflow file already formatted."
+    probe: npx --no-install prettier --check .github/workflows/tests.yml
+  - text: >-
+      A5: the workflow-shape pin suite still passes (no topology change).
+    probe: >-
+      python3 -m pytest -q -p no:cacheprovider
+      scripts/tests/test_unreachable_workflow_conditions.py
+      scripts/tests/test_immune_enforcement_trigger_symmetry.py
+      scripts/tests/test_required_context_map.py
+  - text: >-
+      A6: `uv cache prune --ci` appears once per uv-cached install block —
+      4 times: Backend Static, Backend Shards, and BOTH the attempt and the
+      timeout-retry subshell of the Visa Oracle fullstack smoke install
+      (corrected from "3" once the builder found the retry block).
+    probe: grep -c "uv cache prune --ci" .github/workflows/tests.yml # == 4
+  - text: >-
+      A7 (Bites, post-merge): (i) `gh cache list --json key,ref` shows NO
+      new `Linux-node-workspace-*` or `Linux-nextjs-mouth-*` entry on a
+      `gh-readonly-queue/*` or `refs/pull/*` ref created after the merge
+      time (the combined uv and Playwright caches may still write non-main
+      refs: uv is now pruned to source-built wheels, Playwright is out of
+      scope by constraint); (ii) the first scheduled run on
+      main after merge shows "Cache saved" for `Linux-nextjs-mouth-` and
+      `Linux-node-workspace-`; (iii) the first PR / queue E2E run after that
+      schedule shows "Cache restored from key: Linux-nextjs-mouth-" and "Run
+      E2E tests" < 244 s; (iv) cache usage drops below the 10 GB cap.
+    probe: >-
+      gh api repos/{owner}/{repo}/actions/cache/usage;
+      gh cache list --limit 100 --json key,ref,createdAt;
+      gh run view <run> --log | grep -E "Cache (restored|saved|not found)"
+assumptions:
+  - text: >-
+      A merge_group run (ref gh-readonly-queue/main/...) can restore caches
+      saved on refs/heads/main (the default branch).
+    status: verified
+    probe: >-
+      GitHub docs "Caching dependencies": "Workflow runs can restore caches
+      created in either the current branch or the default branch"; measured
+      on run 34382424536: Playwright cache "Cache restored from key:
+      Linux-playwright-…" whose only copy is on refs/heads/main.
+  - text: >-
+      The scheduled tests.yml run on main executes every job that owns a
+      cache step, so main-only saves are actually produced.
+    status: verified
+    probe: >-
+      gh run view 34354276221 --json jobs: Backend Static, Backend Shard 1-3,
+      Frontend Tests (mouth) and (admin-dashboard), npm audit, E2E Tests,
+      Visa Oracle fullstack smoke all `success` on the schedule event.
+  - text: >-
+      `uv cache prune --ci` keeps source-built wheels and drops registry
+      wheels; the only source build in requirements.lock.txt + cell-core is
+      cell-core (<1 s), so a pruned cache cannot make installs slower than the
+      measured cold install (39 s).
+    status: verified
+    probe: >-
+      run 34382424536 Backend Shard 1 install log: "Building cell-core …
+      Built cell-core", "Installed 293 packages in 731ms"; uv docs "Caching
+      in CI".
+appetite:
+  wall_clock_hours: 1.5
