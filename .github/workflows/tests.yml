@@ -2278,6 +2278,41 @@ jobs:
           npm_config_fetch_retry_mintimeout: 20000
           npm_config_fetch_retries: 3
 
+      - name: Cache Next.js build cache (mouth)
+        # Measured 2026-09-09 on run 34350109029 job 102461489711: the "Run E2E
+        # tests" step below took 244s total, of which the 58 Playwright tests
+        # THEMSELVES sum to 69s — the rest is playwright.config.ts's webServer
+        # (`npm run build && npm run start`), a cold `next build` with no prior
+        # cache. Next.js docs recommend caching `.next/cache` in CI for exactly
+        # this reason: it persists the webpack/SWC build cache across runs even
+        # though `.next/cache` itself is excluded from the `.next` output the
+        # app serves. The key is keyed on the lockfile plus a hash of every
+        # source file `next build` actually compiles from (excluding
+        # node_modules/.next), so a restore-keys fallback (lockfile-only, or
+        # OS-only) still lands on a cache with STALE content — but that is
+        # safe, never wrong: Next.js's own build cache is content-addressed
+        # internally and invalidates whatever it can't reuse, so a stale hit
+        # only costs a partial rebuild, it never serves a stale build cache. A
+        # restore-keys hit is still a warm webpack/turbopack cache, not a cold
+        # one.
+        #
+        # Glob includes css/json (2026-09-09, cross-family review by
+        # codex-gpt-5.6-sol and kimi-code/k3): Tailwind globals and
+        # tsconfig.json affect compiled output but weren't in the original
+        # hash, so a CSS/config-only change hit the SAME key (immutable —
+        # actions/cache skips the post-job save on an exact hit), silently
+        # dropping the refreshed cache until an already-hashed file changed.
+        # Non-blocking on correctness (webpack's own content-hash
+        # invalidation still recompiles the changed module either way) —
+        # this closes the cache-effectiveness gap both reviewers named.
+        uses: actions/cache@v6
+        with:
+          path: apps/mouth/.next/cache
+          key: ${{ runner.os }}-nextjs-mouth-${{ hashFiles('package-lock.json') }}-${{ hashFiles('apps/mouth/**/*.{js,jsx,ts,tsx,mjs,cjs,css,json}', '!apps/mouth/node_modules/**', '!apps/mouth/.next/**') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-mouth-${{ hashFiles('package-lock.json') }}-
+            ${{ runner.os }}-nextjs-mouth-
+
       - name: E2E specs must collect with no credentials present
         # Playwright IMPORTS every spec file to build its test list — including the
         # ones the --grep below excludes from running. Until 2026-07-27 seven specs
