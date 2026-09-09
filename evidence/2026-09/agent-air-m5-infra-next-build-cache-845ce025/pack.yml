@@ -8,7 +8,7 @@ machine: M5
 lanes:
   - lane: one actions/cache@v6 step on apps/mouth/.next/cache in the e2e-tests job, keyed on lockfile + source hash
     role: build
-    seat: claude-fable-5-1 (this worktree session on M5, dispatched by team-lead)
+    seat: claude-sonnet-5 (subagent dispatched by the M5 Fable 5.1 orchestrating session, this worktree)
     note: >-
       Measured the disease on run 34350109029 job 102461489711 (Run E2E tests
       step 244s, its 58 Playwright tests sum to 69s). Confirmed by grep that
@@ -20,6 +20,19 @@ lanes:
       the webServer entirely; frontend-tests runs no build step. Added the
       cache step right after "Install Node dependencies". actionlint,
       prettier and the workflow-shape pin suite (53 tests) all pass.
+    revision_note: >-
+      POST-MERGE-ATTEMPT CORRECTION (2026-09-09, same PR): the team-lead
+      caught a real defect neither review lane had — the hashFiles glob used
+      brace expansion (`*.{js,jsx,ts,tsx,mjs,cjs,css,json}`), which
+      @actions/glob's documented pattern syntax does not support (only `*`,
+      `?`, `[...]`, `**` — verified against actions/toolkit
+      packages/glob/README.md, "Glob behavior" section, receipt below). The
+      pattern matched nothing, hashFiles returned '', and the key silently
+      collapsed to the lockfile hash alone — an exact immutable hit after
+      the first seed, never re-saved on any source change, which is the
+      SAME cache-effectiveness defect the css/json fix above was meant to
+      close, just total instead of partial. Cured: one hashFiles pattern per
+      extension, no braces.
   - lane: cross-family adversarial review of the diff
     role: review
     seat: codex-gpt-5.6-sol (`codex exec -m gpt-5.6-sol --sandbox read-only`, non-Anthropic, fresh context)
@@ -29,6 +42,9 @@ lanes:
       sub-directory as a theoretical (not actual, in this repo) masking
       vector; suggested dropping the OS-only restore-key. The glob gap was
       cured; the restore-key suggestion was a judgment call, not applied.
+      MISSED (recorded, not excused): its own reply text calls the brace
+      form's mechanics sound without checking hashFiles' actual documented
+      pattern syntax against @actions/glob's README.
     verdict: OK
   - lane: cross-family adversarial review of the diff
     role: review
@@ -37,7 +53,13 @@ lanes:
       OK. Independently verified in-repo that the theoretical fetch-cache
       masking vector codex named does not apply here — the only build-time
       fetches (apps/mouth/src/lib/blog/articles.ts) use revalidate:60, so a
-      restored entry is always expired before the next CI run. Flagged the
+      restored entry is always expired before the next CI run. MISSED
+      (recorded, not excused): explicitly asserted "Brace expansion
+      `{js,jsx,ts,tsx,mjs,cjs}` — supported by `@actions/glob`" — this was
+      wrong; @actions/glob's own README lists only `*`, `?`, `[...]`, `**`.
+      A confident, specific, and incorrect claim — exactly the shape of
+      error a fresh-context read-only review is supposed to catch, not
+      commit. Flagged the
       same css/json glob gap as codex, convergently and independently.
     verdict: OK
 seat_diversity: satisfied
@@ -58,7 +80,9 @@ outcome: >-
   still runs to completion regardless of cache hit/miss/stale-hit.
 diff:
   files: 1
-  net_lines: "35 insertions, 0 deletions (.github/workflows/tests.yml only)"
+  net_lines: >-
+    44 insertions, 0 deletions (.github/workflows/tests.yml only, after the
+    brace-expansion fix commit; was 35/0 before that correction)
   measured_at: "git diff --numstat origin/main..HEAD in this worktree"
   shape: >-
     One new named step (comment block + actions/cache@v6 block) inserted
@@ -105,7 +129,7 @@ receipts:
       grep -c '\.next' .github/workflows/tests.yml (on origin/main, before this PR)
     result: "244 (seconds); 0 matches for .next in tests.yml pre-cure"
     ts: "2026-09-09T20:30:00Z"
-    seat: claude-fable-5-1 (this session)
+    seat: claude-sonnet-5 (this session)
     exit: 0
   - claim: only the e2e-tests job runs `next build` for apps/mouth
     cmd: grep -n "npm run build\|next build" .github/workflows/tests.yml apps/mouth/playwright.config.ts; grep -n "npm\b" apps/backend-rag/backend/scripts/visa_engine/fullstack_smoke.py
@@ -117,7 +141,7 @@ receipts:
       instead, with PLAYWRIGHT_EXTERNAL_SERVER=1 set (line ~412), so that
       job's frontend never reaches the webServer's build branch.
     ts: "2026-09-09T20:40:00Z"
-    seat: claude-fable-5-1 (this session)
+    seat: claude-sonnet-5 (this session)
     exit: 0
   - claim: A1 — the cache step exists, targets apps/mouth/.next/cache, sits between the right two steps
     cmd: >-
@@ -125,19 +149,19 @@ receipts:
       /path: apps\/mouth\/.next\/cache/{exit}' .github/workflows/tests.yml
     result: "step block printed, ending at `path: apps/mouth/.next/cache` — present and correctly placed"
     ts: "2026-09-09T21:05:00Z"
-    seat: claude-fable-5-1 (this session)
+    seat: claude-sonnet-5 (this session)
     exit: 0
   - claim: A2 — actionlint reports no error
     cmd: /opt/homebrew/bin/actionlint .github/workflows/tests.yml
     result: "no output, exit 0"
     ts: "2026-09-09T21:05:00Z"
-    seat: claude-fable-5-1 (this session)
+    seat: claude-sonnet-5 (this session)
     exit: 0
   - claim: A3 — prettier reports the file already formatted
     cmd: npx --no-install prettier --check .github/workflows/tests.yml
     result: "Checking formatting...\nAll matched files use Prettier code style!"
     ts: "2026-09-09T21:05:00Z"
-    seat: claude-fable-5-1 (this session)
+    seat: claude-sonnet-5 (this session)
     exit: 0
   - claim: A4 — the workflow-shape pin suite is unaffected by this diff
     cmd: >-
@@ -147,16 +171,52 @@ receipts:
       scripts/tests/test_required_context_map.py
     result: "53 passed in 33.40s"
     ts: "2026-09-09T21:05:00Z"
-    seat: claude-fable-5-1 (this session)
+    seat: claude-sonnet-5 (this session)
     exit: 0
   - claim: both cross-family review seats returned VERDICT OK
     cmd: >-
       tail -3 /tmp/nbc_codex_review.txt; tail -3 /tmp/nbc_kimi_review.txt
     result: "codex: 'VERDICT: OK'; kimi: 'VERDICT: OK'"
     ts: "2026-09-09T21:00:00Z"
-    seat: claude-fable-5-1 (this session)
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: hashFiles' underlying glob has no brace expansion — only *, ?, [...], ** are supported
+    cmd: >-
+      gh api repos/actions/toolkit/contents/packages/glob/README.md --jq
+      '.content' | base64 -d | grep -B3 -A6 "^### Glob behavior"
+    result: >-
+      "### Glob behavior\n\nPatterns `*`, `?`, `[...]`, `**` (globstar) are
+      supported." — no brace-expansion syntax listed anywhere in the file.
+      Confirms the original `*.{js,jsx,ts,tsx,mjs,cjs,css,json}` pattern
+      matched zero files, so hashFiles returned '' and the key collapsed to
+      the lockfile hash alone.
+    ts: "2026-09-09T21:20:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: post-fix, actionlint and prettier still pass on the corrected workflow
+    cmd: >-
+      /opt/homebrew/bin/actionlint .github/workflows/tests.yml;
+      npx --no-install prettier --check .github/workflows/tests.yml
+    result: "actionlint: no output, exit 0; prettier: 'All matched files use Prettier code style!'"
+    ts: "2026-09-09T21:22:00Z"
+    seat: claude-sonnet-5 (this session)
     exit: 0
 dissent:
+  - seat: team-lead (Fable 5.1, orchestrating session — post-review catch)
+    status: CONFIRMED
+    objection: >-
+      Real defect, distinct from and worse than the css/json gap both review
+      lanes named: the hash glob used brace expansion
+      (`*.{js,jsx,ts,tsx,mjs,cjs,css,json}`), which @actions/glob's
+      documented pattern syntax does not support. hashFiles silently
+      returned '' for that pattern and the key collapsed to
+      `<os>-nextjs-mouth-<lockhash>-` — an exact immutable hit after the
+      first seed, never re-saved on ANY apps/mouth source change, forever.
+      Neither cross-family review lane caught it; kimi's transcript
+      explicitly (and wrongly) asserted brace expansion was supported by
+      @actions/glob. CURED: one hashFiles pattern per extension, no braces,
+      verified against actions/toolkit's own README (receipt above).
+      actionlint/prettier re-run clean post-fix.
   - seat: codex-gpt-5.6-sol (cross-family)
     status: CONFIRMED
     objection: >-
@@ -181,7 +241,7 @@ dissent:
       the only build-time-relevant cached fetches use revalidate:60,
       closing codex's theoretical concern as a non-issue in this specific
       repo rather than leaving it as an open caveat.
-  - seat: claude-fable-5-1 (this worktree session — the builder's own standing objection)
+  - seat: claude-sonnet-5 (this worktree session — the builder's own standing objection)
     status: PLAUSIBLE
     objection: >-
       The way this cure could be wrong, stated plainly: the Bites

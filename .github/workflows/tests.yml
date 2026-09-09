@@ -2305,10 +2305,19 @@ jobs:
         # Non-blocking on correctness (webpack's own content-hash
         # invalidation still recompiles the changed module either way) —
         # this closes the cache-effectiveness gap both reviewers named.
+        #
+        # One pattern per extension, no braces (2026-09-09, correction):
+        # hashFiles runs on @actions/glob, whose documented pattern syntax is
+        # only `*`, `?`, `[...]`, `**` — brace expansion `{js,jsx,...}` is NOT
+        # supported (actions/toolkit packages/glob/README.md, "Glob
+        # behavior"). The brace form matched nothing, so hashFiles returned
+        # '' and the key silently collapsed to the lockfile hash alone — an
+        # exact immutable hit after the first seed, never re-saved on any
+        # source change.
         uses: actions/cache@v6
         with:
           path: apps/mouth/.next/cache
-          key: ${{ runner.os }}-nextjs-mouth-${{ hashFiles('package-lock.json') }}-${{ hashFiles('apps/mouth/**/*.{js,jsx,ts,tsx,mjs,cjs,css,json}', '!apps/mouth/node_modules/**', '!apps/mouth/.next/**') }}
+          key: ${{ runner.os }}-nextjs-mouth-${{ hashFiles('package-lock.json') }}-${{ hashFiles('apps/mouth/**/*.js', 'apps/mouth/**/*.jsx', 'apps/mouth/**/*.ts', 'apps/mouth/**/*.tsx', 'apps/mouth/**/*.mjs', 'apps/mouth/**/*.cjs', 'apps/mouth/**/*.css', 'apps/mouth/**/*.json', '!apps/mouth/node_modules/**', '!apps/mouth/.next/**') }}
           restore-keys: |
             ${{ runner.os }}-nextjs-mouth-${{ hashFiles('package-lock.json') }}-
             ${{ runner.os }}-nextjs-mouth-
