@@ -1,0 +1,20 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "noEmit": true
+  },
+  "include": [
+    "./**/*.ts",
+    "./**/*.tsx",
+    "../../app/visa/voa/**/*.tsx",
+    "../../app/visa/clock/**/*.tsx",
+    "../../app/visa/match/**/*.tsx",
+    "../../app/visa/second-home/**/*.tsx",
+    "../../app/visa/privacy/**/*.tsx",
+    "../../app/visa/terms/**/*.tsx",
+    "../../app/api/visa/clock/**/*.ts",
+    "../../app/api/visa/match/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}
