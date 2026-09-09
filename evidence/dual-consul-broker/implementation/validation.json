@@ -1,0 +1,73 @@
+{
+  "scope": "disposable PostgreSQL, deterministic native protocol fixtures, no operational DB or provider inference",
+  "postgres_snapshot": {
+    "tests_passed": 152,
+    "native_unit_tests": 31,
+    "native_postgres_tests": 24,
+    "foundation_regressions": 97,
+    "codec_structural_passed": 7,
+    "codec_deselected": 7,
+    "source_manifest_sha256": "5b0d8044a5b8baac979fc07f2425150c6fc63ee87136c3bbc1e5cf7b766e3838",
+    "process_stopped": true
+  },
+  "later_changes": [
+    {
+      "scope": "native cacheWriteInputTokens selected-field parity",
+      "native_unit_tests_passed": 32,
+      "postgres_rerun": false
+    },
+    {
+      "scope": "RPC EPERM shutdown observation",
+      "rpc_tests_passed": 19,
+      "native_suite_tests_passed": 135,
+      "source_sha256": "26fabd9d0537d6251da50c1513f6b1e83a03d8b5afbb7a76d935e5ad387d69d5",
+      "no_provider_calls": true
+    },
+    {
+      "scope": "client, loader, gateway, adapter and launcher",
+      "tests_passed": 104,
+      "duration_seconds": 10.36,
+      "command": "PYTHONPATH=.:apps/backend-rag:packages/research-os-core /Users/balizero/nuzantara/.venv/bin/python -m pytest scripts/tests/test_protected_grants.py scripts/tests/test_consul_broker_client.py scripts/tests/test_consul_broker_gateway.py scripts/tests/test_codex_shadow.py scripts/tests/test_codex_shadow_launch.py -q"
+    },
+    {
+      "scope": "Self-contained backend canary fixture; no scripts.tests dependency; final success, wrong marker, late revocation and actual usage projection checks",
+      "tests_passed": 4,
+      "deselected": 52,
+      "duration_seconds": 0.8,
+      "source_manifest_sha256": "02243eaa983c3ecd3485facaeeb7f830bb9219e3d339322074e09ecaf91f6d8c",
+      "process_stopped": true
+    }
+  ],
+  "limits": [
+    "Historical PostgreSQL source hashes are preserved; later projection/RPC changes have separate targeted verification.",
+    "Native broker OS identity and DBA role are not installed.",
+    "Astra absent from all observed native catalogs.",
+    "Local process stopping never certifies remote cancellation."
+  ],
+  "review_rework": {
+    "findings": [1, 2, 3, 4, 5],
+    "native_unit_tests_passed": 42,
+    "postgres_tests_passed": 13,
+    "postgres_deselected": 18,
+    "postgres_duration_seconds": 0.59,
+    "postgres_process_stopped": true,
+    "source_manifest_sha256": "3f0c4df62c7361f7e656a3ee5863c039e8ad0cbace08923ff256037703c466b8",
+    "rpc_tests_passed": 22,
+    "rpc_duration_seconds": 9.59,
+    "provisioning_tests_passed_per_host": 36,
+    "provisioning_hosts": ["Air-M5", "Pro"],
+    "client_gateway_adapter_tests_passed_before_added_gateway_constructor_test": 66,
+    "gateway_tests_passed_after_constructor_coverage": 10,
+    "probe_tests_passed": 11,
+    "live_activation": false
+  },
+  "final_native_postgres": {
+    "tests_passed": 31,
+    "duration_seconds": 0.89,
+    "source_manifest_sha256": "3f0c4df62c7361f7e656a3ee5863c039e8ad0cbace08923ff256037703c466b8",
+    "pytest_stdout_sha256": "527eae11608ef3240897382a51637d07395a572177c4871be1967d5bfe5b42bb",
+    "source_changed": false,
+    "postgres_process_stopped": true,
+    "scope": "Entire new native broker PostgreSQL integration file, after source review. No foundation or general harness repeat."
+  }
+}

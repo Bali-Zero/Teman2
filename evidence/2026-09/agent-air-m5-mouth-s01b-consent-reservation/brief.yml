@@ -1,0 +1,20 @@
+task_id: s01b-consent-reservation
+gear: 1
+objective:
+  Keep the real consent banner inside its measured space and retain the mounted print rule that
+  hides that space.
+constraints:
+  - Only StudioApp.test.tsx and lane evidence change. No runtime edits.
+  - Mount the real ConsentBanner; do not claim jsdom geometry or a new browser run.
+  - Record and reverify historical browser receipt hashes instead of copying large files.
+acceptance:
+  - text:
+      Removing the wrapper or moving the banner outside it fails the question and verdict containment
+      tests.
+    probe: wrapper-removed.patch and banner-outside.patch
+  - text: Removing the print rule fails the mounted CSSOM assertion for display:none!important.
+    probe: print-rule-removed.patch
+  - text: Restoring unchanged runtime source passes both StudioApp and SavePlanBar suites.
+    probe: cd apps/mouth && npx vitest run src/app/visa/second-home/studio/StudioApp.test.tsx src/app/visa/second-home/studio/components/SavePlanBar.test.tsx
+consumer_map:
+  - StudioApp.test.tsx in the frontend Vitest suite.

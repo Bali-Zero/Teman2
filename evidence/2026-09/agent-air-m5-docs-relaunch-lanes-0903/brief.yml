@@ -1,0 +1,46 @@
+task_id: relaunch-lanes-0903
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Put the 2026-09-03 relaunch plan on disk so every next session starts from origin/main and
+  not from a chat transcript. Nine docs-only files under docs/plans/2026-09-03-relaunch-lanes/:
+  a README with the per-machine allocation (M5: GARUDA VOA + mouth close-out; Mini: Visa
+  Oracle, KBLI KG, CI truth; Pro: WA bot; each host: fleet align), the session contract
+  (model fixed before turn 1, fresh worktree, <=150-request budget with an on-disk LIVE STATE
+  handoff, rule 8), the workhorse-first team recipe and the launch snippet; seven LANE-*.md
+  prompts, one per lane, every fact re-measured from origin/main @ c4d48071a7 (22 open PRs,
+  8 live worktrees, the PENDING-ARMS rows opened 2026-08-24..09-02, the corner skills' LIVE
+  STATE sections); and ZERO-DECISIONS.md, the nine Legge-5 / operator items no session may
+  decide. The floor is 2 by the SIZE term alone: the diff is ~640 net lines of prose across
+  nine new files and touches no code, workflow, ledger or hot zone.
+constraints:
+  - "Additive only: nine new Markdown files under docs/plans/2026-09-03-relaunch-lanes/ and this
+    brief. Touches zero existing file, no workflow, no product code, no PENDING-ARMS row."
+  - "Docs are written in English (repo convention); the chat that produced them was Italian."
+  - "No PII, no credentials, no secret values: the secrets item names WHICH credentials rotate,
+    never a value; presence probes are written as ${V:+set}, never ${V:-default}."
+  - "No decision is taken here: the nine ZERO-DECISIONS items name options and measured cost
+    and leave the ruling to Zero; the lane files never authorise ENFORCE, a privileged DB
+    operation, a Fly secret flip or a Flow credit spend."
+  - "Facts are dated and sourced (PR numbers, SHAs, ledger row dates); every lane file tells the
+    reader to re-measure before building on them."
+acceptance:
+  - "The nine files exist on origin/main after merge: git ls-tree -r --name-only origin/main |
+    grep -c 'docs/plans/2026-09-03-relaunch-lanes/' returns 9."
+  - "Each LANE-*.md ends with a '## LIVE STATE' section (grep -c '^## LIVE STATE' returns 1 per
+    file) so a session can write its handoff block without inventing a location."
+  - "README.md's allocation table names exactly seven lanes A..G and one machine each, matching
+    the seven LANE files present."
+  - "Every PR number cited in the lane files (#5526, #5559, #5573, #5577, #5584, #5037, #5569,
+    #5158, #5337, #5589, #5579, #5591, #5572, #5504, #5578, #5576) resolves with gh pr view to
+    the state the file attributes to it on 2026-09-03."
+consumer_map:
+  - "The next relaunch session on each machine (M5, Mini, Pro): it opens the lane file from
+    origin/main as its turn-1 prompt via the README launch snippet and writes its LIVE STATE
+    block back through a docs PR. The observation that proves this is in force is the first
+    LIVE STATE update landing on main from a session that started from the file."
+  - "Zero: reads ZERO-DECISIONS.md and rules on the nine items; three of them are filled in by
+    lanes C, E and G before he can (gold ruling sheet, citation-rule draft, hook one-liners)."
+  - "Lane G on M5 consumes the residue list in LANE-G-fleet-align.md (Subhi handoff, two ledger
+    rows, four merged worktrees) — that lane, not this PR, performs the cleanup."

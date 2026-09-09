@@ -1,0 +1,45 @@
+gear: 1
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: v01b-edit-comments
+    role: build
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - lane: comment-review
+    role: review
+    seat: kimi-code/k3
+pii_scan: clean
+seat_override: >-
+  R8 applicability only, following the merged PR5782 precedent: this Fable-assigned follow-up changes
+  two code comments, with identical comment-free TypeScript and emitted JavaScript. No immigration
+  rule, claim, eligibility or price is authored; no NotebookLM query is claimed.
+receipts:
+  - claim: Candidate syntax is valid; comment-free TypeScript and emitted JavaScript are byte-identical to the parent.
+    cmd: node -
+    result: Node stdin used TypeScript createSourceFile/createPrinter(removeComments)/transpileModule; no parse diagnostics.
+    exit: 0
+    ts: "2026-09-05T13:41:32.420255+00:00"
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - claim: Comment diff passes whitespace validation.
+    cmd: git diff --check
+    exit: 0
+    ts: "2026-09-05T13:41:32.420456+00:00"
+    seat: OpenAI GPT-6 (exact backend variant not exposed)
+  - claim: Independent comment-truth review PASS.
+    cmd: /Users/balizero/.kimi-code/bin/kimi -m kimi-code/k3 -p <supplied comment diff and implementation>
+    exit: 0
+    ts: "2026-09-05T13:40:52.627588+00:00"
+    seat: kimi-code/k3
+dissent: []
+review_artifacts:
+  started_at: "2026-09-05T13:40:34.840402+00:00"
+  finished_at: "2026-09-05T13:40:52.627588+00:00"
+  timeout_seconds: 240
+  source_sha256: 9fb82f0dde9d46011a35f65150e461b91cd4b4cce3ebb39d82f5a6af872b524e # pragma: allowlist secret - verified artifact SHA-256, not credential
+  prompt_sha256: e310f52177dd7f239bb5f2b122774f351ff44a0d92f8dc07ef387ef6a2a7c347 # pragma: allowlist secret - verified artifact SHA-256, not credential
+  raw_stdout_sha256: 5b58695b828c69978aba583c6d7b646c0aaf6b16f02dfeeeab6d879ef35d9fbb # pragma: allowlist secret - verified artifact SHA-256, not credential
+  committed_answer_sha256: 874b48b1e6c3a36185f355ddf9fe0ebfcb0b2a73c02bed46f13c7c7ca3cbcdd6 # pragma: allowlist secret - verified artifact SHA-256, not credential
+notes:
+  - Fresh parent 12e3871175e2 includes merged PR5782. Current builder is Codex, not Anthropic.
+  - Syntax/diff timestamps record capture; review timestamps are actual. Committed review trims trailing blank lines
+    only.
+  - No new tests or mutation assertions were added for comments. Final Anthropic grading remains separate.

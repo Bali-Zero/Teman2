@@ -1,0 +1,137 @@
+# The security model of scripts/ci/bites_parse.py, as data.
+#
+# An `observe:` command is executed POST-MERGE by a runner holding a write-scoped
+# token. Everything here answers one question: can this invocation change anything?
+# Everything not named here is refused. Adding an entry means adding a guilt AND an
+# innocence fixture to bites_corpus.yaml (infra/guard-conformance enforces the pair).
+#
+# This file left bites_parse.py on 2026-09-04 under Zero's cut order. The rationale
+# comments came with it on purpose: a rule whose scar record lives in another
+# document is a rule the next editor deletes without knowing what it cost.
+#
+# RULED 2026-09-04 b (Zero, Legge 5) — fewer binaries, never fewer guards. The
+# line-count question PR #5673 left open ("1,127 is not a few hundred") is answered
+# as a COVERAGE decision, not a formatting one: `observe:` now admits exactly TWO
+# shapes — `python3 scripts/<path>.py [literal args]` and `fly <read-only
+# subcommand> [args]`. `gh`, `curl`, `git` and `python3 -m pytest` are gone
+# entirely, not narrowed further: every escape found on this surface so far lived
+# in `gh` (the gojq `env` builtin, the enterprise-host token fallthrough, the
+# `--format` placeholder blindness), `curl` is exfiltration to any host by
+# construction once it is allowed to reach the network at all, and `git` was
+# redundant because the reconciler that will execute these already has the
+# checkout tree. An observation that needs one of them wraps itself in a script
+# under `scripts/ci/` and observes THAT — code in the diff, reviewed and tested,
+# never shell typed into YAML.
+commands: [python3, fly, flyctl]
+
+# What may follow an allow-listed subcommand word. The first draft spelled both of
+# these `null`, which read as "anything may follow" and was two different rules
+# wearing one name: `gh api <path>` is followed by DATA, while `fly version` is
+# followed by nothing - and `fly version upgrade` REPLACES THE BINARY. Naming the two
+# cases apart is what closes that hole: every pair entry declares which it is.
+#   NO_SUBCOMMAND  - nothing but flags may follow
+#   ANY_POSITIONAL - a data argument follows, never a verb
+
+fly:
+  # Read-only fly/flyctl subcommand PAIRS, narrowed a second time under RULED
+  # 2026-09-04 b to the four Zero named explicitly: `status`, `releases`, `image
+  # show`, `machine list`. `version` and `machine status` are gone even though
+  # neither had a known hole of its own - the ruling is "fewer binaries", and a
+  # subcommand nobody's observation needs is surface with no offsetting value.
+  # The first draft listed FIRST WORDS only, and `machine` was one of them - which
+  # Kimi K3, refuting this file on 2026-09-04, pointed out admits
+  # `fly machine run <image>`: arbitrary container execution on production
+  # infrastructure, through a guard whose whole purpose was to keep observations
+  # read-only. `fly machine destroy` and `fly machine update` came through the same
+  # gap. A one-word check on a command with two-word subcommands is superscar #3's
+  # under-match, and it recurred a third time on `version`: `fly version upgrade`
+  # downloads and installs a new flyctl - which is also why `status`/`releases`
+  # stay NO_SUBCOMMAND rather than becoming bare strings again.
+  # `logs` was here until 2026-09-04: it is read-only in the fly sense, but it pipes
+  # PRODUCTION application logs into a CI log a pull request can trigger, which is
+  # Builder Contract section 4's output boundary rather than a fly-API question. An
+  # executor may earn it back with a redaction step; a parser cannot grant it.
+  subcommands:
+    - [status, NO_SUBCOMMAND]
+    - [releases, NO_SUBCOMMAND]
+    - [image, show]
+    - [machine, list]
+  # RULED 2026-09-04 b: "`-a/--app <name>` allowed; nothing else." `--json`, `-j`,
+  # `--now` and `--all` are gone with the rest of the surface - none had a proven
+  # hole, but the ruling narrows to what an observation actually needs, not to
+  # what nothing has broken yet. `-c`/`--config` stays refused: it READS a file
+  # the argument names, which is how `fly status --config=.git/config` reached a
+  # credential file through a subcommand table that was otherwise correct - the
+  # pairs were checked and the flags were not.
+  flags: [-a, --app]
+
+# A script is reachable by `observe:` only if its own SOURCE carries this marker.
+# Codex, red-teaming this file on 2026-09-04, made the point that killed the first
+# draft's rule: allow-listing `python3 scripts/...` allow-lists roughly nine hundred
+# scripts, and it named the worst ones by path. `scripts/usage/cswap.py run <cmd>`
+# reaches `os.execvpe`; `scripts/ci/restore_drill_verify.py --psql-bin` and
+# `scripts/ci/stage_council_journal.py --git-bin` each execute a binary the argument
+# names; a dozen more take a `--dsn`, a `--database-url` or an `--output-db`. A path
+# prefix is not a capability boundary. The marker is: a script is observable because
+# someone wrote in it that it is, which is content-keyed rather than location-keyed
+# (W109: an exemption keyed to where a file sits rather than what it is, is itself a
+# scar). Absent marker, absent file, unreadable file -> refused.
+observable_marker: bites-observable
+
+# Tokens that reach another machine. Barred ANYWHERE, not just in first position.
+remote_shell_tokens: [ssh, scp, sftp, rsync, nc, netcat, telnet]
+
+# Characters that would let one command become two, or become a different one.
+# `{`/`}` joined 2026-09-04 b: kimi-code/k3, refuting the two-shape cut, named brace
+# expansion - `python3 scripts/ci/{evil,evil}.py` passes every guard once a literal
+# file named `scripts/ci/{evil,evil}.py` exists in-tree carrying the marker (the
+# guard checks that exact path), but a shell expands the observe STRING before
+# python3 ever sees it: `{evil,evil}.py` becomes two arguments, `evil.py` and
+# `evil.py`, and python3 executes the FIRST one - a file that never carried the
+# marker and was never checked at all. Reproduced against this module before being
+# applied. `*`/`?`/`[` (glob) were considered and declined at the time: they only
+# expand against a file that already exists, reasoned to be a weaker and less
+# controllable primitive than brace expansion's guaranteed substitution.
+# `[`/`]` REVERSED 2026-09-05: tp1-qwen3.8-max, second refuter on this same cut,
+# named the counterexample that sinks that reasoning - a PR is exactly the place
+# an attacker controls BOTH files at once, so "needs a pre-existing matching file"
+# is no barrier at all when the file can arrive in the same diff. `python3
+# scripts/[a].py` passes every guard once a literal file named `scripts/[a].py`
+# carries the marker, but a shell's pathname expansion treats `[a]` as a bracket
+# expression matching the single character `a`; if `scripts/a.py` ALSO exists (in
+# the same PR), the shell rewrites the argv to `scripts/a.py` before python3 ever
+# sees it - a file the guard never inspected. Reproduced against this module
+# before being applied. `*`/`?` stay declined: `*` needs no matching file to
+# change behaviour in the SAME way (its failure mode is passing the literal string
+# through unexpanded when nothing matches, `nullglob` notwithstanding, which is
+# not this class of bug), and `?` still collides with the URL query string
+# innocence fixture (superscar #3's over-match, unchanged).
+shell_metachars:
+  [
+    "|",
+    ";",
+    "&",
+    "$",
+    "`",
+    "(",
+    ")",
+    "<",
+    ">",
+    "{",
+    "}",
+    "[",
+    "]",
+    "\n",
+    "\r",
+    "\\",
+  ]
+
+# A value containing one of these reads identically to a value without it, so the human
+# reviewer and the parser can be shown two different contracts. Written as escapes on
+# purpose: a file carrying the literal character cannot be reviewed by eye.
+invisible_chars: ["\u200b", "\u200c", "\u200d", "\u2060", "\ufeff", "\u00ad"]
+
+# The four keys, the top-level key they live under, and the scopes `where:` may name.
+key: bites
+required_keys: [consumer, where, observe, expect]
+where_scopes: [ci, fly, pro, mini]

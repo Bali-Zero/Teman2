@@ -1,0 +1,195 @@
+# Per-PR pack for agent/air-m5/ops/garuda-voa-step8-portal (slug from scripts/ci/evidence_paths.py).
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  docs/plans/2026-08-24-garuda-voa-live/NEXT-SESSION.md §Steps 7 and 8; build spec authored by the
+  orchestrator session (scratchpad step8-spec.md, refuted by codex before build); state machine
+  products/garuda-voa/journeys/STATE-MACHINE.md PR-02..PR-11; frozen contract
+  products/garuda-voa/contracts/openapi.yaml.
+
+lanes:
+  - lane: build-rounds-1-4
+    role: build
+    seat: "claude-sonnet-5 (ONE builder seat across four sequential rounds — round 1 migration 305 v1, staff_auth, staff router, contract ops; rounds 2-4 cures for the refuter and council findings; same family, same role, never the grader)"
+  - lane: council-codex
+    role: review
+    seat: codex-gpt-5.6-sol (ChatGPT Pro, `codex exec --sandbox read-only`, effort high — BLOCK, 9 findings)
+  - lane: council-tp1
+    role: review
+    seat: tp1-qwen3.8-max (Alibaba TP1 via scripts/qwen-cloud-code.sh, `-m opus` — PASS-WITH-CONDITIONS, 2 findings; first attempt with the diff inline was a NON-JUDGMENT and is recorded as ok:false in the journal)
+  - lane: council-gemini-extra
+    role: review
+    seat: gemini-3.x via agy (not a registered COUNCIL_REVIEW_SEATS value; recorded for completeness — PASS-WITH-CONDITIONS, 4 findings)
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  D3 fires only at >=2 declared build lanes (this pack declares one: Sonnet 5 across four sequential
+  rounds); the diversity signal comes from the review side — two registered non-Anthropic seats
+  (codex-gpt-5.6-sol, tp1-qwen3.8-max) plus gemini, and the orchestrator's own final gate. kimi-code/k3 answered HTTP 403 (weekly quota,
+  verified live 2026-09-02T00:39Z) before any review ran.
+
+seat_override: >-
+  R8 ground_truth: this diff carries no visa/tax/KBLI regulatory claim — it is an internal state
+  machine, auth and schema change; the only customer-facing text it can emit is a localisation KEY
+  (regex-validated), never a regulatory fact. No NotebookLM lane declared.
+
+council_run: council-journal.jsonl
+
+diff:
+  net_lines: >-
+    Measured by CI from `git diff --numstat $(git merge-base origin/main HEAD)..HEAD` (the
+    merge-base form; the two-dot form against main reports phantom deletions from main's own later
+    commits, W102). No file or line count is restated here: both moved with every gate-driven
+    commit and with each merge of origin/main, and twice the restated figure lagged the computed
+    one. Shape: roughly half tests, a quarter contract (openapi.yaml), the rest migration 305 plus
+    the router, staff_auth, staff_transitions and outbox-handler logic, plus this evidence pack
+    and the PENDING-ARMS ledger.
+  measured_at: "2026-09-02T03:25Z, after the tp1-qwen cure commit, before this pack was added"
+  behaviour_change: >-
+    New: 4 staff operations under /api/visa/voa/staff (gated by CRM JWT + operator registry, flag
+    GARUDA_PUBLIC_ENABLED), practice transitions PR-02..PR-11 with journal events and 7 customer
+    emails via the outbox, assignment with assigned_to visibility. Schema: migration 305. Arms the
+    previously inert `garuda_staff_session_verifier` (resolveLateOrder now reachable by staff).
+    No customer-facing route changes shape.
+
+pii_scan: clean
+
+receipts:
+  - claim: >-
+      Final gate suites green on the orchestrator's own run, not the builders' report.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. pytest backend/tests/services/garuda_portal/test_staff_router_transitions.py
+      backend/tests/app/routers/test_garuda_staff_public_prefix_guard.py backend/tests/security/test_mutating_routes_are_gated.py
+      backend/tests/app/routers/test_garuda_voa_openapi_parity.py backend/tests/setup/test_router_manifest.py
+      backend/tests/setup/test_manifest_registration_parity.py backend/tests/services/garuda_orders/test_outbox_job_type_coverage.py
+      backend/tests/app/routers/test_garuda_staff_actor_async_verifier.py -p no:cacheprovider
+    result: "464 passed in 36.46s"
+    exit: 0
+    ts: "2026-09-02T01:15:12Z"
+    seat: orchestrator session (Claude, interactive)
+  - claim: "Touched modules lint clean; dependency import chain intact; DOCSYNC in sync."
+    cmd: >-
+      ruff check backend/app/routers/garuda_staff_router.py backend/services/garuda_portal/
+      backend/services/garuda_orders/outbox_handlers.py && PYTHONPATH=. python -c "from backend.app.dependencies
+      import get_current_user" && python scripts/docs_sync.py
+    result: "All checks passed! / import OK / DOCSYNC OK (no changes)"
+    exit: 0
+    ts: "2026-09-02T01:15:12Z"
+    seat: orchestrator session (Claude, interactive)
+  - claim: "No migration-number collision with origin/main; merge-tree clean."
+    cmd: >-
+      git ls-tree --name-only origin/main apps/backend-rag/backend/db/migrations_v2/ | grep -E '/(30[4-9]|31[0-9])_';
+      git merge-tree $(git merge-base origin/main HEAD) origin/main HEAD
+    result: "no 304+ on origin/main; merge-tree clean"
+    exit: 0
+    ts: "2026-09-02T01:19:00Z"
+    seat: orchestrator session (Claude, interactive)
+  - claim: "Production privilege state that migration 305 relies on, read-only."
+    cmd: >-
+      scripts/pg.sh -A -F'|' -c "SELECT tablename, tableowner FROM pg_tables WHERE tablename LIKE 'garuda_%'"
+    result: "15 garuda_* tables, all owned by backend_rag_v2 (garuda_practices included); pg_has_role(backend_rag_v2, visa_ledger_owner) = false; 0 rows in garuda_practices / garuda_orders"
+    exit: 0
+    ts: "2026-09-02T00:20:00Z"
+    seat: orchestrator session (Claude, interactive)
+  - claim: "Cross-family council on the FINAL diff (not the spec)."
+    cmd: >-
+      codex exec --sandbox read-only -c model_reasoning_effort=high "<5-axis adversarial review of step8-backend.diff>" < /dev/null
+    result: "VERDICT: BLOCK — 9 findings (2 CRITICAL, 6 MAJOR, 1 MINOR); dispositions below"
+    exit: 0
+    ts: "2026-09-02T00:50:00Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "Council findings cured in round 4 with TDD, then re-gated."
+    cmd: "git log --oneline -6 (e8490e859d f0d798e4ef fa9b48b942 86eea630ee 3f79351f0e + report Round 4)"
+    result: "id regex → 422; assign target operator check + absent key → 422; idempotency completion atomic with the business tx (fault-injection test); staff email hashed in logs; UNIQUE(evidence_id) + race → 422 (asyncio.gather race test); 520 passed builder-side, 464 on the orchestrator's subset"
+    exit: 0
+    ts: "2026-09-02T01:10:00Z"
+    seat: claude-sonnet-5 (round-4 builder) + orchestrator re-run
+  - claim: "Second registered council seat on the FINAL diff, short prompt pointing at the diff file."
+    cmd: "scripts/qwen-cloud-code.sh -m opus -p <968-char prompt, 5 questions, VERDICT line> < /dev/null"
+    result: "VERDICT: PASS-WITH-CONDITIONS — 2 findings; #1 CONFIRMED against staff_auth.py:150-152 by the orchestrator, cured in e301f7a3b1 with 2 tests; #2 ledgered"
+    exit: 0
+    ts: "2026-09-02T03:05:00Z"
+    seat: tp1-qwen3.8-max
+  - claim: "Gate re-run by the orchestrator after the tp1-qwen cure."
+    cmd: "same 8-suite pytest invocation as the first receipt + ruff on the two touched files"
+    result: "466 passed in 11.59s; All checks passed!"
+    exit: 0
+    ts: "2026-09-02T03:24:37Z"
+    seat: orchestrator session (Claude, interactive)
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      #1 CRITICAL — staff dependency trusted any middleware-populated identity (API-key/internal-key
+      principals, refresh tokens) because any non-client role qualified as staff.
+    status: CONFIRMED
+    disposition: "CONFIRMED-FIXED (round 2/4: single JWT validator with type=access, operator registry, negative tests through main_api.app)"
+  - seat: codex-gpt-5.6-sol
+    objection: "#2 MAJOR — accounting full-view identity treated as a GARUDA operator."
+    status: CONFIRMED
+    disposition: "CONFIRMED-FIXED (can_manage_garuda_practices excludes PRACTICES_EXTRA_VIEW_EMAILS; assignment target checked)"
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      #3 CRITICAL — PR-04/06/07/11 check syntax, not semantics: fabricated evidence/artifact ids can
+      advance a practice; no creator-bound artifact retrieval.
+    status: PLAUSIBLE
+    disposition: "DISPOSED-OUT-OF-CONTRACT (frozen v1 contract carries opaque ids and no retrieval op; ledgered in PENDING-ARMS as a contract change)"
+  - seat: codex-gpt-5.6-sol
+    objection: "#4 MAJOR — evidence ownership raceable across practices (no global uniqueness)."
+    status: CONFIRMED
+    disposition: "CONFIRMED-FIXED (UNIQUE(evidence_id) in 305; race mapped to 422; asyncio.gather test)"
+  - seat: codex-gpt-5.6-sol
+    objection: "#5 MAJOR — idempotency completion outside the business transaction (post-commit crash window)."
+    status: CONFIRMED
+    disposition: "CONFIRMED-FIXED (completion joins the transaction; fault-injection replay test)"
+  - seat: codex-gpt-5.6-sol
+    objection: "#6 MAJOR — 305 accepts a partial/incompatible pre-existing evidence table silently."
+    status: CONFIRMED
+    disposition: "PARTIAL (owner preflight + per-column guarded ALTER close the shape found; full catalog postcondition walk ledgered)"
+  - seat: codex-gpt-5.6-sol
+    objection: "#7 MAJOR — reason/action keys are an open vocabulary; a staff user could encode PII in a key."
+    status: CONFIRMED
+    disposition: "OPEN-LEDGERED (no key catalog exists upstream — messages.ts says so; regex-only in v1; PENDING-ARMS line)"
+  - seat: codex-gpt-5.6-sol
+    objection: "#8 MINOR — staff email logged in cleartext."
+    status: CONFIRMED
+    disposition: "CONFIRMED-FIXED (keyed hash)"
+  - seat: codex-gpt-5.6-sol
+    objection: "#9 MAJOR — contract parity incomplete: permissive dict bodies, Idempotency-Key optional in live schema, undocumented replay header on assign."
+    status: CONFIRMED
+    disposition: "PARTIAL (absent assigned_to → 422; replay header documented; Idempotency-Key required-flag remains a declared, guarded parity gap — PENDING-ARMS)"
+  - seat: gemini-3.x (agy, inline diff — not a registered seat)
+    objection: "MAJOR — evidence_id regex not validated → CheckViolation 500; MAJOR — omitted assigned_to unassigns; MINOR — evidence uniqueness race; MINOR — Idempotency-Key requiredness parity."
+    status: CONFIRMED
+    disposition: "CONFIRMED-FIXED for the first three (round 4); the fourth is the same declared gap as codex #9"
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      #1 — `can_manage_garuda_practices` drops the accounting full-view role from the ADMIN set
+      only; an active `team_members` row with a staff role for that email still passes
+      `_is_staff_role`, so accounting can be assigned a practice and then transition it — the
+      docstring's "must never force a transition" was not what the code did.
+    status: CONFIRMED
+    disposition: "CONFIRMED-FIXED (e301f7a3b1 — exclusion in both `can_manage_garuda_practices` and `is_valid_garuda_assignment_target`; assign → 422, accounting JWT → 401 at eligibility; 2 tests)"
+  - seat: tp1-qwen3.8-max
+    objection: "#2 — `facts.case_type` interpolated unescaped into HTML email bodies (defense-in-depth)."
+    status: CONFIRMED
+    disposition: "OPEN-LEDGERED (system-controlled enum; the same shape pre-exists in 6 handlers on main, the diff adds 2 more — inherited class, one PENDING-ARMS line covering all 8, not a fix-of-a-fix on this PR)"
+  - seat: kimi-code/k3
+    objection: "not convened — HTTP 403 weekly quota, verified live before any review"
+    status: RETRACTED
+    disposition: "RETRACTED (seat unavailable, not a finding)"
+
+tests:
+  - "orchestrator run 2026-09-02T01:15Z: 464 passed (8 suites listed in receipts); re-run 03:24Z after the tp1-qwen cure: 466 passed."
+  - "builder round 4: 520 passed on the wider garuda set; 11 pre-existing `garuda_voa_check_results` DB-fixture errors on this machine's local test DB, present on origin/main's own test files — CI's own Postgres is the authority."
+  - "migration 305: apply-twice no-op (builder receipt, rounds 2 and 4)."
+
+static:
+  - "ruff check on router, services/garuda_portal/, outbox_handlers.py — clean."
+  - "python scripts/docs_sync.py — DOCSYNC OK."
+  - "scripts/evidence_pack_lint.py --print-floor on the changed-files list → 3 (hot zone migrations_v2)."
+
+notes:
+  - "Two Sonnet builders overlapped in this worktree for ~10 minutes (orchestrator error: a round-3
+    dispatch while round 2 was still alive). The second builder detected mtime drift and paused; no
+    work was lost. Recorded in modus AMENDMENTS."
+  - "Companion UI: PR #5577 (Gear 2)."

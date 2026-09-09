@@ -1,7 +1,11 @@
 ---
 name: slhs
-description: SLHS corner — the live shared context for the Sertifikat Laik Higiene Sanitasi vertical (food-hygiene certification as a Bali Zero product, owner Krisna). Load BEFORE touching any SLHS content, pricing, page, or client-facing claim — or when Zero says /slhs, "hygiene certificate", "laik higiene", "laik sehat". Holds: what is VERIFIED vs merely believed, the live-defect list, the phase plan F0-F6, and the blood-bought rules from the 2026-07-29 research.
+description: "SLHS corner — shared context for the Sertifikat Laik Higiene Sanitasi vertical (food-hygiene cert, owner Krisna). Load before touching SLHS content/pricing, or when Zero says /slhs, 'laik sehat'."
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Additional triggers: 'hygiene certificate', 'laik higiene'. Holds: what is VERIFIED vs merely believed, the live-defect list, the phase plan F0-F6, and the blood-bought rules from the 2026-07-29 research.
 
 # /slhs — Sertifikat Laik Higiene Sanitasi as a Bali Zero product
 

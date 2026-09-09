@@ -32,6 +32,7 @@ from evidence_pack_lint import (  # noqa: E402
     FLOOR_SOURCE_SIZE,
     LANES_NON_ANTHROPIC_ENFORCEMENT_DATE,
     R9_R11_ENFORCEMENT_DATE,
+    REVIEWER_INDEPENDENCE_ENFORCEMENT_DATE,
     SEAT_RULES_ENFORCEMENT_DATE,
     SIZE_GEAR2_THRESHOLD,
     SIZE_GEAR3_THRESHOLD,
@@ -54,6 +55,7 @@ from evidence_pack_lint import (  # noqa: E402
     check_pii_local_seat,
     check_pii_scan_clean,
     check_receipts_have_provenance,
+    check_reviewer_independence,
     check_size_budget,
     compute_ceiling,
     compute_floor,
@@ -72,6 +74,19 @@ GOOD_RECEIPT = {
     "claim": "tests pass", "cmd": "pytest -q", "exit": 0,
     "ts": "2026-08-10T00:00:00Z", "seat": "sonnet-5",
 }
+
+#: R9 quorum fixture — 2 DISTINCT COUNCIL_REVIEW_SEATS, role:review, ok:true,
+#: ts present. Used by end-to-end Gear-3 fixtures below that test something
+#: OTHER than R9 itself (net-lines ceiling override, CLI flags) and need a
+#: real council_run journal, not `seat_override` — none of them carries a
+#: genuine "we skipped the council, here's why" human call, so a real
+#: journal is the honest cure post-2026-09-02 R9_R11_ENFORCEMENT_DATE flip.
+GOOD_COUNCIL_QUORUM = [
+    {"seat": "codex-gpt-5.6-sol", "role": "review", "ok": True,
+     "ts": "2026-09-01T00:00:00Z"},
+    {"seat": "kimi-code/k3", "role": "review", "ok": True,
+     "ts": "2026-09-01T00:00:00Z"},
+]
 
 
 @pytest.fixture()
@@ -535,10 +550,12 @@ def test_lint_end_to_end_measured_net_lines_overrides_pack_lie(tmp_repo):
     measured_net_lines parameter — no false ceiling."""
     root, write_brief, write_pack = tmp_repo
     write_brief(gear=3)
+    _write_journal(root / "evidence", "council.jsonl", GOOD_COUNCIL_QUORUM)
     pack_path = write_pack(
         dissent=[{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
         council=True,
         net_lines=10,
+        council_run="council.jsonl",
     )
     diff = ["apps/backend-rag/backend/services/a.py", "apps/backend-rag/backend/services/b.py"]
     rc, violations = lint(pack_path, root, diff, measured_net_lines=400)
@@ -658,6 +675,47 @@ def test_compute_floor_hotzone_hit_wins_over_small_size():
     floors at 3 even when the accompanying numstat is tiny."""
     numstat = "3\t1\tfly.toml\n"
     assert compute_floor(["fly.toml"], numstat) == 3
+
+
+def test_compute_floor_innocence_pip_compile_lockfile_churn_does_not_floor_2026_09_02():
+    """INNOCENCE (2026-09-02): a diff whose churn is almost entirely inside
+    the pip-compile-generated `.lock.txt` files, with a small human-authored
+    `requirements*.txt` diff underneath, must NOT floor at Gear 3 on size.
+    This is the ACTUAL numstat of dependabot PR #5530 (verified via
+    `gh api repos/Bali-Zero/Teman2/pulls/5530/files`, not a hand-picked
+    approximation): 55-package minor-and-patch bump, 3672 raw lines total,
+    102 of them in the 5 human-reviewable `requirements*.txt` files, 3570
+    (97%) inside the two `.lock.txt` files this exemption targets."""
+    changed = [
+        "apps/backend-rag/requirements-ci-tools.txt",
+        "apps/backend-rag/requirements-livekit-worker.txt",
+        "apps/backend-rag/requirements-prod.lock.txt",
+        "apps/backend-rag/requirements-prod.txt",
+        "apps/backend-rag/requirements-test.txt",
+        "apps/backend-rag/requirements.lock.txt",
+        "apps/backend-rag/requirements.txt",
+    ]
+    numstat = (
+        "1\t1\tapps/backend-rag/requirements-ci-tools.txt\n"
+        "1\t1\tapps/backend-rag/requirements-livekit-worker.txt\n"
+        "827\t784\tapps/backend-rag/requirements-prod.lock.txt\n"
+        "21\t21\tapps/backend-rag/requirements-prod.txt\n"
+        "1\t1\tapps/backend-rag/requirements-test.txt\n"
+        "1001\t958\tapps/backend-rag/requirements.lock.txt\n"
+        "27\t27\tapps/backend-rag/requirements.txt\n"
+    )
+    assert compute_floor(changed, numstat) == 1
+
+
+def test_compute_floor_guilt_large_requirements_txt_source_diff_still_floors_2026_09_02():
+    """GUILT (2026-09-02): the exemption narrows the *counted* churn, it does
+    not exempt the PR from the floor outright — a diff that churns
+    SIZE_GEAR2_THRESHOLD lines in the human-authored `requirements.txt`
+    itself (not the generated lock file) must still floor at Gear 2, exactly
+    as any other ordinary source file would."""
+    changed = ["apps/backend-rag/requirements.txt"]
+    numstat = f"{SIZE_GEAR2_THRESHOLD}\t0\tapps/backend-rag/requirements.txt\n"
+    assert compute_floor(changed, numstat) == 2
 
 
 # --------------------------------------------------------- compute_floor_source (S2)
@@ -817,6 +875,117 @@ def test_size_term_net_lines_innocence_not_fixtures_directory_not_excluded():
     assert _size_term_net_lines(numstat) == 100
 
 
+def test_size_term_net_lines_pip_compile_lockfile_excluded_2026_09_02():
+    """GUILT->INNOCENCE (2026-09-02): this repo's pip-compile lockfiles
+    (`requirements.lock.txt`, `requirements-prod.lock.txt`) are the SAME
+    machine-derived object `poetry.lock`/`uv.lock` already are above, under
+    a naming convention the exact-name tuple previously could not match.
+    This is the ACTUAL, complete numstat of dependabot PR #5530 (verified
+    via `gh api repos/Bali-Zero/Teman2/pulls/5530/files`): the two
+    `.lock.txt` files carried 3570 of 3672 total churned lines (97%); the
+    remaining 102 lines are spread across 5 human-reviewable
+    `requirements*.txt` files and all still count."""
+    numstat = (
+        "1\t1\tapps/backend-rag/requirements-ci-tools.txt\n"
+        "1\t1\tapps/backend-rag/requirements-livekit-worker.txt\n"
+        "827\t784\tapps/backend-rag/requirements-prod.lock.txt\n"
+        "21\t21\tapps/backend-rag/requirements-prod.txt\n"
+        "1\t1\tapps/backend-rag/requirements-test.txt\n"
+        "1001\t958\tapps/backend-rag/requirements.lock.txt\n"
+        "27\t27\tapps/backend-rag/requirements.txt\n"
+    )
+    # only the 5 human-authored requirements*.txt files count:
+    # 2 + 2 + 42 + 2 + 54 = 102 (the two .lock.txt files, 3570, are excluded)
+    assert _size_term_net_lines(numstat) == 102
+
+
+def test_size_term_net_lines_innocence_similarly_named_file_not_matched():
+    """INNOCENCE (guard-over-match, superscar #3): the exemption is two
+    EXACT literals, not a `requirements*` prefix or `.lock.txt` suffix
+    match — a file that merely shares the `.lock.txt` suffix without being
+    one of the two names this repo's tooling actually writes (e.g. a
+    future hand-written lock-coordination file choosing a similar name) is
+    NOT exempted. Mirrors the existing named-lockfile-vs-custom.lock test
+    above for the same discipline."""
+    numstat = "50\t10\tinfra/coordination/myrequirements.lock.txt\n"
+    assert _size_term_net_lines(numstat) == 60
+
+
+def test_size_term_net_lines_guilt_glob_shaped_fabricated_lockfile_not_excluded_2026_09_02():
+    """GUILT (2026-09-02, adversarial finding from a codex-sol refuter on
+    this same PR): the FIRST cut of this exemption used an fnmatch glob
+    `requirements*.lock.txt`, which would have exempted ANY basename
+    matching that shape regardless of whether this repo's tooling actually
+    produces it — e.g. a hand-added `requirements-backdoor.lock.txt` could
+    smuggle arbitrary churn past the size term by name alone (W98-class:
+    content-based never name-speculative). The fix (exact-literal matching)
+    closes that hole: only the two lockfiles this repo's dependency
+    tooling actually writes are exempted; anything else sharing the naming
+    SHAPE — however lockfile-like — still counts in full."""
+    numstat = (
+        "2000\t0\tapps/backend-rag/requirements-backdoor.lock.txt\n"
+        "50\t0\tapps/backend-rag/requirements-handwritten.lock.txt\n"
+        "30\t0\tapps/backend-rag/requirementsfoo.lock.txt\n"
+    )
+    assert _size_term_net_lines(numstat) == 2080
+
+
+def test_size_term_net_lines_guilt_same_basename_wrong_directory_not_excluded_2026_09_02():
+    """GUILT (2026-09-02, round-2 adversarial finding from a codex-sol
+    refuter on this same PR): the ROUND-1 fix matched the two lockfiles by
+    BASENAME only (`PurePosixPath(path).name`) — same mechanism the
+    well-known package-manager names already use above. That is fine for
+    `poetry.lock`/`Cargo.lock`/etc (unambiguous single-ecosystem names),
+    but "requirements.lock.txt" is generic enough that a decoy at
+    `docs/requirements.lock.txt` or `research/requirements-prod.lock.txt`
+    would ALSO have matched by basename, exempting fabricated churn at a
+    path this repo's tooling never writes to. This repo already treats
+    exactly that shape as suspicious in the opposite direction — see
+    `test_guilt_requirements_family_under_an_allowlisted_prefix_forces_full`
+    in test_prepush_classify.py, which forces FULL attention on a
+    requirements manifest under an allowlisted-but-wrong prefix. The fix
+    (SIZE_TERM_EXCLUDE_EXACT_PATHS, matched by full repo-relative path, not
+    basename) closes this: only the two real paths are exempted."""
+    numstat = (
+        "2000\t0\tdocs/requirements.lock.txt\n"
+        "1500\t0\tresearch/requirements-prod.lock.txt\n"
+    )
+    assert _size_term_net_lines(numstat) == 3500
+
+
+def test_size_term_net_lines_innocence_real_lockfile_paths_still_excluded_2026_09_02():
+    """INNOCENCE companion to the guilt test above: the two REAL paths this
+    repo's pip-compile tooling actually writes to must still be excluded —
+    the round-2 fix narrows the match from basename to full path, it does
+    not accidentally stop matching the real files."""
+    numstat = (
+        "827\t784\tapps/backend-rag/requirements-prod.lock.txt\n"
+        "1001\t958\tapps/backend-rag/requirements.lock.txt\n"
+    )
+    assert _size_term_net_lines(numstat) == 0
+
+
+def test_size_term_net_lines_guilt_trailing_space_decoy_not_excluded_2026_09_02():
+    """GUILT (2026-09-02, round-3 adversarial finding from a codex-sol
+    refuter on this same PR): `_size_term_net_lines` used to call
+    `line.strip()` on the WHOLE numstat line before splitting it, silently
+    dropping a trailing space that is part of the actual filename. Git
+    permits a trailing space in a real committed filename, so a decoy
+    committed as `apps/backend-rag/requirements.lock.txt ` (note the
+    trailing space — a DIFFERENT file from the real lockfile) would
+    numstat as that literal string, get stripped down to the real
+    lockfile's exact name by the old code, and match
+    SIZE_TERM_EXCLUDE_EXACT_PATHS despite being a different file entirely
+    — hiding its churn from the floor. This is orthogonal to round 1/2
+    (it is a parsing bug in the shared numstat loop, not in the exclusion
+    tuples) but was demonstrated against these exact two new paths, so it
+    is pinned here. Verified empirically before the fix: this fixture's
+    net was 0 (fully hidden); after the fix (blankness checked without
+    mutating the line the path is sliced from) it must be 2000."""
+    numstat = "2000\t0\tapps/backend-rag/requirements.lock.txt \n"
+    assert _size_term_net_lines(numstat) == 2000
+
+
 # --------------------------------------------------------- end-to-end lint()
 
 
@@ -848,10 +1017,12 @@ def test_lint_end_to_end_innocence_ceiling_override_reports_not_fails(tmp_repo):
     to violations, so the pack passes clean."""
     root, write_brief, write_pack = tmp_repo
     write_brief(gear=3)
+    _write_journal(root / "evidence", "council.jsonl", GOOD_COUNCIL_QUORUM)
     pack_path = write_pack(
         dissent=[{"seat": "codex-sol", "objection": "x", "status": "PLAUSIBLE"}],
         council=True,
         gear_override="verified live, one-off",
+        council_run="council.jsonl",
     )
     rc, violations = lint(pack_path, root, ["docs/notes.md"])
     assert rc == 0
@@ -959,6 +1130,24 @@ def test_effort_for_cli_matches_effort_for_gear():
     assert proc.returncode == 3
 
 
+# Where fixtures that are NOT about rule 9 (root-path deprecation) put their
+# pack from 2026-09-05 on. Any fixture asserting exit 0 through the CLI on the
+# literal root `evidence/pack.yml` is a date bomb: green until the deprecation
+# date, red on it, with no diff on either side. Tests that exercise rule 9
+# itself keep using the root path deliberately.
+PER_TASK_PACK_RELPATH = "evidence/2026-09/lint-fixture-0badc0de/pack.yml"
+
+
+def _relocate_pack_per_task(tmp_path, root_pack):
+    """Move a tmp_repo-written root pack to PER_TASK_PACK_RELPATH (same bytes),
+    for CLI tests whose subject is something other than rule 9."""
+    dest = tmp_path / PER_TASK_PACK_RELPATH
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(root_pack.read_text(encoding="utf-8"), encoding="utf-8")
+    root_pack.unlink()
+    return dest
+
+
 def _write_full_tree(tmp_path, *, gear, pack_overrides):
     evidence_dir = tmp_path / "evidence"
     evidence_dir.mkdir(parents=True, exist_ok=True)
@@ -977,18 +1166,26 @@ def _write_full_tree(tmp_path, *, gear, pack_overrides):
         "lanes": [{"lane": "D1", "role": "build", "seat": "codex"}],
     }
     pack.update(pack_overrides)
-    (tmp_path / "evidence" / "pack.yml").write_text(
-        yaml.safe_dump(pack, sort_keys=False), encoding="utf-8"
-    )
-    return tmp_path / "evidence" / "pack.yml"
+    # Per-task path, not the root `evidence/pack.yml`: rule 9 turned the root
+    # path from NOTICE into a violation at EVIDENCE_ROOT_DEPRECATION_DATE
+    # (2026-09-05), and these fixtures test net-lines/ceiling, not rule 9 —
+    # measured 2026-09-05: the root path went red on the date and ejected every
+    # merge group on main while every PR head (built the day before) was green.
+    pack_path = tmp_path / PER_TASK_PACK_RELPATH
+    pack_path.parent.mkdir(parents=True, exist_ok=True)
+    pack_path.write_text(yaml.safe_dump(pack, sort_keys=False), encoding="utf-8")
+    return pack_path
 
 
 def test_net_lines_cli_flag_overrides_pack_lie_end_to_end(tmp_path):
     """--net-lines, given a diff shaped like predicate (b), wins over the
     pack's own (lying) net_lines field — reaching compute_ceiling() through
     the full CLI entry point, not just lint() called in-process."""
+    # The journal lives NEXT TO the pack (council_run is pack-dir relative).
+    _write_journal((tmp_path / PER_TASK_PACK_RELPATH).parent, "council.jsonl", GOOD_COUNCIL_QUORUM)
     pack_path = _write_full_tree(
-        tmp_path, gear=3, pack_overrides={"council": True, "net_lines": 10}
+        tmp_path, gear=3,
+        pack_overrides={"council": True, "net_lines": 10, "council_run": "council.jsonl"},
     )
     changed = tmp_path / "changed.txt"
     changed.write_text(
@@ -1332,6 +1529,163 @@ def test_lanes_gear3_opus5_sonnet5_flip_behavior():
     )
     assert violations
     assert notice is None
+
+
+# --------------------------------------------------------- check_reviewer_independence (W2)
+#
+# Shared today= pins for this rule's own flip date — never fired before, so
+# it gets its own clock rather than borrowing D3's or the seat-rules
+# program's (same reasoning _r9_r11_verdict's own module comment gives for
+# why R9/R11 did not reuse SEAT_RULES_ENFORCEMENT_DATE).
+_REVIEWER_PRE_FLIP = REVIEWER_INDEPENDENCE_ENFORCEMENT_DATE - datetime.timedelta(days=1)
+_REVIEWER_POST_FLIP = REVIEWER_INDEPENDENCE_ENFORCEMENT_DATE
+
+
+def test_reviewer_independence_guilt_reviewer_is_contributor_rejected_post_flip():
+    """GUILT: a pack whose reviewer is ALSO a contributor fails — the exact
+    property both W1 and W2 pin (A17, rank confers no exemption)."""
+    pack = _lane_pack(
+        {"lane": "B1", "role": "build", "seat": "sol"},
+        {"lane": "R1", "role": "review", "seat": "sol"},
+    )
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_POST_FLIP)
+    assert violations and "reviewer_independence" in violations[0]
+    assert "sol" in violations[0]
+    assert notice is None
+
+
+def test_reviewer_independence_guilt_rank_confers_no_exemption_opus_too():
+    """GUILT, same shape, named `opus` instead of `sol` — the rule must not
+    special-case either name (RULED 2026-09-06)."""
+    pack = _lane_pack(
+        {"lane": "B1", "role": "build", "seat": "opus"},
+        {"lane": "R1", "role": "review", "seat": "opus"},
+    )
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_POST_FLIP)
+    assert violations and "opus" in violations[0]
+
+
+def test_reviewer_independence_innocence_eligible_independent_reviewer_passes():
+    """INNOCENCE: a pack with an eligible independent reviewer (distinct
+    from every contributor) passes cleanly."""
+    pack = _lane_pack(
+        {"lane": "B1", "role": "build", "seat": "opus"},
+        {"lane": "R1", "role": "review", "seat": "sol"},
+    )
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_POST_FLIP)
+    assert violations == [] and notice is None
+
+
+def test_reviewer_independence_innocence_no_review_lane_skipped():
+    """INNOCENCE: a pack that declares contributors but no review lane at
+    all is not this rule's concern — a separate, larger "must a reviewer
+    exist" policy question this increment does not decide. D3/rule-8
+    already requires `lanes:` shape on Gear>=2; a gap there is D3's finding."""
+    pack = _lane_pack({"lane": "B1", "role": "build", "seat": "opus"})
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_POST_FLIP)
+    assert violations == [] and notice is None
+
+
+def test_reviewer_independence_innocence_no_build_lane_skipped():
+    """INNOCENCE, the mirror case: a review lane with zero declared build
+    lanes has nothing to compare against — skipped, not a fabricated
+    'no contributor recorded' finding this consumer did not ask for."""
+    pack = _lane_pack({"lane": "R1", "role": "review", "seat": "sol"})
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_POST_FLIP)
+    assert violations == [] and notice is None
+
+
+def test_reviewer_independence_innocence_gear1_exempt():
+    """INNOCENCE: Gear 1 is exempt outright, mirroring D3's own gear gate —
+    the same guilty shape at Gear 1 must not fire."""
+    pack = _lane_pack(
+        {"lane": "B1", "role": "build", "seat": "sol"},
+        {"lane": "R1", "role": "review", "seat": "sol"},
+    )
+    violations, notice = check_reviewer_independence(pack, gear=1, today=_REVIEWER_POST_FLIP)
+    assert violations == [] and notice is None
+    violations, notice = check_reviewer_independence(pack, gear=None, today=_REVIEWER_POST_FLIP)
+    assert violations == [] and notice is None
+
+
+def test_reviewer_independence_innocence_pre_flip_notice_not_fail():
+    """INNOCENCE: the same guilty shape only NOTICEs before the flip — this
+    is what keeps the one real pack this rule found (measured 2026-09-07:
+    evidence/2026-08/.../pack.yml with `claude (session, pro)` on both a
+    build and a review lane) passing today rather than turning it red on a
+    PR that never touched it."""
+    pack = _lane_pack(
+        {"lane": "B1", "role": "build", "seat": "sol"},
+        {"lane": "R1", "role": "review", "seat": "sol"},
+    )
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_PRE_FLIP)
+    assert violations == []
+    assert notice is not None and "reviewer_independence" in notice
+
+
+def test_reviewer_independence_innocence_seat_override_reports_not_fails():
+    """INNOCENCE: `seat_override` clears the violation and is reported,
+    exactly like every other seat rule's human-call escape hatch."""
+    pack = _lane_pack(
+        {"lane": "B1", "role": "build", "seat": "sol"},
+        {"lane": "R1", "role": "review", "seat": "sol"},
+    )
+    pack["seat_override"] = "manual exception, reviewed by Zero"
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_POST_FLIP)
+    assert violations == []
+    assert notice is not None and "(overridden)" in notice
+
+
+def test_reviewer_independence_guilt_case_and_whitespace_folded_match():
+    """GUILT: the same identity written with different case/whitespace on
+    each lane is still caught — review_eligibility's own normalization,
+    exercised through this consumer rather than re-derived here."""
+    pack = _lane_pack(
+        {"lane": "B1", "role": "build", "seat": "  Sol  "},
+        {"lane": "R1", "role": "review", "seat": "SOL"},
+    )
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_POST_FLIP)
+    assert violations and "reviewer_independence" in violations[0]
+
+
+def test_reviewer_independence_guilt_multiple_review_lanes_each_judged():
+    """GUILT: with two review lanes, only the offending one is named — each
+    reviewer is judged independently against the same contributor set."""
+    pack = _lane_pack(
+        {"lane": "B1", "role": "build", "seat": "opus"},
+        {"lane": "R1", "role": "review", "seat": "opus"},
+        {"lane": "R2", "role": "review", "seat": "sol"},
+    )
+    violations, notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_POST_FLIP)
+    assert len(violations) == 1
+    assert "opus" in violations[0] and "sol" not in violations[0]
+
+
+@pytest.mark.parametrize(
+    "existing_pack_path",
+    sorted(str(p) for p in Path("evidence").glob("**/pack.yml")),
+)
+def test_reviewer_independence_innocence_all_real_packs_pass_today(existing_pack_path):
+    """INNOCENCE, the non-optional one: every real evidence pack in this
+    tree, run through this rule PRE-FLIP, must never produce a HARD
+    violation — forcing gear=2 on every pack (the worst case: D3 already
+    exempts Gear-1, but a pack's REAL gear is not re-derived here) so this
+    proves the phasing itself, not that most packs happen to be Gear-1. A
+    check that fails everything would satisfy the guilt tests above just as
+    well; this is the one that proves it does not.
+
+    `today` is pinned to `_REVIEWER_PRE_FLIP`, NOT the real wall clock: the
+    property under test is "the phasing protects real packs before the
+    flip", which is true by construction of REVIEWER_INDEPENDENCE_ENFORCEMENT_DATE
+    regardless of which day this suite happens to run — pinning it means
+    this test does not itself start failing the moment the calendar crosses
+    2026-09-21, which would prove nothing about the rule and everything
+    about not having re-run it that day."""
+    pack = yaml.safe_load(Path(existing_pack_path).read_text(encoding="utf-8"))
+    if not isinstance(pack, dict):
+        pytest.skip(f"{existing_pack_path} did not parse to a mapping")
+    violations, _notice = check_reviewer_independence(pack, gear=2, today=_REVIEWER_PRE_FLIP)
+    assert violations == [], (existing_pack_path, violations)
 
 
 # --------------------------------------------------------- seat rules by path class (E3/R8-R11)
@@ -2478,11 +2832,11 @@ def test_brief_root_cli_accepts_and_threads_brief_source_path(tmp_repo):
     violation list (pre-flip, an over-matching rule shows up ONLY on stderr)."""
     tmp_path, write_brief, write_pack = tmp_repo
     write_brief(gear=1)
-    write_pack()
+    _relocate_pack_per_task(tmp_path, write_pack())
     result = subprocess.run(
         [
             sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
-            "evidence/pack.yml", "--repo-root", str(tmp_path),
+            PER_TASK_PACK_RELPATH, "--repo-root", str(tmp_path),
             "--brief-source-path", "evidence/2026-08/some-task-a0adff64/brief.yml",
             "--json",
         ],
@@ -2503,11 +2857,11 @@ def test_brief_root_cli_absent_flag_leaves_rule_inert(tmp_repo):
     brief location it cannot know."""
     tmp_path, write_brief, write_pack = tmp_repo
     write_brief(gear=1)
-    write_pack()
+    _relocate_pack_per_task(tmp_path, write_pack())
     result = subprocess.run(
         [
             sys.executable, str(SCRIPTS / "evidence_pack_lint.py"),
-            "evidence/pack.yml", "--repo-root", str(tmp_path), "--json",
+            PER_TASK_PACK_RELPATH, "--repo-root", str(tmp_path), "--json",
         ],
         capture_output=True, text=True, timeout=30,
     )
@@ -3931,3 +4285,37 @@ def test_path_term_exemption_innocence_a_real_new_file_header_is_still_a_header(
         ".github/workflows/a.yml",
         ".github/workflows/b.yml",
     }
+
+
+def test_size_term_net_lines_innocence_generated_translation_excluded_2026_09_09():
+    # The 68-duplicate-PR disease: 20 machine-translated .id/.it MDX files,
+    # ~97 lines each, floored every hourly promote batch at Gear 3 by size.
+    numstat = (
+        "97\t0\tapps/mouth/src/content/articles/tax-legal/x.id.mdx\n"
+        "99\t0\tapps/mouth/src/content/articles/tax-legal/x.it.mdx\n"
+        "95\t0\tapps/mouth/src/content/articles/business/y.ru.mdx\n"
+        "95\t0\tapps/mouth/src/content/articles/business/y.fr.mdx\n"
+        "40\t3\tapps/mouth/src/content/articles/tax-legal/x.mdx\n"
+    )
+    # Only the English SOURCE counts (40+3) — it is the reviewable artifact.
+    assert _size_term_net_lines(numstat) == 43
+
+
+def test_size_term_net_lines_guilt_translation_suffix_outside_content_dir_counts_2026_09_09():
+    # Same language suffix, wrong directory: a decoy named like a translation
+    # must not hide behind the exemption (superscar #3, entity not substring).
+    numstat = (
+        "500\t0\tapps/mouth/src/lib/x.id.mdx\n"
+        "500\t0\tdocs/x.it.mdx\n"
+        "500\t0\tapps/mouth/src/content/x.id.mdx\n"  # sibling dir, not articles/
+    )
+    assert _size_term_net_lines(numstat) == 1500
+
+
+def test_size_term_net_lines_guilt_english_source_and_other_mdx_still_count_2026_09_09():
+    numstat = (
+        "900\t900\tapps/mouth/src/content/articles/tax-legal/x.mdx\n"
+        "100\t0\tapps/mouth/src/content/articles/tax-legal/x.en.mdx\n"
+        "100\t0\tapps/mouth/src/content/articles/tax-legal/x.id.md\n"
+    )
+    assert _size_term_net_lines(numstat) == 2000

@@ -1,0 +1,8 @@
+• **PASS.**
+
+  Both comments accurately describe the supplied EDIT implementation:
+
+  - Comment 1 ("EDIT now resets the flow when its target is absent"): matches the guard — if no history node matches the `{ kind: "question", questionId }` target, `resetFlow(state)` is returned.
+  - Comment 2 ("EDIT requires a matching `{ kind: "question" }` history entry and resets the flow when its target is absent"): also correct — `sameNode` requires `kind === "question"` plus equal `questionId`, and the absent-target path resets rather than no-ops (the old `truncateToNode`-silence claim was rightly removed).
+
+  Minor note: "requires a matching entry" slightly glosses that EDIT still truncates when the entry exists, but no falsehood. No runtime changes made.

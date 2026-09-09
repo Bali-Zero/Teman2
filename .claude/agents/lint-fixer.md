@@ -1,12 +1,16 @@
 ---
 name: lint-fixer
-description: GRUNT (Haiku): Use to apply mechanical autofixes from a known linter/formatter — `ruff check --fix`, `ruff format`, `prettier --write` — to a caller-specified file set. NEVER changes logic or assertions by hand: every byte that changes must come from the fixer tool's own diff, never a manual edit — no Edit/Write in this agent's toolset. NEVER runs a fixer with a wider scope than the caller named.
+description: GRUNT (Haiku): applies mechanical autofixes from a known linter/formatter to a caller-specified file set. NEVER changes logic/assertions by hand. NEVER widens scope beyond what the caller named.
 tools: Bash, Read, Grep, Glob
 disallowedTools: Edit, Write, MultiEdit, NotebookEdit
 model: haiku
 maxTurns: 20
 memory: project
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Every byte that changes must come from the fixer tool's own diff, never a manual edit — no Edit/Write in this agent's toolset. Known fixers: `ruff check --fix`, `ruff format`, `prettier --write`.
 
 # lint-fixer
 

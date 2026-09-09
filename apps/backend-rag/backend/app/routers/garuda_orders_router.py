@@ -257,8 +257,10 @@ async def _require_magic_session_actor(request: Request) -> str:
 
 async def _require_staff_actor(request: Request, authorization: str | None) -> str:
     """Twin of `_require_magic_session_actor` for the staff late-resolution
-    route — same shape, deliberately kept `async def` even though
-    `garuda_staff_session_verifier` is wired nowhere today.
+    route — same shape, deliberately kept `async def`. Until PR #5584
+    `garuda_staff_session_verifier` was wired nowhere; `initialize_services()`
+    now assigns `services/garuda_portal/staff_auth.py::verify_staff_session`
+    to it, so this path is live for CRM staff sessions.
 
     Converting this at the SAME time the slot gets wired (rather than now,
     while it is inert) is precisely the moment this class of bug gets
@@ -323,9 +325,10 @@ def _idempotency_key(idempotency_key: str | None) -> str:
 #:     above); the frozen contract's `responses` block was not updated to
 #:     match, and this module never edits the contract.
 #:   - `resolveLateOrder` has no `403` — `_require_staff_actor` only ever
-#:     returns 401 or a verified actor (see its docstring: the real staff
-#:     authority verifier is "wired nowhere today"), so `ACCESS_DENIED` has
-#:     no code path that can raise it yet.
+#:     returns 401 or a verified actor (the verifier now wired in refuses an
+#:     ineligible identity at eligibility time, answering 401 — see
+#:     `staff_auth._staff_principal_from_role`), so `ACCESS_DENIED` has no
+#:     code path that can raise it on this route.
 _OPERATION_STATUS_CODES: dict[str, tuple[int, ...]] = {
     "createOrderFromCheck": (400, 401, 404, 409, 422, 429, 500, 503),
     "getOrderAndPractice": (401, 404, 500, 503),

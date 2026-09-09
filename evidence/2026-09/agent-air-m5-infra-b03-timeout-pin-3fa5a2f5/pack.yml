@@ -1,0 +1,52 @@
+gear: 1
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: b03-timeout-pin
+    role: build
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - lane: timeout-review
+    role: review
+    seat: kimi-code/k3
+pii_scan: clean
+receipts:
+  - claim: The candidate guard suite passes against the real workflow; Ruff and diff checks pass.
+    cmd:
+      python -m pytest scripts/tests/test_required_context_map.py -q -p no:cacheprovider; ruff check scripts/tests/test_required_context_map.py;
+      git diff --check
+    result: 21 passed; Ruff clean; no whitespace errors.
+    exit: 0
+    ts: "2026-09-05T19:57:18.309230+00:00"
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - claim: Deleting only the new timeout assertion makes both new mutation cases fail.
+    cmd: Delete the single timeout assertion, then run the same pytest command.
+    result: 2 failed (missing-timeout, widened-timeout), 19 passed. Source restored immediately.
+    exit: 1
+    ts: "2026-09-05T19:57:26.986073+00:00"
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - claim: Restored source passes again.
+    cmd: python -m pytest scripts/tests/test_required_context_map.py -q -p no:cacheprovider
+    result: 21 passed.
+    exit: 0
+    ts: "2026-09-05T19:57:36.096526+00:00"
+    seat: Codex Astra-2 (OpenAI; runtime variant not exposed)
+  - claim: Independent bounded source review PASS.
+    cmd: /Users/balizero/.kimi-code/bin/kimi -m kimi-code/k3 -p <supplied full test file and diff>
+    exit: 0
+    ts: "2026-09-05T19:58:10.774683+00:00"
+    seat: kimi-code/k3
+dissent: []
+source_identity:
+  parent: 2421a3dd053cf9cab97665114bb4f5496d06ab44 # pragma: allowlist secret - verified public parent Git commit, not credential
+  test_sha256: c0e6997a1b27c204de12f123844ff03b820a371bb8e40d6ed9f183105d2e3ac6 # pragma: allowlist secret - verified source or artifact SHA-256, not credential
+review_artifacts:
+  committed_answer_sha256: 83171e7439ccbeb815ec080088d068a1d40ba836cc32f3a6435ac8fa1ef26025 # pragma: allowlist secret - verified artifact SHA-256, not credential
+  started_at: "2026-09-05T19:57:49.030462+00:00"
+  prompt_sha256: 25366d373a1bee01aacb8770a0e478020935921e5ad128feac96b6c390df59b6 # pragma: allowlist secret - verified source or artifact SHA-256, not credential
+  stdout_sha256: 26532677154ae74e4a7c9f6a5931b581b6bca52bf21618b2c8e003d375d1bcc9 # pragma: allowlist secret - verified source or artifact SHA-256, not credential
+notes:
+  - "Parent PR5792 merged before this fresh-main worktree was created. The workflow already has timeout-minutes:
+    16."
+  - The reader received source, diff and stated local results; it did not independently execute the tests.
+    The committed review has Markdown formatting; raw stdout remains in the local receipt.
+  - The two additions reuse the existing parametrized mutations. No timeout or infrastructure change is proposed.
+  - Final Anthropic grading remains separate.

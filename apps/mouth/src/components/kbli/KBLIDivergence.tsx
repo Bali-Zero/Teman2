@@ -24,6 +24,19 @@ function licenseLabel(perizinan: string | string[] | undefined): string {
   return perizinan;
 }
 
+/** `kewenangan` is a string on legacy rows, an array elsewhere. Returns null if empty. */
+export function authorityLabel(
+  kewenangan: string | string[] | undefined,
+): string | null {
+  if (!kewenangan) return null;
+  if (Array.isArray(kewenangan)) {
+    const filtered = kewenangan.filter((k) => k.trim().length > 0);
+    return filtered.length > 0 ? filtered.join(", ") : null;
+  }
+  const trimmed = kewenangan.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 export function KBLIDivergence({ code, provenance }: KBLIDivergenceProps) {
   const { dataNote, disputed } = provenance;
   if (!dataNote && !disputed) return null;
@@ -120,38 +133,41 @@ export function KBLIDivergence({ code, provenance }: KBLIDivergenceProps) {
               page describes. They are preserved here as the audit trail of the
               divergence.
             </p>
-            {disputed.rows.map((row, i) => (
-              <div
-                key={i}
-                className="rounded-lg border border-[var(--border)] px-4 py-3"
-                style={{ background: "var(--kbli-bg-elevated)" }}
-              >
-                <div className="flex flex-wrap items-center gap-2.5">
-                  {Array.isArray(row.skala_usaha) &&
-                    row.skala_usaha.length > 0 && (
-                      <span className="text-xs font-semibold text-[var(--foreground)]">
-                        {row.skala_usaha.join(", ")}
+            {disputed.rows.map((row, i) => {
+              const authority = authorityLabel(row.kewenangan);
+              return (
+                <div
+                  key={i}
+                  className="rounded-lg border border-[var(--border)] px-4 py-3"
+                  style={{ background: "var(--kbli-bg-elevated)" }}
+                >
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    {Array.isArray(row.skala_usaha) &&
+                      row.skala_usaha.length > 0 && (
+                        <span className="text-xs font-semibold text-[var(--foreground)]">
+                          {row.skala_usaha.join(", ")}
+                        </span>
+                      )}
+                    {row.kategori_risiko && (
+                      <RiskBadge category={row.kategori_risiko} size="sm" />
+                    )}
+                    <span className="text-xs text-[var(--foreground-muted)]">
+                      {licenseLabel(row.perizinan)}
+                    </span>
+                    {authority && (
+                      <span className="ml-auto text-[11px] text-[var(--foreground-muted)]">
+                        Authority: {authority}
                       </span>
                     )}
-                  {row.kategori_risiko && (
-                    <RiskBadge category={row.kategori_risiko} size="sm" />
-                  )}
-                  <span className="text-xs text-[var(--foreground-muted)]">
-                    {licenseLabel(row.perizinan)}
-                  </span>
-                  {row.kewenangan && (
-                    <span className="ml-auto text-[11px] text-[var(--foreground-muted)]">
-                      Authority: {row.kewenangan}
-                    </span>
+                  </div>
+                  {row.scope_uraian && (
+                    <p className="mt-1.5 text-[11px] italic text-[var(--foreground-muted)]">
+                      Source-row scope: {row.scope_uraian}
+                    </p>
                   )}
                 </div>
-                {row.scope_uraian && (
-                  <p className="mt-1.5 text-[11px] italic text-[var(--foreground-muted)]">
-                    Source-row scope: {row.scope_uraian}
-                  </p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </details>
       )}

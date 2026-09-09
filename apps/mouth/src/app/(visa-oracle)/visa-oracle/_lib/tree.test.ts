@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as treeRegistry from "./tree";
 import {
+  CATEGORY_KEYS,
   QUESTIONS,
   daysRemaining,
   formatIsoDateForDisplay,
@@ -90,6 +91,61 @@ describe("tree.ts — interview decision boundary", () => {
     expect(QUESTIONS.family_sponsor_permit_basis.decisionMapping).toEqual({
       kind: "HUMAN_CONTEXT",
     });
+  });
+
+  // 2026-09-06 decisiveness wave (PR-3).
+  it("offers STEPCHILD, the relation flow.ts has branched on since 2026-08-23", () => {
+    // Guilt: the wire vocabulary, both i18n labels and the
+    // `getCategoryQuestionIds` branch all landed in the 2026-08-23 ruling
+    // — this option row did not, so E31D was unreachable from any
+    // interview. Innocence: the rest of the closed vocabulary is intact
+    // and in its `FAMILY_RELATIONS` (fact-mapper.ts) order.
+    expect(QUESTIONS.family_relation.options.map(({ key }) => key)).toEqual([
+      "SPOUSE",
+      "CHILD",
+      "PARENT",
+      "SIBLING",
+      "DEPENDENT",
+      "STEPCHILD",
+      "OTHER",
+    ]);
+  });
+
+  it("no longer carries work_role (owner ruling 6, 2026-09-06)", () => {
+    // It was HUMAN_CONTEXT — no FactPath, so no signed rule could read it
+    // — and its only live effect was the presence-triggered
+    // ACTIVITY_BOUNDARY flag that suppressed E23 for every employment
+    // interview. Guilt: re-adding the id must fail here.
+    expect(Object.prototype.hasOwnProperty.call(QUESTIONS, "work_role")).toBe(
+      false,
+    );
+  });
+
+  it("routes Second Home as its own tile, not a retirement sub-branch (owner ruling 3)", () => {
+    expect(CATEGORY_KEYS).toContain("second_home");
+    // The router itself is HUMAN_CONTEXT: it selects which evidence
+    // questions follow, and the evidence questions carry the signed
+    // `secondhome.*` facts the E33 rules actually read.
+    expect(QUESTIONS.secondhome_basis.decisionMapping).toEqual({
+      kind: "HUMAN_CONTEXT",
+    });
+    expect(QUESTIONS.secondhome_basis.options.map(({ key }) => key)).toEqual([
+      "bank_deposit",
+      "property",
+    ]);
+  });
+
+  it("no longer serializes any category option as UNKNOWN (owner ruling 4)", () => {
+    // `unknownValues: ["diaspora"]` is gone: every tile now maps to a real
+    // VisaPurpose (`CATEGORY_TO_PURPOSE`, fact-mapper.ts), so no answer to
+    // this question is a deliberate UNKNOWN any more.
+    expect(QUESTIONS.category.decisionMapping).toEqual({
+      kind: "FACT",
+      factPaths: ["intent.purposes"],
+    });
+    expect(QUESTIONS.category.options.map(({ key }) => key)).toEqual([
+      ...CATEGORY_KEYS,
+    ]);
   });
 
   it("does not carry the 2 dead legacy nodes (E4 slice — question-registry-audit.md §2)", () => {

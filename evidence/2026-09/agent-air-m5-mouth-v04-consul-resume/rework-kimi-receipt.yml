@@ -1,0 +1,9 @@
+started: "2026-09-05T13:26:43.117347+00:00"
+finished: "2026-09-05T13:30:01.473644+00:00"
+model: kimi-code/k3
+exit: 0
+prompt_sha256: 60a91d99852dec39afa97f781d8ed150caa2796c2130d2a71ef763f0e1225f6e # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+scope:
+  One depth-1 correction to Fable ruling; immutable three-file source/test delta plus complete Shell and consent
+  context.
+answer_sha256: 5d85160884a6f0ba748982c5730046b8ea5d4628bf961dd058bce6a529130b40 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential

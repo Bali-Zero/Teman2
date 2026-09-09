@@ -1,0 +1,38 @@
+task_id: v01b-fallback-edit
+gear: 1
+objective:
+  Collapse repeated fallback copy in the outcome view while preserving decision semantics and
+  safe edit navigation.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.test.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.tsx
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.test.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/shadow-parity.test.ts
+constraints:
+  - No adapter/parity runtime changes and no loss of missing-fact codes.
+  - No legal claims, eligibility, pricing, backend, credentials or production changes.
+  - Independent Anthropic review and shipping remain with Fable.
+acceptance:
+  - text:
+      WHEN unroutable details have identical localized copy the outcome SHALL show one fallback line
+      without an Edit action.
+    probe: "OutcomeSheet.test.tsx: shows repeated unroutable details only once in en/id"
+  - text:
+      WHEN editable rows share text the outcome SHALL preserve each edit action and the adapter SHALL
+      retain all missing-fact codes for semantic parity.
+    probe:
+      "OutcomeSheet.test.tsx: keeps editable details distinct; engine-adapter.test.ts: retains both
+      missing fact codes; shadow-parity.test.ts: distinguishes missing fact sets"
+  - text:
+      WHEN EDIT targets a question absent from history the reducer SHALL reset facts/history and advance
+      attempt while preserving language.
+    probe:
+      "flow.test.ts: EDIT resets an absent target; EDIT keeps the current visited question; existing
+      editing/pruning tests"
+consumer_map:
+  - OutcomeSheet renders NEEDS_INPUT responses while the unchanged adapter/parity chain retains complete
+    semantics.
+  - flowReducer handles Edit actions from the current interview history.
+  - Existing frontend Vitest job consumes all four regression suites.

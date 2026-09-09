@@ -1,0 +1,201 @@
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+plan_ref: >-
+  One concern: repair the already-merged but broken scheduled caller (craft-instruments-daily.yml,
+  PR #5343) for scripts/council_yield_report.py (PENDING-ARMS L1629) and scripts/correction_tax.py
+  (L1630), so it actually runs (pyyaml was never installed, both scheduled runs since merge failed
+  before either script executed) and so correction_tax.py produces the durable ledger row L1630
+  asks for (--ledger-append was never passed). No behaviour change to either script.
+
+lanes:
+  - lane: caller-repair
+    role: build
+    seat: >-
+      claude-sonnet-5 (this session, air-m5). Measured the real gap against origin/main (both
+      scheduled runs of the already-merged workflow had failed silently, per GitHub Actions run
+      history) rather than assuming the PENDING-ARMS rows described a truly unwired instrument.
+      Added pyyaml to the install step, actions/cache-based ledger persistence, --ledger-append,
+      and an upload-artifact step for durable proof.
+  - lane: workflow-refute-1
+    role: review
+    seat: codex-gpt-5.6-sol (foreground, --sandbox read-only, effort=high)
+    note_ref: council-journal.jsonl
+  - lane: workflow-refute-2
+    role: review
+    seat: tp1-qwen3.8-max (effort=medium, streaming)
+    note_ref: council-journal.jsonl
+
+seat_diversity: SATISFIED
+seat_diversity_note: >-
+  Single build lane (Anthropic, claude-sonnet-5) — rule 8's cross-family floor is exempt below 2
+  build lanes, per evidence_pack_lint.py's own rule text. Both review lanes are non-Anthropic
+  (codex-gpt-5.6-sol, tp1-qwen3.8-max), giving R9's Gear-3 council 2 distinct qualifying seats
+  from COUNCIL_REVIEW_SEATS, each posting an ok:true journal line — quorum met without kimi-code/k3.
+
+diff:
+  files: 4
+  net_lines: 411
+  measured_at: >-
+    `git diff --cached --numstat`, staged tree, at pack-finalization time (the workflow file plus
+    the three files of this evidence directory: brief.yml, pack.yml, council-journal.jsonl) — see
+    receipts for the exact `scripts/evidence_pack_lint.py --print-measured` run this number is
+    taken from, not hand-counted.
+
+residual_risks:
+  - >-
+    THE FIRST LIVE SCHEDULED/DISPATCHED RUN IS THE ACTUAL PROOF, not this pack. Everything above
+    is local simulation (pytest, direct script invocation, a hand-built ledger file with the same
+    idempotency contract) plus actionlint/YAML validation — none of it runs INSIDE GitHub Actions'
+    real environment (its actual `bash` binary, its actual cache backend, its actual GITHUB_STEP_
+    SUMMARY). This PR dispatches `workflow_dispatch` on its own branch before merge specifically
+    to close that gap with a real run rather than a promise (see receipts).
+  - >-
+    A SECOND REFUTER'S HEADLINE VERDICT WAS FAIL ON A HALLUCINATED FINDING. tp1-qwen3.8-max's
+    "unparseable YAML" claim was traced to THIS session's own prompt-compression (stripping
+    comments to fit the <4KB budget destroyed the diff's per-hunk boundaries) and is refuted
+    against the real file (actionlint, yaml.safe_load, direct read) — recorded honestly below as
+    RETRACTED rather than silently dropped. Its other two findings (pipefail confirmation, cache-
+    key growth) were sound and are reflected in the diff / an inline comment respectively.
+  - >-
+    actions/cache's save is gated on job SUCCESS at its post-step — a run that fails after a
+    successful ledger append does not persist that append. Accepted (conservative direction,
+    documented inline), not cured.
+  - >-
+    L1630's third gesture — whether v1's heuristic (547/858 vs a cited 106/866 baseline, both
+    already disclosed in correction_tax.py's own docstring) needs a word-boundary v2 — is
+    explicitly out of scope per the ledger row's own text and is untouched here.
+
+pii_scan: clean
+
+receipts:
+  - claim: "The two instrument test corpora pass locally (pyyaml installed)"
+    cmd: "python3 -m pytest scripts/tests/test_council_yield_report.py scripts/tests/test_correction_tax.py -q"
+    result: "120 passed in 17.16s"
+    exit: 0
+    ts: 2026-09-01T19:40Z
+    seat: session (air-m5)
+  - claim: "council_yield_report.py runs and scans real evidence packs (proof the pyyaml fix works)"
+    cmd: "python3 scripts/council_yield_report.py"
+    result: "packs scanned: 133  |  with dissent: 132  |  ... unparseable: 0"
+    exit: 0
+    ts: 2026-09-01T19:41Z
+    seat: session (air-m5)
+  - claim: >-
+      --ledger-append is idempotent across repeated runs over the SAME window (simulates the cache
+      restoring an already-recorded window on a later scheduled run) — one row, never a duplicate
+    cmd: >-
+      python3 scripts/correction_tax.py --since 2026-08-25 --until 2026-09-01 --ledger-append
+      /tmp/correction-tax-ledger-sim.jsonl   (run twice, same args)
+    result: >-
+      run 1: "ledger: appended -> ...jsonl", 1 row written (341/479=0.712). run 2: "ledger: skipped
+      (duplicate since+until+heuristic already recorded) -> ...jsonl", file still 1 row.
+    exit: 0
+    ts: 2026-09-01T19:52Z
+    seat: session (air-m5)
+  - claim: "actionlint (same invocation as .github/workflows/actionlint.yml) is clean on the final diff"
+    cmd: "actionlint -color -shellcheck= .github/workflows/craft-instruments-daily.yml"
+    result: "no output, exit 0"
+    exit: 0
+    ts: 2026-09-01T20:05Z
+    seat: session (air-m5)
+  - claim: "the checkout-budget floor lint stays clean (no new job added, timeout unchanged)"
+    cmd: "python3 scripts/lint_workflow_timeout_floor.py"
+    result: "workflow timeout floor: clean (155 jobs scanned, floor 10m)"
+    exit: 0
+    ts: 2026-09-01T19:38Z
+    seat: session (air-m5)
+  - claim: "the deterministic gear floor for this diff is 3 (hot-zone .github/workflows/ path)"
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --repo-root . --changed-files-file /tmp/changed_files.txt
+      --numstat-file /tmp/numstat.txt --print-floor --print-floor-source --print-measured
+    result: "3 / path / 2 files, +120/-3"
+    exit: 0
+    ts: 2026-09-01T20:03Z
+    seat: session (air-m5)
+  - claim: "codex-gpt-5.6-sol reviewed the diff foreground and found 3 real defects, all addressed"
+    cmd: >-
+      codex exec -m gpt-5.6-sol -c model_reasoning_effort=high --sandbox read-only
+      --skip-git-repo-check --ephemeral --output-last-message /tmp/r1629_codex.md -
+    result: >-
+      "VERDICT: FAIL" (round 1) naming: tee-masks-python-exit-under-implicit-bash-e (HIGH),
+      upload-artifact if-no-files-found not proving the ledger path resolved (HIGH), cache
+      post-if:success() not saving on later failure (MEDIUM). All 3 addressed in round 2.
+    exit: 0
+    ts: 2026-09-01T19:58Z
+    seat: codex-gpt-5.6-sol
+  - claim: "GitHub's own docs confirm shell:bash, not the implicit default, is what adds pipefail"
+    cmd: "WebFetch https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions"
+    result: >-
+      implicit no-`shell:` default on Linux/macOS = 'bash -e {0}' (no pipefail); explicit
+      `shell: bash` = 'bash --noprofile --norc -eo pipefail {0}'
+    exit: 0
+    ts: 2026-09-01T19:55Z
+    seat: session (air-m5), independent verification of codex's premise
+  - claim: "tp1-qwen3.8-max reviewed round 2, confirmed 2 of 3 points, one finding was a hallucination"
+    cmd: "python3 scripts/tp1_call.py --model qwen3.8-max --task-file /tmp/tp1_prompt_short.txt --effort medium"
+    result: >-
+      confirmed shell:bash->pipefail; flagged cache-key growth (addressed via comment); "VERDICT:
+      FAIL" on an "unparseable YAML" claim verified FALSE against the real file (see risks below
+      and dissent) — traced to this session's own comment-stripped prompt losing hunk boundaries.
+    exit: 0
+    ts: 2026-09-01T20:01Z
+    seat: tp1-qwen3.8-max
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      `A | tee B` under GitHub's IMPLICIT default shell (`bash -e {0}`, no pipefail) reports tee's
+      exit code, not the piped script's — a crashing council_yield_report.py or correction_tax.py
+      (including a ledger-append RuntimeError) would leave the step, and the job, green.
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED. `shell: bash` added to both the "Council yield report" and "Correction tax report"
+      steps (verified against GitHub's own docs, not assumed — see receipts). This also completes
+      an invariant the file's own "Emptiness gate" step comment already claimed but did not have.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      `upload-artifact`'s `if-no-files-found: warn` only checks whether the COMBINED glob found at
+      least one file — the two .txt reports alone satisfy that even if the ledger jsonl is
+      silently missing or empty, so a green upload does not prove today's ledger row exists.
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED. Added a "Verify ledger row landed" step (`test -s` + `tail -n1`) BEFORE the
+      upload step, hard-failing the job (no `if: always()`) if the ledger is missing or empty.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      `actions/cache`'s save runs on a post-step gated by `post-if: success()` against the job's
+      status at that point, so a later step failing after a successful append would not persist
+      that append for tomorrow's restore.
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED as the conservative, intended direction rather than cured — a compromised run's
+      state should not propagate. Documented inline with an explicit comment rather than silently
+      left implicit.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      The diff is unparseable YAML: `shell: bash` is illegally attached to the `uses: actions/
+      cache@v6` step, with the following `python3 …` block having no `run: |` key — no step would
+      execute.
+    status: RETRACTED
+    disposition: >-
+      REFUTED against the real file, not silently dropped. `shell: bash` sits correctly under the
+      "Council yield report" `run:` step; the "Restore correction-tax ledger" `uses: actions/
+      cache@v6` step carries no `shell:` key at all. Confirmed three independent ways: actionlint
+      `-shellcheck=` exit 0 (twice, before and after this dissent was investigated),
+      `python3 -c "import yaml; yaml.safe_load(...)"` OK, and direct `sed -n` read of the file on
+      disk. Root cause traced: this session's own prompt-compression (stripping `#`-comment lines
+      to fit tp1's <4KB budget) destroyed the diff's per-hunk boundaries, so two textually adjacent
+      but structurally unrelated added-line groups read as one contiguous block. A methodology
+      note, not a code defect — the compression technique is what needs care next time, not this
+      workflow file.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      The cache save key includes `${{ github.run_id }}`, so a NEW cache entry is created every
+      scheduled run instead of one entry being updated in place, risking growth toward the repo's
+      cache size cap and LRU eviction of the ledger.
+    status: CONFIRMED
+    disposition: >-
+      ACCEPTED as a known, bounded trade-off rather than cured: this is the SAME idiom
+      `cron-fly-restart-detector.yml`'s cooldown-state cache already uses in this repo (matched
+      deliberately, not reinvented), and GitHub's own cache eviction (oldest-unused-first, past the
+      10 GB org cap or a 7-day unused-entry expiry) bounds it. Documented inline via a new comment.

@@ -294,8 +294,7 @@ apps/mouth/
 ```bash
 # .env.local
 
-# Backend API
-NEXT_PUBLIC_API_URL=https://nuzantara-rag.fly.dev
+# Backend API (server only; src/app browser clients use the same-origin /api proxy)
 NUZANTARA_API_URL=https://nuzantara-rag.fly.dev
 
 # WebSocket
@@ -345,7 +344,8 @@ Or use Vercel dashboard/GitHub integration for automatic deployments.
 
 **Environment Variables (Vercel Dashboard):**
 
-- `NEXT_PUBLIC_API_URL` - Backend API URL (https://nuzantara-rag.fly.dev)
+- `NUZANTARA_API_URL` - Server-side backend URL (https://nuzantara-rag.fly.dev). Browser clients under `src/app` use `/api`, forwarded by `src/app/api/[...path]/route.ts`, to preserve same-origin authentication and CSRF handling. The guard scans `src/app` only; it does not cover browser references in `src/lib`, hooks, or transitive imports.
+- `NEXT_PUBLIC_API_URL` - Legacy fallback in server routes, after `NUZANTARA_API_URL`. Do not use it as a browser API base URL.
 - `NEXT_PUBLIC_FRONTEND_URL` - Frontend URL (https://www.balizero.com)
 - `SENTRY_DSN` - Error tracking
 
@@ -566,16 +566,21 @@ import { Toast } from "@/components/ui/toast";
 
 ### API Client Base
 
+`ApiClientBase` requires an explicit `baseUrl`; the constructor does not supply a default.
+
 ```typescript
-// /lib/api/client.ts
+// src/lib/api/client.ts (abridged)
+import { safeStorage } from "@/lib/utils/storage";
 
 class ApiClientBase {
   protected baseUrl: string;
-  protected token: string | null;
+  protected token: string | null = null;
 
-  constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl || process.env.NEXT_PUBLIC_API_URL;
-    this.token = localStorage.getItem("auth_token");
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl;
+    if (typeof window !== "undefined") {
+      this.token = safeStorage.getItem("auth_token");
+    }
   }
 
   protected async fetch<T>(
@@ -1040,26 +1045,42 @@ const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prom
    - nz_access_token (HttpOnly)
    - nz_csrf_token
                      ↓
-3. Frontend stores in localStorage:
-   - auth_token (for API calls)
+3. Frontend caches auth_token via safeStorage (optional bearer support):
+   - localStorage when available; memory fallback when unavailable
                      ↓
-4. Subsequent requests include:
-   - Authorization: Bearer {token}
-   - X-CSRF-Token: {csrf}
-   - Cookie: nz_access_token=...
+4. Subsequent requests use credentials: "include":
+   - Cookie: nz_access_token=... (primary session)
+   - Authorization: Bearer {token} (when available)
+   - X-CSRF-Token: {csrf} (state-changing requests, when available)
 ```
 
 ### Protected Routes
 
-```typescript
-// Middleware pattern (in page components)
-useEffect(() => {
-  const token = localStorage.getItem("auth_token");
-  if (!token) {
-    router.push("/login");
-  }
-}, []);
+Client pages use `useSessionState()`, backed by `api.hasSession()`, so a missing
+bearer token does not eject a valid cookie-only session. The hook starts at
+`pending`; only `anonymous` redirects to login. `pending` and `unknown` keep
+protected data loads gated until the session is `authenticated`.
 
+```typescript
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSessionState } from "@/hooks/useSessionState";
+
+// Inside a client page component (abridged from src/app/agents/page.tsx).
+const router = useRouter();
+const session = useSessionState();
+
+useEffect(() => {
+  if (session === "anonymous") {
+    router.push("/login");
+    return;
+  }
+  if (session !== "authenticated") return;
+  // Apply page-specific authorization and load protected data here.
+}, [session, router]);
+```
+
+```typescript
 // Server-side (API routes)
 const token = request.cookies.get("nz_access_token");
 if (!token) {

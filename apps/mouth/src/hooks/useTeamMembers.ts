@@ -25,6 +25,36 @@ export function isNonHumanRole(role: string | null | undefined): boolean {
   return NON_HUMAN_ROLES.has((role ?? "").trim().toLowerCase());
 }
 
+// Mirrors backend/app/utils/service_accounts.py TEAM_ROLES — the ALLOW-list the
+// team gate (require_team_member) admits, normalised. A role absent here is not
+// a colleague, whatever else it is. Keep in sync with the Python SSOT; the
+// backend tripwire test_service_accounts_ts_sync.py compares both sets.
+const TEAM_ROLES = new Set([
+  "admin",
+  "team",
+  "founder",
+  "ceo",
+  "board member",
+  "team leader",
+  "supervisor",
+  "tax lead",
+  "tax manager",
+  "tax care",
+  "accounting",
+  "marketing & accounting",
+  "marketing advisory",
+  "executive consultant",
+  "specialist advisor",
+  "junior consultant",
+  "consultant",
+  "reception",
+  "member",
+]);
+
+export function isTeamRole(role: string | null | undefined): boolean {
+  return TEAM_ROLES.has((role ?? "").trim().toLowerCase());
+}
+
 async function fetchTeamMembers(): Promise<TeamMember[]> {
   const res = await api.get<TeamMember[] | { members: TeamMember[] }>(
     "/api/team/members",

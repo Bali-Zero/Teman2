@@ -124,6 +124,11 @@ const CLAIMS: RegExp[] = [
   /\busually\s+(?:within|under)\s+\d+\s*(?:min|hour|hr)[a-z]*\b/i,
   /\b(response|repl(?:y|ies))[_\s-]*minutes\b/i,
   /\b(?:we|we'll|we will|our\s+team|balizero)\b[^.\n]{0,20}?\bpick\s+up\s+(?:in|within)\s+(?:under\s+|less\s+than\s+)?\d/i,
+  // Pattern 11 — the claim declared above and ruled a reply promise by the
+  // owner on 2026-09-09, removed in #5893. "first read" carries no reply word
+  // and no first-person subject, so Patterns 1-10 never reached it; the
+  // duration is what makes it a promise, so the duration is what it requires.
+  /\bfirst\s+read\b[^.\n]{0,20}?\b(?:in|within|under|less\s+than)\s+\d+\s*(?:min|hour|hr)[a-z]*\b/i,
 ];
 
 /**
@@ -196,12 +201,13 @@ function sweep(messages: unknown, patterns: RegExp[]): string[] {
 // down rather than left silent, because an undeclared residue is the next
 // leak:
 //
-//   1. `app/(blog)/services/page.tsx:353` — "WhatsApp or Visa Check for a
-//      first read — free, under 15 min." Whether "first read" is a reply-time
-//      promise or a scope promise is an OWNER call that has not been made.
-//      It is not removed and no pattern is aimed at it. If the owner rules it
-//      a claim, the pattern belongs beside Pattern 10, not in a widened
-//      Pattern 1.
+//   1. RESOLVED 2026-09-09. The owner ruled "free, under 15 min." on
+//      `app/(blog)/services/page.tsx` a reply-time promise, not a scope
+//      promise: readers take it as time-to-answer, and median 4.9 min passes
+//      while p90 411 min does not. Removed in #5893 — the line now reads
+//      "WhatsApp or Visa Check for a first read — free." — with no new number
+//      put in its place. Per this note's own instruction the pattern sits
+//      beside Pattern 10 below, not in a widened Pattern 1.
 //   2. `fr.json` / `ru.json` get no per-language ruleset. The measurement that
 //      stood here EXPIRED, and it is worth naming how: it read "2026-08-24:
 //      188 string leaves each … neither carries `secondHome.cta.note` at all,
@@ -261,6 +267,9 @@ describe("no page claims a response time nobody measured", () => {
       '      "note": "Prima risposta su WhatsApp in genere entro 5 ore."',
       '      "note": "Balasan pertama di WhatsApp biasanya kurang dari 5 jam."',
       '        description="Fixed fee, processed in ~14 days. Start on WhatsApp — we\'ll pick up in under 5 hours."',
+      // removed 2026-09-09 (#5893) — the owner ruled it a reply promise.
+      // Pattern 11's positive control.
+      "WhatsApp or Visa Check for a first read — free, under 15 min.",
       // caught by the first version, must not regress
       "  <p>We reply within 5 minutes</p>",
       "  <p>Our team responds in 2 minutes</p>",
@@ -324,6 +333,10 @@ describe("no page claims a response time nobody measured", () => {
       "We can pick up your documents in 2 days.",
       "Our team will pick up the file from the notary.",
       "Pick up the conversation where you left it.",
+      // Pattern 11's neighbours. The scope promise that replaced the removed
+      // claim, and a "first read" whose number is not a duration at all.
+      "WhatsApp or Visa Check for a first read — free.",
+      "Book a first read of your documents in 3 languages.",
     ]) {
       const fired = [...CLAIMS, ...CLAIMS_IT, ...CLAIMS_ID].filter((re) =>
         re.test(innocent),

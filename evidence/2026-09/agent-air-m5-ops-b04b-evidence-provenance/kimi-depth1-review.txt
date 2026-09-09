@@ -1,0 +1,16 @@
+• **PASS**
+
+  Scoped static review of the supplied bytes only; nothing executed here.
+
+  Prescribed corrections verified:
+
+  - **Receipt scope:** `receipts[0].scope` explicitly marks the 13:42Z execution as historical, pre-correction, and defers current-recipe execution to `depth_1_correction.isolated_replay`. Satisfies the prior request.
+  - **Recipe-hash link:** `depth_1_correction.isolated_replay.recipe_sha256` (`becb8baf…`) is present, linking the replay to the exact recipe bytes. Satisfied.
+  - **Reference swap:** `child` in `reproduce.cjs` and `table_source_git_ref` in `probes.yml` both use `cd407c56…`; no unreachable feature ref remains. `depth_1_correction.changed_reference` matches.
+  - **Attribution:** `lanes[0].seat` and `correction.historical_builder` are byte-identical to the mandated string `builder seat: Codex Astra-2 (OpenAI; runtime variant not exposed)`. The historical receipt's `seat` field names no runtime model variant, consistent with the depth-1 reason.
+  - **Historical framing:** `review.scope` explicitly limits the prior PASS to the pre-correction recipe, and `review.verdict` states Kimi did not execute the recipe. No self-execution implied.
+  - **Digest coherence:** `899ab453…` is consistent across recipe assertion, receipt result, `corrected_digest`, `isolated_replay.sha256`, and `table_source_sha256`; `initializer_utf8_bytes: 1481` recorded; `prior_digest` retained as historical, not rewritten.
+
+  Minor observation (non-blocking): the stated PR5778 merge-commit claim and isolated replay results are accepted as builder-reported metadata, as scoped.
+
+  No defects in the correction surface.

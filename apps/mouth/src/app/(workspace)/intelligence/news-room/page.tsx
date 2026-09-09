@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { intelligenceApi, StagingItem } from "@/lib/api/intelligence.api";
+import { intelligenceApi } from "@/lib/api/intelligence.api";
+import type { PublishPosition, StagingItem } from "@/lib/api/intelligence.api";
 import {
   Select,
   SelectContent,
@@ -46,6 +47,17 @@ import { getArticlePalette } from "./article-palette";
 type FilterType = "all" | "NEW" | "UPDATED" | "critical";
 type SortType = "date-desc" | "date-asc" | "title-asc" | "title-desc";
 
+const UNIQUE_HOMEPAGE_POSITIONS = new Set<PublishPosition>([
+  "hero_main",
+  "hero_2",
+  "hero_3",
+  "hero_4",
+  "hero_5",
+  "insight_1",
+  "insight_2",
+  "insight_3",
+]);
+
 export default function NewsRoomPage() {
   const [items, setItems] = useState<StagingItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,9 +74,9 @@ export default function NewsRoomPage() {
   );
   const toast = useToast();
   const [publishPosition, setPublishPosition] = useState<
-    Record<string, string>
+    Record<string, PublishPosition>
   >({});
-  const getPosition = (id: string) => publishPosition[id] || "latest";
+  const getPosition = (id: string) => publishPosition[id];
 
   // Filtered and sorted items
   const filteredAndSortedItems = useMemo(() => {
@@ -180,13 +192,36 @@ export default function NewsRoomPage() {
       return;
     }
 
+    const ids = Array.from(selectedItems);
+    const missingPositions = ids.filter((id) => !getPosition(id));
+    if (missingPositions.length > 0) {
+      toast.error(
+        "Position required",
+        "Choose Latest, a Hero slot, or an Insight slot for every selected article.",
+      );
+      return;
+    }
+
+    const assignedUniqueSlots = ids
+      .map((id) => getPosition(id))
+      .filter(
+        (position): position is PublishPosition =>
+          position !== undefined && UNIQUE_HOMEPAGE_POSITIONS.has(position),
+      );
+    if (new Set(assignedUniqueSlots).size !== assignedUniqueSlots.length) {
+      toast.error(
+        "Duplicate homepage slot",
+        "Each Hero or Insight slot can be assigned only once per operation.",
+      );
+      return;
+    }
+
     logger.info("Starting bulk publish", {
       component: "NewsRoomPage",
       action: "bulk_publish_start",
       metadata: { count: selectedItems.size },
     });
 
-    const ids = Array.from(selectedItems);
     const results = { success: 0, failed: 0 };
 
     for (const id of ids) {
@@ -197,7 +232,11 @@ export default function NewsRoomPage() {
       try {
         await intelligenceApi.publishItem(item.type, id, getPosition(id));
         results.success++;
-        setItems((prev) => prev.filter((i) => i.id !== id));
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === id ? { ...i, status: "publication_pending" } : i,
+          ),
+        );
       } catch (error) {
         results.failed++;
         logger.error(
@@ -220,8 +259,8 @@ export default function NewsRoomPage() {
 
     setSelectedItems(new Set());
     toast.success(
-      "Bulk publish completed",
-      `${results.success} published, ${results.failed} failed.`,
+      "Bulk publication requests completed",
+      `${results.success} queued, ${results.failed} failed.`,
     );
 
     logger.info("Bulk publish completed", {
@@ -229,8 +268,6 @@ export default function NewsRoomPage() {
       action: "bulk_publish_complete",
       metadata: results,
     });
-
-    loadNews();
   };
 
   const handlePreview = async (item: StagingItem) => {
@@ -260,6 +297,13 @@ export default function NewsRoomPage() {
 
   const handlePublish = async (item: StagingItem) => {
     const position = getPosition(item.id);
+    if (!position) {
+      toast.error(
+        "Position required",
+        "Choose Latest, a Hero slot, or an Insight slot before publishing.",
+      );
+      return;
+    }
 
     logger.info("Publishing item", {
       component: "NewsRoomPage",
@@ -278,7 +322,7 @@ export default function NewsRoomPage() {
         position,
       );
 
-      logger.info("Item published successfully", {
+      logger.info("Item queued for publication", {
         component: "NewsRoomPage",
         action: "publish_success",
         itemId: item.id,
@@ -286,14 +330,14 @@ export default function NewsRoomPage() {
       });
 
       toast.success(
-        "Published!",
-        `"${response.title}" published${position !== "latest" ? ` to ${position.replace("_", " ")}` : ""}`,
+        "Queued for publication",
+        `"${response.title}" is queued${position !== "latest" ? ` for ${position.replace("_", " ")}` : ""}. It is not live until verification succeeds.`,
       );
 
-      // Mark as published locally (keep card visible with "Published" ribbon)
+      // A successful request opens a PR. Only the live verifier may mark it published.
       setItems((prev) =>
         prev.map((i) =>
-          i.id === item.id ? { ...i, status: "published" as const } : i,
+          i.id === item.id ? { ...i, status: "publication_pending" } : i,
         ),
       );
     } catch (error) {
@@ -555,8 +599,10 @@ export default function NewsRoomPage() {
                   </div>
                 )}
 
-                {/* Published diagonal ribbon */}
-                {item.status === "published" && (
+                {/* Honest publication-state ribbon */}
+                {(item.status === "published" ||
+                  item.status === "publication_pending" ||
+                  item.status === "publishing") && (
                   <div
                     className="absolute z-20 pointer-events-none"
                     style={{
@@ -582,7 +628,7 @@ export default function NewsRoomPage() {
                         textTransform: "uppercase",
                       }}
                     >
-                      Published
+                      {item.status === "published" ? "Published" : "Queued"}
                     </span>
                   </div>
                 )}
@@ -716,7 +762,9 @@ export default function NewsRoomPage() {
 
                 {/* Footer — position select + publish (or published badge) */}
                 <div className="px-3 pb-3 space-y-1.5">
-                  {item.status === "published" ? (
+                  {item.status === "published" ||
+                  item.status === "publication_pending" ||
+                  item.status === "publishing" ? (
                     <div
                       className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold tracking-wide"
                       style={{
@@ -727,7 +775,8 @@ export default function NewsRoomPage() {
                           "1px solid color-mix(in srgb, var(--state-success) 20%, transparent)",
                       }}
                     >
-                      <Check className="w-3 h-3" /> Published
+                      <Check className="w-3 h-3" />
+                      {item.status === "published" ? "Published" : "Queued"}
                     </div>
                   ) : (
                     <>
@@ -736,7 +785,7 @@ export default function NewsRoomPage() {
                         onValueChange={(v) =>
                           setPublishPosition((prev) => ({
                             ...prev,
-                            [item.id]: v,
+                            [item.id]: v as PublishPosition,
                           }))
                         }
                       >
@@ -752,7 +801,7 @@ export default function NewsRoomPage() {
                             className="w-3 h-3 mr-1"
                             style={{ color: pal.accent }}
                           />
-                          <SelectValue />
+                          <SelectValue placeholder="Choose position" />
                         </SelectTrigger>
                         <SelectContent
                           className="rounded-xl"
@@ -775,7 +824,9 @@ export default function NewsRoomPage() {
                       </Select>
                       <button
                         onClick={() => handlePublish(item)}
-                        disabled={publishingIds.has(item.id)}
+                        disabled={
+                          publishingIds.has(item.id) || !getPosition(item.id)
+                        }
                         className="w-full flex items-center justify-center gap-1 py-2 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-300 disabled:opacity-50"
                         style={{
                           background: `linear-gradient(135deg, ${pal.accentSoft}, ${pal.glow})`,
@@ -916,12 +967,12 @@ export default function NewsRoomPage() {
           )}
           <div className="flex gap-2 mt-6">
             <Select
-              value={previewItem ? getPosition(previewItem.id) : "latest"}
+              value={previewItem ? getPosition(previewItem.id) : undefined}
               onValueChange={(value) =>
                 previewItem &&
                 setPublishPosition((prev) => ({
                   ...prev,
-                  [previewItem.id]: value,
+                  [previewItem.id]: value as PublishPosition,
                 }))
               }
             >
@@ -937,7 +988,7 @@ export default function NewsRoomPage() {
                   className="w-3 h-3 mr-1 shrink-0"
                   style={{ color: "var(--bz-text-3)" }}
                 />
-                <SelectValue />
+                <SelectValue placeholder="Choose position" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="latest">Latest</SelectItem>
@@ -961,7 +1012,12 @@ export default function NewsRoomPage() {
                   "1px solid color-mix(in srgb, var(--bz-accent) 20%, transparent)",
               }}
               onClick={() => previewItem && handlePublish(previewItem)}
-              disabled={previewItem ? publishingIds.has(previewItem.id) : false}
+              disabled={
+                previewItem
+                  ? publishingIds.has(previewItem.id) ||
+                    !getPosition(previewItem.id)
+                  : true
+              }
             >
               {previewItem && publishingIds.has(previewItem.id) ? (
                 <>
