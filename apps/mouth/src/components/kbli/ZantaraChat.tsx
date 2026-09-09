@@ -36,6 +36,7 @@ export function ZantaraChat({
       : "",
   );
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesBoxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -44,8 +45,14 @@ export function ZantaraChat({
     }
   }, [sessionId]);
 
+  // Keep the newest message in view WITHOUT moving the page. scrollIntoView
+  // scrolls every scrollable ancestor including the document, which on first
+  // render dropped visitors ~85% down /kbli; setting scrollTop moves only this
+  // box. The empty-list guard keeps it silent on mount.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length === 0) return;
+    const box = messagesBoxRef.current;
+    if (box) box.scrollTop = box.scrollHeight;
   }, [messages]);
 
   const sendMessage = useCallback(
@@ -139,7 +146,10 @@ export function ZantaraChat({
       </div>
 
       {/* Messages Area */}
-      <div className="relative z-10 max-h-96 min-h-[300px] space-y-5 overflow-y-auto p-5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+      <div
+        ref={messagesBoxRef}
+        className="relative z-10 max-h-96 min-h-[300px] space-y-5 overflow-y-auto p-5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+      >
         {opener && messages.length === 0 && (
           <div className="flex animate-fade-in-up">
             <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-white/5 border border-white/5 shadow-sm px-4 py-3">

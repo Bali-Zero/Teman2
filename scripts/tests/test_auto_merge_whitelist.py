@@ -105,6 +105,12 @@ if args[:2] == ["pr", "merge"]:
         json.dump(args, stream)
     raise SystemExit(int(os.environ.get("GH_MERGE_EXIT", "0")))
 
+if args[:2] == ["api", "graphql"]:
+    # The post-arm verdict read (2026-09-09): the step judges the PR's live
+    # arm state, never gh's exit code. GH_ARMED_OUTPUT is what --jq would print.
+    sys.stdout.write(os.environ.get("GH_ARMED_OUTPUT", "true") + "\\n")
+    raise SystemExit(int(os.environ.get("GH_ARMED_EXIT", "0")))
+
 if args == ["api", f"repos/{repo}/pulls/{pr}", "--jq", ".changed_files"]:
     sys.stdout.write(os.environ.get("GH_EXPECTED_COUNT", "0") + "\\n")
     raise SystemExit(int(os.environ.get("GH_METADATA_EXIT", "0")))
@@ -228,11 +234,61 @@ def test_auto_merge_is_pinned_to_the_evaluated_head(tmp_path: Path) -> None:
         "--repo",
         "test/repo",
         "--auto",
-        "--squash",
-        "--delete-branch",
         "--match-head-commit",
         head_sha,
     ]
+    # 2026-09-09 guilt pin: under the merge-queue ruleset gh rejects BOTH of
+    # these flags and the step used to swallow the rejection as a green no-op.
+    assert "--squash" not in json.loads(calls_file.read_text(encoding="utf-8"))
+    assert "--delete-branch" not in json.loads(calls_file.read_text(encoding="utf-8"))
+
+
+def _run_enable_step(tmp_path: Path, extra_env: dict[str, str]) -> subprocess.CompletedProcess[str]:
+    head_sha = "b" * 40
+    calls_file = tmp_path / "gh-calls.json"
+    bin_dir = _install_fake_gh(tmp_path)
+    script = _workflow_step_script("Enable auto-merge")
+    script = script.replace("${{ steps.pr.outputs.number }}", "123")
+    script = script.replace("${{ github.repository }}", "test/repo")
+    script = script.replace("${{ github.event.pull_request.head.sha }}", head_sha)
+    return subprocess.run(
+        ["bash", "-euo", "pipefail", "-c", script],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
+            "GH_CALLS_FILE": str(calls_file),
+            "PR": "123",
+            "REPO": "test/repo",
+            "EXPECTED_HEAD": head_sha,
+            **extra_env,
+        },
+    )
+
+
+def test_guilt_step_goes_red_when_nothing_is_armed_after_the_attempt(tmp_path: Path) -> None:
+    # The 2026-09-09 disease: gh rejected the flags, the step warned and exited 0,
+    # the check was green, the PR was never armed (#5978 run log).
+    result = _run_enable_step(tmp_path, {"GH_MERGE_EXIT": "1", "GH_ARMED_OUTPUT": "false"})
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "::error::" in result.stdout
+    assert "NOT armed" in result.stdout
+
+
+def test_innocence_already_queued_is_success_despite_nonzero_merge_exit(tmp_path: Path) -> None:
+    # "already queued to merge" is a non-zero gh exit that IS success: the PR
+    # holds a merge-queue entry, so the graphql verdict reads true.
+    result = _run_enable_step(tmp_path, {"GH_MERGE_EXIT": "1", "GH_ARMED_OUTPUT": "true"})
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "::error::" not in result.stdout
+
+
+def test_guilt_unverifiable_arm_state_is_red_not_green(tmp_path: Path) -> None:
+    # A failed verdict read must never pass as armed (fail closed).
+    result = _run_enable_step(tmp_path, {"GH_ARMED_OUTPUT": "", "GH_ARMED_EXIT": "1"})
+    assert result.returncode != 0, result.stdout + result.stderr
 
 
 def test_paginated_file_101_cannot_hide_a_protected_path(tmp_path: Path) -> None:

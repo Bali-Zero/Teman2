@@ -1,0 +1,96 @@
+task_id: ci-whitelist-queue-flags
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor computed this run:
+#   python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source \
+#     --changed-files-file <changed> --numstat-file <numstat>
+# returns `3`, source `path`: the diff is small (24/6 in the workflow, 58/2 in its
+# test) but it edits .github/workflows/auto-merge-whitelist.yml, a hot-zone file.
+# A fix to the arming command cannot be made anywhere but in the step that arms.
+objective: >-
+  Make the auto-merge whitelist actually arm the PRs it whitelists. Measured
+  2026-09-09: dependabot PRs #5978, #5977, #5976, #5966 sat CLEAN for 6-7 hours
+  with the "Evaluate auto-merge eligibility" check GREEN. The run log of #5978
+  reads "Enabling auto-merge --squash for PR #5978" then "X Cannot use `-d` or
+  `--delete-branch` when merge queue enabled" then the step's own
+  "::warning::Auto-merge enable failed (possibly already enabled…)" and exit 0.
+  Since the merge-queue ruleset governs main, gh rejects `--squash` ("The merge
+  strategy for main is set by the merge queue") and `--delete-branch`; the step
+  swallowed the rejection as a green no-op. Every dependabot PR since the queue
+  went live has been armed by hand by whichever session noticed (superscar #2,
+  Esiste≠Armato). The cure drops both flags (the ruleset owns the method;
+  `delete_branch_on_merge` is already true on the repo) and replaces the exit-code
+  verdict with the PR's own live state: armed means autoMergeRequest set OR a
+  merge-queue entry held (W111: neither field alone answers), and anything else
+  is a RED check, so a whitelisted PR that could not be armed is visible in the
+  PR's own checks instead of in a human's memory.
+constraints:
+  - >-
+    The whitelist's scope is NOT widened: branch pattern, author allowlist and
+    protected-path steps are untouched. Only the "Enable auto-merge" step changes.
+  - >-
+    Fail closed: a GraphQL read that errors or prints anything but `true` is RED,
+    never "probably armed". An unverifiable arm state must not pass as armed.
+  - >-
+    "already queued to merge" is a non-zero gh exit that IS success. The verdict
+    therefore never reads gh's exit code; it reads the PR.
+  - >-
+    No `--no-verify`, no `--amend`, no force-push; worktree
+    .worktrees/ci-whitelist-queue-flags-0909 on branch
+    agent/air-m5/ci/whitelist-queue-flags-0909.
+acceptance:
+  - text: >-
+      A1: WHEN the step runs, the gh argv SHALL carry `--auto` and
+      `--match-head-commit <head>` and SHALL NOT carry `--squash` or
+      `--delete-branch`.
+    probe: >-
+      python3 -m pytest -q scripts/tests/test_auto_merge_whitelist.py -k
+      pinned_to_the_evaluated_head
+  - text: >-
+      A2 (guilt): WHERE gh pr merge fails AND the PR is neither armed nor queued,
+      the step SHALL exit 1 with a ::error:: naming the PR.
+    probe: >-
+      pytest -k guilt_step_goes_red_when_nothing_is_armed
+  - text: >-
+      A3 (innocence): WHERE gh pr merge exits non-zero ("already queued") AND the
+      PR holds a merge-queue entry, the step SHALL exit 0.
+    probe: >-
+      pytest -k already_queued_is_success
+  - text: >-
+      A4 (guilt): WHERE the GraphQL verdict read itself fails, the step SHALL not
+      exit 0.
+    probe: >-
+      pytest -k unverifiable_arm_state
+  - text: >-
+      A5: actionlint on the workflow SHALL report no error (style/info shellcheck
+      notes pre-existing on other steps are not errors).
+    probe: actionlint .github/workflows/auto-merge-whitelist.yml
+  - text: >-
+      A6 (Bites): the next dependabot PR opened after merge SHALL show
+      autoMergeRequest non-null or a mergeQueueEntry within one run of the check,
+      with no hand arming.
+    probe: >-
+      gh api graphql … pullRequest(number:<N>){autoMergeRequest{enabledAt} mergeQueueEntry{state}}
+assumptions:
+  - text: >-
+      The merge-queue ruleset `merge-queue-main` (merge_method SQUASH) is active
+      on main, so the method flag is redundant and rejected.
+    status: verified
+    probe: >-
+      gh api repos/{owner}/{repo}/rulesets/19779175 → enforcement active,
+      merge_method SQUASH; #5978 log shows the rejection verbatim.
+  - text: >-
+      `delete_branch_on_merge` is on, so dropping `--delete-branch` loses nothing.
+    status: verified
+    probe: gh api repos/{owner}/{repo} --jq .delete_branch_on_merge → true
+  - text: >-
+      GITHUB_TOKEN can read autoMergeRequest/mergeQueueEntry via GraphQL on a
+      pull_request event in this repo.
+    status: unverified
+    probe: >-
+      the same read is what scripts/queue_unstick.py and queue_stall_classifier.py
+      perform with a repo-read principal; the check itself goes RED (not green) if
+      the read is denied, which is the safe direction.
+appetite:
+  wall_clock_hours: 2
