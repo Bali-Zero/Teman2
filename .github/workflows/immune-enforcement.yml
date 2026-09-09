@@ -591,6 +591,7 @@ jobs:
             scripts/tests/test_required_context_map.py \
             scripts/tests/test_check_required_workflow_conformance.py \
             scripts/tests/test_unreachable_workflow_conditions.py \
+            scripts/tests/test_codeql_queue_upload_never.py \
             scripts/tests/test_canon_blocks.py \
             scripts/tests/test_lint_trigger_symmetry.py \
             scripts/tests/test_door_canon_parity.py ; do

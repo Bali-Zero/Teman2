@@ -716,6 +716,15 @@ jobs:
         uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           category: "/language:${{matrix.language}}"
+          # merge_group: analyse, never upload. The queue's temporary ref
+          # (refs/heads/gh-readonly-queue/main/pr-N-<sha>) is deleted the moment
+          # the group is rebuilt or merged, and the SARIF upload at the END of a
+          # 15-min python analysis then fails with "ref ... not found" — 4 of the
+          # 14 merge_group runs on 2026-09-09 went red exactly this way, on a
+          # commit the queue had already moved past. The PR lane uploaded the
+          # same findings minutes earlier and the daily schedule covers main, so
+          # the queue run only has to prove the analysis still builds and passes.
+          upload: ${{ github.event_name == 'merge_group' && 'never' || 'always' }}
 
   bandit:
     name: Bandit Python Security
