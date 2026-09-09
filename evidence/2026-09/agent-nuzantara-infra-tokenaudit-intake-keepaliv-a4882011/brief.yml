@@ -1,0 +1,59 @@
+task_id: tokenaudit-intake-keepalive
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Make tokenaudit action 50 permanent in the repo canon: raise
+  INTAKE_OLLAMA_KEEP_ALIVE in infra/launchagents/com.nuzantara.intake-worker.plist
+  from 5s to 15m. With 5s the intake worker unloads its Ollama model after every
+  poll and reloads it on the next one.
+
+  Grounding, measured on Pro (not assumed): `llama-server started in` lines per
+  hour in ~/logs/ollama-single-manager.log — 13/h before the live edit, 5-6/h
+  after (2h night windows, tokenaudit CHANGELOG 2026-09-02 02:26); night cohort
+  00-04h across four days: 12.0/h, 11.2/h, 15.2/h, then 5.2/h on 2026-09-02
+  (same hourly population, -55/-66 %). The live edit was reverted by pro-healer
+  within 20 minutes because the plist is a declared HOME-fork pair
+  (infra/home-fork/declared-pairs.json) — tokenaudit D-017: on a declared pair
+  the REPO is the only side that can carry the value.
+
+  Gear 3 is the deterministic floor (hot-zone path infra/launchagents/), not a
+  judgment: the diff is one value plus a comment.
+constraints:
+  - "One file, one value: no wrapper, script or test is touched. The live
+    ~/Library/LaunchAgents copy is NOT edited by this PR — the healer realigns
+    it from canon (that is the whole point, D-017)."
+  - "15m must stay inside ollama-single-manager's own budget (MAX_LOADED=2,
+    KEEP_ALIVE=30m): the manager, not the worker, is the memory authority."
+  - "No secrets, no PII: the plist carries only environment values for a local
+    worker; the diff adds a comment and changes one string."
+acceptance:
+  - text: >
+      The canon plist SHALL carry INTAKE_OLLAMA_KEEP_ALIVE=15m and SHALL remain
+      a valid property list for both plutil and Python plistlib (the audit
+      tooling reads it with plistlib — plutil alone has accepted plists that
+      plistlib rejects, memory 2026-08-31).
+    status: verified
+    probe: 'plutil -lint infra/launchagents/com.nuzantara.intake-worker.plist && python3 -c "import plistlib;print(plistlib.load(open(''infra/launchagents/com.nuzantara.intake-worker.plist'',''rb''))[''EnvironmentVariables''][''INTAKE_OLLAMA_KEEP_ALIVE''])"'
+  - text: >
+      WHEN pro-healer's home-fork-drift cure runs after merge, the live copy on
+      Pro SHALL read 15m and the loaded job SHALL carry that value; the hourly
+      llama-server load count SHALL stay at the 5-6/h level rather than return
+      to 13/h.
+    status: pending
+    probe: "plutil -extract EnvironmentVariables.INTAKE_OLLAMA_KEEP_ALIVE raw ~/Library/LaunchAgents/com.nuzantara.intake-worker.plist; grep -c 'llama-server started in' ~/logs/ollama-single-manager.log  # per-hour, post-merge"
+risks:
+  - "The full-day Ollama measurement matures only at the end of 2026-09-02; the
+    -55/-66 % figure is a night-cohort comparison (same hours, four days), the
+    daytime magnitude is still unmeasured — declared, not filled with a
+    plausible number (tokenaudit R9)."
+  - "A warm model holds ~6 GB for up to 15m between polls; on a saturated Pro
+    (swap 10 GB measured 2026-09-01) that is memory the sessions do not get.
+    Bounded by the manager's MAX_LOADED=2 cap, which is already in force."
+instruction_to_the_grader: |
+  The change under review is one string in one plist. Grade the evidence, not
+  the size: (1) is the plist valid for plistlib, not just plutil; (2) does the
+  rationale's measurement exist in the named log with the named counts; (3) is
+  the claimed budget (MAX_LOADED=2 / KEEP_ALIVE=30m) really what
+  ollama-single-manager.sh carries today. The pack's receipts point at each.
+pii: none

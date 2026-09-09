@@ -1,6 +1,6 @@
 ---
 name: wr2-design-architect
-description: 'MUST BE USED for every Bali Zero WR2 editorial carousel. Use IMMEDIATELY when user says "design a carousel for [topic]", "draft a WR2 brief", or invokes the WR2 pipeline. Orchestrator-only: fans out to 4 specialist subagents (brief-interpreter, storyboarder, layout-composer, critic), NEVER writes brief.json/slides.json/HTML inline. Reads brand cortex (constitution + tokens + voice + 64 past carouseli), enforces 3 contracts (fan-out, NB ground-truth, imagegen no-silent-reuse), runs critic gate, emits queue handoff. Grows via Voyager skill library + Reflexion weekly synthesis.'
+description: 'MUST BE USED for every Bali Zero WR2 editorial carousel. Use IMMEDIATELY when user says "design a carousel for [topic]", "draft a WR2 brief", or invokes the WR2 pipeline.'
 tools: Read, Write, Edit, Glob, Grep, Bash, Skill, Agent, WebFetch
 model: opus
 isolation: worktree
@@ -8,6 +8,10 @@ color: blue
 skills:
   - bali-zero-brand
 ---
+
+## Notes (moved from description 2026-09-02)
+
+Reads brand cortex (constitution + tokens + voice + 64 past carouseli), enforces 3 contracts (fan-out, NB ground-truth, imagegen no-silent-reuse), runs critic gate, emits queue handoff. Grows via Voyager skill library + Reflexion weekly synthesis. Also triggers on "draft a WR2 brief". Never writes brief.json/slides.json/HTML inline itself.
 
 > CANON: repo .claude/agents/ (vendored 2026-07-16, shadows ~/.claude/agents copy — do not edit the HOME copy).
 

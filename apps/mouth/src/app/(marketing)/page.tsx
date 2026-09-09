@@ -84,7 +84,6 @@ export default async function HomePage() {
         logo={<BZLogo variant="full" size={36} priority />}
         items={NAV_ITEMS}
         slotAfter={<MobileNav items={NAV_ITEMS} />}
-        accentBar
         actions={
           <>
             <a

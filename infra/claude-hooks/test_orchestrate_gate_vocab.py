@@ -110,6 +110,24 @@ def test_innocence_sidechain_marker_counts():
     assert run_gate(_transcript(['{"isSidechain":true,"role":"assistant"}'])) == 0
 
 
+def test_innocence_send_message_to_existing_agent_counts():
+    """W2 hook-canon repair, defect 2 (2026-09-07): delegating to an ALREADY-LIVE
+    agent is legitimate orchestration and must count exactly like a new Agent
+    dispatch — a session that reuses a live subagent instead of spawning a
+    redundant one was previously penalised identically to a session that
+    delegates nothing at all."""
+    text = _transcript(['{"type":"tool_use","name":"SendMessage","input":{"to":"w1-builder"}}'])
+    assert run_gate(text) == 0
+
+
+def test_guilt_send_message_older_than_the_window_still_blocks():
+    """Same recency rule as any other dispatch evidence: a delegation 400
+    lines ago does not license the next 400 lines of direct work."""
+    old = ['{"name":"SendMessage","input":{"to":"w1-builder"}}']
+    text = _transcript(old + [SHAPE] * 400)
+    assert run_gate(text) == 2
+
+
 # ── innocence: the gate must stay out of the way elsewhere ───────────────────
 
 def test_innocence_short_session_never_blocks():

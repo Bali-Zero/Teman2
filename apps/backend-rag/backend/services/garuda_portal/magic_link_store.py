@@ -84,6 +84,7 @@ from backend.services.garuda_portal.magic_link import (
     MAGIC_LINK_TTL_MINUTES,
     ExchangeOutcome,
     IssueOutcome,
+    PeekOutcome,
     PersistencePolicyUnavailable,
     RateLimited,
 )
@@ -161,7 +162,20 @@ async def _default_send_magic_link_email(*, email: str, result_id: str, raw_toke
             resp = await client.post(
                 api_url,
                 headers={"X-API-Key": api_key},
-                json={"to": email, "subject": "Your Bali Zero VOA result link", "body": html_body},
+                json={
+                    "to": email,
+                    "subject": "Your Bali Zero VOA result link",
+                    "body": html_body,
+                    # DECLARED, not incidental. Without this the send
+                    # choke-point classifies the mail as ordinary client
+                    # correspondence and copies a Bali Zero address in --
+                    # which on THIS message means handing a staff member a
+                    # working login for the customer's own application.
+                    # `garuda_magic_link` is in the notifications router's
+                    # `_CREDENTIAL_DELIVERY_EMAIL_TYPES`, the set that gets
+                    # cc AND bcc stripped.
+                    "email_type": "garuda_magic_link",
+                },
             )
             resp.raise_for_status()
         logger.info("garuda_magic_link: email dispatched via Brevo")
@@ -456,6 +470,44 @@ class PostgresMagicLinkStore:
             account_session_secret=raw_secret,
             idempotency_replayed=False,
         )
+
+    async def peek(self, *, token: str) -> PeekOutcome:
+        """Non-consuming lookup for `previewMagicLink` -- a SELECT, never an
+        UPDATE. `exchange`'s atomic UPDATE is what makes the token single-
+        use; this method must never touch `used_at`, or a preview would
+        spend the very credential it exists to describe without spending.
+
+        Mirrors `exchange`'s WHERE clause exactly (`used_at IS NULL AND
+        expires_at > statement_timestamp()`) so a token this method calls
+        valid is one `exchange` would also currently accept -- an unknown,
+        expired, or already-consumed token all fall through the same "0
+        rows" branch and produce the identical `PeekOutcome(valid=False)`,
+        matching `exchange`'s own non-enumeration posture (DECISIONS.md Q1)
+        rather than inventing a second one for this new read path.
+
+        Deliberately no idempotency reservation and no rate-limit check
+        here, for the identical reasons `exchange` documents for itself:
+        this performs no mutation (nothing to make idempotent) and the
+        anonymous-token-guessing threat this shares with `exchange` is an
+        IP-scoped concern this Protocol's signature carries no IP to key
+        on -- both routes answer under the same generic per-IP `/api/`
+        `RateLimitMiddleware` bucket instead (see the router handler's own
+        docstring).
+        """
+        token_hash = _hash_hex(token)
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT email FROM garuda_magic_link_tokens
+                 WHERE token_hash = $1
+                   AND used_at IS NULL
+                   AND expires_at > statement_timestamp()
+                """,
+                token_hash,
+            )
+        if row is None:
+            return PeekOutcome(valid=False)
+        return PeekOutcome(valid=True, email=row["email"])
 
 
 __all__ = ["PostgresMagicLinkStore"]

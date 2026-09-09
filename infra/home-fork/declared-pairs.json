@@ -412,6 +412,30 @@
       "machines": ["all"]
     },
     {
+      "live": "~/.claude/hooks/context_window_guard.py",
+      "repo": "infra/claude-hooks/context_window_guard.py",
+      "_note": "Declared at birth (2026-09-09, PR #5969 follow-up) and armed the same day on M5/Pro/Mini by the shipping session per Ruling Zero 2026-09-09 (HOME registrations are the session's job); the healer keeps the three live copies aligned to canon. The per-seat window override lives in ~/.claude/settings.json env (CONTEXT_WINDOW_TOKENS), not in this file.",
+      "machines": ["all"]
+    },
+    {
+      "live": "~/.claude/hooks/window_jump.sh",
+      "repo": "infra/claude-hooks/window_jump.sh",
+      "_note": "Window jump (Ruling Zero 2026-09-09, research/operations/2026-09-09-window-jump-automatic-handoff-it.md). Declared at birth; armed by the shipping session on the seats where it applies. The GESTURE: AppleScript ⌘N + nz-jump, then /exit into the old window by name. macOS+Ghostty only — Pro/Mini carry the file for parity but the guard only spawns it when TERM_PROGRAM=ghostty.",
+      "machines": ["all"]
+    },
+    {
+      "live": "~/.claude/scripts/nz-jump",
+      "repo": "infra/claude-hooks/nz-jump.sh",
+      "_note": "Window jump (Ruling Zero 2026-09-09, research/operations/2026-09-09-window-jump-automatic-handoff-it.md). Declared at birth; armed by the shipping session on the seats where it applies. The one word typed into the new window; starts a FRESH claude with the continuation prompt (never --resume/--continue/--fork-session).",
+      "machines": ["all"]
+    },
+    {
+      "live": "~/.claude/hooks/context_jump_resume.py",
+      "repo": "infra/claude-hooks/context_jump_resume.py",
+      "_note": "Window jump (Ruling Zero 2026-09-09, research/operations/2026-09-09-window-jump-automatic-handoff-it.md). Declared at birth; armed by the shipping session on the seats where it applies. SessionStart injector (matcher startup): injects the handoff as additionalContext and stamps to_session in pending-jump.json. Mute when no fresh unclaimed jump from this cwd.",
+      "machines": ["all"]
+    },
+    {
       "live": "~/.claude/hooks/gate_coverage.py",
       "repo": "infra/claude-hooks/gate_coverage.py",
       "_note": "K1 (2026-08-27, spec §5bis K1 in 2026-08-26-PIANO-SPEC-receptor-live.md): shared library the 4 PreToolUse gates (host_boundary/worktree_isolation/orchestrate_gate/model_routing_gate) call at every one of their own exit paths to record allow/deny/exempt — the gap between what the transcript proves was gate-eligible and what got recorded IS the fail-open rate (timeout/crash/fork failure per the official Claude Code hooks doc: a `type=command` hook that times out does not block), read by gate_coverage_report.py. New file, declared at birth so it never has an undeclared window.",
@@ -942,6 +966,18 @@
       "repo": "infra/launchagents/com.nuzantara.kb-probe-history.6h.plist",
       "machines": ["pro"],
       "_note": "The plist twin of the pair above; installed on Pro only."
+    },
+    {
+      "live": "~/.claude/hooks/bash_call_log.sh",
+      "repo": "infra/claude-hooks/bash_call_log.sh",
+      "machines": ["all"],
+      "_note": "Per-call hook diet (2026-09-09): infra/claude-hooks/install_hook_diet.py copies this into ~/.claude/hooks/ on install, replacing three separate inline PostToolUse Bash loggers in settings.json with one registration. Declared so a future fix landing in the repo does not go silently unsynced on a machine that already ran the installer once (superscar #1)."
+    },
+    {
+      "live": "~/.claude/hooks/redact_secrets.py",
+      "repo": "infra/claude-hooks/redact_secrets.py",
+      "machines": ["all"],
+      "_note": "Sidecar of bash_call_log.sh above, installed alongside it by the same installer — the earliest-anchor secret-redaction pattern applied to command-history.log (superscar #4 lineage, ported from .claude/hooks/codex-spalla-trigger.sh)."
     }
   ],
   "allow": [

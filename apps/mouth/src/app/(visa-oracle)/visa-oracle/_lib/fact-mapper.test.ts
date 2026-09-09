@@ -1,3 +1,4 @@
+import { APPLICANT_FACT_COUNT } from "@/lib/api/applicant-fact-paths";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -42,7 +43,7 @@ import {
 // on every call like every other key — KNOWN when answered, otherwise an
 // explicit UNKNOWN (NOT_ASKED by default), never omitted. The key is still
 // optional on the wire (models.py keeps a transitional default so older
-// 40-key clients don't 422) but the frontend contract is now the full 41.
+// 40-key clients don't 422) but the frontend emits the complete contract.
 //
 // Widened again 2026-08-23 (owner ruling — Visa Oracle fact vocabulary
 // extension, vocabulary-only, no rule change): three more optional/defaulted
@@ -51,7 +52,7 @@ import {
 // `family.stepchild_birth_certificate_confirmed` and
 // `family.sponsor_permit_basis`. Same posture as `sponsor.type`: this mapper
 // emits all three on every call, KNOWN when answered, otherwise an explicit
-// UNKNOWN, never omitted — the frontend contract is now the full 44.
+// UNKNOWN, never omitted — the frontend emits the complete contract.
 // ---------------------------------------------------------------------------
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -121,8 +122,8 @@ function representativeAnswer(question: OracleQuestion): string {
 describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)", () => {
   const backendPaths = extractApplicantFactPathsFromModelsPy();
 
-  it("sanity: the backend contract has 45 fact paths, sponsor.type included", () => {
-    expect(backendPaths.length).toBe(45);
+  it("sanity: the backend contract matches the generated fact count, sponsor.type included", () => {
+    expect(backendPaths.length).toBe(APPLICANT_FACT_COUNT);
     expect(backendPaths).toContain("sponsor.type");
     expect(backendPaths).toContain(
       "family.stepchild_marriage_certificate_confirmed",
@@ -134,13 +135,13 @@ describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)",
     expect(backendPaths).toContain("immigration.renewal_paid");
   });
 
-  it("emits exactly the 45 backend fact-path keys, sponsor.type included", () => {
+  it("emits exactly the backend fact-path keys, sponsor.type included", () => {
     const result = mapFacts({});
     const actualKeys = Object.keys(result.facts).sort();
     expect(actualKeys).toEqual([...backendPaths].sort());
   });
 
-  it("still emits exactly those 45 keys on a fully-answered interview (no extra keys sneak in)", () => {
+  it("still emits exactly those contract keys on a fully-answered interview (no extra keys sneak in)", () => {
     const result = mapFacts({
       in_indonesia: "yes",
       permit_expiry: "2026-08-01",
@@ -172,12 +173,63 @@ describe("question registry -> wire coverage", () => {
     }
   });
 
+  // Re-stated 2026-09-06 (spec §4 PR-4 + owner ruling decision 6): the flag is
+  // raised for an ANSWER the signed vocabulary cannot decide, never for the
+  // fact that a question was answered. The pairs that must NOT flag are pinned
+  // directly below — guilt and innocence of the same table.
+
+  // 2026-09-06, owner ruling 6. `work_role` sat fifth in the fixed `work`
+  // sequence, so it was ALWAYS answered, so this presence-triggered flag
+  // was ALWAYS attached — and any disclosed flag is terminal backend-side
+  // (`_apply_disclosed_review_flags` rewrites the decision with zero
+  // candidates). E23, the one product seq-19 answers cleanly for an
+  // employment interview, was therefore never shown to anybody. Measured
+  // offline against the signed seq-19 pack, this exact fact set: with the
+  // flag `HUMAN_REVIEW_REQUIRED` / 0 candidates, without it
+  // `SUPPORTED_CANDIDATES [E23]`.
+  it("guilt: a completed work interview attaches NO disclosed review flag", () => {
+    expect(
+      mapFacts({
+        category: "work",
+        sponsor_category: "EMPLOYER",
+        work_payer: "yes",
+        work_indonesia_compensation: "yes",
+        work_sponsor_confirmed: "yes",
+        stay_days: "365",
+        trip_scope: "single",
+        review_gate: "none",
+      }).disclosed_review_flags,
+    ).toEqual([]);
+  });
+
+  it("innocence: the other presence-triggered clauses are untouched by that deletion", () => {
+    // `business_activity` USED to be pinned here, with the condition that PR-4
+    // owns its removal "only AFTER the seq-20 fold compiles the D2
+    // local-compensation prohibition — removing it before that is a measured
+    // fail-open". That condition is now MET: rule-pack seq-20 was signed
+    // (payload_sha256 df02287b…) and activated in production on 2026-09-06,
+    // and it carries the EXCLUDE `hf.d2.indonesia-source-compensation`. The
+    // prohibition the flag was standing in for is therefore enforced by the
+    // signed vocabulary itself, so the pair moves to the must-NOT-flag table
+    // below rather than being deleted — the assertion changed sides, it did
+    // not disappear. Measured live the same day: `offshore/business` returns
+    // NO_SUPPORTED_PATH with `BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED`.
+    //
+    // `diaspora_connection`/`diaspora_documents` released 2026-09-08 for the
+    // SAME reason (measured 2026-09-07: all 15 corpus diaspora walks reach
+    // SUPPORTED_CANDIDATES with `disclosed_review_flags=[]`) — moved out of
+    // this list to the must-NOT-flag table below, `former_wni` included.
+    for (const [id, value] of [["other_purpose", "medical"]] as const) {
+      expect(mapFacts({ [id]: value }).disclosed_review_flags).toContain(
+        "ACTIVITY_BOUNDARY",
+      );
+    }
+  });
+
   it.each([
     ["trip_scope", "multiple", "MULTI_PURPOSE_TRIP"],
-    ["business_activity", "meetings", "ACTIVITY_BOUNDARY"],
-    ["work_role", "specialist", "ACTIVITY_BOUNDARY"],
-    ["tourism_duration", "short", "ACTIVITY_BOUNDARY"],
-    ["remote_income", "above", "ACTIVITY_BOUNDARY"],
+    ["business_activity", "training", "ACTIVITY_BOUNDARY"],
+    ["business_activity", "other", "ACTIVITY_BOUNDARY"],
     ["investment_vehicle", "property", "ACTIVITY_BOUNDARY"],
     ["retirement_basis", "property", "ACTIVITY_BOUNDARY"],
     ["family_sponsor_status_code", "FOO", "AMBIGUOUS_SPONSOR"],
@@ -187,9 +239,32 @@ describe("question registry -> wire coverage", () => {
     ["other_purpose", "medical", "ACTIVITY_BOUNDARY"],
     ["other_paid_activity", "yes", "ACTIVITY_BOUNDARY"],
   ])(
-    "maps HUMAN_CONTEXT %s to a conservative review flag",
+    "maps an undecidable HUMAN_CONTEXT answer (%s=%s) to a conservative review flag",
     (id, value, flag) => {
       expect(mapFacts({ [id]: value }).disclosed_review_flags).toContain(flag);
+    },
+  );
+
+  it.each([
+    ["business_activity", "meetings"],
+    ["business_activity", "negotiation"],
+    ["business_activity", "conference"],
+    ["investment_vehicle", "pt_pma"],
+    ["retirement_basis", "bank_deposit"],
+    ["retirement_basis", "passive_income"],
+    // Engine-inert: no rule reads a work role (owner ruling, decision 6).
+    // All five options are swept in `activity-boundary.test.ts`.
+    ["work_role", "specialist"],
+    // Released 2026-09-08 — see the "innocence" test above for the measurement.
+    ["diaspora_connection", "former_wni"],
+    ["diaspora_connection", "descendant"],
+    ["diaspora_connection", "family"],
+    ["diaspora_documents", "yes"],
+    ["diaspora_documents", "no"],
+  ])(
+    "leaves a decidable answer (%s=%s) unflagged — it must not veto a proven candidate",
+    (id, value) => {
+      expect(mapFacts({ [id]: value }).disclosed_review_flags).toEqual([]);
     },
   );
 });
@@ -395,14 +470,27 @@ describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
   it("is reachable (and answers KNOWN) on every category branch that asks it", () => {
     // The categories where the sponsor discriminates (design choice, see
     // FIXED_CATEGORY_QUESTIONS/getCategoryQuestionIds in flow.ts): work,
-    // remote, study, invest, retirement, family. Derived from the flow
+    // remote, study, invest, retirement, family — and, since 2026-09-06,
+    // diaspora, which now serves the FAMILY question set verbatim (owner
+    // ruling 4) and therefore inherits its `sponsor_category`. `second_home`
+    // deliberately does NOT ask it: no E33 rule reads `sponsor.type`, and
+    // every question carries `notSure: { mode: "human-review" }`, so a
+    // ceremonial one could only add review volume. Derived from the flow
     // graph itself, not hardcoded, so this test breaks if a branch's
     // question list changes without this describe block being revisited.
     const categoriesAsking = CATEGORY_KEYS.filter((category) =>
       getCategoryQuestionIds({ category }).includes("sponsor_category"),
     );
     expect([...categoriesAsking].sort()).toEqual(
-      ["family", "invest", "remote", "retirement", "study", "work"].sort(),
+      [
+        "diaspora",
+        "family",
+        "invest",
+        "remote",
+        "retirement",
+        "study",
+        "work",
+      ].sort(),
     );
     for (const category of categoriesAsking) {
       const result = mapFacts({ category, sponsor_category: "EMPLOYER" });
@@ -417,7 +505,7 @@ describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
     for (const category of [
       "tourism",
       "business",
-      "diaspora",
+      "second_home",
       "other",
     ] as const) {
       expect(getCategoryQuestionIds({ category })).not.toContain(
@@ -428,7 +516,7 @@ describe("mapSponsorType — sponsor_category -> sponsor.type", () => {
 });
 
 describe("mapPurposes — category -> intent.purposes", () => {
-  it("maps every tile with a clean VisaPurpose match (all except diaspora)", () => {
+  it("maps every tile with a clean VisaPurpose match", () => {
     for (const [tile, purpose] of Object.entries(CATEGORY_TO_PURPOSE)) {
       expect(mapPurposes({ category: tile })).toEqual({
         status: "KNOWN",
@@ -437,23 +525,43 @@ describe("mapPurposes — category -> intent.purposes", () => {
     }
   });
 
-  it("diaspora has no clean VisaPurpose match -> UNKNOWN NOT_APPLICABLE", () => {
+  // Owner ruling 4 (2026-09-06) reversed the previous "diaspora is
+  // represented only by request_category" design. It was not a
+  // simplification: `mapPurposes` returned UNKNOWN(NOT_APPLICABLE), so
+  // every diaspora interview dead-ended in NEEDS_INPUT on `intent.purposes`
+  // — a fact the interview HAD collected — no matter what else the
+  // applicant answered.
+  it("diaspora maps to FAMILY, the purpose of the products it actually reaches (E31C/E31F)", () => {
     expect(mapPurposes({ category: "diaspora" })).toEqual({
-      status: "UNKNOWN",
-      reason: "NOT_APPLICABLE",
+      status: "KNOWN",
+      value: ["FAMILY"],
     });
   });
 
-  it("every one of the 10 CATEGORY_KEYS tiles is handled (mapped or explicitly diaspora)", () => {
+  // Owner ruling 3: SECOND_HOME must be the ONLY declared purpose. The
+  // pack's `hit_policy.eligibility = COVER_ALL_DECLARED_PURPOSES` drops
+  // E33 the moment a second purpose rides along, so a second_home tile
+  // that also emitted RETIREMENT would be a silent no-path.
+  it("second_home emits SECOND_HOME alone, never joined to RETIREMENT", () => {
+    expect(mapPurposes({ category: "second_home" })).toEqual({
+      status: "KNOWN",
+      value: ["SECOND_HOME"],
+    });
+  });
+
+  it("every one of the CATEGORY_KEYS tiles now yields a KNOWN purpose", () => {
     for (const tile of CATEGORY_KEYS) {
       const result = mapPurposes({ category: tile });
       assertValidFactValue(result);
-      if (tile === "diaspora") {
-        expect(result).toEqual({ status: "UNKNOWN", reason: "NOT_APPLICABLE" });
-      } else {
-        expect(result.status).toBe("KNOWN");
-      }
+      expect(result.status, `${tile} must map to a purpose`).toBe("KNOWN");
     }
+  });
+
+  it("guilt: a category outside CATEGORY_KEYS is UNKNOWN, never guessed into a purpose", () => {
+    expect(mapPurposes({ category: "not-a-tile" })).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_APPLICABLE",
+    });
   });
 
   it("category never asked -> UNKNOWN NOT_ASKED", () => {
@@ -744,15 +852,17 @@ describe("family sponsor status — unverified human context", () => {
   });
 });
 
-describe("remote_income — no FactPath exists, never invented", () => {
-  it("does not invent a FactPath and instead adds a monotone review hold", () => {
+describe("remote_income — a dead question id, never invented", () => {
+  it("does not invent a FactPath, and no longer holds on a question tree.ts does not have", () => {
+    // One of the 2 dead legacy nodes (pinned absent by `tree.test.ts`), so its
+    // ACTIVITY_BOUNDARY clause was unreachable code, not a live guard.
     const base: OracleFacts = { category: "remote", remote_clients: "foreign" };
     const withIncome: OracleFacts = { ...base, remote_income: "above" };
     const before = mapFacts(base);
     const after = mapFacts(withIncome);
     expect(after.facts).toEqual(before.facts);
     expect(before.disclosed_review_flags).toEqual([]);
-    expect(after.disclosed_review_flags).toEqual(["ACTIVITY_BOUNDARY"]);
+    expect(after.disclosed_review_flags).toEqual([]);
   });
 
   it("is never one of the 40 emitted keys", () => {

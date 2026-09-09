@@ -1,0 +1,43 @@
+parent_pr: 5785
+source_sha256:
+  .github/workflows/tests.yml: ac5a3f3caf89e61ac61930b4da7e2a77aac71e98fba0937303e1d7103831d8fc # pragma: allowlist secret - verified artifact SHA-256, not credential
+  scripts/tests/test_required_context_map.py: 193ab0b14a215c727366133ddd63af157d72c0d171c58cf073abcac658cf0549 # pragma: allowlist secret - verified artifact SHA-256, not credential
+reviews:
+  - seat: codex-gpt-5.6-sol
+    command:
+      - /opt/homebrew/bin/codex
+      - exec
+      - --sandbox
+      - read-only
+      - --skip-git-repo-check
+      - -m
+      - gpt-5.6-sol
+      - -c
+      - model_reasoning_effort=high
+      - <supplied prompt>
+    started_at: "2026-09-05T13:53:30.009373+00:00"
+    prompt_sha256: 4bfee88bca86811bc17460f620e981309d386576bab04e864a740978cb938e94 # pragma: allowlist secret - verified artifact SHA-256, not credential
+    timeout_seconds: 240
+    exit: 0
+    finished_at: "2026-09-05T13:53:49.451160+00:00"
+    stdout_sha256: 63558092bc83e93ebc96e4889fc818cff7ded1a8a682f0ee9f767659a9cfbd2b # pragma: allowlist secret - verified artifact SHA-256, not credential
+    committed_answer_sha256: 63558092bc83e93ebc96e4889fc818cff7ded1a8a682f0ee9f767659a9cfbd2b # pragma: allowlist secret - verified artifact SHA-256, not credential
+  - seat: kimi-code/k3
+    command:
+      - /Users/balizero/.kimi-code/bin/kimi
+      - -m
+      - kimi-code/k3
+      - -p
+      - <supplied prompt>
+    started_at: "2026-09-05T13:53:30.019981+00:00"
+    prompt_sha256: 4bfee88bca86811bc17460f620e981309d386576bab04e864a740978cb938e94 # pragma: allowlist secret - verified artifact SHA-256, not credential
+    timeout_seconds: 240
+    exit: 0
+    finished_at: "2026-09-05T13:54:25.094012+00:00"
+    stdout_sha256: 592eca4c6663640f8e9b818b9106de476af612e5179d5a454e3b637a6c3d544e # pragma: allowlist secret - verified artifact SHA-256, not credential
+    committed_answer_sha256: dbdb7e9c39f8a4078ff3f91939e13d48d79413a47521f8172e3b4d24263c6221 # pragma: allowlist secret - verified artifact SHA-256, not credential
+notes:
+  - Final re-review after the first Kimi wording nit; both final seats PASS.
+  - Committed answers trim trailing blank lines only; raw stdout hashes bind the local originals.
+  - Both calls used only HOME PATH LANG LC_ALL TERM TMPDIR USER SHELL environment keys, with existing subscription
+    OAuth.

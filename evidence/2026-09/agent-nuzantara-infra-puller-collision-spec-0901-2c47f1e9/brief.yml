@@ -1,0 +1,188 @@
+task_id: puller-collision-spec-0901
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Stop patching the Pro main puller's collision resolver one shape at a time.
+  Enumerate the surface instead: an executable matrix that measures every
+  (local state x incoming action x allowlist policy) cell against a reviewed
+  baseline, plus the spec that says which cells are defects and why.
+
+  This ships NO behaviour change to scripts/pro/pro-git-pull.sh. It is the
+  builder contract's own prescription, applied literally:
+
+    "a fix-of-a-fix stops at depth 1 - if the correction is itself wrong,
+     the surface is under-specified, so write the spec."
+
+  Three consecutive adversarial passes over one small change each found "the
+  shape nobody asked about", and each cure was itself wrong about a
+  neighbouring shape:
+
+    PR #5492 refuter  --no-renames newly admits REMOVED paths; one the
+                      worktree already deleted wedges the tick forever.
+                      Cure: skip removals of already-absent paths. The PR
+                      had asserted the shape was INHERITED. It was not.
+    PR #5496 gate     that guard's removal test is `git cat-file -e`, which
+                      answers "is there ANY object here" - so a directory
+                      standing at the removed file's name resolves as a TREE,
+                      the guard silently declines, and `cp -p` runs on a file
+                      that is not there.
+
+  Measured on origin/main at 5f174b4126: 102 cells, of which 50 behave
+  correctly and 52 do not, in six named classes. Only the FIRST class is the
+  defect the --no-renames work set out to fix.
+constraints:
+  - "NO behaviour change. scripts/pro/pro-git-pull.sh is not touched by this
+    diff at all. The register is a measurement of origin/main as it stands,
+    not a cure - so the reviewer's question is 'does it measure truly', never
+    'does it fix correctly'. Curing a cell means moving it AND rewriting its
+    baseline row in the same diff, which is what makes a future cure
+    reviewable."
+  - "Classify the incoming action by the TYPE of the object at $REMOTE:$f -
+    blob, tree, or absent - NEVER by its EXISTENCE. This is the design rule
+    the whole surface's defect history reduces to, and it binds the
+    INSTRUMENT as much as any future cure: an assertion that asks an
+    existence question is the same defect wearing a test's clothes."
+  - "A cell that moves in EITHER direction fails. A KNOWN_BAD that silently
+    becomes OK is an unreviewed behaviour change, and this surface's entire
+    history is unreviewed behaviour changes that looked like improvements."
+  - "The machine never writes the judgement. The runner measures seven fields
+    per cell and diffs fields 1-7 only; the eighth column - the verdict - is
+    human-written and --write-baseline can never overwrite it from a partial
+    run."
+  - "The filesystem is a declared COORDINATE, not an assumption. The
+    rename_case_only axis measures a defect that exists only where the
+    filesystem folds case; on a case-sensitive volume those cells still RUN
+    but measure a different phenomenon. The runner probes the volume and
+    holds the axis out rather than measuring the wrong thing quietly."
+acceptance:
+  - text: >
+      WHEN the enumerator runs on a case-FOLDING volume, it SHALL measure all
+      102 cells and report every one matching the reviewed baseline.
+    status: verified
+    probe: "CI job collision-matrix-case-folding on macos-latest, run 33530625598 @ bcd4643a6a: 'filesystem: case-FOLDING - all 7 origin actions in scope' / 'cells measured: 102  baseline: 102' / 'MATRIX STABLE'"
+  - text: >
+      WHEN the enumerator runs on a case-SENSITIVE volume, it SHALL hold out
+      the 14 rename_case_only rows, measure the remaining 88, and say so in
+      its own output - never report a green run over a silently narrowed set.
+    status: verified
+    probe: "CI job antidotes on ubuntu, run 33530625598 @ bcd4643a6a: 'filesystem: case-SENSITIVE - SKIPPING the rename_case_only axis' / 'cells measured: 88  baseline: 102 minus 14 held out'"
+  - text: >
+      IF the macOS runner were ever handed a case-SENSITIVE filesystem, the
+      case-folding job SHALL go RED rather than measure 88 cells and pass -
+      a green run there must mean the axis was actually exercised.
+    status: unverified
+    probe: >-
+      NEGATIVE BRANCH NEVER FIRED, by anyone. Corrected 2026-09-02 after an independent grader
+      named this as the one criterion nobody exercised: GitHub's macos-latest is APFS, every
+      machine in this fleet is APFS, and the in-YAML step (unlike the in-script fs_folds_case(),
+      which WAS forced and is receipted) cannot be patched to take its other path. Only the
+      POSITIVE branch has been observed - 'runner folds case - the rename_case_only axis is in
+      scope' @ bcd4643a6a. The logic is three lines and correct by inspection, but inspection is
+      not a run, and this criterion previously said `verified` on the strength of one.
+  - text: >
+      WHERE the volume cannot be probed at all, the runner SHALL abort (exit
+      3) rather than guess a coordinate it could not measure.
+    status: verified
+    probe: "fs_folds_case() returns 2 on any probe failure; caller's `*)` arm is a FATAL exit 3, not a fallback to either branch"
+  - text: >
+      WHEN a fixture is built wrong - a tree built empty, misnamed, carrying
+      an extra file, a rename whose destination did not move, a degenerate
+      case-only rename, or a regular file forged to carry a symlink target's
+      exact bytes - the run SHALL abort instead of recording a cell that
+      measured something else.
+    status: verified
+    probe: "5-sabotage guilt corpus, each CAUGHT on the correct origin action (modify / rename_away / tree_at_path x2 / rename_case_only), with the un-sabotaged innocence run green at 102/102"
+  - text: >
+      WHILE the baseline is compared, the runner SHALL assert the OBJECT at
+      each probed path - mode, type and blob SHA - and never its silhouette,
+      so a wrong-content fixture cannot satisfy an assertion by shape alone.
+    status: verified
+    probe: "four ls-tree probes carry `$1 $2 $3` (mode/type/sha) against hashes derived from the fixture constants via git hash-object, plus a recursive blob count under the path"
+  - text: >
+      WHERE --write-baseline is invoked from a run that could not measure
+      every axis, it SHALL REFUSE rather than write a baseline narrowed by
+      the volume it happened to run on.
+    status: verified
+    probe: "--write-baseline refuses when SKIP_ACTIONS is non-empty"
+  - text: >
+      WHEN a baseline row carries a verdict, that verdict SHALL be argued -
+      every KNOWN_BAD carries a reason, and so does every OK whose measured
+      fields show a backup was taken on a path with no local file.
+    status: verified
+    probe: "the runner's `unjudged` awk guard rejects a row missing a verdict, a KNOWN_BAD with an empty reason, and the optimistic-side OK/backup=file/non-file case"
+  - text: >
+      WHILE the RESULT is measured, the runner SHALL assert the surviving object's CONTENT and not
+      a truncated sample of it — the same rule already imposed on the origin side — so a file
+      corrupted past the sampled prefix cannot report an unchanged outcome.
+    status: verified
+    probe: >-
+      two files sharing the fixture's first 14 bytes and diverging after produced an IDENTICAL
+      `outcome` before the cure (measured by an independent grader) and differ by blob hash after
+      it; the field now reads `file:<prefix>:<8hex>`.
+  - text: >
+      WHERE the exact spelling of a path is absent from the directory listing but the path still
+      RESOLVES (a case-only rename on a folding volume), the runner SHALL report a distinct
+      outcome carrying the surviving content, never the same `absent` a real content loss prints.
+    status: verified
+    probe: >-
+      all 14 rename_case_only cells moved from `absent` to `case-renamed:subject.md:10ed6daf`,
+      and 10ed6daf is origin's base blob — which is what made four previously-`OK` cells
+      recognisable as content loss with the puller unchanged.
+risks:
+  - "THE VERDICT COLUMN IS THE UNGUARDED HALF, and it was measured to be
+    wrong. An independent audit on 2026-09-01 graded the human half for the
+    first time and found TWO false OK verdicts and FORTY reasons naming a
+    mechanism other than the one that actually fires. None of it was visible
+    to the machine: the seven measured fields were correct from the start and
+    never moved. An unargued OK is the dangerous direction - it is a defect
+    blessed in writing - which is why the guard was extended to that side."
+  - "SIX classes of KNOWN_BAD are recorded and NONE is cured here. This diff
+    makes 52 defects legible and leaves every one of them live. That is the
+    intended trade (the surface was under-specified, so the spec comes
+    first), but it must not be read as 'the puller is now safe'."
+  - "The case-only axis is only PARTLY closed and only on some volumes: a
+    case-only rename of a DIRECTORY is unmeasured everywhere (a case-only
+    rename whose source is allowlisted keep-local IS measured - all seven
+    local states x both allowlist policies - and is what produced four of
+    this pack's own KNOWN_BAD cells; an earlier revision of this bullet said
+    otherwise and was stale, corrected 2026-09-02 by a cross-family review
+    seat). A submodule/gitlink (commit object) at a renamed-away name is
+    unmeasured - and that same
+    clause produced two of the three regressions on record."
+  - "Every cell is a single tick against a quiet origin: no second puller, no
+    lock contention, no origin advancing mid-tick, and exactly one moved path
+    per cell. Real pulls move many paths, and an early abort hides the
+    behaviour of every later path in the same set."
+  - "scripts/mini/mini-git-pull.sh is a SECOND implementation of this
+    resolver and is not measured by this instrument at all. Naming it here
+    rather than widening scope: this PR is one concern."
+instruction_to_the_grader: |
+  GRADE THE INSTRUMENT, NOT THE PULLER. This diff changes no runtime
+  behaviour. The question is whether the matrix MEASURES TRULY - so the
+  productive attack is a fixture that lies, not a defect in resolve_collisions()
+  (there are 52 of those and they are all declared).
+
+  Read the BASELINE'S REASONS as claims to be defeated, not as documentation.
+  Stated because it was measured today: the reason text on 28 rows named a
+  mechanism that does not fire, in two OPPOSITE ways. On 16 non-rename rows of
+  dangling_symlink/dir_at_path the resolver's tracked branch RUNS and crashes
+  inside `cp -p`; on the 12 rename rows it never runs at all. The signature
+  that separates them is on disk: mechanism A leaves a backup directory
+  CREATED AND EMPTY (mkdir -p passed, cp did not). A cure aimed at the reason
+  as previously written would have landed in two empty places.
+
+  Treat the 5-sabotage guilt corpus as UNDER-SELECTED, not as coverage. The
+  known-unattacked shapes: a fixture whose ORIGIN action is right but whose
+  LOCAL state is silently wrong (the A axis has no sabotage of its own), a
+  cell whose policy column disagrees with the allowlist the run actually
+  wrote, and the `untracked` rows, which are 4 cells built by a different
+  path than the other 98.
+
+  One live methodological warning, from this session's own record: I refuted
+  a CORRECT finding with a probe of the wrong shape. `cp -p` onto a dangling
+  symlink exits 1 when the target has a missing intermediate directory, and
+  exits 0 while FOLLOWING the link when the target is a bare filename with an
+  existing parent. I probed the first and the fixture commits the second.
+  If you test a mechanism, run THE FIXTURE, not your reconstruction of it.
+pii: none

@@ -1,0 +1,62 @@
+recorded_at: "2026-09-05T13:29:02.848992+00:00"
+scope:
+  "Fable depth-1 V04 ruling: open at actual verdict, closed at interview entry, no pre-hydration consent. Redundant
+  displayedOutcome condition removed; existing handlers clear outcome before leaving/retrying."
+base_head: c3681053f5a618b29f21e6bcb77bd7ca5ab88c15 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+builder_seat: Codex GPT-6 (exact runtime variant not exposed)
+source_sha256_local_equals_pro:
+  apps/mouth/e2e/visa-oracle-v2.spec.ts: 988cb3d3ba91f7bb3ded8a72886c4d068445f92ad25f5257ca83d412a0b3ad4a # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.test.tsx: 72fb080dfde137405ef5af67c52cbfc7cbf0869b1747d73ce089d8097d1dce2d # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/ConsentHandoff.tsx: f103350977d38e7d68ccea4d83029301b4e8270928bca708330b3a446b63453f # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.test.tsx: 7ce8f36e8ba546efadf6ca152bbf430b2383fa014ee428f6928ef89778dafcce # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OracleShell.tsx: 99ece5884441cc45fe0938827327e03846de5cee3f8811017f98c21904be25ed # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/consent-store.test.ts: a4ddc2bfbe39d6ebff523cf64ba8693ac37e1d1a60dea5605f26b8a0f3a3c8da # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/consent-store.ts: d689c6cc3cfc26eee263193ca881e8a2524318905dfd2a1ccfe09c1ec35c0c8e # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  apps/mouth/src/app/(visa-oracle)/visa-oracle/oracle.css: c5afd727dcb9fd7b741738bc745451b4bee3bad4dc8f9065267c6dca1ea625cd # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+unit_command:
+  cd apps/mouth && node ../../node_modules/vitest/vitest.mjs run src/app/\(visa-oracle\)/visa-oracle/_components/OracleShell.test.tsx
+  src/app/\(visa-oracle\)/visa-oracle/_components/ConsentHandoff.test.tsx src/app/\(visa-oracle\)/visa-oracle/_lib/consent-store.test.ts
+  --maxWorkers=1
+unit_result: 64 passed in three suites, restored after the three independent actual mutations.
+mutations:
+  - mutation: closed_verdict
+    exit: 1
+    log: guilt-closed_verdict.log
+    test_result: Tests  3 failed | 61 passed (64)
+    sha256: 8eedb93fc96d0f1fa617f3103cc8cd247c6faf90a9da9aaf0a799d689064dd15 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  - mutation: missing_context_reset
+    exit: 1
+    log: guilt-missing_context_reset.log
+    test_result: Tests  3 failed | 61 passed (64)
+    sha256: 4467c8d619a68a508ebdaaff2386ecb47eeecf191bf28f946f19173236f1bd43 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  - mutation: prehydration_consent
+    exit: 1
+    log: guilt-prehydration_consent.log
+    test_result: Tests  1 failed | 63 passed (64)
+    sha256: 6cdc51333f547db761314cbdab396e3ea8b3487756dff53a918ef8adb5399487 # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+browser:
+  host: Pro
+  snapshot: /tmp/visa-consuls-v04-verdict-c3681053
+  runtime: Next16.3.3 development server on127.0.0.1:3436
+  command:
+    PLAYWRIGHT_EXTERNAL_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3436 node ../../node_modules/@playwright/test/cli.js
+    test e2e/visa-oracle-v2.spec.ts --project=chromium --project="Mobile Chrome" --grep "configured WhatsApp handoff|minor
+    handoff" --workers=1 --retries=0 --reporter=list,json
+  result:
+    startTime: "2026-09-05T13:27:56.949Z"
+    duration: 8510.708999999999
+    expected: 4
+    skipped: 0
+    unexpected: 0
+    flaky: 0
+  projects:
+    - name: chromium
+    - name: Mobile Chrome
+  log_sha256: 56b0a71d736955b5cfcafa8c606db9aec29aeb03745003aeeae1dc2a5bd654cf # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential
+  limits:
+    Four targeted real browser tests with synthetic API responses; no real DB or outward WhatsApp sends. Existing
+    full CI will rerun after the corrective commit.
+typecheck:
+  command: npm run typecheck -w apps/mouth
+  exit: 0
+  log_sha256: fc8b24b2a639c82f55ba80d4ce7226e8c34e84cee2823aff0c6550297aa7298f # pragma: allowlist secret - verified artifact digest or public Git commit, not a credential

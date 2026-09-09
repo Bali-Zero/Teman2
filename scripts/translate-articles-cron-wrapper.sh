@@ -142,6 +142,31 @@ EOF
   fi
   log "opened PR: $PR_URL"
   PR_NUM=$(print -r -- "$PR_URL" | grep -oE '[0-9]+$')
+
+  # Supersede every OLDER open promote PR (2026-09-09: 68 identical copies were
+  # open at once, one per hour since 2026-09-04, each burning a full CI run).
+  # The hourly batch is cumulative by construction — staleness is re-detected
+  # from main every run, so the newest PR carries everything an older one
+  # carried — and an older copy can only merge first and turn this one into an
+  # empty diff. Scope: same title prefix AND same branch prefix (entity, not
+  # substring). A PR already occupying a merge-queue slot is left alone: it is
+  # about to land and closing it would evict it (queue_unstick.py's rule 1).
+  OLDER=$(gh pr list --state open --search "chore(mouth): promote hourly-translated in:title" \
+      --json number,headRefName \
+      --jq ".[] | select(.number != $PR_NUM) | select(.headRefName | startswith(\"agent/nuzantara/mouth/hourly-\")) | .number" 2>>"$LOG")
+  for old in ${(f)OLDER}; do
+    QUEUED=$(gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){mergeQueueEntry{state}}}}' \
+        -f o=Bali-Zero -f r=Teman2 -F n="$old" --jq '.data.repository.pullRequest.mergeQueueEntry // "null"' 2>>"$LOG")
+    if [ "$QUEUED" != "null" ] && [ -n "$QUEUED" ]; then
+      log "keeping older promote PR #$old — in merge queue ($QUEUED)"
+      continue
+    fi
+    if gh pr close "$old" --delete-branch --comment "Superseded by $PR_URL — the hourly translation batch is cumulative, this older copy only burned CI (translate-articles-cron-wrapper.sh)." >>"$LOG" 2>&1; then
+      log "closed superseded promote PR #$old"
+    else
+      log "WARN: could not close superseded promote PR #$old"
+    fi
+  done
   # NOT --squash: once a merge queue governs main, the ruleset owns the merge
   # method and --squash is rejected outright (pipeline-ship skill, 2026-07-27+).
   RUN_NOTE=""

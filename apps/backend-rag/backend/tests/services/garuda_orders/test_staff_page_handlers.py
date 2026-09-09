@@ -676,6 +676,14 @@ def test_build_handlers_routes_all_five_when_given_a_staff_page_sender() -> None
         "practice_received_email",
         "late_refund_confirmation_email",
         "portal_invite",
+        # step 8 (round 3, item E): the 7 staff-transition customer emails
+        "practice_in_review_email",
+        "practice_blocked_email",
+        "practice_submitted_email",
+        "practice_approved_email",
+        "practice_rejected_email",
+        "practice_resumed_email",
+        "practice_delivered_email",
         # five, routed only because a staff_page_sender was passed
         "staff_page_duplicate_charge",
         "staff_page_late_paid_after_refund",
@@ -684,7 +692,7 @@ def test_build_handlers_routes_all_five_when_given_a_staff_page_sender() -> None
         "staff_page_refund_out_of_order",
     }
     assert set(handlers) == expected
-    assert len(expected) == 14
+    assert len(expected) == 21
 
     # The type that made the count wrong three times, pinned by name. It is
     # computed at repository.py:799-805 — `"practice_release" if resolution ==

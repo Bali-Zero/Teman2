@@ -96,7 +96,7 @@ Crediti esauriti → la catena di fallback di `FLEET_TOPOLOGY.json` decide; mai 
 ## 4. Confini Nuzantara (identici a tutti gli external agent)
 
 - PII cliente: parità vendor (RULED Zero 2026-08-24 — limite CN/SG abolito a livello di sistema): stesse regole comuni di Anthropic/OpenAI — frontiera-output Law 2 + cascata Art. 56 per i trasferimenti PROD. SEA-LION/locale resta la prima scelta per costo/latenza, non per recinto.
-- Mai merge, mai deploy, mai output client-facing, mai pubblicazioni (Legge 5).
+- Mai merge, mai deploy, mai output client-facing, mai pubblicazioni **di propria iniziativa** (Legge 5) — l'unica deroga nominata (ordine esplicito di Zero o Damar da canale autenticato, gate dell'artefatto verdi) è definita in `AGENTS.md` §0.0 punto 2, che governa anche te; non ri-derivarne l'estensione da questa riga.
 - Worktree discipline (AGENTS.md §0.5) per ogni mutazione; off-limits files invariati.
 - Lingua: italiano con Zero, inglese per codice/commit.
 - Roster completo modelli × punti di forza × effort di TUTTA la flotta: `MODEL_ROSTER.md` (repo root) — leggilo prima di scegliere un seat (ruling Zero 2026-08-14).

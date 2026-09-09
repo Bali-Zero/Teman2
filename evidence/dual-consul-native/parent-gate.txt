@@ -1,0 +1,15 @@
+**Verdict: PASS**, bound to `d48f57d38d365b52b16eeac99b70a3615f877e2a`, on the stated premise that the eight frozen source bindings recompute identically to the manifest I reviewed through round four. I have no tools in this session, so I did not recompute those hashes or inspect the commit. If that premise is wrong, this verdict does not transfer.
+
+**What the delta changes.** Only `.secrets.baseline`. Marking SHA-256 provenance digests as `is_secret: false` alters no executable path, no migration, no test, and no evidence bytes. Baseline entries are keyed by file, line and hashed value, so they suppress only those exact occurrences, not future findings elsewhere. The claim that plugins and filters are unchanged matters, since a loosened filter would widen suppression; I accept it as stated and could not check it.
+
+**What this gate covers.** The same-database synthetic slice, the offline adapter contracts, migration 306 with the legacy 124 backfill and `search_path` pin, and the disposable PostgreSQL proofs as source-reviewed. It confers nothing on native provider invocation, service UID separation, rollout or production reliability, and the PR does not claim those.
+
+**Residuals carried forward, not blockers.**
+- The migration runner path with `_validate_sql` and ledger logging was not exercised by the disposable tests.
+- Production presence of `research_os_objects` from migrations 279 and 280 remains unverified.
+- Slot 306 and application-role privileges on the bootstrapped tables need a merge-time check.
+- Databases other than the one inspected remain unverified for legacy JSON shape.
+
+**Deployment note.** This verdict authorizes no merge. In this repository, merging a backend-rag PR is itself the deploy, so the merge decision belongs to the owner with the residuals above in view.
+
+END_DUAL_CONSUL_REVIEW

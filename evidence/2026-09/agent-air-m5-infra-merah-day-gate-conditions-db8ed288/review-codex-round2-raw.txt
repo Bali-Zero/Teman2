@@ -1,0 +1,2066 @@
+OpenAI Codex v0.152.0
+--------
+workdir: /Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a06cf8-79c2-7a53-ae4e-eb984c3077cd
+--------
+user
+Adversarially review this CI diff. Assume it is defective and try to prove it. No praise. Under 400 words. Cite file:line.
+
+CONTEXT (measured, not claimed): this is the SECOND round on PR #5666. In round 1 you returned BLOCK with three findings on `.github/workflows/merah-putih-day-contrast.yml`:
+ (1) the fail-closed branch inside the python sentinel snippet was unreachable, because the step runs `set -euo pipefail` and `git diff --name-only "$BASE_SHA"...HEAD` BEFORE invoking python;
+ (2) `git cat-file -e <sha>:<path>` reaches for the blob under `filter: blob:none`, conflating a failed promisor fetch with an absent path;
+ (3) no validation of the sentinel's verdict word — an exit-0 with empty stdout writes `run=` and both downstream steps skip.
+kimi additionally required that the prose stop asserting a merge-queue collision that does not exist.
+
+The diff below is the attempted cure. Your job is to prove the CURE is defective, not to re-litigate round 1. Specifically attack:
+ - is the shell-level fail_closed actually reachable on every path where the base is unreachable, including when GITHUB_OUTPUT is unset or the function is called before it is defined?
+ - does `git ls-tree --name-only <sha> -- <path>` behave as claimed under `filter: blob:none`, and does empty-stdout/non-zero really separate absent-from-unreadable?
+ - can the `case "$RUN"` validation be bypassed, and is `RUN` ever set from a path that skips it?
+ - do the three new tests actually pin the mechanism, or only its spelling? Is the bash>=4 skip hiding a real gap on the runner?
+Repo conventions: guards must prove guilt AND innocence; a skip is a silent pass.
+
+DIFF (bfb31e9e5d..HEAD):
+diff --git a/.github/workflows/merah-putih-day-contrast.yml b/.github/workflows/merah-putih-day-contrast.yml
+index 0fa74acc9a..97fe21d232 100644
+--- a/.github/workflows/merah-putih-day-contrast.yml
++++ b/.github/workflows/merah-putih-day-contrast.yml
+@@ -125,15 +125,25 @@ permissions:
+   contents: read
+ 
+ concurrency:
+-  # `cancel-in-progress` is CONDITIONAL on the event, and the condition is the
+-  # whole point: on a merge_group event `github.ref` is the QUEUE's own ref, so a
+-  # second entry landing while this one is mid-flight would cancel the first —
+-  # and a cancelled required context does not report, which does not delay the
+-  # queue, it tears the entry out of it. On a pull_request the ref is the PR's
+-  # own, where cancelling a superseded push is exactly the saving we want.
+-  # Promotion condition 1 of 2 from the Gear-3 gate's PASS-WITH-CONDITIONS on
+-  # #5614; `test_the_concurrency_group_never_cancels_a_merge_group_run` is what
+-  # keeps this from silently reverting to a bare `true`.
++  # `cancel-in-progress` is CONDITIONAL on the event — and the reason usually
++  # given for it is WRONG, which is stated here rather than repeated. MEASURED
++  # 2026-09-04: a merge-queue ref is `gh-readonly-queue/main/pr-<N>-<sha>`, one
++  # per entry (ten entries, ten distinct refs), so with `github.ref` in the group
++  # key two entries can never share a group and the queue's next entry cannot
++  # cancel the entry ahead of it. `.github/workflows/security.yml` carries a
++  # 2026-07-27 comment reaching the same conclusion; eleven workflows were
++  # patched against the collision anyway on 2026-09-02, and the Gear-3 gate
++  # asked for it here as a promotion condition on #5614. Both council seats
++  # (codex-gpt-5.6-sol, kimi-code/k3) independently confirmed the measurement.
++  #
++  # So what this line actually buys is DEFENCE IN DEPTH, not a live bug fix: if
++  # the group key ever stops carrying `github.ref`, or GitHub re-dispatches the
++  # same merge_group ref, cancelling would tear a required context out of the
++  # queue rather than delay it — a cancelled check reports nothing at all. It
++  # ships for that, and because it matches the house pattern; it does not ship
++  # for the collision it was said to prevent.
++  # `test_the_concurrency_group_never_cancels_a_merge_group_run` keeps it from
++  # silently reverting to a bare `true`.
+   group: merah-putih-day-contrast-${{ github.ref }}
+   cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+ 
+@@ -170,7 +180,27 @@ jobs:
+             exit 0
+           fi
+           BASE_SHA="${{ github.event.pull_request.base.sha }}"
+-          git diff --name-only "$BASE_SHA"...HEAD > /tmp/changed.txt
++          # FAIL-CLOSED, AND IT LIVES IN THE SHELL — the Python snippet below
++          # carries the same branch, but `set -e` made it unreachable: `git diff`
++          # against an unreachable base exits non-zero and kills this step before
++          # python is ever started, so the branch that "runs the whole guard"
++          # could not run in the one case it exists for (Gear-3 council,
++          # codex-gpt-5.6-sol, BLOCK finding #1, 2026-09-04 — the cure for the
++          # gate's condition 2 was itself only half-applied). The probe belongs to
++          # whichever layer touches the base FIRST, and that layer is this one.
++          # The snippet keeps its copy because the tests execute the snippet
++          # directly and because a fail-closed path is cheap to state twice.
++          fail_closed() {
++            echo "run=true" >> "$GITHUB_OUTPUT"
++            echo "::notice::sentinel failing closed: $1 — running the full guard"
++            exit 0
++          }
++          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
++            fail_closed "base ref ${BASE_SHA} is not reachable in this checkout"
++          fi
++          if ! git diff --name-only "$BASE_SHA"...HEAD > /tmp/changed.txt; then
++            fail_closed "the diff against base ref ${BASE_SHA} could not be taken"
++          fi
+           # Only the `run=` line may reach $GITHUB_OUTPUT. The first cut piped the
+           # whole heredoc there, notice included, and the runner rejects any line
+           # that is not NAME=VALUE — so the "nothing guarded changed" path, the
+@@ -221,7 +251,20 @@ jobs:
+           base_sha = os.environ["BASE_SHA"]
+           if _git("cat-file", "-e", f"{base_sha}^{{commit}}").returncode != 0:
+               _run_everything(f"base ref {base_sha} is not reachable in this checkout")
+-          if _git("cat-file", "-e", f"{base_sha}:{WORKFLOW}").returncode == 0:
++          # EXISTENCE is asked of the TREE, not of the blob. This checkout is
++          # `filter: blob:none` (see the checkout step), so `cat-file -e
++          # <sha>:<path>` reaches for the file CONTENT and can trigger a lazy
++          # fetch — which collapses "the base genuinely has no such file" and
++          # "the promisor fetch failed" into the same non-zero, and the second
++          # one would then take the head-only branch this whole block exists to
++          # refuse (Gear-3 council, codex-gpt-5.6-sol, finding #3, 2026-09-04).
++          # `ls-tree` answers from the tree object, which a blob:none clone
++          # already has: empty stdout means absent, non-zero means the base tree
++          # could not be listed at all, and only the first is innocent.
++          listing = _git("ls-tree", "--name-only", base_sha, "--", WORKFLOW)
++          if listing.returncode != 0:
++              _run_everything(f"the base tree at {base_sha} could not be listed")
++          if listing.stdout.strip():
+               base = _git("show", f"{base_sha}:{WORKFLOW}")
+               if base.returncode != 0:
+                   _run_everything("the base copy of this workflow could not be read")
+@@ -237,7 +280,16 @@ jobs:
+           hit = any(fnmatch.fnmatch(f, p) for f in changed for p in patterns)
+           print("true" if hit else "false")
+           PY
+-          )"
++          )" || fail_closed "the sentinel snippet exited non-zero"
++          # A verdict word or nothing at all: an exit-0 with empty stdout would
++          # write the literal line `run=` and BOTH downstream steps would then
++          # compare it against 'true' and skip — a silently disarmed guard with
++          # no red anywhere (same council, finding #2). Anything that is not one
++          # of the two words is a broken measurement, not a "no".
++          case "$RUN" in
++            true|false) ;;
++            *) fail_closed "the sentinel printed '${RUN}', which is not a verdict word" ;;
++          esac
+           echo "run=$RUN" >> "$GITHUB_OUTPUT"
+           if [[ "$RUN" == "false" ]]; then
+             echo "::notice::no guarded surface changed — sentinel success"
+diff --git a/scripts/tests/test_merah_putih_day_contrast.py b/scripts/tests/test_merah_putih_day_contrast.py
+index 42e374b786..d2c0c49352 100644
+--- a/scripts/tests/test_merah_putih_day_contrast.py
++++ b/scripts/tests/test_merah_putih_day_contrast.py
+@@ -779,12 +779,20 @@ def test_the_sentinel_reads_the_base_copy_via_git_show() -> None:
+ 
+ 
+ def test_the_concurrency_group_never_cancels_a_merge_group_run() -> None:
+-    """Condition 1. `github.ref` on a merge_group event is the QUEUE's ref, not
+-    this PR's — so a bare `cancel-in-progress: true` lets the queue's next entry
+-    cancel the entry ahead of it. A cancelled required context does not report a
+-    failure, it reports nothing, and the entry is torn out of the queue rather
+-    than merely delayed. Cancelling is right on `pull_request`, where the ref is
+-    the PR's own and the superseded run is genuinely dead work.
++    """Condition 1, and its stated reason is FALSE — recorded here instead of
++    repeated. Measured 2026-09-04: merge-queue refs are
++    `gh-readonly-queue/main/pr-<N>-<sha>`, unique per entry, so with `github.ref`
++    in the group key no two entries share a group and the queue's next entry
++    cannot cancel the one ahead. Both council seats confirmed the measurement
++    independently; `security.yml` had already refuted the same collision on
++    2026-07-27.
++
++    What this test pins is therefore DEFENCE IN DEPTH, and it is worth pinning:
++    a cancelled required context reports nothing at all, so if the group key
++    ever loses `github.ref` or GitHub re-dispatches a merge_group ref, a bare
++    `true` would tear the entry out of the queue rather than delay it.
++    Cancelling stays right on `pull_request`, where the ref is the PR's own and
++    a superseded run is genuinely dead work.
+     """
+     import yaml
+ 
+@@ -873,3 +881,159 @@ def test_a_pr_that_introduces_this_workflow_is_not_forced_through_the_guard(tmp_
+         "PR introducing a workflow now runs the full corpus. "
+         f"stdout={res.stdout!r} stderr={res.stderr!r}"
+     )
++
++
++# ---------------------------------------------------------------------------
++# THE SHELL STEP, EXECUTED. Everything above runs the PYTHON SNIPPET the step
++# invokes; nothing above ran the step. That gap hid a real defect through a
++# whole Gear-3 round: the snippet's fail-closed branch was correct and could
++# not be reached, because the step's own `set -euo pipefail` plus a bare
++# `git diff "$BASE_SHA"...HEAD` killed the step first, on exactly the
++# unreachable base the branch exists for (codex-gpt-5.6-sol, BLOCK finding #1,
++# 2026-09-04). A fail-closed path is worth precisely as much as the layer that
++# touches the untrusted input FIRST, so these tests drive that layer.
++# ---------------------------------------------------------------------------
++
++
++def _sentinel_step_script(event_name: str, base_sha: str) -> str:
++    """The step's `run:` body, dedented, with the two `${{ }}` expressions the
++    runner would have substituted already substituted. Nothing else is
++    rewritten — the point is to execute the shell that actually ships."""
++    import textwrap
++
++    text = WORKFLOW.read_text(encoding="utf-8")
++    body = text.split("Did a guarded surface change?", 1)[1].split("\n      - name:", 1)[0]
++    script = body.split("run: |\n", 1)[1]
++    script = textwrap.dedent(script)
++    script = script.replace("${{ github.event_name }}", event_name)
++    return script.replace("${{ github.event.pull_request.base.sha }}", base_sha)
++
++
++def _run_sentinel_step(tmp_path, *, base_sha: str, changed: list[str], event_name: str = "pull_request"):
++    """Executes the step in a throwaway git repo carrying a copy of this
++    workflow, and returns (CompletedProcess, parsed $GITHUB_OUTPUT dict).
++
++    A temp repo rather than REPO: the step writes to $GITHUB_OUTPUT and diffs
++    two refs it must be able to construct, and a test that needs commits of its
++    own must never make them in the checkout it is running from. Identity is
++    passed with `-c` for the same reason the innocence test above refuses
++    `commit-tree`: a CI runner has no committer configured and a test may not
++    require one.
++    """
++    import os
++    import subprocess
++
++    repo = tmp_path / "repo"
++    (repo / ".github/workflows").mkdir(parents=True)
++    (repo / ".github/workflows/merah-putih-day-contrast.yml").write_text(
++        WORKFLOW.read_text(encoding="utf-8"), encoding="utf-8"
++    )
++
++    def git(*args, **kw):
++        return subprocess.run(
++            ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
++            capture_output=True, text=True, cwd=repo, check=True, **kw
++        )
++
++    git("init", "-q", "-b", "main")
++    git("add", "-A")
++    git("commit", "-qm", "base")
++    head_base = git("rev-parse", "HEAD").stdout.strip()
++    for name in changed:
++        p = repo / name
++        p.parent.mkdir(parents=True, exist_ok=True)
++        p.write_text("changed\n", encoding="utf-8")
++    git("add", "-A")
++    git("commit", "-qm", "head")
++
++    out_file = tmp_path / "gh_output"
++    out_file.write_text("", encoding="utf-8")
++    res = subprocess.run(
++        ["bash", "-c", _sentinel_step_script(event_name, base_sha or head_base)],
++        capture_output=True, text=True, cwd=repo, check=False,
++        env={**os.environ, "GITHUB_OUTPUT": str(out_file)},
++    )
++    parsed = dict(
++        line.split("=", 1) for line in out_file.read_text(encoding="utf-8").splitlines() if "=" in line
++    )
++    return res, parsed
++
++
++def test_the_step_itself_runs_the_guard_when_the_base_ref_is_unreachable(tmp_path) -> None:
++    """Guilt, at the layer that fails first. With `set -euo pipefail` and an
++    unguarded change, the ONLY way `run=true` reaches $GITHUB_OUTPUT is the
++    step's own fail-closed branch firing before `git diff` can kill it."""
++    res, out = _run_sentinel_step(
++        tmp_path,
++        base_sha="0" * 40,
++        changed=["README.md"],
++    )
++    assert res.returncode == 0, (
++        "the step died on an unreachable base instead of failing closed — the "
++        f"snippet's fail-closed branch is unreachable. stderr={res.stderr!r}"
++    )
++    assert out.get("run") == "true", (
++        "an unreachable base did not make the step run the whole guard: "
++        f"$GITHUB_OUTPUT={out!r} stdout={res.stdout!r} stderr={res.stderr!r}"
++    )
++
++
++def _bash_major() -> int:
++    import re
++    import subprocess
++
++    out = subprocess.run(["bash", "--version"], capture_output=True, text=True).stdout
++    m = re.search(r"version (\d+)", out)
++    return int(m.group(1)) if m else 0
++
++
++def test_the_step_still_declares_a_no_op_when_the_base_is_readable(tmp_path) -> None:
++    """Innocence for the same branch: a base the step CAN read, and a change
++    touching nothing guarded, must still produce `run=false`. Without this the
++    cure above would be indistinguishable from hardcoding `true`.
++
++    Needs bash >= 4. The step nests a `<<'PY'` heredoc inside `$( )`, which
++    bash 3.2 — still the /bin/bash macOS ships — cannot parse; the runner is
++    ubuntu-latest (bash 5), so this executes where the workflow actually runs
++    and skips on a developer's Mac rather than pretending to pass there. The
++    guilt test above needs no such guard: its fail-closed branch exits before
++    that line is ever reached, which is the whole reason it is the branch under
++    test.
++    """
++    if _bash_major() < 4:
++        pytest.skip(
++            f"bash {_bash_major()} cannot parse a heredoc inside $( ) — this "
++            "test executes the full step and needs bash >= 4 (CI's ubuntu runner)"
++        )
++    res, out = _run_sentinel_step(tmp_path, base_sha="", changed=["README.md"])
++    assert res.returncode == 0, res.stderr
++    assert out.get("run") == "false", (
++        f"a readable base and an unguarded change did not yield a no-op: {out!r} "
++        f"stderr={res.stderr!r}"
++    )
++
++
++def test_the_step_refuses_a_verdict_that_is_not_a_verdict_word() -> None:
++    """Council finding #2, asserted STRUCTURALLY and said so plainly: an exit-0
++    with empty stdout would write the line `run=` and both downstream steps,
++    comparing it against 'true', would skip — a disarmed guard with no red
++    anywhere. Structural because forging that stdout means rewriting the
++    heredoc the other tests exist to execute unmodified; what is checked is
++    that the validation stands BETWEEN the snippet and $GITHUB_OUTPUT, not that
++    some particular wording appears somewhere in the step."""
++    script = _sentinel_step_script("pull_request", "deadbeef")
++    guard = script.split('case "$RUN"', 1)
++    assert len(guard) == 2, (
++        "the step no longer validates the sentinel's verdict word — an empty or "
++        "malformed stdout would be written to $GITHUB_OUTPUT as-is"
++    )
++    before_write, after_case = guard[0], guard[1]
++    assert 'echo "run=$RUN"' not in before_write, (
++        "the verdict is written to $GITHUB_OUTPUT before it is validated — the "
++        "validation cannot stop what has already been published"
++    )
++    branch = after_case.split("esac", 1)[0]
++    assert "true|false" in branch and "fail_closed" in branch, (
++        "the verdict-word case no longer accepts exactly the two words and fails "
++        f"closed on everything else: {branch!r}"
++    )
+
+warning: Exceeded skills context budget. All skill descriptions were removed and 9 additional skills were not included in the model-visible skills list.
+hook: SessionStart
+hook: SessionStart Failed
+hook: UserPromptSubmit
+hook: UserPromptSubmit Completed
+codex
+[Air-M5] Uso la skill di differential review: verifico il diff effettivo e le righe correnti, poi cerco bypass e falsi positivi nei test senza modificare nulla.
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc 'echo "Machine: $(whoami)@$(hostname)" && case "$(hostname)" in Nuzantara) OTHER=mini ;; Mini-Pro2) OTHER=pro ;; Air-M5) OTHER=pro ;; *) OTHER=pro ;; esac && ssh -o ConnectTimeout=3 $OTHER '"'echo \"Peer: "'$(whoami)@$(hostname)"'"' 2>/dev/null || echo \"Peer: UNREACHABLE\" && LOCAL_HEAD="'$(git log --oneline -1 2>/dev/null) && REMOTE_HEAD=$(ssh -o ConnectTimeout=3 $OTHER '"'cd ~/nuzantara 2>/dev/null; git log --oneline -1' 2>/dev/null) && if [ \""'$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then echo "Git sync: OK ($LOCAL_HEAD)"; else echo "Git sync: OUT OF SYNC! Local=$LOCAL_HEAD Remote=$REMOTE_HEAD"; fi
+sed -n '"'1,240p' /Users/balizero/.codex/plugins/cache/trailofbits/differential-review/1.1.2/skills/differential-review/SKILL.md
+rg -n \"PR #5666|5666|merah-putih-day|fail_closed|GITHUB_OUTPUT|blob:none\" /Users/balizero/.codex/memories/MEMORY.md" in /Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions
+ exited 1 in 0ms:
+Machine: balizero@Air-M5
+Peer: UNREACHABLE
+---
+name: differential-review
+description: "Performs security-focused differential review of code changes. Adapts analysis depth to codebase size, uses git blame for context, calculates blast radius by counting callers, checks test coverage of modified code, and generates a markdown report. Use when reviewing a PR, commit, or diff for security vulnerabilities, checking whether a change re-introduces a previously fixed bug, asking what else a change could break, or finding which modified code has no test covering it."
+allowed-tools: Read Write Grep Glob Bash
+---
+
+# Differential Security Review
+
+Security-focused code review for PRs, commits, and diffs.
+
+## Core Principles
+
+1. **Risk-First**: Focus on auth, crypto, value transfer, external calls
+2. **Evidence-Based**: Every finding backed by git history, line numbers, attack scenarios
+3. **Adaptive**: Scale to codebase size (SMALL/MEDIUM/LARGE)
+4. **Honest**: Explicitly state coverage limits and confidence level
+5. **Output-Driven**: Always generate comprehensive markdown report file
+
+---
+
+## Rationalizations (Do Not Skip)
+
+| Rationalization | Why It's Wrong | Required Action |
+|-----------------|----------------|-----------------|
+| "Small PR, quick review" | Heartbleed was 2 lines | Classify by RISK, not size |
+| "I know this codebase" | Familiarity breeds blind spots | Build explicit baseline context |
+| "Git history takes too long" | History reveals regressions | Never skip Phase 1 |
+| "Blast radius is obvious" | You'll miss transitive callers | Calculate quantitatively |
+| "No tests = not my problem" | Missing tests = elevated risk rating | Flag in report, elevate severity |
+| "Just a refactor, no security impact" | Refactors break invariants | Analyze as HIGH until proven LOW |
+| "I'll explain verbally" | No artifact = findings lost | Always write report |
+
+---
+
+## Quick Reference
+
+### Codebase Size Strategy
+
+| Codebase Size | Strategy | Approach |
+|---------------|----------|----------|
+| SMALL (<20 files) | DEEP | Read all deps, full git blame |
+| MEDIUM (20-200) | FOCUSED | 1-hop deps, priority files |
+| LARGE (200+) | SURGICAL | Critical paths only |
+
+### Risk Level Triggers
+
+| Risk Level | Triggers |
+|------------|----------|
+| HIGH | Auth, crypto, external calls, value transfer, validation removal |
+| MEDIUM | Business logic, state changes, new public APIs |
+| LOW | Comments, tests, UI, logging |
+
+---
+
+## Workflow Overview
+
+```
+Pre-Analysis → Phase 0: Triage → Phase 1: Code Analysis → Phase 2: Test Coverage
+    ↓              ↓                    ↓                        ↓
+Phase 3: Blast Radius → Phase 4: Deep Context → Phase 5: Adversarial → Phase 6: Report
+```
+
+---
+
+## Decision Tree
+
+**Starting a review?**
+
+```
+├─ Need detailed phase-by-phase methodology?
+│  └─ Read: methodology.md
+│     (Pre-Analysis + Phases 0-4: triage, code analysis, test coverage, blast radius)
+│
+├─ Analyzing HIGH RISK change?
+│  ├─ Read: adversarial.md
+│  │  (Phase 5: Attacker modeling, exploit scenarios, exploitability rating)
+│  └─ Or delegate to: differential-review:adversarial-modeler agent
+│     (Autonomous attacker modeling with concrete exploit scenarios)
+│
+├─ Writing the final report?
+│  └─ Read: reporting.md
+│     (Phase 6: Report structure, templates, formatting guidelines)
+│
+├─ Looking for specific vulnerability patterns?
+│  └─ Read: patterns.md
+│     (Regressions, reentrancy, access control, overflow, etc.)
+│
+└─ Quick triage only?
+   └─ Use Quick Reference above, skip detailed docs
+```
+
+---
+
+## Agents
+
+**`differential-review:adversarial-modeler`** — Models attacker perspectives and
+builds exploit scenarios for HIGH RISK code changes. Follows the 5-step
+adversarial methodology (attacker model, attack vectors, exploitability rating,
+exploit scenario, baseline cross-reference) and produces structured vulnerability
+reports. Delegate to this agent when Phase 5 analysis is needed on high-risk
+changes, passing that full namespaced name as `subagent_type` — a bare
+`adversarial-modeler` is unregistered and the dispatch fails at runtime.
+
+---
+
+## Quality Checklist
+
+Before delivering:
+
+- [ ] All changed files analyzed
+- [ ] Git blame on removed security code
+- [ ] Blast radius calculated for HIGH risk
+- [ ] Attack scenarios are concrete (not generic)
+- [ ] Findings reference specific line numbers + commits
+- [ ] Report file generated
+- [ ] User notified with summary
+
+---
+
+## Integration
+
+**audit-context-building skill:**
+- Pre-Analysis: Build baseline context
+- Phase 4: Deep context on HIGH RISK changes
+
+**issue-writer skill:**
+- Transform findings into formal audit reports
+- Command: `issue-writer --input DIFFERENTIAL_REVIEW_REPORT.md --format audit-report`
+
+---
+
+## Example Usage
+
+### Quick Triage (Small PR)
+```
+Input: 5 file PR, 2 HIGH RISK files
+Strategy: Use Quick Reference
+1. Classify risk level per file (2 HIGH, 3 LOW)
+2. Focus on 2 HIGH files only
+3. Git blame removed code
+4. Generate minimal report
+Time: ~30 minutes
+```
+
+### Standard Review (Medium Codebase)
+```
+Input: 80 files, 12 HIGH RISK changes
+Strategy: FOCUSED (see methodology.md)
+1. Full workflow on HIGH RISK files
+2. Surface scan on MEDIUM
+3. Skip LOW risk files
+4. Complete report with all sections
+Time: ~3-4 hours
+```
+
+### Deep Audit (Large, Critical Change)
+```
+Input: 450 files, auth system rewrite
+Strategy: SURGICAL + audit-context-building
+1. Baseline context with audit-context-building
+2. Deep analysis on auth changes only
+3. Blast radius analysis
+4. Adversarial modeling
+5. Comprehensive report
+Time: ~6-8 hours
+```
+
+---
+
+## When NOT to Use This Skill
+
+- **Greenfield code** (no baseline to compare)
+- **Documentation-only changes** (no security impact)
+- **Formatting/linting** (cosmetic changes)
+- **User explicitly requests quick summary only** (they accept risk)
+
+For these cases, use standard code review instead.
+
+---
+
+## Red Flags (Stop and Investigate)
+
+**Immediate escalation triggers:**
+- Removed code from "security", "CVE", or "fix" commits
+- Access control modifiers removed (onlyOwner, internal → external)
+- Validation removed without replacement
+- External calls added without checks
+- High blast radius (50+ callers) + HIGH risk change
+
+These patterns require adversarial analysis even in quick triage.
+
+---
+
+## Tips for Best Results
+
+**Do:**
+- Start with git blame for removed code
+- Calculate blast radius early to prioritize
+- Generate concrete attack scenarios
+- Reference specific line numbers and commits
+- Be honest about coverage limitations
+- Always generate the output file
+
+**Don't:**
+- Skip git history analysis
+- Make generic findings without evidence
+- Claim full analysis when time-limited
+- Forget to check test coverage
+- Miss high blast radius changes
+- Output report only to chat (file required)
+
+---
+
+## Supporting Documentation
+
+- **[methodology.md](methodology.md)** - Detailed phase-by-phase workflow (Phases 0-4)
+- **[adversarial.md](adversarial.md)** - Attacker modeling and exploit scenarios (Phase 5)
+- **[reporting.md](reporting.md)** - Report structure and formatting (Phase 6)
+- **[patterns.md](patterns.md)** - Common vulnerability patterns reference
+
+---
+
+**For first-time users:** Start with [methodology.md](methodology.md) to understand the complete workflow.
+
+**For experienced users:** Use this page's Quick Reference and Decision Tree to navigate directly to needed content.
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+codex
+[Air-M5] Il primo punto concreto è già sospetto: `GITHUB_OUTPUT` non impostato fa fallire la redirezione dentro `fail_closed`; ora verifico se questo blocca in modo sicuro o contraddice il contratto, e provo il percorso completo sotto la Bash disponibile.
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "sed -n '1,260p' /Users/balizero/.codex/plugins/cache/trailofbits/differential-review/1.1.2/skills/differential-review/adversarial.md
+sed -n '1,240p' /Users/balizero/.codex/plugins/cache/trailofbits/differential-review/1.1.2/skills/differential-review/reporting.md
+nl -ba .github/workflows/merah-putih-day-contrast.yml | sed -n '150,315p'
+nl -ba scripts/tests/test_merah_putih_day_contrast.py | sed -n '875,1060p'
+git diff --check bfb31e9e5d..HEAD
+git diff --stat bfb31e9e5d..HEAD
+git blame -L 170,300 -- .github/workflows/merah-putih-day-contrast.yml | sed -n '1,140p'" in /Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions
+ succeeded in 0ms:
+# Adversarial Vulnerability Analysis (Phase 5)
+
+Structured methodology for finding vulnerabilities through attacker modeling.
+
+**When to use:** After completing deep context analysis (Phase 4), apply this to all HIGH RISK changes.
+
+---
+
+## 1. Define Specific Attacker Model
+
+**WHO is the attacker?**
+- Unauthenticated external user
+- Authenticated regular user
+- Malicious administrator
+- Compromised contract/service
+- Front-runner/MEV bot
+
+**WHAT access/privileges do they have?**
+- Public API access only
+- Authenticated user role
+- Specific permissions/tokens
+- Contract call capabilities
+
+**WHERE do they interact with the system?**
+- Specific HTTP endpoints
+- Smart contract functions
+- RPC interfaces
+- External APIs
+
+---
+
+## 2. Identify Concrete Attack Vectors
+
+```
+ENTRY POINT: [Exact function/endpoint attacker can access]
+
+ATTACK SEQUENCE:
+1. [Specific API call/transaction with parameters]
+2. [How this reaches the vulnerable code]
+3. [What happens in the vulnerable code]
+4. [Impact achieved]
+
+PROOF OF ACCESSIBILITY:
+- Show the function is public/external
+- Demonstrate attacker has required permissions
+- Prove attack path exists through actual interfaces
+```
+
+---
+
+## 3. Rate Realistic Exploitability
+
+**EASY:** Exploitable via public APIs with no special privileges
+- Single transaction/call
+- Common user access level
+- No complex conditions required
+
+**MEDIUM:** Requires specific conditions or elevated privileges
+- Multiple steps or timing requirements
+- Elevated but obtainable privileges
+- Specific system state needed
+
+**HARD:** Requires privileged access or rare conditions
+- Admin/owner privileges needed
+- Rare edge case conditions
+- Significant resources required
+
+---
+
+## 4. Build Complete Exploit Scenario
+
+```
+ATTACKER STARTING POSITION:
+[What the attacker has at the beginning]
+
+STEP-BY-STEP EXPLOITATION:
+Step 1: [Concrete action through accessible interface]
+  - Command: [Exact call/request]
+  - Parameters: [Specific values]
+  - Expected result: [What happens]
+
+Step 2: [Next action]
+  - Command: [Exact call/request]
+  - Why this works: [Reference to code change]
+  - System state change: [What changed]
+
+Step 3: [Final impact]
+  - Result: [Concrete harm achieved]
+  - Evidence: [How to verify impact]
+
+CONCRETE IMPACT:
+[Specific, measurable impact - not "could cause issues"]
+- Exact amount of funds drained
+- Specific privileges escalated
+- Particular data exposed
+```
+
+---
+
+## 5. Cross-Reference with Baseline Context
+
+From baseline analysis (see [methodology.md](methodology.md#pre-analysis-baseline-context-building)), check:
+- Does this violate a system-wide invariant?
+- Does this break a trust boundary?
+- Does this bypass a validation pattern?
+- Is this a regression of a previous fix?
+
+---
+
+## Vulnerability Report Template
+
+Generate this for each finding:
+
+```markdown
+## [SEVERITY] Vulnerability Title
+
+**Attacker Model:**
+- WHO: [Specific attacker type]
+- ACCESS: [Exact privileges]
+- INTERFACE: [Specific entry point]
+
+**Attack Vector:**
+[Step-by-step exploit through accessible interfaces]
+
+**Exploitability:** EASY/MEDIUM/HARD
+**Justification:** [Why this rating]
+
+**Concrete Impact:**
+[Specific, measurable harm - not theoretical]
+
+**Proof of Concept:**
+```code
+// Exact code to reproduce
+```
+
+**Root Cause:**
+[Reference specific code change at file.sol:L123]
+
+**Blast Radius:** [N callers affected]
+**Baseline Violation:** [Which invariant/pattern broken]
+```
+
+---
+
+## Example: Complete Adversarial Analysis
+
+**Change:** Removed `require(amount > 0)` check from `withdraw()` function
+
+### 1. Attacker Model
+- **WHO:** Unauthenticated external user
+- **ACCESS:** Can call public contract functions
+- **INTERFACE:** `withdraw(uint256 amount)` at 0x1234...
+
+### 2. Attack Vector
+**ENTRY POINT:** `withdraw(0)`
+
+**ATTACK SEQUENCE:**
+1. Call `withdraw(0)` from attacker address
+2. Code bypasses amount check (removed)
+3. Withdraw event emitted with 0 amount
+4. Accounting updated incorrectly
+
+**PROOF:** Function is `external`, no auth required
+
+### 3. Exploitability
+**RATING:** EASY
+- Single transaction
+- Public function
+- No special state required
+
+### 4. Exploit Scenario
+**ATTACKER POSITION:** Has user account with 0 balance
+
+**EXPLOITATION:**
+```solidity
+Step 1: attacker.withdraw(0)
+  - Passes removed validation
+  - Emits Withdraw(user, 0)
+  - Updates withdrawnAmount[user] += 0
+
+Step 2: Off-chain indexer sees Withdraw event
+  - Credits attacker for 0 withdrawal
+  - But accounting thinks withdrawal happened
+
+Step 3: Accounting mismatch exploited
+  - Total supply decremented
+  - User balance not changed
+  - System invariants broken
+```
+
+**IMPACT:**
+- Protocol accounting corrupted
+- Can be used to manipulate LP calculations
+- Estimated $50K impact on pool prices
+
+### 5. Baseline Violation
+- Violates invariant: "All withdrawals must transfer non-zero value"
+- Breaks validation pattern: Amount checks present in all other value transfers
+- Regression: Check added in commit abc123 "Fix zero-amount exploit"
+
+---
+
+**Next:** Document all findings in final report (see [reporting.md](reporting.md))
+# Report Generation (Phase 6)
+
+Comprehensive markdown report structure and formatting guidelines.
+
+---
+
+## Report Structure
+
+Generate markdown report with these mandatory sections:
+
+### 1. Executive Summary
+
+- Severity distribution table
+- Risk assessment (CRITICAL/HIGH/MEDIUM/LOW)
+- Final recommendation (APPROVE/REJECT/CONDITIONAL)
+- Key metrics (test gaps, blast radius, red flags)
+
+**Template:**
+```markdown
+# Executive Summary
+
+| Severity | Count |
+|----------|-------|
+| 🔴 CRITICAL | X |
+| 🟠 HIGH | Y |
+| 🟡 MEDIUM | Z |
+| 🟢 LOW | W |
+
+**Overall Risk:** CRITICAL/HIGH/MEDIUM/LOW
+**Recommendation:** APPROVE/REJECT/CONDITIONAL
+
+**Key Metrics:**
+- Files analyzed: X/Y (Z%)
+- Test coverage gaps: N functions
+- High blast radius changes: M functions
+- Security regressions detected: P
+```
+
+---
+
+### 2. What Changed
+
+- Commit timeline with visual
+- File summary table
+- Lines changed stats
+
+**Template:**
+```markdown
+## What Changed
+
+**Commit Range:** `base..head`
+**Commits:** X
+**Timeline:** YYYY-MM-DD to YYYY-MM-DD
+
+| File | +Lines | -Lines | Risk | Blast Radius |
+|------|--------|--------|------|--------------|
+| file1.sol | +50 | -20 | HIGH | CRITICAL |
+| file2.sol | +10 | -5 | MEDIUM | LOW |
+
+**Total:** +N, -M lines across K files
+```
+
+---
+
+### 3. Critical Findings
+
+For each HIGH/CRITICAL issue:
+
+```markdown
+### [SEVERITY] Title
+
+**File**: path/to/file.ext:lineNumber
+**Commit**: hash
+**Blast Radius**: N callers (HIGH/MEDIUM/LOW)
+**Test Coverage**: YES/NO/PARTIAL
+
+**Description**: [clear explanation]
+
+**Historical Context**:
+- Git blame: Added in commit X (date)
+- Message: "[original commit message]"
+- [Why this code existed]
+
+**Attack Scenario**:
+[Concrete exploitation steps from adversarial.md]
+
+**Proof of Concept**:
+```code demonstrating issue```
+
+**Recommendation**:
+[Specific fix with code]
+```
+
+**Example:**
+```markdown
+### 🔴 CRITICAL: Authorization Bypass in Withdraw
+
+**File**: TokenVault.sol:156
+**Commit**: abc123def
+**Blast Radius**: 23 callers (HIGH)
+**Test Coverage**: NO
+
+**Description**:
+Removed `require(msg.sender == owner)` check allows any user to withdraw funds.
+
+**Historical Context**:
+- Git blame: Added 2024-06-15 (commit def456)
+- Message: "Add owner check per audit finding #45"
+- Code existed to prevent unauthorized withdrawals
+
+**Attack Scenario**:
+1. Attacker calls `withdraw(1000 ether)`
+2. No authorization check (removed)
+3. 1000 ETH transferred to attacker
+4. Protocol funds drained
+
+**Proof of Concept**:
+```solidity
+// As any address
+vault.withdraw(vault.balance());
+// Success - funds stolen
+```
+
+**Recommendation**:
+```solidity
+function withdraw(uint256 amount) external {
++   require(msg.sender == owner, "Unauthorized");
+    // ... rest of function
+}
+```
+```
+
+---
+
+### 4. Test Coverage Analysis
+
+- Coverage statistics
+- Untested changes list
+- Risk assessment
+
+**Template:**
+```markdown
+## Test Coverage Analysis
+
+**Coverage:** X% of changed code
+
+**Untested Changes:**
+| Function | Risk | Impact |
+|----------|------|--------|
+| functionA() | HIGH | No validation tests |
+| functionB() | MEDIUM | Logic untested |
+
+**Risk Assessment:**
+N HIGH-risk functions without tests → Recommend blocking merge
+```
+
+---
+
+### 5. Blast Radius Analysis
+
+- High-impact functions table
+- Dependency graph
+- Impact quantification
+
+**Template:**
+```markdown
+## Blast Radius Analysis
+
+**High-Impact Changes:**
+| Function | Callers | Risk | Priority |
+|----------|---------|------|----------|
+| transfer() | 89 | HIGH | P0 |
+| validate() | 45 | MEDIUM | P1 |
+```
+
+---
+
+### 6. Historical Context
+
+- Security-related removals
+- Regression risks
+- Commit message red flags
+
+**Template:**
+```markdown
+## Historical Context
+
+**Security-Related Removals:**
+- Line 45: `require` removed (added 2024-03 for CVE-2024-1234)
+- Line 78: Validation removed (added 2023-12 "security hardening")
+
+**Regression Risks:**
+- Code pattern removed in commit X, re-added in commit Y
+```
+
+---
+
+### 7. Recommendations
+
+- Immediate actions (blocking)
+- Before production (tracking)
+- Technical debt (future)
+
+**Template:**
+```markdown
+## Recommendations
+
+### Immediate (Blocking)
+- [ ] Fix CRITICAL issue in TokenVault.sol:156
+- [ ] Add tests for withdraw() function
+
+### Before Production
+- [ ] Security audit of auth changes
+- [ ] Load test blast radius functions
+
+### Technical Debt
+- [ ] Refactor validation pattern consistency
+```
+
+---
+
+### 8. Analysis Methodology
+
+- Strategy used (DEEP/FOCUSED/SURGICAL)
+- Files analyzed
+- Coverage estimate
+- Techniques applied
+- Limitations
+- Confidence level
+
+**Template:**
+```markdown
+## Analysis Methodology
+
+**Strategy:** FOCUSED (80 files, medium codebase)
+
+**Analysis Scope:**
+- Files reviewed: 45/80 (56%)
+- HIGH RISK: 100% coverage
+- MEDIUM RISK: 60% coverage
+   150	jobs:
+   151	  contrast-guard:
+   152	    name: Merah Putih DAY palette holds its contrast law
+   153	    runs-on: ubuntu-latest
+   154	    steps:
+   155	      - uses: actions/checkout@v4
+   156	        with:
+   157	          fetch-depth: 0 # the sentinel diffs against the PR base
+   158	          filter: blob:none # every commit and tree, file contents on demand
+   159	
+   160	      - uses: actions/setup-python@v7
+   161	        with:
+   162	          python-version: "3.12"
+   163	
+   164	      - name: Install the parser the sentinel and the filter test both need
+   165	        run: python3 -m pip install --quiet --disable-pip-version-check pytest pyyaml
+   166	
+   167	      # The sentinel exists because this context is meant to be REQUIRED, and a
+   168	      # required check must report on every PR. It answers one question — did any
+   169	      # guarded path change — and it answers it from THIS FILE'S OWN `paths:`
+   170	      # list, not from a second copy of it. A hand-kept regex is how the sentinel
+   171	      # and the trigger drift into disagreeing, and a sentinel that says "nothing
+   172	      # changed" about a file that did is a green check over a real regression.
+   173	      - name: Did a guarded surface change?
+   174	        id: relevant
+   175	        run: |
+   176	          set -euo pipefail
+   177	          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+   178	            echo "run=true" >> "$GITHUB_OUTPUT"
+   179	            echo "::notice::non-PR event (${{ github.event_name }}) — running the full guard"
+   180	            exit 0
+   181	          fi
+   182	          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+   183	          # FAIL-CLOSED, AND IT LIVES IN THE SHELL — the Python snippet below
+   184	          # carries the same branch, but `set -e` made it unreachable: `git diff`
+   185	          # against an unreachable base exits non-zero and kills this step before
+   186	          # python is ever started, so the branch that "runs the whole guard"
+   187	          # could not run in the one case it exists for (Gear-3 council,
+   188	          # codex-gpt-5.6-sol, BLOCK finding #1, 2026-09-04 — the cure for the
+   189	          # gate's condition 2 was itself only half-applied). The probe belongs to
+   190	          # whichever layer touches the base FIRST, and that layer is this one.
+   191	          # The snippet keeps its copy because the tests execute the snippet
+   192	          # directly and because a fail-closed path is cheap to state twice.
+   193	          fail_closed() {
+   194	            echo "run=true" >> "$GITHUB_OUTPUT"
+   195	            echo "::notice::sentinel failing closed: $1 — running the full guard"
+   196	            exit 0
+   197	          }
+   198	          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+   199	            fail_closed "base ref ${BASE_SHA} is not reachable in this checkout"
+   200	          fi
+   201	          if ! git diff --name-only "$BASE_SHA"...HEAD > /tmp/changed.txt; then
+   202	            fail_closed "the diff against base ref ${BASE_SHA} could not be taken"
+   203	          fi
+   204	          # Only the `run=` line may reach $GITHUB_OUTPUT. The first cut piped the
+   205	          # whole heredoc there, notice included, and the runner rejects any line
+   206	          # that is not NAME=VALUE — so the "nothing guarded changed" path, the
+   207	          # one this promotion exists to make green, went red instead (found by
+   208	          # the Gear-3 council, 2026-09-04). The snippet prints exactly one word.
+   209	          RUN="$(BASE_SHA="$BASE_SHA" CHANGED_FILE=/tmp/changed.txt python3 - <<'PY'
+   210	          import fnmatch, os, pathlib, subprocess, sys, yaml
+   211	
+   212	          WORKFLOW = ".github/workflows/merah-putih-day-contrast.yml"
+   213	
+   214	          def guarded_paths(text: str) -> list[str]:
+   215	              doc = yaml.safe_load(text)
+   216	              # PyYAML is YAML 1.1: a bare `on:` key parses as the boolean True.
+   217	              trigger = doc.get("on", doc.get(True))
+   218	              return list(trigger["push"]["paths"])
+   219	
+   220	          # The list is read from the BASE ref's copy of this file AND the PR's
+   221	          # own copy, unioned. Reading only the PR's copy is a trust boundary the
+   222	          # PR itself controls: one diff that narrows `push.paths` and regresses a
+   223	          # guarded file would have the sentinel judge itself by its own shortened
+   224	          # list, skip the corpus, and skip the very test that catches a
+   225	          # shrinking list (Gear-3 council finding, 2026-09-04). The base copy is
+   226	          # the one the PR cannot edit.
+   227	          #
+   228	          # And when the base copy cannot be read, the sentinel FAILS CLOSED —
+   229	          # it runs the whole guard rather than quietly falling back to the
+   230	          # head-only list the paragraph above just called a trust boundary the
+   231	          # PR controls. `if base.returncode == 0` alone treated "the base ref is
+   232	          # unreachable" and "the base genuinely has no such file" as the same
+   233	          # event and skipped the protection in both (promotion condition 2 of 2
+   234	          # from the Gear-3 gate's PASS-WITH-CONDITIONS on #5614). Those two are
+   235	          # separated below, because they are not the same fact: a shallow
+   236	          # checkout or an unfetched base sha is a broken measurement and must
+   237	          # not be believed, while a PR that INTRODUCES this workflow has no base
+   238	          # copy by construction and head-only is the correct reading for it.
+   239	          # `git cat-file -e` is the probe for both — `git rev-parse <sha>:<path>`
+   240	          # would answer with a hash-shaped non-answer either way.
+   241	          def _git(*args):
+   242	              return subprocess.run(["git", *args], capture_output=True, text=True)
+   243	
+   244	          def _run_everything(why: str):
+   245	              print("true")
+   246	              sys.stderr.write(f"sentinel failing closed: {why}\n")
+   247	              sys.exit(0)
+   248	
+   249	          head_copy = pathlib.Path(os.environ.get("HEAD_WORKFLOW", WORKFLOW)).read_text()
+   250	          patterns = set(guarded_paths(head_copy))
+   251	          base_sha = os.environ["BASE_SHA"]
+   252	          if _git("cat-file", "-e", f"{base_sha}^{{commit}}").returncode != 0:
+   253	              _run_everything(f"base ref {base_sha} is not reachable in this checkout")
+   254	          # EXISTENCE is asked of the TREE, not of the blob. This checkout is
+   255	          # `filter: blob:none` (see the checkout step), so `cat-file -e
+   256	          # <sha>:<path>` reaches for the file CONTENT and can trigger a lazy
+   257	          # fetch — which collapses "the base genuinely has no such file" and
+   258	          # "the promisor fetch failed" into the same non-zero, and the second
+   259	          # one would then take the head-only branch this whole block exists to
+   260	          # refuse (Gear-3 council, codex-gpt-5.6-sol, finding #3, 2026-09-04).
+   261	          # `ls-tree` answers from the tree object, which a blob:none clone
+   262	          # already has: empty stdout means absent, non-zero means the base tree
+   263	          # could not be listed at all, and only the first is innocent.
+   264	          listing = _git("ls-tree", "--name-only", base_sha, "--", WORKFLOW)
+   265	          if listing.returncode != 0:
+   266	              _run_everything(f"the base tree at {base_sha} could not be listed")
+   267	          if listing.stdout.strip():
+   268	              base = _git("show", f"{base_sha}:{WORKFLOW}")
+   269	              if base.returncode != 0:
+   270	                  _run_everything("the base copy of this workflow could not be read")
+   271	              try:
+   272	                  patterns |= set(guarded_paths(base.stdout))
+   273	              except Exception as exc:  # noqa: BLE001 — any parse failure is unreadable base
+   274	                  _run_everything(f"the base copy of this workflow did not parse: {exc}")
+   275	          assert patterns, "no guarded paths parsed — refusing to declare a no-op"
+   276	          changed = [l for l in pathlib.Path(os.environ["CHANGED_FILE"]).read_text().splitlines() if l]
+   277	          # fnmatch has no `**`; `*` already crosses `/` in it, which makes it a
+   278	          # SUPERSET of GitHub's glob here — the sentinel can only ever be more
+   279	          # eager than the trigger, never blinder than it.
+   280	          hit = any(fnmatch.fnmatch(f, p) for f in changed for p in patterns)
+   281	          print("true" if hit else "false")
+   282	          PY
+   283	          )" || fail_closed "the sentinel snippet exited non-zero"
+   284	          # A verdict word or nothing at all: an exit-0 with empty stdout would
+   285	          # write the literal line `run=` and BOTH downstream steps would then
+   286	          # compare it against 'true' and skip — a silently disarmed guard with
+   287	          # no red anywhere (same council, finding #2). Anything that is not one
+   288	          # of the two words is a broken measurement, not a "no".
+   289	          case "$RUN" in
+   290	            true|false) ;;
+   291	            *) fail_closed "the sentinel printed '${RUN}', which is not a verdict word" ;;
+   292	          esac
+   293	          echo "run=$RUN" >> "$GITHUB_OUTPUT"
+   294	          if [[ "$RUN" == "false" ]]; then
+   295	            echo "::notice::no guarded surface changed — sentinel success"
+   296	          fi
+   297	
+   298	      - name: The guard's own corpus is green
+   299	        if: steps.relevant.outputs.run == 'true'
+   300	        run: |
+   301	          # pyyaml is not decoration and it is installed in its own step above:
+   302	          # the conformance test below parses THIS file's own `paths:` block, and
+   303	          # so does the sentinel, so without it both ERROR instead of guarding —
+   304	          # a green job on an unchecked filter.
+   305	          python3 -m pytest scripts/tests/test_merah_putih_day_contrast.py -v
+   306	
+   307	      # A guard that cannot go red is not a guard. This step proves the job would
+   308	      # FAIL on a real regression, using the cheapest possible mutation: swap the
+   309	      # DAY ink for a retired colour in the token file, assert pytest exits
+   310	      # non-zero, then restore and assert it is green again. Without this, a future
+   311	      # refactor that silently disconnects the test from the token file would leave
+   312	      # this job passing forever on nothing — which is the exact failure this
+   313	      # workflow was created to end, and it would be embarrassing to reproduce it
+   314	      # here.
+   315	      - name: The guard can still go red (guilt control)
+   875	
+   876	    res = _run_sentinel(tmp_path, ["README.md"], BASE_SHA=base)
+   877	    assert res.returncode == 0, res.stderr
+   878	    assert res.stdout == "false\n", (
+   879	        "a reachable base that simply does not contain this workflow was treated "
+   880	        "as an unreadable base — the fail-closed path is over-matching, and every "
+   881	        "PR introducing a workflow now runs the full corpus. "
+   882	        f"stdout={res.stdout!r} stderr={res.stderr!r}"
+   883	    )
+   884	
+   885	
+   886	# ---------------------------------------------------------------------------
+   887	# THE SHELL STEP, EXECUTED. Everything above runs the PYTHON SNIPPET the step
+   888	# invokes; nothing above ran the step. That gap hid a real defect through a
+   889	# whole Gear-3 round: the snippet's fail-closed branch was correct and could
+   890	# not be reached, because the step's own `set -euo pipefail` plus a bare
+   891	# `git diff "$BASE_SHA"...HEAD` killed the step first, on exactly the
+   892	# unreachable base the branch exists for (codex-gpt-5.6-sol, BLOCK finding #1,
+   893	# 2026-09-04). A fail-closed path is worth precisely as much as the layer that
+   894	# touches the untrusted input FIRST, so these tests drive that layer.
+   895	# ---------------------------------------------------------------------------
+   896	
+   897	
+   898	def _sentinel_step_script(event_name: str, base_sha: str) -> str:
+   899	    """The step's `run:` body, dedented, with the two `${{ }}` expressions the
+   900	    runner would have substituted already substituted. Nothing else is
+   901	    rewritten — the point is to execute the shell that actually ships."""
+   902	    import textwrap
+   903	
+   904	    text = WORKFLOW.read_text(encoding="utf-8")
+   905	    body = text.split("Did a guarded surface change?", 1)[1].split("\n      - name:", 1)[0]
+   906	    script = body.split("run: |\n", 1)[1]
+   907	    script = textwrap.dedent(script)
+   908	    script = script.replace("${{ github.event_name }}", event_name)
+   909	    return script.replace("${{ github.event.pull_request.base.sha }}", base_sha)
+   910	
+   911	
+   912	def _run_sentinel_step(tmp_path, *, base_sha: str, changed: list[str], event_name: str = "pull_request"):
+   913	    """Executes the step in a throwaway git repo carrying a copy of this
+   914	    workflow, and returns (CompletedProcess, parsed $GITHUB_OUTPUT dict).
+   915	
+   916	    A temp repo rather than REPO: the step writes to $GITHUB_OUTPUT and diffs
+   917	    two refs it must be able to construct, and a test that needs commits of its
+   918	    own must never make them in the checkout it is running from. Identity is
+   919	    passed with `-c` for the same reason the innocence test above refuses
+   920	    `commit-tree`: a CI runner has no committer configured and a test may not
+   921	    require one.
+   922	    """
+   923	    import os
+   924	    import subprocess
+   925	
+   926	    repo = tmp_path / "repo"
+   927	    (repo / ".github/workflows").mkdir(parents=True)
+   928	    (repo / ".github/workflows/merah-putih-day-contrast.yml").write_text(
+   929	        WORKFLOW.read_text(encoding="utf-8"), encoding="utf-8"
+   930	    )
+   931	
+   932	    def git(*args, **kw):
+   933	        return subprocess.run(
+   934	            ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
+   935	            capture_output=True, text=True, cwd=repo, check=True, **kw
+   936	        )
+   937	
+   938	    git("init", "-q", "-b", "main")
+   939	    git("add", "-A")
+   940	    git("commit", "-qm", "base")
+   941	    head_base = git("rev-parse", "HEAD").stdout.strip()
+   942	    for name in changed:
+   943	        p = repo / name
+   944	        p.parent.mkdir(parents=True, exist_ok=True)
+   945	        p.write_text("changed\n", encoding="utf-8")
+   946	    git("add", "-A")
+   947	    git("commit", "-qm", "head")
+   948	
+   949	    out_file = tmp_path / "gh_output"
+   950	    out_file.write_text("", encoding="utf-8")
+   951	    res = subprocess.run(
+   952	        ["bash", "-c", _sentinel_step_script(event_name, base_sha or head_base)],
+   953	        capture_output=True, text=True, cwd=repo, check=False,
+   954	        env={**os.environ, "GITHUB_OUTPUT": str(out_file)},
+   955	    )
+   956	    parsed = dict(
+   957	        line.split("=", 1) for line in out_file.read_text(encoding="utf-8").splitlines() if "=" in line
+   958	    )
+   959	    return res, parsed
+   960	
+   961	
+   962	def test_the_step_itself_runs_the_guard_when_the_base_ref_is_unreachable(tmp_path) -> None:
+   963	    """Guilt, at the layer that fails first. With `set -euo pipefail` and an
+   964	    unguarded change, the ONLY way `run=true` reaches $GITHUB_OUTPUT is the
+   965	    step's own fail-closed branch firing before `git diff` can kill it."""
+   966	    res, out = _run_sentinel_step(
+   967	        tmp_path,
+   968	        base_sha="0" * 40,
+   969	        changed=["README.md"],
+   970	    )
+   971	    assert res.returncode == 0, (
+   972	        "the step died on an unreachable base instead of failing closed — the "
+   973	        f"snippet's fail-closed branch is unreachable. stderr={res.stderr!r}"
+   974	    )
+   975	    assert out.get("run") == "true", (
+   976	        "an unreachable base did not make the step run the whole guard: "
+   977	        f"$GITHUB_OUTPUT={out!r} stdout={res.stdout!r} stderr={res.stderr!r}"
+   978	    )
+   979	
+   980	
+   981	def _bash_major() -> int:
+   982	    import re
+   983	    import subprocess
+   984	
+   985	    out = subprocess.run(["bash", "--version"], capture_output=True, text=True).stdout
+   986	    m = re.search(r"version (\d+)", out)
+   987	    return int(m.group(1)) if m else 0
+   988	
+   989	
+   990	def test_the_step_still_declares_a_no_op_when_the_base_is_readable(tmp_path) -> None:
+   991	    """Innocence for the same branch: a base the step CAN read, and a change
+   992	    touching nothing guarded, must still produce `run=false`. Without this the
+   993	    cure above would be indistinguishable from hardcoding `true`.
+   994	
+   995	    Needs bash >= 4. The step nests a `<<'PY'` heredoc inside `$( )`, which
+   996	    bash 3.2 — still the /bin/bash macOS ships — cannot parse; the runner is
+   997	    ubuntu-latest (bash 5), so this executes where the workflow actually runs
+   998	    and skips on a developer's Mac rather than pretending to pass there. The
+   999	    guilt test above needs no such guard: its fail-closed branch exits before
+  1000	    that line is ever reached, which is the whole reason it is the branch under
+  1001	    test.
+  1002	    """
+  1003	    if _bash_major() < 4:
+  1004	        pytest.skip(
+  1005	            f"bash {_bash_major()} cannot parse a heredoc inside $( ) — this "
+  1006	            "test executes the full step and needs bash >= 4 (CI's ubuntu runner)"
+  1007	        )
+  1008	    res, out = _run_sentinel_step(tmp_path, base_sha="", changed=["README.md"])
+  1009	    assert res.returncode == 0, res.stderr
+  1010	    assert out.get("run") == "false", (
+  1011	        f"a readable base and an unguarded change did not yield a no-op: {out!r} "
+  1012	        f"stderr={res.stderr!r}"
+  1013	    )
+  1014	
+  1015	
+  1016	def test_the_step_refuses_a_verdict_that_is_not_a_verdict_word() -> None:
+  1017	    """Council finding #2, asserted STRUCTURALLY and said so plainly: an exit-0
+  1018	    with empty stdout would write the line `run=` and both downstream steps,
+  1019	    comparing it against 'true', would skip — a disarmed guard with no red
+  1020	    anywhere. Structural because forging that stdout means rewriting the
+  1021	    heredoc the other tests exist to execute unmodified; what is checked is
+  1022	    that the validation stands BETWEEN the snippet and $GITHUB_OUTPUT, not that
+  1023	    some particular wording appears somewhere in the step."""
+  1024	    script = _sentinel_step_script("pull_request", "deadbeef")
+  1025	    guard = script.split('case "$RUN"', 1)
+  1026	    assert len(guard) == 2, (
+  1027	        "the step no longer validates the sentinel's verdict word — an empty or "
+  1028	        "malformed stdout would be written to $GITHUB_OUTPUT as-is"
+  1029	    )
+  1030	    before_write, after_case = guard[0], guard[1]
+  1031	    assert 'echo "run=$RUN"' not in before_write, (
+  1032	        "the verdict is written to $GITHUB_OUTPUT before it is validated — the "
+  1033	        "validation cannot stop what has already been published"
+  1034	    )
+  1035	    branch = after_case.split("esac", 1)[0]
+  1036	    assert "true|false" in branch and "fail_closed" in branch, (
+  1037	        "the verdict-word case no longer accepts exactly the two words and fails "
+  1038	        f"closed on everything else: {branch!r}"
+  1039	    )
+ .github/workflows/merah-putih-day-contrast.yml     |  76 ++++++--
+ .../council-journal.jsonl                          |   4 +-
+ .../pack.yml                                       | 204 +++++++++++++++++++++
+ scripts/tests/test_merah_putih_day_contrast.py     | 176 +++++++++++++++++-
+ 4 files changed, 440 insertions(+), 20 deletions(-)
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 170)       # list, not from a second copy of it. A hand-kept regex is how the sentinel
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 171)       # and the trigger drift into disagreeing, and a sentinel that says "nothing
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 172)       # changed" about a file that did is a green check over a real regression.
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 173)       - name: Did a guarded surface change?
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 174)         id: relevant
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 175)         run: |
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 176)           set -euo pipefail
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 177)           if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 178)             echo "run=true" >> "$GITHUB_OUTPUT"
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 179)             echo "::notice::non-PR event (${{ github.event_name }}) — running the full guard"
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 180)             exit 0
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 181)           fi
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 182)           BASE_SHA="${{ github.event.pull_request.base.sha }}"
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 183)           # FAIL-CLOSED, AND IT LIVES IN THE SHELL — the Python snippet below
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 184)           # carries the same branch, but `set -e` made it unreachable: `git diff`
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 185)           # against an unreachable base exits non-zero and kills this step before
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 186)           # python is ever started, so the branch that "runs the whole guard"
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 187)           # could not run in the one case it exists for (Gear-3 council,
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 188)           # codex-gpt-5.6-sol, BLOCK finding #1, 2026-09-04 — the cure for the
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 189)           # gate's condition 2 was itself only half-applied). The probe belongs to
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 190)           # whichever layer touches the base FIRST, and that layer is this one.
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 191)           # The snippet keeps its copy because the tests execute the snippet
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 192)           # directly and because a fail-closed path is cheap to state twice.
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 193)           fail_closed() {
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 194)             echo "run=true" >> "$GITHUB_OUTPUT"
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 195)             echo "::notice::sentinel failing closed: $1 — running the full guard"
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 196)             exit 0
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 197)           }
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 198)           if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 199)             fail_closed "base ref ${BASE_SHA} is not reachable in this checkout"
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 200)           fi
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 201)           if ! git diff --name-only "$BASE_SHA"...HEAD > /tmp/changed.txt; then
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 202)             fail_closed "the diff against base ref ${BASE_SHA} could not be taken"
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 203)           fi
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 204)           # Only the `run=` line may reach $GITHUB_OUTPUT. The first cut piped the
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 205)           # whole heredoc there, notice included, and the runner rejects any line
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 206)           # that is not NAME=VALUE — so the "nothing guarded changed" path, the
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 207)           # one this promotion exists to make green, went red instead (found by
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 208)           # the Gear-3 council, 2026-09-04). The snippet prints exactly one word.
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 209)           RUN="$(BASE_SHA="$BASE_SHA" CHANGED_FILE=/tmp/changed.txt python3 - <<'PY'
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 210)           import fnmatch, os, pathlib, subprocess, sys, yaml
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 211) 
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 212)           WORKFLOW = ".github/workflows/merah-putih-day-contrast.yml"
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 213) 
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 214)           def guarded_paths(text: str) -> list[str]:
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 215)               doc = yaml.safe_load(text)
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 216)               # PyYAML is YAML 1.1: a bare `on:` key parses as the boolean True.
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 217)               trigger = doc.get("on", doc.get(True))
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 218)               return list(trigger["push"]["paths"])
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 219) 
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 220)           # The list is read from the BASE ref's copy of this file AND the PR's
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 221)           # own copy, unioned. Reading only the PR's copy is a trust boundary the
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 222)           # PR itself controls: one diff that narrows `push.paths` and regresses a
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 223)           # guarded file would have the sentinel judge itself by its own shortened
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 224)           # list, skip the corpus, and skip the very test that catches a
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 225)           # shrinking list (Gear-3 council finding, 2026-09-04). The base copy is
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 226)           # the one the PR cannot edit.
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 227)           #
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 228)           # And when the base copy cannot be read, the sentinel FAILS CLOSED —
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 229)           # it runs the whole guard rather than quietly falling back to the
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 230)           # head-only list the paragraph above just called a trust boundary the
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 231)           # PR controls. `if base.returncode == 0` alone treated "the base ref is
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 232)           # unreachable" and "the base genuinely has no such file" as the same
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 233)           # event and skipped the protection in both (promotion condition 2 of 2
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 234)           # from the Gear-3 gate's PASS-WITH-CONDITIONS on #5614). Those two are
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 235)           # separated below, because they are not the same fact: a shallow
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 236)           # checkout or an unfetched base sha is a broken measurement and must
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 237)           # not be believed, while a PR that INTRODUCES this workflow has no base
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 238)           # copy by construction and head-only is the correct reading for it.
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 239)           # `git cat-file -e` is the probe for both — `git rev-parse <sha>:<path>`
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 240)           # would answer with a hash-shaped non-answer either way.
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 241)           def _git(*args):
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 242)               return subprocess.run(["git", *args], capture_output=True, text=True)
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 243) 
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 244)           def _run_everything(why: str):
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 245)               print("true")
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 246)               sys.stderr.write(f"sentinel failing closed: {why}\n")
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 247)               sys.exit(0)
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 248) 
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 249)           head_copy = pathlib.Path(os.environ.get("HEAD_WORKFLOW", WORKFLOW)).read_text()
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 250)           patterns = set(guarded_paths(head_copy))
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 251)           base_sha = os.environ["BASE_SHA"]
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 252)           if _git("cat-file", "-e", f"{base_sha}^{{commit}}").returncode != 0:
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 253)               _run_everything(f"base ref {base_sha} is not reachable in this checkout")
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 254)           # EXISTENCE is asked of the TREE, not of the blob. This checkout is
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 255)           # `filter: blob:none` (see the checkout step), so `cat-file -e
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 256)           # <sha>:<path>` reaches for the file CONTENT and can trigger a lazy
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 257)           # fetch — which collapses "the base genuinely has no such file" and
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 258)           # "the promisor fetch failed" into the same non-zero, and the second
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 259)           # one would then take the head-only branch this whole block exists to
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 260)           # refuse (Gear-3 council, codex-gpt-5.6-sol, finding #3, 2026-09-04).
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 261)           # `ls-tree` answers from the tree object, which a blob:none clone
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 262)           # already has: empty stdout means absent, non-zero means the base tree
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 263)           # could not be listed at all, and only the first is innocent.
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 264)           listing = _git("ls-tree", "--name-only", base_sha, "--", WORKFLOW)
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 265)           if listing.returncode != 0:
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 266)               _run_everything(f"the base tree at {base_sha} could not be listed")
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 267)           if listing.stdout.strip():
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 268)               base = _git("show", f"{base_sha}:{WORKFLOW}")
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 269)               if base.returncode != 0:
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 270)                   _run_everything("the base copy of this workflow could not be read")
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 271)               try:
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 272)                   patterns |= set(guarded_paths(base.stdout))
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 273)               except Exception as exc:  # noqa: BLE001 — any parse failure is unreadable base
+6434bfa6a4a (Balizero (Air-M5) 2026-09-04 19:51:30 +0800 274)                   _run_everything(f"the base copy of this workflow did not parse: {exc}")
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 275)           assert patterns, "no guarded paths parsed — refusing to declare a no-op"
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 276)           changed = [l for l in pathlib.Path(os.environ["CHANGED_FILE"]).read_text().splitlines() if l]
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 277)           # fnmatch has no `**`; `*` already crosses `/` in it, which makes it a
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 278)           # SUPERSET of GitHub's glob here — the sentinel can only ever be more
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 279)           # eager than the trigger, never blinder than it.
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 280)           hit = any(fnmatch.fnmatch(f, p) for f in changed for p in patterns)
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 281)           print("true" if hit else "false")
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 282)           PY
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 283)           )" || fail_closed "the sentinel snippet exited non-zero"
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 284)           # A verdict word or nothing at all: an exit-0 with empty stdout would
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 285)           # write the literal line `run=` and BOTH downstream steps would then
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 286)           # compare it against 'true' and skip — a silently disarmed guard with
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 287)           # no red anywhere (same council, finding #2). Anything that is not one
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 288)           # of the two words is a broken measurement, not a "no".
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 289)           case "$RUN" in
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 290)             true|false) ;;
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 291)             *) fail_closed "the sentinel printed '${RUN}', which is not a verdict word" ;;
+2fca39e8213 (Balizero (Air-M5) 2026-09-04 22:46:47 +0800 292)           esac
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 293)           echo "run=$RUN" >> "$GITHUB_OUTPUT"
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 294)           if [[ "$RUN" == "false" ]]; then
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 295)             echo "::notice::no guarded surface changed — sentinel success"
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 296)           fi
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 297) 
+cadf6715842 (Bali Zero         2026-08-31 00:59:53 +0000 298)       - name: The guard's own corpus is green
+60d0c4e8560 (Bali Zero         2026-09-04 11:30:19 +0000 299)         if: steps.relevant.outputs.run == 'true'
+cadf6715842 (Bali Zero         2026-08-31 00:59:53 +0000 300)         run: |
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "command -v -a bash
+/bin/bash --version | head -1
+if [ -x /opt/homebrew/bin/bash ]; then /opt/homebrew/bin/bash --version | head -1; fi
+ls -ld .venv venv apps/backend-rag/.venv 2>/dev/null || true
+nl -ba scripts/tests/test_merah_putih_day_contrast.py | sed -n '700,1060p'
+git status --short
+git log --oneline --decorate bfb31e9e5d..HEAD" in /Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions
+ succeeded in 0ms:
+a59ba2c59b (HEAD -> agent/air-m5/infra/merah-day-gate-conditions, origin/agent/air-m5/infra/merah-day-gate-conditions) fix(evidence): the pack's own numbers count the pack
+54c3a51e97 docs(evidence): the Gear-3 pack this PR was missing, with the council's three cures recorded
+b1c1c776ac docs(ci): condition 1 keeps the line and loses the false reason for it
+2fca39e821 fix(ci): the fail-closed branch moves to the layer that touches the base first
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc 'PYTHONDONTWRITEBYTECODE=1 apps/backend-rag/.venv/bin/python -m pytest -q -p no:cacheprovider scripts/tests/test_merah_putih_day_contrast.py::test_the_step_itself_runs_the_guard_when_the_base_ref_is_unreachable scripts/tests/test_merah_putih_day_contrast.py::test_the_step_still_declares_a_no_op_when_the_base_is_readable scripts/tests/test_merah_putih_day_contrast.py::test_the_step_refuses_a_verdict_that_is_not_a_verdict_word
+whence -a bash || true
+find /opt/homebrew /usr/local -type f -name bash -perm -111 2>/dev/null | head -20' in /Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions
+ succeeded in 1629ms:
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/pytest/__main__.py", line 9, in <module>
+    raise SystemExit(pytest.console_main())
+                     ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/_pytest/config/__init__.py", line 223, in console_main
+    code = main()
+           ^^^^^^
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/_pytest/config/__init__.py", line 193, in main
+    config = _prepareconfig(new_args, plugins)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/_pytest/config/__init__.py", line 361, in _prepareconfig
+    config: Config = pluginmanager.hook.pytest_cmdline_parse(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/pluggy/_callers.py", line 167, in _multicall
+    raise exception
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/_pytest/helpconfig.py", line 124, in pytest_cmdline_parse
+    config = yield
+             ^^^^^
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/_pytest/config/__init__.py", line 1192, in pytest_cmdline_parse
+    self.parse(args)
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/_pytest/config/__init__.py", line 1562, in parse
+    self.hook.pytest_load_initial_conftests(
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/pluggy/_callers.py", line 167, in _multicall
+    raise exception
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/_pytest/warnings.py", line 128, in pytest_load_initial_conftests
+    return (yield)
+            ^^^^^
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/pluggy/_callers.py", line 116, in _multicall
+    next(function_gen)  # first yield
+    ^^^^^^^^^^^^^^^^^^
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/_pytest/capture.py", line 170, in pytest_load_initial_conftests
+    capman.start_global_capturing()
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/_pytest/capture.py", line 773, in start_global_capturing
+    self._global_capturing = _get_multicapture(self._method)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/_pytest/capture.py", line 714, in _get_multicapture
+    return MultiCapture(in_=FDCapture(0), out=FDCapture(1), err=FDCapture(2))
+                                              ^^^^^^^^^^^^
+  File "/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/apps/backend-rag/.venv/lib/python3.11/site-packages/_pytest/capture.py", line 493, in __init__
+    TemporaryFile(buffering=0),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/balizero/.local/share/mise/installs/python/3.11.15/lib/python3.11/tempfile.py", line 628, in TemporaryFile
+    prefix, suffix, dir, output_type = _sanitize_params(prefix, suffix, dir)
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/balizero/.local/share/mise/installs/python/3.11.15/lib/python3.11/tempfile.py", line 127, in _sanitize_params
+    dir = gettempdir()
+          ^^^^^^^^^^^^
+  File "/Users/balizero/.local/share/mise/installs/python/3.11.15/lib/python3.11/tempfile.py", line 316, in gettempdir
+    return _os.fsdecode(_gettempdir())
+                        ^^^^^^^^^^^^^
+  File "/Users/balizero/.local/share/mise/installs/python/3.11.15/lib/python3.11/tempfile.py", line 309, in _gettempdir
+    tempdir = _get_default_tempdir()
+              ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/balizero/.local/share/mise/installs/python/3.11.15/lib/python3.11/tempfile.py", line 224, in _get_default_tempdir
+    raise FileNotFoundError(_errno.ENOENT,
+FileNotFoundError: [Errno 2] No usable temporary directory found in ['/var/folders/8_/617x0rcj09bb8yt0byfmcp1c0000gn/T/', '/tmp', '/var/tmp', '/usr/tmp', '/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions']
+/bin/bash
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "sed -n '176,296p' .github/workflows/merah-putih-day-contrast.yml | sed 's/"'^          //'"' | sed 's/"'${{ github.event_name }}/pull_request/g; s/${{ github.event.pull_request.base.sha }}/deadbeef/g'"' | /bin/bash -n
+base="'$(git rev-parse HEAD''^)
+git ls-tree --name-only "$base" -- .github/workflows/merah-putih-day-contrast.yml; echo "present_rc=$?"
+git ls-tree --name-only "$base" -- .github/workflows/definitely-absent.yml; echo "absent_rc=$?"
+git ls-tree --name-only 0000000000000000000000000000000000000000 -- .github/workflows/merah-putih-day-contrast.yml >/dev/null 2>&1; echo "unreadable_rc=$?"
+git config --get remote.origin.promisor || true
+git config --get remote.origin.partialclonefilter || true
+git rev-list --objects --filter=blob:none --all --missing=print 2>/dev/null | sed -n '"'1,5p'" in /Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions
+ succeeded in 511ms:
+a59ba2c59bc2d2990004c1e8ddb6f7398a63e87f
+54c3a51e9717afa7fca19c782dce59020c815f66
+7c58914d56b7b9928b5b0b83d73531ecce58feed
+67093587068b2e3f7add7ad9a4514bce3244ecde
+ab8f53f35cc5a3ac509619bc1ff4ea979605a52c
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "printf '%s\\n' 'RUN=\""'$(apps/backend-rag/.venv/bin/python - <<'"'\"'\"'PY'\"'\"'' 'print(\"false\")' 'PY' ')\"' 'test \""'$RUN" = false'"' | /bin/bash; echo \"nested_heredoc_rc="'$?"
+rg -n "ls-tree|verdict|GITHUB_OUTPUT|bash_major|sentinel_step" scripts/tests/test_merah_putih_day_contrast.py
+rg -n "Did a guarded surface change|steps'"\\.relevant\\.outputs\\.run|id: relevant\" .github/workflows/merah-putih-day-contrast.yml" in /Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions
+ succeeded in 0ms:
+/bin/bash: line 4: cannot create temp file for here document: Operation not permitted
+nested_heredoc_rc=1
+657:# above: (1) the whole heredoc was piped into $GITHUB_OUTPUT, notice line
+697:    the single word `false` — nothing else may reach `$GITHUB_OUTPUT`."""
+702:        f"verdict word becomes an invalid $GITHUB_OUTPUT line: {res.stdout!r}"
+709:def test_only_the_verdict_line_is_appended_to_github_output() -> None:
+711:    redirected into `$GITHUB_OUTPUT`; only an `echo "run=…"` may write there."""
+714:    assert '<<\'PY\' >> "$GITHUB_OUTPUT"' not in body, (
+715:        "the sentinel pipes its whole heredoc into $GITHUB_OUTPUT again — the "
+721:        if "$GITHUB_OUTPUT" in l and not l.strip().startswith("#")
+898:def _sentinel_step_script(event_name: str, base_sha: str) -> str:
+912:def _run_sentinel_step(tmp_path, *, base_sha: str, changed: list[str], event_name: str = "pull_request"):
+914:    workflow, and returns (CompletedProcess, parsed $GITHUB_OUTPUT dict).
+916:    A temp repo rather than REPO: the step writes to $GITHUB_OUTPUT and diffs
+952:        ["bash", "-c", _sentinel_step_script(event_name, base_sha or head_base)],
+954:        env={**os.environ, "GITHUB_OUTPUT": str(out_file)},
+964:    unguarded change, the ONLY way `run=true` reaches $GITHUB_OUTPUT is the
+966:    res, out = _run_sentinel_step(
+977:        f"$GITHUB_OUTPUT={out!r} stdout={res.stdout!r} stderr={res.stderr!r}"
+981:def _bash_major() -> int:
+1003:    if _bash_major() < 4:
+1005:            f"bash {_bash_major()} cannot parse a heredoc inside $( ) — this "
+1008:    res, out = _run_sentinel_step(tmp_path, base_sha="", changed=["README.md"])
+1016:def test_the_step_refuses_a_verdict_that_is_not_a_verdict_word() -> None:
+1022:    that the validation stands BETWEEN the snippet and $GITHUB_OUTPUT, not that
+1024:    script = _sentinel_step_script("pull_request", "deadbeef")
+1027:        "the step no longer validates the sentinel's verdict word — an empty or "
+1028:        "malformed stdout would be written to $GITHUB_OUTPUT as-is"
+1032:        "the verdict is written to $GITHUB_OUTPUT before it is validated — the "
+1037:        "the verdict-word case no longer accepts exactly the two words and fails "
+173:      - name: Did a guarded surface change?
+174:        id: relevant
+299:        if: steps.relevant.outputs.run == 'true'
+316:        if: steps.relevant.outputs.run == 'true'
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+codex
+[Air-M5] Il codice corrente non offre un bypass runtime evidente del `case`: i valori ammessi sono esatti. Il difetto dimostrabile è nel proof layer: un test è puramente lessicale, il ramo `git diff` non è esercitato, e il test d’innocenza viene saltato per una premessa Bash falsa.
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc "env -u GITHUB_OUTPUT /bin/bash -c 'set -euo pipefail; fail_closed(){ echo \"run=true\" >> \""'$GITHUB_OUTPUT"; echo notice; exit 0; }; fail_closed x'"'; echo \"unset_output_rc="'$?"
+sed -n '"'176,296p' .github/workflows/merah-putih-day-contrast.yml | sed 's/"'^          //'"' | sed 's/"'${{ github.event_name }}/pull_request/g; s/${{ github.event.pull_request.base.sha }}/deadbeef/g'"' | /bin/bash -n; echo \"bash32_full_step_parse_rc="'$?"
+nl -ba scripts/tests/test_merah_putih_day_contrast.py | sed -n '"'912,1039p'
+nl -ba .github/workflows/merah-putih-day-contrast.yml | sed -n '193,295p'" in /Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions
+ succeeded in 0ms:
+/bin/bash: GITHUB_OUTPUT: unbound variable
+unset_output_rc=1
+bash32_full_step_parse_rc=0
+   912	def _run_sentinel_step(tmp_path, *, base_sha: str, changed: list[str], event_name: str = "pull_request"):
+   913	    """Executes the step in a throwaway git repo carrying a copy of this
+   914	    workflow, and returns (CompletedProcess, parsed $GITHUB_OUTPUT dict).
+   915	
+   916	    A temp repo rather than REPO: the step writes to $GITHUB_OUTPUT and diffs
+   917	    two refs it must be able to construct, and a test that needs commits of its
+   918	    own must never make them in the checkout it is running from. Identity is
+   919	    passed with `-c` for the same reason the innocence test above refuses
+   920	    `commit-tree`: a CI runner has no committer configured and a test may not
+   921	    require one.
+   922	    """
+   923	    import os
+   924	    import subprocess
+   925	
+   926	    repo = tmp_path / "repo"
+   927	    (repo / ".github/workflows").mkdir(parents=True)
+   928	    (repo / ".github/workflows/merah-putih-day-contrast.yml").write_text(
+   929	        WORKFLOW.read_text(encoding="utf-8"), encoding="utf-8"
+   930	    )
+   931	
+   932	    def git(*args, **kw):
+   933	        return subprocess.run(
+   934	            ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
+   935	            capture_output=True, text=True, cwd=repo, check=True, **kw
+   936	        )
+   937	
+   938	    git("init", "-q", "-b", "main")
+   939	    git("add", "-A")
+   940	    git("commit", "-qm", "base")
+   941	    head_base = git("rev-parse", "HEAD").stdout.strip()
+   942	    for name in changed:
+   943	        p = repo / name
+   944	        p.parent.mkdir(parents=True, exist_ok=True)
+   945	        p.write_text("changed\n", encoding="utf-8")
+   946	    git("add", "-A")
+   947	    git("commit", "-qm", "head")
+   948	
+   949	    out_file = tmp_path / "gh_output"
+   950	    out_file.write_text("", encoding="utf-8")
+   951	    res = subprocess.run(
+   952	        ["bash", "-c", _sentinel_step_script(event_name, base_sha or head_base)],
+   953	        capture_output=True, text=True, cwd=repo, check=False,
+   954	        env={**os.environ, "GITHUB_OUTPUT": str(out_file)},
+   955	    )
+   956	    parsed = dict(
+   957	        line.split("=", 1) for line in out_file.read_text(encoding="utf-8").splitlines() if "=" in line
+   958	    )
+   959	    return res, parsed
+   960	
+   961	
+   962	def test_the_step_itself_runs_the_guard_when_the_base_ref_is_unreachable(tmp_path) -> None:
+   963	    """Guilt, at the layer that fails first. With `set -euo pipefail` and an
+   964	    unguarded change, the ONLY way `run=true` reaches $GITHUB_OUTPUT is the
+   965	    step's own fail-closed branch firing before `git diff` can kill it."""
+   966	    res, out = _run_sentinel_step(
+   967	        tmp_path,
+   968	        base_sha="0" * 40,
+   969	        changed=["README.md"],
+   970	    )
+   971	    assert res.returncode == 0, (
+   972	        "the step died on an unreachable base instead of failing closed — the "
+   973	        f"snippet's fail-closed branch is unreachable. stderr={res.stderr!r}"
+   974	    )
+   975	    assert out.get("run") == "true", (
+   976	        "an unreachable base did not make the step run the whole guard: "
+   977	        f"$GITHUB_OUTPUT={out!r} stdout={res.stdout!r} stderr={res.stderr!r}"
+   978	    )
+   979	
+   980	
+   981	def _bash_major() -> int:
+   982	    import re
+   983	    import subprocess
+   984	
+   985	    out = subprocess.run(["bash", "--version"], capture_output=True, text=True).stdout
+   986	    m = re.search(r"version (\d+)", out)
+   987	    return int(m.group(1)) if m else 0
+   988	
+   989	
+   990	def test_the_step_still_declares_a_no_op_when_the_base_is_readable(tmp_path) -> None:
+   991	    """Innocence for the same branch: a base the step CAN read, and a change
+   992	    touching nothing guarded, must still produce `run=false`. Without this the
+   993	    cure above would be indistinguishable from hardcoding `true`.
+   994	
+   995	    Needs bash >= 4. The step nests a `<<'PY'` heredoc inside `$( )`, which
+   996	    bash 3.2 — still the /bin/bash macOS ships — cannot parse; the runner is
+   997	    ubuntu-latest (bash 5), so this executes where the workflow actually runs
+   998	    and skips on a developer's Mac rather than pretending to pass there. The
+   999	    guilt test above needs no such guard: its fail-closed branch exits before
+  1000	    that line is ever reached, which is the whole reason it is the branch under
+  1001	    test.
+  1002	    """
+  1003	    if _bash_major() < 4:
+  1004	        pytest.skip(
+  1005	            f"bash {_bash_major()} cannot parse a heredoc inside $( ) — this "
+  1006	            "test executes the full step and needs bash >= 4 (CI's ubuntu runner)"
+  1007	        )
+  1008	    res, out = _run_sentinel_step(tmp_path, base_sha="", changed=["README.md"])
+  1009	    assert res.returncode == 0, res.stderr
+  1010	    assert out.get("run") == "false", (
+  1011	        f"a readable base and an unguarded change did not yield a no-op: {out!r} "
+  1012	        f"stderr={res.stderr!r}"
+  1013	    )
+  1014	
+  1015	
+  1016	def test_the_step_refuses_a_verdict_that_is_not_a_verdict_word() -> None:
+  1017	    """Council finding #2, asserted STRUCTURALLY and said so plainly: an exit-0
+  1018	    with empty stdout would write the line `run=` and both downstream steps,
+  1019	    comparing it against 'true', would skip — a disarmed guard with no red
+  1020	    anywhere. Structural because forging that stdout means rewriting the
+  1021	    heredoc the other tests exist to execute unmodified; what is checked is
+  1022	    that the validation stands BETWEEN the snippet and $GITHUB_OUTPUT, not that
+  1023	    some particular wording appears somewhere in the step."""
+  1024	    script = _sentinel_step_script("pull_request", "deadbeef")
+  1025	    guard = script.split('case "$RUN"', 1)
+  1026	    assert len(guard) == 2, (
+  1027	        "the step no longer validates the sentinel's verdict word — an empty or "
+  1028	        "malformed stdout would be written to $GITHUB_OUTPUT as-is"
+  1029	    )
+  1030	    before_write, after_case = guard[0], guard[1]
+  1031	    assert 'echo "run=$RUN"' not in before_write, (
+  1032	        "the verdict is written to $GITHUB_OUTPUT before it is validated — the "
+  1033	        "validation cannot stop what has already been published"
+  1034	    )
+  1035	    branch = after_case.split("esac", 1)[0]
+  1036	    assert "true|false" in branch and "fail_closed" in branch, (
+  1037	        "the verdict-word case no longer accepts exactly the two words and fails "
+  1038	        f"closed on everything else: {branch!r}"
+  1039	    )
+   193	          fail_closed() {
+   194	            echo "run=true" >> "$GITHUB_OUTPUT"
+   195	            echo "::notice::sentinel failing closed: $1 — running the full guard"
+   196	            exit 0
+   197	          }
+   198	          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+   199	            fail_closed "base ref ${BASE_SHA} is not reachable in this checkout"
+   200	          fi
+   201	          if ! git diff --name-only "$BASE_SHA"...HEAD > /tmp/changed.txt; then
+   202	            fail_closed "the diff against base ref ${BASE_SHA} could not be taken"
+   203	          fi
+   204	          # Only the `run=` line may reach $GITHUB_OUTPUT. The first cut piped the
+   205	          # whole heredoc there, notice included, and the runner rejects any line
+   206	          # that is not NAME=VALUE — so the "nothing guarded changed" path, the
+   207	          # one this promotion exists to make green, went red instead (found by
+   208	          # the Gear-3 council, 2026-09-04). The snippet prints exactly one word.
+   209	          RUN="$(BASE_SHA="$BASE_SHA" CHANGED_FILE=/tmp/changed.txt python3 - <<'PY'
+   210	          import fnmatch, os, pathlib, subprocess, sys, yaml
+   211	
+   212	          WORKFLOW = ".github/workflows/merah-putih-day-contrast.yml"
+   213	
+   214	          def guarded_paths(text: str) -> list[str]:
+   215	              doc = yaml.safe_load(text)
+   216	              # PyYAML is YAML 1.1: a bare `on:` key parses as the boolean True.
+   217	              trigger = doc.get("on", doc.get(True))
+   218	              return list(trigger["push"]["paths"])
+   219	
+   220	          # The list is read from the BASE ref's copy of this file AND the PR's
+   221	          # own copy, unioned. Reading only the PR's copy is a trust boundary the
+   222	          # PR itself controls: one diff that narrows `push.paths` and regresses a
+   223	          # guarded file would have the sentinel judge itself by its own shortened
+   224	          # list, skip the corpus, and skip the very test that catches a
+   225	          # shrinking list (Gear-3 council finding, 2026-09-04). The base copy is
+   226	          # the one the PR cannot edit.
+   227	          #
+   228	          # And when the base copy cannot be read, the sentinel FAILS CLOSED —
+   229	          # it runs the whole guard rather than quietly falling back to the
+   230	          # head-only list the paragraph above just called a trust boundary the
+   231	          # PR controls. `if base.returncode == 0` alone treated "the base ref is
+   232	          # unreachable" and "the base genuinely has no such file" as the same
+   233	          # event and skipped the protection in both (promotion condition 2 of 2
+   234	          # from the Gear-3 gate's PASS-WITH-CONDITIONS on #5614). Those two are
+   235	          # separated below, because they are not the same fact: a shallow
+   236	          # checkout or an unfetched base sha is a broken measurement and must
+   237	          # not be believed, while a PR that INTRODUCES this workflow has no base
+   238	          # copy by construction and head-only is the correct reading for it.
+   239	          # `git cat-file -e` is the probe for both — `git rev-parse <sha>:<path>`
+   240	          # would answer with a hash-shaped non-answer either way.
+   241	          def _git(*args):
+   242	              return subprocess.run(["git", *args], capture_output=True, text=True)
+   243	
+   244	          def _run_everything(why: str):
+   245	              print("true")
+   246	              sys.stderr.write(f"sentinel failing closed: {why}\n")
+   247	              sys.exit(0)
+   248	
+   249	          head_copy = pathlib.Path(os.environ.get("HEAD_WORKFLOW", WORKFLOW)).read_text()
+   250	          patterns = set(guarded_paths(head_copy))
+   251	          base_sha = os.environ["BASE_SHA"]
+   252	          if _git("cat-file", "-e", f"{base_sha}^{{commit}}").returncode != 0:
+   253	              _run_everything(f"base ref {base_sha} is not reachable in this checkout")
+   254	          # EXISTENCE is asked of the TREE, not of the blob. This checkout is
+   255	          # `filter: blob:none` (see the checkout step), so `cat-file -e
+   256	          # <sha>:<path>` reaches for the file CONTENT and can trigger a lazy
+   257	          # fetch — which collapses "the base genuinely has no such file" and
+   258	          # "the promisor fetch failed" into the same non-zero, and the second
+   259	          # one would then take the head-only branch this whole block exists to
+   260	          # refuse (Gear-3 council, codex-gpt-5.6-sol, finding #3, 2026-09-04).
+   261	          # `ls-tree` answers from the tree object, which a blob:none clone
+   262	          # already has: empty stdout means absent, non-zero means the base tree
+   263	          # could not be listed at all, and only the first is innocent.
+   264	          listing = _git("ls-tree", "--name-only", base_sha, "--", WORKFLOW)
+   265	          if listing.returncode != 0:
+   266	              _run_everything(f"the base tree at {base_sha} could not be listed")
+   267	          if listing.stdout.strip():
+   268	              base = _git("show", f"{base_sha}:{WORKFLOW}")
+   269	              if base.returncode != 0:
+   270	                  _run_everything("the base copy of this workflow could not be read")
+   271	              try:
+   272	                  patterns |= set(guarded_paths(base.stdout))
+   273	              except Exception as exc:  # noqa: BLE001 — any parse failure is unreadable base
+   274	                  _run_everything(f"the base copy of this workflow did not parse: {exc}")
+   275	          assert patterns, "no guarded paths parsed — refusing to declare a no-op"
+   276	          changed = [l for l in pathlib.Path(os.environ["CHANGED_FILE"]).read_text().splitlines() if l]
+   277	          # fnmatch has no `**`; `*` already crosses `/` in it, which makes it a
+   278	          # SUPERSET of GitHub's glob here — the sentinel can only ever be more
+   279	          # eager than the trigger, never blinder than it.
+   280	          hit = any(fnmatch.fnmatch(f, p) for f in changed for p in patterns)
+   281	          print("true" if hit else "false")
+   282	          PY
+   283	          )" || fail_closed "the sentinel snippet exited non-zero"
+   284	          # A verdict word or nothing at all: an exit-0 with empty stdout would
+   285	          # write the literal line `run=` and BOTH downstream steps would then
+   286	          # compare it against 'true' and skip — a silently disarmed guard with
+   287	          # no red anywhere (same council, finding #2). Anything that is not one
+   288	          # of the two words is a broken measurement, not a "no".
+   289	          case "$RUN" in
+   290	            true|false) ;;
+   291	            *) fail_closed "the sentinel printed '${RUN}', which is not a verdict word" ;;
+   292	          esac
+   293	          echo "run=$RUN" >> "$GITHUB_OUTPUT"
+   294	          if [[ "$RUN" == "false" ]]; then
+   295	            echo "::notice::no guarded surface changed — sentinel success"
+
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+hook: PostToolUse Completed
+codex
+BLOCK.
+
+- **HIGH — verdict protection is tested lexically, not behaviorally.** The test never forces empty or malformed sentinel output. It passes if the valid arm becomes `true|false|*`, because it merely searches for `"true|false"` and `"fail_closed"`. Such a mutation accepts everything before publishing `run=$RUN`. [test_merah_putih_day_contrast.py:1024](/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/scripts/tests/test_merah_putih_day_contrast.py:1024), [merah-putih-day-contrast.yml:289](/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/.github/workflows/merah-putih-day-contrast.yml:289)
+
+- **HIGH — only the first shell failure branch is pinned.** The unreachable-base test supplies an all-zero SHA, so `cat-file` fails immediately. It never exercises the distinct case where the commit exists but `git diff A...HEAD` fails—for example, disconnected histories. The second `fail_closed` call can regress independently without detection. [merah-putih-day-contrast.yml:198](/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/.github/workflows/merah-putih-day-contrast.yml:198), [test_merah_putih_day_contrast.py:962](/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/scripts/tests/test_merah_putih_day_contrast.py:962)
+
+- **MEDIUM — the `blob:none` cure is not tested under `blob:none`.** Both new execution tests construct ordinary full repositories. Nothing removes a promised blob/tree or verifies the three required outcomes: present, absent with exit 0, and unreadable with non-zero. The implementation’s `ls-tree` distinction is valid for a healthy blobless clone, but the claimed mechanism remains unpinned. The preceding prose also still incorrectly says `cat-file -e` is “the probe for both.” [merah-putih-day-contrast.yml:239](/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/.github/workflows/merah-putih-day-contrast.yml:239), [test_merah_putih_day_contrast.py:926](/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/scripts/tests/test_merah_putih_day_contrast.py:926)
+
+- **MEDIUM — the innocence test silently skips on a false premise.** The complete shipping script passes `bash -n` under macOS Bash 3.2; the alleged parse limitation does not justify skipping. This removes innocence proof on developer machines, violating the no-silent-pass convention. [test_merah_putih_day_contrast.py:995](/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/scripts/tests/test_merah_putih_day_contrast.py:995)
+
+`GITHUB_OUTPUT` unset causes `set -u` to terminate at the redirection, so the corpus does not run, although the job fails red. No current call precedes the function definition.
+tokens used
+87.331
+BLOCK.
+
+- **HIGH — verdict protection is tested lexically, not behaviorally.** The test never forces empty or malformed sentinel output. It passes if the valid arm becomes `true|false|*`, because it merely searches for `"true|false"` and `"fail_closed"`. Such a mutation accepts everything before publishing `run=$RUN`. [test_merah_putih_day_contrast.py:1024](/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/scripts/tests/test_merah_putih_day_contrast.py:1024), [merah-putih-day-contrast.yml:289](/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/.github/workflows/merah-putih-day-contrast.yml:289)
+
+- **HIGH — only the first shell failure branch is pinned.** The unreachable-base test supplies an all-zero SHA, so `cat-file` fails immediately. It never exercises the distinct case where the commit exists but `git diff A...HEAD` fails—for example, disconnected histories. The second `fail_closed` call can regress independently without detection. [merah-putih-day-contrast.yml:198](/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/.github/workflows/merah-putih-day-contrast.yml:198), [test_merah_putih_day_contrast.py:962](/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/scripts/tests/test_merah_putih_day_contrast.py:962)
+
+- **MEDIUM — the `blob:none` cure is not tested under `blob:none`.** Both new execution tests construct ordinary full repositories. Nothing removes a promised blob/tree or verifies the three required outcomes: present, absent with exit 0, and unreadable with non-zero. The implementation’s `ls-tree` distinction is valid for a healthy blobless clone, but the claimed mechanism remains unpinned. The preceding prose also still incorrectly says `cat-file -e` is “the probe for both.” [merah-putih-day-contrast.yml:239](/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/.github/workflows/merah-putih-day-contrast.yml:239), [test_merah_putih_day_contrast.py:926](/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/scripts/tests/test_merah_putih_day_contrast.py:926)
+
+- **MEDIUM — the innocence test silently skips on a false premise.** The complete shipping script passes `bash -n` under macOS Bash 3.2; the alleged parse limitation does not justify skipping. This removes innocence proof on developer machines, violating the no-silent-pass convention. [test_merah_putih_day_contrast.py:995](/Users/balizero/nuzantara/.worktrees/infra-merah-day-gate-conditions/scripts/tests/test_merah_putih_day_contrast.py:995)
+
+`GITHUB_OUTPUT` unset causes `set -u` to terminate at the redirection, so the corpus does not run, although the job fails red. No current call precedes the function definition.

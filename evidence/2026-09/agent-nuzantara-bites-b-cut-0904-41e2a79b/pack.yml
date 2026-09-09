@@ -1,0 +1,454 @@
+brief_ref: evidence/brief.yml
+lanes:
+  - lane: b-cut
+    role: build
+    seat: claude-opus-5 xhigh (builder session, Pro)
+council_run: journal.jsonl
+plan_ref: >-
+  RULED 2026-09-04 b (Zero, Legge 5), relayed as a PR comment on #5673 by the Pro
+  audit session. Supersedes #5673, kept open until this PR is proven live.
+
+bites:
+  consumer: >-
+    the required `antidotes` job in .github/workflows/immune-enforcement.yml, which
+    runs scripts/tests/test_bites_parse.py, plus infra/guard-conformance, which
+    censuses this module's guards by AST and fails on any without both proofs
+  where: ci
+  observe: python3 scripts/ci/bites_parse.py --selftest
+  expect: regex:[0-9]{3}/[0-9]{3} pass
+
+bites_note: >-
+  Same shape as PR #5673's own Bites — three digits so the count can grow with the
+  corpus without turning this observation into a ratchet, and still goes red if the
+  corpus drops back under a hundred.
+
+diff: >-
+  Two comparisons matter here and they answer different questions.
+
+  AGAINST #5673's branch tip (9b4be2bf24, this PR's own contribution — what
+  changed on top of the PR it supersedes): `git diff --numstat 9b4be2bf24 --
+  scripts/ci scripts/tests infra .github/workflows` -> 519 added, 544 removed
+  (net -25) across the five bites surfaces (bites_parse.py/
+  bites_allowlist.yaml/bites_corpus.yaml/test_bites_parse.py/registry.json),
+  zero workflow files of its own (the immune-enforcement.yml +3 predates this
+  PR — see GEAR below).
+
+  GEAR, corrected: the FLOOR that matters is computed against main (merge-base
+  anchored, same as harness-floor.yml) — not against #5673's tip. This branch's
+  diff against main carries #5673's own `.github/workflows/immune-
+  enforcement.yml` change (test wiring for the `antidotes` job, kept: a test
+  nothing runs is scar #5625), a hot-zone path regardless of size, which floors
+  Gear at 3. An earlier draft of this brief measured against the wrong base and
+  declared Gear 1 in error; corrected here rather than left wrong. A SEPARATE
+  finding — guard-conformance.yml/immune-enforcement.yml never watching
+  bites_allowlist.yaml/bites_corpus.yaml at all — remains deferred to its own
+  follow-up PR regardless of gear (one PR, one concern; see receipts), and is
+  still real and live on main today.
+
+  AGAINST origin/main (what merging THIS PR actually lands, since #5673 has not
+  merged): `git diff --numstat $(git merge-base origin/main HEAD)..HEAD` ->
+  3,644 added, 80 removed across 11 files, because it necessarily carries
+  #5673's own diff too, plus this branch's own evidence pack and brief.yml.
+  This is a disclosure, not a target: the PR being answered is "cut the
+  module Zero already reviewed", not "restate its whole diff smaller".
+
+per_component:
+  probe: >-
+    AST census over bites_parse.py's top-level nodes (name-pattern bucketing over
+    `ast.parse` output — PR #5673's own probe script is not in the repo, so this
+    is a fresh, reproducible one, run identically on both sides; bucket
+    boundaries are this probe's own and will not byte-match an earlier draft's
+    table, but the TOTAL and the guard-code delta are what carry the claim).
+  table:
+    - { component: module docstring, before: 61, after: 59, delta: -2 }
+    - {
+        component: imports / exit codes / misc,
+        before: 94,
+        after: 94,
+        delta: 0,
+      }
+    - { component: YAML load + schema check, before: 75, after: 75, delta: 0 }
+    - {
+        component: allow-list DATA refs (module globals),
+        before: 21,
+        after: 19,
+        delta: -2,
+      }
+    - {
+        component: guard code (checks + guards + wiring),
+        before: 447,
+        after: 332,
+        delta: -115,
+      }
+    - { component: expect matcher, before: 26, after: 26, delta: 0 }
+    - {
+        component: pack layer (parse_pack + invisible-char checks),
+        before: 143,
+        after: 143,
+        delta: 0,
+      }
+    - {
+        component: selftest harness + corpus loader,
+        before: 41,
+        after: 41,
+        delta: 0,
+      }
+    - { component: CLI (main), before: 44, after: 44, delta: 0 }
+    - {
+        component: blank + comment lines between nodes,
+        before: 175,
+        after: 168,
+        delta: -7,
+      }
+    - {
+        component: TOTAL (scripts/ci/bites_parse.py),
+        before: 1127,
+        after: 1001,
+        delta: "-126 (-11.2%)",
+      }
+  note: >-
+    "guard code" nets -115 from two opposing moves: removing `_check_gh`,
+    `_check_git`, `_check_curl`, their four global constant blocks, `_flag_is`/
+    `_any_flag_is`/`_is_count_flag` (dead once nothing called them), and the
+    pytest branch of `_check_python3`/`_guard_observable_script`, MINUS the ~39
+    lines the kimi refutation pass added back closing three holes in the
+    surviving `_subcommand_permitted`/`_check_fly`/`_guard_observable_script`
+    guards (see dissent). Every other component is untouched — the YAML layer,
+    the expect matcher and the pack layer carry no binary-specific logic to cut.
+
+wc_l:
+  before:
+    scripts/ci/bites_parse.py: 1127
+    scripts/ci/bites_allowlist.yaml: 214
+    scripts/ci/bites_corpus.yaml: 430
+    scripts/tests/test_bites_parse.py: 1136
+    total: 2907
+  after:
+    scripts/ci/bites_parse.py: 1001
+    scripts/ci/bites_allowlist.yaml: 107
+    scripts/ci/bites_corpus.yaml: 555
+    scripts/tests/test_bites_parse.py: 1160
+    total: 2823
+  delta: >-
+    -84 (-2.9%) — the corpus and test file GREW (+125/+24) to hold the fixtures
+    the cut needed to stay lossless, PLUS three new guilt+innocence pairs the
+    kimi refutation pass forced (see dissent); the module itself still nets -126
+    even after the ~39 lines that pass added back to close those holes.
+
+differential: >-
+  Method: dump (label, pack text, classify()) for all 121 original corpus entries
+  BEFORE any edit (saved to a scratchpad jsonl), then re-run classify() over the
+  SAME pack text through the FINAL module and diff by label — see receipts for
+  the exact command. 24 flips, ALL executable -> malformed, zero unattributable:
+  17 are head-first uses of a removed binary or the narrowed fly table
+  (ok-pytest, ok-curl-https, ok-sha-placeholder, ok-git-grep-plain,
+  ok-fly-version, ok-short-option-bundle, ok-git-count-flag, ok-pytest-quiet,
+  ok-pytest-glued-option-value, ok-diff-filter, ok-pathspec-separator,
+  ok-diff-context, ok-curl-max-time-separate-value, ok-curl-write-out-separate-value,
+  ok-gh-json-is-the-shape-that-survives, ok-gh-api-rest-path-is-the-shape-that-survives,
+  ok-git-format-glued-is-the-shape-that-survives); the other 7 are fixtures whose
+  PRIMARY purpose was proving an unrelated guard (expect-form, invisible-char,
+  remote-shell over-match, quoting) but that happened to use `git status`/`curl
+  ...` as the INCIDENTAL observe-head for that proof (ok-bites-is-not-the-first-key,
+  ok-expect-regex-with-one-quantifier,
+  ok-remote-shell-over-match-searching-for-the-WORD-ssh-is-innocent,
+  ok-the-same-double-quoted-value-without-the-escape, ok-unquoted-expect-with-a-colon,
+  ok-unquoted-plain-scalar, ok-url-query-string-carrying-at) — re-classifying their
+  ORIGINAL text (not my corpus's substituted text, see below) against the removed-
+  binary rule flips them too, same root cause as the other 17, just a different
+  fixture role. An early draft of this pack under-counted this at 17 by only
+  listing the head-first cases; the differential's actual job is catching exactly
+  this kind of miss, so the count is corrected here rather than left wrong.
+  Separately verified: running the ORIGINAL 121 through the module BEFORE the
+  kimi three-hole fix and AFTER it (same corpus, same allow-list, only
+  `_subcommand_permitted`/`_check_fly`/`_guard_observable_script` changed)
+  produces IDENTICAL verdicts for all 121 — the kimi pass closes holes only the
+  brand-new fixtures below exercise, it does not touch any original entry's
+  classification (receipts). Zero labels deleted (mechanics note in RULED
+  2026-09-04 b honoured). 15 new labels added total: 10 for the explicit shapes
+  the ruling named (python3 parent-escape/absolute-path/missing-script/semicolon,
+  fly machine-run-bare/deploy-bare, the `fly` alias forms of status/image-show),
+  plus 5 from the kimi refutation pass (brace-expansion guilt + its
+  sha-placeholder innocence pair, fly-image-show-extra-positional,
+  fly-extra-positional-after-a-flag-value, marker-string-in-a-non-py-file).
+
+  A SEPARATE class of edit does not show up in this diff at all, by design: several
+  fixtures that used `git status`/`curl ...` as an INCIDENTAL placeholder while
+  testing an unrelated guard (expect-form, where-scope, invisible-char, path
+  containment, shell composition, args-from-file) had their OBSERVE TEXT swapped
+  to an allowed head with the SAME classification before and after — not a flip,
+  a substitution, done because the removed binary would otherwise have masked
+  which guard the corpus proves. See mutation_matrix below for why this mattered.
+
+mutation_matrix: >-
+  Method: for each of the 9 registered `_guard_*` functions, patch it (and its
+  entry inside `_COMMAND_GUARDS` where applicable — the tuple holds function
+  references captured at import time, so patching the module attribute alone does
+  not reach calls made through it) to a no-op, then ask whether ANY corpus fixture's
+  ACTUAL classification then disagrees with its DECLARED one (a "sole-cause"
+  fixture). Run against the ORIGINAL module+corpus first to get the true baseline
+  (not assumed): shell_composition, no_remote_shell, path_containment and
+  args_from_file each had ALL or MOST of their sole-cause fixtures built on a
+  git/curl/gh head, which the cut would have silently over-covered (the command
+  allow-list rejecting the whole command masks the narrower guard). Re-isolated
+  each on an allowed head (python3 script or fly) before finalizing the corpus.
+  Result, run against the FINAL module+corpus (after the kimi refutation pass'
+  three additional fixtures, not just the binary-removal cut):
+    _guard_shell_composition: 5, _guard_command_allowlist: 54,
+    _guard_no_remote_shell: 2, _guard_path_containment: 4,
+    _guard_observable_script: 4, _guard_args_from_file: 1,
+    _guard_no_invisible: 1, _guard_expect_form: 4, _guard_where_scope: 1.
+  All nine still provably necessary against the corpus alone, none masked by the
+  cut. command_allowlist gained two sole-cause fixtures (52->54, the two new fly
+  positional-escape guilts) and observable_script gained one (3->4, the non-`.py`
+  marker guilt) from the kimi pass, closing exactly the holes it found. The
+  qwen-round bracket-glob guilt fixture (`python3 scripts/ci/[evil].py`) does
+  NOT add a tenth sole-cause count to shell_composition (stays at 5): the path
+  also does not exist in the checkout, so `_guard_observable_script` rejects it
+  independently and masks the mutation-matrix witness — the SAME
+  double-coverage class the original corpus re-isolation fixed for git/curl
+  heads, just not re-isolatable here since no real bracket-named file exists
+  in this tree to point at instead. The authoritative proof for this guard
+  addition is the DIRECT unit test against `_guard_shell_composition` in
+  isolation (registry.json's own convention), not the corpus mutation count;
+  `test_shell_composition_guilt_bracket_glob_defeats_the_marker_check` passes.
+
+receipts:
+  - claim: The full corpus passes, honestly counted (post kimi-refutation fixtures).
+    cmd: python3 scripts/ci/bites_parse.py --selftest
+    result: "bites_parse selftest: 138/138 pass (guilt + innocence)"
+    exit: 0
+    ts: "2026-09-05T01:15+08:00"
+    seat: session (Pro)
+  - claim: The full battery for this surface passes.
+    cmd: python3 -m pytest scripts/tests/test_bites_parse.py -q
+    result: "127 passed"
+    exit: 0
+    ts: "2026-09-04T23:40+08:00"
+    seat: session (Pro)
+  - claim: >-
+      Every censused guard has a guilt AND an innocence proof resolvable by name,
+      no phantom references, all armed in CI.
+    cmd: python3 infra/guard-conformance/check_guard_conformance.py
+    result: >-
+      "10 bridge guards, 19 hook entries, 7 wr2-pregate checks, 17
+      evidence-pack-lint checks, 6 required-workflow-conformance checks, 9
+      bites-parse guards, 0 violation(s)"
+    exit: 0
+    ts: "2026-09-04T23:41+08:00"
+    seat: session (Pro)
+  - claim: >-
+      DEFERRED, not fixed here: guard-conformance.yml and immune-enforcement.yml
+      do not watch bites_allowlist.yaml/bites_corpus.yaml at all — a PR touching
+      only one of those two YAML files skips BOTH gates entirely (esiste≠armato).
+      A draft of this PR fixed both workflows' relevant-path filters, but that
+      alone raised the computed gear floor from 1 to 3 (workflow-file changes are
+      a documented Gear-3 trigger), which this lane cannot satisfy honestly (the
+      2-seat council_run requirement needs a seat this mandate bans — codex — or
+      one not available — tp1-qwen3.8-max). Reverted from THIS PR's scope; open a
+      follow-up PR for the workflow-wiring fix alone, at whatever gear that
+      isolated change actually floors to.
+    cmd: grep -n bites .github/workflows/guard-conformance.yml
+    result: "guard-conformance.yml line 111 (the check invocation) is still the ONLY hit — the gap is live on main today, unchanged by this PR"
+    exit: 0
+    ts: "2026-09-04T23:50+08:00"
+    seat: session (Pro)
+  - claim: The registry edit adds and touches nothing unrelated (no reformat).
+    cmd: git diff --stat 9b4be2bf24 -- infra/guard-conformance/registry.json
+    result: "17 insertions(+), 18 deletions(-) — targeted, not a json.dumps round-trip"
+    exit: 0
+    ts: "2026-09-04T23:45+08:00"
+    seat: session (Pro)
+  - claim: This PR's own contribution on top of #5673, measured (not the whole-PR figure).
+    cmd: >-
+      git diff --cached --numstat 9b4be2bf24 -- scripts/ci scripts/tests infra
+      .github/workflows | awk '{a+=$1;d+=$2} END {print a,d}'
+    result: "519 544 (net -25)"
+    exit: 0
+    ts: "2026-09-04T23:46+08:00"
+    seat: session (Pro)
+  - claim: >-
+      The gear floor this PR actually computes to, measured rather than assumed —
+      the basis for dropping gear from 3 to 1 and skipping lanes:/council_run
+      entirely.
+    cmd: >-
+      python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      <this PR's 5 changed files, no workflow files>
+    result: "SUPERSEDED — see the corrected floor receipt below; this measurement used the wrong base (9b4be2bf24 instead of main)"
+    exit: 0
+    ts: "2026-09-04T23:20+08:00"
+    seat: session (Pro), cross-checked by a read-only fork dispatch
+  - claim: >-
+      The gear floor, measured against the correct base (main, merge-base
+      anchored — the same enumeration harness-floor.yml's own
+      hotzone_changed_files.sh uses). This PR's diff against main carries
+      #5673's own immune-enforcement.yml change (a hot-zone path), which
+      floors Gear at 3 regardless of the 5 bites-surface files' own size.
+    cmd: >-
+      git diff main...HEAD --name-only --diff-filter=d > /tmp/changed-files-real.txt
+      && python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file /tmp/changed-files-real.txt
+    result: "floor: 3"
+    exit: 0
+    ts: "2026-09-05T00:45+08:00"
+    seat: session (Pro)
+  - claim: >-
+      Detect Secrets clean on infra/guard-conformance/registry.json (2 of the
+      4 CI findings; the other 2 lived in the now-removed inherited #5673
+      evidence pack's journal.jsonl). Both were pre-existing prose examples in
+      an UNRELATED guard's note (a PostToolUse secret-redaction hook,
+      documented at length elsewhere in this same registry) that only entered
+      this PR's diff because earlier edits shifted their line number — rewritten
+      to obviously-fake low-entropy equivalents that still read naturally,
+      `.secrets.baseline` untouched throughout.
+    cmd: >-
+      export PATH="$HOME/.local/bin:$PATH" && detect-secrets scan
+      infra/guard-conformance/registry.json
+    result: "NO FINDINGS"
+    exit: 0
+    ts: "2026-09-05T01:05+08:00"
+    seat: session (Pro) + fork dispatch (final wording pass)
+  - claim: >-
+      The differential over the original 121 corpus entries: 24 flips (all
+      executable->malformed, all attributable to a removed binary or narrowed fly
+      subcommand), zero unattributable, zero deleted labels; 121+15=136 matches
+      the selftest count exactly. Separately, re-classifying the same 121 against
+      the module BEFORE vs AFTER the kimi three-hole fix (holding the corpus and
+      allow-list fixed) produces IDENTICAL verdicts — the kimi pass closes holes
+      only the brand-new fixtures exercise.
+    cmd: >-
+      git show 9b4be2bf24:scripts/ci/bites_corpus.yaml, re-classified label-for-
+      label with bp.load_corpus(path=...) + bp.classify(bp.parse_pack(text))
+      against the saved before-state (scratchpad jsonl) and against the final
+      module
+    result: "24 flips, 0 unattributable, 121+15=136"
+    exit: 0
+    ts: "2026-09-05T00:05+08:00"
+    seat: fork dispatch (same session)
+
+cloud_ok: >-
+  SYMBIOSIS Law 2 output boundary. No client data anywhere near this lane — the
+  subject is a YAML parser's own allow-list and a CI battery. The kimi-code
+  dispatch below carried the module's rules and its own reasoning, no repository
+  secrets, no client identifier.
+
+pii_scan: clean
+pii_scan_note: No path in this diff is PII-bearing; no prompt carried client data.
+
+dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      Dispatched via `kimi -p "<brief>" -m kimi-code/k3` (non-interactive prompt
+      mode has no filesystem tools — it reasoned from the guard descriptions given
+      in the brief, not from reading the file directly, and said so explicitly
+      mid-reasoning). It surveyed the fly flag table, the path-containment escapes,
+      the args-from-file `@` rule and the remote-shell scheme check exhaustively and
+      found nothing unconditional there. It then reasoned about the module's OWN
+      stated threat model (`_escapes_checkout`'s docstring: "every metacharacter
+      this module refuses is only meaningful if the executor uses one — so the safe
+      assumption is that it does") and noticed `_SHELL_METACHARS` omits `{`/`}`
+      (and glob chars `*`/`?`/`[`): under a shell executor, `python3 scripts/ci/
+      {evil,evil}.py` brace-expands to two arguments, `evil.py` and `evil.py` —
+      python3 runs the FIRST one, a file that never carried the `bites-observable`
+      marker and was never checked at all, while the guard only ever inspected the
+      literal (unexpanded) path `scripts/ci/{evil,evil}.py`.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced against the REAL guard functions before applying anything (not
+      taken on the seat's word): built a temp checkout with a decoy file literally
+      named `{evil,evil}.py` carrying the marker, ran all six `_COMMAND_GUARDS`
+      against `python3 scripts/ci/{evil,evil}.py`, got zero errors — confirmed
+      executable under the pre-fix rules. Added `{`/`}` to `shell_metachars`;
+      re-ran the full 131-fixture corpus first under simulation (zero regressions)
+      before editing the file for real. Declined `*`/`?`/`[` (glob): weaker
+      primitive (needs a pre-existing matching file, unlike guaranteed brace
+      substitution) and `?` collides with a legitimate URL query string this module
+      already accepts (`ok-url-query-string-carrying-at`) — adding it would be
+      superscar #3's over-match on the module's own innocence fixture. Added one
+      guilt fixture (the reproduced PoC) and one innocence fixture (braces survive
+      inside the sanctioned `{sha}` placeholder, which is excised before the scan)
+      to the corpus, plus matching pytest tests and registry entries.
+  - seat: kimi-code/k3
+    objection: >-
+      Same refutation pass, a second finding: `_subcommand_permitted` matched a
+      leading-word run against a table of full pairs by comparing only
+      `words[0]`/`words[1]` and ignoring anything past index 1. `fly image show
+      <ref>` therefore matched the `(image, show)` pair with `<ref>` never looked
+      at, and flyctl's `image show` does not reject the extra argv itself — it
+      proceeds to the API call.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced against the real `_check_fly` before applying anything: called
+      it with `["image", "show", "-a", "nuzantara-rag", "extra-ref"]` against the
+      pre-fix code and got `[]` (accepted). Fixed by requiring `len(words)` to
+      equal exactly what the matched shape admits (one word for NO_SUBCOMMAND,
+      two for a fixed pair), re-verified the same call now returns a rejection
+      and that the four surviving fly pairs' own innocence fixtures are
+      unaffected. Added one guilt fixture and matching test + registry entry.
+  - seat: kimi-code/k3
+    objection: >-
+      Same pass, a third finding: a flag's own VALUE ends the leading-word run
+      `_leading_words` builds, so a positional argument planted AFTER a flag's
+      value (`fly status -a nuzantara-rag anyword`) was inspected by neither the
+      subcommand-table check (already past it, matched on `status` alone) nor
+      the flag-violation check (which only looks at tokens starting with `-`).
+    status: CONFIRMED
+    resolution: >-
+      Reproduced: `_check_fly("fly", ["status", "-a", "nuzantara-rag",
+      "anyword"])` against the pre-fix code returned `[]`. Fixed by walking the
+      argv past the matched subcommand words, skipping exactly one token after
+      each flag (its value, whether glued with `=` or separate) and rejecting
+      anything else as an unreviewed positional. Re-verified the fix rejects the
+      PoC and that ordinary `-a`/`--app` invocations (glued and separate-value
+      forms) still pass. Added one guilt fixture and matching test + registry
+      entry.
+  - seat: kimi-code/k3
+    objection: >-
+      Same pass, a fourth finding: the `bites-observable` marker check was a
+      byte-substring grep over ANY file `python3` was pointed at, extension
+      included. `scripts/ci/bites_allowlist.yaml` itself carries the literal
+      marker string in its own `observable_marker: bites-observable` key, so
+      `python3 scripts/ci/bites_allowlist.yaml` parsed as executable purely
+      because a YAML data file happened to mention the marker.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced: `_guard_observable_script("python3 scripts/ci/
+      bites_allowlist.yaml")` against the pre-fix code returned `[]`. Fixed by
+      requiring the target path's suffix to be `.py` before the marker grep
+      even runs — the guard's own invariant is "a SCRIPT declares itself
+      observable", and a data/doc file is not a script regardless of what its
+      bytes contain. Re-verified the fix rejects the PoC and that the surviving
+      `python3 scripts/ci/bites_parse.py --selftest` shape still passes. Added
+      one guilt fixture and matching test + registry entry.
+  - seat: tp1-qwen3.8-max
+    objection: >-
+      Second council seat, dispatched 2026-09-05 via `scripts/tp1_call.py
+      --model qwen3.8-max --effort high` on the SAME cut module and asked the
+      same question kimi-code/k3 answered: find an `observe:` line the
+      two-shape allow-list marks executable that does something other than
+      observe. Named the counterexample that sinks the ONE piece of reasoning
+      this cut's own dissent record had not yet tested: `*`/`?`/`[` (glob)
+      were declined on 2026-09-04 b because "they only expand against a file
+      that already exists, a weaker primitive" - but a PR is exactly the
+      place an attacker controls BOTH files at once. `python3
+      scripts/ci/[evil].py` passes every guard once a literal file named
+      `scripts/ci/[evil].py` carries the marker, but a shell's pathname
+      expansion treats `[a]`-shaped brackets as a glob matching a single
+      character; if a same-PR file `scripts/ci/evil.py` also exists (no
+      brackets), the shell rewrites the argv to it before python3 ever sees
+      the marker-carrying decoy. The seat also checked the fly flag/subcommand
+      table and other shell-expansion classes (tilde, field splitting) and
+      found nothing further there, stating so explicitly.
+    status: CONFIRMED
+    resolution: >-
+      Reproduced against the real `_guard_shell_composition` before applying
+      anything: `python3 scripts/[a].py` and `python3 scripts/ci/[evil].py`
+      both returned `[]` (accepted) pre-fix. Fixed by adding `[`/`]` to
+      `shell_metachars`, reversing the 2026-09-04 b decline now that the
+      "needs a pre-existing file" objection is shown false for a same-PR
+      attacker. `*`/`?` stay declined: `*`'s failure mode (passing the
+      literal string through unexpanded when nothing matches) is not this
+      class of bug, and `?` still collides with the URL query string
+      innocence fixture. Added one guilt fixture, one innocence fixture, a
+      matching pytest test and a registry entry; re-ran the full corpus
+      (zero regressions) before editing the file for real.
