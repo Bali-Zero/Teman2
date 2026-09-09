@@ -1,0 +1,97 @@
+task_id: per-call-hook-diet
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Every Bash tool call on Pro fired 14 PreToolUse+PostToolUse hooks (matcher "",
+  "*", or containing "Bash"), three of them separate inline PostToolUse loggers
+  doing overlapping I/O -- one appending ~/.claude/command-history.log, one
+  building a {cmd,cwd} JSON piped into ~/.claude/scripts/hotfix-notify.sh, one
+  rewriting ~/.claude/live-status.json on every tool call -- plus a SessionStart
+  inline that cats ~20KB of ~/.nuzantara-repomap.txt into every session.
+
+  infra/claude-hooks/bash_call_log.sh does all three jobs in one process.
+  Command text written to command-history.log is redacted with the same
+  earliest-anchor-cut pattern as .claude/hooks/codex-spalla-trigger.sh
+  (superscar #4, a live leak from an unredacted per-call Bash logger), ported
+  into infra/claude-hooks/redact_secrets.py. The hotfix-notify.sh pipe is
+  DELIBERATELY left unredacted, byte-identical to the inline it replaces:
+  that script's own DROP/ALTER/fly-secrets classifier needs the raw command,
+  and redacting from the earliest anchor would cut a real hotfix command in
+  half on exactly the case it exists to catch (e.g. `PGPASSWORD=... psql -c
+  'DROP TABLE ...'`). infra/claude-hooks/install_hook_diet.py is the idempotent
+  installer: removes the 3 inline loggers + the SessionStart repomap inline,
+  registers bash_call_log.sh once on PostToolUse matcher=Bash, copies both
+  hook files into ~/.claude/hooks/ at mode 0700, prints a before/after count.
+
+  Gear is 2 via the SIZE term alone (783 net lines: 386 implementation incl.
+  the ported redaction module and its doctrine, 384 guilt+innocence tests, 13
+  declared-pairs/CLAUDE.md wiring). No hot-zone path is touched -- confirmed
+  by running compute_floor()/compute_floor_source() on this diff's own
+  numstat before writing this brief: floor=2, source="size" (the roles-strict
+  lesson: compute the floor WITH the numstat supplied, not without it).
+constraints:
+  - >-
+    Does not touch orchestrate_gate.py, worktree_isolation.py,
+    context_window_guard.py, or any other registered hook -- those are other
+    lanes' PENDING-ARMS today. Only the 3 named inline loggers and the
+    SessionStart repomap inline are removed.
+  - >-
+    Byte-compatible formats for every consumer found by grep (log-rotate.sh,
+    generate-baseline.sh read command-history.log; tmux-briefing.sh and
+    session_marker.py read/write live-status.json; AUTONOMOUS_OPS.md and
+    scripts/claude-hotfix-notify.sh describe the hotfix-notify.sh contract).
+    The only intentional format change is chmod 0600 on the two files this
+    script writes directly (command-history.log, live-status.json), per the
+    task's explicit "log files must be 0600".
+  - >-
+    Never modifies the live ~/.claude/settings.json on the authoring machine
+    -- per the owner's ruling today (2026-09-09), the owner-session applies
+    the installer after merge. All installer runs during authoring were
+    against a disposable COPY of the real settings.json (verified: the copy
+    path, never $HOME/.claude/settings.json, was passed via --settings).
+  - >-
+    Fail-open throughout bash_call_log.sh: a missing python3, a missing
+    hotfix-notify.sh, or a redaction error must never block or crash the
+    Bash call it followed -- proven by a dedicated guilt case
+    (test_hook_exits_0_even_when_hotfix-notify.sh_is_missing).
+acceptance:
+  - >-
+    WHEN install_hook_diet.py runs (real, not --dry-run) against a copy of
+    Pro's live settings.json, THEN it removes exactly the 3 inline
+    PostToolUse loggers and the SessionStart repomap inline, adds ONE
+    PostToolUse matcher=Bash registration, and prints the true before/after
+    hook-per-Bash-call count. probe: test_apply_removes_loggers_and_registers_one
+    (scripts/tests/test_install_hook_diet.py); live 2026-09-09 on a disposable
+    copy of the real ~/.claude/settings.json on Pro -- printed
+    "hooks firing per Bash call: 14 -> 12".
+  - >-
+    WHEN install_hook_diet.py runs a second time on the same (already
+    migrated) settings.json, THEN it reports "(no-op -- already installed)",
+    writes no new backup, and leaves the file byte-identical to the first
+    run's output. probe: test_second_run_is_a_noop; live 2026-09-09 on the
+    same Pro settings.json copy -- second run printed
+    "hooks firing per Bash call: 12 -> 12" and created no second
+    .bak-hookdiet-* file.
+  - >-
+    WHEN --dry-run is passed, THEN the plan and the before/after count print
+    but settings.json, any backup, and the hooks dir are all untouched.
+    probe: test_dry_run_writes_nothing.
+  - >-
+    WHEN bash_call_log.sh runs on a Bash tool call, THEN command-history.log
+    gets one `[YYYY-MM-DD HH:MM:SS] <cmd>` line at mode 0600, live-status.json
+    gets {ts,tool:"Bash",cwd,git_branch} at mode 0600, and the hotfix pipe
+    receives {cmd,cwd} with the RAW (unredacted) command. probe: the first
+    5 assertions in scripts/tests/test_bash_call_log.sh (10/10 pass).
+  - >-
+    WHEN the command contains a credential-shaped fake token
+    (AWS_SECRET_TOKEN=AKIAFAKEEXAMPLE...), THEN command-history.log carries
+    <REDACTED> and never the raw token, WHILE the hotfix pipe still receives
+    the token in full (its classifier is not blinded). probe:
+    the redaction guilt+innocence pair in test_bash_call_log.sh -- live run
+    2026-09-09 confirms both directions.
+  - >-
+    WHEN ~/.claude/scripts/hotfix-notify.sh is missing, THEN bash_call_log.sh
+    still exits 0 and still writes command-history.log. probe: the fail-open
+    case in test_bash_call_log.sh.
+pii_scan: clean

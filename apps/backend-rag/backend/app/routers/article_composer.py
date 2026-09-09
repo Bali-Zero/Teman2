@@ -21,9 +21,11 @@ For marketing team to create articles manually with:
 import json
 import logging
 import os
+import re
 import time
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
@@ -47,6 +49,7 @@ from backend.services.article_composer import (
     handle_json_error,
     log_error_with_context,
 )
+from backend.services.cover_images import _cover_as_jpeg, cover_card_as_jpeg
 
 router = APIRouter(prefix="/api/articles", tags=["Article Composer"])
 logger = logging.getLogger(__name__)
@@ -605,10 +608,48 @@ def generate_slug(headline: str) -> str:
     return slug[:120]  # Limit slug length
 
 
+# Article headings here (## Facts, ## Summary, ## Bali Zero Take, ...) are
+# generic structural section labels, never prose worth keeping in a
+# preview/SEO snippet, so the whole heading LINE is dropped — not just the
+# leading "#" marks.
+_MD_HEADING_RE = re.compile(r"(?m)^\s{0,3}#{1,6}[^\n]*\n?")
+_MD_LINK_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+_MD_EMPHASIS_RE = re.compile(r"(\*\*\*|\*\*|\*|___|__|_)(.+?)\1")
+_MD_INLINE_CODE_RE = re.compile(r"`([^`]*)`")
+_MD_LIST_BULLET_RE = re.compile(r"(?m)^\s{0,3}(?:[-*+]|\d+[.)])\s+")
+_WHITESPACE_RE = re.compile(r"\s+")
+
+
+def _plain_text_snippet(text: str, limit: int) -> str:
+    """Render markdown as plain prose and truncate to a word boundary.
+
+    Drops whole heading lines (``## Facts``), bold/italic markers,
+    ``[text](url)`` links (kept as ``text``), inline code, and list
+    bullets, then collapses whitespace. The result is truncated to at
+    most ``limit`` characters, cutting only at a space so no word is
+    split, and an ellipsis (``…``) is appended only when truncation
+    actually occurred.
+    """
+    plain = str(text)
+    plain = _MD_HEADING_RE.sub("", plain)
+    plain = _MD_LINK_RE.sub(r"\1", plain)
+    plain = _MD_EMPHASIS_RE.sub(r"\2", plain)
+    plain = _MD_INLINE_CODE_RE.sub(r"\1", plain)
+    plain = _MD_LIST_BULLET_RE.sub("", plain)
+    plain = _WHITESPACE_RE.sub(" ", plain).strip()
+
+    if len(plain) <= limit:
+        return plain
+
+    truncated = plain[:limit]
+    if " " in truncated:
+        truncated = truncated.rsplit(" ", 1)[0]
+    return truncated.rstrip(" .,;:!?-") + "…"
+
+
 def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: str | None) -> str:
     """Generate MDX file content from enriched article"""
     import json as json_module
-    import re
 
     # Map category to URL-friendly format
     category_map = {
@@ -719,9 +760,18 @@ def generate_mdx_content(article: EnrichedArticle, slug: str, cover_image_path: 
         return s
 
     safe_headline = yaml_safe(article.headline, 200)
-    safe_excerpt = yaml_safe(article.ai_summary, 280)
-    safe_seo_desc = yaml_safe(article.seo_description or article.ai_summary, 155)
-    safe_seo_title = yaml_safe(article.seo_title or article.headline, 60)
+    # excerpt/seoDescription/seoTitle can fall back to raw markdown content
+    # (e.g. a "## Facts" heading) when no dedicated summary/SEO field was
+    # generated — render as plain prose, word-boundary truncated, before the
+    # YAML quote-escaping pass below (generous max_len so yaml_safe's own
+    # truncation never re-fires on an already-bounded string).
+    safe_excerpt = yaml_safe(_plain_text_snippet(article.ai_summary, 280), 320)
+    safe_seo_desc = yaml_safe(
+        _plain_text_snippet(article.seo_description or article.ai_summary, 155), 190
+    )
+    safe_seo_title = yaml_safe(
+        _plain_text_snippet(article.seo_title or article.headline, 70), 100
+    )
     safe_cover_alt = yaml_safe(article.cover_image_alt or article.headline, 160)
     safe_answer = yaml_safe(answer_snippet, 300)
     safe_question = yaml_safe(primary_question, 150)
@@ -908,14 +958,16 @@ async def publish_article_internal(request: PublishRequest) -> PublishResponse:
             import base64
 
             # Decode base64 image
-            image_data = base64.b64decode(request.cover_image_base64)
+            image_data = _cover_as_jpeg(base64.b64decode(request.cover_image_base64))
 
             # Determine image path
-            image_filename = request.cover_image_filename or f"{slug}.jpg"
+            image_filename = f"{Path(request.cover_image_filename).stem}.jpg"
             image_git_path = f"apps/mouth/public/static/news/{image_filename}"
             cover_image_path = f"/static/news/{image_filename}"
+            card_git_path = f"apps/mouth/public/static/news/{Path(image_filename).stem}_card.jpg"
 
             files_to_commit.append({"path": image_git_path, "content": image_data})
+            files_to_commit.append({"path": card_git_path, "content": cover_card_as_jpeg(image_data)})
             logger.info("Will upload cover image: %s", image_git_path)
 
         # 2. Generate MDX content
@@ -964,8 +1016,13 @@ async def publish_article_internal(request: PublishRequest) -> PublishResponse:
             json_object_updates=layout_updates,
         )
 
-        # Build article URL
-        article_url = f"https://balizero.com/{category_folder}/{slug}"
+        # Build article URL. The MDX lives under the CONTENT FOLDER
+        # (`category_folder`, e.g. "business_regulations"), but the site
+        # only routes the SERVED category (e.g. "business") — see
+        # backend/services/article_routes.py.
+        from backend.services.article_routes import served_category
+
+        article_url = f"https://balizero.com/{served_category(category_folder)}/{slug}"
 
         pr_number = result.get("pull_request_number")
         if pr_number:

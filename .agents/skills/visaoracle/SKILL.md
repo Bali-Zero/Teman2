@@ -60,11 +60,16 @@ until all of the following are true:
 - Zero explicitly authorizes the ENFORCE flip after the preceding blockers
   close.
 
-**Current status: 🔴 NO-GO / SHADOW.** `CURRENT_STATE.md` records the DPIA,
-analytics-TTL proof and explicit ENFORCE authorization as open. Gold-persona
-divergences must also be resolved or accepted in writing against the active
-pack. No agent may deploy, activate a RulePack or change evaluation mode merely
-because this list appears green; each is a separate controlled action.
+**Current status: 🟢 ENFORCE IN PRODUCTION since 2026-09-06T01:1xZ — OWNER
+OVERRIDE.** Zero flipped `VISA_ENGINE_EVALUATE_MODE=ENFORCE` on Fly
+(`nuzantara-rag`) by his own explicit instruction ("accendi tutto",
+2026-09-06, after being told the DPIA v2 §8 text still reads "DO NOT
+ENFORCE" with two High residual risks open — analytics destination,
+cross-border processor register — and that gold-persona divergences were
+not re-measured on seq-19). The seven preconditions below remain the
+documented standard; the ones still open are now RESIDUAL RISKS to close
+in production, not blockers. Rollback is one command:
+`fly secrets set VISA_ENGINE_EVALUATE_MODE=SHADOW -a nuzantara-rag`.
 
 Traffic provenance must stay explicit while evidence is collected. Only
 requests deliberately labelled `traffic_source=real` are organic evidence;
@@ -125,6 +130,89 @@ hook-enforced — RULED 2026-08-20: Fable is out of the workflow, CLAUDE.md §5)
 as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 ## LIVE STATE (update on every state change — whoever changes state updates this section)
+
+- 2026-09-06 (M5, consul session — seq-20 SIGNED + ACTIVATED): **SEQ-20 IS THE ACTIVE PRODUCTION
+  PACK, under ENFORCE.** seq-20 = seq-19 + the five decisiveness edits of fold PR #5854
+  (`dc7189f4`): stay-day caps raised to the lawful extendable total on 22 rules,
+  `review.e33g.income-evidence` retired, the eight `family.sponsor_status_code` rules made
+  `NO_EFFECT`, a `known` premise conjoined onto the four BRIDGING rules, and CL-D2-01 compiled as
+  the new EXCLUDE `hf.d2.indonesia-source-compensation`. Signed on M5 (`sign_pack.py` offline, kid
+  `prod-2026-07-1`, `signed_at 2026-09-06T14:59:27.320080Z`, payload_sha256
+  `df02287b7fc8f572a9e6674fdf3445a2131c428e8a1492ab8a388dee5bf01a4d`, rule_pack_id
+  `ac0a792d-a38d-512e-9ead-54a5d008fb68`, version `2026.9.6`, 109 rules, previous
+  `bac5da8e…`); digest re-verified UNCHANGED after `prettier --write`, and the signed payload is
+  byte-identical to `rulepack-prod-020.source.json` under JCS. **Activated** with
+  `activate_pack.py --yes`, actor `consul-session-m5`, reason `seq20-decisiveness-260906`,
+  `activation_id e08ebea9-d50f-48a6-989e-b7e4698f96ad`; two DISTINCT ephemeral logins
+  (`visa_pack_writer_ceremony_260906c`, `visa_activation_ceremony_260906c`, `VALID UNTIL` +3h)
+  minted and dropped by the session on the PG primary `0801696b541568`, leftover 0, tunnel and
+  `flyctl proxy` closed on both M5 and Pro.
+  **PROVE-LIVE** (`probe_evaluate.py --traffic-source synthetic_driver`, walks replayed from the
+  PR-0 corpus): prod answers `sequence=20 version=2026.9.6 rule_pack_id=ac0a792d…`;
+  `offshore/tourism` and `onshore/tourism` now return `SUPPORTED_CANDIDATES` where seq-19
+  dead-ended; `offshore/business` and `offshore/remote` still `NEEDS_INPUT` — PR-2/PR-3's mandate,
+  not a regression. Walk census re-measured on the signed pack: **36 dead ends / 7 answers →
+  21 / 22**.
+  **ORDER NOTE, recorded because it inverts the wave spec:** the ceremony ran BEFORE the bundle
+  PR landed, on Zero's explicit instruction. The window was closed by verifying that the blob
+  committed in that PR is byte-identical to the artifact already live (same digest, same
+  `rule_pack_id`) — never by assuming it.
+  **CEREMONY GOTCHAS measured this run, all new since seq-19.** (1) The two ephemeral roles
+  CANNOT `SELECT` `visa_ruleset_activations` — least privilege is real, so "exactly one open
+  activation" must be confirmed through the readonly role or through the live probe, never
+  through the ceremony logins. (2) Fly auth lives ONLY on Pro: `flyctl` on M5 is a shell function
+  that proxies over ssh, and the real binary (`/opt/homebrew/bin/flyctl`) has no token on either
+  M5 or Mini — so Pro being offline blocks the whole ceremony. (3) Killing the local `ssh` that
+  started `flyctl proxy` does NOT kill the proxy on Pro; it survived and had to be killed
+  remotely by PID. Check with `ssh pro "pgrep -fl 'flyctl proxy'"` before declaring cleanup done.
+
+- 2026-09-06 (M5, owner decision — ENFORCE + GARUDA VOA public): **this is an owner decision
+  recorded by the session, not a session-inferred authorization.** (1) Production evaluate mode
+  measured `mode='ENGINE'` at 01:1xZ via `probe_evaluate.py` (was `CURATED`), rule pack seq-19
+  v2026.9.5, backend healthy — visitors of `/visa-oracle` now see real verdicts (the frontend's
+  `requireEngineResponse` boundary in `_lib/engine-response.ts` passes ENGINE envelopes; in
+  SHADOW it withheld every decision). (2) The same Fly command also set
+  `GARUDA_PUBLIC_ENABLED=true` on the backend, and Zero added `GARUDA_PUBLIC_ENABLED=true` to
+  the Vercel `mouth` Production environment (Vercel marks Production vars sensitive by default,
+  so `vercel env pull` shows `""` — not empty); `/visa/voa` proven LIVE in headless Chromium at
+  02:4xZ (h1 "Visa on Arrival", step 1 of 4, 0 console errors) after the alias moved to a
+  deployment built after the var, and re-proven after promoting `mouth-f4mditqo6` at 02:55Z;
+  gotcha: `vercel ls` "Ready" is not the same as aliased — the truth is
+  `vercel inspect https://balizero.com --scope nuzantara-2026`, and production deployments were
+  NOT auto-promoted (used `vercel promote`). (3) What stays open as residual risk: DPIA v2 two
+  High rows, gold replay on seq-19, team manual sign-off. (4) Rollback commands for both
+  switches — mode: `fly secrets set VISA_ENGINE_EVALUATE_MODE=SHADOW -a nuzantara-rag`; VOA
+  public: `vercel env rm GARUDA_PUBLIC_ENABLED production` + redeploy/promote.
+
+- 2026-09-05 (M5, two-consul lane — seq-19 SIGNED + ACTIVATED): **SEQ-19 IS THE ACTIVE PRODUCTION
+  PACK (SHADOW; activation ≠ ENFORCE, `VISA_ENGINE_EVALUATE_MODE` untouched).** Chain as MEASURED in
+  `visa_rule_packs` (readonly, 21:05Z, before the ceremony): 13 → 16 → 17 → 18 (seq-14/15 were never
+  inserted; the seq-17/seq-18 activations of 2026-08-30 had no entry here — seq-18 was activated
+  2026-08-30T17:28:56Z by `operator.zero.freshness-window-2026-08-31`, activation
+  `be75facc-b1c0-4daa-ae87-247b5bd408d2`, payload `5a24472d…`). seq-19 = seq-18 + seq-15's E31
+  fail-open repair re-landed (fold PR #5784, source `rulepack-prod-019.source.json`, 109 rules: the
+  only delta vs 018 is the two `el.e31d` byte-duplicates removed; `review.e23u|e23v.requested-product`
+  KEPT after a gate BLOCK caught their removal). Signed by Zero on M5 (`sign_pack.py`, kid
+  `prod-2026-07-1`, `signed_at 2026-09-05T20:48:52Z`, payload_sha256
+  `bac5da8e4727e7f639c947c50211e6f95e15c1403cf6aef0dd57a92014d6e6ea`, rule_pack_id
+  `8c09e059-4ab2-5963-b5af-d1363d55e508`); bundle PR #5812 gated by an independent Opus-xhigh reader
+  (mutation-verified) + the session's read (PASS-WITH-CONDITIONS, four low evidence/wrapper
+  follow-ups), merged 21:48:28Z (`4b06438363`), file on `origin/main` byte-identical to the signed
+  one. **Activated 2026-09-05T21:52:20.519792Z** (Zero's explicit authorisation the same evening):
+  `activate_pack.py --yes` with two DISTINCT ephemeral logins (`visa_pack_writer_ceremony_260906` IN
+  ROLE `visa_pack_writer`, `visa_activation_ceremony_260906` IN ROLE `visa_activation_executor`, minted
+  and dropped by Zero on the PG primary `0801696b541568`, leftover 0), actor `fable-session-m5`,
+  reason `seq19-shadow-activation-260906`, `activation_id 891720d3-e391-413f-8b5f-968889a4bd28`. DB
+  verified readonly with the runtime predicate (`legal_period @> now() AND system_period @> now()`):
+  exactly ONE open activation = seq-19; seq-18 `system_period` closed at the same instant, no gap.
+  **PROVE-LIVE:** `POST /api/visa-oracle/evaluate?traffic_source=synthetic_driver` ×2 → HTTP 200,
+  `mode=CURATED`, `rule_pack sequence=19 version=2026.9.5`; all-UNKNOWN facts →
+  `HUMAN_REVIEW_REQUIRED` (fail-closed). Ceremony gotchas measured this time: `activate_pack.py`
+  needs NO `JWT_SECRET_KEY`/`API_KEYS` dummies and its dry-run opens no DB connection; `DROP ROLE`
+  of an ephemeral role fails on "privileges for database" until `REVOKE CONNECT ON DATABASE` runs
+  first; the session's security classifier refuses superuser `psql` on the primary, so mint/drop
+  are the owner's `!`-prefixed commands while proxy/dry-run/`--yes`/verification/smoke stay with
+  the session. ENFORCE-GATE unchanged: 🔴 NO-GO / SHADOW.
 
 - 2026-08-29 (M5, gold-coverage lane, PR #5182): **the 4/20 zero-movement wall now has a first
   instrument and a first corpus.** New offline helper `gold_coverage_eval.py` (single persona →

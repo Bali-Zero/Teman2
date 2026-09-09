@@ -1,0 +1,35 @@
+artifact_normalization: Trailing blank lines removed; review content unchanged.
+reviews:
+  - seat: codex-gpt-5.6-sol
+    command:
+      - /opt/homebrew/bin/codex
+      - exec
+      - --sandbox
+      - read-only
+      - --skip-git-repo-check
+      - -m
+      - gpt-5.6-sol
+      - -c
+      - model_reasoning_effort=high
+      - <supplied diff prompt>
+    started_at: "2026-09-05T11:41:42.837626+00:00"
+    prompt_sha256: 0c480de3d56ed76d3906f2a5e408ba62af5ea5c4c4c122540f9e2225017f191a # pragma: allowlist secret - verified artifact SHA-256, not credential
+    timeout_seconds: 240
+    exit: 0
+    finished_at: "2026-09-05T11:42:25.011974+00:00"
+    raw_stdout_sha256: 6489fd64619f0cd8c7d1a8479d0503a7bf1473feaaba9f03b28014424a18bdf4 # pragma: allowlist secret - verified artifact SHA-256, not credential
+    review_artifact_sha256: 6489fd64619f0cd8c7d1a8479d0503a7bf1473feaaba9f03b28014424a18bdf4 # pragma: allowlist secret - verified artifact SHA-256, not credential
+  - seat: kimi-code/k3
+    command:
+      - /Users/balizero/.kimi-code/bin/kimi
+      - -m
+      - kimi-code/k3
+      - -p
+      - <supplied diff prompt>
+    started_at: "2026-09-05T11:41:42.826986+00:00"
+    prompt_sha256: 0c480de3d56ed76d3906f2a5e408ba62af5ea5c4c4c122540f9e2225017f191a # pragma: allowlist secret - verified artifact SHA-256, not credential
+    timeout_seconds: 240
+    exit: 0
+    finished_at: "2026-09-05T11:43:28.165495+00:00"
+    raw_stdout_sha256: f948346d993acb606e3cd4f5510cbf8cb68153be672bf49936891f381d8c7265 # pragma: allowlist secret - verified artifact SHA-256, not credential
+    review_artifact_sha256: 12b9aeea8f3d076b60e58f95c77246437d6db7faff5ce117f5c6d1d794ad3481 # pragma: allowlist secret - verified artifact SHA-256, not credential

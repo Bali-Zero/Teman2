@@ -190,6 +190,21 @@ describe("NewsRoomPage", () => {
     });
   });
 
+  it("should block article publication until a position is chosen", async () => {
+    render(<NewsRoomPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("button", { name: "Publish" })).toHaveLength(
+        3,
+      );
+    });
+
+    for (const button of screen.getAllByRole("button", { name: "Publish" })) {
+      expect(button).toBeDisabled();
+    }
+    expect(intelligenceApi.publishItem).not.toHaveBeenCalled();
+  });
+
   it("should display source names for each item", async () => {
     render(<NewsRoomPage />);
 
@@ -353,7 +368,7 @@ describe("NewsRoomPage", () => {
       }
     });
 
-    it("should handle bulk publish", async () => {
+    it("should block bulk publish until every item has a position", async () => {
       vi.mocked(intelligenceApi.publishItem)
         .mockResolvedValueOnce({
           success: true,
@@ -398,6 +413,8 @@ describe("NewsRoomPage", () => {
       if (bulkPublishButton) {
         await userEvent.click(bulkPublishButton);
       }
+
+      expect(intelligenceApi.publishItem).not.toHaveBeenCalled();
     });
 
     it("should not show bulk actions when no items selected", async () => {

@@ -1,6 +1,6 @@
 ---
 name: frontend-browser
-description: Use when need to QA frontend after deploy — screenshot kita.balizero.com / my / prime / mouth / web, verify colors/logo/no broken elements. Browser automation via mcp__claude-in-chrome (or mcp__playwright if explicitly instructed).
+description: Use when need to QA frontend after deploy — screenshot kita.balizero.com / my / prime / mouth / web, verify colors/logo/no broken elements.
 tools: Bash, Read, Grep, Glob, WebFetch, mcp__claude-in-chrome
 disallowedTools: Edit, Write, MultiEdit, NotebookEdit
 model: sonnet

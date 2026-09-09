@@ -151,6 +151,7 @@ class HarvestStats:
 
     faq_written: int = 0
     faq_answerless_skipped: int = 0
+    government_fee_refused: int = 0
     faq_collision_refused: int = 0
     faq_failed: int = 0
     faq_ineligible_skipped: int = 0
@@ -188,6 +189,11 @@ class HarvestStats:
                 f"ineligible_skipped={self.faq_ineligible_skipped} "
                 f"price_rejected={self.faq_price_rejected} "
                 f"failed={self.faq_failed}",
+            )
+        if self.government_fee_refused:
+            lines.append(
+                f"Government-fee gate: refused={self.government_fee_refused} "
+                "(states a government-fee figure without an explicit review marker)"
             )
         if self.qdrant_written or self.qdrant_answerless_skipped or self.qdrant_failed:
             lines.append(
@@ -847,6 +853,12 @@ def _load_and_gate_batches(
     source_file_sha256 matches the file's CURRENT content. Returns the list
     of gate-passing (batch_id, manifest_path, manifest, rows) groups.
     """
+    # Lazy, like every other backend import in this script: the module is
+    # importable (and --help works) without the backend package present.
+    from backend.services.misc.curated_qa_government_fee_detector import (
+        row_is_refused as government_fee_row_is_refused,
+    )
+
     batches: list[tuple[str, Path, dict[str, Any], list[dict]]] = []
 
     for p in paths:
@@ -861,6 +873,27 @@ def _load_and_gate_batches(
                 stats.invalid_rows += 1
                 logger.error("Invalid row %r: %s", row.get("question", "<unknown>"), error)
                 continue
+            # Pre-ingest FACT-scan (cycle 359): a row that states a
+            # GOVERNMENT-FEE FIGURE to a client is refused from BOTH sinks
+            # unless it carries an explicit per-row review marker. Placed
+            # here, in the shared validation loop, so it is impossible to
+            # reach Qdrant through the FAQ sink's absence or vice versa —
+            # the two sinks are loaded separately downstream, and a gate
+            # that guards only one is not a gate.
+            #
+            # This is the thing that survives deleting the offending points:
+            # their source file has never existed in this repo, so a
+            # deletion alone leaves the next harvest free to write them back.
+            fee_refusal = government_fee_row_is_refused(row)
+            if fee_refusal:
+                stats.government_fee_refused += 1
+                logger.error(
+                    "REFUSED %r: %s",
+                    str(row.get("question", "<unknown>"))[:120],
+                    fee_refusal,
+                )
+                continue
+
             valid_rows.append(row)
             confidence_class = str(row.get("confidence_class"))
             stats.confidence_class_counts[confidence_class] = (

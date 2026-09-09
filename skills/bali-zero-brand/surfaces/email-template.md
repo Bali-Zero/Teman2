@@ -41,7 +41,7 @@ Per constitution Article 12.2, every email inherits:
 
 ### Palette (subset — email rendering varies)
 
-- Background: `#FFFFFF` body OR `#373D42` antracite for "alert/regulatory" emails. NEVER pure black `#000000` (renders harshly on phone OLED).
+- Background: `#FFFFFF` body OR `#363A3E` antracite for "alert/regulatory" emails. NEVER pure black `#000000` (renders harshly on phone OLED).
 - Text on white: `#1A1A1A` (slightly off-black for readability).
 - Text on antracite: `#FFFFFF`.
 - Accent yellow: `#F4C430` for key data points and CTA buttons (sparingly).

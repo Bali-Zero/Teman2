@@ -6,6 +6,7 @@ import {
   createLocalConsentReceipt,
   loadLocalConsentReceipt,
   saveLocalConsentReceipt,
+  type ConsentScope,
 } from "./consent-store";
 
 function memoryStorage() {
@@ -20,9 +21,11 @@ function memoryStorage() {
 
 const NOW = new Date("2026-08-03T10:00:00.000Z");
 const SCOPE = {
+  context: "ASSESSMENT",
   state: "SUPPORTED_CANDIDATES",
   assessmentReference: "abcdef1234567890",
 } as const;
+const CONSULTATION_SCOPE = { context: "CONSULTATION" } as const;
 
 describe("Visa Oracle local consent store", () => {
   it("defaults to sessionStorage, never localStorage, with the shared two-hour TTL", () => {
@@ -43,28 +46,94 @@ describe("Visa Oracle local consent store", () => {
     expect(window.sessionStorage.getItem(VISA_ORACLE_CONSENT_KEY)).toBeNull();
   });
 
-  it("restores current consent and prunes expired or malformed receipts", () => {
+  it.each([SCOPE, CONSULTATION_SCOPE])(
+    "restores and expires consent for $context",
+    (scope) => {
+      const storage = memoryStorage();
+      const receipt = createLocalConsentReceipt(NOW, "receipt-2", scope);
+      saveLocalConsentReceipt(receipt, { storage });
+
+      expect(
+        loadLocalConsentReceipt(scope, {
+          storage,
+          now: new Date(NOW.getTime() + VISA_ORACLE_CONSENT_TTL_MS - 1),
+        }),
+      ).toEqual(receipt);
+      expect(
+        loadLocalConsentReceipt(scope, {
+          storage,
+          now: new Date(NOW.getTime() + VISA_ORACLE_CONSENT_TTL_MS),
+        }),
+      ).toBeNull();
+      expect(storage.values.has(VISA_ORACLE_CONSENT_KEY)).toBe(false);
+
+      storage.values.set(VISA_ORACLE_CONSENT_KEY, '{"schemaVersion":1}');
+      expect(loadLocalConsentReceipt(scope, { storage, now: NOW })).toBeNull();
+      expect(storage.values.has(VISA_ORACLE_CONSENT_KEY)).toBe(false);
+    },
+  );
+
+  it.each([
+    [CONSULTATION_SCOPE, SCOPE],
+    [SCOPE, CONSULTATION_SCOPE],
+  ])("requires new consent when context changes from %j to %j", (from, to) => {
     const storage = memoryStorage();
-    const receipt = createLocalConsentReceipt(NOW, "receipt-2", SCOPE);
-    saveLocalConsentReceipt(receipt, { storage });
+    saveLocalConsentReceipt(
+      createLocalConsentReceipt(NOW, "receipt-context", from),
+      { storage },
+    );
+
+    expect(loadLocalConsentReceipt(to, { storage, now: NOW })).toBeNull();
+    expect(storage.values.size).toBe(0);
+    expect(loadLocalConsentReceipt(from, { storage, now: NOW })).toBeNull();
+  });
+
+  it.each([
+    { ...CONSULTATION_SCOPE, state: "NEEDS_INPUT" },
+    { ...CONSULTATION_SCOPE, assessmentReference: "abcdef1234567890" },
+    { ...CONSULTATION_SCOPE, assessmentReference: null },
+    { ...CONSULTATION_SCOPE, answers: { fixture: "SYNTHETIC_ONLY" } },
+    { context: "UNKNOWN" },
+    { ...SCOPE, state: "CONSULTATION" },
+  ])("rejects invalid or enlarged scopes: %j", (scope) => {
+    const storage = memoryStorage();
+    const receipt = createLocalConsentReceipt(
+      NOW,
+      "receipt-invalid",
+      CONSULTATION_SCOPE,
+    );
+    expect(() =>
+      createLocalConsentReceipt(NOW, "receipt-invalid", scope as ConsentScope),
+    ).toThrow();
+    storage.setItem(
+      VISA_ORACLE_CONSENT_KEY,
+      JSON.stringify({ ...receipt, scope }),
+    );
 
     expect(
-      loadLocalConsentReceipt(SCOPE, {
-        storage,
-        now: new Date(NOW.getTime() + VISA_ORACLE_CONSENT_TTL_MS - 1),
-      }),
-    ).toEqual(receipt);
-    expect(
-      loadLocalConsentReceipt(SCOPE, {
-        storage,
-        now: new Date(NOW.getTime() + VISA_ORACLE_CONSENT_TTL_MS),
-      }),
+      loadLocalConsentReceipt(CONSULTATION_SCOPE, { storage, now: NOW }),
     ).toBeNull();
-    expect(storage.values.has(VISA_ORACLE_CONSENT_KEY)).toBe(false);
+    expect(storage.values.size).toBe(0);
+  });
 
-    storage.values.set(VISA_ORACLE_CONSENT_KEY, '{"schemaVersion":1}');
+  it("prunes the previous result-only receipt schema instead of carrying its consent forward", () => {
+    const storage = memoryStorage();
+    const receipt = createLocalConsentReceipt(NOW, "receipt-legacy", SCOPE);
+    storage.setItem(
+      VISA_ORACLE_CONSENT_KEY,
+      JSON.stringify({
+        ...receipt,
+        schemaVersion: 2,
+        policyVersion: "visa-oracle-whatsapp-v2",
+        scope: {
+          state: SCOPE.state,
+          assessmentReference: SCOPE.assessmentReference,
+        },
+      }),
+    );
+
     expect(loadLocalConsentReceipt(SCOPE, { storage, now: NOW })).toBeNull();
-    expect(storage.values.has(VISA_ORACLE_CONSENT_KEY)).toBe(false);
+    expect(storage.values.size).toBe(0);
   });
 
   it("revokes a receipt when the outcome or opaque decision reference changes", () => {

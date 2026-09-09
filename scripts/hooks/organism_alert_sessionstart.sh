@@ -12,6 +12,16 @@
 # so the brain-session (me) SEES it — the alert reaches the organism, not a human
 # on Telegram who won't look.
 #
+# DIET (2026-09-09): a Fable session measured ~49K tokens injected at
+# SessionStart, and this hook was the single biggest offender — it used to
+# print EVERY open finding, unbounded, including 27 WR2 organs stale BY
+# DECISION (Zero ruled 2026-09-01: "WR2 runs only on command", memory
+# decision_wr2_runs_only_on_command_2026_09_01) and every finding the session
+# already saw last time. scripts/organism_heartbeat_brief.py now sits between
+# the detector and this hook: it drops on-command organs
+# (infra/organism/on_command_organs.json), shows only what is NEW or CHANGED
+# since the last session on this machine, and hard-caps the block.
+#
 # Design constraints (so the receptor itself never becomes the blindness):
 #   - FAST: hard 4s budget; never blocks session start.
 #   - PATH-AWARE: works on M5 (balizero) and Pro/Mini (nuzantara).
@@ -19,6 +29,8 @@
 #     break sessions; it degrades to the pre-existing silence, never worse).
 #   - SNAPSHOT: shows only currently-open alerts (cured organs vanish) — no
 #     stale-alert graveyard (the failure mode that killed claude_tasks).
+#   - CAPPED: the emitted block is bounded (SESSIONSTART_HOOK_MAX_BYTES,
+#     default 1500) — same convention as the escalations/digest siblings.
 
 set -o pipefail
 
@@ -26,11 +38,17 @@ set -o pipefail
 HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 REPO_ROOT="$(cd "$HOOK_DIR/../.." && pwd)"
 DETECTOR="$REPO_ROOT/scripts/organism_stale_detector.py"
+BRIEF="$REPO_ROOT/scripts/organism_heartbeat_brief.py"
 
 # Only meaningful on machines that actually run organs (have the sidecar dir).
 SIDECAR_DIR="${ORGANISM_LAST_SEEN_DIR:-$HOME/.organism/last_seen}"
 [[ -d "$SIDECAR_DIR" ]] || exit 0
 [[ -f "$DETECTOR" ]] || exit 0
+[[ -f "$BRIEF" ]] || exit 0
+
+ON_COMMAND_FILE="${ORGANISM_ON_COMMAND_FILE:-$REPO_ROOT/infra/organism/on_command_organs.json}"
+STATE_FILE="${ORGANISM_HEARTBEAT_STATE_FILE:-$HOME/.organism/session_brief/heartbeat_last_session.json}"
+MAX_BYTES="${SESSIONSTART_HOOK_MAX_BYTES:-1500}"
 
 # Pick a python that exists (prefer repo venv, fall back to system).
 PY=""
@@ -48,37 +66,25 @@ _TIMEOUT=()
 if command -v timeout >/dev/null 2>&1; then _TIMEOUT=(timeout 4)
 elif command -v gtimeout >/dev/null 2>&1; then _TIMEOUT=(gtimeout 4); fi
 
-# Run the detector (human report). Fail-open on anything.
-REPORT="$(ORGANISM_LAST_SEEN_DIR="$SIDECAR_DIR" \
-    "${_TIMEOUT[@]}" "$PY" "$DETECTOR" --dir "$SIDECAR_DIR" 2>/dev/null)" || exit 0
+# Run the detector (machine-readable). Fail-open on anything.
+FINDINGS_JSON="$(ORGANISM_LAST_SEEN_DIR="$SIDECAR_DIR" \
+    "${_TIMEOUT[@]}" "$PY" "$DETECTOR" --dir "$SIDECAR_DIR" --json 2>/dev/null)" || exit 0
 
-# No alert if all organs breathing.
-case "$REPORT" in
-    ""|*"all organs breathing"*) exit 0 ;;
+# No alert if all organs breathing (empty list).
+case "$FINDINGS_JSON" in
+    ""|"[]") exit 0 ;;
 esac
 
 # Emit the snapshot file too (best-effort) so other readers can consume it.
 ORGANISM_LAST_SEEN_DIR="$SIDECAR_DIR" \
     "${_TIMEOUT[@]}" "$PY" "$DETECTOR" --dir "$SIDECAR_DIR" --emit >/dev/null 2>&1 || true
 
-# Inject into session context. Build JSON safely with python (no manual escaping).
-"$PY" - "$REPORT" <<'PYEOF' 2>/dev/null || exit 0
-import json, sys
-report = sys.argv[1] if len(sys.argv) > 1 else ""
-ctx = (
-    "🫀 ORGANISM HEARTBEAT ALERT (injected by SessionStart receptor)\n"
-    + report
-    + "\n\nThese organs run green in launchd but their heartbeat sidecar is "
-      "frozen — green (exit 0) != working (heartbeat written). Restart is NOT "
-      "the cure (W2 disarmed): the heartbeat CHANNEL is dead. Investigate the "
-      "writer/bridge. See research/operations/2026-06-28-heartbeat-channel-dead-core-organs.md"
-)
-print(json.dumps({
-    "hookSpecificOutput": {
-        "hookEventName": "SessionStart",
-        "additionalContext": ctx,
-    }
-}))
-PYEOF
+# Filter to on-command-excluded + session-delta + capped brief. Fail-open.
+OUT="$(printf '%s' "$FINDINGS_JSON" | "${_TIMEOUT[@]}" "$PY" "$BRIEF" \
+    --on-command-file "$ON_COMMAND_FILE" \
+    --state-file "$STATE_FILE" \
+    --max-bytes "$MAX_BYTES" 2>/dev/null)" || exit 0
+
+[[ -n "$OUT" ]] && echo "$OUT"
 
 exit 0

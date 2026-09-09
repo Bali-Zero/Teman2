@@ -974,7 +974,7 @@ main,
 @media (min-width: 768px) {
   .hero-aspect {
     aspect-ratio: 21 / 9;
-    min-height: 0;
+    min-height: 560px;
     max-height: none;
   }
   .hero-gradient {

@@ -1,0 +1,12 @@
+{
+  "infra/conductor/consul-broker/README.md": "27f8033d5f7ff26cefe4930ca72e2a277190ecc23efb083aa5db92b20665ffde",
+  "infra/conductor/consul-broker/build_bundle.py": "9e1bcba469152d512d43f1016bc961e2af40bf55d8cfebf1be35a95792e949d3",
+  "infra/conductor/consul-broker/dependencies.lock": "8f8804d77431eee233c7c3eeb2275209c8f063adc00f2aa9c1859335e317af84",
+  "infra/conductor/consul-broker/entry.py": "7d9c02cd5bf49a6876b623e4b8d844bc2d5369b9183247991e26475f2a02788b",
+  "infra/conductor/consul-broker/role.sql": "43251c73c46969a6f51084e0f16523b6a3bbad185b18f7096432f5665b779737",
+  "infra/conductor/consul-broker/sudoers": "e4eb6ac2d725349386f23dcd7a85b39bc8278416570963749bc71af11b962cca",
+  "infra/conductor/consul-broker/verify.py": "28a13ad518040e8802b8fa64f92a27bccf29456ad38960e124b0cfad3897f51b",
+  "infra/conductor/consul-broker/wrapper.sh": "633de114a8cec8a4bd3c83d184433356fd0980f9d5ea748ac8adba0c82f54019",
+  "scripts/provision_consul_broker.sh": "e5b26afd10ec5d4b13f0c713b2b668c01f6f331f615a256acb2e693bf4433cc5",
+  "scripts/tests/test_provision_consul_broker.py": "ebe8c519cf72ce19151e924bc791b081959481bd5019834cdfdd08521a988a4c"
+}

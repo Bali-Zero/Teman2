@@ -1,0 +1,51 @@
+task_id: vtv-strict-registry-0905
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Load scripts/verify_the_verifiers_gates.yaml through the shared strict policy loader,
+  and add the collision check one level below it.
+
+  The registry decides which safety gates get checked at all, so it is a policy document.
+  yaml.safe_load lets a duplicate top-level key win in silence: a second `gates:` appended
+  at the end replaces the 34 above it and reviews as an added block. MINIMUM_GATES (added
+  in #5705) catches that by COUNT — but only by count, so a replacement list of 34
+  harmless-looking entries clears the floor while checking nothing real.
+
+  One level further down, `gates:` is a LIST, so a repeated `id:` does not shadow: it
+  produces two independent results. But render_json emits gates KEYED BY ID, and any
+  consumer that builds a dict from that output silently keeps the last. That is the Kimi
+  lesson from #5682 applied before an external seat has to find it again: "last one wins
+  in silence" belongs to any keyed collection built without a collision check, not to YAML.
+constraints:
+  - >-
+    NOT converted, deliberately: check_ci_workflow's yaml.safe_load, which parses a GitHub
+    Actions workflow to judge whether a gate is armed. That file is the SUBJECT of a
+    verdict, not a policy governing the judge, and Actions itself resolves a duplicate key
+    by last-wins — a checker that refused where the runtime accepts would be reporting on a
+    file that does not exist. Refusing everything that parses YAML is the over-match twin
+    of the defect (superscar #3).
+  - >-
+    No fallback to yaml.safe_load. A meta-verifier that quietly downgrades to the
+    permissive loader when the strict one is missing is the exact shape of the disease it
+    exists to catch. The loader is path-loaded under the one canonical sys.modules name
+    used by every other call site, because scripts/lib is not an importable package and
+    this script also runs from a $HOME deploy copy under launchd.
+  - >-
+    `--registry` stays usable for the one- and two-gate synthetic registries the rest of
+    the suite passes; the strict rules apply to shape, not to size.
+  - >-
+    .github/verify-the-verifiers.sha256 is re-pinned in the same commit, as the integrity
+    step requires.
+acceptance:
+  - >-
+    WHEN a second `gates:` key is appended, THEN main returns 3 instead of silently
+    verifying the impostor list. probe: test_guilt_a_duplicated_gates_key_is_refused
+  - >-
+    WHEN two gates share an id, or a gate has none, THEN main returns 3.
+    probe: test_guilt_a_repeated_gate_ID_is_refused, test_guilt_a_gate_without_an_id_is_refused
+  - >-
+    WHEN the shipped registry is loaded, THEN it still parses, still carries at least
+    MINIMUM_GATES, and its ids are unique.
+    probe: test_innocence_the_shipped_registry_still_loads_through_the_strict_loader
+pii_scan: clean

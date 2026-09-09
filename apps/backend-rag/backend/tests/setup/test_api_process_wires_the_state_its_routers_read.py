@@ -54,10 +54,8 @@ _FULL_ENTRY = "initialize_services"
 #: changed, so each entry must name a file AND a phrase that file still
 #: contains — the justification is re-read on every run, not trusted once.
 _DELIBERATELY_UNWIRED: dict[str, tuple[str, str]] = {
-    "garuda_staff_session_verifier": (
-        "app/routers/garuda_orders_router.py",
-        "is wired nowhere today",
-    ),
+    # `garuda_staff_session_verifier` left this table on 2026-09-02 (PR #5584):
+    # `initialize_services()` now assigns it, so the real guard judges it.
 }
 
 

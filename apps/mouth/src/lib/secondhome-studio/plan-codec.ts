@@ -143,12 +143,15 @@ function isValidPlanShape(value: unknown): value is PlanState {
   return true;
 }
 
-export function savePlan(p: PlanState): void {
-  if (!hasLocalStorage()) return;
+/** True only after storage accepts the write, so callers can give honest feedback. */
+export function savePlan(p: PlanState): boolean {
+  if (!hasLocalStorage()) return false;
   try {
     window.localStorage.setItem(PLAN_STORAGE_KEY, JSON.stringify(p));
+    return true;
   } catch {
-    // Storage full, blocked (private mode), or unavailable — no-op.
+    // Storage full, blocked (private mode), or unavailable — keep the plan in memory.
+    return false;
   }
 }
 

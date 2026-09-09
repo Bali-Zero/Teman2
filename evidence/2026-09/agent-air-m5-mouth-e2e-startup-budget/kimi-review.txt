@@ -1,0 +1,13 @@
+• **PASS**
+
+  Scope check — exact one-line change, `180 * 1000` → `300 * 1000` in `webServer.timeout`, matching the Fable-authorized edit. Build/start command, URL, env, `reuseExistingServer`, test timeouts, retries, workers, reporters all byte-identical. Nothing outside the authorized line.
+
+  Units — Playwright `webServer.timeout` is milliseconds; 300000ms = 300s. Correct.
+
+  Behavior — the timeout governs time from process spawn (build included, since command is `npm run build && npm run start`) to URL responding. Worst observed success: 174.4s; failure Ready at 180.03s, 0.876s before the timeout error — consistent with the 180s ceiling being the cause. 300s yields ~125s headroom over the max observed, and failed startups now take up to 120s longer to surface — disclosed in `risks`. Per-test 60s limit unchanged. No behavioral change outside the startup wait.
+
+  Truthfulness — log-proxy caveat honestly stated in both `measurement_method` and `failed_run_observation` (not the internal Playwright timer). Own-PR E2E proof correctly declared pending with an explicit completion requirement before the Fable gate — no false claim of closure. Source attribution (four independent downloads + root-verified failing log, SHA-256 digests) is sound. Generator≠grader holds (Codex build / Kimi review).
+
+  Non-blocking observations:
+  - The `config-collection` receipt bundles byte-comparison and Prettier claims under a single listed `playwright test --list` command; those two verifications aren't entailed by that command's exit 0. Unverifiable here; root should confirm before gate.
+  - 300s is a fixed budget; CI build-time growth will erode headroom silently. Acceptable now, worth watching.

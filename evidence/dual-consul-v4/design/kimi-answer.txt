@@ -1,0 +1,28 @@
+**Kimi adapter candidate — design only, from supplied evidence (no repo inspection).**
+
+**(a) Minimal lifecycle, two modes.**
+
+*Headless consultation seat (current wrapper, `tools:[]`).* Mission → wrapper sanitizes input (credential-env drop, numeric-PII backstop) → single-shot candidate reply → Handoff with reply as Evidence. No Authorization needed for effects (none possible); seat is advisory-only. Stateless per invocation, so no-cross-mission-context holds trivially. Provenance tags: wrapper version, prompt hash, resolved alias (kimi-code/k3) recorded as metadata, never as privilege.
+
+*Native agentic CLI (future, unqualified).* Mission → `--plan` draft → `--agent-file`-scoped execution → `--output-format stream-json` events as the Evidence stream. Before every effect-ful tool call, a distinct-UID executor re-checks scoped grant + current fencing epoch + resource at effect time; hooks remain defense-in-depth. Timeout after possible effect → mandatory reconciliation: compare declared intent vs observed state, emit divergent Handoff, never claim completion from pre-action intent. Resume via `--session/--continue` only same-mission, after re-checking authorization/fence/config/input hash. CLI session transcripts are scoped, provenance-tagged, PII-stripped; no raw reasoning retained. No second scheduler; PG Autonomous Lab lifecycle governs.
+
+**(b) Kimi-specific caveats/hypotheses.**
+- `stream-json` schema unknown — evidence mapping is a hypothesis until qualified live.
+- Cancellation semantics unknown; assume partial effects possible → reconciliation path is mandatory, not optional.
+- Whether `tools:[]` in an agent file is *enforced* by CLI 0.41.0 or merely advisory is untested.
+- Transcript storage location/retention controls unknown → privacy boundary incomplete; the wrapper's backstop is numeric-only, so raw client-adjacent text should not reach this seat yet.
+- ACP subcommand untested — route nothing through it.
+- Alias→model resolution may drift; pin and record resolved metadata per mission.
+
+**(c) Three cheap discriminating contract tests (outside PR path).**
+1. *Stale-epoch denial:* grant scope, advance fencing epoch mid-session, attempt a trivial scratch-dir effect; contract: executor denies at effect time and logs denial evidence.
+2. *Timeout reconciliation:* induce timeout around a known side effect (file create + sleep); contract: adapter enters reconciliation, reports actual filesystem state, never auto-claims completion.
+3. *Resume re-check:* persist session, revoke grant (or mutate input/config), attempt `--continue`; contract: adapter refuses silent resume and demands fresh authorization.
+
+**(d) Token economy.**
+One lead (Astra *or* Fable); Kimi seat receives narrow frozen diffs plus scoped evidence excerpts, never whole histories. Evidence reuse keyed by actual input tree + tool/test/config/environment hash; adapter qualified once per relevant change, not per PR. Workers ≤4 as ceiling; headless seat is single-shot, zero parallelism. Reuse existing change_map/impact_map and advisory merge_group exclusions; no all-PR harness. Parse stream-json incrementally; retain summarized events only.
+
+**(e) Unknowns; acceptance/disagreement.**
+*Accept:* equal lead/reviewer split, effect-time checks, intent≠completion, reconciliation, same-mission-only resume, metadata≠privilege, 4-worker ceiling, evidence-reuse keying. *Unknowns:* stream-json schema, cancellation/partial-effect behavior, `tools:[]` enforcement, transcript retention controls, ACP viability, env-drop denylist completeness. *Mild disagreement:* "no routine human reapproval" is fine for the advisory seat, but the *first* live qualification of agentic mode with real effects should be human-witnessed — a one-time qualification gate, not a reapproval loop.
+
+END_ADAPTER_KIMI

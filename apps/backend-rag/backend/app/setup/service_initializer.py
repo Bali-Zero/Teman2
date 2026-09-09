@@ -1330,6 +1330,26 @@ async def initialize_garuda_services(app: FastAPI, db_pool) -> None:
     else:
         logger.warning("⚠️ GARUDA VOA magic-link wiring skipped: no db_pool (L3/L4 fail closed)")
 
+    # 5.5b GARUDA VOA — staff session verifier wiring (step 8, staff
+    # surface). Unconditional, unlike 5.5 above: `verify_staff_session`
+    # decodes a CRM JWT and checks the token-revocation store — it needs
+    # NO database pool of its own (the revocation check goes through its
+    # own already-wired store, `token_revocation.py`), so there is no
+    # `db_pool is not None` gate here. This is the wiring
+    # `garuda_orders_router.py::_require_staff_actor`'s own docstring names
+    # as "wired nowhere today" — arming it here is what turns that
+    # function's dead 401-always branch into a real staff-session check,
+    # and is also what `garuda_staff_router.py`'s own
+    # `require_garuda_staff` dependency resolves through for a bearer-only
+    # (no cookie) caller.
+    try:
+        from backend.services.garuda_portal.staff_auth import verify_staff_session
+
+        app.state.garuda_staff_session_verifier = verify_staff_session
+        logger.info("✅ GARUDA VOA staff session verifier wired")
+    except Exception as e:
+        logger.warning("⚠️ GARUDA VOA staff session verifier wiring failed (non-critical): %s", e)
+
     # 5.6 GARUDA VOA — CheckStore wiring (L2). Unconditional, unlike the
     # order/payment wiring below: `PostgresCheckStore.create()` runs its
     # OWN pre-check (`retention.active_garuda_check_policy_available`)

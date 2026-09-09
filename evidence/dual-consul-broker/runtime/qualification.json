@@ -1,0 +1,112 @@
+{
+  "recorded_at": "2026-09-06T04:18:32Z",
+  "recorded_at_meaning": "Receipt assembly time, not test start or per-host observation time. Catalog observed_at is recorded by each probe.",
+  "qualification_scope": "Exact native executable plus strict isolated profile: protocol request-field presence, config validation, subscription account read, and complete visible/hidden model catalog. No inference or effect qualification.",
+  "source_producer_at_collection": {
+    "scripts/conductor/adapter_contracts.py": "a17c922a4d29d7817c3999c600cc4c4084510cb7b81693a7ba96c29ffc05a1ea",
+    "scripts/conductor/contracts.py": "4cab11a9a4a04b63c30a40ef6c0b570394082c49fb222b34397a83e113cf7327",
+    "scripts/conductor/app_server_rpc.py": "46c94e71dc0f8c7dacec011ecc63ff81c27e15072afb2abf6645e30d65c02538",
+    "scripts/conductor/codex_shadow.py": "5cc637895e9b0e412455241063155c1c0355b7c098a02981ab2b99939e1dc350",
+    "scripts/conductor/codex_shadow_launch.py": "8a77f3b2fa20a4ba25491ac7c36cd1dbc26339412a92b1016c0c07f134d0ada4",
+    "scripts/conductor/codex_shadow_probe.py": "5265de9298d2b09aa467fcb2ac1b7f321774349d66c060a65b1907fea0012f44"
+  },
+  "launcher_sha256": "8a77f3b2fa20a4ba25491ac7c36cd1dbc26339412a92b1016c0c07f134d0ada4",
+  "launcher_tests_sha256": "8f59d71ff2b7db4ff3436d2cc56cd90513d0a7ec8c5247ddd0bb81d26b629a69",
+  "commands": [
+    {
+      "host": "Pro",
+      "command": "ssh pro 'cd /tmp/dual-consul-runtime-pro.URJSgs && /Users/nuzantara/nuzantara/.venv/bin/python -m scripts.conductor.codex_shadow_probe --auth-home /Users/nuzantara/.codex --model gpt-6-astra --catalog' > /tmp/dual-consul-runtime-pro-final.json",
+      "exit_code": 0,
+      "artifact": "pro-catalog.json"
+    },
+    {
+      "host": "Mini",
+      "command": "ssh mini 'cd /tmp/dual-consul-runtime-mini.xEiK5J && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m scripts.conductor.codex_shadow_probe --auth-home /Users/nuzantara/.codex --model gpt-6-astra --catalog' > /tmp/dual-consul-runtime-mini-final.json",
+      "exit_code": 0,
+      "artifact": "mini-catalog.json"
+    },
+    {
+      "host": "Air-M5",
+      "cwd": "/Users/balizero/nuzantara/.worktrees/infra-consul-broker-live",
+      "command": "/Users/balizero/nuzantara/.venv/bin/python -m scripts.conductor.codex_shadow_probe --auth-home /Users/balizero/.codex --model gpt-6-astra --catalog > /tmp/dual-consul-runtime-m5-final.json",
+      "exit_code": 0,
+      "artifact": "m5-catalog.json"
+    },
+    {
+      "host": "Air-M5",
+      "cwd": "/Users/balizero/nuzantara/.worktrees/infra-consul-broker-live",
+      "command": "/Users/balizero/nuzantara/.venv/bin/python -m pytest scripts/tests/test_codex_shadow_launch.py scripts/tests/test_codex_shadow.py scripts/tests/test_codex_shadow_probe.py scripts/tests/test_conductor_app_server_rpc.py scripts/tests/test_conductor_adapter_contracts.py -q",
+      "exit_code": 0,
+      "result": "132 passed in 5.94s",
+      "scope": "Qualification snapshot before concurrent broker changes to the shared adapter."
+    },
+    {
+      "host": "Air-M5",
+      "cwd": "/Users/balizero/nuzantara/.worktrees/infra-consul-broker-live",
+      "command": "/Users/balizero/.local/bin/ruff check scripts/conductor/codex_shadow_launch.py scripts/tests/test_codex_shadow_launch.py",
+      "exit_code": 0,
+      "result": "All checks passed!"
+    }
+  ],
+  "earlier_diagnostics": [
+    {
+      "scope": "Outside canonical qualification",
+      "detail": "Pro default SSH PATH did not provide Node for the npm wrapper; resolved the already installed direct native executable."
+    },
+    {
+      "scope": "Outside canonical qualification",
+      "detail": "Mini npm native layout was absent (exit 127); observed the already installed native Cask 0.148.0 and added that exact resolver path."
+    },
+    {
+      "scope": "Test invocation corrected",
+      "detail": "Activating the virtualenv followed by bare python selected the mise/system interpreter in this shell. Ruff module unavailable; initial test run had 131 passes and one process-group PermissionError in existing RPC cancellation test. Explicit virtualenv Python and existing Ruff executable then passed all 132 tests. No RPC change was made for this diagnostic."
+    }
+  ],
+  "candidate_evidence": "Pro/Mini candidate catalogs used temporary copies pinned to each observed version (Mini used its direct Cask path) before editing the canonical launcher. Their distinct source_producer hashes are preserved, and source_auth_unchanged=true applies to these candidate calls only. Canonical catalogs use the same six producer files on every host.",
+  "inference_calls": 0,
+  "astra_available_on_any_observed_host": false,
+  "raw_config_retained": false,
+  "operational_service_changes": false,
+  "selected_artifact_origins": {
+    "pro-catalog.json": {
+      "collected_from": "/tmp/dual-consul-runtime-pro-final.json",
+      "raw_sha256": "5d66c67cbdded014b888ac7e9f66b03cd71f6a1280d08fef614b1a70867962de"
+    },
+    "pro-schema-selection.json": {
+      "collected_from": "/tmp/dual-consul-runtime-pro-schema-selection.json",
+      "raw_sha256": "e1b0d9ee6a5eb1324a650c6d3ae58387f645a7c19ab497dfb53958b1900b0488"
+    },
+    "mini-catalog.json": {
+      "collected_from": "/tmp/dual-consul-runtime-mini-final.json",
+      "raw_sha256": "06f16ad53bffc5dd993ab962555ba04eeb58cb18dbe856690238ae0cf3c7d09f"
+    },
+    "mini-schema-selection.json": {
+      "collected_from": "/tmp/dual-consul-runtime-mini-schema-selection.json",
+      "raw_sha256": "d3af4b0123c5bcf59b19bab9d5c7103fe57bd45e520c093a5b208f8b458f7dae"
+    },
+    "m5-catalog.json": {
+      "collected_from": "/tmp/dual-consul-runtime-m5-final.json",
+      "raw_sha256": "62657a3b093f623a4eb26218ffd36957aeb4cd8f4dc1fdd279566321b9996e86"
+    },
+    "m5-schema-selection.json": {
+      "collected_from": "/tmp/dual-consul-runtime-m5-schema-selection.json",
+      "raw_sha256": "d3af4b0123c5bcf59b19bab9d5c7103fe57bd45e520c093a5b208f8b458f7dae"
+    },
+    "pro-candidate-catalog.json": {
+      "collected_from": "/tmp/dual-consul-runtime-pro-candidate-catalog.json",
+      "raw_sha256": "e11e5bbd6527332cdd03876f437353dd842e90a0d9661c2fb6907866953db724"
+    },
+    "mini-candidate-catalog.json": {
+      "collected_from": "/tmp/dual-consul-runtime-mini-candidate-catalog.json",
+      "raw_sha256": "8c6697887a6e49aa39ff725c8da55332e44683deee283e72dd6797a257717fd0"
+    },
+    "pro-config-lifecycle.json": {
+      "collected_from": "/tmp/dual-consul-config-lifecycle-pro.json",
+      "raw_sha256": "e42aeddc39b2f393d195897f0ce77ecc252d8e8ec12c16b22176571d58d5a5c3"
+    },
+    "m5-config-lifecycle.json": {
+      "collected_from": "/tmp/dual-consul-config-lifecycle.json",
+      "raw_sha256": "0a08434962fddfef176c3910848d9a4329e0de6aa3e012d371ebcd900a689509"
+    }
+  }
+}

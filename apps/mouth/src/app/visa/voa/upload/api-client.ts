@@ -3,9 +3,13 @@
  * `POST /api/visa/voa/eligibility-checks/{result_id}/documents`.
  *
  * Auth is the contract's `MagicSession` — a Secure, HttpOnly `garuda_session` cookie set
- * by L4's magic-link exchange. `fetch` sends same-origin cookies by default, so no token
- * handling belongs here; this call is same-origin under `/api` per the repo's existing
- * `NEXT_PUBLIC_API_URL || "/api"` convention (see `src/lib/api/articles.api.ts`).
+ * by L4's magic-link exchange, `Domain` set by the backend's `get_cookie_domain()`
+ * (`.balizero.com` in production, `garuda_portal_auth.py`'s `_set_account_session_cookie`)
+ * — never sent to a request that goes directly to `nuzantara-rag.fly.dev`. `fetch` sends
+ * same-origin cookies by default, so no token handling belongs here, but the base URL
+ * MUST stay same-origin `/api` (2026-09-03: `NEXT_PUBLIC_API_URL` pointing at the Fly host
+ * directly 401'd the sibling staff lane's cookie-session calls the same way — see
+ * `(workspace)/garuda-voa/api-client.ts`).
  */
 
 import {
@@ -16,7 +20,7 @@ import {
   type UploadSuccessBody,
 } from "./types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+const API_BASE_URL = "/api";
 
 export class GarudaUploadError extends Error {
   constructor(

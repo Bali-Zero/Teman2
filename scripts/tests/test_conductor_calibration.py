@@ -241,7 +241,10 @@ class CalibrationOverlayTest(unittest.TestCase):
         ]
         effective_eligible = registry.endpoints()
 
-        self.assertEqual(len(source_eligible), 4)
+        self.assertTrue(
+            source_eligible,
+            "static eligibility must exist to exercise the effective evidence gate",
+        )
         self.assertEqual(effective_eligible, ())
         self.assertFalse(registry.operational)
         self.assertTrue(

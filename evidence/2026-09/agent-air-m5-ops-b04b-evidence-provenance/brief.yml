@@ -1,0 +1,14 @@
+task_id: b04b-evidence-provenance
+gear: 1
+objective: Make the merged B04b category-table receipt reproducible and correct the historical builder attribution.
+constraints:
+  - Evidence only; no application, test or article changes.
+  - Fresh branch after PR5778 merged; never rewrite existing commits.
+acceptance:
+  - text: A reviewer can reproduce the CATEGORY_SEO initializer digest at the pinned commit and compare it byte for byte to the parent initializer.
+    probe: evidence/2026-09/agent-air-m5-ops-b04b-evidence-provenance/reproduce.cjs
+consumer_map:
+  - Independent reviewers reproduce the B04b category-table move from pinned Git objects.
+risks:
+  - This corrects evidence metadata only; it makes no new runtime, CI or production claim.
+pii: none

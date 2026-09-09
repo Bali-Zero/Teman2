@@ -25,6 +25,9 @@ on:
       - "infra/launchagents/com.nuzantara.vercel-autopromote.plist"
       - "scripts/tests/test_vercel_prod_deploy_promote_only.py"
       - "scripts/tests/test_vercel_prod_deploy_fetch_retry.py"
+      - "scripts/tests/test_vercel_prod_deploy_target_rule.py"
+      - "scripts/tests/test_frontend_live_sentinel.py"
+      - ".github/workflows/frontend-live-sentinel.yml"
       - "scripts/tests/test_mini_vercel_autopromote_wrapper.sh"
       - ".github/workflows/vercel-autopromote-tests.yml"
   push:
@@ -36,6 +39,9 @@ on:
       - "infra/launchagents/com.nuzantara.vercel-autopromote.plist"
       - "scripts/tests/test_vercel_prod_deploy_promote_only.py"
       - "scripts/tests/test_vercel_prod_deploy_fetch_retry.py"
+      - "scripts/tests/test_vercel_prod_deploy_target_rule.py"
+      - "scripts/tests/test_frontend_live_sentinel.py"
+      - ".github/workflows/frontend-live-sentinel.yml"
       - "scripts/tests/test_mini_vercel_autopromote_wrapper.sh"
 
 permissions:
@@ -60,6 +66,9 @@ jobs:
 
       - name: A transient fetch is ridden out, a persistent one names its own cause
         run: python3 -m pytest scripts/tests/test_vercel_prod_deploy_fetch_retry.py -v
+
+      - name: Frontend proof follows kita even when the apex domain disagrees
+        run: python3 -m pytest scripts/tests/test_frontend_live_sentinel.py scripts/tests/test_vercel_prod_deploy_target_rule.py -v
 
       # The wrapper is the half that decides what the fleet SEES. Its corpus runs the real
       # script in a disposable world (temp HOME, shimmed hostname, stand-in cure), so a

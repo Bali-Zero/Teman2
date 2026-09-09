@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-09-05T23:43:02.425178+00:00",
+  "timestamp_semantics": "Recording timestamp; not an exact query start. Actual output observed this session.",
+  "scope": "production schema presence and aggregate JSON shape only; no client or mission contents read",
+  "connection": "existing scripts/pg.sh on Pro using the configured read-only role and already-running proxy",
+  "first_attempt": {
+    "transaction": "BEGIN READ ONLY",
+    "schema_presence": {
+      "lab_runs_present": false,
+      "lab_outbox_present": false
+    },
+    "aggregate_query_exit": 3,
+    "error": "relation public.autonomous_lab_runs does not exist",
+    "mutation": false
+  },
+  "independent_presence_recheck": {
+    "exit": 0,
+    "stdout": "BEGIN\n{\"lab_runs_present\" : false, \"lab_outbox_present\" : false, \"read_only\" : \"on\"}\nROLLBACK\n",
+    "sql": "BEGIN READ ONLY; SELECT json_build_object('lab_runs_present', to_regclass('public.autonomous_lab_runs') IS NOT NULL, 'lab_outbox_present', to_regclass('public.autonomous_lab_events_outbox') IS NOT NULL, 'read_only', current_setting('transaction_read_only')); ROLLBACK;"
+  },
+  "local_dev_check": {
+    "status": "not_verified",
+    "reason": "Configured local read-only credential unavailable; no fallback to privileged access."
+  },
+  "consequence": "Migration 306 must backfill the exact legacy 124 Lab foundation before adding its foreign key. No corrupted legacy Lab JSON rows exist in the inspected production tables because those tables are absent. Other databases remain unverified."
+}

@@ -1,0 +1,24 @@
+Verdict: **PASS**. The prerequisite correction is sound as written, and I found no concrete blocker in the migration or the two new tests.
+
+**What the correction gets right**
+
+- The snapshot is a verbatim, dedented copy of all eight legacy apply statements, and the parity test enforces that by exact string equality against the live Python migration. Drift in either direction fails the test.
+- Every backfilled statement is `IF NOT EXISTS`, so 306 is a no-op on databases where 124 already ran, and a later 124 apply is a no-op after 306. Both orders converge.
+- The runner wraps the forward SQL in one transaction, so a failing FK leaves no partial state, and `SET LOCAL lock_timeout` is effective there.
+- Rollback drops only the lease table. The bootstrap test proves the shared tables and a succeeded run survive rollback, and the earlier test proves reapply works.
+- Legacy 124 rollback now fails while 306 is applied, because the lease FK has no cascade. That is the correct fail-closed ordering, not a defect.
+- The hash validators shown in `action_intent`, `approval_receipt` and `verification_receipt` close my earlier residual: wire-form revalidation does recompute `object_hash`.
+
+**One environment-dependent hazard, one line to remove it**
+
+The snapshot creates `autonomous_lab_runs` unqualified, but the lease FK references `public.autonomous_lab_runs`. Trigger: the migration role's effective `search_path` resolves unqualified names elsewhere, for example a schema named after the role exists or the role has an `ALTER ROLE ... SET search_path`. Then the backfill lands outside `public` and 306 fails atomically with the same "does not exist" error. The existing 124 path and the application share this assumption, so it is not new, but 306 is the first place both conventions meet. Adding `SET LOCAL search_path = public, pg_catalog;` next to the lock timeout, outside the snapshot markers, removes the hazard without breaking parity. Alternatively verify the production role's `search_path` read-only before merge.
+
+**Residual limits, not blocking**
+
+- The disposable tests execute the forward SQL directly. The runner path, including `_validate_sql`, `_check_dependencies` and ledger logging, is not exercised. A runner dry run against the disposable database would close that.
+- Production presence of `research_os_objects` from migrations 279 and 280 is not in the evidence. Absence would make the executor fail closed at first persist, with no effect, but the slice would be inert.
+- The lease FK has no `ON DELETE`. Any existing purge path that deletes runs will now error on runs holding a lease row. That is consistent with tombstone retention but should be known.
+- Slot 306 still needs its merge-time recheck, and the application role must hold DML on the two bootstrapped tables if it differs from the migration role.
+- Local dev and other databases remain unverified, as the evidence states.
+
+END_DUAL_CONSUL_REVIEW
