@@ -281,7 +281,10 @@ def reconcile(reds: dict[str, dict], greens: set[str], *, state: dict, escalatio
             },
             "machine": writer,
             "_writer": writer,
-            "ts": str(now),
+            # ts is a NUMBER: scripts/sentinel_lib/escalations.py sorts the board on the
+            # raw value, and one string next to the floats every other writer emits
+            # makes read_all_escalations() raise TypeError (gate finding on #6002).
+            "ts": now,
         }
         _append(escalations, line)
         escalated[key] = now
@@ -291,7 +294,7 @@ def reconcile(reds: dict[str, dict], greens: set[str], *, state: dict, escalatio
         if ctx in greens:
             job = JOB_PREFIX + _slug(ctx)
             _append(escalations, {"job": job, "type": "main_required_red", "status": "resolved",
-                                  "resolved_at": str(now), "ts": str(now), "machine": writer,
+                                  "resolved_at": now, "ts": now, "machine": writer,
                                   "_writer": writer, "context": ctx})
             del open_ctx[ctx]
             out["resolved"].append(ctx)

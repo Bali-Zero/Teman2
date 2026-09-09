@@ -113,6 +113,8 @@ def test_red_two_commits_back_is_red_and_escalates_high(tmp_path):
     assert static["cure_lane"]["owner"] == "session"
     assert static["cure_lane"]["branch"].endswith("/infra/main-red-backend-static-python")
     assert rep["board"]["escalated"] == [f"{STATIC}@{MID}", f"{TESTS}@{MID}"]
+    # ts is numeric like every other board writer: read_all_escalations() sorts on it.
+    assert all(isinstance(l["ts"], float) for l in lines)
 
 
 def test_same_red_second_tick_is_deduped(tmp_path):
@@ -134,6 +136,9 @@ def test_new_sha_still_red_escalates_again_and_green_resolves(tmp_path):
     resolved = [l for l in _lines(tmp_path / "esc.jsonl") if l["status"] == "resolved"]
     assert {l["job"] for l in resolved} == {"main-required-red:backend-static-python",
                                             "main-required-red:backend-tests-python"}
+    assert all(isinstance(l["ts"], float) and isinstance(l["resolved_at"], float) for l in resolved)
+    # The mixed board (pending + resolved) must sort: this is the TypeError the string ts caused.
+    sorted(_lines(tmp_path / "esc.jsonl"), key=lambda e: e.get("ts", 0), reverse=True)
     assert json.loads((tmp_path / "state.json").read_text())["open"] == {}
 
 
