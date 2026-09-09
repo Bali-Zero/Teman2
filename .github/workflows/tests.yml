@@ -698,6 +698,15 @@ jobs:
           uv pip install --system -r requirements.lock.txt
           # Editable cell-core workspace dep (out-of-tree)
           uv pip install --system -e ../../packages/cell-core
+          # uv cache pruning (2026-09-10): the saved uv cache buys nothing
+          # here. Measured on Backend Shard 1: merge_group run 34382424536
+          # spent 49s restoring the cache + 14s installing, vs the schedule
+          # run 34354276221's 39s cold install with NO cache at all — only
+          # packages/cell-core is source-built (<1s); everything else is a
+          # registry wheel that downloads faster than it restores. uv's
+          # documented CI pattern: prune after install so only source-built
+          # wheels get saved, not ~3 GB of registry wheels.
+          uv cache prune --ci || echo "::warning::uv cache prune --ci failed; the unpruned cache is kept, install already succeeded"
 
       - name: pip-audit
         run: |
@@ -986,6 +995,11 @@ jobs:
           # (scripts/tests/test_test_deps_declared.py's guilt check pins the
           # two together, same rule fakeredis already follows).
           uv pip install --system pytest pytest-cov pytest-asyncio pytest-mock fakeredis pytest-xdist
+          # uv cache pruning (2026-09-10): see backend-static's copy of
+          # this step for the measured 49s-restore-vs-39s-cold-install
+          # rationale — the saved uv cache buys nothing here either, same
+          # install closure, only packages/cell-core is source-built.
+          uv cache prune --ci || echo "::warning::uv cache prune --ci failed; the unpruned cache is kept, install already succeeded"
 
       - name: Bootstrap SQLModel tables
         # Router-level integration tests assume the full schema (e.g.
@@ -1817,18 +1831,47 @@ jobs:
         with:
           node-version: "24"
 
+      # Cache hygiene (2026-09-10): one shared key across this matrix's legs
+      # AND the npm-audit job below — all three used to cache the SAME
+      # **/node_modules + ~/.npm content under three different keys
+      # (node-mouth, node-admin-dashboard, node-npm-audit, ~0.7 GB each), so
+      # a single ref paid to store the identical bytes three times. Measured
+      # 2026-09-09 17:45Z (`gh api .../actions/cache/usage`): 10.86 GB used
+      # against the 10 GB repo cap, GitHub's LRU eviction running
+      # continuously. restore-only + main-only save: a `gh-readonly-queue/*`
+      # or `refs/pull/N/merge` ref save can only ever be restored by a
+      # re-run of that SAME ref (GitHub docs, "Caching dependencies" —
+      # "Workflow runs can restore caches created in either the current
+      # branch or the default branch"; a PR-ref cache "can only be restored
+      # by re-runs of the pull request") — 159 PR runs + 78 queue batches/24h
+      # were paying to store copies nothing but themselves could ever read,
+      # evicting main's live copy in the process. main is now the sole
+      # writer; every other ref restores main's copy read-only.
       - name: Cache dependencies
+        id: node-cache
         if: steps.decide.outputs.run == 'true'
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: |
             **/node_modules
             ~/.npm
-          key: ${{ runner.os }}-node-${{ matrix.app }}-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-node-workspace-${{ hashFiles('package-lock.json') }}
 
       - name: Install dependencies
         if: steps.decide.outputs.run == 'true'
         run: npm install --no-fund
+
+      - name: Save node cache (main only)
+        if: >-
+          steps.decide.outputs.run == 'true' &&
+          github.ref == 'refs/heads/main' &&
+          steps.node-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            **/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-workspace-${{ hashFiles('package-lock.json') }}
 
       # `npm audit` used to live here — moved to the standalone `npm-audit`
       # job below (2026-08-21, token-ceremony CI-critical-path audit). It
@@ -2041,16 +2084,33 @@ jobs:
         with:
           node-version: "24"
 
+      # Cache hygiene (2026-09-10): shares the SAME key as the Frontend
+      # Tests matrix's node cache above — see that step's comment for the
+      # measured three-copies-of-one-cache rationale and the main-only-save
+      # rationale (PR-ref / gh-readonly-queue/* saves are unrestorable dead
+      # weight that evicts main's live copy).
       - name: Cache dependencies
-        uses: actions/cache@v6
+        id: node-cache
+        uses: actions/cache/restore@v6
         with:
           path: |
             **/node_modules
             ~/.npm
-          key: ${{ runner.os }}-node-npm-audit-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-node-workspace-${{ hashFiles('package-lock.json') }}
 
       - name: Install dependencies
         run: npm install --no-fund
+
+      - name: Save node cache (main only)
+        if: >-
+          github.ref == 'refs/heads/main' &&
+          steps.node-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            **/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-workspace-${{ hashFiles('package-lock.json') }}
 
       - name: npm audit
         # The gate itself lives in scripts/ci/npm_audit_gate.py so it can carry
@@ -2314,7 +2374,8 @@ jobs:
         # '' and the key silently collapsed to the lockfile hash alone — an
         # exact immutable hit after the first seed, never re-saved on any
         # source change.
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
+        id: next-cache
         with:
           path: apps/mouth/.next/cache
           key: ${{ runner.os }}-nextjs-mouth-${{ hashFiles('package-lock.json') }}-${{ hashFiles('apps/mouth/**/*.js', 'apps/mouth/**/*.jsx', 'apps/mouth/**/*.ts', 'apps/mouth/**/*.tsx', 'apps/mouth/**/*.mjs', 'apps/mouth/**/*.cjs', 'apps/mouth/**/*.css', 'apps/mouth/**/*.json', '!apps/mouth/node_modules/**', '!apps/mouth/.next/**') }}
@@ -2433,6 +2494,24 @@ jobs:
             --ignore-snapshots \
             --reporter=list \
             --grep "page Page|@offline"
+
+      # Cache hygiene (2026-09-10): restore-only + main-only save, same
+      # rationale as the node caches above — a PR-ref or gh-readonly-queue/*
+      # save can only ever be restored by a re-run of that SAME ref (GitHub
+      # docs, "Caching dependencies"), so it is dead weight that evicts
+      # main's live copy instead of ever paying off. `!cancelled()` (not
+      # `always()`): a failed-but-COMPLETED E2E run on main still produced a
+      # real, seedable build cache; a cancelled run's .next/cache is
+      # mid-write and not worth saving.
+      - name: Save Next.js build cache (mouth, main only)
+        if: >-
+          !cancelled() &&
+          github.ref == 'refs/heads/main' &&
+          steps.next-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: apps/mouth/.next/cache
+          key: ${{ steps.next-cache.outputs.cache-primary-key }}
 
       - name: Check Playwright report
         id: playwright-report
@@ -2642,6 +2721,10 @@ jobs:
             pip install --upgrade pip uv
             uv pip install --system -r requirements.lock.txt
             uv pip install --system -e ../../packages/cell-core
+            # uv cache pruning (2026-09-10): same rationale as the two
+            # backend-rag jobs above — measured 49s restore + 14s install vs
+            # 39s cold install with no cache, only cell-core is source-built.
+            uv cache prune --ci || echo "::warning::uv cache prune --ci failed; the unpruned cache is kept, install already succeeded"
           '
           rc=$?
           if [ "$rc" -eq 124 ]; then
@@ -2663,6 +2746,9 @@ jobs:
             pip install --upgrade pip uv
             uv pip install --system -r requirements.lock.txt
             uv pip install --system -e ../../packages/cell-core
+            # uv cache pruning (2026-09-10): same rationale as the
+            # first install attempt above in this same job.
+            uv cache prune --ci || echo "::warning::uv cache prune --ci failed; the unpruned cache is kept, install already succeeded"
           '
 
       - name: Guard — fail the job if uv install (or its one timeout-only retry) did not succeed
