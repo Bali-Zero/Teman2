@@ -414,7 +414,8 @@ PY
 }
 
 cascade_cap_escalation() {
-    # $1 = seat label, $2 = hops taken, $3 = the still-pending jump file.
+    # $1 = seat label, $2 = hops taken, $3 = the pending jump file ("" when the
+    # guard refused to write one), $4 = session id of the run that tripped.
     # Receptor for the headless cap (Ruling Zero 2026-09-09 «tutto ciò che
     # succede nel sistema non deve aspettare me per un fix»): a chain that hits
     # JUMP_MAX_HOPS with a jump still pending is a mandate that silently ended
@@ -440,15 +441,19 @@ cascade_cap_escalation() {
         echo "  [jump] $1 — cap escalation NOT written: no escalations board found (set CASCADE_ESCALATIONS_FILE)" >&2
         return 0
     fi
-    CAP_SEAT="$1" CAP_HOPS="$2" CAP_JUMP_FILE="$3" CAP_BOARD="$board" CAP_MAX="$JUMP_MAX_HOPS" \
+    CAP_SEAT="$1" CAP_HOPS="$2" CAP_JUMP_FILE="$3" CAP_SID="${4:-}" CAP_BOARD="$board" CAP_MAX="$JUMP_MAX_HOPS" \
+    CAP_HANDOFF="${CONTEXT_GUARD_HANDOFF_DIR:-$HOME/.claude/state}/precompact-handoff-${4:-}.json" \
     python3 - <<'PY' 2>&1 | sed 's/^/  [jump] /' >&2
 import json, os, socket, time
-seat, hops, jf, board = (os.environ[k] for k in ("CAP_SEAT", "CAP_HOPS", "CAP_JUMP_FILE", "CAP_BOARD"))
-try:
-    j = json.load(open(jf))
-except Exception:
-    j = {}
-sid = str(j.get("from_session") or os.path.basename(jf)[len("pending-jump-"):-len(".json")])
+seat, hops, jf, board, sid_env = (os.environ[k] for k in ("CAP_SEAT", "CAP_HOPS", "CAP_JUMP_FILE", "CAP_BOARD", "CAP_SID"))
+j = {}
+if jf:
+    try:
+        j = json.load(open(jf))
+    except Exception:
+        j = {}
+sid = str(j.get("from_session") or sid_env or (os.path.basename(jf)[len("pending-jump-"):-len(".json")] if jf else "unknown"))
+handoff = j.get("handoff_path") or (os.environ["CAP_HANDOFF"] if sid_env and os.path.exists(os.environ["CAP_HANDOFF"]) else None)
 try:
     for line in open(board, encoding="utf-8"):
         try:
@@ -462,37 +467,52 @@ except FileNotFoundError:
     pass
 host = socket.gethostname().split(".")[0].lower()
 rec = {
-    "job": f"cascade-headless-cap-{seat}",
+    "job": f"cascade-headless-cap-{seat}-{sid[:8]}",
     "type": "cascade_headless_cap",
     "priority": "HIGH",
     "status": "pending",
     "error_summary": (
         f"headless window jump hit cap {os.environ['CAP_MAX']} on seat {seat} with a jump still "
-        f"pending: the mandate ended INCOMPLETE with exit 0 ({hops} hops); "
-        f"handoff {j.get('handoff_path') or '?'}"
+        f"pending: the mandate ended INCOMPLETE with exit 0 ({hops} hops"
+        f"{'' if jf else ', guard refused the jump: its chain cap or kill switch'}); "
+        f"handoff {handoff or '?'}"
     ),
     "seat": seat,
     "hops": int(hops),
     "session": sid,
-    "jump_file": jf,
-    "handoff_path": j.get("handoff_path"),
+    "jump_file": jf or None,
+    "handoff_path": handoff,
     "cwd": j.get("cwd"),
     "model": j.get("model"),
     "cure_lane": {
         "owner": "session",
         "note": "read the handoff first; continue the mandate in a fresh seat run "
-                "(claude -p with the handoff as context) or raise JUMP_MAX_HOPS for this job; "
+                "(a fresh headless seat run with the handoff as its first context) or raise JUMP_MAX_HOPS for this job; "
                 "never rerun blind (Builder Contract §1)",
     },
     "machine": host,
     "_writer": host,
     "ts": str(time.time()),
 }
+os.makedirs(os.path.dirname(os.path.abspath(board)), exist_ok=True)
 with open(board, "a", encoding="utf-8") as fh:
     fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
 print(f"{seat} — cap escalation HIGH written to {board} (session {sid[:8]})")
 PY
     return 0
+}
+
+guard_tripped_in_run() {
+    # $1 = session id. True when context_window_guard.py tripped in that run:
+    # it writes ~/.claude/state/precompact-handoff-<session>.json on EVERY trip,
+    # also when it refuses the jump (its own chain cap, kill switch) — the
+    # pending-jump file alone is not the signal (review finding 2026-09-09,
+    # kimi #1: at the guard's cap the 4th run trips, writes no jump file, and a
+    # wrapper keyed on the file alone would call the chain clean). With the
+    # jump kill switch on, the operator opted out of the whole mechanism: no
+    # detection, no INCOMPLETE line (the guard's own deny text is the report).
+    [ "${CONTEXT_JUMP_OFF:-0}" = "1" ] && return 1
+    [ -f "${CONTEXT_GUARD_HANDOFF_DIR:-$HOME/.claude/state}/precompact-handoff-$1.json" ]
 }
 
 claude_seat_invoke() {
@@ -597,9 +617,18 @@ try_claude() {
         fi
         cat "$tmpout" >>"$acc"
     done
-    if [ "$hop" -ge "$JUMP_MAX_HOPS" ] && jump_file="$(headless_jump_raised_by "$run_sid")" && [ -n "$jump_file" ]; then
-        echo "  [jump] $label — cap $JUMP_MAX_HOPS reached with a jump still pending ($(basename "$jump_file")): mandate may be INCOMPLETE" >&2
-        cascade_cap_escalation "$label" "$hop" "$jump_file"
+    # The loop ends either because the last run did not trip (clean chain) or
+    # because nobody will continue it: our cap, or the guard's own chain cap /
+    # kill switch (it tripped, wrote the handoff, refused the jump file). Both
+    # are an INCOMPLETE mandate wearing exit 0 — say so and raise it.
+    if guard_tripped_in_run "$run_sid"; then
+        jump_file="$(headless_jump_raised_by "$run_sid" || true)"
+        if [ "$hop" -ge "$JUMP_MAX_HOPS" ]; then
+            echo "  [jump] $label — cap $JUMP_MAX_HOPS reached with a jump still pending (${jump_file:+$(basename "$jump_file")}${jump_file:-no jump file: guard refused}): mandate may be INCOMPLETE" >&2
+        else
+            echo "  [jump] $label — guard tripped on session $run_sid after hop $hop but raised no jump (its chain cap or CONTEXT_JUMP_OFF): mandate may be INCOMPLETE" >&2
+        fi
+        cascade_cap_escalation "$label" "$hop" "${jump_file:-}" "$run_sid"
     fi
 
     cat "$acc"
