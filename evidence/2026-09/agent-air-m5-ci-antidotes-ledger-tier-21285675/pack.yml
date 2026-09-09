@@ -118,6 +118,24 @@ receipts:
     ts: "2026-09-09T11:50:00Z"
     seat: claude-fable-5-1 (this session)
     exit: 0
+  - claim: the first CI run on this PR went RED on antidotes for two causes this revision cures
+    cmd: gh run view 34346616069 --log-failed (step "Runtime Truth meta-contract (external to runner)")
+    result: >-
+      (1) WorkflowContractError: the "Runtime Truth CI gauntlet" step's `if:` is
+      pinned as an EXACT contract by test_runtime_truth_ci_gauntlet.py and the
+      ledger guard changed it — restored to the bare `relevant` gate and listed
+      in EXACT_CONTRACT_STEPS in the pin (39 guards + 1 declared exemption);
+      (2) the detector test runs the sentinel under `bash -euo pipefail` with
+      only BASE_SHA/HEAD_SHA/GITHUB_OUTPUT set, so `[ -n "$LEDGER_BASE_SHA" ]`
+      was an unbound-variable exit — now `${LEDGER_BASE_SHA:-}`. Both test
+      files green locally afterwards: 38 passed. Confirmed mergeQueueEntry=null
+      before pushing to the armed branch (the branch had not entered the queue).
+      The second run then went red on the pack itself: this receipt had been
+      appended under `dissent` instead of `receipts` (dissent[3] missing
+      objection/status) — moved here.
+    ts: "2026-09-09T12:05:00Z"
+    seat: claude-fable-5-1 (this session)
+    exit: 1
 dissent:
   - seat: kimi-code/k3 (cross-family)
     status: CONFIRMED
@@ -144,20 +162,5 @@ dissent:
       keeps the family complete; a content-based selector (grep for the path)
       was measured by the first builder at 29 files / 122 s, i.e. the whole
       battery again, which is why the explicit allowlist won.
-  - claim: the first CI run on this PR went RED on antidotes for two causes this revision cures
-    cmd: gh run view 34346616069 --log-failed (step "Runtime Truth meta-contract (external to runner)")
-    result: >-
-      (1) WorkflowContractError: the "Runtime Truth CI gauntlet" step's `if:` is
-      pinned as an EXACT contract by test_runtime_truth_ci_gauntlet.py and the
-      ledger guard changed it — restored to the bare `relevant` gate and listed
-      in EXACT_CONTRACT_STEPS in the pin (39 guards + 1 declared exemption);
-      (2) the detector test runs the sentinel under `bash -euo pipefail` with
-      only BASE_SHA/HEAD_SHA/GITHUB_OUTPUT set, so `[ -n "$LEDGER_BASE_SHA" ]`
-      was an unbound-variable exit — now `${LEDGER_BASE_SHA:-}`. Both test
-      files green locally afterwards: 38 passed. Confirmed mergeQueueEntry=null
-      before pushing to the armed branch (the branch had not entered the queue).
-    ts: "2026-09-09T12:05:00Z"
-    seat: claude-fable-5-1 (this session)
-    exit: 1
 spend:
   wall_clock_hours: 2
