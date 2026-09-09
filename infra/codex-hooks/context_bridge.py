@@ -350,18 +350,43 @@ def instructions(sid: str) -> str:
     )
 
 
+def chain_summary(state: dict[str, Any], limit: int = 6) -> str:
+    """Follow to_session links to the LAST hop and say whether it is alive or parked.
+
+    A source that only names its direct continuation sends the owner to a task that may
+    itself have handed off or parked (measured 2026-09-09: 85 -> 87 -> 8b -> 8d, parked at
+    the hop limit, while the deny text still said "work continues in 87").
+    """
+    hops: list[str] = []
+    current = state
+    while current.get("to_session") and len(hops) < limit:
+        hops.append(str(current["to_session"]))
+        try:
+            current = load(state_path(hops[-1]))
+        except ValueError:
+            break
+    if not hops:
+        return "no continuation recorded."
+    last = current
+    phase = last.get("rollover")
+    if phase == "accepted":
+        verdict = "still handing off"
+    elif phase == "needs_attention":
+        verdict = "PARKED (" + str(last.get("failure") or "hop limit") + "): open a fresh task"
+    elif phase in ("requested", "starting"):
+        verdict = "handing off right now"
+    else:
+        verdict = "LIVE: open that task"
+    return "chain " + " -> ".join(h[:8] for h in hops) + "; last hop " + hops[-1] + " is " + verdict + "."
+
+
 def frozen_reason(sid: str, state: dict[str, Any]) -> str:
     """Name the exact handoff phase, so a frozen source never retries blindly."""
     phase = state.get("rollover")
     attempt = state.get("launch_attempts", 0)
     helpers = "Only the bridge helpers (checkpoint/status/verify) run here."
     if phase == "accepted":
-        return (
-            "Handed off: work continues in Codex task "
-            + str(state.get("to_session"))
-            + ". This source is frozen; open that task. "
-            + helpers
-        )
+        return "Handed off: " + chain_summary(state) + " This source is frozen. " + helpers
     if phase == "starting":
         return (
             f"Continuation launching (attempt {attempt} of {MAX_LAUNCH_ATTEMPTS}); "

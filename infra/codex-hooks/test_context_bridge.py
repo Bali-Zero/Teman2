@@ -551,7 +551,7 @@ def test_frozen_source_names_its_phase(setup: tuple) -> None:
         state.update(rollover="accepted", to_session="dest-session-9")
         bridge.save(path, state)
     reason = bridge.hook(tool)["hookSpecificOutput"]["permissionDecisionReason"]
-    assert "Codex task dest-session-9" in reason
+    assert "dest-session-9 is LIVE" in reason
     with bridge.locked(sid) as (path, state):
         state.update(rollover="needs_attention", failure="ValueError", launch_attempts=1)
         bridge.save(path, state)
@@ -576,3 +576,20 @@ def test_retry_and_release_verbs(setup: tuple) -> None:
         bridge.save(path, state)
     with pytest.raises(ValueError):
         bridge.release(sid)  # an in-flight launch must be cancelled first
+
+
+def test_accepted_source_names_the_end_of_the_chain(setup: tuple) -> None:
+    _, _, e = setup
+    sid = parked_source(setup, "TimeoutError", 1)
+    with bridge.locked(sid) as (path, state):
+        state.update(rollover="accepted", to_session="hop1-session-1")
+        bridge.save(path, state)
+    bridge.save(bridge.state_path("hop1-session-1"), {"from_session": sid, "rollover": "accepted", "to_session": "hop2-session-2"})
+    bridge.save(bridge.state_path("hop2-session-2"), {"from_session": "hop1-session-1", "rollover": "needs_attention"})
+    tool = {**e, "hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ls"}}
+    reason = bridge.hook(tool)["hookSpecificOutput"]["permissionDecisionReason"]
+    assert "hop1-ses -> hop2-ses" in reason and "hop2-session-2 is PARKED" in reason
+    assert "open a fresh task" in reason
+    bridge.save(bridge.state_path("hop2-session-2"), {"from_session": "hop1-session-1"})
+    reason = bridge.hook(tool)["hookSpecificOutput"]["permissionDecisionReason"]
+    assert "hop2-session-2 is LIVE" in reason
