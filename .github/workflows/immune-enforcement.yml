@@ -524,9 +524,11 @@ jobs:
 
       - name: Unit tests (guilt + innocence per tool)
         # One pytest invocation under pytest-xdist instead of one interpreter
-        # per file. Measured on M5 2026-09-09, same 66 files / 1879 tests:
-        # sequential loop 288s, single `pytest <files>` 258s, `-n 4` 161s,
-        # identical pass/skip set (1879 passed, 1 skipped). The `for t in \`
+        # per file. Measured on M5 2026-09-09 (66 files / 1879 tests at that
+        # moment — the file count grows as new pins land, so a later count
+        # in this loop is expected drift, not staleness): sequential loop
+        # 288s, single `pytest <files>` 258s, `-n 4` 161s, identical
+        # pass/skip set (1879 passed, 1 skipped). The `for t in \`
         # shell loop below is kept UNCHANGED on purpose — it is the shape
         # scripts/tests/test_immune_enforcement_trigger_symmetry.py parses
         # (a `for ... in \` opener through a line closing with `; do`) to pair
@@ -535,7 +537,7 @@ jobs:
         # with the single pytest call moved after the loop.
         if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
         run: |
-          python -m pip install --quiet pytest pytest-xdist PyYAML==6.0.3
+          python -m pip install --quiet pytest pytest-xdist==3.8.0 PyYAML==6.0.3
           fail=0
           tests=()
           for t in \
