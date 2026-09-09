@@ -1,0 +1,54 @@
+task_id: context-window-guard
+gear: 2
+l_level: L2
+gate_class: sonnet
+objective: |
+  Zero mandate, 2026-09-09: "sopra il 40% di contesto il modello si indebolisce; forzarlo ad
+  aprire una nuova finestra, incollare il mandato e proseguire lì". Build a PreToolUse hook
+  (`infra/claude-hooks/context_window_guard.py`) that ENFORCES this — once a session's
+  estimated context crosses a per-role percent-of-window threshold (imperator 20%, everyone
+  else 40%, both overridable via env), every tool call is denied except the small set a
+  handoff needs (a memory save, a write to the session's own handoff artifact, delegation via
+  SendMessage/TaskStop), forcing a fresh window.
+
+  Reuse-first, not reinvention: the token estimate imports `last_context_tokens()` from
+  `~/.tokenaudit/hooks/context_hygiene.py` (the S1 estimator whose "[tokenaudit] Context
+  ~NNNK tokens" nudge every session already sees) — never reimplemented. The handoff artifact
+  is produced via `parse_transcript_jsonl()` from `~/.claude/hooks/precompact-mnemos.py` (the
+  PreCompact hook), written to the SAME path (`~/.claude/state/precompact-handoff-<session_id>.json`)
+  the `/resume` skill already reads, so a session forced open by this gate can `claude --model
+  <model>` + `/resume` and land where it left off.
+
+  Gear 2 by size: one new hook (~330 lines) + one new test file (~330 lines) + a ledger row +
+  a doc paragraph + this brief, no production code path touched, no consumer wired live yet
+  (the HOME `settings.json` registration is operator-only — flagged honestly in the PR's
+  `Bites:` line and in `PENDING-ARMS.md` as Esiste!=Armato until registered).
+constraints:
+  - "No HOME file touched or edited: `~/.claude/settings.json`, `~/.tokenaudit/hooks/context_hygiene.py`
+    and `~/.claude/hooks/precompact-mnemos.py` are read/imported only, by file path, exactly like
+    `model_routing_gate.py` already reads `scripts/evidence_pack_lint.py`'s HOTZONE_PATTERNS and
+    `~/.claude/agents/*.md` for frontmatter pins. The HOME settings.json registration is left to
+    the operator (Builder Contract HOME-fork carve-out) and documented as a missing arming step."
+  - "Fail-open discipline matching every sibling PreToolUse gate in infra/claude-hooks/
+    (orchestrate_gate.py, model_routing_gate.py): unparseable payload, unreadable transcript,
+    missing/unreadable estimator, or fewer than 30 assistant turns all exit 0 rather than convict
+    on evidence the hook does not actually have (cicatrix scar #6)."
+  - "Tests are hermetic: HOME is isolated per test (env HOME=<tmp>, the same convention
+    test_model_routing_gate_floor.py already uses for this directory), with VERBATIM copies of
+    the two real reused HOME files planted under the temp HOME rather than a reimplementation —
+    so the test corpus exercises the actual reused code, not a paraphrase of it."
+acceptance:
+  - "infra/claude-hooks/test_context_window_guard.py: 13 guilt+innocence tests (below/above
+    threshold, mem-save/SendMessage/TaskStop/own-handoff-file allow-list, imperator 20% vs
+    default 40%, CONTEXT_GUARD_PCT/CONTEXT_WINDOW_TOKENS overrides, CONTEXT_GUARD_OFF kill
+    switch, grace under 30 turns, [1m] model window detection, handoff written once + rate
+    limited) all pass, and the full `infra/claude-hooks/` suite (154 tests) stays green."
+  - "Two manual probes against the REAL live HOME hooks (not test fixtures) on this tree: a
+    synthetic 500K-token/200K-window transcript denies (exit 2) with the exact Italian message
+    and writes a real handoff file; a 50K-token one allows (exit 0) silently."
+  - "`.claude/skills/modus/PENDING-ARMS.md` carries an `opened` row naming the missing HOME
+    settings.json arming step, owner `operator[control-plane]`, and a proof-of-armed criterion
+    distinct from this PR's own synthetic probes."
+  - "`docs/architecture/dual-consul/army-map.md` §4 states the short-window rule is enforced by
+    this hook once registered, with thresholds per role, and §5's table carries a matching row
+    in PR state."

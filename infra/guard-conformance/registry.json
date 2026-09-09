@@ -512,6 +512,12 @@
             }
           },
           "note": "L04-PR1. `.lane-check.json` in a worktree root is the check a lane's DESIGN stage declares about ITSELF; this module evaluates it at the stop boundary so a lane that broke its own build check cannot end a turn quietly reporting success. It is BUILD-side self-verification and explicitly NOT review: generator!=grader still applies after it passes. Registered with two corpora because they answer different questions — test_lane_check.py proves the library decides correctly, test_lane_check_wiring.py drives subagent_stop_verify.py as a subprocess with a real SubagentStop payload and proves the decision REACHES a stop boundary. That split was earned: 'imports lane_check' is not 'honours lane_check', and the missing change set at the wiring was invisible to every library test."
+        },
+        "infra/claude-hooks/context_window_guard.py": {
+          "scar": ["W130-context-window-guard"],
+          "symbols": {},
+          "tests": ["infra/claude-hooks/test_context_window_guard.py"],
+          "note": "PreToolUse hard-gate (Zero mandate 2026-09-09): enforces a short-window rule per role by importing the S1 tokenaudit estimator (~/.tokenaudit/hooks/context_hygiene.py) and the PreCompact handoff generator (~/.claude/hooks/precompact-mnemos.py) rather than reimplementing either. Denies every tool call above threshold except a mem-save Bash command, a write to the session's own handoff file, or SendMessage/TaskStop delegation. Not yet registered in ~/.claude/settings.json (see PENDING-ARMS.md) — fail-open on any cannot-verify condition, same discipline as orchestrate_gate.py/model_routing_gate.py."
         }
       },
       "exempt": {
