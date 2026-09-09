@@ -1,0 +1,255 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  Residual declared in PR #5990's pack (evidence/2026-09/agent-air-m5-infra-
+  window-jump-headless-28841dea, dissent "cap reached with a jump still pending
+  returned 0 as if complete", status PLAUSIBLE) and the healer doctrine of
+  PR #5973 (a curable defect becomes one HIGH line, deduped, with a cure lane).
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-fable-5-1
+  - lane: review-cross-family-codex
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: review-cross-family-kimi
+    role: review
+    seat: kimi-code/k3
+
+what_changed: |
+  2 code files, ~+130/-1 (git numstat merge-base..HEAD, pack excluded).
+  Three cuts: receptor (d524a1ae83), late headless threshold + TCC cure
+  (3160a843f0, cd47afa332), trip detection rebuilt on the guard's marker
+  after two cross-family NON MERGE rounds (e810d7553e, 7ef94fa141).
+  infra/launchagents/wrappers/claude-cascade.sh: cascade_cap_escalation()
+  (seat, hops, jump file) resolves the board (CASCADE_ESCALATIONS_FILE, else
+  $HOME/nuzantara or $HOME/Desktop/nuzantara shared/escalations_pro.jsonl),
+  reads the pending jump file, skips if a cascade_headless_cap line for that
+  session already exists, else appends one HIGH/pending line mirroring
+  scripts/healer_receptor_main_red.py's record shape (job, type, priority,
+  status, error_summary, cure_lane, machine, _writer, ts) plus seat, hops,
+  session, jump_file, handoff_path, cwd, model; all diagnostics to stderr
+  under "[jump]"; kill switch CASCADE_CAP_ESCALATION_OFF=1; always returns 0.
+  Called from try_claude's cap branch. guard_tripped_in_run(sid): the
+  guard's marker <sid>.last-handoff OR pending-jump-<sid>.json — the chain
+  is INCOMPLETE when the last run tripped and nobody continued it (our cap,
+  the guard's chain cap, CONTEXT_JUMP_OFF). JUMP_GUARD_PCT=80 handed to
+  seats as CONTEXT_GUARD_PCT unless the caller sets it. No ~/Desktop path
+  (TCC lint). scripts/tests/test_claude_cascade_shell.py: 12 hermetic tests
+  (HIGH line fields + numeric ts + stdout intact; dedupe via a seeded board;
+  receptor kill switch; no board → warning, answer intact; clean chain → no
+  line; guard refused at the wrapper's cap; guard refused before it; never
+  tripped; compaction-only handoff is not a trip; jump file without marker
+  is; threshold default 80 and caller override).
+
+proof: |
+  Receipts below. Floor 3 sourced from PATH reproduced on the merge-base diff
+  (030026f9b3); zsh -n green; the whole cascade shell suite green (83 = 71
+  pre-existing + 12 new); antidotes green in CI on e810d7553e (TCC lint,
+  model-pin lint, the suite). Live evidence, natural: Pro cron pro-healer
+  15:34-15:46 WITA — trip at 90K=45%, hop 1, hop 2 trips at 92%, the guard
+  writes the handoff and REFUSES the jump (chain cap), the shipped wrapper
+  prints "used: … (hops: 2)" with exit 0: the exact silent INCOMPLETE this
+  PR turns into a HIGH line. The cost lesson from the same log: every hop
+  restarted at ~47K and redid ~35 tool calls, hence JUMP_GUARD_PCT=80 for
+  the headless tier. Motive of the whole window jump, confirmed by Zero
+  2026-09-09: context QUALITY (short windows per role), not cost. Bites: the
+  consumer is ~/scripts/claude-cascade.sh on Pro/Mini (home-fork pair,
+  refreshed by the shipping session after merge, md5 vs origin/main) and the
+  SessionStart escalations receptor that surfaces HIGH lines; the observation
+  is that line on shared/escalations_pro.jsonl.
+
+dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      Receptor unreachable in the default configuration: it fires only if the
+      last run left a pending-jump file, but context_window_guard.py refuses
+      to write one exactly there (hops > JUMP_MAX_HOPS); the fixtures wrote
+      the file unconditionally and masked it. codex (first cut) identical.
+    status: CONFIRMED
+    resolution: >-
+      Observed live the same afternoon on Pro (pro-healer hop 2, f3c0ade2:
+      trip at 92%, handoff written, jump refused, wrapper said "used"). The
+      wrapper now detects a trip via the guard's own marker or the jump file
+      (guard_tripped_in_run) and reports INCOMPLETE + escalates at its own
+      cap or the guard's; fixtures write marker + handoff on every trip;
+      tests guard_refusing_the_jump_* were run red against the first cut.
+  - seat: kimi-code/k3
+    objection: >-
+      The board append does not create the parent directory, unlike the
+      sibling healer_receptor_main_red.py.
+    status: CONFIRMED
+    resolution: os.makedirs(dirname(board), exist_ok=True) before the append.
+  - seat: kimi-code/k3
+    objection: >-
+      No resolution lifecycle: a cascade_headless_cap line stays HIGH/pending
+      forever, unlike the sibling's resolved lines.
+    status: PLAUSIBLE
+    resolution: >-
+      Declared residual: the line's cure_lane names the operational closure
+      (read the handoff, continue in a fresh seat run, then mark_resolved on
+      the job id, which is per session). Automatic closure needs the
+      continuation to know it completed the SAME mandate — out of this
+      wrapper's reach; Astra's lane 2 (caller waits for the chain's final
+      outcome) is where it belongs.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      ts written as a string while scripts/sentinel_lib/escalations.py sorts
+      entries on the raw value and the live board carries floats — one
+      string TypeErrors every read, including resolution.
+    status: CONFIRMED
+    resolution: >-
+      ts is a JSON number now; the first test asserts isinstance(ts, float).
+      Note for a sibling lane: healer_receptor_main_red.py writes str(now).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      The handoff file does not identify a trip: precompact-mnemos.py writes
+      the same precompact-handoff-<sid>.json on an ordinary compaction, so
+      the second cut would read a compaction as INCOMPLETE.
+    status: CONFIRMED
+    resolution: >-
+      The signal is the guard's own marker ~/.claude/state/context-window-
+      guard/<sid>.last-handoff (only _mark_handoff_written writes it); test
+      an_ordinary_compaction_handoff_is_not_a_trip.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Requiring the handoff loses the escalation when a valid jump file
+      exists but the handoff write failed (the guard proceeds to the jump).
+    status: CONFIRMED
+    resolution: >-
+      guard_tripped_in_run is marker OR pending-jump file; test
+      a_jump_file_without_the_marker_still_counts_as_a_trip.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      CONTEXT_JUMP_OFF=1 suppressed diagnosis and escalation while the guard
+      kept denying tools, and the guard's stderr is captured and discarded.
+    status: CONFIRMED
+    resolution: >-
+      The jump kill switch disables the jump only; detection, the [cap]
+      stderr line and the escalation still run (their own switch is
+      CASCADE_CAP_ESCALATION_OFF). The pre-existing kill-switch test keeps
+      its contract ("[jump]" absent, one run).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Seat-only job identity confuses independent mandates.
+    status: CONFIRMED
+    resolution: job is cascade-headless-cap-<seat>-<sid8>, one per pending session.
+  - seat: codex-gpt-6-astra
+    objection: >-
+      80% of a 200K window is 160K while Codex's 40% of 258K is already
+      103K: equal percentages are not equal windows, and the wrapper comment
+      called the 40% rule an "interactive cost rule" when the mandate is
+      context quality.
+    status: CONFIRMED
+    resolution: >-
+      Comment rewritten (quality, Zero 2026-09-09; 80% is a measured
+      exception for the headless tier, not a new default); the value stays
+      per Astra's own judgement ("favorevole come eccezione misurata").
+
+receipts:
+  - claim: "deterministic Gear floor is 3, sourced from PATH (infra/launchagents/*)"
+    cmd: "python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <changed> --numstat-file <numstat>; --print-floor-source (same args); merge-base 030026f9b395dc698b7eed4c38c7f8e086c64d2d"
+    result: "3 / path"
+    exit: 0
+    ts: "2026-09-09T07:44:15Z"
+    seat: claude-fable-5-1
+  - claim: "brief acceptance 6: the whole suite stays green and the wrapper parses under zsh (#!/bin/zsh — bash -n is the wrong tool)"
+    cmd: "pytest scripts/tests/test_claude_cascade_shell.py -q; zsh -n infra/launchagents/wrappers/claude-cascade.sh"
+    result: "83 passed in 115.09s (third cut, 7ef94fa141); ZSH_SYNTAX_OK"
+    exit: 0
+    ts: "2026-09-09T09:15:00Z"
+    seat: claude-fable-5-1
+  - claim: "brief acceptance 1: one HIGH line with the expected fields, stdout intact"
+    cmd: "pytest scripts/tests/test_claude_cascade_shell.py -q -k headless_cap_writes_one_high"
+    result: "1 passed (inside the 13-test run below)"
+    exit: 0
+    ts: "2026-09-09T09:12:00Z"
+    seat: claude-fable-5-1
+  - claim: "brief acceptance 2: dedupe on the pending session"
+    cmd: "pytest scripts/tests/test_claude_cascade_shell.py -q -k dedupes_on_the_pending_session"
+    result: "1 passed (inside the 13-test run below)"
+    exit: 0
+    ts: "2026-09-09T09:12:00Z"
+    seat: claude-fable-5-1
+  - claim: "brief acceptance 3: receptor kill switch keeps the warning only"
+    cmd: "pytest scripts/tests/test_claude_cascade_shell.py -q -k kill_switch_keeps_the_warning_only"
+    result: "1 passed (inside the 13-test run below)"
+    exit: 0
+    ts: "2026-09-09T09:12:00Z"
+    seat: claude-fable-5-1
+  - claim: "brief acceptance 4: no board resolvable → warning, answer intact"
+    cmd: "pytest scripts/tests/test_claude_cascade_shell.py -q -k without_a_board_warns"
+    result: "1 passed (inside the 13-test run below)"
+    exit: 0
+    ts: "2026-09-09T09:12:00Z"
+    seat: claude-fable-5-1
+  - claim: "brief acceptance 5: a clean chain writes no line"
+    cmd: "pytest scripts/tests/test_claude_cascade_shell.py -q -k clean_headless_chain_writes_no"
+    result: "1 passed (inside the 13-test run below)"
+    exit: 0
+    ts: "2026-09-09T09:12:00Z"
+    seat: claude-fable-5-1
+  - claim: "the five acceptance tests plus the seven review-driven tests pass together"
+    cmd: 'pytest scripts/tests/test_claude_cascade_shell.py -q -k "headless_cap or guard_refusing or never_tripped or compaction or without_the_marker or kill_switch or clean_headless"'
+    result: "13 passed in 19.23s"
+    exit: 0
+    ts: "2026-09-09T09:12:00Z"
+    seat: claude-fable-5-1
+  - claim: "CI antidotes (suite + TCC lint + model-pin lint) green on the second cut; the first cut failed the TCC lint (~/Desktop candidate) and the model-pin lint (a bare 'claude -p' in a note), both cured"
+    cmd: "gh run view 34327047329 (red: model-pin), then the antidotes check on e810d7553e"
+    result: "antidotes=COMPLETED/SUCCESS on e810d7553e"
+    exit: 0
+    ts: "2026-09-09T08:25:00Z"
+    seat: claude-fable-5-1
+  - claim: "the guard-refused tests are falsifiable: red against the first cut"
+    cmd: "codex (second cut, finding 9): 'i due test guard-refused fallirebbero contro la prima versione, confermato eseguendo i blocchi shell estratti'"
+    result: "confirmed by the cross-family reviewer, not by the author"
+    exit: 0
+    ts: "2026-09-09T09:05:00Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "live evidence on Pro: the shipped wrapper called a guard-capped chain clean"
+    cmd: "ssh pro: grep '\\[jump\\]\\|used:' ~/logs/pro-healer/session-20260909-153449.log; grep -o 'Salto non avviato[^\"]*' ~/.claude/projects/-Users-nuzantara-nuzantara/f3c0ade2-*.jsonl | head -1; ls ~/.claude/state/precompact-handoff-f3c0ade2*"
+    result: "hop 1/3, hop 2/3, 'used: claude-token-1-env (hops: 2)'; f3c0ade2 deny text 'Salto non avviato (kill switch, cap salti o già in corso)'; handoff 9948B at 15:46; no pending-jump-f3c0ade2"
+    exit: 0
+    ts: "2026-09-09T07:47:00Z"
+    seat: claude-fable-5-1
+  - claim: "the board reader sorts on the raw ts and the live board carries floats"
+    cmd: 'sed -n 125p scripts/sentinel_lib/escalations.py; python3 -c "Counter of type(d[''ts'']) over shared/escalations_pro.jsonl"'
+    result: "sorted(entries, key=lambda e: e.get('ts', 0), reverse=True); Counter({'float': 14})"
+    exit: 0
+    ts: "2026-09-09T09:10:00Z"
+    seat: claude-fable-5-1
+  - claim: "the receptor mirrors the healer's record shape (priority HIGH, status pending, ts string epoch, machine/_writer, cure_lane owner session)"
+    cmd: "grep -n '\"priority\": \"HIGH\"\\|\"status\": \"pending\"\\|\"_writer\"\\|\"cure_lane\"' scripts/healer_receptor_main_red.py"
+    result: "lines 261-286: same keys, same value types"
+    exit: 0
+    ts: "2026-09-09T07:36:00Z"
+    seat: claude-fable-5-1
+  - claim: "the pending jump file written by the guard on main carries from_session, handoff_path, cwd, model — the fields the record copies"
+    cmd: "grep -n '\"from_session\"\\|\"handoff_path\"\\|\"cwd\"\\|\"model\"' infra/claude-hooks/context_window_guard.py"
+    result: "lines 285-292 (_write_pending_jump)"
+    exit: 0
+    ts: "2026-09-09T07:36:00Z"
+    seat: claude-fable-5-1
+
+pii_scan: clean
+pii_scan_note: >-
+  Diff is a launchd wrapper's control flow, an escalation record built from
+  session ids, file paths and a seat label, and shell test fixtures under a
+  temp HOME. No client data, OSINT or credentials; the record never carries
+  the mandate text or the handoff content, only the handoff path.
+
+spend:
+  wall_clock_hours: 4
+  adversarial_rounds: 2
+appetite_exceeded: >-
+  Two cross-family rounds instead of one: the first cut's receptor was
+  unreachable at the guard's own chain cap (kimi #1, codex) — a real BUG
+  the same afternoon's live Pro log confirmed — and the second cut's trip
+  signal (the handoff file) was shared with an ordinary compaction (codex
+  #2). Each round found a defect that would have shipped; the hours are
+  the price of not shipping it.
+
+diff:
+  net_lines: "measured by CI from git numstat at merge-base..HEAD; ~+260 of code locally after two review rounds; the CI value governs"
