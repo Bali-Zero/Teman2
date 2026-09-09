@@ -68,7 +68,9 @@ ALLOW-LIST once at/above threshold (the only things a hand-off needs):
   - `SendMessage`, `TaskStop` (delegate to a peer / end the turn cleanly)
 Everything else — including a bare `Bash`/`Write`/`Edit`/`Agent` that is not
 one of the above — is DENIED (exit 2), in Italian, naming the exact percent,
-threshold, handoff path and the `claude --model ... ` + `/resume` sequence.
+threshold, handoff path, the evidence for the window it computed, and the
+three SELF-CURE routes below (`/resume`, the `! python3` env fix, the kill
+switch).
 
 Fail-open (exit 0), same discipline as every sibling gate in this
 directory: unparseable payload, unreadable transcript, missing/unreadable
@@ -78,6 +80,26 @@ paralyze the harness (cicatrix scar #2, Esiste!=Armato, cuts both ways: a
 gate that blocks everything when it is itself broken teaches the kill
 switch, same lesson `orchestrate_gate.py`'s DISARM AUDIBILITY note already
 draws).
+
+SELF-CURE (Zero, 2026-09-09 — the bug this section documents): a session
+denied at 85K tokens because `~/.claude/settings.json` env lacked
+`CONTEXT_WINDOW_TOKENS=1000000` could not cure it — editing that file is
+itself a tool call, and the guard denies tool calls. The deny message
+below now states its own evidence (model string seen, window assumed and
+WHY, threshold role) and three routes, IN ORDER:
+  1. `/resume` in a brand-new window (`claude --model <model>` then
+     `/resume`) — the intended, cheap fix.
+  2. If the WINDOW ITSELF is wrong on this machine (this bug's actual
+     cause): the owner types the fix in the Claude Code PROMPT BAR with a
+     `!` prefix (`! python3 -c "..."`, see `ESCAPE_ONE_LINER` below) — a
+     `!`-prefixed line runs in the session's own shell and does NOT pass
+     through PreToolUse hooks, so it is not itself denied. It rewrites
+     `~/.claude/settings.json`'s `env` block (backing up to `.json.bak`
+     first) and the harness hot-reloads it — verified live 2026-09-09.
+  3. `CONTEXT_GUARD_OFF=1` — last resort, same kill switch as always.
+Route 2 is the fix for a WRONG window, not a substitute for route 1: a
+session whose window is already correct and is simply over threshold
+should still open a fresh window.
 """
 from __future__ import annotations
 
@@ -109,6 +131,22 @@ TAIL_BYTES = 400_000  # same tail size context_hygiene.py's own estimator reads
 ALLOWED_TOOLS_UNCONDITIONAL = {"SendMessage", "TaskStop"}
 
 ASSISTANT_TYPE_RE = re.compile(r'"type"\s*:\s*"assistant"')
+
+# The self-cure one-liner printed verbatim in the deny message (see module
+# docstring's SELF-CURE section, route 2): typed with a `!` prefix at the
+# Claude Code prompt bar, it runs in the session's own shell — NOT through
+# PreToolUse hooks — so it is not itself denied by this same guard. It backs
+# up ~/.claude/settings.json to .json.bak before writing, then sets
+# CONTEXT_WINDOW_TOKENS=1000000 in the env block; the harness hot-reloads
+# that file (verified live on M5, 2026-09-09).
+ESCAPE_ONE_LINER = (
+    'python3 -c "import json,pathlib as p;'
+    "h=p.Path.home()/'.claude/settings.json';"
+    "h.with_suffix('.json.bak').write_text(h.read_text());"
+    "d=json.load(open(h));"
+    "d.setdefault('env',{})['CONTEXT_WINDOW_TOKENS']='1000000';"
+    "json.dump(d,open(h,'w'),indent=2)\""
+)
 
 
 def _home() -> Path:
@@ -363,6 +401,22 @@ def _window_size(tail_text: str, tokens: int | None = None) -> int:
     return DEFAULT_WINDOW
 
 
+def _window_reason(tail_text: str, tokens: int | None) -> str:
+    """Human-readable WHY for the window `_window_size()` computed — mirrors
+    that function's branch order exactly but never feeds back into the
+    decision (display-only, read-only): the window inference logic itself is
+    untouched (see module docstring's SELF-CURE note)."""
+    if os.environ.get("CONTEXT_WINDOW_TOKENS"):
+        return "env override"
+    model = os.environ.get("CONTEXT_GUARD_MODEL") or _last_assistant_model(tail_text) or ""
+    model_l = model.lower()
+    if model_l.endswith("[1m]") or "1m" in model_l:
+        return "modello [1m]"
+    if tokens is not None and tokens > DEFAULT_WINDOW:
+        return ">200K evidenza"
+    return "default"
+
+
 def _role_and_threshold():
     role = (os.environ.get("CONTEXT_GUARD_ROLE") or "default").strip().lower()
     pct_env = os.environ.get("CONTEXT_GUARD_PCT")
@@ -520,13 +574,20 @@ def main() -> int:
     pct_i = int(round(pct * 100))
     threshold_i = int(round(threshold * 100))
     tokens_k = tokens // 1000
+    window_k = window // 1000
+    reason = _window_reason(tail_text, tokens)
+    handoff_str = str(handoff_path) if handoff_path.exists() else "NON scritto (errore)"
     msg = (
         f"[context_window_guard] Contesto ≈{tokens_k}K token = {pct_i}% della finestra "
-        f"(soglia {role} {threshold_i}%). Handoff scritto in {handoff_path if handoff_path.exists() else 'NON scritto (errore)'}. "
-        + ("Salto di finestra AVVIATO: la finestra nuova si apre da sola con il mandato; chiudi il turno. "
+        f"(soglia {role} {threshold_i}%). Modello: {model}; finestra assunta {window_k}K ({reason}). "
+        f"Handoff: {handoff_str}.\n"
+        + ("Salto di finestra AVVIATO: la finestra nuova si apre da sola con il mandato; chiudi il turno.\n"
            if jumped else
-           f"Salto non avviato (kill switch, cap salti o già in corso): apri una finestra nuova: claude --model {model} e scrivi /resume. ")
-        + "Kill switch: CONTEXT_GUARD_OFF=1 (gate), CONTEXT_JUMP_OFF=1 (salto)."
+           "Salto non avviato (kill switch, cap salti o già in corso).\n")
+        + f"1) Finestra nuova: claude --model {model} poi /resume.\n"
+        f"2) Finestra sbagliata su QUESTA macchina? Dal prompt bar (bypassa i tool-hook): "
+        f"! {ESCAPE_ONE_LINER}\n"
+        "3) Ultima risorsa: CONTEXT_GUARD_OFF=1 (gate), CONTEXT_JUMP_OFF=1 (salto)."
     )
     print(msg, file=sys.stderr)
     _gc_record("context_window_guard", "deny", payload)

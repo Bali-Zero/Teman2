@@ -1303,3 +1303,132 @@ def test_a_directory_without_auth_json_is_not_a_seat(tmp_path: Path) -> None:
     assert result.stdout == "ollama-answer\n"
     lines = call_log.read_text(encoding="utf-8").splitlines()
     assert not any(l.startswith("codex-") for l in lines), lines
+
+
+
+# ── window jump, headless half (Ruling Zero 2026-09-09) ──────────────────────
+# The fake seat writes the SAME file context_window_guard.py writes when it
+# trips in `-p` mode — named after the `--session-id` the wrapper hands every
+# invocation — then answers on the next call: the wrapper must re-invoke the
+# same seat with a fresh id, a continuation prompt on stdin and
+# NZ_JUMP_FROM=<previous id>, and emit the accumulated outputs.
+# Fake bodies run under /bin/sh (dash on CI): POSIX only, no ${var:0:n}.
+
+_SID_FROM_ARGV = (
+    'sid=""; while [ $# -gt 0 ]; do [ "$1" = --session-id ] && sid="$2"; shift; done; '
+    'echo "$sid" >> "$HOME/jump-sids"; '
+)
+_JUMP_FILE = (
+    'mkdir -p "$HOME/.organism/context-guard"; '
+    "python3 -c 'import json,os,sys,time; "
+    'json.dump({"from_session":sys.argv[1],"to_session":None,"seat":sys.argv[2],'
+    '"cwd":os.getcwd(),"hops":1,"ts":time.time(),"mandate":"M"},'
+    'open(os.path.expanduser("~/.organism/context-guard/pending-jump-"+sys.argv[1]+".json"),"w"))\' '
+)
+_JUMP_WRITER = _SID_FROM_ARGV + _JUMP_FILE
+
+
+def _counting_body(first: str, later: str) -> str:
+    return (
+        'n="$HOME/jump-calls"; c=$(cat "$n" 2>/dev/null || echo 0); c=$((c+1)); echo "$c" > "$n"; '
+        'if [ "$c" = 1 ]; then ' + first + "; else " + later + "; fi"
+    )
+
+
+def _sids(tmp_path: Path) -> list[str]:
+    return (tmp_path / "home" / "jump-sids").read_text().split()
+
+
+def test_headless_jump_reinvokes_the_same_seat_with_a_fresh_id_and_the_previous_one_in_env(
+    tmp_path: Path,
+) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = _counting_body(
+        _JUMP_WRITER + '"$sid" headless; printf "first-part\\n"; exit 0',
+        # the hop must READ the continuation prompt on stdin and carry the
+        # previous session id in NZ_JUMP_FROM (what context_jump_resume.py keys on)
+        _SID_FROM_ARGV + 'p=$(cat); printf "second-part[%s][from=%s]\\n" '
+        '"$(printf %s "$p" | cut -c1-24)" "${NZ_JUMP_FROM:-unset}"; exit 0',
+    )
+    call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    first, second = _sids(tmp_path)
+    assert first != second and len(first) == 36 and len(second) == 36
+    assert result.stdout == f"first-part\nsecond-part[Sei la sessione successi][from={first}]\n"
+    assert _labels(call_log) == ["token1", "token1"]
+    assert "[jump] claude-token-1-env" in result.stderr and "hops: 1" in result.stderr
+    assert "INCOMPLETE" not in result.stderr
+    assert list(temp_dir.iterdir()) == []
+
+
+def test_headless_jump_is_capped_at_three_hops_and_says_so(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    # every call raises a fresh jump for ITS OWN id → 1 run + 3 hops, then stop
+    bodies["token1"] = (
+        'n="$HOME/jump-calls"; c=$(cat "$n" 2>/dev/null || echo 0); c=$((c+1)); echo "$c" > "$n"; '
+        + _JUMP_WRITER + '"$sid" headless; printf "part%s\\n" "$c"; exit 0'
+    )
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "part1\npart2\npart3\npart4\n"
+    assert _labels(call_log) == ["token1"] * 4
+    assert len(set(_sids(tmp_path))) == 4
+    assert "hop 3/3" in result.stderr and "cap 3 reached" in result.stderr and "INCOMPLETE" in result.stderr
+
+
+def test_headless_jump_kill_switch_runs_once(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = _JUMP_WRITER + '"$sid" headless; printf "only\\n"; exit 0'
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    env["CONTEXT_JUMP_OFF"] = "1"
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0 and result.stdout == "only\n"
+    assert _labels(call_log) == ["token1"] and "[jump]" not in result.stderr
+
+
+def test_headless_jump_ignores_a_ghostty_seat_file_and_another_sessions_file(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    # a ghostty file under this run's id, plus a headless file under SOMEONE
+    # ELSE's id in the same cwd (a sibling seat on Pro): neither is ours
+    bodies["token1"] = (
+        _JUMP_WRITER + '"$sid" ghostty; ' + _JUMP_FILE + '"other-seat" headless; '
+        'printf "only\\n"; exit 0'
+    )
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0 and result.stdout == "only\n", result.stderr
+    assert _labels(call_log) == ["token1"]
+
+
+def test_headless_jump_hop_quota_banner_rotates_seat_without_partial_stdout(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = _counting_body(
+        _JUMP_WRITER + '"$sid" headless; printf "partial-from-one\\n"; exit 0',
+        'printf "weekly limit reached\\n"; exit 0',
+    )
+    bodies["token2"] = 'printf "from-two\\n"; exit 0'
+    call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "from-two\n"
+    assert _labels(call_log) == ["token1", "token1", "token2"]
+    assert "[retry] claude-token-1-env hop 1" in result.stderr
+    assert list(temp_dir.iterdir()) == []
+
+
+def test_headless_jump_hop_failure_rotates_seat_without_partial_stdout(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = _counting_body(
+        _JUMP_WRITER + '"$sid" headless; printf "partial-from-one\\n"; exit 0',
+        'exit 3',
+    )
+    bodies["token2"] = 'printf "from-two\\n"; exit 0'
+    call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "from-two\n"
+    assert _labels(call_log) == ["token1", "token1", "token2"]
+    assert "[error] claude-token-1-env hop 1 exit=3" in result.stderr
+    assert list(temp_dir.iterdir()) == []
