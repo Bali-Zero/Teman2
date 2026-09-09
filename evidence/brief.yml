@@ -1,61 +1,108 @@
-task_id: oracle-decisiveness-spec
+task_id: vercel-prod-live-diff
 gear: 2
 l_level: L2
 gate_class: opus
 # Floor computed for this diff: `python3 scripts/evidence_pack_lint.py --print-floor
-# --changed-files-file ... --numstat-file ...` returns 2 via the SIZE term alone —
-# one research document of ~930 lines (research/visa/2026-09-06-visa-oracle-
-# decisiveness-investigation.md) plus this brief. Zero code, zero workflow, zero
-# hot-zone path. Gear 2 declared to match the floor exactly; no pack is required
-# below Gear 3.
+# --changed-files-file ... --numstat-file ...` returns 2 via the SIZE term alone — 4
+# changed files (apps/mouth/vercel.json, scripts/ci/vercel_ignore_build_step.sh,
+# scripts/ci/vercel_should_build.sh, scripts/tests/test_vercel_should_build.sh),
+# +322/-98 (net 224 lines). No hot-zone path (`--print-floor` without --numstat-file
+# returns 1). Gear 2 declared to match the floor exactly; no pack is required below
+# Gear 3.
 objective: >-
-  Land the Visa Oracle decisiveness investigation as ONE intervention spec
-  (research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md): the
-  measured root causes of the "This needs a human" dead-end on the public
-  funnel (blanket ACTIVITY_BOUNDARY flag, NEEDS_INPUT chains for never-asked
-  facts, evaluator gate-unknown blocking ahead of purpose feasibility, pack
-  caps at the initial grant, E33G review rule duplicate, eight unaskable
-  ITAS-sponsor gates), the 43-walk census (36 dead-end / 7 supported / 0
-  no-path today), the five-PR wave in fixed order (PR-0 census gate, PR-1
-  seq-20 fold, PR-2 evaluator reorder, PR-3 interview, PR-4 flag narrowing),
-  the six owner rulings recorded on 2026-09-06, and the refuted proposals
-  that must not be re-investigated.
+  Change the Vercel Ignored Build Step for the `mouth` project so a PRODUCTION
+  deployment skips when `git diff <live> HEAD` touches no bundle path (apps/mouth/**,
+  packages/**, root package.json/package-lock.json, vercel.json), where `live` is the
+  commit production is actually serving right now, read from
+  https://kita.balizero.com/api/health's `.commit` field — the same probe the Frontend
+  Live Sentinel and mini.vercel_autopromote already trust. Preview deployments keep the
+  existing merge-base rule untouched. The Ignored Build Step pointer moves out of the
+  Vercel dashboard field and into apps/mouth/vercel.json as `ignoreCommand`, with the
+  dashboard field kept only as a fallback. Measured on main: 301 commits in the last 7
+  days, 79 of which touch a bundle path — so production builds are expected to drop
+  from roughly 35/day to roughly 11/day, ~1,000 build-minutes/week, ~$60/month at
+  $0.014/build-minute.
 constraints:
   - >-
-    Documentation only. This PR changes no engine code, no interview code,
-    no signed pack and no workflow; every change it describes ships in its
-    own PR of the wave, each with its own tests and its own gate.
+    Fail OPEN everywhere a signal is missing or ambiguous: probe unreachable, no
+    `.commit` field in the health response, live sha unknown or not fetchable, or
+    live == HEAD all resolve to BUILD. The only unacceptable failure mode is a SKIP
+    when a BUILD was actually needed — a false BUILD only costs build-minutes, a
+    false SKIP ships nothing.
   - >-
-    The six rulings are recorded verbatim as the owner's decision
-    ("seguo le tue raccomandazioni, go", 2026-09-06) and are not to be
-    re-litigated in the wave PRs; a builder that disagrees writes the
-    disagreement into its PR body, not into the code.
+    The script exits only 0 (BUILD) or 1 (SKIP) — any other exit code is a Vercel
+    deployment ERROR, not a third outcome, and must not happen by construction.
   - >-
-    No client PII: every walk, persona and probe in the document is
-    synthetic; the three production probes carry no identifying fact.
+    Never log a fetch URL or raw git stderr — either may carry credentials (e.g. a
+    token embedded in a private remote URL) and Vercel build logs are not a secrets
+    boundary.
   - >-
-    The R1 adversarial review is by a non-Anthropic seat (Gemini 3.1 Pro via
-    `agy`), briefed to refute the diagnosis, the rulings, the wave order and
-    the measurements; its findings are recorded in the document's own
-    "Adversarial review" section together with the disposition of each.
+    No production environment variable is touched, no manual deploy, no
+    `vercel --prod` — this PR only changes the Ignored Build Step's own decision
+    script and its wiring in apps/mouth/vercel.json.
+  - >-
+    The comparison base is deliberately NOT `VERCEL_GIT_PREVIOUS_SHA` — that is the
+    previous DEPLOYMENT ATTEMPT, not the previous deployment that actually shipped,
+    and strands superseded frontend commits under a skipped-build streak (the
+    2026-08-15..18 freeze, #4309, was caused by exactly this). It is also
+    deliberately NOT `HEAD^` — the merge queue pushes batches of up to 4 squash
+    commits at once and Vercel deploys the tip, so `HEAD^..HEAD` can hide a
+    frontend-touching commit earlier in the same batch.
 acceptance:
   - text: >-
-      A1: WHEN the document is checked by scripts/check_adversarial_review.py
-      SHALL pass — frontmatter `adversarial_review:` names a known seat and
-      the body carries an "Adversarial review" section.
-    probe: scripts/check_adversarial_review.py --files research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md
+      A1: WHEN scripts/tests/test_vercel_should_build.sh runs on macOS and on
+      ubuntu-24.04 SHALL pass 48/48.
+    probe: scripts/tests/test_vercel_should_build.sh
   - text: >-
-      A2: WHEN prettier checks the document SHALL report no violation (no
-      inline code span crosses a line break).
-    probe: npx --no-install prettier --check research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md
+      A2: WHERE the corpus header's mutation-kill census is read SHALL show every
+      mutation killed — always-build (4), base=VERCEL_GIT_PREVIOUS_SHA (4),
+      base=HEAD^ (8), probe-failure-treated-as-SKIP (4), positional-grep-extraction
+      (1) — with none surviving.
+    probe: scripts/tests/test_vercel_should_build.sh
   - text: >-
-      A3: WHERE §4 names a PR of the wave, SHALL name its files, its exact
-      change, its guilt and innocence tests, its size bound and its
-      prove-live observation — the builder needs nothing outside the spec.
-    probe: grep -c "^### PR-" research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md
+      A3: WHEN scripts/ci/vercel_should_build.sh dry-runs against the real probe on
+      origin/main SHALL emit SKIP for the 14 docs-only commits after live commit
+      882ac94, and SHALL emit BUILD when re-run from an older, bundle-touching
+      frontend commit.
+    probe: scripts/ci/vercel_should_build.sh
   - text: >-
-      A4: WHEN the deterministic floor is recomputed from this PR's changed
-      files SHALL be 2, and the declared gear SHALL equal it.
-    probe: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <changed> --numstat-file <numstat>
+      A4 Bites: WHEN this PR merges and the first docs-only commit lands on main
+      SHALL appear in `GET /v6/deployments?target=production` as CANCELED with
+      "should-build: production: comparing HEAD against live ... -> SKIP" in its
+      build log, WHILE kita.balizero.com/api/health keeps serving the newest
+      bundle-relevant commit AND the Frontend Live Sentinel stays green.
+    probe: >-
+      curl https://kita.balizero.com/api/health ; vercel deployments list --target
+      production
+assumptions:
+  - text: >-
+      kita.balizero.com/api/health exposes the live commit as a JSON `.commit`
+      field.
+    status: verified
+    probe: >-
+      curl -s https://kita.balizero.com/api/health -> verified 2026-09-10:
+      {"status":"ok","commit":"882ac94..."}
+  - text: >-
+      GitHub will serve any reachable commit sha to a shallow fetch, including one
+      not on the default branch tip.
+    status: verified
+    probe: git fetch --depth=1 origin <live-sha> against this repo, exit 0
+  - text: >-
+      mini.vercel_autopromote promotes a READY build to production within ~2
+      minutes of it finishing.
+    status: unverified
+    probe: >-
+      observe a production promotion timestamp minus its build-finished timestamp
+      over the next 5 promotions; a dead organ degrades to build-every-commit
+      (fail-open), never to a stale site, so this assumption bounds cost, not
+      correctness.
+  - text: >-
+      Adversarial review (Claude Sonnet, spalla-review) found no blocking issue;
+      three suggestions were applied — JSON-parser extraction of the live commit
+      (node/python3/grep fallback chain), a `timeout` wrapper on both production
+      fetches, and a corpus parity check between FRONTEND_RE, BUNDLE_PATHS and the
+      Frontend Live Sentinel's own paths.
+    status: verified
+    probe: scripts/tests/test_vercel_should_build.sh
 appetite:
-  wall_clock_hours: 1
+  wall_clock_hours: 2
