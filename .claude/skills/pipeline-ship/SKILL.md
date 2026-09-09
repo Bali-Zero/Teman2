@@ -231,3 +231,28 @@ log** as its Bites evidence. Other domains are not inferred from kita's response
   has a read path and no write path, so it prepares the exact statement (measurement, rollback,
   expected row count), the owner runs it, and the read path proves the result. Same standard as
   §6: "the owner said done" is not the observation, the read-back is
+
+## 8. Queue hygiene — what changed on 2026-09-09 (M5 session, Zero mandate "nessuna PR parcheggiata")
+
+Measured that morning: 68 identical bot PRs open, 18 CLEAN PRs unarmed for 2-33 h, a docs-only
+PR paying 6 min of `antidotes`. Four cures landed; every seat that ships must know them:
+
+- **Bot translation batches are exempt from the size floor** (#6011). `apps/mouth/src/content/
+articles/**/*.{id,it,ru,fr}.mdx` is a generated artifact and no longer counts toward
+  `SIZE_GEAR3_THRESHOLD`; the English source still counts in full. The hourly wrapper closes every
+  OLDER open `chore(mouth): promote hourly-translated` PR (unless it holds a queue slot) — never
+  re-open a superseded copy by hand.
+- **The auto-merge whitelist arms with `gh pr merge --auto` only** (#6017). Under the merge-queue
+  ruleset `--squash` and `--delete-branch` are rejected; the step now judges the PR's OWN state
+  (`autoMergeRequest` OR `mergeQueueEntry`) and goes RED when nothing armed. A whitelisted PR
+  with that check red is the signal — do not "fix" it by arming by hand without reading the log.
+- **`antidotes` runs only the ledger's readers on a ledger-only diff** (#6020). A diff whose every
+  path is `.claude/skills/modus/PENDING-ARMS.md` (blob present at HEAD) skips the 39 heavy steps
+  in both the PR and merge-group lanes. Any extra file, rename or deletion = full battery. Keep
+  healer-tick PRs ledger-only if you want the diet.
+- **The stall notifier is live on Mini** (`scripts/queue_stall_notify_cron.sh`, `*/30`, cap 5,
+  repage 6 h). A CLEAN PR unarmed for 30 min is a `not-armed` stall and reaches the fleet mailbox;
+  the session that reads it arms it (own/whitelisted) or gates+arms it (external seat — Subhi's
+  PRs cannot self-arm, Builder Contract 5). Dependabot PRs sharing `package-lock.json`: one at a
+  time; separate lockfiles in parallel. `gh pr merge N --auto` on a CLEAN PR enqueues it directly
+  with `autoMergeRequest` still null — read `mergeQueueEntry`, not the empty output (W111).
