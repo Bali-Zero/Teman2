@@ -1499,6 +1499,10 @@ def test_headless_cap_writes_one_high_escalation(tmp_path: Path) -> None:
     assert "INCOMPLETE" in rec["error_summary"] and rec["cure_lane"]["owner"] == "session"
     assert isinstance(rec["ts"], float)  # the board reader sorts on the raw value
     assert "cap escalation HIGH written" in result.stderr
+    # the cap line names the pending file by basename only (kimi cut-2 #1:
+    # a ${x:+..}${x:-..} pair printed basename AND full path)
+    assert f"still pending (pending-jump-{rec['session']}.json): mandate may be INCOMPLETE" in result.stderr
+    assert "JUMP_MAX_HOPS does not help" in rec["cure_lane"]["note"]
 
 
 def test_headless_cap_escalation_dedupes_on_the_pending_session(tmp_path: Path) -> None:

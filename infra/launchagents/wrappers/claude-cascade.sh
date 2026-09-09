@@ -445,7 +445,7 @@ cascade_cap_escalation() {
         return 0
     fi
     CAP_SEAT="$1" CAP_HOPS="$2" CAP_JUMP_FILE="$3" CAP_SID="${4:-}" CAP_BOARD="$board" CAP_MAX="$JUMP_MAX_HOPS" \
-    CAP_HANDOFF="${CONTEXT_GUARD_HANDOFF_DIR:-$HOME/.claude/state}/precompact-handoff-${4:-}.json" \
+    CAP_HANDOFF="$HOME/.claude/state/precompact-handoff-${4:-}.json" \
     python3 - <<'PY' 2>&1 | sed 's/^/  [cap] /' >&2
 import json, os, socket, time
 seat, hops, jf, board, sid_env = (os.environ[k] for k in ("CAP_SEAT", "CAP_HOPS", "CAP_JUMP_FILE", "CAP_BOARD", "CAP_SID"))
@@ -489,8 +489,9 @@ rec = {
     "model": j.get("model"),
     "cure_lane": {
         "owner": "session",
-        "note": "read the handoff first; continue the mandate in a fresh seat run "
-                "(a fresh headless seat run with the handoff as its first context) or raise JUMP_MAX_HOPS for this job; "
+        "note": "read the handoff first; continue the mandate in a fresh headless seat run "
+                "with the handoff as its first context, then mark this job resolved; "
+                "raising JUMP_MAX_HOPS does not help (the guard caps the chain at 3 on its own); "
                 "never rerun blind (Builder Contract §1)",
     },
     "machine": host,
@@ -636,7 +637,9 @@ try_claude() {
         if [ "${CONTEXT_JUMP_OFF:-0}" = "1" ]; then
             echo "  [cap] $label — guard tripped on session $run_sid, jump disabled (CONTEXT_JUMP_OFF=1): mandate may be INCOMPLETE" >&2
         elif [ "$hop" -ge "$JUMP_MAX_HOPS" ]; then
-            echo "  [cap] $label — cap $JUMP_MAX_HOPS reached with a jump still pending (${jump_file:+$(basename "$jump_file")}${jump_file:-no jump file: guard refused}): mandate may be INCOMPLETE" >&2
+            local pending_desc="no jump file: guard refused"
+            [ -n "$jump_file" ] && pending_desc="$(basename "$jump_file")"
+            echo "  [cap] $label — cap $JUMP_MAX_HOPS reached with a jump still pending ($pending_desc): mandate may be INCOMPLETE" >&2
         else
             echo "  [cap] $label — guard tripped on session $run_sid after hop $hop but raised no jump (its chain cap): mandate may be INCOMPLETE" >&2
         fi

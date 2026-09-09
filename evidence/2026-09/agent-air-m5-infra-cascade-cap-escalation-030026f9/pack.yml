@@ -140,6 +140,43 @@ dissent:
       Seat-only job identity confuses independent mandates.
     status: CONFIRMED
     resolution: job is cascade-headless-cap-<seat>-<sid8>, one per pending session.
+  - seat: kimi-code/k3
+    objection: >-
+      Second cut, cap line: `${jump_file:+$(basename ..)}${jump_file:-..}`
+      prints the basename AND the full path when the file is set;
+      stderr-only, no test asserted it.
+    status: CONFIRMED
+    resolution: >-
+      A plain variable (pending_desc) replaces the pair; the first test now
+      asserts the exact "still pending (pending-jump-<sid>.json)" text.
+  - seat: kimi-code/k3
+    objection: >-
+      The cure-lane note advised "raise JUMP_MAX_HOPS for this job", but the
+      guard's chain cap is a hardcoded constant: following it only moves the
+      stop from the wrapper's cap to the guard's and raises a second HIGH.
+    status: CONFIRMED
+    resolution: >-
+      Note rewritten: continue in a fresh headless seat run with the handoff,
+      then mark the job resolved; says explicitly that raising JUMP_MAX_HOPS
+      does not help. Asserted by test.
+  - seat: kimi-code/k3
+    objection: >-
+      CONTEXT_GUARD_HANDOFF_DIR existed only in the wrapper (the guard always
+      writes $HOME/.claude/state): setting it would silently disable
+      detection.
+    status: CONFIRMED
+    resolution: The knob is gone; the wrapper reads the guard's real paths.
+  - seat: kimi-code/k3
+    objection: >-
+      If the guard's handoff writer fails on the very trip where it also
+      refuses the jump, neither marker nor jump file exists and the chain is
+      called clean with exit 0.
+    status: PLAUSIBLE
+    resolution: >-
+      Declared residual, guard-side: the marker is written only after a
+      successful handoff. A guard change (write the marker before the
+      handoff, or a trip file of its own) belongs to infra/claude-hooks, a
+      separate hot zone and PR; noted for the sibling lane.
   - seat: codex-gpt-6-astra
     objection: >-
       80% of a 200K window is 160K while Codex's 40% of 258K is already
