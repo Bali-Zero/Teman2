@@ -90,6 +90,7 @@ Agent sessions MUST run under `.worktrees/<lane>-<task-id>/` via `scripts/agent_
 ## Strumenti
 
 MCP: `.mcp.json` untracked (per macchina); tool MCP differiti (`ENABLE_TOOL_SEARCH=true`, settings globale), ~0 tok finché non usati. Prezzi/KBLI/visa/legal: `curl https://nuzantara-rag.fly.dev/...` (`apps/nuzantara-mcp/nuzantara_mcp/server_knowledge.py`). GitHub/Fly/PG: `gh`/`fly`/`scripts/pg.sh`. Browser: `claude --chrome`. Drive: connector claude.ai (`operator[gui]`).
+Repomap on-demand: `cat ~/.nuzantara-repomap.txt` (non più auto-iniettato a SessionStart).
 
 ## 3. Memory (MOS)
 

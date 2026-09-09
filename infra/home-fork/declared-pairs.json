@@ -948,6 +948,18 @@
       "repo": "infra/launchagents/com.nuzantara.kb-probe-history.6h.plist",
       "machines": ["pro"],
       "_note": "The plist twin of the pair above; installed on Pro only."
+    },
+    {
+      "live": "~/.claude/hooks/bash_call_log.sh",
+      "repo": "infra/claude-hooks/bash_call_log.sh",
+      "machines": ["all"],
+      "_note": "Per-call hook diet (2026-09-09): infra/claude-hooks/install_hook_diet.py copies this into ~/.claude/hooks/ on install, replacing three separate inline PostToolUse Bash loggers in settings.json with one registration. Declared so a future fix landing in the repo does not go silently unsynced on a machine that already ran the installer once (superscar #1)."
+    },
+    {
+      "live": "~/.claude/hooks/redact_secrets.py",
+      "repo": "infra/claude-hooks/redact_secrets.py",
+      "machines": ["all"],
+      "_note": "Sidecar of bash_call_log.sh above, installed alongside it by the same installer — the earliest-anchor secret-redaction pattern applied to command-history.log (superscar #4 lineage, ported from .claude/hooks/codex-spalla-trigger.sh)."
     }
   ],
   "allow": [
