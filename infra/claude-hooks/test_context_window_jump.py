@@ -52,7 +52,8 @@ def test_first_trip_writes_pending_jump_and_says_so():
     assert j and j["from_session"] == "s-one" and j["to_session"] is None
     assert j["hops"] == 1 and j["seat"] == "headless" and isinstance(j["from_pid"], int)
     assert j["handoff_path"].endswith("precompact-handoff-s-one.json")
-    assert "Salto di finestra AVVIATO" in err
+    # Headless seat: no gesture was made, so the deny must not claim one.
+    assert "Salto REGISTRATO" in err and "nz-jump s-one" in err and "AVVIATO" not in err
 
 
 def test_second_trip_same_session_does_not_rewrite_the_jump():
@@ -110,9 +111,29 @@ def test_handoff_carries_the_first_user_mandate_plain_string():
 
 
 def test_ghostty_seat_is_recorded_but_spawn_is_suppressed_in_tests():
-    rc, _, _, home = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-gh",
-                              env_extra={"TERM_PROGRAM": "ghostty", "CONTEXT_JUMP_NO_SPAWN": "1"})
+    rc, _, err, home = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-gh",
+                                env_extra={"TERM_PROGRAM": "ghostty", "CONTEXT_JUMP_NO_SPAWN": "1"})
     assert rc == 2 and _jump(home, "s-gh")["seat"] == "ghostty"
+    assert "Salto REGISTRATO" in err  # spawn suppressed = no gesture = never "started"
+
+
+def test_ghostty_spawn_is_reported_as_attempted_not_started(tmp_path=None):
+    # A real spawn: the script is a stub that exits 1 (the gesture FAILED, as
+    # ⌘N did on M5 2026-09-09 17:59). The hook cannot know that — it does not
+    # wait — so it must say TENTATO + where the outcome is + the manual gesture,
+    # and never AVVIATO.
+    home = pathlib.Path(tempfile.mkdtemp())
+    hooks = home / ".claude" / "hooks"
+    hooks.mkdir(parents=True)
+    (hooks / "window_jump.sh").write_text("#!/bin/bash\nexit 1\n")
+    rc, _, err, _ = run_gate("Bash", {"command": "ls"}, tokens=TRIP, session_id="s-spawn", home=home,
+                             env_extra={"TERM_PROGRAM": "ghostty"})
+    assert rc == 2 and _jump(home, "s-spawn")["seat"] == "ghostty"
+    if sys.platform == "darwin":
+        assert "Salto di finestra TENTATO" in err and "jump.log" in err and "nz-jump s-spawn" in err
+    else:
+        assert "Salto REGISTRATO" in err
+    assert "AVVIATO" not in err
 
 
 # ---------------- innocence ----------------
