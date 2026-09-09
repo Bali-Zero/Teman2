@@ -269,12 +269,18 @@ def _git(*args: str) -> str | None:
 # into the next one.
 FETCH_ATTEMPTS = 3
 FETCH_BACKOFF_S = (3.0, 9.0)
+# Per-attempt ceiling. The whole retry (attempts x timeout + backoff) must end INSIDE one tick
+# of the organ's plist, and test_vercel_prod_deploy_fetch_retry.py reads both numbers to hold
+# it there: at 120s between ticks (2026-09-09) that leaves 3 x 30s + 12s = 102s. A fetch that
+# genuinely needs longer (39s was measured once, under a Wi-Fi flap) times out, is retried,
+# and at worst degrades THIS tick — which now costs 2 minutes of blindness, not 15.
+FETCH_TIMEOUT_S = 30
 
 
 def _fetch_main() -> tuple[bool, str]:
     """Refresh origin/main, riding out a TRANSIENT failure instead of degrading on it.
 
-    This is the only network step on the unattended path, and it runs every 900s on a machine
+    This is the only network step on the unattended path, and it runs every 120s on a machine
     whose network measurably flaps. Measured on Mini the day the organ was armed: of the first
     five runs one could not fetch, the system log showed three network-configuration changes
     and a Wi-Fi change in the five minutes before it, and the good run that followed took 39s
@@ -294,10 +300,10 @@ def _fetch_main() -> tuple[bool, str]:
         try:
             subprocess.run(
                 ["git", "fetch", "--no-tags", "--quiet", "origin", "main"],
-                capture_output=True, text=True, check=True, timeout=120,
+                capture_output=True, text=True, check=True, timeout=FETCH_TIMEOUT_S,
             )
         except subprocess.TimeoutExpired:
-            detail = "timed out after 120s"
+            detail = f"timed out after {FETCH_TIMEOUT_S}s"
         except subprocess.CalledProcessError as exc:
             said = ((exc.stderr or "") + " " + (exc.output or "")).strip()
             detail = (" ".join(said.split())[:200]) or f"git exited {exc.returncode}"

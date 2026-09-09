@@ -16,14 +16,14 @@ that minute:
      network action in a bounded retry).
 
   2. The degrade said "git fetch failed" and threw away what git actually said. `_git` collapses
-     a refused connection, DNS, a bad credential and a 120s timeout into one `None`, so the
+     a refused connection, DNS, a bad credential and a timeout into one `None`, so the
      message could not name the cause — and those four need different answers. Discriminator
      available that day and invisible in the log: `gh api` over HTTPS answered in the same
      second the SSH fetch failed, which points at the transport, not at connectivity. A message
      that does not name its cause sends the reader away from it (W106).
 
-Bounded, not persistent: three attempts at a 120s timeout each plus backoff still ends far
-inside the 900s cadence, so a genuinely dead network degrades on THIS tick instead of wedging
+Bounded, not persistent: three attempts at FETCH_TIMEOUT_S each plus backoff still ends far
+inside the 120s cadence, so a genuinely dead network degrades on THIS tick instead of wedging
 the organ into the next one.
 
 Guilt AND innocence (superscar #3). Guilt: it retries, it recovers, and the failure carries
@@ -121,7 +121,7 @@ def test_the_retry_is_bounded_and_ends_inside_the_tick(monkeypatch, naps):
     assert len(rec.calls) == vpd.FETCH_ATTEMPTS
     # A retry that outlives the tick would wedge the organ into the next one. The cadence comes
     # from the plist, so lowering StartInterval without shortening the retry turns this red.
-    worst = vpd.FETCH_ATTEMPTS * 120 + sum(naps)
+    worst = vpd.FETCH_ATTEMPTS * vpd.FETCH_TIMEOUT_S + sum(naps)
     assert worst < _cadence_s(), f"worst-case fetch {worst}s >= tick {_cadence_s()}s"
 
 
