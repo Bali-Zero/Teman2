@@ -294,3 +294,44 @@ def test_installer_canary_retargets_existing_adapter_without_changing_timeout() 
         hook["command"] == "python /tmp/candidate/child_workflow.py context"
         and hook["timeout"] == 17
     )
+
+
+def test_capped_child_names_the_counter_and_keeps_its_report_path(
+    event: dict, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """The deny must be readable, and the report path must survive the deny.
+
+    Two defects in one gesture: the denial recited the contract without naming
+    which counter fired or by how much, and it denied `ToolSearch` -- so in a
+    harness that defers tool schemas, the child was told to SendMessage while
+    the only way to load SendMessage's schema was blocked.
+    """
+    monkeypatch.setenv("NUZANTARA_MANDATE_ID", "strict-mandate-42")
+    path = Path(event["transcript_path"])
+    guard = {"_read_tail": lambda _: path.read_text()}
+    key, _ = child.child_identity(event)
+    with child.child_state(key) as (_, state):
+        state["pretool_count"] = ctx.MAX_TOOL_CALLS
+    assert child.context_guard(event, guard) == 2
+    denial = capsys.readouterr().err
+    for field in (
+        "counter=tool_calls",
+        "used=" + str(ctx.MAX_TOOL_CALLS + 1),
+        "limit=" + str(ctx.MAX_TOOL_CALLS),
+        "role=builder",
+        "mandate=strict-mandate-42",
+        "SendMessage",
+        "TaskStop",
+    ):
+        assert field in denial, field
+    with child.child_state(key) as (_, state):
+        assert state["budget_used"] == ctx.MAX_TOOL_CALLS + 1
+        assert state["budget_limit"] == ctx.MAX_TOOL_CALLS
+    search = {**event, "tool_name": "ToolSearch"}
+    # Readable query naming a report tool: allowed. No query at all: allowed as a
+    # whole rather than trapping the child. Any other query: denied like the rest.
+    assert child.context_guard({**search, "tool_input": {"query": "select:SendMessage"}}, guard) == 0
+    assert child.context_guard({**search, "tool_input": {"query": "+taskstop return"}}, guard) == 0
+    assert child.context_guard(search, guard) == 0
+    assert child.context_guard({**search, "tool_input": {"query": "select:Bash"}}, guard) == 2
+    assert child.context_guard({**event, "tool_name": "SendMessage"}, guard) == 0

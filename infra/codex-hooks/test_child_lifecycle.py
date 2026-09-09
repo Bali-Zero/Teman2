@@ -611,3 +611,82 @@ def test_broken_router_preserves_parent_and_child_never_jumps(tmp_path: Path) ->
         assert run.returncode == expected and "Traceback" not in run.stderr
         if child:
             assert "no parent jump" in run.stderr
+
+
+def test_native_child_threshold_follows_the_policy_not_a_literal(
+    setup: tuple,
+) -> None:
+    """The child read 0.4 from its own source while the parent read the policy.
+
+    Raising the wall on the three hosts moved the parent seat and left every
+    native child it dispatched at the old number. At 500/1000 under a declared
+    builder 0.6 the child must keep working; the hardcoded literal returned it.
+    """
+    _, log, e = setup
+    seat = bridge.codex_home()
+    policy = bridge.load(seat / "nuzantara-context-policy.json")
+    policy["thresholds"] = {"imperator": 0.6, "builder": 0.6, "dux": 0.6}
+    bridge.save(seat / "nuzantara-context-policy.json", policy)
+    assert bridge.threshold(policy, "builder") == 0.6
+    assert bridge.threshold(policy, "dux") == 0.6
+    # An undeclared role keeps the conservative fallback; install.py declares it.
+    assert bridge.threshold({}, "dux") == 0.4
+    child = "child-session-123"
+    child_transcript(log, child, e["session_id"])
+    bridge.hook({**e, "agent_id": child, "hook_event_name": "SubagentStart"})
+    with log.open("a") as out:
+        out.write(
+            json.dumps(
+                {
+                    "timestamp": "new",
+                    "type": "event_msg",
+                    "payload": {
+                        "type": "token_count",
+                        "info": {
+                            "model_context_window": 1000,
+                            "last_token_usage": {"total_tokens": 500},
+                        },
+                    },
+                }
+            )
+            + "\n"
+        )
+    bridge.hook(
+        {**e, "agent_id": child, "hook_event_name": "PreToolUse", "tool_name": "Read"}
+    )
+    state = bridge.load(bridge.state_path(child))
+    assert state["role"] == "builder" and state["used"] == 500 and state["window"] == 1000
+    assert not state.get("return_required")
+
+
+def test_dux_role_resolves_to_its_declared_threshold(
+    setup: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`dux` was undeclared, so a Dux seat silently ran at the 0.4 fallback."""
+    _, log, e = setup
+    monkeypatch.setenv("CODEX_CONTEXT_ROLE", "DUX")
+    seat = bridge.codex_home()
+    policy = bridge.load(seat / "nuzantara-context-policy.json")
+    policy["thresholds"] = {"imperator": 0.6, "builder": 0.6, "dux": 0.6}
+    bridge.save(seat / "nuzantara-context-policy.json", policy)
+    e = {**e, "session_id": "dux-session-123"}
+    bridge.hook(e)
+    assert bridge.load(bridge.state_path("dux-session-123"))["role"] == "dux"
+    pre = {**e, "hook_event_name": "PreToolUse", "tool_name": "Bash"}
+    token(log, 500, 1000)
+    assert bridge.hook(pre) == {}
+    token(log, 601, 1000)
+    assert bridge.hook(pre)["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+
+def test_installer_adds_dux_without_overwriting_a_tuned_threshold() -> None:
+    """A seat installed before `dux` existed must still receive it."""
+    from install import THRESHOLD_DEFAULTS, merge_thresholds
+
+    existing = {"thresholds": {"imperator": 0.2, "builder": 0.4}}
+    assert merge_thresholds(existing) == {
+        "imperator": 0.2,
+        "builder": 0.4,
+        "dux": 0.6,
+    }
+    assert merge_thresholds({}) == THRESHOLD_DEFAULTS

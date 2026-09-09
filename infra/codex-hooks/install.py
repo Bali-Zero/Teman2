@@ -21,6 +21,26 @@ from context_bridge import EVENTS, VERSION, digest, load, save
 from rpc import RPC
 
 
+THRESHOLD_DEFAULTS = {"imperator": 0.6, "builder": 0.6, "dux": 0.6}
+
+
+def merge_thresholds(policy: dict) -> dict:
+    """Fill missing role thresholds per KEY, never per dict.
+
+    `policy.setdefault("thresholds", {...})` added nothing to a host that had
+    ever been installed, so a role introduced later could never reach an
+    existing seat: the three live policies carried `imperator`/`builder` and
+    would have carried no `dux` forever, and the seat would have silently used
+    the conservative 0.4 fallback while the doctrine said 0.6. Each key is
+    filled only when ABSENT, so an operator's tuned value survives every
+    reinstall -- the same reason the imperator regression still pins 0.2.
+    """
+    thresholds = policy.setdefault("thresholds", {})
+    for role, default in THRESHOLD_DEFAULTS.items():
+        thresholds.setdefault(role, default)
+    return thresholds
+
+
 def install(seat: Path, roots: list[str], trust: bool = False) -> dict:
     seat = seat.expanduser().resolve()
     seat.mkdir(parents=True, exist_ok=True)
@@ -73,7 +93,7 @@ def install(seat: Path, roots: list[str], trust: bool = False) -> dict:
     save(hooks_file, config)
     policy = load(seat / "nuzantara-context-policy.json")
     policy.update(version=VERSION, enabled=True, roots=roots)
-    policy.setdefault("thresholds", {"imperator": 0.2, "builder": 0.4})
+    merge_thresholds(policy)
     policy.setdefault("max_hops", 3)
     policy.setdefault(
         "child_limits",

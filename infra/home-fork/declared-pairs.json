@@ -996,6 +996,24 @@
       "repo": "infra/codex-hooks/mandate_budget.py",
       "machines": ["all"],
       "_note": "Shared root ledger for the Claude and Codex child adapters; exact source bytes copied, no launcher."
+    },
+    {
+      "live": "~/.codex/hooks/nuzantara-context/context_bridge.py",
+      "repo": "infra/codex-hooks/context_bridge.py",
+      "machines": ["all"],
+      "_note": "CODEX_HOME half of the child adapter, undeclared from birth until 2026-09-10 (PARABELLUM \u00a74.7): the Claude copies under ~/.claude/hooks/ were declared and the Codex ones were not, so lint_home_fork.py reported clean over the seat that actually enforces the Codex context wall \u2014 superscar #1 and W107, census the producers not the one that bit you. Installed by infra/codex-hooks/install.py, which copies the exact source bytes into $CODEX_HOME/hooks/nuzantara-context/. Expect DRIFT on each host between this PR merging and the installer being re-run there; that is the pair doing its job, not a regression."
+    },
+    {
+      "live": "~/.codex/hooks/nuzantara-context/rpc.py",
+      "repo": "infra/codex-hooks/rpc.py",
+      "machines": ["all"],
+      "_note": "CODEX_HOME half of the child adapter, undeclared from birth until 2026-09-10 (PARABELLUM \u00a74.7): the Claude copies under ~/.claude/hooks/ were declared and the Codex ones were not, so lint_home_fork.py reported clean over the seat that actually enforces the Codex context wall \u2014 superscar #1 and W107, census the producers not the one that bit you. Installed by infra/codex-hooks/install.py, which copies the exact source bytes into $CODEX_HOME/hooks/nuzantara-context/. Expect DRIFT on each host between this PR merging and the installer being re-run there; that is the pair doing its job, not a regression."
+    },
+    {
+      "live": "~/.codex/hooks/nuzantara-context/mandate_budget.py",
+      "repo": "infra/codex-hooks/mandate_budget.py",
+      "machines": ["all"],
+      "_note": "CODEX_HOME half of the child adapter, undeclared from birth until 2026-09-10 (PARABELLUM \u00a74.7): the Claude copies under ~/.claude/hooks/ were declared and the Codex ones were not, so lint_home_fork.py reported clean over the seat that actually enforces the Codex context wall \u2014 superscar #1 and W107, census the producers not the one that bit you. Installed by infra/codex-hooks/install.py, which copies the exact source bytes into $CODEX_HOME/hooks/nuzantara-context/. Expect DRIFT on each host between this PR merging and the installer being re-run there; that is the pair doing its job, not a regression."
     }
   ],
   "allow": [
