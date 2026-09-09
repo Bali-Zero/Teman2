@@ -549,6 +549,13 @@ def child_hook(
             + ' with JSON {"objective":"...","next_action":"return to parent","remaining":["..."],"risks":[]}.'
         )
         if event in ("SubagentStop", "Stop"):
+            # Release BEFORE judging. The block path below returns early, and the
+            # release used to sit after this whole `with`, so a first BLOCKED
+            # SubagentStop skipped it entirely and the reservation stayed active
+            # until the harness's second Stop. This is exactly the ordering the
+            # Claude side fixed for Blocker 1 (stop_lifecycle releases and pauses
+            # before any verification); the Codex side kept the old one.
+            budget_observe(state_dir() / "mandates", mandate, sid, stopped=True)
             state.update(
                 transport_status="stopped",
                 claimed_complete=state.get("checkpoint", {}).get("remaining") == [],
@@ -575,8 +582,6 @@ def child_hook(
             return context_output(event, message, deny=True)
         if event == "SubagentStart":
             return context_output(event, message)
-    if event in ("SubagentStop", "Stop"):
-        budget_observe(state_dir() / "mandates", mandate, sid, stopped=True)
     return {}
 
 
