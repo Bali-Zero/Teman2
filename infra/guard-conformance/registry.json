@@ -563,6 +563,12 @@
           "symbols": {},
           "tests": ["scripts/tests/test_bash_call_log.sh"],
           "note": "Sidecar of bash_call_log.sh above: an importable port of codex-spalla-trigger.sh's earliest-anchor-cut secret-redaction regex (superscar #4), so a new per-call logger does not have to re-derive it from a blank page. Installed alongside bash_call_log.sh by install_hook_diet.py. Exercised indirectly by test_bash_call_log.sh's fake-credential guilt case (command-history.log redacts, the unrelated hotfix-notify.sh pipe does not) rather than a standalone unit test, since its only caller today is bash_call_log.sh."
+        },
+        "scripts/hooks/host_boundary_reminder_sessionstart.sh": {
+          "scar": ["superscar-2-esiste-non-armato"],
+          "symbols": {},
+          "tests": ["scripts/tests/test_host_boundary_reminder.py"],
+          "note": "SessionStart receptor (Zero ruling 2026-09-09): reporting-only, no block/allow decision — host_boundary stays disarmed on Pro/M5/Mini (HOST_BOUNDARY_OFF=1) until Zero decides otherwise, and this receptor is the reminder that it is off. Guilt: HOST_BOUNDARY_OFF==\"1\" -> prints one SessionStart additionalContext block (<=400 bytes) containing 'DISARMATO' and a `! python3 -c \"...\"` re-arm one-liner. Innocence: unset/\"0\"/\"false\"/empty/any other value -> empty stdout, exit 0 (same fail-open discipline, same additionalContext envelope shape as escalations_alert_sessionstart.sh). scripts/tests/test_host_boundary_reminder.py exercises both cases plus the printed re-arm one-liner itself against a fixture settings.json (key removed, .bak backup byte-identical to the original, multi-line pretty-print preserved, idempotent when the key is already absent)."
         }
       },
       "exempt": {
