@@ -18,7 +18,7 @@ lanes:
     seat: kimi-code/k3
 
 what_changed: |
-  3 files, ~+27/-4. infra/launchagents/wrappers/claude-cascade.sh:
+  3 code files, +30/-2 (git numstat merge-base..HEAD, pack excluded). infra/launchagents/wrappers/claude-cascade.sh:
   build_isolated_provider_env() seeds ISOLATED_PROVIDER_ENV with
   `env -u TERM_PROGRAM -u TERM_PROGRAM_VERSION` (was `env`) plus a comment
   naming the reader (context_window_guard.py's seat choice) and the failure
@@ -154,4 +154,4 @@ spend:
   adversarial_rounds: 1
 
 diff:
-  net_lines: "measured by CI from git numstat at merge-base..HEAD; ~+23 locally after the review cures; the CI value governs"
+  net_lines: "measured by CI from git numstat at merge-base..HEAD; +28 of code locally after the review cures; the CI value governs"
