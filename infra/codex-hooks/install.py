@@ -16,6 +16,7 @@ import sys
 import time
 from pathlib import Path
 
+import mandate_budget
 from context_bridge import EVENTS, VERSION, digest, load, save
 from rpc import RPC
 
@@ -76,7 +77,15 @@ def install(seat: Path, roots: list[str], trust: bool = False) -> dict:
     policy.setdefault("max_hops", 3)
     policy.setdefault(
         "child_limits",
-        {"max_attempts": 24, "max_active": 3, "max_depth": 1, "max_seconds": 3600},
+        {
+            "max_attempts": 24,
+            "max_active": 3,
+            "max_depth": 1,
+            "max_seconds": 3600,
+            # Declared, not inherited: the Claude adapter passes the same value and
+            # the asymmetry was silent until the council named it.
+            "active_ttl": mandate_budget.ACTIVE_TTL_SECONDS,
+        },
     )
     save(seat / "nuzantara-context-policy.json", policy)
     # Only the current seat is selected for this subprocess. Credentials stay put.

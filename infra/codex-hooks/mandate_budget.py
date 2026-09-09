@@ -22,6 +22,15 @@ from typing import Any, Iterator
 # reservation".
 ACKNOWLEDGE_SECONDS = 240
 
+# How long an ACTIVE row may go silent before the sweep may call it a suspect
+# zombie. The Claude adapter has always passed this explicitly (child_workflow.py
+# active_ttl=1800); install.py's Codex default carried no such key, and the sweep
+# below was gated on `limits.get("active_ttl")` — so on the Codex side the sweep
+# never ran at all and a SIGKILLed supervisor pinned its slot until max_attempts.
+# A default here cures the policies already on disk, which an install-time-only
+# fix would not: none of the three live seats has the key.
+ACTIVE_TTL_SECONDS = 1800
+
 
 @contextmanager
 def ledger(root: Path, mandate: str) -> Iterator[dict[str, Any]]:
@@ -75,9 +84,10 @@ def reserve(
                 "created"
             ] > limits.get("unstarted_ttl", ACKNOWLEDGE_SECONDS):
                 row["status"] = "expired_unstarted"
-            elif row["status"] == "active" and limits.get("active_ttl"):
+            elif row["status"] == "active":
+                active_ttl = limits.get("active_ttl", ACTIVE_TTL_SECONDS)
                 heartbeat = max(row.get("heartbeat", row["created"]), row["created"])
-                if time.time() - heartbeat < limits["active_ttl"]:
+                if time.time() - heartbeat < active_ttl:
                     continue
                 child_row = state.get("children", {}).get(row.get("child"), {})
                 try:
@@ -91,7 +101,7 @@ def reserve(
                     )
                     continue
                 last_activity = max(modified, heartbeat)
-                if time.time() - last_activity >= limits["active_ttl"]:
+                if time.time() - last_activity >= active_ttl:
                     row.update(status="suspect_zombie", suspected_at=time.time())
                     state.update(
                         status="needs_attention",
