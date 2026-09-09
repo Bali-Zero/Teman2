@@ -244,7 +244,14 @@ retryable_failure_detected() {
 typeset -a ISOLATED_PROVIDER_ENV
 build_isolated_provider_env() {
     local name
-    ISOLATED_PROVIDER_ENV=(env)
+    # TERM_PROGRAM is not a credential, but context_window_guard.py reads it to
+    # pick the jump seat: ghostty → it opens a GUI window and writes a
+    # seat=ghostty file this wrapper ignores by design, so a cascade run by
+    # hand from a terminal would hand its mandate to a window nobody asked
+    # for and accept the seat's partial output as complete. The seat must
+    # always look headless. TERM_PROGRAM_VERSION goes with it (Ghostty exports
+    # both; the guard keys on the first, the second is cheap hardening).
+    ISOLATED_PROVIDER_ENV=(env -u TERM_PROGRAM -u TERM_PROGRAM_VERSION)
     for name in ${(k)parameters}; do
         case "$name" in
             CLAUDE_CODE_OAUTH_TOKEN|CLAUDE_CODE_OAUTH_TOKEN_*|\
