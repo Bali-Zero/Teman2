@@ -18,9 +18,11 @@ bounded-retention pruning. The SQLite mirror lives OUTSIDE the git tree
 """
 import json
 import logging
+import math
 import os
 import socket
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 _logger = logging.getLogger("sentinel_lib.escalations")
@@ -43,6 +45,46 @@ _HOSTNAME_TO_MACHINE = {
 def _current_machine() -> str:
     hostname = socket.gethostname()
     return _HOSTNAME_TO_MACHINE.get(hostname, "pro")  # default: pro (conservative)
+
+
+def ts_epoch(value) -> float:
+    """Coerce a board record's ``ts``/``resolved_at`` to epoch seconds for ordering.
+
+    The board is append-only and MULTI-writer (this module, zsh wrappers, the
+    healer receptors) and every writer is supposed to emit a float. Twice one
+    did not — dlq_autopilot wrote an ISO-8601 string (W54, 2026-05-23) and the
+    main_required_red receptor wrote ``str(now)`` (#6012, 2026-09-09) — and one
+    string next to the floats made ``sorted(..., key=ts)`` raise TypeError for
+    EVERY consumer at once: the SessionStart receptor, modus_autoloop,
+    mark_resolved. Fixing each writer closes one instance and leaves the class
+    open, so the readers stop depending on writer discipline: numbers pass
+    through, numeric strings and ISO-8601 strings are parsed, anything else
+    (None, empty, garbage, NaN) orders as 0.0 — OLDEST, never dropped. A bad
+    ts may hide a line's age; it must never hide the line or take the board
+    down. The record itself is not rewritten (immutable log, superscar #9).
+    """
+    if isinstance(value, bool):
+        return 0.0
+    if isinstance(value, (int, float)):
+        return float(value) if math.isfinite(value) else 0.0
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return 0.0
+        try:
+            number = float(text)
+        except ValueError:
+            number = None
+        if number is not None:
+            return number if math.isfinite(number) else 0.0
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            return 0.0
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.timestamp()
+    return 0.0
 
 
 def write_escalation(entry: dict) -> None:
@@ -122,7 +164,7 @@ def read_all_escalations(include_resolved: bool = False) -> list[dict]:
         except OSError:
             pass
 
-    return sorted(entries, key=lambda e: e.get("ts", 0), reverse=True)
+    return sorted(entries, key=lambda e: ts_epoch(e.get("ts")), reverse=True)
 
 
 def mark_resolved(job_id: str) -> int:
@@ -160,5 +202,5 @@ def is_job_open(job_id: str) -> bool:
     entries = [e for e in read_all_escalations(include_resolved=True) if e.get("job") == job_id]
     if not entries:
         return False
-    latest = max(entries, key=lambda e: e.get("ts", 0))
+    latest = max(entries, key=lambda e: ts_epoch(e.get("ts")))
     return latest.get("status") != "resolved"

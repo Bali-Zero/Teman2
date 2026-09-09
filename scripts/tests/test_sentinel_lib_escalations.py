@@ -68,3 +68,42 @@ def test_unrelated_job_resolution_does_not_leak(isolated_queue: Path) -> None:
     escalations.write_escalation({"job": "job-x", "status": "resolved", "ts": 200})
     assert escalations.is_job_open("job-x") is False
     assert escalations.is_job_open("job-y") is True
+
+
+# --- ts coercion: readers never depend on writer discipline (W54, #6012) ---
+
+
+def test_ts_epoch_coerces_every_shape_a_writer_has_emitted() -> None:
+    """Numbers pass through; numeric strings and ISO-8601 strings (W54's
+    dlq_autopilot shape, #6012's str(now) shape) parse; junk orders as 0.0."""
+    assert escalations.ts_epoch(1700000000) == 1700000000.0
+    assert escalations.ts_epoch(1700000000.5) == 1700000000.5
+    assert escalations.ts_epoch("1700000000.5") == 1700000000.5  # #6012: str(time.time())
+    assert escalations.ts_epoch("2026-05-23T11:55:24Z") == 1779537324.0  # W54: strftime ISO
+    assert escalations.ts_epoch("2026-05-23T11:55:24+00:00") == 1779537324.0
+    for junk in (None, "", "   ", "yesterday", float("nan"), True, {"ts": 1}, []):
+        assert escalations.ts_epoch(junk) == 0.0, junk
+
+
+def test_mixed_ts_board_reads_whole_and_sorts_newest_first(isolated_queue: Path) -> None:
+    """The defect the gate found on #6002: one string ts on the board made
+    sorted(..., key=ts) raise TypeError for EVERY consumer. A mixed board
+    must read in full, in the right order, with the unreadable line kept."""
+    escalations.write_escalation({"job": "float-old", "status": "pending", "ts": 1779537000.0})
+    escalations.write_escalation({"job": "iso-mid", "status": "pending", "ts": "2026-05-23T11:55:24Z"})
+    escalations.write_escalation({"job": "str-new", "status": "pending", "ts": "1779538000.0"})
+    escalations.write_escalation({"job": "junk", "status": "pending", "ts": "yesterday"})
+    board = escalations.read_all_escalations()
+    assert [e["job"] for e in board] == ["str-new", "iso-mid", "float-old", "junk"]
+    # The record is returned as written — the reader orders, it never rewrites.
+    assert next(e for e in board if e["job"] == "iso-mid")["ts"] == "2026-05-23T11:55:24Z"
+
+
+def test_is_job_open_collapses_across_string_and_float_ts(isolated_queue: Path) -> None:
+    """A pending line with a string ts and a resolution with a float ts must
+    still collapse to the newest record: resolved after pending → closed."""
+    escalations.write_escalation({"job": "job-mixed", "status": "pending", "ts": "2026-05-23T11:55:24Z"})
+    escalations.write_escalation({"job": "job-mixed", "status": "resolved", "ts": 1779537400.0})
+    assert escalations.is_job_open("job-mixed") is False
+    escalations.write_escalation({"job": "job-mixed", "status": "pending", "ts": "1779537500.0"})
+    assert escalations.is_job_open("job-mixed") is True
