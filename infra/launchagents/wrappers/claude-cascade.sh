@@ -380,6 +380,15 @@ build_claude_args() {
 # the chain as well). Kill switch: CONTEXT_JUMP_OFF=1 (same as the guard).
 # ---------------------------------------------------------------------------
 JUMP_MAX_HOPS="${JUMP_MAX_HOPS:-3}"
+# Guard threshold for a headless seat. The guard's default (40% of the
+# window) is an interactive cost rule; measured live on Pro 2026-09-09
+# (pro-healer tick, Sonnet 200K): the tick needs ~90K, tripped at 80K, and
+# every hop restarted at ~47K (system prompt + injected handoff), redid ~35
+# tool calls and tripped again — the chain reached the cap INCOMPLETE at 3x
+# the cost. A headless run has no human to protect from a slow window; the
+# jump is there to beat the hard ceiling, so trip late. An explicit
+# CONTEXT_GUARD_PCT in the caller's env wins.
+JUMP_GUARD_PCT="${JUMP_GUARD_PCT:-80}"
 JUMP_STATE_DIR="${JUMP_STATE_DIR:-$HOME/.organism/context-guard}"
 
 new_session_id() {
@@ -488,8 +497,8 @@ claude_seat_invoke() {
     # Uses try_claude's own locals (bin, oauth_token, config_dir, label,
     # tmpout, tmperr) — zsh dynamic scoping — so hops run the SAME seat.
     local -a hop_env
-    hop_env=()
-    [ -n "${2:-}" ] && hop_env=(NZ_JUMP_FROM="$2")
+    hop_env=(CONTEXT_GUARD_PCT="${CONTEXT_GUARD_PCT:-$JUMP_GUARD_PCT}")
+    [ -n "${2:-}" ] && hop_env+=(NZ_JUMP_FROM="$2")
     if [ -n "$oauth_token" ]; then
         run_bounded "$tmpout" "$tmperr" "$label" "${ISOLATED_PROVIDER_ENV[@]}" \
             CLAUDE_CONFIG_DIR="$config_dir" \

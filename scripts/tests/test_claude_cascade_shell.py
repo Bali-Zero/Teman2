@@ -1536,3 +1536,24 @@ def test_clean_headless_chain_writes_no_escalation(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     assert result.stdout == "first\nsecond\n" and not board.exists()
 
+
+# ── headless guard threshold: trip late (80%) unless the caller says otherwise.
+
+def test_headless_seat_gets_the_late_guard_threshold_by_default(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = 'printf "pct=%s\\n" "${CONTEXT_GUARD_PCT:-unset}"; exit 0'
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "pct=80\n"
+
+
+def test_headless_guard_threshold_honours_the_callers_env(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = 'printf "pct=%s\\n" "${CONTEXT_GUARD_PCT:-unset}"; exit 0'
+    _, _, env = _fake_fleet(tmp_path, bodies)
+    env["CONTEXT_GUARD_PCT"] = "55"
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "pct=55\n"
+
