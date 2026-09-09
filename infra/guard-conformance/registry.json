@@ -543,7 +543,10 @@
         "infra/claude-hooks/context_window_guard.py": {
           "scar": ["W130-context-window-guard"],
           "symbols": {},
-          "tests": ["infra/claude-hooks/test_context_window_guard.py"],
+          "tests": [
+            "infra/claude-hooks/test_context_window_guard.py",
+            "infra/claude-hooks/test_context_window_jump.py"
+          ],
           "note": "PreToolUse hard-gate (Zero mandate 2026-09-09): enforces a short-window rule per role by importing the S1 tokenaudit estimator (~/.tokenaudit/hooks/context_hygiene.py) and the PreCompact handoff generator (~/.claude/hooks/precompact-mnemos.py) rather than reimplementing either. Denies every tool call above threshold except a mem-save Bash command, a write to the session's own handoff file, or SendMessage/TaskStop delegation. Not yet registered in ~/.claude/settings.json (see PENDING-ARMS.md) — fail-open on any cannot-verify condition, same discipline as orchestrate_gate.py/model_routing_gate.py."
         },
         "infra/claude-hooks/bash_call_log.sh": {
