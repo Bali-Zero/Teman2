@@ -70,7 +70,7 @@ jobs:
           # (superscar #3): every changed path must EQUAL the ledger path.
           LEDGER_PATH=".claude/skills/modus/PENDING-ARMS.md"
           LEDGER_ONLY=false
-          if [ -n "$LEDGER_BASE_SHA" ] && [ -n "$LEDGER_HEAD_SHA" ]; then
+          if [ -n "${LEDGER_BASE_SHA:-}" ] && [ -n "${LEDGER_HEAD_SHA:-}" ]; then
             LMB=$(git merge-base "$LEDGER_BASE_SHA" "$LEDGER_HEAD_SHA" 2>/dev/null || echo "$LEDGER_BASE_SHA")
             LCHANGED=$(git diff --name-only --no-renames "$LMB" "$LEDGER_HEAD_SHA")
             n_all=$(printf '%s\n' "$LCHANGED" | grep -c . || true)
@@ -631,7 +631,9 @@ jobs:
           python -m pytest scripts/tests/test_runtime_truth_ci_gauntlet.py -q
 
       - name: Runtime Truth CI gauntlet (four incident contracts)
-        if: steps.paths.outputs.relevant == 'true' && steps.paths.outputs.ledger_only != 'true'
+        # NOT ledger-gated: test_runtime_truth_ci_gauntlet.py pins this step's
+        # `if:` as an EXACT contract (external meta-contract, 2026-09-09 review).
+        if: steps.paths.outputs.relevant == 'true'
         env:
           HOME: ${{ runner.temp }}/runtime-truth-home
           TMPDIR: ${{ runner.temp }}/runtime-truth-tmp

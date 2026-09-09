@@ -23,6 +23,9 @@ LEDGER_PATH = ".claude/skills/modus/PENDING-ARMS.md"
 LEDGER_STEP_NAME = "Ledger-only diff: run the ledger's own readers"
 RELEVANT_GATE = "steps.paths.outputs.relevant == 'true'"
 LEDGER_GUARD = "steps.paths.outputs.ledger_only != 'true'"
+# Steps whose `if:` is pinned as an EXACT contract elsewhere and therefore stay on
+# the bare `relevant` gate (they run on a ledger-only diff too):
+EXACT_CONTRACT_STEPS = ("Runtime Truth CI gauntlet (four incident contracts)",)
 
 
 def _antidotes_job() -> str:
@@ -41,16 +44,27 @@ def _ledger_step_block(job: str) -> str:
 
 def test_guilt_every_relevant_gate_in_antidotes_also_honours_ledger_only() -> None:
     job = _antidotes_job()
-    offenders = [
-        line.strip()
-        for line in job.splitlines()
-        if "if:" in line and RELEVANT_GATE in line and LEDGER_GUARD not in line
-    ]
+    offenders = []
+    current_step = ""
+    for line in job.splitlines():
+        if line.startswith("      - name: "):
+            current_step = line.split("- name: ", 1)[1].strip().strip('"')
+        if "if:" in line and RELEVANT_GATE in line and LEDGER_GUARD not in line:
+            if current_step in EXACT_CONTRACT_STEPS:
+                continue
+            offenders.append(line.strip())
     assert not offenders, (
         "a heavy step is gated on `relevant` alone and would run on a ledger-only "
         f"diff — add `&& {LEDGER_GUARD}`: {offenders}"
     )
-    assert job.count(LEDGER_GUARD) >= 40, "the diet lost most of its gates"
+    assert job.count(LEDGER_GUARD) >= 39, "the diet lost most of its gates"
+
+
+def test_innocence_exact_contract_step_keeps_its_bare_gate() -> None:
+    job = _antidotes_job()
+    for name in EXACT_CONTRACT_STEPS:
+        block = job.split(f"      - name: {name}\n", 1)[1].split("\n      - name: ", 1)[0]
+        assert f"if: {RELEVANT_GATE}\n" in block and LEDGER_GUARD not in block
 
 
 def test_innocence_ledger_step_exists_and_is_gated_on_ledger_only() -> None:
@@ -76,7 +90,7 @@ def test_sentinel_matches_the_ledger_as_an_entity_and_fails_closed() -> None:
     assert "LEDGER_ONLY=false" in job and 'echo "ledger_only=$LEDGER_ONLY"' in job
     # Both SHAs empty (workflow_dispatch) -> stays false: the assignment to true is
     # inside the `-n`/`-n` guard.
-    guard = job.index('if [ -n "$LEDGER_BASE_SHA" ] && [ -n "$LEDGER_HEAD_SHA" ]')
+    guard = job.index('if [ -n "${LEDGER_BASE_SHA:-}" ] && [ -n "${LEDGER_HEAD_SHA:-}" ]')
     assert job.index("LEDGER_ONLY=true") > guard
 
 
