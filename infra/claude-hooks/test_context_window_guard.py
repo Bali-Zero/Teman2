@@ -255,6 +255,41 @@ def test_above_threshold_denies_bash():
     assert "context_window_guard" in err
 
 
+def test_deny_message_has_evidence_line_and_self_cure_route():
+    # Zero, 2026-09-09: a session denied at 85K could not cure the guard
+    # because the fix (editing settings.json) is itself a tool call. The
+    # deny message must now state its own evidence (model/window/why) and
+    # the `! python3 ...` escape route that runs OUTSIDE PreToolUse hooks.
+    rc, _, err, _ = run_gate("Bash", {"command": "rm -rf /tmp/x"}, tokens=150_000, model="claude-sonnet-5")
+    assert rc == 2
+    assert "finestra assunta" in err, f"evidence line (assumed window + why) missing: {err!r}"
+    assert "claude-sonnet-5" in err, f"model string missing from evidence line: {err!r}"
+    assert "finestra assunta 200K (default)" in err, f"window reason missing: {err!r}"
+    assert "! python3 -c" in err, f"the `! python3` self-cure route must be printed verbatim: {err!r}"
+    assert "CONTEXT_WINDOW_TOKENS" in err, f"self-cure one-liner must name the env var it sets: {err!r}"
+    assert "CONTEXT_GUARD_OFF=1" in err, "kill switch route must still be last resort"
+
+
+def test_deny_message_evidence_reflects_1m_and_evidence_rule_reasons():
+    # The evidence line's WHY must match whichever branch _window_size()
+    # actually took: [1m] label vs >200K-implies-1M vs env override.
+    rc_1m, _, err_1m, _ = run_gate("Bash", {"command": "ls"}, tokens=150_000, model="claude-opus-5[1m]")
+    assert rc_1m == 0, "150K/1M is below the 40% default threshold, must allow"
+    rc_evidence, _, err_evidence, _ = run_gate(
+        "Bash", {"command": "ls"}, tokens=458_000, model="claude-fable-5-1",
+    )
+    assert rc_evidence == 2
+    assert "modello [1m]" not in err_evidence
+    assert ">200K evidenza" in err_evidence, f"evidence-rule reason missing: {err_evidence!r}"
+
+    rc_env, _, err_env, _ = run_gate(
+        "Bash", {"command": "ls"}, tokens=300_000, model="claude-sonnet-5",
+        env_extra={"CONTEXT_WINDOW_TOKENS": "50000"},
+    )
+    assert rc_env == 2, "300K/50K forced by env override must deny (600%)"
+    assert "finestra assunta 50K (env override)" in err_env, f"env-override reason missing: {err_env!r}"
+
+
 def test_above_threshold_allows_mem_save():
     rc, _, err, _ = run_gate(
         "Bash", {"command": "~/.claude/scripts/mem save discovery 'x' 7"}, tokens=150_000,
