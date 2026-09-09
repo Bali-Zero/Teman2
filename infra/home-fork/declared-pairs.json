@@ -978,6 +978,24 @@
       "repo": "infra/claude-hooks/redact_secrets.py",
       "machines": ["all"],
       "_note": "Sidecar of bash_call_log.sh above, installed alongside it by the same installer — the earliest-anchor secret-redaction pattern applied to command-history.log (superscar #4 lineage, ported from .claude/hooks/codex-spalla-trigger.sh)."
+    },
+    {
+      "live": "~/.claude/hooks/child_workflow.py",
+      "repo": "infra/claude-hooks/child_workflow.py",
+      "machines": ["all"],
+      "_note": "Child-only router; installed parent guards are invoked without modifying their source. Local installation is recorded in the per-seat child-workflow manifest."
+    },
+    {
+      "live": "~/.claude/hooks/child_context.py",
+      "repo": "infra/claude-hooks/child_context.py",
+      "machines": ["all"],
+      "_note": "Child-local usage accounting and expiring native CLI capacity calibration; no daemon or API client."
+    },
+    {
+      "live": "~/.claude/hooks/mandate_budget.py",
+      "repo": "infra/codex-hooks/mandate_budget.py",
+      "machines": ["all"],
+      "_note": "Shared root ledger for the Claude and Codex child adapters; exact source bytes copied, no launcher."
     }
   ],
   "allow": [

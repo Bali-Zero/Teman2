@@ -564,6 +564,27 @@
           "tests": ["scripts/tests/test_bash_call_log.sh"],
           "note": "Sidecar of bash_call_log.sh above: an importable port of codex-spalla-trigger.sh's earliest-anchor-cut secret-redaction regex (superscar #4), so a new per-call logger does not have to re-derive it from a blank page. Installed alongside bash_call_log.sh by install_hook_diet.py. Exercised indirectly by test_bash_call_log.sh's fake-credential guilt case (command-history.log redacts, the unrelated hotfix-notify.sh pipe does not) rather than a standalone unit test, since its only caller today is bash_call_log.sh."
         },
+        "infra/claude-hooks/child_workflow.py": {
+          "scar": [
+            "superscar-2-esiste-non-armato",
+            "superscar-3-guard-over-match"
+          ],
+          "symbols": {},
+          "tests": [
+            "infra/claude-hooks/test_child_review_regressions.py",
+            "infra/claude-hooks/test_child_context.py"
+          ],
+          "note": "Child-only hook router (PreToolUse *, SubagentStart, SubagentStop), registered by infra/codex-hooks/install_claude_children.py. It is a command-matching guard: on a child's PreToolUse it can DENY with exit 2 when the mandate ledger says the reservation is over budget. Guilt: a child over the strict token/time/tool budget is denied, a 4th parallel dispatch under a mandate is counted, and a SubagentStop with STOP_VERIFY_ALLOW_DIRTY=1 or a broken legacy import still releases the reservation and pauses the clock (test_child_review_regressions.py::test_stop_releases_and_pauses_before_verification \u2014 the leak that denied the 4th Agent call of an ordinary session, found live on M5). Innocence: in interactive_observation mode NO cap denies (concurrency, tokens, tool count, time are recorded as needs_attention only); a young active row without a transcript keeps its slot silently instead of raising a liveness alarm on every healthy parallel dispatch; a parent event is handed to the installed legacy guard unmodified, and any exception in context mode re-executes context_window_guard.py fail-closed while stop mode exits 0 fail-open. The router never edits the parent guards' source \u2014 it imports and re-executes them."
+        },
+        "infra/claude-hooks/child_context.py": {
+          "scar": [
+            "superscar-6-anti-hallucination-blindness",
+            "superscar-2-esiste-non-armato"
+          ],
+          "symbols": {},
+          "tests": ["infra/claude-hooks/test_child_context.py"],
+          "note": "Child-local usage accounting and the expiring, seat-local native capacity calibration read by child_workflow.py; installed as its sidecar by install_claude_children.py. Not a command matcher itself, but it computes the number the deny decision is made on, so it carries its own guilt+innocence rather than an exemption. Guilt: a transcript with no usage rows measures UNKNOWN and falls back to a bounded ceiling instead of an unbounded one; a calibration whose CLI version or scope no longer matches is refused rather than trusted; a conflicting window for the same model is rejected (test_child_context.py). Innocence: a calibrated model resolves to its real window (an Opus child is not capped at the 64,000-token UNKNOWN fallback \u2014 the defect found live on M5 by the independent review), and a fresh child with no rows yet is not penalised for having measured nothing."
+        },
         "scripts/hooks/host_boundary_reminder_sessionstart.sh": {
           "scar": ["superscar-2-esiste-non-armato"],
           "symbols": {},

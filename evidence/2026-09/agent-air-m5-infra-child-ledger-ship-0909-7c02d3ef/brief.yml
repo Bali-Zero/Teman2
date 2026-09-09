@@ -1,0 +1,94 @@
+task_id: child-ledger-ship-0909
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Ship the reviewed native-child organism: a Claude-side child adapter, the
+  shared mandate ledger both adapters read, and the Codex context bridge that
+  hands a saturated session over to a fresh one. The ship set is exactly
+  b23fa5c9f5 plus the cherry-picked R1/R2 commit 7fab1715 — no other commit,
+  no new code written by this session.
+
+  WHY IT EXISTS: a subagent (native child) inherits no budget of its own. It
+  burns the parent's window, dies at the context ceiling with partial work,
+  and nothing records that it happened — superscar #2 (Esiste != Armato: the
+  dispatch is "green", the mandate is not done). mandate_budget.py is the root
+  ledger: one reservation per dispatch, released and the clock paused on
+  SubagentStop; child_workflow.py routes child events to it without touching
+  the installed parent guards' source; child_context.py measures the child's
+  real usage against an expiring, seat-local native capacity calibration.
+  The Codex half (context_bridge.py) is the same idea across a session
+  boundary: at the ceiling it launches a continuation seat and accepts it on
+  the destination's SessionStart claim under a launch nonce.
+
+  WHY GEAR 3: the floor, not the appetite. Sourced from SIZE — 7,623 churned
+  lines over 28 files, past SIZE_GEAR3_THRESHOLD (1,828). Reproduced on the
+  staged merge-base diff, see receipts. Not splittable below the floor: the
+  three natural cuts Fable proposed (ledger+Claude adapter+tests, Codex
+  bridge+installer+tests, evidence) measure 1,875 / 3,340 / 2,153 churned
+  lines — ALL THREE are over the Gear-3 threshold, the first only marginally
+  (47 lines). An ORDERED split is dependency-safe and was rejected on cost, not
+  on feasibility: context_bridge.py imports mandate_budget.py, so the bridge cut
+  must merge AFTER the ledger cut or put a broken import on main, and since no
+  required check runs these suites that breakage would be silent rather than red.
+  Serialising it buys three Gear-3 ceremonies and three merge windows in place of
+  one, and separates the evidence from the code it evidences. Fable's re-review
+  explicitly authorises either shape: "split as suggested or ship whole with the
+  reason stated in the PR body"; the council (kimi-code/k3) confirmed the ordered
+  split was feasible and called this rationale defensible but originally
+  overstated — it is corrected here.
+
+  GENERATOR IS NOT GRADER, on every commit: the code was written by the Codex
+  seat (Astra) and, for b23fa5c9f5, by a Pro Claude session; Fable 5.1
+  reviewed all three SHAs independently (1e73a58d NOT-mergeable with three
+  evidence-backed blockers, 09d79d32 blockers closed + R1/R2 required,
+  7fab1715 + b23fa5c9f5 accepted). This session ships and verifies; it wrote
+  none of the reviewed code.
+
+acceptance:
+  - text: >-
+      WHEN the four suites of the ship set run against this tree, they SHALL
+      all pass — the count Fable measured at b23fa5c9f5 (76), unchanged by the
+      cherry-pick.
+    probe: .venv/bin/python -m pytest infra/claude-hooks/test_child_context.py infra/claude-hooks/test_child_review_regressions.py infra/codex-hooks/test_child_lifecycle.py infra/codex-hooks/test_context_bridge.py -q
+  - text: >-
+      WHILE this branch differs from the reviewed tip only by the declared-pairs
+      merge, every other file of the ship set SHALL be byte-identical to
+      8c5e79f99a (= b23fa5c9f5 + cherry-picked 7fab1715).
+    probe: 'while read f; do [ "$f" = infra/home-fork/declared-pairs.json ] && continue; diff -q <(git show 8c5e79f99a:$f) "$f" || echo DIFF $f; done < shipset.txt'
+  - text: >-
+      WHEN the cherry-pick is compared to its source, the applied diff SHALL be
+      identical to 09d79d32..7fab1715 (R1 + R2, +10/-4, two files).
+    probe: diff <(git diff 7fab171563^ 7fab171563 | grep -v '^index ') <(git diff b23fa5c9f5 8c5e79f99a | grep -v '^index ')
+  - text: >-
+      WHEN declared-pairs.json is parsed, it SHALL carry main's current pair set
+      plus exactly the three reviewed entries, and no entry landed on main since
+      the branch forked SHALL be lost.
+    probe: python3 -c "import json;d=json.load(open('infra/home-fork/declared-pairs.json'));print(len(d['pairs']),[x['live'] for x in d['pairs'][-3:]])"
+  - text: >-
+      AFTER merge, the HOME-fork healer SHALL reconcile the three new declared
+      pairs on M5, Pro and Mini against origin/main bytes, and one strict
+      (NUZANTARA_MANDATE_ID set) plus one interactive native child probe per
+      host SHALL run green against the INSTALLED hooks — never against a
+      worktree copy.
+    probe: python3 scripts/lint_home_fork.py ; python3 infra/codex-hooks/native_claude_child_probe.py # post-merge, per host
+
+assumptions:
+  - text: >-
+      No required check executes the ship set's suites, so the split's import
+      dependency (context_bridge.py -> mandate_budget.py) would be a silent
+      breakage on main rather than a red PR — which is why the cut is not made
+      on that boundary.
+    status: verified
+    probe: grep -rn "infra/codex-hooks" .github/workflows/*.yml # only path filters, no pytest invocation
+  - text: >-
+      The M5 live copies of the three declared pairs are currently rolled back
+      (Zero on M5, Astra on Pro/Mini), so the healer will report drift on all
+      three hosts until this session reinstalls from origin/main after merge.
+      That reinstall is part of this mandate, not a follow-up.
+    status: verified
+    probe: python3 scripts/lint_home_fork.py # post-merge receipt in the PR thread
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 3

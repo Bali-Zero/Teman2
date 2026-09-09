@@ -1,0 +1,553 @@
+{
+  "version": "1.1.0",
+  "verified_at": "2026-09-09T09:03:01.599841+00:00",
+  "source_branch": "agent/air-m5/infra/codex-context-bridge",
+  "independent_review": {
+    "model": "claude-fable-5-1",
+    "effort": "xhigh",
+    "session": "f46bded4-0f74-4b46-b30b-ef8e98611c00",
+    "implementation_rounds": 3,
+    "verdict": "PASS for bounded M5 canary; Pro/Mini conditional on M5 native probes and shared interpreter path",
+    "conditions_observed": true
+  },
+  "regression_tests": {
+    "passed": 59,
+    "files": [
+      "infra/codex-hooks/test_context_bridge.py",
+      "infra/codex-hooks/test_child_lifecycle.py",
+      "infra/claude-hooks/test_context_window_guard.py"
+    ]
+  },
+  "hosts": [
+    {
+      "host": "Air-M5",
+      "codex": [
+        {
+          "seat": "/Users/balizero/.codex",
+          "binary": "/Applications/ChatGPT.app/Contents/Resources/codex",
+          "enabled": true,
+          "trusted_events": [
+            "preToolUse",
+            "postToolUse",
+            "preCompact",
+            "postCompact",
+            "sessionStart",
+            "subagentStart",
+            "subagentStop",
+            "stop"
+          ],
+          "artifact_matches_manifest": true,
+          "existing_hooks_preserved": true,
+          "source_sha256": {
+            "context_bridge.py": "3b72981cd5e6afd4a5fa1fe47c16f78e6fcb55eb7783724e8c13667e40e13514",
+            "rpc.py": "52d994b59997d32c3f795f6ce9582deec96bb70b2aaaff31dd0c5afd6def40ae",
+            "mandate_budget.py": "800f4194e8085db1cebead905268e28cf6960d8e7b12a011a7846c96c57adb2d"
+          },
+          "installed": true,
+          "source_matches_worktree": true,
+          "status_exit_code": 0
+        },
+        {
+          "seat": "/Users/balizero/.codex-o2",
+          "binary": "/Applications/ChatGPT.app/Contents/Resources/codex",
+          "enabled": true,
+          "trusted_events": [
+            "preToolUse",
+            "postToolUse",
+            "preCompact",
+            "postCompact",
+            "sessionStart",
+            "subagentStart",
+            "subagentStop",
+            "stop"
+          ],
+          "artifact_matches_manifest": true,
+          "existing_hooks_preserved": true,
+          "source_sha256": {
+            "context_bridge.py": "3b72981cd5e6afd4a5fa1fe47c16f78e6fcb55eb7783724e8c13667e40e13514",
+            "rpc.py": "52d994b59997d32c3f795f6ce9582deec96bb70b2aaaff31dd0c5afd6def40ae",
+            "mandate_budget.py": "800f4194e8085db1cebead905268e28cf6960d8e7b12a011a7846c96c57adb2d"
+          },
+          "installed": true,
+          "source_matches_worktree": true,
+          "status_exit_code": 0
+        },
+        {
+          "seat": "/Users/balizero/.codex-acct2",
+          "binary": "/Applications/ChatGPT.app/Contents/Resources/codex",
+          "enabled": true,
+          "trusted_events": [
+            "preToolUse",
+            "postToolUse",
+            "preCompact",
+            "postCompact",
+            "sessionStart",
+            "subagentStart",
+            "subagentStop",
+            "stop"
+          ],
+          "artifact_matches_manifest": true,
+          "existing_hooks_preserved": true,
+          "source_sha256": {
+            "context_bridge.py": "3b72981cd5e6afd4a5fa1fe47c16f78e6fcb55eb7783724e8c13667e40e13514",
+            "rpc.py": "52d994b59997d32c3f795f6ce9582deec96bb70b2aaaff31dd0c5afd6def40ae",
+            "mandate_budget.py": "800f4194e8085db1cebead905268e28cf6960d8e7b12a011a7846c96c57adb2d"
+          },
+          "installed": true,
+          "source_matches_worktree": true,
+          "status_exit_code": 0
+        }
+      ],
+      "claude": [
+        {
+          "seat": "/Users/balizero/.claude",
+          "settings_symlink": false,
+          "routes": {
+            "SubagentStart": [
+              "/Users/balizero/nuzantara/.venv/bin/python /Users/balizero/.claude/hooks/child_workflow.py start"
+            ],
+            "PreToolUse": [
+              "python3 /Users/balizero/.claude/hooks/child_workflow.py context"
+            ],
+            "SubagentStop": [
+              "python3 /Users/balizero/.claude/hooks/child_workflow.py stop"
+            ]
+          },
+          "source_sha256": {
+            "child_workflow.py": "48280622c3322257ab0ef0eb52b9a20513ecc193a06a429667f79e6944dbeb9a",
+            "mandate_budget.py": "800f4194e8085db1cebead905268e28cf6960d8e7b12a011a7846c96c57adb2d"
+          },
+          "artifact_matches_manifest": true,
+          "source_matches_worktree": true,
+          "legacy_guards_unchanged": true,
+          "backup_exists": true,
+          "installed": true
+        },
+        {
+          "seat": "/Users/balizero/.claude-acct2",
+          "settings_symlink": true,
+          "routes": {
+            "SubagentStart": [
+              "/Users/balizero/nuzantara/.venv/bin/python /Users/balizero/.claude/hooks/child_workflow.py start"
+            ],
+            "PreToolUse": [
+              "python3 /Users/balizero/.claude/hooks/child_workflow.py context"
+            ],
+            "SubagentStop": [
+              "python3 /Users/balizero/.claude/hooks/child_workflow.py stop"
+            ]
+          },
+          "source_sha256": {
+            "child_workflow.py": "48280622c3322257ab0ef0eb52b9a20513ecc193a06a429667f79e6944dbeb9a",
+            "mandate_budget.py": "800f4194e8085db1cebead905268e28cf6960d8e7b12a011a7846c96c57adb2d"
+          },
+          "artifact_matches_manifest": true,
+          "source_matches_worktree": true,
+          "legacy_guards_unchanged": true,
+          "backup_exists": true,
+          "installed": true
+        }
+      ],
+      "codex_native_probe": {
+        "exit_code": 0,
+        "thread_id": "01a08559-5117-7671-8fd9-5ea2ef9252c7",
+        "turn_completed": true,
+        "payloads": "/Users/balizero/.codex/state/native-child-payloads.jsonl",
+        "expected_result": true,
+        "children": [
+          {
+            "session_id": "01a08559-9206-71f3-8c7d-aca0e0f5fa12",
+            "role": "builder",
+            "measurement": "observed",
+            "event_counts": {
+              "SubagentStart": 1,
+              "PreToolUse": 2,
+              "PostToolUse": 2,
+              "SubagentStop": 2
+            },
+            "completion_status": "returned_unverified",
+            "stop_reminded": null,
+            "acceptance_status": "unverified"
+          }
+        ],
+        "passed": true
+      },
+      "claude_native_probe": {
+        "exit_code": 0,
+        "session_id": "24cd94f8-8779-455a-87a8-e34c104b4375",
+        "success": true,
+        "children": [
+          {
+            "parent_session": "24cd94f8-8779-455a-87a8-e34c104b4375",
+            "agent_id": "a57d8540a4fc66136",
+            "role": "builder",
+            "model": "claude-haiku-4-5-20251001",
+            "measurement": "UNKNOWN",
+            "status": "returned_unverified",
+            "pretool_count": 1,
+            "stop_reminded": null
+          }
+        ],
+        "observed_events": [
+          "PostToolUse",
+          "PreToolUse",
+          "SessionStart",
+          "Stop",
+          "SubagentStart",
+          "SubagentStop"
+        ],
+        "passed": true
+      }
+    },
+    {
+      "host": "Nuzantara",
+      "codex": [
+        {
+          "seat": "/Users/nuzantara/.codex",
+          "binary": "/Applications/ChatGPT.app/Contents/Resources/codex",
+          "enabled": true,
+          "trusted_events": [
+            "preToolUse",
+            "postToolUse",
+            "preCompact",
+            "postCompact",
+            "sessionStart",
+            "subagentStart",
+            "subagentStop",
+            "stop"
+          ],
+          "artifact_matches_manifest": true,
+          "existing_hooks_preserved": true,
+          "source_sha256": {
+            "context_bridge.py": "3b72981cd5e6afd4a5fa1fe47c16f78e6fcb55eb7783724e8c13667e40e13514",
+            "rpc.py": "52d994b59997d32c3f795f6ce9582deec96bb70b2aaaff31dd0c5afd6def40ae",
+            "mandate_budget.py": "800f4194e8085db1cebead905268e28cf6960d8e7b12a011a7846c96c57adb2d"
+          },
+          "installed": true,
+          "source_matches_worktree": true,
+          "status_exit_code": 0
+        },
+        {
+          "seat": "/Users/nuzantara/.codex-acct2",
+          "binary": "/Applications/ChatGPT.app/Contents/Resources/codex",
+          "enabled": true,
+          "trusted_events": [
+            "preToolUse",
+            "postToolUse",
+            "preCompact",
+            "postCompact",
+            "sessionStart",
+            "subagentStart",
+            "subagentStop",
+            "stop"
+          ],
+          "artifact_matches_manifest": true,
+          "existing_hooks_preserved": true,
+          "source_sha256": {
+            "context_bridge.py": "3b72981cd5e6afd4a5fa1fe47c16f78e6fcb55eb7783724e8c13667e40e13514",
+            "rpc.py": "52d994b59997d32c3f795f6ce9582deec96bb70b2aaaff31dd0c5afd6def40ae",
+            "mandate_budget.py": "800f4194e8085db1cebead905268e28cf6960d8e7b12a011a7846c96c57adb2d"
+          },
+          "installed": true,
+          "source_matches_worktree": true,
+          "status_exit_code": 0
+        }
+      ],
+      "claude": [
+        {
+          "seat": "/Users/nuzantara/.claude",
+          "settings_symlink": false,
+          "routes": {
+            "SubagentStart": [
+              "/Users/nuzantara/nuzantara/.venv/bin/python /Users/nuzantara/.claude/hooks/child_workflow.py start"
+            ],
+            "PreToolUse": [
+              "python3 /Users/nuzantara/.claude/hooks/child_workflow.py context"
+            ],
+            "SubagentStop": [
+              "python3 /Users/nuzantara/.claude/hooks/child_workflow.py stop"
+            ]
+          },
+          "source_sha256": {
+            "child_workflow.py": "48280622c3322257ab0ef0eb52b9a20513ecc193a06a429667f79e6944dbeb9a",
+            "mandate_budget.py": "800f4194e8085db1cebead905268e28cf6960d8e7b12a011a7846c96c57adb2d"
+          },
+          "artifact_matches_manifest": true,
+          "source_matches_worktree": true,
+          "legacy_guards_unchanged": true,
+          "backup_exists": true,
+          "installed": true
+        },
+        {
+          "seat": "/Users/nuzantara/.claude-acct2",
+          "settings_symlink": true,
+          "routes": {
+            "SubagentStart": [
+              "/Users/nuzantara/nuzantara/.venv/bin/python /Users/nuzantara/.claude/hooks/child_workflow.py start"
+            ],
+            "PreToolUse": [
+              "python3 /Users/nuzantara/.claude/hooks/child_workflow.py context"
+            ],
+            "SubagentStop": [
+              "python3 /Users/nuzantara/.claude/hooks/child_workflow.py stop"
+            ]
+          },
+          "source_sha256": {
+            "child_workflow.py": "48280622c3322257ab0ef0eb52b9a20513ecc193a06a429667f79e6944dbeb9a",
+            "mandate_budget.py": "800f4194e8085db1cebead905268e28cf6960d8e7b12a011a7846c96c57adb2d"
+          },
+          "artifact_matches_manifest": true,
+          "source_matches_worktree": true,
+          "legacy_guards_unchanged": true,
+          "backup_exists": true,
+          "installed": true
+        }
+      ],
+      "codex_native_probe": {
+        "exit_code": 0,
+        "thread_id": "01a08560-afa4-7812-b661-47e13ef0f78e",
+        "turn_completed": true,
+        "payloads": "/Users/nuzantara/.codex/state/native-child-payloads.jsonl",
+        "expected_result": true,
+        "children": [
+          {
+            "session_id": "01a08561-195e-7902-a711-5f45856750db",
+            "role": "builder",
+            "measurement": "observed",
+            "event_counts": {
+              "SubagentStart": 1,
+              "PreToolUse": 2,
+              "PostToolUse": 2,
+              "SubagentStop": 2
+            },
+            "completion_status": "returned_unverified",
+            "stop_reminded": null,
+            "acceptance_status": "unverified"
+          }
+        ],
+        "passed": true
+      },
+      "claude_native_probe": {
+        "exit_code": 0,
+        "session_id": "66639cf7-5778-436a-bf52-ce22ec30de46",
+        "success": true,
+        "children": [
+          {
+            "parent_session": "66639cf7-5778-436a-bf52-ce22ec30de46",
+            "agent_id": "a89d4fbad39fea160",
+            "role": "builder",
+            "model": "claude-haiku-4-5-20251001",
+            "measurement": "UNKNOWN",
+            "status": "returned_unverified",
+            "pretool_count": 1,
+            "stop_reminded": null
+          }
+        ],
+        "observed_events": [
+          "PostToolUse",
+          "PreToolUse",
+          "SessionStart",
+          "Stop",
+          "SubagentStart",
+          "SubagentStop"
+        ],
+        "passed": true
+      }
+    },
+    {
+      "host": "mini-pro2",
+      "codex": [
+        {
+          "seat": "/Users/nuzantara/.codex",
+          "binary": "/Applications/Codex.app/Contents/Resources/codex",
+          "enabled": true,
+          "trusted_events": [
+            "preToolUse",
+            "postToolUse",
+            "preCompact",
+            "postCompact",
+            "sessionStart",
+            "subagentStart",
+            "subagentStop",
+            "stop"
+          ],
+          "artifact_matches_manifest": true,
+          "existing_hooks_preserved": true,
+          "source_sha256": {
+            "context_bridge.py": "3b72981cd5e6afd4a5fa1fe47c16f78e6fcb55eb7783724e8c13667e40e13514",
+            "rpc.py": "52d994b59997d32c3f795f6ce9582deec96bb70b2aaaff31dd0c5afd6def40ae",
+            "mandate_budget.py": "800f4194e8085db1cebead905268e28cf6960d8e7b12a011a7846c96c57adb2d"
+          },
+          "installed": true,
+          "source_matches_worktree": true,
+          "status_exit_code": 0
+        },
+        {
+          "seat": "/Users/nuzantara/.codex-acct2",
+          "binary": "/Applications/Codex.app/Contents/Resources/codex",
+          "enabled": true,
+          "trusted_events": [
+            "preToolUse",
+            "postToolUse",
+            "preCompact",
+            "postCompact",
+            "sessionStart",
+            "subagentStart",
+            "subagentStop",
+            "stop"
+          ],
+          "artifact_matches_manifest": true,
+          "existing_hooks_preserved": true,
+          "source_sha256": {
+            "context_bridge.py": "3b72981cd5e6afd4a5fa1fe47c16f78e6fcb55eb7783724e8c13667e40e13514",
+            "rpc.py": "52d994b59997d32c3f795f6ce9582deec96bb70b2aaaff31dd0c5afd6def40ae",
+            "mandate_budget.py": "800f4194e8085db1cebead905268e28cf6960d8e7b12a011a7846c96c57adb2d"
+          },
+          "installed": true,
+          "source_matches_worktree": true,
+          "status_exit_code": 0
+        }
+      ],
+      "claude": [
+        {
+          "seat": "/Users/nuzantara/.claude",
+          "settings_symlink": false,
+          "routes": {
+            "SubagentStart": [
+              "/Users/nuzantara/nuzantara/.venv/bin/python /Users/nuzantara/.claude/hooks/child_workflow.py start"
+            ],
+            "PreToolUse": [
+              "python3 /Users/nuzantara/.claude/hooks/child_workflow.py context"
+            ],
+            "SubagentStop": [
+              "python3 /Users/nuzantara/.claude/hooks/child_workflow.py stop"
+            ]
+          },
+          "source_sha256": {
+            "child_workflow.py": "48280622c3322257ab0ef0eb52b9a20513ecc193a06a429667f79e6944dbeb9a",
+            "mandate_budget.py": "800f4194e8085db1cebead905268e28cf6960d8e7b12a011a7846c96c57adb2d"
+          },
+          "artifact_matches_manifest": true,
+          "source_matches_worktree": true,
+          "legacy_guards_unchanged": true,
+          "backup_exists": true,
+          "installed": true
+        },
+        {
+          "seat": "/Users/nuzantara/.claude-acct2",
+          "settings_symlink": false,
+          "routes": {
+            "SubagentStart": [
+              "/Users/nuzantara/nuzantara/.venv/bin/python /Users/nuzantara/.claude/hooks/child_workflow.py start"
+            ],
+            "PreToolUse": [
+              "python3 /Users/nuzantara/.claude/hooks/child_workflow.py context"
+            ],
+            "SubagentStop": [
+              "/Users/nuzantara/nuzantara/.venv/bin/python /Users/nuzantara/.claude/hooks/child_workflow.py stop"
+            ]
+          },
+          "source_sha256": {
+            "child_workflow.py": "48280622c3322257ab0ef0eb52b9a20513ecc193a06a429667f79e6944dbeb9a",
+            "mandate_budget.py": "800f4194e8085db1cebead905268e28cf6960d8e7b12a011a7846c96c57adb2d"
+          },
+          "artifact_matches_manifest": true,
+          "source_matches_worktree": true,
+          "legacy_guards_unchanged": true,
+          "backup_exists": true,
+          "installed": true
+        }
+      ],
+      "codex_native_probe": {
+        "exit_code": 0,
+        "thread_id": "01a08560-ccd2-7e72-acc5-898cb74c311b",
+        "turn_completed": true,
+        "payloads": "/Users/nuzantara/.codex/state/native-child-payloads.jsonl",
+        "expected_result": true,
+        "children": [
+          {
+            "session_id": "01a08561-1d10-7811-ae69-b742ec360f90",
+            "role": "builder",
+            "measurement": "observed",
+            "event_counts": {
+              "SubagentStart": 1,
+              "PreToolUse": 2,
+              "PostToolUse": 2,
+              "SubagentStop": 2
+            },
+            "completion_status": "returned_unverified",
+            "stop_reminded": null,
+            "acceptance_status": "unverified"
+          }
+        ],
+        "passed": true
+      },
+      "claude_native_probe": {
+        "exit_code": 0,
+        "session_id": "25c148d1-c30d-4b16-ae01-1040499d1da0",
+        "success": true,
+        "children": [
+          {
+            "parent_session": "25c148d1-c30d-4b16-ae01-1040499d1da0",
+            "agent_id": "a790b572ac561fa02",
+            "role": "builder",
+            "model": "claude-haiku-4-5-20251001",
+            "measurement": "UNKNOWN",
+            "status": "returned_unverified",
+            "pretool_count": 1,
+            "stop_reminded": null
+          }
+        ],
+        "observed_events": [
+          "PostToolUse",
+          "PreToolUse",
+          "SessionStart",
+          "Stop",
+          "SubagentStart",
+          "SubagentStop"
+        ],
+        "passed": true
+      }
+    }
+  ],
+  "continuation_child_probe": {
+    "source": "01a08559-5117-7671-8fd9-5ea2ef9252c7",
+    "target": "01a08565-4cdb-79b1-94b8-104ae69d4f46",
+    "exact_source_binding": true,
+    "hops": 1,
+    "model_preserved": true,
+    "permissions_preserved": true,
+    "destination_status": "completed",
+    "marker": true,
+    "children": [
+      {
+        "session_id": "01a08565-8a40-7c43-b9aa-825dd2f2e06f",
+        "parent_session": "01a08565-4cdb-79b1-94b8-104ae69d4f46",
+        "role": "builder",
+        "measurement": "observed",
+        "completion_status": "returned_unverified",
+        "event_counts": {
+          "SubagentStart": 1,
+          "PreToolUse": 1,
+          "PostToolUse": 1,
+          "SubagentStop": 1
+        },
+        "stop_reminded": null
+      }
+    ],
+    "failure": null,
+    "passed": true
+  },
+  "coverage_limits": {
+    "desktop_new_task": "not observed; bundled CLI probes do not prove the current app task reloaded hooks",
+    "secondary_credentials": "configuration and installed hashes verified; separate account authentication not tested",
+    "claude_child_context_window": "UNKNOWN in native payloads; percentage gate not claimed",
+    "interactive_total_attempts_and_deadline": "observation only unless NUZANTARA_MANDATE_ID is explicit",
+    "independent_acceptance": "unverified by adapter; native probe parent independently checks fixture",
+    "mutation_ownership": "assignment and existing broker; arbitrary shell/MCP writes not locked by this adapter",
+    "ignore_user_config_ephemeral_runner": "excluded",
+    "existing_kill_switches": "honored; probe subprocesses clear inherited bypasses only for the test",
+    "native_continuation_child_on_pro_mini": "not separately observed; Air-M5 canary and identical installed core hashes verified"
+  },
+  "source_commit": "658a9fc79903765512c805e9402e5219a4cce49a"
+}
