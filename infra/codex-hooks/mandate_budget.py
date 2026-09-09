@@ -65,6 +65,9 @@ def reserve(
             ] > limits.get("unstarted_ttl", 60):
                 row["status"] = "expired_unstarted"
             elif row["status"] == "active" and limits.get("active_ttl"):
+                heartbeat = max(row.get("heartbeat", row["created"]), row["created"])
+                if time.time() - heartbeat < limits["active_ttl"]:
+                    continue
                 child_row = state.get("children", {}).get(row.get("child"), {})
                 try:
                     transcript = Path(child_row["transcript_path"])
@@ -76,7 +79,7 @@ def reserve(
                         reason="Child transcript liveness UNKNOWN; slot retained",
                     )
                     continue
-                last_activity = max(modified, row.get("heartbeat", row["created"]))
+                last_activity = max(modified, heartbeat)
                 if time.time() - last_activity >= limits["active_ttl"]:
                     row.update(status="suspect_zombie", suspected_at=time.time())
                     state.update(

@@ -21,6 +21,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", choices=("haiku", "sonnet", "opus"), default="haiku")
     parser.add_argument(
+        "--parent-model",
+        default="claude-haiku-4-5",
+        help="Parent dispatcher model; override only with an explicitly chosen model",
+    )
+    parser.add_argument(
         "--warmup",
         action="store_true",
         help="No-tool child; calibrates without needing a successful guarded tool",
@@ -89,9 +94,7 @@ def main() -> None:
                 executable,
                 "-p",
                 "--model",
-                "claude-fable-5-1",
-                "--effort",
-                "xhigh",
+                args.parent_model,
                 "--permission-mode",
                 "plan",
                 "--tools",
