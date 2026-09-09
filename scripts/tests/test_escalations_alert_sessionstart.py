@@ -84,6 +84,29 @@ class TestNetPending:
         assert "1 HIGH-priority open" in ctx
         assert "fly_backup" in ctx
 
+    def test_string_ts_line_neither_silences_the_board_nor_breaks_net_pending(self, tmp_path, tasks_dir):
+        """One writer emitting a string ts (W54 ISO-8601, #6012 str(now)) must
+        not TypeError the net-pending comparisons and silence the WHOLE board
+        at SessionStart: the open HIGH item still surfaces, and an ISO-stamped
+        resolution still nets out the float-stamped pending it follows."""
+        esc = tmp_path / "escalations_pro.jsonl"
+        _write_jsonl(esc, [
+            {"job": "healed_job", "status": "pending", "priority": "HIGH",
+             "error_summary": "exit 1", "ts": 100},
+            {"job": "healed_job", "status": "resolved",
+             "resolved_at": "1970-01-01T00:03:20Z", "ts": "1970-01-01T00:03:20Z"},
+            {"job": "still_open", "status": "pending", "priority": "HIGH",
+             "error_summary": "boom", "ts": "150.0"},
+            {"job": "junk_ts", "status": "pending", "priority": "HIGH",
+             "error_summary": "no clock", "ts": "yesterday"},
+        ])
+        out = _run_hook(esc, tasks_dir)
+        assert out is not None, "a string ts must not silence the board"
+        ctx = out["hookSpecificOutput"]["additionalContext"]
+        assert "2 HIGH-priority open" in ctx, ctx
+        assert "still_open" in ctx and "junk_ts" in ctx
+        assert "healed_job" not in ctx, "ISO-stamped resolution must still net out the pending"
+
     def test_innocence_resolved_pending_vanishes(self, tmp_path, tasks_dir):
         esc = tmp_path / "escalations_pro.jsonl"
         _write_jsonl(esc, [
