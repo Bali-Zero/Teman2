@@ -1,0 +1,97 @@
+task_id: infra-next-build-cache
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor computed this run:
+#   python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source \
+#     --changed-files-file <changed> --numstat-file <numstat>
+# returns `3`, source `path`: .github/workflows/tests.yml is a hot-zone file.
+objective: >-
+  Cut the `E2E Tests (Playwright)` required check's wall time by caching the
+  Next.js build cache for apps/mouth. Measured 2026-09-09 on run 34350109029
+  job 102461489711: the "Run E2E tests" step took 244s total, of which the 58
+  Playwright tests themselves sum to 69s — the rest is
+  apps/mouth/playwright.config.ts's webServer (`npm run build && npm run
+  start`), a cold `next build` with no prior cache. tests.yml already caches
+  ~/.cache/uv, **/node_modules, ~/.npm and ~/.cache/ms-playwright but never
+  apps/mouth/.next/cache — confirmed by grep, no `.next` reference anywhere
+  in tests.yml before this PR. Next.js's own CI-caching docs recommend
+  caching `.next/cache` for exactly this reason: it holds the webpack/SWC
+  persistent build cache, which is content-addressed and safe to restore
+  even when stale (worst case a partial rebuild, never a stale served
+  output). The cure adds one `actions/cache@v6` step to the e2e-tests job,
+  right after "Install Node dependencies", keyed on the lockfile plus a hash
+  of every apps/mouth source file `next build` compiles from.
+constraints:
+  - >-
+    Only the e2e-tests job's own `next build` (via playwright.config.ts's
+    webServer) is in scope. The "Visa Oracle fullstack smoke" job
+    (~line 2600) also installs Node deps and Playwright browsers, but sets
+    PLAYWRIGHT_EXTERNAL_SERVER=1 and starts the frontend itself with
+    `npm run dev` (fullstack_smoke.py:539-543) — playwright.config.ts's
+    webServer is skipped entirely, so it never runs `next build`. Verified
+    by reading fullstack_smoke.py; left untouched per the mandate.
+  - >-
+    "Frontend Tests (Next.js)" (~line 1716) runs vitest/typecheck only, no
+    `npm run build` anywhere in that job — verified by grep; left untouched.
+  - No `--no-verify`, no `--amend` on a pushed commit, no force-push;
+    worktree infra-next-build-cache-0909.
+  - actionlint and prettier must pass on the workflow file.
+acceptance:
+  - text: >-
+      A1: a "Cache Next.js build cache (mouth)" step exists in the
+      e2e-tests job between "Install Node dependencies" and "E2E specs must
+      collect with no credentials present", caching apps/mouth/.next/cache.
+    probe: >-
+      awk '/name: Cache Next.js build cache \(mouth\)/{f=1} f{print} f &&
+      /path: apps\/mouth\/.next\/cache/{exit}' .github/workflows/tests.yml
+  - text: "A2: actionlint reports no error on the workflow."
+    probe: /opt/homebrew/bin/actionlint .github/workflows/tests.yml
+  - text: "A3: prettier reports the workflow file already formatted."
+    probe: npx --no-install prettier --check .github/workflows/tests.yml
+  - text: >-
+      A4: the repo's workflow-shape pin suite (unreachable conditions,
+      immune-enforcement trigger symmetry, required-context map) still
+      passes — this PR does not change job topology or required-context
+      wiring.
+    probe: >-
+      python3 -m pytest -q -p no:cacheprovider
+      scripts/tests/test_unreachable_workflow_conditions.py
+      scripts/tests/test_immune_enforcement_trigger_symmetry.py
+      scripts/tests/test_required_context_map.py
+  - text: >-
+      A5 (Bites): the `E2E Tests (Playwright)` job on the FIRST PR after
+      this merges shows the new cache step reporting a hit and the "Run E2E
+      tests" step duration below 244s. This PR itself only seeds the cache
+      (its own run necessarily shows "Cache not found" then "Cache saved" —
+      that is the expected first-run shape, not a failure of the cure).
+    probe: >-
+      gh api repos/{owner}/{repo}/actions/jobs/<e2e-tests job id>
+      --jq '.steps[] | "\(((.completed_at|fromdate)-(.started_at|fromdate)))s \(.name)"'
+assumptions:
+  - text: >-
+      Next.js's webpack/SWC persistent cache under `.next/cache` is
+      content-addressed and validates restored module entries against
+      current file hashes before reuse, so a stale restore-keys hit cannot
+      serve stale build output — only a partial rebuild.
+    status: verified
+    probe: >-
+      Cross-family review (codex-gpt-5.6-sol, kimi-code/k3), both
+      independently confirming this against Next.js's own documented CI
+      caching pattern; kimi additionally verified in-repo that the only
+      build-time fetch cache entries (apps/mouth/src/lib/blog/articles.ts:432,454)
+      use `next: { revalidate: 60 }`, so a restored fetch-cache entry is
+      always expired by the next CI run and is revalidated, never served
+      stale.
+  - text: >-
+      No other job in tests.yml runs `next build` for apps/mouth, so no
+      second cache step is needed.
+    status: verified
+    probe: >-
+      grep -n 'npm run build\|next build' .github/workflows/tests.yml
+      (only match is inside playwright.config.ts's webServer command
+      string, referenced once, in the e2e-tests job); confirmed
+      fullstack_smoke.py uses `npm run dev` with PLAYWRIGHT_EXTERNAL_SERVER=1
+      and frontend-tests has no build step.
+appetite:
+  wall_clock_hours: 1
