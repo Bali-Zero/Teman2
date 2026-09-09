@@ -1303,3 +1303,79 @@ def test_a_directory_without_auth_json_is_not_a_seat(tmp_path: Path) -> None:
     assert result.stdout == "ollama-answer\n"
     lines = call_log.read_text(encoding="utf-8").splitlines()
     assert not any(l.startswith("codex-") for l in lines), lines
+
+
+# ── window jump, headless half (Ruling Zero 2026-09-09) ──────────────────────
+# The fake seat writes the SAME file context_window_guard.py writes when it
+# trips in `-p` mode, then answers on the next call: the wrapper must re-invoke
+# the same seat with a continuation prompt and concatenate the outputs.
+
+_JUMP_WRITER = (
+    'mkdir -p "$HOME/.organism/context-guard"; '
+    "python3 -c 'import json,os,sys,time; "
+    'json.dump({"from_session":sys.argv[1],"to_session":None,"seat":sys.argv[2],'
+    '"cwd":os.getcwd(),"hops":1,"ts":time.time(),"mandate":"M"},'
+    'open(os.path.expanduser("~/.organism/context-guard/pending-jump-"+sys.argv[1]+".json"),"w"))\' '
+)
+_JUMP_STAMP = (
+    "python3 -c 'import json,os,sys; p=os.path.expanduser(\"~/.organism/context-guard/pending-jump-\"+sys.argv[1]+\".json\"); "
+    'j=json.load(open(p)); j["to_session"]="next"; json.dump(j,open(p,"w"))\' '
+)
+
+
+def _counting_body(first: str, later: str) -> str:
+    return (
+        'n="$HOME/jump-calls"; c=$(cat "$n" 2>/dev/null || echo 0); c=$((c+1)); echo "$c" > "$n"; '
+        'if [ "$c" = 1 ]; then ' + first + "; else " + later + "; fi"
+    )
+
+
+def test_headless_jump_reinvokes_the_same_seat_with_a_continuation_prompt(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = _counting_body(
+        _JUMP_WRITER + 'h1 headless; printf "first-part\\n"; exit 0',
+        # the hop must READ the continuation prompt on stdin and the injector
+        # (simulated here) stamps the file so it is not picked a third time
+        'p=$(cat); ' + _JUMP_STAMP + 'h1; printf "second-part[%s]\\n" "${p:0:24}"; exit 0',
+    )
+    call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "first-part\nsecond-part[Sei la sessione successi]\n"
+    assert _labels(call_log) == ["token1", "token1"]
+    assert "[jump] claude-token-1-env" in result.stderr and "hops: 1" in result.stderr
+    assert list(temp_dir.iterdir()) == []
+
+
+def test_headless_jump_is_capped_at_three_hops(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    # never stamps: every call raises a fresh jump → 1 run + 3 hops, then stop
+    bodies["token1"] = (
+        'n="$HOME/jump-calls"; c=$(cat "$n" 2>/dev/null || echo 0); c=$((c+1)); echo "$c" > "$n"; '
+        + _JUMP_WRITER + '"s$c" headless; printf "part%s\\n" "$c"; exit 0'
+    )
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "part1\npart2\npart3\npart4\n"
+    assert _labels(call_log) == ["token1"] * 4
+    assert "hop 3/3" in result.stderr
+
+
+def test_headless_jump_kill_switch_runs_once(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = _JUMP_WRITER + 'h1 headless; printf "only\\n"; exit 0'
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    env["CONTEXT_JUMP_OFF"] = "1"
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0 and result.stdout == "only\n"
+    assert _labels(call_log) == ["token1"] and "[jump]" not in result.stderr
+
+
+def test_headless_jump_ignores_a_ghostty_seat_file(tmp_path: Path) -> None:
+    bodies = _default_bodies()
+    bodies["token1"] = _JUMP_WRITER + 'g1 ghostty; printf "only\\n"; exit 0'
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0 and result.stdout == "only\n"
+    assert _labels(call_log) == ["token1"]

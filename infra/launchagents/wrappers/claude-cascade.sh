@@ -350,6 +350,64 @@ build_claude_args() {
     CLAUDE_ARGS+=("${EXTRA_ARGS[@]}")
 }
 
+
+# ---------------------------------------------------------------------------
+# WINDOW JUMP, headless half (Ruling Zero 2026-09-09 «tutti i seat», research/
+# operations/2026-09-09-window-jump-automatic-handoff-it.md §4b). In `-p` mode
+# context_window_guard.py trips exactly as in a window: it writes
+# ~/.organism/context-guard/pending-jump-<session>.json (seat=headless) and
+# denies every tool, so the session ends its turn early with partial output.
+# Nothing can open a "window" here — the wrapper IS the window: when a jump was
+# raised by the run that just returned (same cwd, unclaimed, newer than the
+# run start), re-invoke the SAME seat with a fresh session and a short
+# continuation prompt; context_jump_resume.py (SessionStart) injects the
+# mandate + handoff and stamps to_session, so the file is not picked twice.
+# Outputs of the hops are concatenated. Cap JUMP_MAX_HOPS per run (the guard
+# caps the chain as well). Kill switch: CONTEXT_JUMP_OFF=1 (same as the guard).
+# ---------------------------------------------------------------------------
+JUMP_MAX_HOPS="${JUMP_MAX_HOPS:-3}"
+
+headless_jump_raised_since() {
+    # $1 = epoch the run started. Prints the newest matching jump file, or nothing.
+    [ "${CONTEXT_JUMP_OFF:-0}" = "1" ] && return 1
+    python3 - "$1" "$PWD" <<'PY' 2>/dev/null
+import glob, json, os, sys
+since, cwd = float(sys.argv[1]), os.path.realpath(sys.argv[2])
+best, best_ts = "", -1.0
+for f in glob.glob(os.path.expanduser("~/.organism/context-guard/pending-jump-*.json")):
+    try:
+        j = json.load(open(f))
+    except Exception:
+        continue
+    if j.get("to_session") or j.get("seat") != "headless":
+        continue
+    try:
+        ts = float(j.get("ts") or 0)
+    except (TypeError, ValueError):
+        continue
+    if ts < since - 1 or (j.get("cwd") and os.path.realpath(str(j["cwd"])) != cwd):
+        continue
+    if ts > best_ts:
+        best, best_ts = f, ts
+print(best)
+PY
+}
+
+claude_seat_invoke() {
+    # Uses try_claude's own locals (bin, oauth_token, config_dir, label,
+    # tmpout, tmperr) — dynamic scoping — so hops run the SAME seat.
+    if [ -n "$oauth_token" ]; then
+        run_bounded "$tmpout" "$tmperr" "$label" "${ISOLATED_PROVIDER_ENV[@]}" \
+            CLAUDE_CONFIG_DIR="$config_dir" \
+            CLAUDE_CODE_OAUTH_TOKEN="$oauth_token" \
+            "$bin" "${CLAUDE_ARGS[@]}"
+    else
+        run_bounded "$tmpout" "$tmperr" "$label" "${ISOLATED_PROVIDER_ENV[@]}" \
+            CLAUDE_CONFIG_DIR="$config_dir" \
+            "$bin" "${CLAUDE_ARGS[@]}"
+    fi
+}
+
 try_claude() {
     local bin="$1"
     local label="$2"
@@ -375,18 +433,10 @@ try_claude() {
     build_isolated_provider_env
 
     echo "  [try] $label ($bin)" >&2
-    if [ -n "$oauth_token" ]; then
-        run_bounded "$tmpout" "$tmperr" "$label" "${ISOLATED_PROVIDER_ENV[@]}" \
-            CLAUDE_CONFIG_DIR="$config_dir" \
-            CLAUDE_CODE_OAUTH_TOKEN="$oauth_token" \
-            "$bin" "${CLAUDE_ARGS[@]}"
-        exit_code=$?
-    else
-        run_bounded "$tmpout" "$tmperr" "$label" "${ISOLATED_PROVIDER_ENV[@]}" \
-            CLAUDE_CONFIG_DIR="$config_dir" \
-            "$bin" "${CLAUDE_ARGS[@]}"
-        exit_code=$?
-    fi
+    local run_started
+    run_started="$(date +%s)"
+    claude_seat_invoke
+    exit_code=$?
 
     # Some Claude CLI auth/quota failures incorrectly return exit 0. Content
     # classification therefore precedes the exit-code success check.
@@ -406,9 +456,35 @@ try_claude() {
         return 97
     fi
 
+    # Window jump, headless half: the run tripped the context guard → fresh
+    # session on the same seat, continuation prompt, outputs concatenated.
+    local hop=0 jump_file hop_prompt_file saved_prompt_file
+    while jump_file="$(headless_jump_raised_since "$run_started")" && [ -n "$jump_file" ] \
+          && [ "$hop" -lt "$JUMP_MAX_HOPS" ]; do
+        hop=$((hop + 1))
+        echo "  [jump] $label — context guard tripped ($(basename "$jump_file")): fresh session, hop $hop/$JUMP_MAX_HOPS" >&2
+        cat "$tmpout"
+        new_temp_file
+        hop_prompt_file="$REPLY"
+        printf '%s' "Sei la sessione successiva di $(basename "$jump_file" .json | sed 's/^pending-jump-//') (salto $hop). Il mandato originale e lo stato raggiunto sono nel contesto iniettato da context_jump_resume: continua da lì, senza chiedere, e non ripetere il lavoro già verificato." >"$hop_prompt_file"
+        saved_prompt_file="$PROMPT_FILE"
+        PROMPT_FILE="$hop_prompt_file"
+        run_started="$(date +%s)"
+        : >"$tmpout"; : >"$tmperr"
+        claude_seat_invoke
+        exit_code=$?
+        PROMPT_FILE="$saved_prompt_file"
+        rm -f "$hop_prompt_file"
+        if [ "$exit_code" -ne 0 ] || [ ! -s "$tmpout" ]; then
+            echo "  [error] $label hop $hop exit=$exit_code (empty=$([ -s "$tmpout" ] && echo no || echo yes))" >&2
+            rm -f "$tmpout" "$tmperr"
+            return 96
+        fi
+    done
+
     cat "$tmpout"
     rm -f "$tmpout" "$tmperr"
-    echo "[claude-cascade] used: $label" >&2
+    echo "[claude-cascade] used: $label${hop:+ (hops: $hop)}" >&2
     return 0
 }
 
