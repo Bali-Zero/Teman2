@@ -545,6 +545,24 @@
           "symbols": {},
           "tests": ["infra/claude-hooks/test_context_window_guard.py"],
           "note": "PreToolUse hard-gate (Zero mandate 2026-09-09): enforces a short-window rule per role by importing the S1 tokenaudit estimator (~/.tokenaudit/hooks/context_hygiene.py) and the PreCompact handoff generator (~/.claude/hooks/precompact-mnemos.py) rather than reimplementing either. Denies every tool call above threshold except a mem-save Bash command, a write to the session's own handoff file, or SendMessage/TaskStop delegation. Not yet registered in ~/.claude/settings.json (see PENDING-ARMS.md) — fail-open on any cannot-verify condition, same discipline as orchestrate_gate.py/model_routing_gate.py."
+        },
+        "infra/claude-hooks/bash_call_log.sh": {
+          "scar": [
+            "superscar-4-secret-in-the-clear",
+            "superscar-2-esiste-non-armato"
+          ],
+          "symbols": {},
+          "tests": [
+            "scripts/tests/test_bash_call_log.sh",
+            "scripts/tests/test_install_hook_diet.py"
+          ],
+          "note": "Per-call hook diet (2026-09-09): replaces 3 separate inline PostToolUse Bash loggers (a command-history.log append, a {cmd,cwd}->hotfix-notify.sh pipe, a live-status.json rewrite) that used to fire on every Bash tool call with ONE registered command hook doing all three jobs in one process. Command text written to command-history.log is redacted with the same earliest-anchor-cut pattern as codex-spalla-trigger.sh above (superscar #4) via the redact_secrets.py sidecar registered below — the hotfix-notify.sh pipe is deliberately left unredacted/byte-identical to the inline it replaces, since that script's own DROP/ALTER/fly-secrets classifier needs the raw command. Installed into ~/.claude/hooks/ by infra/claude-hooks/install_hook_diet.py, which test_install_hook_diet.py exercises end to end (dry-run, apply, idempotent second run) against a fixture settings.json; test_bash_call_log.sh exercises the hook binary itself, including a fake-credential guilt case proving the redaction fires."
+        },
+        "infra/claude-hooks/redact_secrets.py": {
+          "scar": ["superscar-4-secret-in-the-clear"],
+          "symbols": {},
+          "tests": ["scripts/tests/test_bash_call_log.sh"],
+          "note": "Sidecar of bash_call_log.sh above: an importable port of codex-spalla-trigger.sh's earliest-anchor-cut secret-redaction regex (superscar #4), so a new per-call logger does not have to re-derive it from a blank page. Installed alongside bash_call_log.sh by install_hook_diet.py. Exercised indirectly by test_bash_call_log.sh's fake-credential guilt case (command-history.log redacts, the unrelated hotfix-notify.sh pipe does not) rather than a standalone unit test, since its only caller today is bash_call_log.sh."
         }
       },
       "exempt": {
