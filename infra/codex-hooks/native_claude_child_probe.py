@@ -17,6 +17,19 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "claude-hooks"))
 import child_context
 
 
+def select_child_observations(observations: list[dict]) -> list[dict]:
+    """Children are identified by the hook event that produced the observation.
+
+    SubagentStop carries the CHILD's transcript; SessionStart carries the PARENT's.
+    Selecting on a `claude-<family>-` model prefix instead — as this probe did until
+    2026-09-10 — counts the parent as a child whenever parent and child share a
+    family, which is exactly the case for the default invocation (`--model haiku`
+    with `--parent-model claude-haiku-4-5`): the count then never equals
+    `--children` and `transport_passed` can never be true on any host.
+    """
+    return [o for o in observations if o.get("hook_event_name") == "SubagentStop"]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", choices=("haiku", "sonnet", "opus"), default="haiku")
@@ -83,7 +96,7 @@ def main() -> None:
         else f"Read {root / 'fixture.txt'} twice sequentially (second Read after the first result), report its number."
     )
     role = "Explore"
-    prompt = f"Bounded native child probe, explicitly authorized delegation. Use Agent exactly {args.children} time(s), all in ONE parallel dispatch message, subagent_type {role} and model {args.model} explicitly. Give each only this assignment: {assignment} Read-only, no edits, no network, no replacements, no memories, expected result42. Wait for every result then independently Read the same fixture yourself, compare42 and return CLAUDE_CHILD_PROBE_OK. No other work."
+    prompt = f"Bounded native child probe, explicitly authorized delegation. Emit EXACTLY ONE assistant message containing EXACTLY {args.children} Agent tool call(s) — the probe measures parallel dispatch and fails if the calls arrive in separate messages or if there are more than {args.children}. Do not retry, do not re-dispatch, do not add a verification agent. subagent_type {role} and model {args.model} explicitly. Give each only this assignment: {assignment} Read-only, no edits, no network, no replacements, no memories, expected result42. Wait for every result then independently Read the same fixture yourself, compare42 and return CLAUDE_CHILD_PROBE_OK. No other work."
     env = {k: v for k, v in os.environ.items() if k not in ("ANTHROPIC_API_KEY",)}
     env["CONTEXT_JUMP_NO_SPAWN"] = "1"
     outpath = root / "probe.jsonl"
@@ -151,6 +164,9 @@ def main() -> None:
                     {
                         **child_context.snapshot(path.read_text()),
                         "capacity_scope": event.get("capacity_scope"),
+                        # The event IS the parent/child discriminator. SubagentStop
+                        # carries the child's transcript, SessionStart the parent's.
+                        "hook_event_name": event["hook_event_name"],
                     }
                 )
     for r in starts:
@@ -197,16 +213,22 @@ def main() -> None:
         "observed_events": sorted({r["hook_event_name"] for r in metadata}),
     }
     # A successful transport with UNKNOWN usage is not a measured-budget proof.
-    child_observations = [
-        o
-        for o in observations
-        if str(o.get("model") or "").startswith("claude-" + args.model + "-")
-    ]
+    # Select children by the hook event that produced the observation, never by a
+    # model-name prefix: the parent's own SessionStart observation matches that
+    # prefix whenever parent and child share a family, which is the case for every
+    # invocation where --model and --parent-model agree. The model stays an
+    # ASSERTION below, so a child answering on the wrong model still fails.
+    child_observations = select_child_observations(observations)
+    evidence["child_models_expected"] = all(
+        str(o.get("model") or "").startswith("claude-" + args.model + "-")
+        for o in child_observations
+    )
     evidence["transport_passed"] = (
         run.returncode == 0
         and evidence["success"]
         and len(states) == args.children
         and len(child_observations) == args.children
+        and evidence["child_models_expected"]
         and evidence["parallel_dispatch_counts"] == [args.children]
     )
     evidence["passed"] = evidence["transport_passed"] and (
