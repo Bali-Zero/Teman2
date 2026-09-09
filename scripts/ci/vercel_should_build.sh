@@ -119,6 +119,36 @@ verdict_from_changed() { # verdict_from_changed <changed-file-list>
   esac
 }
 
+# The TOP-LEVEL `commit` of the health body, validated as a 40-hex sha, or empty. A JSON parser
+# when one is at hand (node is always in Vercel's container: it is what builds the app), so a
+# body that ever grows a second commit-shaped field (`previousCommit`, a deployments array)
+# cannot be mis-read by a positional grep — the wrong sha picked is a false SKIP, the one
+# direction this script must never take (raised by the adversarial review of #6042). The
+# anchored grep is the fallback where no parser exists; empty on any doubt, and empty builds.
+live_commit_of() { # live_commit_of <health-body>
+  local raw=
+  if command -v node >/dev/null 2>&1; then
+    raw=$(printf '%s' "$1" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{const c=JSON.parse(d).commit;process.stdout.write(typeof c==="string"?c:"")}catch(e){}})' 2>/dev/null)
+  elif command -v python3 >/dev/null 2>&1; then
+    raw=$(printf '%s' "$1" | python3 -c 'import json,sys
+try:
+    c=json.load(sys.stdin).get("commit")
+    sys.stdout.write(c if isinstance(c,str) else "")
+except Exception:
+    pass' 2>/dev/null)
+  else
+    raw=$(printf '%s' "$1" | grep -oE '"commit"[[:space:]]*:[[:space:]]*"[0-9a-f]{40}"' | head -1 | grep -oE '[0-9a-f]{40}')
+  fi
+  printf '%s' "$raw" | grep -oE '^[0-9a-f]{40}$' | head -1
+}
+
+# A fetch that stalls past Vercel's own step budget kills the WRAPPER, and a killed wrapper is
+# a deployment ERROR, not a build — outside the `[ $? = 0 ] && exit 0 || exit 1` normaliser.
+# GNU `timeout` exists in Vercel's container and on CI; where it does not (a Mac), run bare.
+with_timeout() { # with_timeout <seconds> <command...>
+  if command -v timeout >/dev/null 2>&1; then timeout "$@"; else shift; "$@"; fi
+}
+
 # PRODUCTION. Compare HEAD against the commit production is serving, never against a previous
 # attempt (see the header). Every path that cannot establish the live commit builds.
 production_verdict() {
@@ -127,7 +157,7 @@ production_verdict() {
     log "production: live probe failed -> BUILD (fail-open)"
     exit 1
   fi
-  live=$(printf '%s' "$body" | grep -oE '"commit"[[:space:]]*:[[:space:]]*"[0-9a-f]{40}"' | head -1 | grep -oE '[0-9a-f]{40}')
+  live=$(live_commit_of "$body")
   if [ -z "$live" ]; then
     log "production: live probe exposes no 40-hex commit -> BUILD (fail-open)"
     exit 1
@@ -147,9 +177,9 @@ production_verdict() {
       log "production: live commit ${live:0:9} not in clone and no repo URL to fetch it -> BUILD (fail-open)"
       exit 1
     fi
-    git fetch --no-tags --depth=200 "$url" "$PROD_BRANCH" >/dev/null 2>&1 || true
+    with_timeout 90 git fetch --no-tags --depth=200 "$url" "$PROD_BRANCH" >/dev/null 2>&1 || true
     if ! git cat-file -e "${live}^{commit}" 2>/dev/null; then
-      git fetch --no-tags --depth=1 "$url" "$live" >/dev/null 2>&1 || true
+      with_timeout 90 git fetch --no-tags --depth=1 "$url" "$live" >/dev/null 2>&1 || true
     fi
     if ! git cat-file -e "${live}^{commit}" 2>/dev/null; then
       log "production: live commit ${live:0:9} not fetchable -> BUILD (fail-open)"

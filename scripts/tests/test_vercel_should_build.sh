@@ -195,6 +195,12 @@ VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA="$MAIN_TIP" \
   run SKIP "main, docs-only delta vs what is LIVE -> skips"
 VERCEL_ENV=production VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA= \
   run SKIP "same, VERCEL_ENV=production and no previous SHA -> still skips (the SHA is not consulted)"
+# A body that carries a second commit-shaped field must not be mis-read: the TOP-LEVEL `commit`
+# is the live one. The decoy comes first and names HEAD itself, so picking it reads "redeploy ->
+# BUILD" where the real live commit reads "docs-only -> SKIP" — a wrong pick is visible.
+probe_says "{\"deployments\":[{\"commit\":\"$DOCS_ON_MAIN\"}],\"commit\":\"$MAIN_TIP\"}"
+VERCEL_GIT_COMMIT_REF=main VERCEL_GIT_PREVIOUS_SHA= \
+  run SKIP "probe with a decoy commit field before the real one -> the top-level key is read"
 
 # GUILT, the stranded shape (balizero.com frozen 2026-08-15..18): a frontend commit whose own
 # build never shipped, then a docs commit. VERCEL_GIT_PREVIOUS_SHA points at the frontend
@@ -461,6 +467,45 @@ if [ "$IGNORE_CMD" = "$POINTER" ]; then
   PASS=$((PASS+1)); printf '  ok    %-58s %s\n' "apps/mouth/vercel.json ignoreCommand == pointer" "identical"
 else
   FAIL=$((FAIL+1)); printf '  FAIL  %-58s\n        vercel.json: %s\n        pointer:     %s\n' "apps/mouth/vercel.json ignoreCommand == pointer" "$IGNORE_CMD" "$POINTER"
+fi
+
+# Three lists say what "bundle-relevant" means — FRONTEND_RE here, BUNDLE_PATHS in
+# scripts/vercel_prod_deploy.py (what the autopromote organ promotes) and the `paths:` of
+# .github/workflows/frontend-live-sentinel.yml (what the sentinel demands be live). A commit the
+# other two call relevant that this script declines to BUILD is a red sentinel for a build that
+# was never made. GUILT direction only: every path they name must match FRONTEND_RE. Skipped,
+# loudly, where the two files are not present (a copy of these four files outside the repo).
+REPO_TOP="$(cd "$(dirname "$SCRIPT")/../.." && pwd)"
+ORGAN="$REPO_TOP/scripts/vercel_prod_deploy.py"
+SENTINEL="$REPO_TOP/.github/workflows/frontend-live-sentinel.yml"
+FRONTEND_RE_LIVE=$(sed -n "s/^FRONTEND_RE='\(.*\)'$/\1/p" "$SCRIPT" | head -1)
+if [ -f "$ORGAN" ] && [ -f "$SENTINEL" ] && [ -n "$FRONTEND_RE_LIVE" ]; then
+  ORGAN_PATHS=$(python3 - "$ORGAN" <<'PY'
+import ast,sys
+src=open(sys.argv[1]).read()
+for node in ast.walk(ast.parse(src)):
+    if isinstance(node,ast.Assign) and any(getattr(t,"id","")=="BUNDLE_PATHS" for t in node.targets):
+        print("\n".join(ast.literal_eval(node.value)))
+PY
+)
+  SENTINEL_PATHS=$(awk '/^on:/{on=1} on&&/^  push:/{p=1} p&&/^    paths:/{q=1;next} q&&/^      - /{gsub(/^      - "?|"?$/,"");print;next} q&&!/^      - /{exit}' "$SENTINEL" | grep -v 'frontend-live-sentinel.yml')
+  MISMATCH=
+  while IFS= read -r pat; do
+    [ -n "$pat" ] || continue
+    # A directory (no extension, or a `/**` glob) is exercised by a file inside it.
+    sample=${pat%/\*\*}; sample=${sample%/}; case "$sample" in *.*) ;; *) sample="$sample/x" ;; esac
+    printf '%s\n' "$sample" | grep -qE "$FRONTEND_RE_LIVE" || MISMATCH="$MISMATCH $pat"
+  done <<EOF_PATHS
+$ORGAN_PATHS
+$SENTINEL_PATHS
+EOF_PATHS
+  if [ -z "$MISMATCH" ]; then
+    PASS=$((PASS+1)); printf '  ok    %-58s %s\n' "FRONTEND_RE covers BUNDLE_PATHS + sentinel paths" "$(printf '%s\n' "$ORGAN_PATHS" "$SENTINEL_PATHS" | grep -c .) paths"
+  else
+    FAIL=$((FAIL+1)); printf '  FAIL  %-58s not matched:%s\n' "FRONTEND_RE covers BUNDLE_PATHS + sentinel paths" "$MISMATCH"
+  fi
+else
+  printf '  skip  %-58s %s\n' "FRONTEND_RE covers BUNDLE_PATHS + sentinel paths" "organ/sentinel not present beside this copy"
 fi
 
 run_pointer() { # run_pointer <expected: BUILD|SKIP> <label> <script-body|MISSING>
