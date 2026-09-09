@@ -48,6 +48,59 @@ CONTRACT = (
     "and deadline; do not reset those budgets when replacing a child."
 )
 
+REPORTING_TOOLS = ("SendMessage", "TaskStop")
+
+
+def reporting_exempt(payload: dict[str, Any]) -> bool:
+    """Tools a capped child may still call, because they ARE the return path.
+
+    SendMessage and TaskStop were already exempt; ToolSearch was not. In a
+    harness that defers tool schemas, a deferred SendMessage is a NAME with no
+    parameters until ToolSearch fetches its definition, so denying ToolSearch
+    denied the report itself while the deny text told the child to report. The
+    exemption is narrowed BY THE QUERY whenever the hook can read one: only a
+    search naming SendMessage or TaskStop passes, and an unrelated search stays
+    denied like any other tool. When the payload carries no readable query --
+    a payload shape this hook does not own -- ToolSearch is exempted AS A WHOLE
+    rather than trapping the child in an unreportable cap; the denial counter
+    and the ledger still record that the cap fired.
+    """
+    tool = payload.get("tool_name")
+    if tool in REPORTING_TOOLS:
+        return True
+    if tool != "ToolSearch":
+        return False
+    query = (payload.get("tool_input") or {}).get("query")
+    if not isinstance(query, str) or not query.strip():
+        return True
+    return any(name.lower() in query.lower() for name in REPORTING_TOOLS)
+
+
+def budget_denial(state: dict[str, Any], mandate: str) -> str:
+    """Name the counter that fired, never only the contract.
+
+    The old denial recited CONTRACT and stopped: the child learned it was over
+    budget without learning WHICH budget, by how much, or under whose mandate,
+    so it could not report the number upward and the transcript could not be
+    audited after the fact. Every field here is one the coordinator asks for.
+    """
+    return (
+        "Child context budget reached: counter="
+        + str(state.get("budget_reason") or "UNKNOWN")
+        + " used="
+        + str(state.get("budget_used", "UNKNOWN"))
+        + " limit="
+        + str(state.get("budget_limit", "UNKNOWN"))
+        + " role="
+        + str(state.get("role") or "builder")
+        + " mandate="
+        + (mandate or "UNKNOWN")
+        + ". Required next action: send the checkpoint and the remaining work to the "
+        "parent with SendMessage, then TaskStop; ToolSearch stays available only to "
+        "load those two schemas. No other tool is granted. "
+        + CONTRACT
+    )
+
 
 def child_identity(payload: dict[str, Any]) -> tuple[str, str] | None:
     # Same detection as orchestrate_gate, but Stop's transcript is explicitly the parent.
@@ -128,9 +181,10 @@ def context_guard(payload: dict[str, Any], guard: dict[str, Any]) -> int | None:
     key, transcript = identity
     import child_context
 
+    mandate = mandate_id(payload, guard)
     lease_error = budget_observe(
         budget_dir(),
-        mandate_id(payload, guard),
+        mandate,
         str(payload.get("agent_id") or "UNKNOWN"),
         transcript=transcript or None,
     )
@@ -138,7 +192,7 @@ def context_guard(payload: dict[str, Any], guard: dict[str, Any]) -> int | None:
         sys.stderr.write(
             lease_error + "; return an incomplete checkpoint to the parent.\n"
         )
-        return 0 if payload.get("tool_name") in ("SendMessage", "TaskStop") else 2
+        return 0 if reporting_exempt(payload) else 2
     if payload.get("tool_name") in ("Agent", "Task"):
         sys.stderr.write(
             "Child delegation depth reached. Return remaining work to the parent.\n"
@@ -187,18 +241,33 @@ def context_guard(payload: dict[str, Any], guard: dict[str, Any]) -> int | None:
             else child_context.FALLBACK_TOKENS
         )
         over = state["used"] is not None and state["used"] >= state["token_limit"]
-        state["time_budget_exceeded"] = (
+        # Child ACTIVE TIME, measured and reported here. It is not the mission
+        # deadline: `mandate_budget` owns that one, and conflating them would let
+        # a fresh child inherit an expired wall or a stale mandate outlive itself.
+        elapsed = (
             state.get("budget_elapsed", 0) + time.time() - state["budget_started_at"]
-            >= child_context.MAX_SECONDS
         )
+        state["time_budget_exceeded"] = elapsed >= child_context.MAX_SECONDS
         if state["pretool_count"] > child_context.MAX_TOOL_CALLS:
-            state["budget_reason"] = "tool_calls"
+            state.update(
+                budget_reason="tool_calls",
+                budget_used=state["pretool_count"],
+                budget_limit=child_context.MAX_TOOL_CALLS,
+            )
             over = True
         elif state["time_budget_exceeded"]:
-            state["budget_reason"] = "elapsed_time"
+            state.update(
+                budget_reason="elapsed_time",
+                budget_used=round(elapsed),
+                budget_limit=child_context.MAX_SECONDS,
+            )
             over = True
         elif over:
-            state["budget_reason"] = "context_tokens"
+            state.update(
+                budget_reason="context_tokens",
+                budget_used=state["used"],
+                budget_limit=state["token_limit"],
+            )
         if over:
             state.update(
                 status="needs_attention",
@@ -207,17 +276,9 @@ def context_guard(payload: dict[str, Any], guard: dict[str, Any]) -> int | None:
             )
             if strict:
                 state["return_required"] = True
-        if (
-            strict
-            and state.get("return_required")
-            and tool not in ("SendMessage", "TaskStop")
-        ):
+        if strict and state.get("return_required") and not reporting_exempt(payload):
             state["denials"] = state.get("denials", 0) + 1
-            sys.stderr.write(
-                "Child context budget reached. Return a checkpoint and remaining work to the parent. "
-                + CONTRACT
-                + "\n"
-            )
+            sys.stderr.write(budget_denial(state, mandate) + "\n")
             return 2  # Repeated denials never grant normal tools.
         warnings = []
         if state["measurement"] == "UNKNOWN":

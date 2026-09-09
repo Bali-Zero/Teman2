@@ -455,8 +455,26 @@ def native_child(payload: dict[str, Any]) -> tuple[str, str, str] | None:
     return None
 
 
+def threshold(policy: dict[str, Any], role: str) -> float:
+    """The ONE validated threshold lookup, parent seat and native child alike.
+
+    The native child hardcoded 0.4 while the parent read `thresholds` from the
+    policy, so raising the wall on the three hosts moved the parent and left
+    every child it dispatched at the old number -- a policy that was law for one
+    topology only, and invisible because both numbers were plausible. A role the
+    policy does not declare still falls back to 0.4: the fallback stays the
+    conservative one, and `install.py` is what declares `dux`.
+    """
+    fraction = policy.get("thresholds", {}).get(role, 0.4)
+    if not isinstance(fraction, (float, int)) or not 0 < fraction < 1:
+        raise ValueError("invalid threshold")
+    return float(fraction)
+
+
 def child_hook(
-    payload: dict[str, Any], identity: tuple[str, str, str]
+    payload: dict[str, Any],
+    identity: tuple[str, str, str],
+    policy: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     sid, parent, transcript = identity
     event = payload["hook_event_name"]
@@ -533,7 +551,9 @@ def child_hook(
         state["measurement"] = (
             "observed" if state.get("window") and state.get("observed") else "UNKNOWN"
         )
-        if state.get("used", 0) >= state.get("window", float("inf")) * 0.4:
+        if state.get("used", 0) >= state.get("window", float("inf")) * threshold(
+            policy or {}, state["role"]
+        ):
             state["return_required"] = True
         message = (
             "Native child "
@@ -597,7 +617,7 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
         return {}
     child = native_child(payload)
     if child:
-        return child_hook(payload, child)
+        return child_hook(payload, child, policy)
     source_id = os.environ.get("CODEX_CONTEXT_FROM_SESSION")
     if (
         source_id
@@ -724,9 +744,7 @@ def hook(payload: dict[str, Any]) -> dict[str, Any]:
             state.pop("rollover", None)
             save(path, state)
             return context_output(event, instructions(sid))
-        fraction = policy.get("thresholds", {}).get(state.get("role", "builder"), 0.4)
-        if not isinstance(fraction, (float, int)) or not 0 < fraction < 1:
-            raise ValueError("invalid threshold")
+        fraction = threshold(policy, state.get("role", "builder"))
         over = state.get("used", 0) >= state.get("window", float("inf")) * fraction
         over = over and state.get("observed") != state.get("ignore_observed")
         over = over and not state.get("threshold_released")
