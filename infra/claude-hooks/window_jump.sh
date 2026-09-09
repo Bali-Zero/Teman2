@@ -12,18 +12,33 @@
 # two SIGINTs ended it — a SIGINT×2 fallback on the old claude PID (the guard's
 # own parent, carried in the jump file as `from_pid`).
 #
+# v2 (Ruling Zero 2026-09-09 19:40, after the manual recovery of session
+# a60e0124): the old gesture pressed ⌘N, slept a FIXED 1.2s and read
+# `name of window 1`. Ghostty on Pro took longer than that, so the script
+# declared "front window changed" and typed NOTHING although the window HAD
+# opened — a human then had to type `nz-jump <sid>` by hand. The fix is to stop
+# betting on a delay: SNAPSHOT every window name BEFORE ⌘N, then poll every
+# 0.3s up to JUMP_POLL_MAX_S until either a name appears that was not in the
+# snapshot, or the front name changes. That window — by name, via AXRaise — is
+# the one that gets `nz-jump`. Titles collide (Claude Code sets the terminal
+# title to the session title, so two sessions are both "Interactive" with only
+# a glyph differing), so the match is on the EXACT string and both window lists
+# are logged: a miss must be diagnosable from jump.log alone.
+#
 # Contract: $1 = from_session. Reads ~/.organism/context-guard/pending-jump-<from>.json
 # (per-session file: two windows jumping at once never overwrite each other).
-#   1. remember the OLD window = the front Ghostty window NOW (Claude Code sets
-#      the terminal title to the session title, so the name is a handle);
-#   2. ⌘N; verify a NEW window is front (name changed); type `nz-jump <from>`,
-#      Enter — nz-jump starts a fresh claude; the SessionStart hook
-#      context_jump_resume.py injects the handoff and stamps `to_session`;
-#   3. wait (≤ JUMP_WAIT_S) for `to_session`; then raise the OLD window by name,
-#      verify it is front, type `/exit`; wait ≤ EXIT_WAIT_S for from_pid to die;
-#      if still alive: kill -INT ×2. Nothing is typed into a window that is not
-#      verified front — a wrong keystroke in Zero's other window is worse than
-#      an idle one; every miss is logged, never retried blind.
+#   1. snapshot the window names NOW; the front one is the OLD window;
+#   2. ⌘N; poll for a NEW window (name not in the snapshot, else a changed
+#      front name); raise it by name and type `nz-jump <from>`, Enter — nz-jump
+#      starts a fresh claude; the SessionStart hook context_jump_resume.py
+#      injects the handoff and stamps `to_session`;
+#   3. wait (≤ JUMP_WAIT_S, polled every 1s) for `to_session`; then raise the
+#      OLD window by name, verify it is front, type `/exit`; wait ≤ EXIT_WAIT_S
+#      for from_pid to die; if still alive: kill -INT ×2.
+# Nothing is ever typed into a window that was not identified as the new one —
+# a wrong keystroke in Zero's other window is worse than an idle one; every
+# miss is logged with both window lists, never retried blind (the RETRY, capped
+# at 3 gestures per session, belongs to context_window_guard.py).
 # Kill switch: CONTEXT_JUMP_OFF=1.
 set -u
 FROM="${1:-}"
@@ -31,13 +46,18 @@ STATE_DIR="$HOME/.organism/context-guard"
 PENDING="$STATE_DIR/pending-jump-$FROM.json"
 LOG="$STATE_DIR/jump.log"
 JUMP_WAIT_S="${JUMP_WAIT_S:-120}"
+JUMP_POLL_MAX_S="${JUMP_POLL_MAX_S:-8}"
 EXIT_WAIT_S="${EXIT_WAIT_S:-20}"
 mkdir -p "$STATE_DIR"
 log() { echo "[$(date '+%F %T')] [$FROM] $*" >> "$LOG"; }
 jget() { python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get(sys.argv[2]) or '')" "$PENDING" "$1" 2>/dev/null; }
+flat() { printf '%s' "$1" | tr '\n' '|'; }
 
 [ "${CONTEXT_JUMP_OFF:-0}" = "1" ] && { log "disabled by CONTEXT_JUMP_OFF"; exit 0; }
-[ "$(uname)" = "Darwin" ] || { log "not macOS: no window gesture"; exit 0; }
+# Capability, not platform: the gesture needs osascript. (uname=Darwin was the
+# old test — it is true on a Mac with no GUI seat and false on the shimmed
+# osascript the gesture test drives, so the honest question is the binary.)
+command -v osascript >/dev/null 2>&1 || { log "no osascript on PATH: no window gesture"; exit 0; }
 [ -n "$FROM" ] && [ -f "$PENDING" ] || { log "no pending-jump file for '$FROM'"; exit 1; }
 FROM_PID=$(jget from_pid)
 
@@ -51,10 +71,15 @@ on run argv
   tell application "System Events" to tell process "ghostty"
     if act is "front-name" then
       return name of window 1
-    else if act is "new-window" then
+    else if act is "window-names" then
+      -- front window first (window 1 is the front one), one name per line
+      set AppleScript's text item delimiters to linefeed
+      set out to (name of every window) as text
+      set AppleScript's text item delimiters to ""
+      return out
+    else if act is "cmd-n" then
       keystroke "n" using command down
-      delay 1.2
-      return name of window 1
+      return "ok"
     else if act is "type-here" then
       if name of window 1 is not (item 2 of argv) then error "front window changed"
       keystroke (item 3 of argv)
@@ -75,20 +100,42 @@ on run argv
 end run
 EOF
 
-OLD_NAME=$(osascript "$AS" front-name 2>/dev/null || true)
-log "old window: '${OLD_NAME:-?}' pid=${FROM_PID:-?}"
+BEFORE=$(osascript "$AS" window-names 2>/dev/null || true)
+OLD_NAME=$(printf '%s\n' "$BEFORE" | head -1)
+log "old window: '${OLD_NAME:-?}' pid=${FROM_PID:-?} · windows before: [$(flat "$BEFORE")]"
 
-NEW_NAME=$(osascript "$AS" new-window 2>/dev/null || true)
-if [ -z "$NEW_NAME" ] || [ "$NEW_NAME" = "$OLD_NAME" ]; then
-    log "⌘N did not bring a new window to front (front='${NEW_NAME:-?}'): nothing typed"; exit 1
-fi
-osascript "$AS" type-here "$NEW_NAME" "nz-jump $FROM" >/dev/null 2>&1 || { log "front window changed before typing (expected '$NEW_NAME'): nothing typed"; exit 1; }
+osascript "$AS" cmd-n >/dev/null 2>&1 || { log "⌘N could not be sent (Accessibility?): nothing typed"; exit 1; }
+
+# Poll instead of betting on a delay (v2): a name absent from the snapshot wins,
+# a changed front name is the fallback signal.
+NEW_NAME=""
+AFTER="$BEFORE"
+POLL_DEADLINE=$(( $(date +%s) + JUMP_POLL_MAX_S ))
+while :; do
+    sleep 0.3
+    AFTER=$(osascript "$AS" window-names 2>/dev/null || true)
+    while IFS= read -r n; do
+        [ -z "$n" ] && continue
+        printf '%s\n' "$BEFORE" | grep -Fxq -- "$n" || { NEW_NAME="$n"; break; }
+    done <<< "$AFTER"
+    if [ -z "$NEW_NAME" ]; then
+        FRONT=$(printf '%s\n' "$AFTER" | head -1)
+        [ -n "$FRONT" ] && [ "$FRONT" != "$OLD_NAME" ] && NEW_NAME="$FRONT"
+    fi
+    [ -n "$NEW_NAME" ] && break
+    [ "$(date +%s)" -ge "$POLL_DEADLINE" ] && break
+done
+log "windows after: [$(flat "$AFTER")] · new='${NEW_NAME:-}'"
+
+[ -n "$NEW_NAME" ] || { log "no new window within ${JUMP_POLL_MAX_S}s of ⌘N: nothing typed"; exit 1; }
+osascript "$AS" raise-type "$NEW_NAME" "nz-jump $FROM" >/dev/null 2>&1 \
+    || { log "new window '$NEW_NAME' could not be raised or front changed under it: nothing typed"; exit 1; }
 log "new window '$NEW_NAME' opened, 'nz-jump $FROM' typed"
 
 deadline=$(( $(date +%s) + JUMP_WAIT_S ))
 TO=""
 while [ "$(date +%s)" -lt "$deadline" ]; do
-    TO=$(jget to_session); [ -n "$TO" ] && break; sleep 3
+    TO=$(jget to_session); [ -n "$TO" ] && break; sleep 1
 done
 [ -n "$TO" ] || { log "new session did not report within ${JUMP_WAIT_S}s: old window left open"; exit 2; }
 log "new session $TO is up"
