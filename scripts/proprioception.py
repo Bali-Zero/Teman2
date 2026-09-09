@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -79,6 +80,7 @@ KNOWN_BOUNDARY_CLASSES = [
     "home<->home",              # the SAME control-plane file on two machines (global CLAUDE.md, 2026-08-31)
     "door<->door",              # the SAME rule in each CLI's auto-loaded door file (2026-08-31)
     "process<->cwd",            # a headless claude CLI process vs. its own working dir / worktree registration (2026-09-01)
+    "model<->calibration",      # configured child model vs. its seat-local native calibration
 ]
 
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
@@ -155,7 +157,7 @@ def redact(line: str) -> str:
 
 
 def verdict(pid: str, boundary: str, bclass: str, status: str, severity: str, n: int,
-            evidence: list[str], fix_hint: str, t0: float) -> dict:
+            evidence: list[str], fix_hint: str, t0: float, evidence_cap: int = 5) -> dict:
     return {
         "id": pid,
         "boundary": boundary,
@@ -163,7 +165,7 @@ def verdict(pid: str, boundary: str, bclass: str, status: str, severity: str, n:
         "status": status,
         "severity": severity,
         "n_findings": n,
-        "evidence": [redact(e)[:200] for e in evidence[:5]],
+        "evidence": [redact(e)[:200] for e in evidence[:evidence_cap]],
         "fix_hint": fix_hint,
         "duration_ms": int((time.monotonic() - t0) * 1000),
     }
@@ -408,7 +410,7 @@ def probe_git_alignment(root: Path, args: dict, timeout: int) -> tuple[str, int,
     rc, out, _ = sh(["git", "rev-list", "--count", "HEAD..origin/main"], timeout=15, cwd=root)
     behind = int(out.strip()) if rc == 0 and out.strip().isdigit() else -1
     rc, out, _ = sh(["git", "status", "--porcelain"], timeout=15, cwd=root)
-    dirty = len([l for l in out.splitlines() if l.strip()]) if rc == 0 else -1
+    dirty = len([line for line in out.splitlines() if line.strip()]) if rc == 0 else -1
     ev.append(f"main checkout: {behind} behind origin/main, {dirty} dirty entries")
     if behind > int(args.get("behind_warn", 10)):
         findings += 1
@@ -437,11 +439,11 @@ def probe_produced_promoted(root: Path, args: dict, timeout: int) -> tuple[str, 
         if rc != 0:
             ev.append(f"{label}: status failed")
             continue
-        stranded = [l for l in out.splitlines() if l.strip()]
+        stranded = [line for line in out.splitlines() if line.strip()]
         # committed locally but never pushed (still invisible to the fleet)
         rc, out, _ = sh(["git", "log", "--oneline", "origin/main..HEAD", "--", glob],
                         timeout=15, cwd=root)
-        unpushed = len([l for l in out.splitlines() if l.strip()]) if rc == 0 else 0
+        unpushed = len([line for line in out.splitlines() if line.strip()]) if rc == 0 else 0
         if stranded or unpushed:
             findings += len(stranded) + unpushed
             parts = []
@@ -1697,6 +1699,147 @@ def probe_headless_zombies(root: Path, args: dict, timeout: int) -> tuple[str, i
     return classify_headless_zombies(processes, registered)
 
 
+_CALIBRATION_KEYS = {"model", "version", "window", "scope", "observed_at", "source", "session_id"}
+
+
+def _child_context(root: Path) -> object | None:
+    """Load the writer's identity helpers without copying their key scheme."""
+    path = root / "infra" / "claude-hooks" / "child_context.py"
+    try:
+        spec = importlib.util.spec_from_file_location("_child_context_receptor", path)
+        if spec is None or spec.loader is None:
+            return None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+    except Exception:
+        return None
+
+
+def _calibration_profiles(args: dict) -> list[Path]:
+    if "profiles" in args:  # test seam; the registry deliberately has no machine paths.
+        return [Path(p) for p in args["profiles"]]
+    home = Path.home()
+    primary = Path(os.environ.get("CLAUDE_CONFIG_DIR") or home / ".claude")
+    candidates = [primary, home / ".claude", home / ".claude-acct2"]
+    return list(dict.fromkeys(candidates))
+
+
+def _profile_models(profile: Path, declared: list[str]) -> tuple[list[str] | None, str | None]:
+    models = list(declared)
+    for name in ("settings.json", "settings.local.json"):
+        path = profile / name
+        if not path.exists():
+            continue
+        try:
+            value = json.loads(path.read_text())
+        except (OSError, ValueError):
+            return None, f"{name} unreadable"
+        model = value.get("model") if isinstance(value, dict) else None
+        if model is not None and not isinstance(model, str):
+            return None, f"{name} model is not a string"
+        if isinstance(model, str):
+            models.append(model)
+    return list(dict.fromkeys(models)), None
+
+
+def _calibration_identity(context: object, profile: Path, root: Path) -> tuple[str | None, Path | None]:
+    old = os.environ.get("CLAUDE_CONFIG_DIR")
+    try:
+        os.environ["CLAUDE_CONFIG_DIR"] = str(profile)
+        value = context.scope(str(root))
+        return (value, context.scoped_path("_", "_", value).parent) if isinstance(value, str) else (None, None)
+    except Exception:
+        return None, None
+    finally:
+        if old is None:
+            os.environ.pop("CLAUDE_CONFIG_DIR", None)
+        else:
+            os.environ["CLAUDE_CONFIG_DIR"] = old
+
+
+def _claude_version(timeout: int) -> str | None:
+    try:
+        rc, out, _ = sh(["claude", "--version"], timeout=timeout)
+    except Exception:
+        return None
+    match = re.search(r"\d+(?:\.\d+)+", out) if rc == 0 else None
+    return match.group(0) if match else None
+
+
+def _calibration_status(
+    records: list[dict], unparseable: bool, model: str, version: str,
+    fingerprint: str, ttl: int,
+) -> str:
+    alternate = expired = other_scope = malformed = False
+    for record in records:
+        if record.get("model") != model:
+            continue  # retired models, even malformed, are not configured consumers.
+        if set(record) != _CALIBRATION_KEYS or not all(isinstance(record.get(k), str) for k in ("model", "version", "scope", "source", "session_id")):
+            malformed = True
+            continue
+        if not isinstance(record["observed_at"], (int, float)) or isinstance(record["observed_at"], bool):
+            malformed = True
+            continue
+        other_scope = other_scope or record["scope"] != fingerprint
+        if record["scope"] == fingerprint and record["version"] != version:
+            alternate = True
+        if record["version"] == version and record["scope"] == fingerprint:
+            window = record["window"]
+            if type(window) is not int or not 16000 <= window <= 2000000:
+                malformed = True
+                continue
+            age = time.time() - record["observed_at"]
+            if 0 <= age <= ttl:
+                return "VALID"
+            expired = True
+    if malformed or unparseable:
+        return "UNKNOWN"
+    if alternate:
+        return "VERSION-MISMATCH"
+    if expired:
+        return "EXPIRED"
+    return "UNKNOWN" if other_scope else "MISSING"
+
+
+def probe_child_calibration(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
+    """Read each configured seat's native child-capacity receipts; never repair them."""
+    context = _child_context(root)
+    if context is None:
+        return UNPROBEABLE, 0, ["child_context.py unavailable; calibration status UNKNOWN"]
+    version = _claude_version(timeout)
+    evidence, statuses = [], []
+    for profile in _calibration_profiles(args):
+        models, model_error = _profile_models(profile, list(args.get("models", [])))
+        fingerprint, directory = _calibration_identity(context, profile, root) if models else (None, None)
+        records, unparseable, dir_bad = [], False, False
+        try:
+            if directory is None or not profile.is_dir():
+                raise OSError("profile or capacities directory unavailable")
+            for path in directory.iterdir():
+                if path.suffix != ".json":
+                    continue
+                try:
+                    value = json.loads(path.read_text())
+                except (OSError, ValueError):
+                    unparseable = True
+                    continue
+                if isinstance(value, dict):
+                    records.append(value)
+                else:
+                    unparseable = True
+        except OSError:
+            records, dir_bad = [], True
+        for model in models or list(args.get("models", [])):
+            status = "UNKNOWN" if (version is None or fingerprint is None or model_error or dir_bad) else _calibration_status(records, unparseable, model, version, fingerprint, context.TTL)
+            statuses.append(status)
+            evidence.append(f"{machine_label()} profile={profile.name} model={model} status={status}")
+    if not statuses:
+        return UNPROBEABLE, 0, ["no configured child models; calibration status UNKNOWN"]
+    findings = sum(status != "VALID" for status in statuses)
+    return (UNPROBEABLE if "UNKNOWN" in statuses else DIVERGED if findings else RECONCILED), findings, evidence
+
+
 BUILTINS = {
     "git_alignment": probe_git_alignment,
     "executed_code_currency": probe_executed_code_currency,
@@ -1707,6 +1850,7 @@ BUILTINS = {
     "canon_blocks": probe_canon_blocks,
     "door_canon_parity": probe_door_canon_parity,
     "headless_zombies": probe_headless_zombies,
+    "child_calibration": probe_child_calibration,
 }
 
 
@@ -1996,6 +2140,14 @@ DEFAULT_REGISTRY: list[dict] = [
             {"glob": "~/.organism/arsenal/last.json", "max_age_h": 26, "label": "arsenal seats probe (healer-armed)", "machines": ["mini", "pro"]},
         ]},
         "fix_hint": "a stale guardian: run it by hand, read ITS log, then fix its scheduler",
+    },
+    {
+        "id": "child_calibration", "type": "builtin", "target": "child_calibration",
+        "class": "model<->calibration",
+        "boundary": "configured child models <-> ~/.claude/state/child-context-capacities/",
+        "machines": ["all"], "tags": ["fast"], "timeout_sec": 15, "severity": "P3",
+        "args": {"models": ["claude-haiku-4-5-20251001", "claude-sonnet-5", "claude-opus-5"]},
+        "fix_hint": "re-run the owned native calibration probe for the named model/profile",
     },
     {
         # The detector was written, tested and CI-verified — and then run by nobody.
@@ -2453,7 +2605,8 @@ def main() -> int:
         elif entry["id"] == "guardian_freshness":
             fix_hint = _guardian_freshness_remedy(entry, ev)
         results.append(verdict(entry["id"], entry["boundary"], entry["class"], status,
-                               entry["severity"], n, ev, fix_hint, t0))
+                               entry["severity"], n, ev, fix_hint, t0,
+                               len(ev) if entry["id"] == "child_calibration" else 5))
 
     if args.fleet:
         self_path = Path(__file__) if "__file__" in globals() and Path(__file__).exists() else None
