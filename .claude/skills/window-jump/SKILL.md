@@ -36,7 +36,12 @@ Ghostty, solo macOS). Dettaglio storico:
 5. **`nz-jump`** (`~/.claude/scripts/nz-jump`) entra nel `cwd` vecchio e lancia un `claude`
    **fresco** — mai `--resume/--continue/--fork-session`, che riporterebbero il contesto.
 6. **`context_jump_resume.py`** (SessionStart della nuova finestra) inietta mandato +
-   handoff come `additionalContext` e timbra `to_session` nel file pending.
+   handoff come `additionalContext` e timbra `to_session` nel file pending — **solo** nella
+   finestra aperta PER quel salto: `nz-jump` (e l'hop del wrapper cascade) esportano
+   `NZ_JUMP_FROM=<sid>`, e il hook legge solo quel file. Un `claude` aperto a mano, senza
+   `NZ_JUMP_FROM`, non è mai una continuazione: resta muto anche con un pending fresco nello
+   stesso cwd (fino al 2026-09-09 pescava «il più fresco non reclamato» e per 15 minuti dopo
+   ogni guard una finestra di Zero partiva da sola sul mandato vecchio).
 7. `window_jump.sh` vede `to_session` (poll 1s, max `JUMP_WAIT_S`) e chiude la vecchia:
    `/exit` nel terminale vecchio **per id** (rotta native) o rialzando la finestra per nome
    (rotta keystroke); se il PID sopravvive, `SIGINT` ×2 su `from_pid`; e solo quando quel
