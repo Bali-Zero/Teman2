@@ -234,8 +234,14 @@ git -C "$WORK" reset -q --hard "$MAIN_TIP"
 
 # The live sha is not in the clone (Vercel's clone is shallow). It is fetched by sha from the
 # repository URL — the object lives in upstream on a branch this clone never fetched.
+# `-b main` is load-bearing: the bare upstream was `git init`ed with the host's default branch
+# name as HEAD, which is `master` on a stock CI runner, so an unqualified clone checks out an
+# unborn branch, the "live" commit is born without the frontend base file, and the diff against
+# it reads a frontend DELETION -> BUILD. Measured 2026-09-10: green on a Mac with
+# init.defaultBranch=main, red on ubuntu-latest, for exactly that reason.
 SIDE="$ROOT/side"
-git clone -q "$UPSTREAM" "$SIDE"
+git clone -q -b main "$UPSTREAM" "$SIDE"
+[ -f "$SIDE/apps/mouth/app/page.tsx" ] || { FAIL=$((FAIL+1)); printf '  FAIL  %-58s\n' "fixture: side clone must carry the frontend base"; }
 git -C "$SIDE" config user.email t@example.com
 git -C "$SIDE" config user.name t
 git -C "$SIDE" checkout -q -b live-only
