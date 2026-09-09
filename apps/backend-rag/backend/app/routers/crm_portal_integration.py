@@ -25,6 +25,7 @@ from backend.app.utils.crm_utils import verify_client_access
 from backend.app.utils.logging_utils import get_logger
 from backend.app.utils.service_accounts import is_human_team_member
 from backend.services.portal._rbac import ClientContext
+from backend.services.portal.portal_profile_service import PLACEHOLDER_PIN_HASH
 
 if TYPE_CHECKING:
     from backend.services.portal import InviteService, PortalService
@@ -163,17 +164,38 @@ async def get_portal_status(
     async with db_pool.acquire() as conn:
         await verify_client_access(client_id, current_user, conn, allow_assigned=True)
 
-        # Check for portal user
+        # Check for portal user.
+        #
+        # `portal_access = true` alone is NOT portal access — superscar #2,
+        # Esiste != Armato. `PortalProfileService.ensure_portal_profile()` runs
+        # as a background task on every client creation that carries an email
+        # and inserts the row with `portal_access = true` and
+        # PLACEHOLDER_PIN_HASH, a hash that no PIN can ever match. Measured on
+        # production 2026-09-10: of 532 active client rows with
+        # `portal_access = true`, **448 carry that placeholder and can never log
+        # in** — 84% — and only 9 have ever logged in at all. Without the
+        # pin_hash predicate this endpoint answers "has portal access" for all
+        # 448, so the workspace shows "Portal active" for a client who was never
+        # invited and hides the control that would invite them.
+        #
+        # Compared by EQUALITY against the constant, not by a substring of it
+        # (superscar #3): a guard on an entity is an entity test.
+        #
+        # `last_login` is also read from the real column here. It used to be
+        # `tm.created_at as last_login`, so every "last signed in" the CRM
+        # displayed was in fact the date the record was created.
         portal_user = await conn.fetchrow(
             """
-            SELECT tm.id, tm.email, tm.created_at as last_login
+            SELECT tm.id, tm.email, tm.last_login
             FROM team_members tm
             WHERE tm.linked_client_id = $1
               AND tm.role = 'client'
               AND tm.active = true
               AND tm.portal_access = true
+              AND tm.pin_hash IS DISTINCT FROM $2
             """,
             client_id,
+            PLACEHOLDER_PIN_HASH,
         )
 
         # Check for pending invitation
