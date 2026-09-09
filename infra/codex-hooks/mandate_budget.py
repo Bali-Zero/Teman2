@@ -32,6 +32,39 @@ ACKNOWLEDGE_SECONDS = 240
 ACTIVE_TTL_SECONDS = 1800
 
 
+def _attend(state: dict[str, Any], reason: str, key: str) -> None:
+    """Raise the live attention flag AND keep the history.
+
+    Every writer went through `state["status"] = "needs_attention"` directly and
+    nothing ever cleared it, so a child that later returned cleanly left its alarm
+    standing and the attention report accumulated resolved alarms — the same
+    signal pollution R1 was written to stop, one level up. The live flag is now
+    derived from a KEY that a later contradicting observation can supersede; the
+    ledger keeps every raise in `attention_history` regardless.
+    """
+    state["status"] = "needs_attention"
+    state["reason"] = reason
+    state["attention_key"] = key
+    state.setdefault("attention_history", []).append(
+        {"reason": reason, "key": key, "at": time.time()}
+    )
+
+
+def _resolve(state: dict[str, Any], *keys: str) -> None:
+    """Supersede the live flag when an observation contradicts the raise.
+
+    Only the named keys are cleared: an alarm this observation says nothing about
+    must survive. The history is never rewritten — the alarm happened.
+    """
+    if state.get("status") == "needs_attention" and state.get("attention_key") in keys:
+        state.pop("status", None)
+        state.pop("reason", None)
+        resolved = state.pop("attention_key", None)
+        state.setdefault("attention_history", []).append(
+            {"resolved": resolved, "at": time.time()}
+        )
+
+
 @contextmanager
 def ledger(root: Path, mandate: str) -> Iterator[dict[str, Any]]:
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -74,7 +107,11 @@ def reserve(
         )
         state["max_active"] = limits.get("max_active", 3)
         if not tool_id:
-            state["status"] = "needs_attention"
+            _attend(
+                state,
+                "Native dispatch identity is UNKNOWN; return to the coordinator.",
+                "dispatch_identity_unknown",
+            )
             return "Native dispatch identity is UNKNOWN; return to the coordinator."
         key = hashlib.sha256(tool_id.encode()).hexdigest()
         if key in reservations:
@@ -88,6 +125,10 @@ def reserve(
                 active_ttl = limits.get("active_ttl", ACTIVE_TTL_SECONDS)
                 heartbeat = max(row.get("heartbeat", row["created"]), row["created"])
                 if time.time() - heartbeat < active_ttl:
+                    # A row heartbeating inside its TTL contradicts an earlier
+                    # "liveness UNKNOWN" on this ledger: the slot is demonstrably
+                    # alive, so the alarm must not outlive the doubt.
+                    _resolve(state, "liveness_unknown")
                     continue
                 child_row = state.get("children", {}).get(row.get("child"), {})
                 try:
@@ -95,17 +136,19 @@ def reserve(
                     modified = transcript.stat().st_mtime
                 except (KeyError, OSError):
                     # Missing evidence cannot establish transcript silence.
-                    state.update(
-                        status="needs_attention",
-                        reason="Child transcript liveness UNKNOWN; slot retained",
+                    _attend(
+                        state,
+                        "Child transcript liveness UNKNOWN; slot retained",
+                        "liveness_unknown",
                     )
                     continue
                 last_activity = max(modified, heartbeat)
                 if time.time() - last_activity >= active_ttl:
                     row.update(status="suspect_zombie", suspected_at=time.time())
-                    state.update(
-                        status="needs_attention",
-                        reason="Child transcript silent; suspect_zombie slot requires reconciliation",
+                    _attend(
+                        state,
+                        "Child transcript silent; suspect_zombie slot requires reconciliation",
+                        "suspect_zombie",
                     )
         child = None
         if target:
@@ -130,7 +173,7 @@ def reserve(
                 )
             )
             if child is None:
-                state.update(status="needs_attention", reason="Resume target UNKNOWN")
+                _attend(state, "Resume target UNKNOWN", "resume_target_unknown")
         active = {
             r.get("child", key)
             for key, r in reservations.items()
@@ -140,7 +183,13 @@ def reserve(
         strict = limits.get("strict", True)
         if time.time() >= state["deadline"] and strict:
             reason = "Mandate deadline reached"
-        elif depth > limits.get("max_depth", 1):
+        elif depth > limits.get("max_depth", 1) and strict:
+            # Gated like its four siblings. It was the only limit in this chain
+            # enforced under interactive_observation too — an asymmetry nobody
+            # chose: the structural depth rule is already enforced by the adapter
+            # ABOVE this ledger, so an ungated copy here duplicated a decision it
+            # does not own and would have denied an interactive caller that the
+            # other four limits let through.
             reason = "Mandate child depth reached"
         elif len(reservations) >= limits.get("max_attempts", 24) and strict:
             reason = "Mandate total dispatch attempts reached"
@@ -151,7 +200,7 @@ def reserve(
         ):
             reason = "Mandate concurrent dispatch limit reached"
         if reason:
-            state.update(status="needs_attention", reason=reason)
+            _attend(state, reason, "mandate_limit")
             return (
                 reason
                 + "; return the remaining work. Do not reset the budget with a replacement."
@@ -170,9 +219,11 @@ def reserve(
             or len(reservations) > limits.get("max_attempts", 24)
             or (len(active) >= limits.get("max_active", 3) and child not in active)
         ):
-            state.update(
-                status="needs_attention",
-                reason="Interactive session counters exceed one mandate budget; declare an explicit autonomous mandate for enforced total limits.",
+            _attend(
+                state,
+                "Interactive session counters exceed one mandate budget; declare an "
+                "explicit autonomous mandate for enforced total limits.",
+                "interactive_counters",
             )
     return None
 
@@ -241,13 +292,18 @@ def observe(
                     and child not in active
                     and len(active) >= state.get("max_active", 3)
                 ):
-                    state.update(
-                        status="needs_attention",
-                        reason="Child lease cannot resume: concurrent dispatch limit reached",
+                    _attend(
+                        state,
+                        "Child lease cannot resume: concurrent dispatch limit reached",
+                        "lease_cannot_resume",
                     )
                     return state["reason"]
             bound["status"] = "returned_unverified" if stopped else "active"
             bound["heartbeat"] = time.time()
+            # This child DID have a reservation and its lease DID resume, which is
+            # exactly what those two alarms claimed was untrue. Any other alarm
+            # (a mandate limit, an unknown resume target) is untouched.
+            _resolve(state, "observed_without_reservation", "lease_cannot_resume")
             # One child may have multiple resume reservations. Refresh them all.
             for row in reservations.values():
                 if row.get("child") == child:
@@ -257,6 +313,9 @@ def observe(
                     if row.get("child") == child:
                         row["status"] = "returned_unverified"
         else:
-            state["status"] = "needs_attention"
-            state["reason"] = "Child observed without a dispatch reservation"
+            _attend(
+                state,
+                "Child observed without a dispatch reservation",
+                "observed_without_reservation",
+            )
     return None
