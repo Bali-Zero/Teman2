@@ -244,7 +244,11 @@ retryable_failure_detected() {
 typeset -a ISOLATED_PROVIDER_ENV
 build_isolated_provider_env() {
     local name
-    ISOLATED_PROVIDER_ENV=(env)
+    # TERM_PROGRAM is not a credential, but context_window_guard.py reads it to
+    # pick the jump seat (ghostty → GUI window, else headless). A cascade run
+    # by hand from a terminal must still look headless to the seat, or the
+    # guard opens a window AND the wrapper re-invokes: a double jump.
+    ISOLATED_PROVIDER_ENV=(env -u TERM_PROGRAM)
     for name in ${(k)parameters}; do
         case "$name" in
             CLAUDE_CODE_OAUTH_TOKEN|CLAUDE_CODE_OAUTH_TOKEN_*|\

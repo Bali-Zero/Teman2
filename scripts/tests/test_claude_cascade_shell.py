@@ -1432,3 +1432,18 @@ def test_headless_jump_hop_failure_rotates_seat_without_partial_stdout(tmp_path:
     assert _labels(call_log) == ["token1", "token1", "token2"]
     assert "[error] claude-token-1-env hop 1 exit=3" in result.stderr
     assert list(temp_dir.iterdir()) == []
+
+
+def test_seat_never_sees_the_operators_terminal_program(tmp_path: Path) -> None:
+    # A cascade launched by hand from Ghostty inherits TERM_PROGRAM=ghostty; the
+    # context guard reads that variable to pick its jump seat (ghostty → spawn a
+    # GUI window, else headless). The seat must always look headless, or a manual
+    # run would open a window AND be re-invoked by the wrapper — a double jump.
+    bodies = _default_bodies()
+    bodies["token1"] = 'printf "term=%s\\n" "${TERM_PROGRAM:-unset}"; exit 0'
+    call_log, _, env = _fake_fleet(tmp_path, bodies)
+    env["TERM_PROGRAM"] = "ghostty"
+    result = _run_cascade(env, "hermetic prompt", "--claude-only")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "term=unset\n"
+    assert _labels(call_log) == ["token1"]
