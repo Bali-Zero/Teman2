@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": ".next-oracle06/tsconfig.tsbuildinfo"
+  },
+  "include": [
+    "next-env.oracle06.d.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".next-oracle06/types/**/*.ts",
+    ".next-oracle06/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next"
+  ]
+}

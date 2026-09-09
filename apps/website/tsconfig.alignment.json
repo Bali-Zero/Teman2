@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": ".next-alignment/tsconfig.tsbuildinfo"
+  },
+  "include": [
+    "next-env.alignment.d.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".next-alignment/types/**/*.ts",
+    ".next-alignment/dev/types/**/*.ts"
+  ],
+  "exclude": ["node_modules", ".next", ".next-oracle06"]
+}

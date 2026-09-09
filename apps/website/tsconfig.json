@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -17,7 +21,34 @@
       {
         "name": "next"
       }
-    ]
+    ],
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@/lib/kbli-status-labels": [
+        "../mouth/src/lib/kbli-status-labels"
+      ],
+      "@/lib/kbli-types": [
+        "../mouth/src/lib/kbli-types"
+      ],
+      "@/lib/kbli-provenance": [
+        "../mouth/src/lib/kbli-provenance"
+      ],
+      "@/lib/kbli-bali-block": [
+        "../mouth/src/lib/kbli-bali-block"
+      ],
+      "@/lib/kbli-pma-shape": [
+        "../mouth/src/lib/kbli-pma-shape"
+      ],
+      "@/lib/kbli-pma-disclosure": [
+        "../mouth/src/lib/kbli-pma-disclosure"
+      ],
+      "@/lib/kbli-derive": [
+        "../mouth/src/lib/kbli-derive"
+      ],
+      "@/lib/kbli-pma-source": [
+        "../mouth/src/lib/kbli-pma-source"
+      ]
+    }
   },
   "include": [
     "next-env.d.ts",
@@ -26,5 +57,7 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }
