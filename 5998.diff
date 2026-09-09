@@ -1,0 +1,40 @@
+diff --git a/infra/launchagents/wrappers/claude-cascade.sh b/infra/launchagents/wrappers/claude-cascade.sh
+index 4a1fe2b7ec..fe5ec424a6 100755
+--- a/infra/launchagents/wrappers/claude-cascade.sh
++++ b/infra/launchagents/wrappers/claude-cascade.sh
+@@ -244,7 +244,11 @@ retryable_failure_detected() {
+ typeset -a ISOLATED_PROVIDER_ENV
+ build_isolated_provider_env() {
+     local name
+-    ISOLATED_PROVIDER_ENV=(env)
++    # TERM_PROGRAM is not a credential, but context_window_guard.py reads it to
++    # pick the jump seat (ghostty → GUI window, else headless). A cascade run
++    # by hand from a terminal must still look headless to the seat, or the
++    # guard opens a window AND the wrapper re-invokes: a double jump.
++    ISOLATED_PROVIDER_ENV=(env -u TERM_PROGRAM)
+     for name in ${(k)parameters}; do
+         case "$name" in
+             CLAUDE_CODE_OAUTH_TOKEN|CLAUDE_CODE_OAUTH_TOKEN_*|\
+diff --git a/scripts/tests/test_claude_cascade_shell.py b/scripts/tests/test_claude_cascade_shell.py
+index 578f3f7f87..1363d06534 100644
+--- a/scripts/tests/test_claude_cascade_shell.py
++++ b/scripts/tests/test_claude_cascade_shell.py
+@@ -1432,3 +1432,18 @@ def test_headless_jump_hop_failure_rotates_seat_without_partial_stdout(tmp_path:
+     assert _labels(call_log) == ["token1", "token1", "token2"]
+     assert "[error] claude-token-1-env hop 1 exit=3" in result.stderr
+     assert list(temp_dir.iterdir()) == []
++
++
++def test_seat_never_sees_the_operators_terminal_program(tmp_path: Path) -> None:
++    # A cascade launched by hand from Ghostty inherits TERM_PROGRAM=ghostty; the
++    # context guard reads that variable to pick its jump seat (ghostty → spawn a
++    # GUI window, else headless). The seat must always look headless, or a manual
++    # run would open a window AND be re-invoked by the wrapper — a double jump.
++    bodies = _default_bodies()
++    bodies["token1"] = 'printf "term=%s\\n" "${TERM_PROGRAM:-unset}"; exit 0'
++    call_log, _, env = _fake_fleet(tmp_path, bodies)
++    env["TERM_PROGRAM"] = "ghostty"
++    result = _run_cascade(env, "hermetic prompt", "--claude-only")
++    assert result.returncode == 0, result.stderr
++    assert result.stdout == "term=unset\n"
++    assert _labels(call_log) == ["token1"]

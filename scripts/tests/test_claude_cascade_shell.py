@@ -1440,10 +1440,13 @@ def test_seat_never_sees_the_operators_terminal_program(tmp_path: Path) -> None:
     # GUI window, else headless). The seat must always look headless, or a manual
     # run would open a window AND be re-invoked by the wrapper — a double jump.
     bodies = _default_bodies()
-    bodies["token1"] = 'printf "term=%s\\n" "${TERM_PROGRAM:-unset}"; exit 0'
+    bodies["token1"] = (
+        'printf "term=%s ver=%s\\n" "${TERM_PROGRAM:-unset}" "${TERM_PROGRAM_VERSION:-unset}"; exit 0'
+    )
     call_log, _, env = _fake_fleet(tmp_path, bodies)
     env["TERM_PROGRAM"] = "ghostty"
+    env["TERM_PROGRAM_VERSION"] = "1.2.3"
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
     assert result.returncode == 0, result.stderr
-    assert result.stdout == "term=unset\n"
+    assert result.stdout == "term=unset ver=unset\n"
     assert _labels(call_log) == ["token1"]
