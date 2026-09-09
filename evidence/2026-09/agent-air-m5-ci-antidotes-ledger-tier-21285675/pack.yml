@@ -1,0 +1,148 @@
+task_id: ci-antidotes-ledger-tier
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+date: 2026-09-09
+machine: M5
+lanes:
+  - lane: ledger_only sentinel output, 40 guards, one ledger-readers step, conformance pins
+    role: build
+    seat: claude-fable-5-1 (this worktree session on M5, Zero's manual seat; two child builders exhausted their hook budget in ground and the parent finished the build)
+    note: >-
+      Measured the disease on PR #5999's antidotes job (step durations via the
+      jobs API), added LEDGER_BASE_SHA/LEDGER_HEAD_SHA (merge_group || pull_request),
+      the ledger_only block ahead of the sentinel's early exit, re-gated the 40
+      relevant-gated steps by scoped replacement (proved 40 in antidotes, 2
+      untouched in collision-matrix-case-folding), added the ledger-readers
+      step, wrote scripts/tests/test_antidotes_ledger_tier.py (6 pins) and proved
+      two of them by mutation. The self-maintaining pin itself found the third
+      reader (test_pending_arms_ref.py) that the brief had missed.
+  - lane: cross-family adversarial review of the diff
+    role: review
+    seat: codex-gpt-5.6-sol (`codex exec -m gpt-5.6-sol --sandbox read-only`, non-Anthropic, fresh context)
+    note: >-
+      OK. Whole-line counting, --no-renames, merge_group union, empty-SHA
+      fallback and quoting all judged sound. Named the deletion case but
+      believed a downstream step would catch it; kimi showed it would not.
+    verdict: OK
+  - lane: cross-family adversarial review of the diff
+    role: review
+    seat: kimi-code/k3 (`kimi -m kimi-code/k3 -p`, non-Anthropic, agentic file access, fresh context, no shared prompt with the codex lane)
+    note: >-
+      BLOCK, one finding, cured: a diff deleting only the ledger qualified as
+      ledger-only and the readers passed vacuously. Cure = blob-at-HEAD check,
+      pinned and proven on a scratch repo. Everything else OK; 0 offenders / 40
+      guards verified mechanically.
+    verdict: BLOCK (cured in this revision)
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane (Claude) and two review lanes, both non-Anthropic and
+  cross-family from each other, same brief, no sight of each other's answer.
+  They converged on the mechanics and diverged on the deletion case — codex
+  assumed a downstream catch, kimi traced the skipif and proved there was
+  none — which is exactly why two seats run.
+outcome: >-
+  A ledger-only diff now runs the three ledger readers (6.5 s locally) instead
+  of the 6-minute battery, in both the PR lane and the merge-group lane; every
+  other diff shape — extra file, rename, deletion, empty diff, missing SHAs —
+  still gets the full battery. The collision-matrix job is untouched.
+diff:
+  files: 5
+  net_lines: >-
+    Measured, not estimated. Review surface: 175/40 added/removed across
+    .github/workflows/immune-enforcement.yml and
+    scripts/tests/test_antidotes_ledger_tier.py; evidence files are the
+    remainder. Floor is `path` (hot-zone .github/workflows/**), not size.
+  measured_at: >-
+    `git diff --cached --numstat <merge-base>` in this worktree, merge-base
+    e05f91095a112d2509b24bf880611a6fbb8beee3.
+  shape: >-
+    Two env lines and one ~25-line shell block in the sentinel step, 40 one-line
+    `if:` edits, one new 10-line step, one new test file. No guard's body
+    changes; nothing outside the antidotes job.
+behaviour_change: >-
+  YES, CI-visible: on a diff whose every path equals
+  .claude/skills/modus/PENDING-ARMS.md and whose ledger blob exists at HEAD,
+  the 40 heavy steps of `antidotes` are skipped and one ledger-readers step
+  runs, in both pull_request and merge_group lanes. No other diff shape changes
+  behaviour; `relevant` is untouched.
+pii_scan: clean
+bites:
+  consumer: >-
+    The `antidotes` required check on the next healer-tick ledger PR (≥9 a day)
+    and on its merge-group run — the workflow whose step bodies are this diff.
+  where: ci
+  observe: >-
+    gh api repos/{owner}/{repo}/actions/jobs/<antidotes job id> --jq '.steps[] | select(.name|test("Ledger-only|Unit tests")) | {name,conclusion}'
+  expect: "Ledger-only diff: run the ledger's own readers = success; Unit tests (guilt + innocence per tool) = skipped; job wall time ≤ 90 s"
+bites_note: >-
+  Pre-merge observation on this PR: the six pins pass, two go red under
+  mutation, actionlint reports no error, and the deletion guard is proven on
+  a scratch repo. The live observation on the first ledger PR after merge is
+  what closes the loop and is not claimed here.
+receipts:
+  - claim: the battery ran in full on a one-file ledger PR
+    cmd: gh api repos/{owner}/{repo}/actions/jobs/<antidotes job of PR #5999> --jq '.steps[] | select(.conclusion=="success") | duration,name'
+    result: "121s Unit tests (guilt + innocence per tool); 37s Codex seat corpus; 33s OAuth seat cascade corpus; 32s wr2-ig-metrics-analyst wrapper corpus; 29s checkout; 19s retracted-claims lint; job ≈ 6 min; PR #5999 changed only .claude/skills/modus/PENDING-ARMS.md"
+    ts: "2026-09-09T09:20:00Z"
+    seat: claude-fable-5-1 (this session)
+    exit: 0
+  - claim: exactly 40 steps re-gated in antidotes, none in the collision job
+    cmd: awk 'NR>=35' immune-enforcement.yml | sed -n '1,/^  collision-matrix-case-folding:/p' | grep -c "relevant == 'true' && steps.paths.outputs.ledger_only != 'true'"; grep -c "relevant == 'true'$" immune-enforcement.yml
+    result: "40; 2 (both in collision-matrix-case-folding)"
+    ts: "2026-09-09T11:25:00Z"
+    seat: claude-fable-5-1 (this session)
+    exit: 0
+  - claim: the ledger readers are fast and green
+    cmd: time python3 -m pytest -p no:cacheprovider -q scripts/tests/test_pending_arms_ref.py scripts/tests/test_pending_arms_report.py scripts/tests/test_pending_arms_ratchet.py
+    result: "181 passed in 6.23s (6.5 s wall)"
+    ts: "2026-09-09T11:30:00Z"
+    seat: claude-fable-5-1 (this session)
+    exit: 0
+  - claim: the pins pass and go red under mutation
+    cmd: pytest -q scripts/tests/test_antidotes_ledger_tier.py; then (a) remove the first ledger guard with python, (b) change grep -cxF to grep -cF; rerun each; restore
+    result: "6 passed; (a) 1 failed, 5 passed [test_guilt_every_relevant_gate…]; (b) 1 failed [entity_and_fails_closed]; restored 6 passed. Note: a first mutation attempt with macOS sed '0,/…/' silently did nothing — redone with python, recorded here rather than hidden"
+    ts: "2026-09-09T11:35:00Z"
+    seat: claude-fable-5-1 (this session)
+    exit: 1
+  - claim: kimi's deletion hole is real and the cure closes it
+    cmd: scratch git repo — commit ledger, delete it, run the sentinel's count logic on base..head, then the blob check; then an edit-only diff
+    result: "count-only verdict: true; with blob check: false; edit-only diff verdict: true"
+    ts: "2026-09-09T11:50:00Z"
+    seat: claude-fable-5-1 (this session)
+    exit: 0
+  - claim: actionlint reports no error
+    cmd: /opt/homebrew/bin/actionlint .github/workflows/immune-enforcement.yml | grep -c error
+    result: "0"
+    ts: "2026-09-09T11:50:00Z"
+    seat: claude-fable-5-1 (this session)
+    exit: 0
+dissent:
+  - seat: kimi-code/k3 (cross-family)
+    status: CONFIRMED
+    objection: >-
+      BLOCK: a deleted ledger qualified as ledger-only and the readers passed
+      vacuously (skipif on the real ledger, proprioception tolerates absence).
+      CURED with the blob-at-HEAD check, pinned and proven on a scratch repo.
+      One minor ACCEPTED: the self-maintaining pin matches reader path strings
+      anywhere in the six-line step block, so a comment naming a reader would
+      satisfy it; parsing the run block would buy little for a block this small.
+  - seat: codex-gpt-5.6-sol (cross-family)
+    status: CONFIRMED
+    objection: >-
+      OK; its one wrong belief — that a deletion would be caught by the
+      unconditional report-smoke step — is recorded as such: kimi showed that
+      step tolerates a missing ledger. Nothing else to cure.
+  - seat: claude-fable-5-1 (this worktree session — the builder's own standing objection)
+    status: PLAUSIBLE
+    objection: >-
+      The way this cure could be wrong, stated plainly: it assumes the only
+      guards a ledger edit can break are the three by-name readers. If a fourth
+      reader is written under another name, the tier skips it — visible only
+      when that guard later goes red on main for a ledger row. The by-name pin
+      keeps the family complete; a content-based selector (grep for the path)
+      was measured by the first builder at 29 files / 122 s, i.e. the whole
+      battery again, which is why the explicit allowlist won.
+spend:
+  wall_clock_hours: 1.5

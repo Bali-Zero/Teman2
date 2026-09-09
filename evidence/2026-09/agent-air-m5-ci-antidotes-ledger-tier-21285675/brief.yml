@@ -1,0 +1,90 @@
+task_id: ci-antidotes-ledger-tier
+gear: 3
+l_level: L2
+gate_class: opus
+# Floor computed this run:
+#   python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source \
+#     --changed-files-file <changed> --numstat-file <numstat>
+# returns `3`, source `path`: .github/workflows/immune-enforcement.yml is a hot-zone
+# file. The diet has to live in the workflow that spends the minutes.
+objective: >-
+  Stop the `antidotes` required check (immune-enforcement.yml) from running its
+  full battery on a diff that touches only the harness ledger
+  `.claude/skills/modus/PENDING-ARMS.md`. Measured 2026-09-09 on PR #5999 (one
+  file, one ledger row): 121 s "Unit tests (guilt + innocence per tool)", 37 s
+  Codex seat corpus, 33 s OAuth seat cascade corpus, 32 s wr2-ig-metrics
+  wrapper corpus, plus the lint battery — 6 minutes, the longest job on a
+  docs-only PR whose other checks finish in ~2 minutes — and the merge group
+  reruns it, so ~12 runner-minutes per ledger row, ≥9 healer-tick ledger PRs a
+  day (#5999, #5957, #5961, #5952, #5933, #5923, #5913, #5908, #5901 on
+  09-08/09). The sentinel glob `.claude/skills/*/*.md` catches the ledger on
+  purpose (the workflow's own comment says the ledger "still triggers this
+  job"), but nothing in the battery reads it except three test files. The cure
+  adds a second sentinel output `ledger_only` — true iff EVERY changed path
+  equals the ledger path, computed from merge_group OR pull_request SHAs — gates
+  the 40 `relevant`-gated steps on `ledger_only != 'true'`, and runs only the
+  ledger's own readers (`scripts/tests/test_pending_arms_{ref,report,ratchet}.py`,
+  6.5 s locally) on a ledger-only diff. `relevant` semantics are untouched.
+constraints:
+  - >-
+    `relevant` keeps reading pull_request.* only; the merge-group lane stays
+    the unconditional full battery for every diff EXCEPT a ledger-only one,
+    which is the same one-file diff in both lanes.
+  - >-
+    Entity match, never substring (superscar #3): `grep -cxF` on the exact
+    ledger path; a `PENDING-ARMS.md` elsewhere, a rename, or one extra file
+    makes `ledger_only=false`. Empty SHAs (workflow_dispatch) → false.
+  - >-
+    The `collision-matrix-case-folding` job — its own `id: paths` step and two
+    `relevant` gates — is NOT touched.
+  - >-
+    Steps marked "DELIBERATELY NOT gated" stay ungated; only steps already
+    gated on `relevant == 'true'` gain the ledger guard.
+  - No `--no-verify`, no `--amend`, no force-push; worktree ci-antidotes-ledger-tier-0909.
+acceptance:
+  - text: >-
+      A1 (guilt): WHEN any `antidotes` step is gated on `relevant == 'true'`
+      without `ledger_only != 'true'`, the pin SHALL go red.
+    probe: pytest -q scripts/tests/test_antidotes_ledger_tier.py -k every_relevant_gate
+  - text: >-
+      A2 (innocence): the ledger-only step exists and is gated on
+      `ledger_only == 'true'`.
+    probe: pytest -k ledger_step_exists
+  - text: >-
+      A3 (self-maintaining): every `scripts/tests/test_pending_arms*.py` is
+      named in the ledger-only step — a new ledger reader cannot be skipped
+      silently.
+    probe: pytest -k every_pending_arms_test
+  - text: >-
+      A4: the sentinel matches the ledger as a whole line (`grep -cxF`) and
+      the true assignment sits inside the non-empty-SHA guard.
+    probe: pytest -k entity_and_fails_closed
+  - text: >-
+      A5: actionlint reports no error on the workflow.
+    probe: /opt/homebrew/bin/actionlint .github/workflows/immune-enforcement.yml
+  - text: >-
+      A6 (Bites): the next healer-tick ledger PR's `antidotes` job SHALL show
+      the ledger-only step run and "Unit tests (guilt + innocence per tool)"
+      skipped, wall time ≤ 90 s, in both the PR and merge-group runs.
+    probe: gh api repos/{owner}/{repo}/actions/jobs/<id> --jq '.steps[] | {name,conclusion}'
+assumptions:
+  - text: >-
+      `github.event.merge_group.base_sha`/`head_sha` are populated on
+      merge_group runs and the checkout is `fetch-depth: 0`, so `git
+      merge-base` resolves in both lanes.
+    status: verified
+    probe: >-
+      immune-enforcement.yml line 41 `fetch-depth: 0` (kept on purpose, see its
+      comment); tests.yml and harness-floor.yml already read
+      github.event.merge_group.base_sha the same way.
+  - text: >-
+      The three test_pending_arms*.py files are the only readers of the ledger
+      whose failure a ledger edit could cause.
+    status: unverified
+    probe: >-
+      grep -l PENDING-ARMS scripts/tests/*.py returns 29 files, but the other 26
+      reference the path in docstrings/constants for other organs (cure-d agent
+      measured 2026-09-09); A3 keeps the by-name family complete, and the Bites
+      observation on the first ledger PR after merge is the live check.
+appetite:
+  wall_clock_hours: 2
