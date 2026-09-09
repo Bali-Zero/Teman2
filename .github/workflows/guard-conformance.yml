@@ -262,6 +262,27 @@ jobs:
           set -euo pipefail
           python3 infra/claude-hooks/test_subagent_stop_verify.py
 
+      # Context-window guard family (W130, Zero mandate 2026-09-09). Four corpora
+      # existed and NO workflow executed any of them — the registry's C4 check
+      # was satisfied by the `infra/claude-hooks/` ancestor-dir substring alone
+      # (the accepted limit documented above, i.e. W81 theater). Found by the
+      # 2026-09-09 22:00 closing handoff. The python halves isolate HOME into a
+      # temp dir and skip the darwin-only gesture cases off macOS; the shell
+      # corpus shims `osascript` on PATH, so no window is ever opened here.
+      # test_context_jump_resume.py and test_context_window_jump.py are
+      # pytest-style files with NO `__main__` runner: `python3 <file>` exits 0
+      # having collected nothing (the Kimi seat's finding on this PR's first
+      # cut — theater one layer down), so they run under pytest, like the
+      # evidence-pack-lint corpus below.
+      - name: Context-window guard + window jump corpora (previously unexecuted anywhere)
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest
+          python3 infra/claude-hooks/test_context_window_guard.py
+          python3 -m pytest -q infra/claude-hooks/test_context_jump_resume.py infra/claude-hooks/test_context_window_jump.py
+          bash infra/claude-hooks/test_window_jump_gesture.sh
+
       # Vercel's Ignored Build Step. A guard in the #3 sense — it decides, on a substring-ish
       # signal (changed paths), whether the public site gets rebuilt — so it owes guilt AND
       # innocence like any other. It lands here rather than in scripts-tests-sweep.yml because

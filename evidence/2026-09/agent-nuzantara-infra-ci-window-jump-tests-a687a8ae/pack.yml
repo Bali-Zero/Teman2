@@ -1,0 +1,97 @@
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+lanes:
+  - lane: build
+    role: build
+    seat: claude-fable-5-1
+  - lane: independent-diff-review
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: independent-diff-review-2
+    role: review
+    seat: kimi-code/k3
+  - lane: final-gate
+    role: review
+    seat: claude-opus-5
+spend:
+  wall_clock_hours: 0.5
+  adversarial_rounds: 2
+appetite_exceeded: none
+pii_scan: clean
+receipts:
+  - claim: "local-corpora: the guard corpus runs as a script and passes; the two pytest-style corpora collect and pass under pytest; the gesture corpus passes with the osascript shim."
+    probe: local-corpora
+    cmd: python3 infra/claude-hooks/test_context_window_guard.py && apps/backend-rag/.venv/bin/python -m pytest -q infra/claude-hooks/test_context_jump_resume.py infra/claude-hooks/test_context_window_jump.py && bash infra/claude-hooks/test_window_jump_gesture.sh
+    result: "All tests passed. / 35 passed in 11.72s / == 30 passed, 0 failed =="
+    exit: 0
+    ts: "2026-09-09T16:23:48Z"
+    seat: claude-fable-5-1
+  - claim: "registry: the census still reports 0 violations with test_context_window_jump.py named under context_window_guard.py, and the workflow parses."
+    probe: registry
+    cmd: python3 infra/guard-conformance/check_guard_conformance.py && python3 -c "import yaml; yaml.safe_load(open('.github/workflows/guard-conformance.yml'))"
+    result: "0 violation(s) — every censused guard has guilt+innocence proofs, no phantoms, all armed in CI / yaml ok"
+    exit: 0
+    ts: "2026-09-09T16:23:48Z"
+    seat: claude-fable-5-1
+  - claim: "ci-run: the new step appears in the Guard conformance job log on this PR and concludes success on ubuntu-latest."
+    probe: ci-run
+    cmd: gh run view 34376379320 --log | grep -a 'Context-window guard + window jump corpora' | grep -aoE 'All tests passed|[0-9]+ passed in [0-9.]+s|== [0-9]+ passed, [0-9]+ failed =='
+    result: "pass — run 34376379320 on ubuntu-latest, step log: All tests passed. / 35 passed in 2.40s / == 30 passed, 0 failed == (head 84ea3c16d0)"
+    exit: 0
+    ts: "2026-09-09T16:23:48Z"
+    seat: claude-fable-5-1
+  - claim: "registry: after promoting context_jump_resume.py from exempt to a real entry the census reports 24 hook entries and 0 violations."
+    probe: registry
+    cmd: python3 infra/guard-conformance/check_guard_conformance.py
+    result: "guard-conformance: 10 bridge guards, 24 hook entries, ... 0 violation(s)"
+    exit: 0
+    ts: "2026-09-09T16:30:53Z"
+    seat: claude-fable-5-1
+  - claim: "registry (mutation, negative result recorded on purpose): deleting the pytest step line from the workflow does NOT turn the census red — C4's ancestor-dir substring rule still matches `infra/claude-hooks/`; the Kimi seat's 'goes red' was overstated and the entry note says so."
+    probe: registry
+    cmd: sed -i '' '/python3 -m pytest -q infra\/claude-hooks\/test_context_jump_resume.py/d' .github/workflows/guard-conformance.yml && python3 infra/guard-conformance/check_guard_conformance.py; git checkout -- .github/workflows/guard-conformance.yml
+    result: "still green (documented census limit, W81) — workflow restored byte-identical"
+    exit: 0
+    ts: "2026-09-09T16:30:53Z"
+    seat: claude-fable-5-1
+  - claim: "ci-run (graded head): the same step passes again on the graded sha 618faa754b, not only on its predecessor."
+    probe: ci-run
+    cmd: gh run view 34377147746 --log | grep -a 'Context-window guard + window jump corpora' | grep -aoE 'All tests passed|[0-9]+ passed in [0-9.]+s|== [0-9]+ passed, [0-9]+ failed =='
+    result: "success — All tests passed. / 35 passed / == 30 passed, 0 failed == (verified by the gate seat)"
+    exit: 0
+    ts: "2026-09-09T16:35:47Z"
+    seat: claude-opus-5
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "The step runs test_context_jump_resume.py (11 cases) and test_context_window_jump.py (24 cases) as plain python3 scripts; neither has a __main__ runner, both exit 0 with no output, so only 2 of the claimed 4 corpora execute — false-green, contradicting the step comment and the commit message."
+    status: CONFIRMED
+    disposition: "Cured in 84ea3c16d0: the two pytest-style corpora run under python3 -m pytest (pip install pytest, the pattern the evidence-pack-lint corpus already uses in this job). Proven locally (35 passed) and in CI run 34376379320 on ubuntu-latest (35 passed in 2.40s). The step comment now records the finding."
+  - seat: kimi-code/k3
+    objection: "Same defect, found independently: two of the three python invocations execute zero tests and can never fail — W81 theater one layer down from the one the step denounces."
+    status: CONFIRMED
+    disposition: "Same cure, 84ea3c16d0; both seats converged on the first cut's only real flaw."
+  - seat: kimi-code/k3
+    objection: "The registry edit is asymmetric: context_jump_resume.py sits under exempt, whose free-text reason names test_context_jump_resume.py, but the checker never existence- or arm-checks a test named inside an exempt string, so C4 can never see that corpus; if the step line is later deleted nothing goes red."
+    status: CONFIRMED
+    disposition: "Cured in 618faa754b: context_jump_resume.py is a registered entry with the corpus as its tests: ref (24 entries, 0 violations). The seat's consequence was overstated and is corrected in the entry's own note: measured by mutation, deleting the step line still leaves the census green because C4 matches the infra/claude-hooks/ ancestor-dir substring — the documented census limit. The corpus is now censused (must exist, is named, is C4-checked); the one-deleted-line regression stays a known limit of the census, not of this PR."
+  - seat: kimi-code/k3
+    objection: "The window_jump.sh registry note contradicts itself once the gesture corpus runs on ubuntu: 'cannot run on a CI runner' two sentences before 'runs anywhere'."
+    status: CONFIRMED
+    disposition: "Reworded in 618faa754b: the HOOK cannot run on a runner, its corpus can and does, executed by guard-conformance.yml since this PR."
+  - seat: kimi-code/k3
+    objection: "Gesture case [1] has ~1s of slack on a loaded runner (4th shimmed window-names answer must land within JUMP_POLL_MAX_S=2 at 0.3s polls)."
+    status: PLAUSIBLE
+    disposition: "Accepted as a declared risk, not cured here: the corpus file is out of this PR's scope (adding a step, not editing corpora) and the first CI run passed with margin (30/30). If it flakes, the cure is JUMP_POLL_MAX_S in the test's own env line, in its own PR."
+gate_verdict:
+  verdict: PASS
+  seat: claude-opus-5
+  graded_sha: 618faa754b # pragma: allowlist secret — a git sha, short on purpose; detect-secrets still reads this one as hex entropy
+  conditions: []
+  reasons:
+    - "Local corpora reproduce the pack's receipts: guard 'All tests passed', venv pytest '35 passed in 11.43s', gesture '== 30 passed, 0 failed =='."
+    - "check_guard_conformance.py: 24 hook entries, 0 violations — consistent with promoting context_jump_resume.py from exempt to a real entry."
+    - "CI run 34376379320 carries the three expected strings; run 34377147746 on the graded head 618faa754b is success with the same step log."
+    - "Workflow diff +21/-0, exactly one '- name:', the only 'if:' is inside the new step under the same steps.relevant sentinel; no permissions:/paths:/on: touched."
+    - "git show 84ea3c16d0 / 618faa754b contain the cures the dissent dispositions claim; git grep on origin/main -- .github/workflows/ names none of the four corpora, so 'nobody ran them' is measured, not rhetoric."
+pending_proofs: []
