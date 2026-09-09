@@ -1,108 +1,100 @@
-task_id: vercel-prod-live-diff
+task_id: agents-md-index-diet
 gear: 2
 l_level: L2
 gate_class: opus
 # Floor computed for this diff: `python3 scripts/evidence_pack_lint.py --print-floor
-# --changed-files-file ... --numstat-file ...` returns 2 via the SIZE term alone — 4
-# changed files (apps/mouth/vercel.json, scripts/ci/vercel_ignore_build_step.sh,
-# scripts/ci/vercel_should_build.sh, scripts/tests/test_vercel_should_build.sh),
-# +322/-98 (net 224 lines). No hot-zone path (`--print-floor` without --numstat-file
-# returns 1). Gear 2 declared to match the floor exactly; no pack is required below
-# Gear 3.
+# --changed-files-file ... --numstat-file ...` returns 2, source `size`. 15 changed
+# files (AGENTS.md + 14 new docs/agents/*.md), +889/-738 — churn 1,627, over the
+# SIZE_GEAR2_THRESHOLD of 400 and under the SIZE_GEAR3_THRESHOLD of 1,828. No
+# hot-zone path: `--print-floor` without --numstat-file returns 1, source `none`.
+# Gear 2 is declared to match the floor exactly; no pack is required below Gear 3.
+# The churn is almost entirely MOVES — 738 of the 738 deletions are AGENTS.md
+# sections re-created verbatim under docs/agents/ — so net is +148 lines, well under
+# the 400-line PR ceiling. The PARABELLUM Dux additionally commissions an independent
+# Opus 5 gate outside this contribution chain; that review is arranged out-of-band and
+# is not declared here as Gear 3, which would require a full Evidence Pack this
+# mandate did not scope.
 objective: >-
-  Change the Vercel Ignored Build Step for the `mouth` project so a PRODUCTION
-  deployment skips when `git diff <live> HEAD` touches no bundle path (apps/mouth/**,
-  packages/**, root package.json/package-lock.json, vercel.json), where `live` is the
-  commit production is actually serving right now, read from
-  https://kita.balizero.com/api/health's `.commit` field — the same probe the Frontend
-  Live Sentinel and mini.vercel_autopromote already trust. Preview deployments keep the
-  existing merge-base rule untouched. The Ignored Build Step pointer moves out of the
-  Vercel dashboard field and into apps/mouth/vercel.json as `ignoreCommand`, with the
-  dashboard field kept only as a fallback. Measured on main: 301 commits in the last 7
-  days, 79 of which touch a bundle path — so production builds are expected to drop
-  from roughly 35/day to roughly 11/day, ~1,000 build-minutes/week, ~$60/month at
-  $0.014/build-minute.
+  Turn AGENTS.md — the door every external agent boots on (Codex CLI, Kimi, agy) — from
+  a 45,724-byte / 880-line manual into an 18,101-byte / 237-line index, mirroring the
+  CLAUDE.md diet of 2026-09-04. Keep in the door: the CANON:builder-contract block
+  byte-identical, the §0.0 external-agent contract with the PARABELLUM narrowing,
+  machine identification with a per-machine repo-path column, §0.5 worktree discipline,
+  §17.1 conductor-is-a-role including the door line #6076 added, the language and
+  owner-privacy rules, and one line each for anti-hallucination, PII and secrets. Move
+  fourteen sections verbatim into docs/agents/, one file per former section, each
+  replaced by a single index line under "INDICE — dove sta cosa". PARABELLUM lane 3,
+  staff room §4 item 6, astra-r1.md §A "Boot diet".
 constraints:
   - >-
-    Fail OPEN everywhere a signal is missing or ambiguous: probe unreachable, no
-    `.commit` field in the health response, live sha unknown or not fetchable, or
-    live == HEAD all resolve to BUILD. The only unacceptable failure mode is a SKIP
-    when a BUILD was actually needed — a false BUILD only costs build-minutes, a
-    false SKIP ships nothing.
+    The block between the <!-- CANON:builder-contract --> markers is compared BY MACHINE
+    across CLAUDE.md, AGENTS.md, GEMINI.md and QWEN.md by
+    scripts/proprioception.py's door_canon_parity probe. Not one character may change.
+    It is spliced from the original by byte range, never retyped.
   - >-
-    The script exits only 0 (BUILD) or 1 (SKIP) — any other exit code is a Vercel
-    deployment ERROR, not a third outcome, and must not happen by construction.
+    MOVE, never delete. Every section that leaves AGENTS.md is re-created verbatim under
+    docs/agents/ with a header stating it moved on 2026-09-10 and that its substance is
+    unchanged. Every RULED/RULING block keeps its substance wherever it lands.
   - >-
-    Never log a fetch URL or raw git stderr — either may carry credentials (e.g. a
-    token embedded in a private remote URL) and Vercel build logs are not a secrets
-    boundary.
+    The boot numbers are MEASURED on both ends from the Codex context bridge's own state
+    file, never estimated from byte counts. A byte-count-derived saving would have
+    hidden the truncation this PR found.
   - >-
-    No production environment variable is touched, no manual deploy, no
-    `vercel --prod` — this PR only changes the Ignored Build Step's own decision
-    script and its wiring in apps/mouth/vercel.json.
-  - >-
-    The comparison base is deliberately NOT `VERCEL_GIT_PREVIOUS_SHA` — that is the
-    previous DEPLOYMENT ATTEMPT, not the previous deployment that actually shipped,
-    and strands superseded frontend commits under a skipped-build streak (the
-    2026-08-15..18 freeze, #4309, was caused by exactly this). It is also
-    deliberately NOT `HEAD^` — the merge queue pushes batches of up to 4 squash
-    commits at once and Vercel deploys the tip, so `HEAD^..HEAD` can hide a
-    frontend-touching commit earlier in the same batch.
+    Lane 2 (harness) is in flight on infra/ — this PR touches no file under infra/.
 acceptance:
   - text: >-
-      A1: WHEN scripts/tests/test_vercel_should_build.sh runs on macOS and on
-      ubuntu-24.04 SHALL pass 48/48.
-    probe: scripts/tests/test_vercel_should_build.sh
+      A1: WHEN `python3 scripts/proprioception.py --probe door_canon_parity --json` runs
+      on this branch SHALL report RECONCILED with 0 diverged, proving the canon block is
+      still byte-identical across all four doors.
+    probe: python3 scripts/proprioception.py --probe door_canon_parity --json
   - text: >-
-      A2: WHERE the corpus header's mutation-kill census is read SHALL show every
-      mutation killed — always-build (4), base=VERCEL_GIT_PREVIOUS_SHA (4),
-      base=HEAD^ (8), probe-failure-treated-as-SKIP (4), positional-grep-extraction
-      (1) — with none surviving.
-    probe: scripts/tests/test_vercel_should_build.sh
+      A2: WHEN the 487 substantive lines of the old AGENTS.md are each searched for in
+      the new AGENTS.md plus docs/agents/ SHALL find all but 12, and those 12 SHALL be
+      only section headings promoted to file titles, the two machine-table intro
+      sentences, the two owner-privacy lines (both rewritten into the compressed
+      sections) and the stale "Last Updated" footer replaced by a `git log -1` pointer.
+    probe: normalised line-by-line coverage check over `git show 781c9c9b59:AGENTS.md`
   - text: >-
-      A3: WHEN scripts/ci/vercel_should_build.sh dry-runs against the real probe on
-      origin/main SHALL emit SKIP for the 14 docs-only commits after live commit
-      882ac94, and SHALL emit BUILD when re-run from an older, bundle-touching
-      frontend commit.
-    probe: scripts/ci/vercel_should_build.sh
+      A3: WHEN `python3 scripts/docs_sync.py` runs SHALL print "DOCSYNC OK (no changes)"
+      — AGENTS.md is not a DOCSYNC-counted surface (scripts/docs_sync.py lines 39-56).
+    probe: python3 scripts/docs_sync.py
   - text: >-
-      A4 Bites: WHEN this PR merges and the first docs-only commit lands on main
-      SHALL appear in `GET /v6/deployments?target=production` as CANCELED with
-      "should-build: production: comparing HEAD against live ... -> SKIP" in its
-      build log, WHILE kita.balizero.com/api/health keeps serving the newest
-      bundle-relevant commit AND the Frontend Live Sentinel stays green.
+      A4 Bites: WHEN a Codex session boots in this repo SHALL consume 41,882 of its
+      258,400-token window against 45,886 on the base commit, read as the first-turn
+      `used` from ~/.codex/state/nuzantara-context/<sid>.json, AND its transcript SHALL
+      contain the PARABELLUM door line that the base commit's boot did not.
     probe: >-
-      curl https://kita.balizero.com/api/health ; vercel deployments list --target
-      production
+      echo "reply pong" | CODEX_CONTEXT_ROLE=builder codex exec -s read-only
+      --skip-git-repo-check -m gpt-5.6-terra - ; then read the bridge state for that sid
 assumptions:
   - text: >-
-      kita.balizero.com/api/health exposes the live commit as a JSON `.commit`
-      field.
+      The old AGENTS.md was silently truncated at Codex's 32 KB project-doc cap, so
+      13,003 bytes — lines 673-880, including all of §17 and the PARABELLUM door line
+      merged the same day in #6076 — never reached the model.
     status: verified
     probe: >-
-      curl -s https://kita.balizero.com/api/health -> verified 2026-09-10:
-      {"status":"ok","commit":"882ac94..."}
+      replay of the before-boot transcript (sid 01a08802) — its copy of AGENTS.md stops
+      at byte ~32,721, line 672 of 880; the after-boot transcript (sid 01a0880a)
+      contains the door line
   - text: >-
-      GitHub will serve any reachable commit sha to a shallow fetch, including one
-      not on the default branch tip.
+      `project_doc_max_bytes` is unset on M5, so Codex's 32 KB default applies.
     status: verified
-    probe: git fetch --depth=1 origin <live-sha> against this repo, exit 0
+    probe: grep -n "project_doc" ~/.codex/config.toml -> no match, exit 1
   - text: >-
-      mini.vercel_autopromote promotes a READY build to production within ~2
-      minutes of it finishing.
+      The same 32 KB cap applies on Pro and Mini, so the truncation was fleet-wide and
+      not an M5-only artefact.
     status: unverified
     probe: >-
-      observe a production promotion timestamp minus its build-finished timestamp
-      over the next 5 promotions; a dead organ degrades to build-every-commit
-      (fail-open), never to a stale site, so this assumption bounds cost, not
-      correctness.
+      run the same boot on Pro and Mini and replay their transcripts; parked as a
+      PENDING-ARMS row, it bounds how widely the finding generalises, not whether this
+      diet is correct
   - text: >-
-      Adversarial review (Claude Sonnet, spalla-review) found no blocking issue;
-      three suggestions were applied — JSON-parser extraction of the live commit
-      (node/python3/grep fallback chain), a `timeout` wrapper on both production
-      fetches, and a corpus parity check between FRONTEND_RE, BUNDLE_PATHS and the
-      Frontend Live Sentinel's own paths.
+      The <=10% acceptance target cannot be reached by this concern alone — AGENTS.md is
+      now roughly 4.5k of a 41.9k boot, and the remainder is ~/.codex/AGENTS.md
+      (18,642 bytes), the skills catalog and the base tool definitions.
     status: verified
-    probe: scripts/tests/test_vercel_should_build.sh
+    probe: >-
+      measured boot 41,882/258,400 = 16.21% after the diet; the global door and the
+      skills catalog are a separate PR by the mandate
 appetite:
   wall_clock_hours: 2
