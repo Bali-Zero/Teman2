@@ -231,18 +231,21 @@ macos-option-as-alt = right
 macos-auto-secure-input = true
 macos-secure-input-indication = true
 
-# AppleScript control of the terminal is OFF. It defaults to ON (measured), and
-# it is the one macOS surface here that ships permissive: with it enabled, any
-# process that can run osascript gets "AppleScript object lookup for windows,
-# tabs, and terminals" on a terminal that holds this fleet's live shells.
-#
-# Measured before closing it: nothing in this repo, nothing in ~/scripts and no
-# LaunchAgent drives Ghostty through AppleScript, so nothing loses a capability.
-#
-# The neighbouring surface, `macos-shortcuts`, is left alone on purpose: its
-# default is already `ask` — Shortcuts can create terminals, send text and run
-# commands, but only after a permission prompt the human sees once.
-macos-applescript = false
+# AppleScript control of the terminal is ON — re-opened 2026-09-09 for the
+# window jump (Ruling Zero 2026-09-09: a session at its context threshold
+# opens a new window with the handoff and closes its own, no human). It was
+# closed on 2026-08-19 on the premise that "nothing in this repo drives Ghostty
+# through AppleScript, so nothing loses a capability"; that premise no longer
+# holds: ~/.claude/hooks/window_jump.sh (canon infra/claude-hooks/) creates the
+# new window, types `nz-jump <session>` and later `/exit` BY WINDOW ID through
+# this dictionary. Measured 2026-09-09: the keystroke route it used before
+# (System Events ⌘N + typing into "whatever is in front") failed 2 of 3 times
+# because Ghostty was not the active app — and that route is the SAME surface
+# (any process under Ghostty's Accessibility grant can already type into any
+# window), so enabling the dictionary does not widen what an osascript-capable
+# process can do here; it makes the sanctioned gesture addressable and safe.
+# Flip back to false only together with CONTEXT_JUMP_OFF=1 on this machine.
+macos-applescript = true
 
 # ─── Safety ────────────────────────────────────────────────────────────────
 # PIN of the upstream default, kept explicit for the same reason as
