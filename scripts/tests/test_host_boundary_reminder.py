@@ -146,6 +146,12 @@ def test_printed_one_liner_removes_key_and_backs_up(tmp_path, monkeypatch):
     assert mutated["env"]["SOME_OTHER_KEY"] == "keep-me", "other env keys must survive untouched"
     assert mutated["hooks"] == fixture["hooks"], "hooks block must survive untouched"
 
+    rewritten_text = live.read_text()
+    assert "\n" in rewritten_text.strip(), (
+        "one-liner must pretty-print with indent=2, not collapse settings.json "
+        f"onto one line (a later diff/backup would be unreadable): {rewritten_text!r}"
+    )
+
 
 def test_printed_one_liner_is_idempotent_when_key_already_absent(tmp_path):
     fixture = {"env": {"SOME_OTHER_KEY": "keep-me"}, "hooks": {}}

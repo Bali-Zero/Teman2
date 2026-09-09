@@ -56,13 +56,13 @@ ONE_LINER = (
     "open(h+'.bak','w').write(open(h).read());"
     "d=json.load(open(h));"
     "d.get('env',{}).pop('HOST_BOUNDARY_OFF',0);"
-    "json.dump(d,open(h,'w'))\""
+    "json.dump(d,open(h,'w'),indent=2,ensure_ascii=False)\""
 )
 
 ctx = (
-    "\U0001f6e1️ host_boundary DISARMATO (HOST_BOUNDARY_OFF=1, ruling Zero 2026-09-09). "
-    "Protegge ~/.claude ~/.ssh ~/.aws segreti ~/.agent/decisions da scritture. "
-    f"Riarma dal prompt (bypassa tool-hook): ! {ONE_LINER}"
+    "\U0001f6e1️ host_boundary DISARMATO (HOST_BOUNDARY_OFF=1, Zero 2026-09-09). "
+    "Protegge ~/.claude ~/.ssh ~/.aws segreti ~/.agent/decisions da scrittura. "
+    f"Riarma da prompt: ! {ONE_LINER}"
 )
 
 print(json.dumps({
