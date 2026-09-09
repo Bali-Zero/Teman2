@@ -44,11 +44,22 @@ def _load(p: Path):
         return None
 
 
-def pick_jump(state_dir: Path, cwd: str, session_id: str, now: float | None = None):
-    """Freshest unclaimed, fresh, same-cwd jump not raised by this session."""
+def pick_jump(state_dir: Path, cwd: str, session_id: str, now: float | None = None,
+              want: str | None = None):
+    """The jump this session was opened FOR.
+
+    `want` (NZ_JUMP_FROM in the env, set by nz-jump.sh and by the cascade
+    wrapper's hop) names the originating session outright: only that file is
+    considered, still only if unclaimed, fresh and not our own. Without it —
+    a window opened by hand — fall back to the freshest unclaimed, fresh,
+    same-cwd jump not raised by this session. Cross-family review (codex,
+    2026-09-09) showed the fallback alone lets a stranger session in the same
+    cwd claim a jump meant for another window; the launcher knows the id, so
+    it says it."""
     now = time.time() if now is None else now
     best, best_ts = None, -1.0
-    for p in state_dir.glob("pending-jump-*.json"):
+    candidates = [state_dir / f"pending-jump-{want}.json"] if want else state_dir.glob("pending-jump-*.json")
+    for p in candidates:
         j = _load(p)
         if not isinstance(j, dict) or j.get("to_session"):
             continue
@@ -58,7 +69,7 @@ def pick_jump(state_dir: Path, cwd: str, session_id: str, now: float | None = No
             continue
         if now - ts > MAX_AGE_S or j.get("from_session") == session_id:
             continue
-        if j.get("cwd") and os.path.realpath(str(j["cwd"])) != os.path.realpath(cwd):
+        if not want and j.get("cwd") and os.path.realpath(str(j["cwd"])) != os.path.realpath(cwd):
             continue
         if ts > best_ts:
             best, best_ts = (p, j), ts
@@ -108,7 +119,7 @@ def main() -> int:
     if not session_id or not STATE_DIR.is_dir():
         return 0
     cwd = str(payload.get("cwd") or os.getcwd())
-    picked = pick_jump(STATE_DIR, cwd, session_id)
+    picked = pick_jump(STATE_DIR, cwd, session_id, want=os.environ.get("NZ_JUMP_FROM") or None)
     if not picked:
         return 0
     path, jump = picked

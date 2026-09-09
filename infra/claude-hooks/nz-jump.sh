@@ -24,5 +24,6 @@ ARGS=()
 [ -n "$MODEL" ] && ARGS+=(--model "$MODEL")
 [ -n "$PERMISSION_MODE" ] && ARGS+=(--permission-mode "$PERMISSION_MODE")
 echo "nz-jump: continuing session $FROM (hop ${HOPS:-?}) in $(pwd)"
+export NZ_JUMP_FROM="$FROM"
 exec claude "${ARGS[@]}" \
     "Sei la finestra successiva della sessione $FROM (salto ${HOPS:-?}). Il mandato originale e lo stato raggiunto sono nel contesto iniettato da context_jump_resume: continua da lì, senza chiedere, e non ripetere il lavoro già verificato."

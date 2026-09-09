@@ -114,3 +114,27 @@ def test_no_jump_file_is_mute():
     p = subprocess.run([sys.executable, str(HOOK)], input=json.dumps({"session_id": "n", "cwd": os.getcwd()}),
                        capture_output=True, text=True, env={"HOME": str(home), "PATH": "/usr/bin:/bin"})
     assert p.returncode == 0 and p.stdout.strip() == ""
+
+
+
+def test_explicit_from_session_wins_over_the_freshest_file():
+    # two unclaimed jumps in the same cwd: "newer" is fresher, but the launcher
+    # opened us FOR "old" (NZ_JUMP_FROM=old) — old is picked, newer left alone
+    home = _home_with_jump(os.getcwd(), age_s=120)
+    d = home / ".organism" / "context-guard"
+    (d / "pending-jump-newer.json").write_text(json.dumps({
+        "from_session": "newer", "to_session": None, "cwd": os.getcwd(), "hops": 1,
+        "ts": time.time(), "mandate": "NEWER"}))
+    rc, out, old = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
+    assert "MANDATO IN CATENA" in out["hookSpecificOutput"]["additionalContext"]
+    assert old["to_session"] == "new"
+    assert json.loads((d / "pending-jump-newer.json").read_text())["to_session"] is None
+
+
+def test_explicit_from_session_that_is_claimed_or_missing_is_mute():
+    home = _home_with_jump(os.getcwd(), to_session="someone")
+    rc, out, old = _run(home, env_extra={"NZ_JUMP_FROM": "old"})
+    assert rc == 0 and out is None and old["to_session"] == "someone"
+    home = _home_with_jump(os.getcwd())
+    rc, out, old = _run(home, env_extra={"NZ_JUMP_FROM": "nope"})
+    assert rc == 0 and out is None and old["to_session"] is None

@@ -56,7 +56,8 @@ on run argv
       delay 1.2
       return name of window 1
     else if act is "type-here" then
-      keystroke (item 2 of argv)
+      if name of window 1 is not (item 2 of argv) then error "front window changed"
+      keystroke (item 3 of argv)
       delay 0.3
       key code 36
       return "ok"
@@ -81,7 +82,7 @@ NEW_NAME=$(osascript "$AS" new-window 2>/dev/null || true)
 if [ -z "$NEW_NAME" ] || [ "$NEW_NAME" = "$OLD_NAME" ]; then
     log "⌘N did not bring a new window to front (front='${NEW_NAME:-?}'): nothing typed"; exit 1
 fi
-osascript "$AS" type-here "nz-jump $FROM" >/dev/null 2>&1 || { log "typing nz-jump FAILED"; exit 1; }
+osascript "$AS" type-here "$NEW_NAME" "nz-jump $FROM" >/dev/null 2>&1 || { log "front window changed before typing (expected '$NEW_NAME'): nothing typed"; exit 1; }
 log "new window '$NEW_NAME' opened, 'nz-jump $FROM' typed"
 
 deadline=$(( $(date +%s) + JUMP_WAIT_S ))

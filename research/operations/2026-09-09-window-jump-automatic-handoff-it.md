@@ -1,3 +1,10 @@
+---
+date: 2026-09-09
+domain: operations
+client_case: none
+adversarial_review: codex
+---
+
 # Salto di finestra automatico — ricerca (2026-09-09)
 
 > Domanda di Zero: «arrivati alla soglia di contesto, l'LLM scrive l'handoff, lo incolla in una
@@ -43,7 +50,7 @@ Quindi su M5 l'unico canale automatico per «aprire una finestra» è AppleScrip
 processo hook (che eredita il permesso Accessibility di Ghostty→claude). È fragile per natura
 (digita in una finestra attiva): va digitato un comando **corto e fisso**, mai il mandato.
 
-## 4. Disegno proposto (da decidere, non implementato)
+## 4. Disegno proposto (deciso da Zero il 2026-09-09 e spedito: PR #5987 interattivo, PR headless in `infra/launchagents/wrappers/claude-cascade.sh`; esito sonde in §6)
 
 ### 4a. Finestra interattiva (M5, e Pro quando Zero ci lavora)
 
@@ -69,10 +76,13 @@ processo hook (che eredita il permesso Accessibility di Ghostty→claude). È fr
 
 ### 4b. Cron headless (Pro/Mini, `claude-cascade.sh -p`)
 
-- Il wrapper già gira in loop di cascade. Aggiunta: se al termine `terminal_reason ==
-  "prompt_too_long"` oppure esiste `pending-jump.json` per quel session id, rilancia
-  `claude -p` **senza** `--resume`; il SessionStart hook di 4a.3 inietta l'handoff (o, in `-p`,
-  `initialUserMessage`). Budget: max 2 salti per run, poi escalation.
+- Il wrapper già gira in loop di cascade. Aggiunta (spedita nella PR headless): ogni invocazione
+  riceve un `--session-id` proprio; se al termine esiste `pending-jump-<quel id>.json` non
+  reclamato con `seat=headless`, rilancia `claude -p` **senza** `--resume`, con un nuovo id,
+  `NZ_JUMP_FROM=<id precedente>` nell'ambiente e un prompt di continuazione corto su stdin; il
+  SessionStart hook di 4a.3 inietta il mandato. Gli output degli hop si accumulano e si emettono
+  solo a catena pulita; ogni hop passa la stessa classificazione quota/auth della prima run.
+  Budget: 3 salti per run (stesso cap del guard), poi avviso `INCOMPLETE` su stderr.
 - Alternativa pulita per i nuovi organi: Agent SDK Python, `query()` in loop con
   `terminal_reason` come segnale; non tocca i wrapper esistenti.
 
@@ -94,7 +104,7 @@ processo hook (che eredita il permesso Accessibility di Ghostty→claude). È fr
 - Loop: un mandato che non finisce mai salta all'infinito. Cap 3 salti per catena
   (`pending-jump.json` porta `hops`), poi escalation HIGH sul board.
 
-## 7. Esito delle sonde live (2026-09-09, M5, dopo le decisioni di Zero: chiusura via AppleScript, tutti i seat, cap 3)
+## 6. Esito delle sonde live (2026-09-09, M5, dopo le decisioni di Zero: chiusura via AppleScript, tutti i seat, cap 3)
 
 | # | Cosa | Esito |
 |---|---|---|
@@ -114,9 +124,29 @@ per sessione, il mandato viaggia nel file lungo la catena (la trascrizione del s
 lo stub di `nz-jump`, non col mandato); (d) il nome finestra passa ad AppleScript come argomento
 (`on run argv`), mai interpolato nel sorgente.
 
-## 6. Decisioni chieste a Zero (risposte 2026-09-09: 1 sonda → fatta, §7; 2 tutti; 3 cap = 3)
+## 7. Decisioni chieste a Zero (risposte 2026-09-09: 1 sonda → fatta, §6; 2 tutti; 3 cap = 3)
 
 1. v1 senza chiusura automatica della finestra vecchia (report finale visibile, chiusura a mano),
    oppure sondare subito `kill -INT $PPID` su una sessione usa-e-getta?
 2. Il salto vale anche per i cron headless (4b) in questa tornata, o solo M5 interattiva?
 3. Cap salti per catena: 3?
+
+## Adversarial review — §8 (codex, 2026-09-09, seat esterno sul ramo di PR #5987)
+
+Mandato al reviewer: refutare le affermazioni della nota e il disegno spedito, con evidenza
+`file:riga`. Verdetto iniziale: **NON SOPRAVVIVE** (8 punti). Disposizioni, nella stessa PR:
+
+| # | Finding (codex) | Esito |
+|---|---|---|
+| 1 | Primitivi CLI corretti (`additionalContext`, avvio senza `--resume`) | CONFERMATO, nessuna azione |
+| 2 | «Mai digitare senza verifica»: `type-here` non ricontrollava il titolo tra ⌘N e la digitazione | CONFERMATO → `window_jump.sh`: `type-here` riceve il nome atteso e rifiuta se il fronte è cambiato |
+| 3 | `/exit` può colpire un'altra finestra con titolo duplicato | PLAUSIBILE, residuo: il fallback resta `SIGINT×2` sul `from_pid`, che è per-processo; titoli duplicati riguardano solo il gesto `/exit` |
+| 4 | Chiusura non garantita (titolo assente → esce prima del fallback; vivo dopo SIGINT×2 → solo log) | CONFERMATO come limite dichiarato (§5, §6): la chiusura è best-effort, la nuova sessione è il deliverable; il log lo dice |
+| 5 | Handoff non deterministico: il ricevente ignorava il `FROM` del lanciatore e prendeva il pending più recente nel cwd | CONFERMATO → `NZ_JUMP_FROM` esportato da `nz-jump.sh` (e dal wrapper headless); `context_jump_resume.py` considera solo quel file; il fallback «più recente nel cwd» resta per la finestra aperta a mano |
+| 6 | Cap fragile: se lo stamp `to_session` fallisce, il conteggio riparte da 1; manca l'escalation HIGH promessa | PLAUSIBILE, residuo dichiarato: lo stamp fallisce solo per errore I/O su `~/.organism`; l'escalation HIGH al cap resta da fare (riga aperta) |
+| 7 | Headless non operativo: il wrapper non consumava il pending | CONFERMATO → PR headless separata (§4b aggiornato), stesso ruling |
+| 8 | Nota non consolidata (§ fuori ordine, «non implementato» vs «spedito», cap 2 vs 3) | CONFERMATO → corretto in questa revisione |
+
+Il verdetto sul nucleo (il CLI dà mattone e innesto, il gesto resta esterno; il salto è
+realizzabile e misurato) sopravvive con le tre correzioni sopra (2, 5, 8) applicate.
+
