@@ -10,12 +10,17 @@
 > since they all live under the same original §5 heading.
 >
 > **Routing vigente** (read this line, skip the rest unless you need the history): due imperatori
-> pari (Fable 5.1 · Astra) = direzione strategica e nomina del Dux · due generali pari (Opus 5 ·
-> Sol), uno è Dux temporaneo per missione · interattivo Opus 5 xhigh · implementer Sonnet 5 · review
-> indipendente: seat qualificato fuori dalla catena contribuente (famiglia ≠ builder su Gear 2) · gate
-> empirico su disco, DISTINTO dalla review: sessione Claude sul seat Opus 5 `xhigh`, obbligatorio,
-> nessuna sostituzione salvo ruling, mai cascata, finestra morta → SUSPEND; `max` solo su adjudication
-> Gear-3 dichiarata — RULED 2026-09-06→08, abolito solo il titolo permanente di revisore · Fable 5.1 mai
+> pari (Fable 5.1 · Astra) = direzione strategica, colore della missione e nomina del Dux · due
+> generali pari (Opus 5 · Sol), uno è Dux temporaneo per missione · **PARABELLUM (RULED 2026-09-10):
+> la missione gira BLU (Dux Opus 5, spalla Codex, gate Opus 5 fresco, rilascia il Dux) o ARANCIONE
+> (Dux Sol, spalla Claude via `claude` CLI OAuth, implementer Terra, gate Sol fresco, rilascia il Dux
+> Sol); colore scelto da Zero con Fable e Astra all'inizio della missione, nessun fallback automatico
+> di colore — seat morto → SUSPEND** · interattivo Opus 5 xhigh · implementer Sonnet 5 (Terra in
+> arancione) · review indipendente: seat qualificato fuori dalla catena contribuente (famiglia ≠
+> builder su Gear 2) · gate empirico su disco, DISTINTO dalla review: sessione fresca fuori catena sul
+> seat del colore (Opus 5 `xhigh` in blu, Sol `xhigh` in arancione), obbligatorio, nessuna sostituzione
+> salvo ruling, mai cascata, finestra morta → SUSPEND; `max` solo su adjudication Gear-3 dichiarata —
+> RULED 2026-09-06→08 e 2026-09-10, abolito solo il titolo permanente di revisore · Fable 5.1 mai
 > auto-instradata: solo finestra imperiale aperta da Zero con `--model` · SDK Anthropic BANNATO
 > (solo `claude` CLI + OAuth).
 
@@ -69,13 +74,30 @@ amendment is necessary" section).
 >
 > **Gate effort is `xhigh`; `max` is opt-in on a declared Gear-3 adjudication, never a default.** This resolves the internal contradiction between the `max` clause in the 2026-07-02 routing paragraph above and the `xhigh` clause of the RULED 2026-08-20 block — `xhigh` wins, and `FLEET_TOPOLOGY.json` `role_chains.gear3_final_gate.chain[0].effort` reads `xhigh` from this date.
 >
-> **The shipping fence is unchanged, and parity does NOT widen anyone's permissions.** No external seat — Astra, Sol, Kimi, Qwen, GLM, Gemini — merges, arms or deploys; an external seat prepares and an authorized Claude session verifies and releases (Builder Contract 5). *"La parità non amplia i permessi di Astra/Sol"* (workshop 2026-09-08). **This supersedes the "merge, deploy, every authorization" sentence of draft PR #5821**, which is closed as superseded: its live part (two equal imperators) lands here, its permission grant does not.
+> **The shipping fence is unchanged, and parity does NOT widen anyone's permissions.** No external seat — Astra, Sol, Kimi, Qwen, GLM, Gemini — merges, arms or deploys; an external seat prepares and an authorized Claude session verifies and releases (Builder Contract 5). *(Narrowed 2026-09-10 — see the RULED 2026-09-10 PARABELLUM block below: this sentence holds verbatim on BLUE, which is what an undeclared mission runs, and for every seat on every colour EXCEPT the single Sol session appointed Dux of a mission Zero declared ORANGE, which gates through a fresh Sol seat and releases its own mission. The fence is narrowed at one named seat per mission, not opened.)* *"La parità non amplia i permessi di Astra/Sol"* (workshop 2026-09-08). **This supersedes the "merge, deploy, every authorization" sentence of draft PR #5821**, which is closed as superseded: its live part (two equal imperators) lands here, its permission grant does not.
 >
 > **Every `Agent`/`Workflow` child pins `model:`.** Inheritance is the defect, whatever the parent. The obligation binds every call; the enforcer `infra/claude-hooks/model_routing_gate.py` covers `Agent` calls today and `Workflow` scripts once the HOME PreToolUse matcher includes `Workflow` (PENDING-ARMS row, operator), and by design exempts `fork` children, frontmatter-pinned definitions and named/builtin workflows whose script it cannot read — those remain the conductor's responsibility.
 >
 > **The 2026-09-08 workshop contract v1 is Subhi's pilot doctrine, not harness doctrine** (Zero, 2026-09-09: *"lascia questa dottrina per Subhi, mentre prendiamo per noi ciò che non ci rallenta"*). Its PRE-review-before-human-decision step, the four-PRs-per-day ceiling, the Todoist ledger and the homepage-first priority list bind the Zero+Subhi pilot only (`research/operations/2026-09-08-nuzantara-operating-workflow-v1.md`). The harness keeps from it only what it already had and costs nothing: reviewer independence (above), the escalation format *question · options · recommendation · blocked part*, and closure by evidence (Bites + tests + resolved review), never by report. Two ledgers would be a split-brain: harness work stays on PENDING-ARMS and evidence packs.
 >
 > **Fable 5.1 is never auto-routed.** It enters only as the imperator window Zero opens himself with `--model`. This **narrows, it does not repeal, RULED 2026-08-20**: no doctrine, skill, cron, script or session may route to or self-select it, and the roster retirement sentence above stands verbatim. What changes is that the owner-opened window now has a named role in the hierarchy instead of being merely "out of the workflow".
+
+> ⚡ **RULED 2026-09-10 (Zero, Fable 5.1 imperator window + two Astra consultation rounds, 03:35–04:25 WITA): PARABELLUM — the modus runs in two colours.** Record, with §0 rulings, §2 disk-verified corrections, §3 colour table and §5 window spec: `research/operations/2026-09-10-parabellum/PARABELLUM-staff-room-2026-09-10.md`. Parameterised map: `docs/architecture/dual-consul/army-map.md` §1bis.
+>
+> **One loop, two colours, and Zero picks the colour with Fable and Astra at mission start.** **BLUE**: Dux Opus 5 `xhigh` · default implementer Sonnet 5 · adversarial reviewer an independent Codex seat · final on-disk gate a fresh Opus 5 `xhigh` session outside the contribution chain · release by the Dux. **ORANGE**: Dux Sol (`gpt-5.6-sol`) `xhigh` · default implementer Terra (`gpt-5.6-terra`), Sol implementing small work directly · adversarial reviewer an independent Claude seat reached through the `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN` · final on-disk gate a fresh Sol session outside the contribution chain · release by the Dux Sol. Identical in both colours and not restated per colour anywhere: TRIAGE and the gear floor, the nine stages, generator ≠ grader, a final gate at every gear never substituted for quota, mandate accounting, the evidence pack, `Bites:`, PENDING-ARMS, the sibling check, stop-loss, freeze, rollback, prove-live.
+>
+> **No automatic colour fallback.** A dead orange seat SUSPENDS the mission; it never turns blue mid-mission, and no session re-declares its own colour. `FLEET_TOPOLOGY.json` keeps the blue chain unchanged at `role_chains.gear3_final_gate` and carries the orange one at `role_chains.gear3_final_gate_orange` with `on_exhaustion: "suspend"`.
+>
+> **This supersedes the Claude-only final-gate and release clauses, for declared orange missions only.** The RULED 2026-09-06→08 sentences "the final **on-disk gate** … a Claude session on the Opus 5 `xhigh` seat, **mandatory**" and "an external seat prepares and an authorized Claude session verifies and releases (Builder Contract 5)" stand verbatim on BLUE, and BLUE is what an undeclared mission runs. On ORANGE the gate seat is a fresh Sol session and the release owner is the Dux Sol, in the blue sequence unchanged: push, PR-open with auto-merge armed at once, queue merge, existing CI deploys, Dux proves live. The gate **only signs** — it never arms, never alters the candidate, and a gate that writes a fix becomes a contributor whose changed artifact needs new independent verification. Parity still widens nobody's permissions: every external seat that is not the appointed Dux of a declared orange mission — Astra, Kimi, Qwen, GLM, Gemini, and Sol itself — stays prepare-only.
+>
+> **Staff room.** Fable 5.1 and Astra sit with Zero only. They never fan out and never implement. They fix the number of battle windows, the team per window and the spec, and they appoint the Dux.
+>
+> **Battle windows.** One window = one mandate = one organ = one worktree. Never two windows on the same path; two or three windows at a time at most. Each window opens against the seven-section spec (`.claude/skills/modus/battle-window-spec.md`) and states colour, Dux role, mandate id and worktree before executing.
+>
+> **Imperator context threshold 0.6** (Zero, 2026-09-10 04:20, applied live on M5, Pro and Mini). The 0.2 imperator cap sits below the real Codex boot — an Astra consultation at 0.2 of 258k ≈ 52k parks at its first tool call — so the imperator windows run at the builder threshold.
+>
+> **Gate receipt floor, first orange mission.** The fresh gate session posts a PR comment carrying mission id, colour, HEAD sha, gate thread id, the commands it actually ran with their exit codes, and the verdict; it re-checks the clean candidate against the current PR HEAD before posting, and a changed candidate invalidates the receipt. Publish with `scripts/harness_fable_gate.py`: on PASS use `--description` with a short comment reference (it truncates at 140 characters, and `--conditions-ref` is silently ignored there — `build_description()`); on PASS-WITH-CONDITIONS `--conditions-ref` is mandatory. Native-identity and HEAD-bound receipt validation inside `scripts/evidence_pack_lint.py` is a PENDING-ARMS row, not a launch precondition.
+
 
 **What actually changes with the 5-family** (non-obvious, load-bearing on cron budgets and cost baselines):
 
