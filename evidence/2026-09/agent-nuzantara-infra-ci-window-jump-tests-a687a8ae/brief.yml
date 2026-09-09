@@ -1,0 +1,22 @@
+task_id: ci-window-jump-tests
+gear: 3
+objective: Make the four context-window guard corpora (test_context_window_guard.py, test_context_jump_resume.py, test_context_window_jump.py, test_window_jump_gesture.sh) actually execute in CI, by adding one step to guard-conformance.yml next to the SubagentStop corpus and naming the jump half in the registry.
+constraints:
+  - Add one step; remove nothing; change no `if:`, `permissions:`, `paths:` or `on:` block of the workflow.
+  - The step runs the four corpora verbatim from the repo, in the same job and under the same `relevant` sentinel as every other hook corpus, so a path-miss PR still ends success.
+  - No real window may ever open on the runner - the python halves must isolate HOME and skip darwin-only cases off macOS, the shell corpus must shim osascript on PATH; the step passes on ubuntu-latest.
+  - No new required status context is minted; the step lives inside an already-required job.
+acceptance:
+  - text: WHEN the four corpora run on a clean checkout with a temp HOME, each SHALL exit 0 (guard 'All tests passed', jump/resume silent, gesture '30 passed, 0 failed').
+    probe: local-corpora
+  - text: WHEN guard-conformance runs on this PR, the new step SHALL appear in the job log and conclude success on ubuntu-latest.
+    probe: ci-run
+  - text: WHEN check_guard_conformance.py runs on this tree, it SHALL report 0 violations with test_context_window_jump.py registered under context_window_guard.py.
+    probe: registry
+consumer_map:
+  - The guard-conformance job on every PR that touches infra/claude-hooks/ - it is now the executor of these corpora, not just a path-filter substring.
+  - The next session that edits context_window_guard.py or window_jump.sh and expects a red check when it breaks the jump gesture (2026-09-09 broke it live on Pro and nothing red appeared).
+risks:
+  - test_window_jump_gesture.sh has only ever run on macOS; a bash-ism or a BSD-vs-GNU difference could fail it on ubuntu-latest. The corpus is capability-gated (osascript on PATH), not platform-gated, and it uses only mktemp/bash builtins, but the CI run on this PR is the proof.
+  - Runtime: the four corpora add ~20s to an already-required job.
+pii: none

@@ -256,3 +256,32 @@ articles/**/*.{id,it,ru,fr}.mdx` is a generated artifact and no longer counts to
   PRs cannot self-arm, Builder Contract 5). Dependabot PRs sharing `package-lock.json`: one at a
   time; separate lockfiles in parallel. `gh pr merge N --auto` on a CLEAN PR enqueues it directly
   with `autoMergeRequest` still null — read `mergeQueueEntry`, not the empty output (W111).
+
+### 8b. The critical path got shorter on 2026-09-09/10 — and two traps a shipping seat now meets
+
+Measured before the cures: CodeQL python 13–15 min in BOTH lanes (6,517 files, 3,008 of them
+tests), 10 of 54 merge-group Security runs red, E2E 244 s of which the tests were 69 s,
+`antidotes` unit tests 116 s. Five cures landed; the numbers a seat should expect now:
+
+- **CodeQL never uploads under `merge_group`** (#6029, `upload: never`). The queue's temporary
+  ref was deleted before the SARIF upload and the run went red with `ref … not found` on a commit
+  the queue had already merged. A `merge_group` CodeQL red with that text is gone; if you see one
+  on a PR-lane run it is a different disease — read the log.
+- **CodeQL scans code, not tests** (#6030, `paths-ignore` in `.github/codeql-config.yml`):
+  python 15 → 7 min, js 4 → 2 min. Tests, `vendor/`, `research/`, `docs/`, `skills/`,
+  `evidence/` are out of scope; a finding you expect in a test file will not appear.
+- **E2E restores `apps/mouth/.next/cache`** (#6032). First run after a lockfile or source change
+  seeds it; `hashFiles` has NO brace expansion — `*.{ts,tsx}` matches nothing and silently
+  collapses a key. One pattern per extension.
+- **`antidotes` unit tests run once under `pytest-xdist -n 4`** (#6040): 116 → 47 s, same 66
+  files; the list lines are still one path per line because
+  `test_immune_enforcement_trigger_symmetry.py` parses them, and a new test wired into the loop
+  must ALSO be a sentinel path or that pin goes red (#6029 paid that round).
+- **Two reds that are not yours.** (1) `Harness floor recompute` red with
+  `harness_gate_read: PENDING` on a Gear-3 PR = the floor ran before the gate verdict was posted:
+  post the gate, then rerun THAT run. (2) A backend shard `cancelled` at the 30-min job timeout
+  with `Install dependencies (uv)` at 25 min = runner network, rerun. Before `gh run rerun --failed`
+  check the run's `headSha` equals the PR head: rerunning a STALE run on a branch with
+  `cancel-in-progress` cancels the run of the newer commit (it did, on #6029).
+- **Stall notifier cadence is now `:07/:37`** on Mini with a 300 s classifier timeout — its
+  first `*/30` run collided with `queue_unstick` at `:00` and timed out.

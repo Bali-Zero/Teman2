@@ -1,0 +1,301 @@
+task_id: antidotes-xdist
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+date: 2026-09-09
+machine: M5
+lanes:
+  - lane: one pytest-xdist invocation replacing 68 sequential pytest interpreter invocations in the antidotes "Unit tests" step
+    role: build
+    seat: claude-sonnet-5 (subagent dispatched by the M5 Fable 5.1 orchestrating session, this worktree)
+    note: >-
+      Measured the disease: sequential loop 288s, single pytest invocation
+      258s, `pytest -n 4` 161s on the measuring machine, same pass/skip set.
+      Read scripts/tests/test_immune_enforcement_trigger_symmetry.py before
+      editing and found it parses the literal `for t in \ ... ; do` shell
+      shape to pair every looped test with a sentinel trigger path
+      (`_LOOP_OPEN_RE`/`_LOOP_RE`) — converting the list to a bash array
+      would have silently disarmed that pin (zero loop regions found,
+      `test_apparatus_loop_set_is_non_empty` and
+      `test_this_test_is_itself_both_looped_and_triggered` both depend on
+      it). Kept the for-loop shell syntax and the 68-line file list
+      byte-identical; changed only the loop body (collect into `tests=()`
+      instead of running pytest per file) and moved the single `pytest -q
+      -p no:cacheprovider -n 4 "${tests[@]}"` call after the loop.
+      pytest-xdist added to the pip install line.
+    revision_note: >-
+      Round-1 cross-family review (codex-gpt-5.6-sol) named two real nits
+      on the first diff: pytest-xdist installed with no pinned version
+      (drift risk, inconsistent with the PyYAML==6.0.3 pin on the same
+      line), and the workflow comment's file/test-count measurement read
+      as stale next to this worktree's own later local run reporting more
+      tests (see the "1919 passed" receipt below — the repo grew by a
+      couple of test files between the two measurements the same day, not
+      a regression). Both cured in a separate commit:
+      `pytest-xdist==3.8.0` pinned; comment reworded to state the count is
+      a point-in-time measurement expected to drift. codex's round-1 review
+      also raised an ABSTRACT concern (xdist could in principle expose
+      shared-tmp-path/cwd/port/DB races, scar-W131-shaped) without naming a
+      specific file — answered with a concrete grep across all 68 looped
+      test files for hardcoded /tmp paths not using tmp_path, socket/bind/
+      port usage, sqlite/postgres file paths, os.chdir at runtime, and
+      module-level mutable global state. Found: one lockfile default param
+      literally named `/tmp/nx-nonexistent.lock` in test_fleet_dispatch.py,
+      used ONLY to represent a path that must NOT exist (never written by
+      any test; callers needing a real lock pass an explicit
+      tmp_path-derived one); chdir usage exclusively via
+      `monkeypatch.chdir(tmp_path)` (auto-isolated/restored per test) plus
+      one file whose own SUBJECT is the import-time-chdir guard itself.
+      Both reviewers re-ran on the cured diff with this grep evidence in
+      round 2 and returned VERDICT: OK.
+  - lane: cross-family adversarial review of the diff
+    role: review
+    seat: codex-gpt-5.6-sol (`codex exec -m gpt-5.6-sol --sandbox read-only`, non-Anthropic, fresh context per round)
+    note: >-
+      Round 1 (loose prompt, no explore budget): produced no verdict — hit
+      an internal context-rollover checkpoint after exploring the test
+      suite at length. Round 2 (tightened, no-exploration prompt): VERDICT
+      BLOCK, naming the unpinned-xdist and stale-comment nits above — both
+      cured. Round 3 (re-run on the cured diff with the grep evidence):
+      VERDICT OK, confirming no shared-resource risk, `-n 4` correct for a
+      4 vCPU runner, loop/array/fail= contract preserved.
+    verdict: OK
+  - lane: cross-family adversarial review of the diff
+    role: review
+    seat: kimi-code/k3 (`kimi -m kimi-code/k3 -p`, non-Anthropic, agentic file access, fresh context per round, no shared prompt with the codex lane)
+    note: >-
+      Round 1 (loose prompt): exceeded the 600s cap, still running at ~15
+      minutes, killed rather than awaited further — no verdict. Round 2
+      (tightened prompt, run directly against the CURED diff with the grep
+      evidence included): VERDICT OK. Independently walked through the
+      same xdist hazards (shared tmp/cwd/port/DB, order dependence),
+      confirmed the grep findings account for all of them, confirmed `-n
+      4` matches ubuntu-latest's 4 vCPU, and confirmed the loop/fail=
+      accounting and pass/fail contract are unchanged.
+    verdict: OK
+  - lane: stopgap review while codex/kimi round 1 had produced no verdict (NOT counted toward council quorum)
+    role: review
+    seat: agy (Gemini, `agy --sandbox -p`, two independent invocations)
+    note: >-
+      Run only as a stopgap between round-1 failures (no verdict from
+      either intended seat) and round-2 retries. Both returned VERDICT OK
+      on the pre-fix diff. Superseded once codex and kimi themselves
+      returned real verdicts in round 2/3 above. Recorded for a complete
+      chronological trail in council-journal.jsonl; agy is not in
+      evidence_pack_lint.py's COUNCIL_REVIEW_SEATS and does not count
+      toward R9's quorum.
+seat_diversity: satisfied
+seat_diversity_note: >-
+  Two distinct non-Anthropic review families, codex-gpt-5.6-sol and
+  kimi-code/k3, each independently returned VERDICT OK on the same final
+  (cured) diff, with no shared prompt state between the two lanes. Getting
+  there took extra rounds: both seats failed operationally on their first
+  attempt (a context-rollover checkpoint and a >600s hang, neither related
+  to the diff's content), and codex's round-2 review on the pre-fix diff
+  found two real, trivial defects that are now cured. The agy/Gemini
+  stopgap lane used while round 1 was stuck is recorded but does not
+  substitute for the required cross-family seats — both of those seats
+  ultimately delivered their own real verdicts.
+outcome: >-
+  The `antidotes` job's "Unit tests (guilt + innocence per tool)" step now
+  runs the 68 looped test files under one `pytest -n 4` invocation instead
+  of 68 sequential interpreter invocations, with `pytest-xdist==3.8.0`
+  pinned. Locally in this worktree the exact new command (extracted from
+  the edited step) ran in 113.20s with 1919 passed, 1 skipped, 0 failed —
+  identical pass/skip set to a plain sequential run. The `for t in \ ...
+  ; do` shell loop shape, the 68-line file list, the `if [ -f "$t" ]` skip
+  semantics, the `fail=` accounting and the step's `if:` gate are all
+  unchanged. A concrete grep across all 68 files found no shared-tmp-path,
+  fixed-port, shared-DB or unsafe-chdir pattern that xdist workers could
+  race on.
+diff:
+  files: 1
+  net_lines: "20 insertions, 4 deletions (.github/workflows/immune-enforcement.yml only, across the perf commit and the follow-up fix commit)"
+  measured_at: "git diff --numstat $(git merge-base origin/main HEAD) HEAD -- .github/workflows/immune-enforcement.yml"
+  shape: >-
+    Inside the existing "Unit tests (guilt + innocence per tool)" step: the
+    pip install line gains `pytest-xdist==3.8.0`; a `tests=()` array is
+    declared before the loop; the loop body's per-file `echo
+    "::group::$t" / python -m pytest "$t" -q || fail=1 / echo
+    "::endgroup::"` becomes `tests+=("$t")`; after `done`, a new `if [
+    ${#tests[@]} -gt 0 ]` block runs `python -m pytest -q -p
+    no:cacheprovider -n 4 "${tests[@]}" || fail=1` once. No other step,
+    job, or line touched. An explanatory comment above the step covers the
+    trigger-symmetry constraint and the measurement provenance.
+behaviour_change: >-
+  YES, CI-visible: the step now runs one pytest process (with 4 xdist
+  worker subprocesses) instead of up to 68 sequential interpreter
+  processes. Test selection, skip semantics for absent files, and the
+  step's pass/fail contract are unchanged — only the execution model
+  changed. Expected wall-time reduction on CI: from a ~116s
+  sequential-loop baseline (measured 2026-09-09) to well under that, per
+  the -n 4 measurement (161s to 113s across two different machines).
+pii_scan: clean
+bites:
+  consumer: the `antidotes` required check job on THIS PR's own run
+  where: ci
+  observe: >-
+    gh api repos/Bali-Zero/Teman2/actions/jobs/<antidotes job id>
+    --jq '.steps[] | "\(((.completed_at|fromdate)-(.started_at|fromdate)))s \(.name)"'
+  expect: >-
+    "Unit tests (guilt + innocence per tool)" step duration measurably
+    below the 116s sequential-loop CI baseline, with the same
+    passed/skipped test count reported in the step's log output as before
+    this change.
+bites_note: >-
+  This is a same-PR consumer (not a future job): the step itself is the
+  thing that changed, and its own CI run on this PR is the observation
+  that closes the loop, recorded once this PR's checks report.
+receipts:
+  - claim: the four pins that read this workflow all pass, on both the pre-fix and post-fix diff
+    cmd: >-
+      python -m pytest -q
+      scripts/tests/test_immune_enforcement_trigger_symmetry.py
+      scripts/tests/test_runtime_truth_ci_gauntlet.py
+      scripts/tests/test_antidotes_ledger_tier.py
+      scripts/tests/test_unreachable_workflow_conditions.py
+    result: "70 passed in 8.11s (pre-fix); 70 passed in 12.13s (post-fix)"
+    ts: "2026-09-09T15:20:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: >-
+      the exact new command, run once against the 68 files extracted from
+      the edited step, passes with the same 1-skip set and 0 failures
+    cmd: >-
+      python -m pytest -q -p no:cacheprovider -n 4 <68 files extracted via
+      python3 regex parse of the edited step's for-loop region>
+    result: "1919 passed, 1 skipped, 1 warning in 113.20s (0:01:53)"
+    ts: "2026-09-09T15:45:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: >-
+      actionlint reports the same warning count before and after this
+      diff (pre-existing SC2221/SC2222 on the sentinel case list, no new
+      error), on both the pre-fix and post-fix diff
+    cmd: >-
+      /opt/homebrew/bin/actionlint .github/workflows/immune-enforcement.yml
+      (compared via a temporary WIP stash of the edit, restored after)
+    result: "24 lines of shellcheck warnings, identical set/count before and after this diff — all SC2221/SC2222 on the line-65 sentinel case list"
+    ts: "2026-09-09T15:50:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: prettier reports the workflow file already formatted, on both the pre-fix and post-fix diff
+    cmd: npx --no-install prettier --check .github/workflows/immune-enforcement.yml
+    result: "Checking formatting...\nAll matched files use Prettier code style!"
+    ts: "2026-09-09T15:55:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: round 1 — codex-gpt-5.6-sol produced no VERDICT line in 600s on the loose prompt
+    cmd: >-
+      codex exec -m gpt-5.6-sol -c model_reasoning_effort=medium --sandbox
+      read-only "<loose review prompt with diff>" < /dev/null
+    result: >-
+      16291-line transcript ending on an internal "context rollover"
+      checkpoint, no final VERDICT: OK/BLOCK line — treated as no verdict
+    ts: "2026-09-09T16:00:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: round 1 — kimi-code/k3 exceeded 600s and was still running at ~15 minutes, killed
+    cmd: 'kimi -m kimi-code/k3 -p "<loose review prompt with diff>" < /dev/null'
+    result: >-
+      moved to background by the harness after 600s; `ps -eo pid,etime,command`
+      showed the process still active at etime 15:02 (15m2s); killed
+    ts: "2026-09-09T16:20:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: two independent agy (Gemini) stopgap invocations returned VERDICT OK on the pre-fix diff
+    cmd: 'agy --sandbox -p "<review prompt with diff>" < /dev/null (run twice, independently)'
+    result: "both runs ended 'VERDICT: OK'; the second required an explicit 'no tool use' instruction after a headless command-permission auto-denial on its first two attempts"
+    ts: "2026-09-09T16:07:37Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: round 2 — codex-gpt-5.6-sol returned VERDICT BLOCK on the pre-fix diff with a tightened prompt, naming the unpinned-xdist and stale-comment nits
+    cmd: >-
+      codex exec -m gpt-5.6-sol -c model_reasoning_effort=medium --sandbox
+      read-only "<tightened, no-exploration review prompt with diff>" < /dev/null
+    result: "VERDICT: BLOCK — manca evidenza mirata che la suite sia xdist-safe rispetto a risorse condivise e alla regressione W131 (plus the two named nits)"
+    ts: "2026-09-09T16:35:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: >-
+      concrete grep across all 68 looped test files found no shared-tmp-path,
+      fixed-port, shared-DB, or unsafe-runtime-chdir pattern
+    cmd: >-
+      xargs grep -ln '"/tmp/\|'"'"'/tmp/' < filelist | grep -v tmp_path/tmpdir/monkeypatch;
+      xargs grep -ln "socket\.\|\.bind(\|listen(" < filelist;
+      xargs grep -ln "sqlite3\.\|\.db\"\|psycopg" < filelist;
+      xargs grep -ln "os\.chdir\|chdir(" < filelist
+    result: >-
+      only match: a lockfile default param
+      lockfile="/tmp/nx-nonexistent.lock" in test_fleet_dispatch.py, used
+      as a must-not-exist sentinel, never written (callers needing a real
+      lock pass a tmp_path-derived one); chdir matches are exclusively
+      monkeypatch.chdir(tmp_path) plus the import-time-chdir guard's own
+      subject text; zero socket/bind/port or sqlite/postgres matches
+    ts: "2026-09-09T16:30:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: post-cure, actionlint/prettier/pin-suite/xdist command all still pass
+    cmd: >-
+      /opt/homebrew/bin/actionlint .github/workflows/immune-enforcement.yml;
+      npx --no-install prettier --check .github/workflows/immune-enforcement.yml;
+      python -m pytest -q <4 pins>
+    result: "actionlint: 24 lines, identical to pre-fix; prettier: all matched files use Prettier code style; pins: 70 passed in 12.13s"
+    ts: "2026-09-09T16:33:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+  - claim: round 3 (codex) and round 2 (kimi) both returned VERDICT OK on the cured diff with the grep evidence included
+    cmd: >-
+      codex exec -m gpt-5.6-sol -c model_reasoning_effort=medium --sandbox
+      read-only "<tightened prompt + cure notes + grep evidence>" < /dev/null;
+      kimi -m kimi-code/k3 -p "<same prompt>" < /dev/null
+    result: "codex: 'VERDICT: OK'; kimi: 'VERDICT: OK'"
+    ts: "2026-09-09T16:42:00Z"
+    seat: claude-sonnet-5 (this session)
+    exit: 0
+dissent:
+  - seat: codex-gpt-5.6-sol (cross-family)
+    status: CONFIRMED
+    objection: >-
+      Round 2 (on the pre-fix diff): pytest-xdist installed unpinned
+      (drift risk vs. the PyYAML pin on the same line), and the workflow
+      comment's file/test-count reads as stale next to a later local run
+      showing more tests. CURED: pytest-xdist==3.8.0 pinned; comment
+      reworded to state the count is point-in-time and expected to drift.
+      Also raised an abstract W131-shaped concern with no named file —
+      answered with a concrete grep (see receipts) rather than dismissed;
+      re-reviewed the cured diff with that evidence and returned OK.
+  - seat: kimi-code/k3 (cross-family)
+    status: CONFIRMED
+    objection: >-
+      No blocking objection on the cured diff; independently walked
+      through the same xdist hazard categories as codex (shared tmp/cwd/
+      port/DB, order dependence) without seeing codex's answer and
+      confirmed the grep evidence accounts for all of them. Named the
+      pre-existing `python` vs `python3` step-to-step inconsistency as a
+      non-blocking pre-existing note, not a defect introduced by this
+      diff — left as written, not this PR's scope.
+  - seat: claude-sonnet-5 (this worktree session — the builder's own standing objection)
+    status: PLAUSIBLE
+    objection: >-
+      Both intended review seats failed operationally on their first
+      attempt (codex: context-rollover checkpoint; kimi: >600s hang) for
+      reasons that appear to be about session/context-budget handling on
+      a loose, unbounded prompt rather than about this diff — but that is
+      an inference, not something independently confirmed here. If a
+      similar prompt shape recurs on a future PR's council review, the
+      same operational failure could recur and cost another two rounds.
+      The concrete grep in these receipts is real verification, not
+      merely an assertion, and is the strongest evidence in this pack;
+      the Bites observation on this PR's own CI run remains the
+      strongest INDEPENDENT check beyond it.
+appetite_exceeded: >-
+  Declared 1 wall-clock hour; spent 1.5. Both intended review seats failed
+  operationally on their first round (codex: context-rollover checkpoint;
+  kimi: >600s hang, killed) and had to be retried with a tightened prompt,
+  and codex's round-2 review found two real nits that required a cure
+  cycle plus a concrete grep before the final round-3/round-2 verdicts —
+  none of that was foreseeable from the brief's original objective.
+spend:
+  wall_clock_hours: 1.5
