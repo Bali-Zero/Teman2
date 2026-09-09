@@ -1,0 +1,351 @@
+.root {
+  --paper: #f7f4ee;
+  --ink: #1d2c3b;
+  --slate: #233d52;
+  --copper: #a44b36;
+  --rule: rgba(29, 44, 59, 0.19);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+}
+.root h1,
+.root h2,
+.root h3 {
+  font-family: var(--serif);
+  font-weight: 400;
+  letter-spacing: -0.045em;
+}
+.root a {
+  text-underline-offset: 0.22em;
+}
+.root :where(a, button, input, select):focus-visible {
+  outline: 2px solid var(--copper);
+  outline-offset: 5px;
+}
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--copper);
+}
+.textLink {
+  display: inline-flex;
+  gap: 12px;
+  color: var(--copper);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: underline;
+}
+.legalLayout {
+  width: min(1160px, calc(100% - 100px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 235px minmax(0, 1fr);
+  gap: 110px;
+  padding: 62px 0 112px;
+}
+.legalRail {
+  align-self: start;
+  position: sticky;
+  top: 30px;
+}
+.documentNav {
+  margin: 20px 0 36px;
+  border-top: 1px solid var(--rule);
+}
+.documentNav a {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--rule);
+  padding: 15px 0;
+  font-size: 15px;
+  text-decoration: none;
+}
+.documentNav a[aria-current] {
+  color: var(--copper);
+  font-weight: 700;
+}
+.contents {
+  display: grid;
+  gap: 13px;
+  margin-bottom: 36px;
+}
+.contents .eyebrow {
+  margin-bottom: 4px;
+}
+.contents a {
+  font-size: 12px;
+  line-height: 1.5;
+  text-decoration: none;
+}
+.contents a:hover {
+  color: var(--copper);
+  text-decoration: underline;
+}
+.legalArticle {
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.85;
+}
+.legalArticle h1 {
+  font-size: clamp(42px, 5vw, 70px);
+  line-height: 1.07;
+  margin: 10px 0 32px;
+}
+.legalArticle h2 {
+  font-size: 29px;
+  line-height: 1.22;
+  margin: 0 0 20px;
+  scroll-margin-top: 30px;
+}
+.legalArticle h3 {
+  font-size: 21px;
+  margin: 24px 0 14px;
+}
+.legalArticle header {
+  margin-bottom: 50px;
+  padding-bottom: 30px;
+  border-bottom: 1px solid var(--rule);
+}
+.legalArticle section {
+  padding: 34px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.legalArticle p {
+  margin: 0 0 18px;
+}
+.legalArticle ul {
+  padding-left: 22px;
+  margin: 16px 0;
+}
+.legalArticle li {
+  padding: 0 0 10px 5px;
+}
+.legalArticle a {
+  color: var(--copper);
+}
+.legalArticle table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.65;
+  margin: 35px 0;
+}
+.legalArticle th {
+  text-align: left;
+  color: var(--copper);
+  font-weight: 700;
+}
+.legalArticle td,
+.legalArticle th {
+  border-bottom: 1px solid var(--rule);
+  padding: 15px 12px 15px 0;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.legalArticle > div:first-child {
+  color: var(--ink);
+}
+.legalArticle > div:last-child > div:last-child {
+  margin-top: 30px;
+}
+.companyMain {
+  width: min(1320px, calc(100% - 100px));
+  margin: auto;
+}
+.companyHero {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 100px;
+  align-items: center;
+  padding: 56px 0 80px;
+}
+.companyHero h1 {
+  font-size: clamp(52px, 6.4vw, 92px);
+  line-height: 1.02;
+  margin: 28px 0 36px;
+  max-width: 600px;
+}
+.lead {
+  font-size: 18px;
+  line-height: 1.9;
+  max-width: 580px;
+}
+.companyImage {
+  margin: 0;
+}
+.companyImage img {
+  width: 100%;
+  height: 420px;
+  object-fit: cover;
+  object-position: 50% 25%;
+}
+.companyImage figcaption {
+  font-size: 10px;
+  margin-top: 12px;
+  color: var(--slate);
+}
+.companyInvitation {
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  padding: 54px 0 64px;
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 60px;
+}
+.companyInvitation h2 {
+  font-size: 44px;
+  line-height: 1.1;
+  margin: 0 0 22px;
+}
+.companyInvitation p {
+  max-width: 640px;
+  font-size: 16px;
+  line-height: 1.9;
+  margin: 0 0 24px;
+}
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 25px;
+}
+.primaryLink {
+  display: inline-flex;
+  background: var(--slate);
+  color: var(--paper);
+  padding: 17px 22px;
+  font-size: 12px;
+  text-decoration: none;
+}
+.companyResources {
+  padding: 70px 0 100px;
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 100px;
+}
+.companyResources h2 {
+  font-size: 44px;
+  line-height: 1.15;
+  margin: 20px 0 28px;
+}
+.resourceRow {
+  display: grid;
+  grid-template-columns: 25px minmax(0, 1fr) 20px;
+  gap: 20px;
+  border-top: 1px solid var(--rule);
+  padding: 25px 0;
+  text-decoration: none;
+  align-items: baseline;
+}
+.resourceRow h3 {
+  font-size: 28px;
+  margin: 0 0 12px;
+}
+.resourceRow p {
+  font-size: 13px;
+  line-height: 1.8;
+  max-width: 400px;
+  margin: 0;
+}
+.resourceRow:hover h3 {
+  color: var(--copper);
+}
+@media (max-width: 1000px) {
+  .legalLayout {
+    gap: 50px;
+    grid-template-columns: 195px minmax(0, 1fr);
+  }
+  .companyHero {
+    gap: 45px;
+  }
+  .companyHero h1 {
+    font-size: 60px;
+  }
+  .companyResources {
+    gap: 50px;
+  }
+}
+@media (max-width: 700px) {
+  .legalLayout,
+  .companyMain {
+    width: calc(100% - 40px);
+  }
+  .legalLayout {
+    display: block;
+    padding: 30px 0 65px;
+  }
+  .legalRail {
+    position: static;
+  }
+  .documentNav {
+    display: flex;
+    gap: 24px;
+    margin: 14px 0 24px;
+  }
+  .documentNav a {
+    flex: 1;
+    gap: 10px;
+  }
+  .contents {
+    border: 1px solid var(--rule);
+    padding: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+  }
+  .contents .eyebrow {
+    width: 100%;
+  }
+  .contents a {
+    font-size: 11px;
+  }
+  .legalRail > .textLink {
+    display: none;
+  }
+  .legalArticle {
+    font-size: 14px;
+  }
+  .legalArticle h1 {
+    font-size: 47px;
+    margin-top: 26px;
+  }
+  .legalArticle h2 {
+    font-size: 26px;
+  }
+  .legalArticle table {
+    font-size: 10px;
+  }
+  .companyHero {
+    display: block;
+    padding: 35px 0 40px;
+  }
+  .companyHero h1 {
+    font-size: 58px;
+  }
+  .lead {
+    font-size: 16px;
+  }
+  .companyImage {
+    margin-top: 35px;
+  }
+  .companyImage img {
+    height: 290px;
+  }
+  .companyInvitation,
+  .companyResources {
+    grid-template-columns: 1fr;
+    gap: 25px;
+    padding: 38px 0;
+  }
+  .companyInvitation h2,
+  .companyResources h2 {
+    font-size: 37px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .root * {
+    scroll-behavior: auto;
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "careers": {
+    "source": "apps/mouth/src/app/v2/company/careers/page.tsx",
+    "sha256": "bad67f2b4dfedfadf6336e8bb72023cd545d4b5bf6fcfbc6e1900050cfc5a172",
+    "title": "Work at Bali Zero",
+    "paragraphs": [
+      "We're building the infrastructure for foreigners to thrive in Bali — visas, companies, tax, property. The team doing this work is small, expert, and on fire. We'll post open roles here when the time is right.",
+      "In the meantime — if you think you belong here, reach out directly via WhatsApp. Tell us what you do and why Bali Zero."
+    ]
+  },
+  "press": {
+    "source": "apps/mouth/src/app/v2/company/press/page.tsx",
+    "sha256": "f3a6acdd0a663166294dc21729f6a2366dcedb927d0a393c6c942bf97953a713",
+    "title": "Press & Media",
+    "paragraphs": [
+      "If you're covering Indonesian visa law, foreign business ownership, PT PMA, or the expat ecosystem in Bali — we're a primary source. Our team is available for comment, background, and on-record interviews.",
+      "Press enquiries",
+      "Reach us via WhatsApp or email — we respond within one business day."
+    ]
+  }
+}

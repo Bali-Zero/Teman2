@@ -1,0 +1,170 @@
+{
+  "privacy": {
+    "source": "apps/mouth/src/app/privacy/page.tsx",
+    "sha256": "7472c68c3cc13441a1976bceba5c1039b9dca1e2b1fc0b51978f4be0b77d1f4d",
+    "title": "Privacy Policy",
+    "contents": [
+      {
+        "id": "section-1",
+        "title": "1. Who We Are"
+      },
+      {
+        "id": "section-2",
+        "title": "2. Data We Collect"
+      },
+      {
+        "id": "section-3",
+        "title": "3. Legal Basis for Processing"
+      },
+      {
+        "id": "section-4",
+        "title": "4. How We Use Your Data"
+      },
+      {
+        "id": "section-5",
+        "title": "5. Data Storage and Cross-Border Transfer"
+      },
+      {
+        "id": "section-6",
+        "title": "6. Data Retention"
+      },
+      {
+        "id": "section-7",
+        "title": "7. Your Rights (UU PDP Art. 5-12)"
+      },
+      {
+        "id": "section-8",
+        "title": "8. Data Security"
+      },
+      {
+        "id": "section-9",
+        "title": "9. Breach Notification"
+      },
+      {
+        "id": "section-10",
+        "title": "10. Contact"
+      }
+    ],
+    "html": "<div><div><header><h1>Privacy Policy</h1><p>Last updated: March 2026 · Effective: October 17, 2024</p></header><section><h2 id=\"section-1\">1. Who We Are</h2><p>Bali Zero (\"we\", \"us\", \"our\") provides immigration, business registration, tax, and property services for foreign nationals and companies in Indonesia. Our AI assistant Zantara processes your inquiries across WhatsApp, Telegram, Web, Instagram, and other channels.</p><p>Under the Indonesian Personal Data Protection Law (UU PDP No. 27/2022), we act as the <strong>Personal Data Controller</strong> for the data we collect and process.</p></section><section><h2 id=\"section-2\">2. Data We Collect</h2><h3>General Personal Data (Art. 4(2))</h3><ul><li>Full name, email address, phone number</li><li>Nationality, date of birth, gender</li><li>Address (residential and business)</li><li>Passport number and expiry date</li><li>Communication history (messages across all channels)</li></ul><h3>Specific Personal Data (Art. 4(1))</h3><ul><li>Passport photograph (biometric data when processed via OCR)</li><li>KTP (Indonesian ID card) scans</li><li>NPWP (tax identification number) documents</li><li>Financial information (salary, investment amounts for visa applications)</li></ul></section><section><h2 id=\"section-3\">3. Legal Basis for Processing</h2><ul><li><strong>Contract performance (Art. 20(b)):</strong> Processing necessary to fulfill our immigration and business services</li><li><strong>Explicit consent (Art. 21):</strong> For specific personal data (passport scans, KTP, biometric processing)</li><li><strong>Legal obligation (Art. 20(c)):</strong> Tax record retention as required by Indonesian tax law</li><li><strong>Legitimate interest (Art. 20(f)):</strong> Pre-contractual inquiries via WhatsApp/chat</li></ul></section><section><h2 id=\"section-4\">4. How We Use Your Data</h2><ul><li>Processing visa applications and company registrations</li><li>Document verification via OCR (optical character recognition)</li><li>AI-powered assistance for your inquiries</li><li>Tax filing and compliance monitoring</li><li>Communication about your active services</li><li>Improving our service quality</li></ul></section><section><h2 id=\"section-5\">5. Data Storage and Cross-Border Transfer</h2><p>Your data is stored on servers in <strong>Singapore</strong> (Fly.io, Qdrant Cloud) and processed by:</p><ul><li><strong>Fly.io</strong> (Singapore) — Application hosting and PostgreSQL database</li><li><strong>Qdrant Cloud</strong> (US) — Vector search database</li><li><strong>Google</strong> (global) — Google Drive for document storage, Gemini for AI processing</li><li><strong>Upstash</strong> (global) — Redis cache (temporary, 5-minute TTL)</li><li><strong>Local processing</strong> (Bali) — Ollama AI for document OCR (no cross-border transfer)</li></ul><p>Cross-border transfers are protected by standard contractual clauses and data processing agreements with each provider, in compliance with Art. 56 of UU PDP.</p></section><section><h2 id=\"section-6\">6. Data Retention</h2><ul><li><strong>Active service data:</strong> Duration of our engagement + 5 years</li><li><strong>Tax records:</strong> 7 years (Indonesian tax law requirement)</li><li><strong>Communication history:</strong> 2 years after last interaction</li><li><strong>Document scans:</strong> 5 years after visa/permit expiry</li><li><strong>Cache data:</strong> 5 minutes (automatically deleted)</li></ul></section><section><h2 id=\"section-7\">7. Your Rights (UU PDP Art. 5-12)</h2><p>You have the right to:</p><ul><li><strong>Access:</strong> Request a copy of your personal data</li><li><strong>Rectification:</strong> Correct inaccurate data</li><li><strong>Erasure:</strong> Request deletion of your data (within 72 hours)</li><li><strong>Portability:</strong> Receive your data in a structured format</li><li><strong>Withdraw consent:</strong> Revoke previously given consent at any time</li><li><strong>Object:</strong> Object to automated decision-making</li></ul><p>To exercise your rights, contact our Data Protection Officer at <a href=\"mailto:privacy@balizero.com\">privacy@balizero.com</a></p></section><section><h2 id=\"section-8\">8. Data Security</h2><ul><li>Encryption at rest (database-level and column-level for sensitive fields)</li><li>PII detection and redaction in AI-generated responses</li><li>Immutable audit logging of all data access</li><li>Role-based access control (RBAC)</li><li>Regular security assessments</li></ul></section><section><h2 id=\"section-9\">9. Breach Notification</h2><p>In the event of a data breach affecting your personal data, we will notify you and the relevant Indonesian authorities (MOCD/Lembaga PDP) within <strong>72 hours</strong> (3 x 24 hours) of discovery, as required by Art. 46 of UU PDP.</p></section><section><h2 id=\"section-10\">10. Contact</h2><p><strong>Data Protection Officer:</strong> <a href=\"mailto:privacy@balizero.com\">privacy@balizero.com</a></p><p><strong>General inquiries:</strong> <a href=\"mailto:hello@balizero.com\">hello@balizero.com</a></p><p>Bali Zero · Bali, Indonesia · PSE Registration: [Pending]</p></section></div></div>"
+  },
+  "terms": {
+    "source": "apps/mouth/src/app/terms/page.tsx",
+    "sha256": "65abdd42137c989d26649b5822041f382058f24b544691d6363df0a38a9d1720",
+    "title": "Terms of Service",
+    "contents": [
+      {
+        "id": "section-1",
+        "title": "1. Services"
+      },
+      {
+        "id": "section-2",
+        "title": "2. Engagement"
+      },
+      {
+        "id": "section-3",
+        "title": "3. Fees and Payments"
+      },
+      {
+        "id": "section-4",
+        "title": "4. Your Responsibilities"
+      },
+      {
+        "id": "section-5",
+        "title": "5. AI Disclaimer"
+      },
+      {
+        "id": "section-6",
+        "title": "6. Limitation of Liability"
+      },
+      {
+        "id": "section-7",
+        "title": "7. Governing Law"
+      },
+      {
+        "id": "section-8",
+        "title": "8. Contact"
+      }
+    ],
+    "html": "<div><div><header><h1>Terms of Service</h1><p>Last updated: April 2026</p></header><section><h2 id=\"section-1\">1. Services</h2><p>Bali Zero provides visa processing, company setup (PT PMA), tax compliance, and property due diligence services in Indonesia. All services are delivered by licensed Indonesian professionals. Our AI assistant (Zantara) provides information and drafts; licensed staff review and sign all filings.</p></section><section><h2 id=\"section-2\">2. Engagement</h2><p>A service engagement begins when you confirm a scope of work and make payment. Timelines are estimates; Indonesian government processing times are outside our control. We commit to keeping you informed at every step via your chosen channel (WhatsApp, email, Telegram).</p></section><section><h2 id=\"section-3\">3. Fees and Payments</h2><ul><li>All fees are listed on our service pages in USD. Government fees are passed through at cost.</li><li>Payment is due before filing unless otherwise agreed in writing.</li><li><strong>Refund policy:</strong> if we cannot deliver the service due to our error, we refund the service fee in full. Government fees paid on your behalf are non-refundable.</li></ul></section><section><h2 id=\"section-4\">4. Your Responsibilities</h2><ul><li>Provide accurate, complete documents and information.</li><li>Respond to our requests within reasonable timeframes.</li><li>Comply with Indonesian law — we do not assist with applications that violate regulations.</li></ul></section><section><h2 id=\"section-5\">5. AI Disclaimer</h2><p>Zantara AI provides information based on Indonesian regulations and our knowledge base. AI-generated content is reviewed by licensed staff before any filing. AI answers are informational, not legal advice. For binding legal opinions, we connect you with our licensed notary or tax consultant.</p></section><section><h2 id=\"section-6\">6. Limitation of Liability</h2><p>Our liability is limited to the fees paid for the specific service in question. We are not liable for delays caused by Indonesian government agencies, incomplete documents from clients, or changes in regulation after filing.</p></section><section><h2 id=\"section-7\">7. Governing Law</h2><p>These terms are governed by the laws of the Republic of Indonesia. Disputes shall be resolved through the Denpasar District Court (Pengadilan Negeri Denpasar).</p></section><section><h2 id=\"section-8\">8. Contact</h2><p><strong>Questions about these terms:</strong> <a href=\"mailto:legal@balizero.com\">legal@balizero.com</a></p><p><strong>Privacy and personal data:</strong> see our <a href=\"/privacy\">Privacy Policy</a></p><p>Bali Zero · Bali, Indonesia</p></section></div></div>"
+  },
+  "v2-privacy": {
+    "source": "apps/mouth/src/app/v2/privacy/page.tsx",
+    "sha256": "2b6fb8b423a5d6dd139d5a4041cb85468647875a12d09ffc62587deb3c2435a0",
+    "title": "Privacy Policy",
+    "contents": [
+      {
+        "id": "section-1",
+        "title": "1. Data we collect"
+      },
+      {
+        "id": "section-2",
+        "title": "2. How we use your data"
+      },
+      {
+        "id": "section-3",
+        "title": "3. Data sharing"
+      },
+      {
+        "id": "section-4",
+        "title": "4. Data retention"
+      },
+      {
+        "id": "section-5",
+        "title": "5. Your rights"
+      },
+      {
+        "id": "section-6",
+        "title": "6. Cookies"
+      }
+    ],
+    "html": "<div>Legal · Last updated April 2026</div><h1>Privacy Policy</h1><div><p>Bali Zero (“we”, “us”, “our”) respects your privacy. This policy explains what data we collect, why, and how we handle it.</p><section><h2 id=\"section-1\">1. Data we collect</h2><div><p>We collect only what we need to deliver our services:</p><ul><li><strong>Contact information</strong> — name, email, phone, nationality — provided when you book a consultation or submit a form.</li><li><strong>Service data</strong> — visa type, company details, tax filings — provided during engagements.</li><li><strong>Usage data</strong> — pages visited, referrer, device type — collected via Google Analytics (anonymized IP).</li><li><strong>Chat data</strong> — messages sent to Zantara AI or WhatsApp — stored to improve response quality.</li></ul></div><style>\n        .legal-list ul { list-style: disc; padding-left: 1.5rem; }\n        .legal-list li { margin-bottom: 0.5rem; }\n      </style></section><section><h2 id=\"section-2\">2. How we use your data</h2><div><ul><li>Deliver visa, company setup, tax, and property services you requested.</li><li>Communicate about your case status via WhatsApp, email, or Telegram.</li><li>Improve our AI assistant (Zantara) with anonymized conversation data.</li><li>Comply with Indonesian regulatory requirements (immigration, tax filings).</li></ul></div><style>\n        .legal-list ul { list-style: disc; padding-left: 1.5rem; }\n        .legal-list li { margin-bottom: 0.5rem; }\n      </style></section><section><h2 id=\"section-3\">3. Data sharing</h2><div><p>We never sell your data. We share it only with:</p><ul><li>Indonesian government agencies (Imigrasi, DJP, OSS) — as required to process your visa, company, or tax filings.</li><li>Licensed Indonesian notaries and tax consultants working on your case.</li><li>Cloud infrastructure providers (Fly.io, Vercel, Google Cloud) — under strict data processing agreements.</li></ul></div><style>\n        .legal-list ul { list-style: disc; padding-left: 1.5rem; }\n        .legal-list li { margin-bottom: 0.5rem; }\n      </style></section><section><h2 id=\"section-4\">4. Data retention</h2><div><p>We retain service data for the duration of your engagement plus 5 years (Indonesian regulatory minimum). Usage analytics are retained for 26 months. You can request deletion of non-regulatory data at any time.</p></div><style>\n        .legal-list ul { list-style: disc; padding-left: 1.5rem; }\n        .legal-list li { margin-bottom: 0.5rem; }\n      </style></section><section><h2 id=\"section-5\">5. Your rights</h2><div><ul><li>Access, correct, or delete your personal data.</li><li>Withdraw consent for marketing communications.</li><li>Request a copy of your data in a portable format.</li><li>Lodge a complaint with the Indonesian data protection authority.</li></ul><p>Contact <a href=\"mailto:privacy@balizero.com\">privacy@balizero.com</a> for any request.</p></div><style>\n        .legal-list ul { list-style: disc; padding-left: 1.5rem; }\n        .legal-list li { margin-bottom: 0.5rem; }\n      </style></section><section><h2 id=\"section-6\">6. Cookies</h2><div><p>We use essential cookies for authentication and preferences. Analytics cookies (Google Analytics) are opt-in. See our <a href=\"/v2/cookies\">Cookie Policy</a> for details.</p></div><style>\n        .legal-list ul { list-style: disc; padding-left: 1.5rem; }\n        .legal-list li { margin-bottom: 0.5rem; }\n      </style></section><div>This policy is provided for transparency. For Indonesia-specific legal questions regarding data protection under PP 71/2019 and UU PDP, consult our legal team.</div></div>"
+  },
+  "v2-terms": {
+    "source": "apps/mouth/src/app/v2/terms/page.tsx",
+    "sha256": "5b92e5a3bb190bae50d8fa2ded8e26350e9d962226492fb9511f0b8cd5107ffd",
+    "title": "Terms of Service",
+    "contents": [
+      {
+        "id": "section-1",
+        "title": "1. Services"
+      },
+      {
+        "id": "section-2",
+        "title": "2. Engagement"
+      },
+      {
+        "id": "section-3",
+        "title": "3. Fees and payments"
+      },
+      {
+        "id": "section-4",
+        "title": "4. Your responsibilities"
+      },
+      {
+        "id": "section-5",
+        "title": "5. AI disclaimer"
+      },
+      {
+        "id": "section-6",
+        "title": "6. Limitation of liability"
+      },
+      {
+        "id": "section-7",
+        "title": "7. Governing law"
+      }
+    ],
+    "html": "<div>Legal · Last updated April 2026</div><h1>Terms of Service</h1><div><section><h2 id=\"section-1\">1. Services</h2><div><p>Bali Zero provides visa processing, company setup (PT PMA), tax compliance, and property due diligence services in Indonesia. All services are delivered by licensed Indonesian professionals. Our AI assistant (Zantara) provides information and drafts; licensed staff review and sign all filings.</p></div></section><section><h2 id=\"section-2\">2. Engagement</h2><div><p>A service engagement begins when you confirm a scope of work and make payment. Timelines are estimates; Indonesian government processing times are outside our control. We commit to keeping you informed at every step via your chosen channel (WhatsApp, email, Telegram).</p></div></section><section><h2 id=\"section-3\">3. Fees and payments</h2><div><ul><li>All fees are listed on our service pages in USD. Government fees are passed through at cost.</li><li>Payment is due before filing unless otherwise agreed in writing.</li><li>Refund policy: if we cannot deliver the service due to our error, we refund the service fee in full. Government fees paid on your behalf are non-refundable.</li></ul></div></section><section><h2 id=\"section-4\">4. Your responsibilities</h2><div><ul><li>Provide accurate, complete documents and information.</li><li>Respond to our requests within reasonable timeframes.</li><li>Comply with Indonesian law — we do not assist with applications that violate regulations.</li></ul></div></section><section><h2 id=\"section-5\">5. AI disclaimer</h2><div><p>Zantara AI provides information based on Indonesian regulations and our knowledge base. AI-generated content is reviewed by licensed staff before any filing. AI answers are informational, not legal advice. For binding legal opinions, we connect you with our licensed notary or tax consultant.</p></div></section><section><h2 id=\"section-6\">6. Limitation of liability</h2><div><p>Our liability is limited to the fees paid for the specific service in question. We are not liable for delays caused by Indonesian government agencies, incomplete documents from clients, or changes in regulation after filing.</p></div></section><section><h2 id=\"section-7\">7. Governing law</h2><div><p>These terms are governed by the laws of the Republic of Indonesia. Disputes shall be resolved through the Denpasar District Court (Pengadilan Negeri Denpasar).</p></div></section><div>Questions about these terms? Contact <a href=\"mailto:legal@balizero.com\">legal@balizero.com</a>.</div></div>"
+  },
+  "v2-cookies": {
+    "source": "apps/mouth/src/app/v2/cookies/page.tsx",
+    "sha256": "0800d24d430309af8a76fa5e634fc025cdca0ef68a3a333fd462a35d295dd47f",
+    "title": "Cookie Policy",
+    "contents": [
+      {
+        "id": "section-1",
+        "title": "Managing cookies"
+      }
+    ],
+    "html": "<div>Legal · Last updated April 2026</div><h1>Cookie Policy</h1><div><p>We use cookies to keep the site working and to understand how people use it. Here is what we set and why.</p><div><table><thead><tr><th scope=\"col\">Cookie</th><th scope=\"col\">Type</th><th scope=\"col\">Duration</th><th scope=\"col\">Purpose</th></tr></thead><tbody><tr><td>nz_access_token</td><td>Essential</td><td>Session</td><td>SSO authentication across balizero.com subdomains</td></tr><tr><td>theme</td><td>Essential</td><td>1 year</td><td>Stores light/dark mode preference</td></tr><tr><td>_ga / _ga_*</td><td>Analytics</td><td>2 years</td><td>Google Analytics — page views, traffic sources (anonymized IP)</td></tr><tr><td>_gid</td><td>Analytics</td><td>24 hours</td><td>Google Analytics — session identification</td></tr></tbody></table></div><section><h2 id=\"section-1\">Managing cookies</h2><p>Essential cookies cannot be disabled without breaking login and preferences. Analytics cookies are loaded only after consent. You can revoke consent at any time by clearing cookies in your browser settings or contacting us.</p></section><div>For questions, contact <a href=\"mailto:privacy@balizero.com\">privacy@balizero.com</a>. See also our <a href=\"/v2/privacy\">Privacy Policy</a>.</div></div>"
+  }
+}

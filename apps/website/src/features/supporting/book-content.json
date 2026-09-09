@@ -1,0 +1,303 @@
+{
+  "source": "apps/mouth/src/components/book/book-data.ts",
+  "sha256": "2ec875058a316c0847193e2a2863f68beb66ed48596c655b449031e4b3989e41",
+  "chapters": [
+    {
+      "id": "cover",
+      "index": 0
+    },
+    {
+      "id": "manifesto",
+      "index": 1
+    },
+    {
+      "id": "origin",
+      "index": 2
+    },
+    {
+      "id": "team",
+      "index": 3
+    },
+    {
+      "id": "services",
+      "index": 4
+    },
+    {
+      "id": "impact",
+      "index": 5
+    },
+    {
+      "id": "technology",
+      "index": 6
+    },
+    {
+      "id": "contact",
+      "index": 7
+    }
+  ],
+  "locales": {
+    "en": "English",
+    "it": "Italiano",
+    "id": "Bahasa Indonesia",
+    "ru": "Русский",
+    "zh": "中文"
+  },
+  "translations": {
+    "en": {
+      "chapters": [
+        "Cover",
+        "Manifesto",
+        "Origin",
+        "Team",
+        "Services",
+        "Impact",
+        "Technology",
+        "Contact"
+      ],
+      "coverTagline": "Bali Zero — The AI-first Indonesia experts",
+      "coverSubtitle": "Your guide to doing business in Bali, built on 20 years of expertise.",
+      "manifestoP1": "It started in 2006 when Pak Zainal Abidin founded CV Bayu Santero in Bali. Fourteen years of experience in the Indonesian market. Clients helped. Regulations navigated. Success stories built brick by brick.",
+      "manifestoP2": "In 2020, a meeting changed everything. A new vision joined deep roots. From that meeting, Bali Zero was born — not a startup, but the evolution of twenty years of history.",
+      "originP1": "Pak Zainal Abidin had seen it all. Foreign clients lost in the Indonesian bureaucratic labyrinth. Wrong visas. Companies set up with wrong KBLI codes. Money wasted through lack of precise information.",
+      "originP2": "The solution was not just more staff — it was intelligence. A system that learns, adapts, and guides every client with precision.",
+      "contactBody": "Ready to set up your business in Bali? Our team is available on WhatsApp every day.",
+      "contactCta": "Hi, I found you through the Brand Book and would like to learn more.",
+      "askOnWhatsApp": "Ask on WhatsApp",
+      "servicesCategories": {
+        "visa": "Visa",
+        "company": "Company Setup",
+        "tax": "Tax",
+        "property": "Property"
+      },
+      "teamDepts": {
+        "leadership": "Leadership",
+        "setup": "Business Setup",
+        "tax": "Tax",
+        "accounting": "Accounting",
+        "support": "Support"
+      }
+    },
+    "it": {
+      "chapters": [
+        "Copertina",
+        "Manifesto",
+        "Origine",
+        "Team",
+        "Servizi",
+        "Impatto",
+        "Tecnologia",
+        "Contatti"
+      ],
+      "coverTagline": "Bali Zero — Esperti AI-first in Indonesia",
+      "coverSubtitle": "La tua guida per fare business a Bali, costruita su 20 anni di esperienza.",
+      "manifestoP1": "Tutto è iniziato nel 2006, quando Pak Zainal Abidin ha fondato CV Bayu Santero a Bali. Quattordici anni di esperienza nel mercato indonesiano.",
+      "manifestoP2": "Nel 2020, un incontro ha cambiato tutto. Da quell'incontro è nato Bali Zero — non una startup, ma l'evoluzione di vent'anni di storia.",
+      "originP1": "Pak Zainal Abidin aveva già visto tutto. Clienti stranieri persi nel labirinto burocratico indonesiano. Visti sbagliati. Aziende aperte con codici KBLI errati.",
+      "originP2": "La soluzione non era solo più personale — era intelligenza. Un sistema che impara, si adatta e guida ogni cliente con precisione.",
+      "contactBody": "Pronto ad aprire la tua azienda a Bali? Il nostro team è disponibile su WhatsApp ogni giorno.",
+      "contactCta": "Ciao, vi ho trovati attraverso il Brand Book e vorrei saperne di più.",
+      "askOnWhatsApp": "Chiedi su WhatsApp",
+      "servicesCategories": {
+        "visa": "Visto",
+        "company": "Apertura Azienda",
+        "tax": "Fiscale",
+        "property": "Immobiliare"
+      },
+      "teamDepts": {
+        "leadership": "Leadership",
+        "setup": "Business Setup",
+        "tax": "Fiscale",
+        "accounting": "Contabilità",
+        "support": "Supporto"
+      }
+    },
+    "id": {
+      "chapters": [
+        "Sampul",
+        "Manifesto",
+        "Asal-usul",
+        "Tim",
+        "Layanan",
+        "Dampak",
+        "Teknologi",
+        "Kontak"
+      ],
+      "coverTagline": "Bali Zero — Ahli Indonesia AI-first",
+      "coverSubtitle": "Panduan Anda berbisnis di Bali, dibangun dari 20 tahun pengalaman.",
+      "manifestoP1": "Semuanya dimulai pada 2006 ketika Pak Zainal Abidin mendirikan CV Bayu Santero di Bali. Empat belas tahun pengalaman di pasar Indonesia.",
+      "manifestoP2": "Pada 2020, sebuah pertemuan mengubah segalanya. Dari pertemuan itu lahirlah Bali Zero — bukan startup, melainkan evolusi dari dua puluh tahun sejarah.",
+      "originP1": "Pak Zainal Abidin sudah melihat semuanya. Klien asing tersesat dalam labirin birokrasi Indonesia. Visa yang salah. Perusahaan dibuka dengan kode KBLI yang keliru.",
+      "originP2": "Solusinya bukan hanya lebih banyak staf — melainkan kecerdasan. Sistem yang belajar, beradaptasi, dan membimbing setiap klien dengan presisi.",
+      "contactBody": "Siap mendirikan bisnis Anda di Bali? Tim kami tersedia di WhatsApp setiap hari.",
+      "contactCta": "Halo, saya menemukan Anda melalui Brand Book dan ingin tahu lebih lanjut.",
+      "askOnWhatsApp": "Tanya di WhatsApp",
+      "servicesCategories": {
+        "visa": "Visa",
+        "company": "Pendirian Perusahaan",
+        "tax": "Pajak",
+        "property": "Properti"
+      },
+      "teamDepts": {
+        "leadership": "Kepemimpinan",
+        "setup": "Business Setup",
+        "tax": "Pajak",
+        "accounting": "Akuntansi",
+        "support": "Dukungan"
+      }
+    },
+    "ru": {
+      "chapters": [
+        "Обложка",
+        "Манифест",
+        "История",
+        "Команда",
+        "Услуги",
+        "Влияние",
+        "Технологии",
+        "Контакты"
+      ],
+      "coverTagline": "Bali Zero — AI-first эксперты в Индонезии",
+      "coverSubtitle": "Ваш путеводитель по бизнесу на Бали, основанный на 20-летнем опыте.",
+      "manifestoP1": "Всё началось в 2006 году, когда Пак Заинал Абидин основал CV Bayu Santero на Бали. Четырнадцать лет опыта на индонезийском рынке.",
+      "manifestoP2": "В 2020 году одна встреча изменила всё. Из этой встречи родился Bali Zero — не стартап, а эволюция двадцати лет истории.",
+      "originP1": "Пак Заинал Абидин видел всё. Иностранные клиенты, потерявшиеся в индонезийском бюрократическом лабиринте. Неправильные визы. Компании с ошибочными кодами KBLI.",
+      "originP2": "Решение — не просто больше сотрудников, а интеллект. Система, которая учится, адаптируется и направляет каждого клиента с точностью.",
+      "contactBody": "Готовы открыть бизнес на Бали? Наша команда доступна в WhatsApp каждый день.",
+      "contactCta": "Привет, я нашёл вас через Brand Book и хотел бы узнать больше.",
+      "askOnWhatsApp": "Написать в WhatsApp",
+      "servicesCategories": {
+        "visa": "Виза",
+        "company": "Открытие компании",
+        "tax": "Налоги",
+        "property": "Недвижимость"
+      },
+      "teamDepts": {
+        "leadership": "Руководство",
+        "setup": "Регистрация бизнеса",
+        "tax": "Налоги",
+        "accounting": "Бухгалтерия",
+        "support": "Поддержка"
+      }
+    },
+    "zh": {
+      "chapters": [
+        "封面",
+        "宣言",
+        "起源",
+        "团队",
+        "服务",
+        "影响",
+        "技术",
+        "联系"
+      ],
+      "coverTagline": "Bali Zero — 印度尼西亚AI先行专家",
+      "coverSubtitle": "您的巴厘岛商业指南，建立在20年专业经验之上。",
+      "manifestoP1": "一切始于2006年，Pak Zainal Abidin在巴厘岛创立了CV Bayu Santero。十四年的印度尼西亚市场经验。",
+      "manifestoP2": "2020年，一次相遇改变了一切。从那次相遇中，Bali Zero诞生了——不是初创企业，而是二十年历史的演变。",
+      "originP1": "Pak Zainal Abidin见过一切。外国客户在印度尼西亚繁杂的官僚迷宫中迷失。错误的签证。用错误的KBLI代码成立的公司。",
+      "originP2": "解决方案不只是更多员工——而是智慧。一个学习、适应并精准指导每位客户的系统。",
+      "contactBody": "准备好在巴厘岛建立您的业务了吗？我们的团队每天在WhatsApp上为您服务。",
+      "contactCta": "您好，我通过品牌手册找到了您，想了解更多信息。",
+      "askOnWhatsApp": "在WhatsApp上咨询",
+      "servicesCategories": {
+        "visa": "签证",
+        "company": "公司注册",
+        "tax": "税务",
+        "property": "房产"
+      },
+      "teamDepts": {
+        "leadership": "领导层",
+        "setup": "企业设立",
+        "tax": "税务",
+        "accounting": "会计",
+        "support": "支持"
+      }
+    }
+  },
+  "contacts": {
+    "whatsapp": "+62 821 3454 721",
+    "whatsappUrl": "https://wa.me/628213454721",
+    "email": "info@balizero.com",
+    "web": "balizero.com"
+  },
+  "services": [
+    {
+      "serviceKey": "single_entry_visas:C1 Tourism",
+      "pricingCategory": "single_entry_visas",
+      "pricingItemKey": "C1 Tourism",
+      "title": "C1 Tourism",
+      "category": "visa",
+      "waMessage": "Hi, I am interested in C1 Tourism. Can you give me more info?"
+    },
+    {
+      "serviceKey": "single_entry_visas:C2 Business",
+      "pricingCategory": "single_entry_visas",
+      "pricingItemKey": "C2 Business",
+      "title": "C2 Business",
+      "category": "visa",
+      "waMessage": "Hi, I am interested in C2 Business. Can you give me more info?"
+    },
+    {
+      "serviceKey": "multiple_entry_visas:D1 Tourism (1 Year)",
+      "pricingCategory": "multiple_entry_visas",
+      "pricingItemKey": "D1 Tourism (1 Year)",
+      "title": "D1 Tourism (1 Year)",
+      "category": "visa",
+      "waMessage": "Hi, I am interested in D1 Tourism (1 Year). Can you give me more info?"
+    },
+    {
+      "serviceKey": "kitas_permits:E33G Remote Worker (Offshore)",
+      "pricingCategory": "kitas_permits",
+      "pricingItemKey": "E33G Remote Worker (Offshore)",
+      "title": "E33G Remote Worker (Offshore)",
+      "category": "visa",
+      "waMessage": "Hi, I am interested in E33G Remote Worker (Offshore). Can you give me more info?"
+    },
+    {
+      "serviceKey": "kitas_permits:Retirement (Offshore)",
+      "pricingCategory": "kitas_permits",
+      "pricingItemKey": "Retirement (Offshore)",
+      "title": "Retirement (Offshore)",
+      "category": "visa",
+      "waMessage": "Hi, I am interested in Retirement (Offshore). Can you give me more info?"
+    },
+    {
+      "serviceKey": "pt-pma",
+      "pricingCategory": "company_services",
+      "pricingItemKey": "New Company (PT PMA)",
+      "title": "PT PMA",
+      "category": "company",
+      "waMessage": "Hi, I am interested in setting up a PT PMA. Can you give me more info?"
+    },
+    {
+      "serviceKey": "cv-setup",
+      "title": "CV Setup",
+      "category": "company",
+      "waMessage": "Hi, I am interested in setting up a CV. Can you give me more info?"
+    },
+    {
+      "serviceKey": "tax-compliance",
+      "title": "Annual Tax Compliance",
+      "category": "tax",
+      "waMessage": "Hi, I am interested in annual tax compliance services. Can you give me more info?"
+    },
+    {
+      "serviceKey": "tax-id",
+      "title": "NPWP Registration",
+      "category": "tax",
+      "waMessage": "Hi, I am interested in NPWP registration. Can you give me more info?"
+    },
+    {
+      "serviceKey": "property-advisory",
+      "title": "Property Advisory",
+      "category": "property",
+      "waMessage": "Hi, I am interested in property advisory services. Can you give me more info?"
+    },
+    {
+      "serviceKey": "property-lease",
+      "title": "Lease Agreement",
+      "category": "property",
+      "waMessage": "Hi, I am interested in lease agreement services. Can you give me more info?"
+    }
+  ]
+}
