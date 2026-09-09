@@ -15,7 +15,7 @@ notes: >-
   Headline measurement, same configuration on both trees (with sources, the
   RETRIEVAL fixture): "Harga PT PMA berapa all in?" against ENGLISH context
   scores 0.080 on origin/main and 0.600 on this branch (without sources:
-  0.000 -> 0.600). It was 0.800 before the fix-of-a-fix (Opus 5 gate,
+  0.000 -> 0.400). It was 0.800 before the fix-of-a-fix (Opus 5 gate,
   2026-09-10) dropped `pt`/`cv`/`rp`/`idr`/`usd` from the vocabulary: `pt`
   was a free hit on every Indonesian company name, so the same query against
   an unrelated chunk naming only a company also scored 0.800 (now 0.080).
