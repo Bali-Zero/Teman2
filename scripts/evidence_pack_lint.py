@@ -882,6 +882,23 @@ SIZE_TERM_EXCLUDE_SUFFIXES: tuple[str, ...] = (
     ".pdf", ".zip", ".gz", ".woff", ".woff2", ".ttf", ".otf", ".eot",
     ".mp4", ".mp3", ".wav", ".mov",
 )
+# Machine-generated article translations (2026-09-09, measured: 68 identical
+# `chore(mouth): promote hourly-translated articles` PRs open at once, every
+# one BLOCKED since 2026-09-04). scripts/translate-articles.py writes
+# `<slug>.<lang>.mdx` next to the English `<slug>.mdx` source, ~95 lines per
+# file, 20 files per hourly batch — churn 1946 > SIZE_GEAR3_THRESHOLD, so the
+# size term floored every batch at Gear 3 and no brief ever existed for a bot
+# diff nobody reviews line-by-line. The translation is a GENERATED artifact of
+# the source (regenerated on source_sha256 staleness), the same class as the
+# `generated/` directories above: it inflates churn without inflating review
+# burden. Scoped on BOTH the directory prefix and the language suffix so a
+# same-suffix decoy elsewhere in the tree, or the English source itself (no
+# language suffix), still counts in full — the reviewable artifact is the
+# source; the translation is derived from it.
+SIZE_TERM_EXCLUDE_GENERATED_TRANSLATION_DIR = "apps/mouth/src/content/articles/"
+SIZE_TERM_EXCLUDE_GENERATED_TRANSLATION_SUFFIXES: tuple[str, ...] = (
+    ".id.mdx", ".it.mdx", ".ru.mdx", ".fr.mdx",
+)
 
 
 def _is_size_term_excluded(path: str) -> bool:
@@ -912,6 +929,10 @@ def _is_size_term_excluded(path: str) -> bool:
     if name in SIZE_TERM_EXCLUDE_FILENAMES:
         return True
     if ".min." in name.lower():
+        return True
+    if p.as_posix().startswith(SIZE_TERM_EXCLUDE_GENERATED_TRANSLATION_DIR) and any(
+        name.endswith(suf) for suf in SIZE_TERM_EXCLUDE_GENERATED_TRANSLATION_SUFFIXES
+    ):
         return True
     return any(name.lower().endswith(suf) for suf in SIZE_TERM_EXCLUDE_SUFFIXES)
 
