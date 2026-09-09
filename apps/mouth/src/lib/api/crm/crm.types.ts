@@ -1004,6 +1004,23 @@ export interface SearchFilters {
 }
 
 // Portal Messages (team ↔ client bridge)
+/**
+ * Whether a client can reach my.balizero.com yet, and if not, whether an
+ * invitation is already in flight. Returned by
+ * GET /api/crm/portal/clients/{id}/status.
+ * Backend: apps/backend-rag/backend/app/routers/crm_portal_integration.py
+ * (PortalStatusResponse). The three states are mutually exclusive:
+ * portal access granted, invite pending, or neither.
+ */
+export interface PortalAccessStatus {
+  has_portal_access: boolean;
+  portal_user_id: number | null;
+  portal_email: string | null;
+  last_login: string | null;
+  pending_invite: boolean;
+  invite_expires_at: string | null;
+}
+
 export interface PortalMessageThread {
   id: number;
   subject?: string;

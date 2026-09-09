@@ -22,6 +22,7 @@ import type {
   ClientCompanyLink,
   CompanyDocument,
   TaxRecord,
+  PortalAccessStatus,
   PortalMessageThread,
   PassportOcrResult,
   TaxCompanyPilotKey,
@@ -1380,6 +1381,63 @@ export class CrmApi {
       method: "POST",
       body: JSON.stringify(data),
     });
+  }
+
+  // ============================================================================
+  // Portal Access (invitation to my.balizero.com)
+  // ============================================================================
+
+  /**
+   * Does this client have portal access yet, and is an invite already pending?
+   * Read-only: RBAC requires the caller to be the client's assigned team
+   * member, its creator, or a CRM admin.
+   */
+  async getPortalStatus(clientId: number): Promise<PortalAccessStatus> {
+    const resp = await this.client.request<{
+      success: boolean;
+      data: PortalAccessStatus;
+    }>(`/api/crm/portal/clients/${clientId}/status`);
+    return resp.data;
+  }
+
+  /**
+   * Mint a portal invitation and mail it to the client through Brevo.
+   *
+   * DELIBERATELY calls `/api/portal/invite/send` rather than the
+   * namespace-matching `/api/crm/portal/clients/{id}/invite`. Both mint the
+   * same invitation through the same InviteService, but only this one reports
+   * `email_sent` / `email_error`; the CRM-namespace twin answers a flat
+   * `{success: true}` whether or not the mail actually left. Since the whole
+   * point of this control is that a consultant knows the client can now get in,
+   * a UI that says "sent" when nothing was sent is the failure mode worth
+   * paying one namespace inconsistency to avoid.
+   *
+   * `email` is required by this endpoint (the CRM twin defaults it from
+   * `clients.email`), so callers pass the client's own address.
+   *
+   * The raw invite token is never in the response: the backend strips `token`
+   * and `invite_url` at the router boundary because the email is their only
+   * legitimate channel.
+   *
+   * Expect 403 when the caller is not the client's assigned team member.
+   */
+  async sendPortalInvite(
+    clientId: number,
+    email: string,
+  ): Promise<{ emailSent: boolean; emailError: string | null }> {
+    const resp = await this.client.request<{
+      success: boolean;
+      message: string;
+      email_sent: boolean;
+      email_error: string | null;
+    }>(`/api/portal/invite/send`, {
+      method: "POST",
+      body: JSON.stringify({ client_id: clientId, email }),
+    });
+    return {
+      emailSent: Boolean(resp.email_sent),
+      emailError: resp.email_error ?? null,
+    };
   }
 
   // ============================================================================
