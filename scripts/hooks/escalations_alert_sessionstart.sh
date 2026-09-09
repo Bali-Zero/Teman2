@@ -55,14 +55,33 @@ if command -v timeout >/dev/null 2>&1; then _TIMEOUT=(timeout 4)
 elif command -v gtimeout >/dev/null 2>&1; then _TIMEOUT=(gtimeout 4); fi
 
 "${_TIMEOUT[@]}" "$PY" - "$ESC_FILE" "$TASKS_DIR" "$FRESH_DAYS" <<'PYEOF' 2>/dev/null || exit 0
-import json, os, sys, time
+import json, os, re, sys, time
 
 esc_file, tasks_dir, fresh_days = sys.argv[1], sys.argv[2], int(sys.argv[3])
 now = time.time()
 fresh_cutoff = now - fresh_days * 86400
 
-high = []          # list of (source, job, summary)
+high = []          # list of (source, job, summary, ts)
 normal_pending = 0
+
+# --- cause normalization for grouping (2026-09-09 diet) ---
+# The same job can escalate on every tick with an identical CAUSE but a
+# different count/timestamp/sha baked into error_summary (measured live:
+# healer_pro_tick writing "N dead organs ... none curable" once per tick, 14
+# HIGH items that are the SAME finding repeated). Strip the volatile parts
+# before grouping so those collapse into one line with a repeat count —
+# strip ISO timestamps and hex shas BEFORE digits (a sha is also all-digit-
+# capable and would otherwise be partly eaten by the digit pass first).
+_ISO_TS_RE = re.compile(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})?")
+_SHA_RE = re.compile(r"\b[0-9a-f]{7,40}\b", re.I)
+_NUM_RE = re.compile(r"\d+")
+
+
+def _normalize_cause(summary: str) -> str:
+    s = _ISO_TS_RE.sub("<ts>", summary)
+    s = _SHA_RE.sub("<sha>", s)
+    s = _NUM_RE.sub("#", s)
+    return " ".join(s.split())
 
 # --- 1. live board: shared/escalations_pro.jsonl ---
 # D2.3's writer is append-only (sentinel_lib.escalations.mark_resolved): a
@@ -106,7 +125,7 @@ if os.path.isfile(esc_file):
             prio = str(d.get("priority") or d.get("severity") or "NORMAL").upper()
             summ = " ".join((d.get("error_summary") or "").split())[:80]
             if prio == "HIGH":
-                high.append(("escalations_pro.jsonl", job, summ))
+                high.append(("escalations_pro.jsonl", job, summ, float(entry_ts) if entry_ts else 0.0))
             else:
                 normal_pending += 1
     except Exception:
@@ -139,22 +158,47 @@ if os.path.isdir(tasks_dir):
                 pass
             job = d.get("job") or "?"
             summ = " ".join((d.get("error_summary") or d.get("fix_instruction") or "").split())[:80]
-            high.append(("claude_tasks", job, summ))
+            # created_at when parseable, else the mtime pre-filter already read above
+            entry_ts = 0.0
+            try:
+                if isinstance(created, (int, float)):
+                    entry_ts = float(created)
+            except Exception:
+                pass
+            if not entry_ts:
+                try:
+                    entry_ts = os.path.getmtime(path)
+                except OSError:
+                    entry_ts = 0.0
+            high.append(("claude_tasks", job, summ, entry_ts))
     except Exception:
         pass
 
-# Dedupe HIGH by (source, job, summary) — the graveyard has repeats.
-_seen = set()
-_dedup = []
-for item in high:
-    if item in _seen:
-        continue
-    _seen.add(item)
-    _dedup.append(item)
-high = _dedup
+# Group HIGH by (source, job, normalized cause) — same job/source repeating the
+# SAME underlying cause with only a count/timestamp/sha changed (measured live:
+# healer_pro_tick's "N dead organs ... none curable" once per tick, 14 HIGH
+# items for one standing condition) collapses into one line, "(×N, latest
+# <date>)". A genuinely different cause for the same job still gets its own
+# group — normalization only strips the volatile tokens, not the job identity.
+_groups: dict[tuple[str, str, str], dict] = {}
+_group_order: list[tuple[str, str, str]] = []
+for source, job, summ, ts in high:
+    key = (source, job, _normalize_cause(summ))
+    g = _groups.get(key)
+    if g is None:
+        g = {"source": source, "job": job, "summary": summ, "count": 0, "latest_ts": ts}
+        _groups[key] = g
+        _group_order.append(key)
+    g["count"] += 1
+    if ts >= g["latest_ts"]:
+        g["latest_ts"] = ts
+        g["summary"] = summ  # keep the freshest raw summary as the representative text
+groups = [_groups[k] for k in _group_order]
+groups.sort(key=lambda g: g["latest_ts"], reverse=True)
+total_high = sum(g["count"] for g in groups)
 
 # Nothing worth surfacing => silent (no alert).
-if not high and normal_pending == 0:
+if not groups and normal_pending == 0:
     sys.exit(0)
 
 # Output cap (2026-09-04): this receptor injects into EVERY session start on
@@ -188,13 +232,21 @@ def _payload(ctx: str) -> str:
 
 def _build(show_n: int, tail_text: str) -> str:
     lines = ["🚨 ESCALATIONS BOARD (injected by SessionStart receptor)"]
-    if high:
-        lines.append(f"  — {len(high)} HIGH-priority open (act first):")
-        for src, job, summ in high[:show_n]:
-            tail = f" — {summ}" if summ else ""
-            lines.append(f"    🔴 [{src}] {job}{tail}")
-        if len(high) > show_n:
-            lines.append(f"    … +{len(high) - show_n} more HIGH")
+    if groups:
+        lines.append(
+            f"  — {total_high} HIGH-priority open across {len(groups)} group(s) (act first):"
+        )
+        for g in groups[:show_n]:
+            tail = f" — {g['summary']}" if g["summary"] else ""
+            date = (
+                time.strftime("%Y-%m-%d", time.gmtime(g["latest_ts"]))
+                if g["latest_ts"]
+                else "unknown"
+            )
+            count_tail = f" (×{g['count']}, latest {date})" if g["count"] > 1 else f" (latest {date})"
+            lines.append(f"    🔴 [{g['source']}] {g['job']}{tail}{count_tail}")
+        if len(groups) > show_n:
+            lines.append(f"    … +{len(groups) - show_n} more HIGH group(s)")
     else:
         lines.append("  — 0 HIGH-priority open.")
     if normal_pending:
@@ -204,10 +256,11 @@ def _build(show_n: int, tail_text: str) -> str:
     return "\n".join(lines)
 
 
-ctx = _build(12, LONG_EXPLANATION)
+GROUP_CAP = 6
+ctx = _build(GROUP_CAP, LONG_EXPLANATION)
 if len(_payload(ctx).encode("utf-8")) > MAX_BYTES:
-    ctx = _build(12, SHORT_POINTER)
-show_n = 12
+    ctx = _build(GROUP_CAP, SHORT_POINTER)
+show_n = GROUP_CAP
 while len(_payload(ctx).encode("utf-8")) > MAX_BYTES and show_n > 1:
     show_n -= 1
     ctx = _build(show_n, SHORT_POINTER)
