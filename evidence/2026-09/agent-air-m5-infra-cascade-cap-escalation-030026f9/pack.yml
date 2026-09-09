@@ -23,14 +23,16 @@ what_changed: |
   (3160a843f0, cd47afa332), trip detection rebuilt on the guard's marker
   after two cross-family NON MERGE rounds (e810d7553e, 7ef94fa141).
   infra/launchagents/wrappers/claude-cascade.sh: cascade_cap_escalation()
-  (seat, hops, jump file) resolves the board (CASCADE_ESCALATIONS_FILE, else
-  $HOME/nuzantara or $HOME/Desktop/nuzantara shared/escalations_pro.jsonl),
+  (seat, hops, jump file, session) resolves the board (CASCADE_ESCALATIONS_FILE,
+  else $NUZANTARA_ROOT or $HOME/nuzantara shared/escalations_pro.jsonl; no
+  ~/Desktop candidate — TCC),
   reads the pending jump file, skips if a cascade_headless_cap line for that
   session already exists, else appends one HIGH/pending line mirroring
   scripts/healer_receptor_main_red.py's record shape (job, type, priority,
-  status, error_summary, cure_lane, machine, _writer, ts) plus seat, hops,
-  session, jump_file, handoff_path, cwd, model; all diagnostics to stderr
-  under "[jump]"; kill switch CASCADE_CAP_ESCALATION_OFF=1; always returns 0.
+  status, error_summary, cure_lane, machine, _writer, ts as a NUMBER) plus
+  seat, hops, session, jump_file, handoff_path, cwd, model; all diagnostics
+  to stderr under "[cap]"; kill switch CASCADE_CAP_ESCALATION_OFF=1; always
+  returns 0.
   Called from try_claude's cap branch. guard_tripped_in_run(sid): the
   guard's marker <sid>.last-handoff OR pending-jump-<sid>.json — the chain
   is INCOMPLETE when the last run tripped and nobody continued it (our cap,
@@ -53,7 +55,10 @@ proof: |
   prints "used: … (hops: 2)" with exit 0: the exact silent INCOMPLETE this
   PR turns into a HIGH line. The cost lesson from the same log: every hop
   restarted at ~47K and redid ~35 tool calls, hence JUMP_GUARD_PCT=80 for
-  the headless tier. Motive of the whole window jump, confirmed by Zero
+  the headless tier — with Astra's caveat on record: the measurement proves
+  that 40% (80K) is below a healer tick's need, it does NOT prove quality up
+  to 160K; 80% is an exception for the headless tier, to be re-measured, not
+  a new default. Motive of the whole window jump, confirmed by Zero
   2026-09-09: context QUALITY (short windows per role), not cost. Bites: the
   consumer is ~/scripts/claude-cascade.sh on Pro/Mini (home-fork pair,
   refreshed by the shipping session after merge, md5 vs origin/main) and the
@@ -220,7 +225,7 @@ receipts:
     exit: 0
     ts: "2026-09-09T09:10:00Z"
     seat: claude-fable-5-1
-  - claim: "the receptor mirrors the healer's record shape (priority HIGH, status pending, ts string epoch, machine/_writer, cure_lane owner session)"
+  - claim: "the receptor mirrors the healer's record shape (priority HIGH, status pending, machine/_writer, cure_lane owner session) — except ts, which this PR writes as a number on purpose (see the codex #1 dissent)"
     cmd: "grep -n '\"priority\": \"HIGH\"\\|\"status\": \"pending\"\\|\"_writer\"\\|\"cure_lane\"' scripts/healer_receptor_main_red.py"
     result: "lines 261-286: same keys, same value types"
     exit: 0
