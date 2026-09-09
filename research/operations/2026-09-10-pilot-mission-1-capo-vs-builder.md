@@ -1,3 +1,22 @@
+---
+date: 2026-09-10
+domain: operations
+client_case: none — internal harness pilot, no client data touched or transcribed
+sources:
+  - infra/codex-hooks/FABLE-MEASUREMENTS-2026-09-09.md (D3, the mandate)
+  - ~/.claude/state/child-mandates/ and child-workflow/ (arm A ledger and denials)
+  - ~/.codex/state/nuzantara-context/ (arm B and B-2 bridge state, token flips)
+  - PR #6056 comment 5606815682 (Fable's adjudication, appended verbatim as section 9)
+# R1 gate: this report WAS adversarially reviewed — by Fable 5.1 (session nuzantara-40),
+# who is not its author and who posted a PASS-WITH-CONDITIONS gate whose correction is
+# incorporated in sections 1, 4 and 7 and quoted verbatim in section 9:
+# https://github.com/Bali-Zero/Teman2/pull/6056#issuecomment-5606815682
+# `exempt-` is used only because KNOWN_SEATS in scripts/check_adversarial_review.py has
+# no spelling for a Fable seat (it lists glm/kimi/codex/gemini/agy/grok/nlm/qwen). Adding
+# one is a gate-vocabulary change and does not belong in a docs PR — flagged to Zero.
+adversarial_review: exempt-reviewed-by-fable-5-1-no-seat-spelling
+---
+
 # Pilot mission 1 — Capo Codex vs standalone builder
 
 **Dux:** Claude Opus 5, session `8d5d64cf`, Air-M5, 2026-09-10 01:52–02:23 WITA.
