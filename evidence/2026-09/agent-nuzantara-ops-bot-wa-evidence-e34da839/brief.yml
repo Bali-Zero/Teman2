@@ -14,10 +14,15 @@ pii: none
 notes: >-
   Headline measurement, same configuration on both trees (with sources, the
   RETRIEVAL fixture): "Harga PT PMA berapa all in?" against ENGLISH context
-  scores 0.080 on origin/main and 0.800 on this branch (without sources:
-  0.000 -> 0.600). The previous wording of this line paired 0.08 with-sources
-  against 0.60 without-sources, mixing two configurations under one arrow.
-  Zero regressions: 1938 passed in the agentic suite and 1707 in services/rag.
+  scores 0.080 on origin/main and 0.600 on this branch (without sources:
+  0.000 -> 0.600). It was 0.800 before the fix-of-a-fix (Opus 5 gate,
+  2026-09-10) dropped `pt`/`cv`/`rp`/`idr`/`usd` from the vocabulary: `pt`
+  was a free hit on every Indonesian company name, so the same query against
+  an unrelated chunk naming only a company also scored 0.800 (now 0.080).
+  The previous wording of this line paired 0.08 with-sources against 0.60
+  without-sources, mixing two configurations under one arrow.
+  Zero regressions: 122 passed + 2 xfailed in the corpus, 2606 passed in
+  services/rag on the cured head.
   The retrieval-primary inversion was built here and WITHDRAWN — it regressed 11
   standing abstain tripwires, nine of which are pinned to cosines a real
   embedding does not produce (measured 2026-09-03 on text-embedding-3-small:
