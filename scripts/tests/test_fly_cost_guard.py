@@ -59,6 +59,7 @@ def test_live_fixture_is_innocent_under_workflow_ceilings() -> None:
     assert findings == []
     assert report.startswith("Apps: 2 | Machines: 6/7 started (limit 6/7)")
     assert "Started RAM: 12288 MB (limit 12288)" in report
+    assert "Started CPUs: 11 (limit 11)" in report
     assert "Volumes: 77 GB (limit 77)" in report
     assert "Dedicated IPv4: 0 (limit 0)" in report
 
@@ -79,7 +80,11 @@ def test_started_standby_is_guilty_on_count_and_memory() -> None:
     )
     standby["state"] = "started"
     _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _workflow_limits())
-    assert findings == ["started machines 7>6", "started memory 13312MB>12288MB"]
+    assert findings == [
+        "started machines 7>6",
+        "started memory 13312MB>12288MB",
+        "started cpus 12>11",
+    ]
 
 
 def test_one_more_gb_of_ram_is_guilty() -> None:
@@ -90,6 +95,50 @@ def test_one_more_gb_of_ram_is_guilty() -> None:
     rag["memory_mb"] += 1024
     _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _workflow_limits())
     assert findings == ["started memory 13312MB>12288MB"]
+
+
+def test_one_more_started_cpu_is_guilty() -> None:
+    inv = _inventory()
+    rag = next(
+        m for m in inv["apps"]["nuzantara-rag"]["machines"] if m["group"] == "rag"
+    )
+    rag["cpus"] += 1
+    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _workflow_limits())
+    assert findings == ["started cpus 12>11"]
+
+
+def test_missing_sizes_fail_closed_only_on_what_is_billed() -> None:
+    """A started machine or a volume with no readable size is a finding.
+
+    Innocence: the stopped standby carries no size and stays silent — a
+    stopped machine is not billed for compute. Guilt: strip the size from a
+    started machine and from a volume; neither may read as 0 (= savings).
+    """
+    inv = _inventory()
+    standby = next(
+        m for m in inv["apps"]["nuzantara-rag"]["machines"] if m["state"] == "stopped"
+    )
+    standby["memory_mb"] = None
+    del standby["cpus"]
+    _, findings = fly_cost_guard.evaluate(inv, EXPECTED, _workflow_limits())
+    assert findings == []
+
+    api = next(
+        m for m in inv["apps"]["nuzantara-rag"]["machines"] if m["group"] == "api"
+    )
+    api["memory_mb"] = None
+    del api["cpus"]
+    volume = inv["apps"]["nuzantara-postgres"]["volumes"][0]
+    volume["size_gb"] = "25"  # a string is not a size the guard will add up
+    report, findings = fly_cost_guard.evaluate(inv, EXPECTED, _workflow_limits())
+    assert findings == [
+        "inventory errors="
+        f"nuzantara-postgres:volume {volume['id']}:size_gb missing,"
+        f"nuzantara-rag:machine {api['id']}:memory_mb missing,"
+        f"nuzantara-rag:machine {api['id']}:cpus missing"
+    ]
+    assert "Started RAM: 9216 MB" in report  # 12288 minus the unreadable 3072
+    assert "Volumes: 52 GB" in report
 
 
 def test_extended_volume_is_guilty() -> None:
@@ -167,24 +216,16 @@ def test_env_ceilings_override_defaults_and_flags_override_env(tmp_path: Path) -
     assert relaxed.returncode == 0, relaxed.stdout
 
 
-def test_live_collection_through_flyctl_reads_the_real_json_shapes(
-    tmp_path: Path,
-) -> None:
-    """Same fake flyctl the inline guard was tested with, now against the script.
-
-    Shapes mirror `flyctl ... --json` as observed 2026-09-10: `status` nests
-    guest memory under config.guest, `ips list` reports the free shared IPv4
-    as Type "shared_v4" and a paid one as "v4".
-    """
-    fake_flyctl = tmp_path / "flyctl"
-    fake_flyctl.write_text(
-        """#!/usr/bin/env python3
+FAKE_FLYCTL = """#!/usr/bin/env python3
 import json
+import os
 import sys
 
 args = sys.argv[1:]
 app = args[args.index("--app") + 1] if "--app" in args else None
 if args[:2] == ["apps", "list"]:
+    if os.environ.get("FAKE_FLYCTL_APPS_LIST_FAILS"):
+        raise SystemExit(2)
     data = [{"Name": "nuzantara-rag"}, {"Name": "nuzantara-postgres"}, {"Name": "fly-builder-legacy"}]
 elif args[0] == "status":
     counts = {
@@ -205,10 +246,27 @@ elif args[:2] == ["ips", "list"]:
 else:
     raise SystemExit(f"unexpected flyctl args: {args}")
 print(json.dumps(data))
-""",
-        encoding="utf-8",
-    )
+"""
+
+
+def _install_fake_flyctl(tmp_path: Path) -> None:
+    fake_flyctl = tmp_path / "flyctl"
+    fake_flyctl.write_text(FAKE_FLYCTL, encoding="utf-8")
     fake_flyctl.chmod(fake_flyctl.stat().st_mode | stat.S_IXUSR)
+
+
+def test_collection_through_a_fake_flyctl_replaying_the_observed_json_shapes(
+    tmp_path: Path,
+) -> None:
+    """A FAKE flyctl on PATH, replaying the shapes observed 2026-09-10.
+
+    This proves the collector's parsing of those shapes and the end-to-end
+    exit code — it does not prove flyctl still emits them (only the live
+    weekly run does). Shapes: `status` nests guest memory/cpus under
+    config.guest, `ips list` reports the free shared IPv4 as Type "shared_v4"
+    and a paid one as "v4".
+    """
+    _install_fake_flyctl(tmp_path)
     dump = tmp_path / "inventory.json"
     result = _run(
         ["--dump-inventory", str(dump)],
@@ -222,6 +280,7 @@ print(json.dumps(data))
     assert result.returncode == 1
     assert "Apps: 3 | Machines: 5/7 started" in result.stdout
     assert "Started RAM: 10240 MB" in result.stdout
+    assert "Started CPUs: 10 (limit 11)" in result.stdout
     assert "Volumes: 102 GB" in result.stdout
     for finding in (
         "unexpected apps=fly-builder-legacy",
@@ -236,3 +295,27 @@ print(json.dumps(data))
         {"type": "shared_v4"},
     ]
     assert captured["errors"] == []
+
+
+def test_failed_app_listing_is_a_finding_with_a_report(tmp_path: Path) -> None:
+    """`flyctl apps list` failing must not crash past the report: every expected
+    app reads as missing, the error is named, exit is 1 and the Telegram step
+    still gets a report line."""
+    _install_fake_flyctl(tmp_path)
+    output = tmp_path / "github-output"
+    result = _run(
+        [],
+        {
+            "PATH": f"{tmp_path}:{os.environ['PATH']}",
+            "FAKE_FLYCTL_APPS_LIST_FAILS": "1",
+            "GITHUB_OUTPUT": str(output),
+        },
+        tmp_path,
+    )
+    assert result.returncode == 1
+    assert "Traceback" not in result.stderr
+    assert "missing apps=nuzantara-postgres,nuzantara-rag" in result.stdout
+    assert "inventory errors=apps:list:CalledProcessError" in result.stdout
+    assert "report<<EOF\nApps: 0 | Machines: 0/0 started" in output.read_text(
+        encoding="utf-8"
+    )

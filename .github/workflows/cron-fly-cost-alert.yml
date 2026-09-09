@@ -23,7 +23,8 @@ jobs:
     env:
       EXPECTED_APPS: "nuzantara-rag,nuzantara-postgres"
       # Ceilings sit AT the footprint measured 2026-09-10 (7 machines, 6 started,
-      # 12288 MB started RAM, 77 GB volumes, 0 paid IPv4). The previous values
+      # 12288 MB started RAM, 11 started shared CPUs, 77 GB volumes, 0 paid
+      # IPv4). The previous values
       # (6 / 60 / 1) had been breached since the third Postgres node landed on
       # 2026-08-18 and every weekly run still concluded "success" because the
       # inline check only emitted ::warning:: — cicatrix #2, Esiste≠Armato.
@@ -32,6 +33,7 @@ jobs:
       MAX_TOTAL_MACHINES: "7"
       MAX_STARTED_MACHINES: "6"
       MAX_STARTED_MEMORY_MB: "12288"
+      MAX_STARTED_CPUS: "11"
       MAX_TOTAL_VOLUME_GB: "77"
       MAX_DEDICATED_IPV4: "0"
     steps:
