@@ -8,6 +8,7 @@
       ],
       "machines": [
         {
+          "cpu_kind": "shared",
           "cpus": 2,
           "group": "app",
           "id": "78113d4f67d938",
@@ -15,6 +16,7 @@
           "state": "started"
         },
         {
+          "cpu_kind": "shared",
           "cpus": 2,
           "group": "app",
           "id": "5683e090f3d228",
@@ -22,6 +24,7 @@
           "state": "started"
         },
         {
+          "cpu_kind": "shared",
           "cpus": 2,
           "group": "app",
           "id": "0801696b541568",
@@ -58,6 +61,7 @@
       ],
       "machines": [
         {
+          "cpu_kind": "shared",
           "cpus": 2,
           "group": "api",
           "id": "7817d92c4117d8",
@@ -65,6 +69,7 @@
           "state": "started"
         },
         {
+          "cpu_kind": "shared",
           "cpus": 1,
           "group": "drive",
           "id": "48ee717b736948",
@@ -72,6 +77,7 @@
           "state": "stopped"
         },
         {
+          "cpu_kind": "shared",
           "cpus": 1,
           "group": "drive",
           "id": "2874974fe6e158",
@@ -79,6 +85,7 @@
           "state": "started"
         },
         {
+          "cpu_kind": "shared",
           "cpus": 2,
           "group": "rag",
           "id": "1781e5eda03438",
