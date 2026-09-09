@@ -10,7 +10,11 @@ CLI for fresh continuations. It does not modify the Claude/Fable hook files.
   PostCompact, Stop, SubagentStart, SubagentStop. Existing hook definitions and their ordering are retained.
 - Context usage is `last_token_usage.total_tokens / model_context_window` from
   the current Codex rollout, never cumulative lifetime tokens or a guessed 1M
-  window. The policy is 20% for imperator and 40% for other roles. The role is
+  window. Thresholds come from the policy file, one validated lookup for the
+  parent seat and the native child alike; `install.py` seeds 60% for imperator,
+  builder and dux, and an undeclared role falls back to 40%. Fresh installs
+  seeded 20% imperator / 40% builder until 2026-09-10. Existing keys are never
+  overwritten, so a seat keeps a tuned value across reinstalls. The role is
   read from CODEX_CONTEXT_ROLE, falling back to the existing CONTEXT_GUARD_ROLE.
 - Threshold crossing asks for an operational checkpoint and restricts further
   tools to the exact bridge helpers. Compaction discards stale token readings.
@@ -53,7 +57,7 @@ The capacity follow-up adds expiring, host/profile/model/version-specific Claude
 calibration from a successful native CLI result. Claude interactive sessions
 observe token, tool, time and concurrency limits without denying tools. Explicit
 mandates enforce eight concurrent children, 120 tools per child, 3,600 active
-seconds and 40% of a measured window. Unknown capacity emits a warning per tool;
+seconds and the role's policy share of a measured window. Unknown capacity emits a warning per tool;
 strict mode retains time/tool limits and a 400,000 measured-token emergency
 ceiling, without claiming a percentage. A fresh Air-M5 desktop task also proved
 native Codex parent and child hook consumption; its evidence is linked in the

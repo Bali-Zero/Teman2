@@ -66,6 +66,10 @@ ALLOW-LIST once at/above threshold (the only things a hand-off needs):
   - a Write/Edit whose `file_path` IS this session's own handoff file (so a
     session that wants to enrich the handoff by hand still can)
   - `SendMessage`, `TaskStop` (delegate to a peer / end the turn cleanly)
+  - `ToolSearch`, but ONLY for a query naming one of those two: in a harness
+    that defers tool schemas they are names with no parameters until their
+    definition is fetched, so denying the fetch denied the hand-off this guard
+    is telling the session to make. An unrelated search stays denied.
 Everything else — including a bare `Bash`/`Write`/`Edit`/`Agent` that is not
 one of the above — is DENIED (exit 2), in Italian, naming the exact percent,
 threshold, handoff path, the evidence for the window it computed, and the
@@ -129,7 +133,8 @@ ROLE_THRESHOLDS = {"imperator": 0.20}
 HANDOFF_RATE_LIMIT_S = 600
 TAIL_BYTES = 400_000  # same tail size context_hygiene.py's own estimator reads
 
-ALLOWED_TOOLS_UNCONDITIONAL = {"SendMessage", "TaskStop"}
+REPORTING_TOOLS = ("SendMessage", "TaskStop")
+ALLOWED_TOOLS_UNCONDITIONAL = set(REPORTING_TOOLS)
 
 ASSISTANT_TYPE_RE = re.compile(r'"type"\s*:\s*"assistant"')
 
@@ -691,9 +696,29 @@ def _write_handoff(payload: dict, mandate: str = ""):
     return None
 
 
+def _reporting_search(tool_input: dict) -> bool:
+    """Let a capped session reach the schema of the tools it is told to use.
+
+    The parent had the same hole the child adapter had: `SendMessage` and
+    `TaskStop` were exempt, `ToolSearch` was not, and in a harness that defers
+    tool schemas a deferred `SendMessage` is a NAME with no parameters until
+    `ToolSearch` fetches its definition. So the deny message named the hand-off
+    route and blocked the one call that reaches it. Narrowed by the query: only
+    a search naming one of the two passes. When there is no readable query --
+    a payload shape this guard does not own -- `ToolSearch` is allowed as a
+    whole rather than trapping the session; every other tool stays denied.
+    """
+    query = tool_input.get("query")
+    if not isinstance(query, str) or not query.strip():
+        return True
+    return any(name.lower() in query.lower() for name in REPORTING_TOOLS)
+
+
 def _is_allowed_call(tool_name: str, tool_input: dict, handoff_path: Path) -> bool:
     if tool_name in ALLOWED_TOOLS_UNCONDITIONAL:
         return True
+    if tool_name == "ToolSearch":
+        return _reporting_search(tool_input)
     if tool_name == "Bash":
         return "mem save" in (tool_input.get("command") or "")
     if tool_name in ("Write", "Edit"):
