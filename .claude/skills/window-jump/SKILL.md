@@ -18,17 +18,30 @@ Ghostty, solo macOS). Dettaglio storico:
    `~/.organism/context-guard/pending-jump-<sid>.json` (mandato originale, `from_pid`,
    `model`, `cwd`, `hops`, `seat`, `gesture_attempts`, `to_session: null`).
 3. Se il seat è Ghostty su macOS lancia **`window_jump.sh <sid>`** staccato (mai attende).
-4. Il gesto: snapshot dei nomi finestra → ⌘N → **poll ogni 0,3s fino a 8s** finché compare
-   un nome che **non era nello snapshot** → AXRaise su QUELLA finestra per nome → digita
-   `nz-jump <sid>` + Invio. Solo un nome nuovo autorizza il keystroke: se lo snapshot è
-   illeggibile (Accessibility negata) ogni nome sembrerebbe nuovo, e se cambia solo la
-   finestra frontale è un riordino, non una nascita. In entrambi i casi: **niente digitato**.
+4. **Il gesto**, in **due rotte**. Prima di tutto lo **snapshot** dei nomi finestra (prima
+   di qualsiasi gesto: è la regola di entrambe le rotte).
+   - **NATIVE** (default, Ghostty ≥ 1.3 con `macos-applescript = true`): il dizionario
+     AppleScript di Ghostty crea la finestra e la indirizza per **id** (`new window`,
+     `input text`, `send key`, `close window`) — non si digita mai «in quello che sta
+     davanti», che è il modo in cui il gesto morì due volte il 2026-09-09 (Ghostty non era
+     l'app attiva, System Events cieco). L'id però è solo una maniglia: **il nome** della
+     finestra restituita viene confrontato con lo snapshot **prima** di digitare.
+   - **KEYSTROKE** (fallback, Ghostty < 1.3 o dizionario chiuso): System Events, ⌘N →
+     **poll ogni 0,3s fino a 8s** finché compare un nome che **non era nello snapshot** →
+     AXRaise su QUELLA finestra per nome → digita.
+     In entrambe: solo un nome **assente dallo snapshot** autorizza la digitazione di
+     `nz-jump <sid>` + Invio. Se lo snapshot è illeggibile (Accessibility negata) ogni nome
+     sembrerebbe nuovo, e se cambia solo la finestra frontale è un riordino, non una nascita.
+     In entrambi i casi: **niente digitato**.
 5. **`nz-jump`** (`~/.claude/scripts/nz-jump`) entra nel `cwd` vecchio e lancia un `claude`
    **fresco** — mai `--resume/--continue/--fork-session`, che riporterebbero il contesto.
 6. **`context_jump_resume.py`** (SessionStart della nuova finestra) inietta mandato +
    handoff come `additionalContext` e timbra `to_session` nel file pending.
-7. `window_jump.sh` vede `to_session` (poll 1s, max `JUMP_WAIT_S`), rialza la finestra
-   VECCHIA per nome, digita `/exit`; se il PID sopravvive, `SIGINT` ×2 su `from_pid`.
+7. `window_jump.sh` vede `to_session` (poll 1s, max `JUMP_WAIT_S`) e chiude la vecchia:
+   `/exit` nel terminale vecchio **per id** (rotta native) o rialzando la finestra per nome
+   (rotta keystroke); se il PID sopravvive, `SIGINT` ×2 su `from_pid`; e solo quando quel
+   claude è morto, `close window` sull'id vecchio — solo native, la rotta keystroke non può
+   chiudere in sicurezza.
 
 Misurato 2026-09-09: **~6s** dal keystroke a `to_session`. Cap: 3 hop per catena
 (`JUMP_MAX_HOPS`), 3 gesti per sessione (`gesture_attempts`, il guard ritenta da solo e
@@ -39,12 +52,15 @@ lo dice: «gesto ritentato (n/3)»).
 ```bash
 tail -20 ~/.organism/context-guard/jump.log
 cat ~/.organism/context-guard/pending-jump-<sid>.json   # to_session != null = atterrato
+osascript -e 'tell application "Ghostty" to get name of every window'   # lista della rotta native
 osascript -e 'tell application "System Events" to tell process "ghostty" to get name of every window'
 ```
 
 `jump.log` è l'unica verità sull'esito: il guard stampa «TENTATO», non «avviato», proprio
-perché non aspetta. Righe che contano: `windows before: [...]` / `windows after: [...]`
-(la diagnosi di un miss), `new window '<nome>' opened, 'nz-jump <sid>' typed` (atterrato),
+perché non aspetta. Righe che contano: `windows before (native|keys): [...]` /
+`keys: windows after: [...]` (la diagnosi di un miss, con la rotta che l'ha prodotta),
+`native: … name='<nome>' (absent from the snapshot), 'nz-jump <sid>' sent` oppure
+`keys: new window '<nome>' opened, 'nz-jump <sid>' typed` (atterrato),
 `nothing typed` (mancato — è la riga che fa scattare il ritento, ma solo se il processo
 del gesto precedente è morto: un osascript appeso non viene raddoppiato).
 
@@ -57,6 +73,11 @@ al guard non può eseguirli**: può solo mandare messaggi. Li esegue un agente v
 SID=<from_session>; AS=~/.organism/context-guard/window_jump.applescript
 osascript "$AS" raise-type "~/nuzantara" "nz-jump $SID"     # nome ESATTO della finestra nuova
 ```
+
+Se il dizionario di Ghostty è aperto c'è anche la via per **id**, che non dipende da chi sta
+davanti (`AS_N=~/.organism/context-guard/window_jump_native.applescript`):
+`osascript -e 'tell application "Ghostty" to get id of every window'` per l'id, poi
+`osascript "$AS_N" type-into <id> "nz-jump $SID"`.
 
 Poi, **solo dopo** che `to_session` è timbrato nel file pending, si chiude la vecchia:
 

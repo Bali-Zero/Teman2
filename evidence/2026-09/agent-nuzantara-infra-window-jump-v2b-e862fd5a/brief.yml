@@ -1,11 +1,24 @@
-task_id: window-jump-v2
+task_id: window-jump-v2b
 gear: 2
 l_level: L1
 gate_class: opus
 objective: >-
   Make the window jump reliable enough to need no human (Ruling Zero 2026-09-09
   19:40, after the jump of session a60e0124 landed only because a live subagent
-  typed `nz-jump <sid>` by hand). Four measured defects, one PR:
+  typed `nz-jump <sid>` by hand). Four measured defects, one PR.
+
+  Supersedes #6024, which went CONFLICTING when main took 4e734c9010 — an M5
+  session rewriting the same file so that Ghostty is driven through its NATIVE
+  AppleScript dictionary (window/terminal ids as handles), keystrokes only as
+  fallback. That is the new baseline and it is KEPT: this branch is cut from
+  fresh main and both lineages survive in one script. The native route answers
+  the failure the M5 session measured (Ghostty not the active app, System Events
+  blind, "⌘N did not bring a new window to front"); the v2/v2.1 guarantees below
+  answer the failure THIS lane measured (typing into a window that was already
+  there). They meet on one rule: the snapshot is taken before ANY gesture, and
+  only a window whose exact name was ABSENT from it may be typed into — the
+  native route cross-checks the name of the very window its own API handed back,
+  because an id is a handle and only the name is evidence of a birth.
 
   (a) the GESTURE bet on a delay — window_jump.sh pressed ⌘N, slept a FIXED 1.2s
   and read `name of window 1`. Ghostty on Pro was slower, so the script said
@@ -48,9 +61,9 @@ objective: >-
   live in the guard, so a seat installed without it would run v1 behaviour from
   a v2 checkout (F2).
 
-  Gear is 2 via the SIZE term alone (1004 net lines measured across the two
-  commits, 125 of them this brief; the two new test corpora are the largest
-  single term). No hot-zone path is touched.
+  Gear is 2 via the SIZE term alone (the two new test corpora are the largest
+  single term; this brief and the merge of the two window_jump.sh lineages
+  account for most of the rest). No hot-zone path is touched.
 constraints:
   - >-
     No real Ghostty window is ever opened by a test: Zero's screen is the live
@@ -77,19 +90,43 @@ acceptance:
     WHEN the front window is unchanged for two polls and a new window name
     appears only on the third, THEN `nz-jump <sid>` is typed into the NEW window
     and jump.log records both window lists. probe:
-    test_window_jump_gesture.sh case [1]; measured 2026-09-09 — the same corpus
-    run against the v1 script (git show HEAD:...window_jump.sh) is 8 passed /
-    6 FAILED, against v2 14 passed / 0 failed.
+    test_window_jump_gesture.sh case [1]; measured 2026-09-09 on the merged
+    script — 30 assertions in 10 cases, 30 passed / 0 failed, while the SAME
+    corpus run with WINDOW_JUMP_SH= against the v1 script (1464875c1e) is
+    17 passed / 13 FAILED and against main's native-API script (4e734c9010)
+    also 17 passed / 13 FAILED. The two ancestors fail different halves: v1 has
+    no native route at all, 4e734c9010 has no snapshot and types into the
+    window its API returned whatever it is named (case [8]).
   - >-
     WHEN two windows are already named "Interactive" with only a glyph differing,
     THEN the keystroke goes to the new window and never to the sibling. probe:
     test_window_jump_gesture.sh case [2].
   - >-
-    WHEN the window list is unreadable before ⌘N (so every polled name would look
-    new), or the front window merely changed with no new name, THEN nothing is
-    typed and jump.log says which of the two it was. probe:
+    WHEN the window list is unreadable before the gesture (so every polled name
+    would look new), or the front window merely changed with no new name, THEN
+    nothing is typed and jump.log says which of the two it was. probe:
     test_window_jump_gesture.sh cases [3] and [3b]; measured — the pre-fix v2
     script types `nz-jump` into '✳ Interactive di Zero' in case [3b].
+  - >-
+    WHEN Ghostty's native dictionary answers, THEN the window is created and
+    typed into BY ID, System Events is never touched, and the name the API
+    returned is checked against the pre-gesture snapshot first (logged as
+    "name='<n>' (absent from the snapshot)"). probe:
+    test_window_jump_gesture.sh case [7]; scripts/tests/test_window_jump_shell.py
+    pins the call ORDER (window-names, old-id, new-window, name-of-id,
+    type-into) and the ending of the old session (/exit by id, SIGINT×2,
+    close window only once that claude is gone).
+  - >-
+    WHEN the native API hands back a window whose name was ALREADY in the
+    snapshot, THEN not one character is sent and jump.log names the collision —
+    an id proves possession of a handle, not a birth. probe:
+    test_window_jump_gesture.sh case [8]; measured — main's 4e734c9010 script
+    types `nz-jump` into that window.
+  - >-
+    WHEN the dictionary is closed (macos-applescript = false or Ghostty < 1.3),
+    THEN the script falls back to the keystroke route with the same snapshot
+    rule and says so in jump.log. probe:
+    scripts/tests/test_window_jump_shell.py::test_native_disabled_falls_back_to_keystrokes.
   - >-
     WHEN the previously spawned gesture PROCESS is still alive, THEN no second
     gesture is spawned however the log reads; when it has exited, the retry
