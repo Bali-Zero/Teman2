@@ -34,9 +34,11 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
+from backend.scripts.visa_engine import gold_replay_driver as driver
 from backend.scripts.visa_engine.compile_pack import (
     compile_rule_pack,
     load_rule_pack_payload,
@@ -65,6 +67,7 @@ from backend.services.visa_engine.bundle import (
 )
 from backend.services.visa_engine.compiler import DEFAULT_FACT_REGISTRY
 from backend.services.visa_engine.models import DecisionState, RulePackPayload
+from backend.tests.services.visa_engine.gold_replay import _persona_expected
 from backend.tests.services.visa_engine.test_evaluator_gold import Persona
 
 _PACKS_DIR = (
@@ -855,9 +858,21 @@ class TestInnocence:
 # ---------------------------------------------------------------------------
 
 
+#: PR-5 adds E33G and D2__121D to the shared ``gold_coverage/personas/``
+#: corpus (grown 18 -> 20; ``test_gold_coverage_floor.py`` measures all 20
+#: against the CURRENT highest signed pack). Both are supported only from
+#: seq-20 onward: E33G needed ``review.e33g.income-evidence`` retired and
+#: D2__121D needed the 60->180 stay-day cap, neither of which exists in
+#: seq-19 or earlier. This seq-19-scoped gate excludes them by name — not
+#: by loosening the assertion that the remaining 18 must all pass.
+_SEQ19_UNSUPPORTED_COVERAGE_PERSONAS = frozenset({"E33G.json", "D2__121D.json"})
+
+
 def _coverage_persona_specs() -> list[tuple[str, dict[str, Any]]]:
     specs = []
     for path in sorted(_GOLD_COVERAGE_CORPUS.glob("*.json")):
+        if path.name in _SEQ19_UNSUPPORTED_COVERAGE_PERSONAS:
+            continue
         specs.append((path.name, json.loads(path.read_text(encoding="utf-8"))))
     return specs
 
@@ -909,16 +924,45 @@ def _offline_decisions_against(
     return tuple(decisions)
 
 
+def _synthetic_expected(persona: Persona) -> dict[str, Any]:
+    """The pre-PR-5 synthetic fixture-pack contract (``gold_replay._persona_
+    expected``), independent of ``PRODUCTION_REPLAY_EXPECTATIONS``.
+
+    PR-5 re-derives ``gold_replay_driver._normalized_expected`` from each
+    persona's own legal citations to grade the SIGNED PRODUCTION pack replay
+    (seq-20 onward) — see ``test_evaluator_gold.PRODUCTION_REPLAY_
+    EXPECTATIONS``. This module's own historical measurements ("Ground
+    truth ... measured seq-18 at matches=5/20", revised 6/20 by the
+    decisiveness reorder) were pinned against the OLDER synthetic corpus
+    contract on seq-18/seq-19, packs that predate the legal re-derivation
+    entirely and are never signed or activated. Grading them against the
+    new legal table would silently swap what "divergence" means out from
+    under an already-landed, still-true historical finding — so this
+    fold-verification class keeps grading against the synthetic contract it
+    was always measured with, the same isolation PR-5 applies in
+    ``test_gold_replay_driver.py``."""
+    expected = _persona_expected(persona)
+    return {
+        "state": expected["state"],
+        "candidate_products": expected["candidates"],
+        "missing_facts": expected["missing_facts"],
+        "review_reason_codes": expected["review_reason_codes"],
+        "no_path_reason_codes": expected["no_path_reason_codes"],
+        "notice_codes": expected["notice_codes"],
+    }
+
+
 def _offline_report_for(
     compiled: compiler.CompiledRulePack, *, label: str
 ) -> dict[str, Any]:
     decisions = _offline_decisions_against(compiled, evaluated_at=AS_OF)
-    return build_report(
-        mode="offline",
-        generated_at=AS_OF,
-        decisions=decisions,
-        pack_source={"kind": "test-derived", "selection": label, "file": label},
-    )
+    with patch.object(driver, "_normalized_expected", _synthetic_expected):
+        return build_report(
+            mode="offline",
+            generated_at=AS_OF,
+            decisions=decisions,
+            pack_source={"kind": "test-derived", "selection": label, "file": label},
+        )
 
 
 @pytest.fixture(scope="module")

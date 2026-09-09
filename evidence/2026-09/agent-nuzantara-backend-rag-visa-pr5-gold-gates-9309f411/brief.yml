@@ -1,0 +1,81 @@
+task_id: visa-pr5-gold-gates-0909
+gear: 2
+# Floor computed this run: `python3 scripts/evidence_pack_lint.py --print-floor
+# --changed-files-file ... --numstat-file ...` returns `2` (10 files,
+# +617/-37, churn 654 >= 400) — the SIZE term alone floors this PR at Gear 2.
+objective: >-
+  Finish PR-5 of the Visa Oracle decisiveness wave (last PR of the wave,
+  research/visa/2026-09-06-visa-oracle-decisiveness-investigation.md
+  §"PR-5 — gold personas and the CI gates", lines ~691-735, F7 disposition
+  ~866-872): separate the SIGNED-PRODUCTION-PACK legal replay contract
+  (`PRODUCTION_REPLAY_EXPECTATIONS`, re-derived per persona from its own
+  legal citation, never copied from an engine run) from the synthetic
+  20-persona fixture-pack contract the unit tests already used
+  (`gold_replay._persona_expected`); raise the offline replay floor from
+  "matches >= 4, unexplained <= 16" to "matches >= 17, the only 3
+  divergences are persona 1/9/10 by name" (closes a reviewer finding: no
+  loose 17/20, the specific three); grow `gold_coverage_replay` 18 -> 20
+  with E33G (remote work, clean foreign income) and the 121-day D2
+  multi-entry business persona (E31D and the 20-canonical-persona table
+  were already in place); add F7's bounded fixed-seed option-matrix replay
+  (3 branches x 4 fact-permutation cases = 12, seed 9062026, pinned to the
+  signed pack's own `signed_at`, never the wall clock); and isolate the
+  historical seq-18/seq-19 fold-verification gate
+  (`test_seq19_pack.py::TestGoldReplayDriverOffline`,
+  `TestGoldCoverageReplay`) from the new legal table so a pre-existing,
+  still-true historical finding is not silently re-graded against a
+  contract invented after it was measured. E33 (second home) intentionally
+  excluded — no owner GO recorded in the spec or the LIVE STATE log.
+constraints:
+  - "Never copy the engine's own current output into a gold expectation (generator is never grader) — every PRODUCTION_REPLAY_EXPECTATIONS row carries a named legal citation and rationale, enforced by an assertion in test_evaluator_gold.py."
+  - "Never weaken a legal assertion to make a historical test pass — the seq-19 fix re-scopes WHICH expectation table a replay is graded against (production vs. synthetic), it changes zero legal conclusions."
+  - "F7's option matrix stays bounded and reproducible: fixed seed, 2 axes x 2 values per branch (4 cases), byte-identical report across two runs."
+  - "gold_coverage_replay stays the fail-open catcher: 20/20 on every commit in this PR, never fewer."
+  - "No dated fixture may be a wall-clock time bomb — every persona/matrix evaluation is pinned to the highest signed pack's own `signed_at`, not `datetime.now()` (2026-08-30 clock-bomb scar)."
+acceptance:
+  - text: >-
+      WHEN the 6 targeted gold-gate files run, THEN all pass (161/161) —
+      20-persona gold replay, coverage floor (20/20), replay-artifact
+      determinism + F7 matrix (12/12), seq-20 pack gates, replay-driver
+      unit tests.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/services/visa_engine/test_evaluator_gold.py
+      backend/tests/services/visa_engine/test_gold_coverage_floor.py
+      backend/tests/services/visa_engine/test_gold_replay_artifact.py
+      backend/tests/services/visa_engine/test_seq20_pack.py
+      backend/tests/scripts/visa_engine/test_gold_replay_driver.py
+  - text: >-
+      WHEN the historical seq-18/seq-19 fold-verification gate runs after
+      the isolation fix, THEN all 66 tests pass, including the 7 that
+      regressed when PR-5's legal table first touched them.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/services/visa_engine/test_seq19_pack.py
+  - text: >-
+      WHEN the full visa_engine + visa_engine-scripts suite runs, THEN the
+      only failures are the 32 pre-existing DB/environment ones (31
+      asyncpg TooManyColumnsError + 1 migration-281-not-live), proved
+      identical on origin/main before this PR touched anything.
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest
+      backend/tests/services/visa_engine/ backend/tests/scripts/visa_engine/
+consumer_map:
+  - "CI gate `test_gold_coverage_floor.py` — the fail-open catcher on every signed production pack from here on"
+  - "CI gate `test_interview_walk_census.py` — reads the same `gold_coverage/personas/` corpus this PR grows to 20"
+  - "`gold_replay_driver.py` — the seq-20 production replay script a consul session runs before signing/activating the NEXT pack"
+  - "`test_seq19_pack.py`'s historical fold-verification suite, now decoupled from future legal-table changes"
+risks:
+  - >-
+    The seq-19 isolation fix and the coverage-corpus scoping both live in
+    `test_seq19_pack.py`, a file outside PR-5's originally-mandated file
+    list — added because the 7 regressions Codex's session found live
+    there, not in the 9 files it had already touched; flagged explicitly
+    in the PR body for the reviewer.
+  - >-
+    E33 (second home) stays unreachable in the gold/coverage corpora,
+    same as before this PR — a deliberate scope cut, not an oversight.
+pii: >-
+  none — every persona/fixture in this diff is synthetic (Bali Zero
+  test personas, no real client data), and the option-matrix/gold
+  expectations carry only regulatory citations and boolean/enum facts.
