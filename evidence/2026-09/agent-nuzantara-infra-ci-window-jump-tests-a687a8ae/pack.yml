@@ -86,7 +86,7 @@ dissent:
 gate_verdict:
   verdict: PASS
   seat: claude-opus-5
-  graded_sha: 618faa754b # short on purpose: a 40-hex sha reads as a high-entropy secret to detect-secrets
+  graded_sha: 618faa754b # pragma: allowlist secret — a git sha, short on purpose; detect-secrets still reads this one as hex entropy
   conditions: []
   reasons:
     - "Local corpora reproduce the pack's receipts: guard 'All tests passed', venv pytest '35 passed in 11.43s', gesture '== 30 passed, 0 failed =='."
