@@ -39,8 +39,31 @@ POLL_SECONDS = 1
 MANDATE_SECONDS = 3600
 # Launch failures the next Stop may retry on its own (bounded by MAX_LAUNCH_ATTEMPTS).
 TRANSIENT_FAILURES = frozenset(
-    {"continuation_not_confirmed", "TimeoutError", "RuntimeError", "destination_failed"}
+    {
+        "continuation_not_confirmed",
+        "TimeoutError",
+        "destination_failed",
+        "destination_exited",
+    }
 )
+
+# Three different causes were raised as bare RuntimeError, so `type(exc).__name__`
+# collapsed them into one token and every consumer downstream — frozen_reason() and
+# the Stop handler — had to decide retry policy from a class name that could mean
+# any of them. The message is the only place the cause survives, so it is mapped
+# to a STABLE code here, at the point it is still known. Codes outside
+# TRANSIENT_FAILURES are terminal: a launch whose ownership changed, or one the
+# operator cancelled, must not be retried by the next Stop.
+FAILURE_CODES = {
+    "launch ownership changed": "launch_ownership_changed",
+    "continuation cancelled": "continuation_cancelled",
+    "owned destination exited without completion": "destination_exited",
+}
+
+
+def failure_code(exc: BaseException) -> str:
+    """A stable code for a failure, falling back to the exception type name."""
+    return FAILURE_CODES.get(str(exc), type(exc).__name__)
 SELF = Path(__file__).resolve()
 EVENTS = (
     "SessionStart",
@@ -1149,7 +1172,7 @@ def continue_session(sid: str) -> None:
             latest.update(
                 rollover="needs_attention",
                 completion_status="needs_attention",
-                failure=type(exc).__name__,
+                failure=failure_code(exc),
             )
             save(path, latest)
     finally:
@@ -1201,6 +1224,15 @@ def release(sid: str) -> dict[str, Any]:
     with locked(sid) as (path, state):
         if state.get("rollover") not in ("needs_attention", "requested"):
             raise ValueError("release applies to a parked (needs_attention/requested) source")
+        # The docstring above has always declared this; the code did not enforce it.
+        # Popping launch_nonce under a live supervisor makes it raise "launch
+        # ownership changed", which rewrites rollover=needs_attention OVER the
+        # released state and re-freezes the source the operator just unfroze.
+        if supervisor_alive(state):
+            raise ValueError(
+                "a launch is still in flight for this source: cancel it first, so "
+                "the supervisor records its own verdict instead of racing this write"
+            )
         state["released"] = {
             "from": state.get("rollover"),
             "failure": state.get("failure"),
