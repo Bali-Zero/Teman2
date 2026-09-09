@@ -364,3 +364,92 @@ This is the measured instance of the Pro session's 2026-09-09 finding: a Codex b
 
 Astra: reply under this section, or in `FABLE-MEASUREMENTS-2026-09-09.md` as before.
 
+
+---
+
+## 10. Arm B-2 — the Capo with the denial clause repaired
+
+Run on Zero's "go" and under Fable's decision 2, after §6.2 identified my own instruction as
+the variable that decided run 1. **One clause changed, nothing else**: instead of "STOP and
+report the denial verbatim", B-2 was told to record the denial verbatim, have the affected
+thread checkpoint as the guard asks, and then continue by a route the guard permits —
+halting only if the denial blocks the deliverable itself. Arm A was not re-baselined,
+per Fable's decision 2 and because A's only denial arrived after its build was finished.
+
+Comparability caveat, stated rather than hidden: B-2's worktree forked from `9e64bcbf99`,
+not run 1's `4eed90f149` — the merge queue advanced `main` in between. Irrelevant to the
+receptor, recorded anyway.
+
+### Consumption
+
+| metric | arm A | arm B (run 1) | **arm B-2** |
+|---|---|---|---|
+| wall clock | 1090 s | 442 s | **805 s** |
+| non-cached input tokens | — | 90 188 | **104 122** |
+| output tokens (incl. reasoning) | — | 7 197 | **15 063** |
+| child tokens, Claude accounting | 196 325 / 400 000 | n/a | n/a |
+| command executions | — | 18 | **30** |
+| threads | 1 | 3 | **3 (+1 continuation)** |
+| net lines delivered | **+250, committed** | 0 | **+283, uncommitted** |
+| commit / PR | `87b4e79e75` / #6054 | none | **none** |
+
+Kill conditions never reached: 805 s against a 2180 s line.
+
+### The repaired clause worked, and then the wall took the coordinator
+
+The first `return_required` flip landed on a child at 106 822 / 258 400 and **the arm did
+not stop** — it checkpointed that thread and kept building, which is exactly the behaviour
+run 1's instruction had suppressed. Then the wall climbed the hierarchy. Final bridge state
+for the four threads, read off `~/.codex/state/nuzantara-context/`:
+
+| thread | role | used / window | `return_required` | last event | Pre/PostToolUse |
+|---|---|---|---|---|---|
+| `01a0876d…` | Capo | **110 601** / 258 400 | — | `Stop` | 45 / 44 |
+| `01a0876f-3bb1…` | child | **106 822** / 258 400 | **true** | `SubagentStop` | 15 / 12 |
+| `01a0876f-7c61…` | child | 101 729 / 258 400 | — | `SubagentStop` | 18 / 18 |
+| `01a08779…` | continuation | — | — | `PostToolUse` | 1 / 1 |
+
+Final message: *"Checkpoint salvato. La continuazione riprenderà automaticamente con patch,
+verifiche C1–C6, commit e PR ancora da completare."* All three working threads finished
+between 101 k and 111 k against a 103 360 threshold. **Fable's prediction is confirmed
+exactly**: the Capo topology on this seat does not have the context to carry a Gear-2 task
+to a commit, and it is the coordinator — the thread that must hold the whole mission — that
+runs out last and hardest.
+
+### What B-2 actually produced, characterised (not graded)
+
+It parked before running its own checks, so this is a description of an unfinished
+artefact, not a verdict on a submitted one. `scripts/proprioception.py` +160/−6 and a
+123-line test file, uncommitted:
+
+- **C2 PASSES** — `--selftest` OK, registry valid, 19 probes.
+- **C1 FAILS** — the test file crashes: its own `scoped_path` stub reads
+  `os.environ["CLAUDE_CONFIG_DIR"]` unguarded and raises `KeyError`.
+- **C4 runs but is internally inconsistent** — the probe returns `UNPROBEABLE` while
+  emitting `n_findings: 5` and a populated evidence list.
+- One thing it did **better** than arm A: it enumerates the second profile's models fully
+  and prints an 8-character scope prefix per row, which is within the spec's redaction
+  limit and more diagnosable than arm A's rows.
+- +283 lines is over the 150–250 band, though the work was not finished, so the number is
+  not a fair reading of what it would have shipped.
+
+### The D3 answer, for this seat configuration
+
+Per Fable's decision 2 — *"if it halts on the wall, that is the D3 answer for this
+configuration and no B-3 runs until the seat is reconfigured"* — **the answer is that the
+Codex Capo topology is not viable for a Gear-2 mission as the seat stands today.** Not
+because coordination is wrong, and not because the Capo misbehaved: it obeyed every guard,
+routed around none, and checkpointed correctly at each wall. It ran out of context. A
+builder that boots at ~55 k against a 258 400 window has ~48 k of working room before every
+tool is denied, and a coordinator holding a mission spec plus three threads' worth of state
+reaches that first.
+
+Arm A had the same 40 % rule applied to a 1 000 000 window — 400 000 tokens — and used
+196 325 of it. **The two arms were never running the same experiment**; they were running
+the same spec against budgets that differ by 4×. That, and not the Capo pattern, is what
+this pilot measured.
+
+Prerequisites before any B-3, both Zero's call per Fable's decision 4: builder threshold
+0.6 on the Codex seat, and the `AGENTS.md` index diet. Plus the deny-message fix from
+decision 3 — a coordinator that cannot see the number cannot manage the budget it is
+being held to.
