@@ -299,15 +299,17 @@
             "W92",
             "segment-scoping-6th",
             "W105",
-            "W117"
+            "W117",
+            "readonly-verb-widening-7th-overmatch-2026-09-09"
           ],
           "symbols": {
             "BLOCKED_SUBCMD_RE": {
               "tests": [
                 "infra/claude-hooks/test_block_regex.py",
-                "infra/claude-hooks/test_w85_stash_readonly.py"
+                "infra/claude-hooks/test_w85_stash_readonly.py",
+                "infra/claude-hooks/test_readonly_git_verbs.py"
               ],
-              "note": "W85 stash over-match FIXED 2026-07-06 (negative lookahead: read-only `stash list|show` pass, bare/mutating stash still blocked) — test_w85_stash_readonly.py converted from tripwire-pin to plain guilt+innocence per the pin's own instructions"
+              "note": "W85 stash over-match FIXED 2026-07-06 (negative lookahead: read-only `stash list|show` pass, bare/mutating stash still blocked) — test_w85_stash_readonly.py converted from tripwire-pin to plain guilt+innocence per the pin's own instructions. 7th over-match (2026-09-09): `merge` needed the SAME trailing-hyphen guard `stash` already had — `\\bmerge\\b` matched inside `merge-base`/`merge-file`/`merge-tree` (real, mostly read-only subcommands, not `git merge` with arguments), blocking a read-only `git diff $(git merge-base ...)` in the main checkout. Fixed with `merge(?!-)`; test_readonly_git_verbs.py pins both the fix and that `git merge` itself still blocks."
             },
             "_is_remote_dispatch": {
               "tests": ["infra/claude-hooks/test_w83_remote_dispatch.py"],
@@ -320,9 +322,10 @@
             "_git_verb_verdict": {
               "tests": [
                 "infra/claude-hooks/test_segment_scoped_dispatch.py",
-                "infra/claude-hooks/guard_fuzz_harness.py"
+                "infra/claude-hooks/guard_fuzz_harness.py",
+                "infra/claude-hooks/test_readonly_git_verbs.py"
               ],
-              "note": "Pure decision function extracted from main() during the 6th-over-match fix (2026-07-11) SPECIFICALLY so guard_fuzz_harness.py can call the REAL logic instead of re-implementing it. The harness's ORIGINAL run_corpus() had hand-copied the git-verb decision path inline — that copy used the pre-fix whole-command `_is_remote_dispatch` check and drifted from `main()` the same day it was written, producing 24 false mismatches against cases the real guard already handled correctly. A fuzz harness testing its own stale reimplementation instead of the guard is the exact failure this tool exists to prevent; extracting a single callable source-of-truth closes that structurally, not just for today's drift."
+              "note": "Pure decision function extracted from main() during the 6th-over-match fix (2026-07-11) SPECIFICALLY so guard_fuzz_harness.py can call the REAL logic instead of re-implementing it. The harness's ORIGINAL run_corpus() had hand-copied the git-verb decision path inline — that copy used the pre-fix whole-command `_is_remote_dispatch` check and drifted from `main()` the same day it was written, producing 24 false mismatches against cases the real guard already handled correctly. A fuzz harness testing its own stale reimplementation instead of the guard is the exact failure this tool exists to prevent; extracting a single callable source-of-truth closes that structurally, not just for today's drift. 7th over-match PR (2026-09-09): `blocked_matches` now also folds in `_extra_write_verdicts()` (branch/tag/config/diff-output writes) so every downstream rule here (remote-dispatch segment-scoping, worktree-target allow, ff-only-pull) applies to them identically; test_readonly_git_verbs.py calls this function directly against the exact reported false-positive plus the full read-only-verb allowlist and its writing siblings, and guard_fuzz_harness.py's 445-case corpus was re-run green (0 unexplained mismatches) before this fix shipped."
             },
             "_strip_noise": {
               "tests": [
@@ -345,7 +348,31 @@
             },
             "_only_ffonly_pull": {
               "tests": ["infra/claude-hooks/test_ffonly_pull_exception.py"],
-              "note": "ff-only pull exception (2026-07-06, Zero directive). W91 fixed same day: the first version did a bare substring check and a shell COMMENT mentioning --ff-only opened the exception for a bare pull (4th over-match of this guard) — now FFONLY_PULL_SEGMENT_RE anchors the flag to the pull segment. 15 guilt + 7 innocence + 4 probe cases."
+              "note": "ff-only pull exception (2026-07-06, Zero directive). W91 fixed same day: the first version did a bare substring check and a shell COMMENT mentioning --ff-only opened the exception for a bare pull (4th over-match of this guard) — now FFONLY_PULL_SEGMENT_RE anchors the flag to the pull segment. 15 guilt + 7 innocence + 4 probe cases. 7th over-match PR (2026-09-09): now also disqualifies when `_extra_write_verdicts()` finds a branch/tag/config/diff-output write elsewhere in the command — BLOCKED_SUBCMD_RE's own view of the command could otherwise look pull-only while a write it cannot see (those live in a separate regex family) sat in a later segment."
+            },
+            "BRANCH_WRITE_RE": {
+              "tests": ["infra/claude-hooks/test_readonly_git_verbs.py"],
+              "note": "7th over-match PR (2026-09-09): `branch` was never in BLOCKED_SUBCMD_RE, so before this PR BOTH `git branch --list` (read) and `git branch -d/-D/-m/-M` (write) were silently allowed. Opening the read forms explicitly required blocking the write forms by INTENT (a `d`/`m`/`D`/`M` flag cluster or `--delete`/`--move`), not by bare verb — `git branch -a`/`--show-current`/(no args) carry neither and stay allowed."
+            },
+            "CONFIG_SET_RE": {
+              "tests": ["infra/claude-hooks/test_readonly_git_verbs.py"],
+              "note": "7th over-match PR (2026-09-09): blocks `git config <key> <value>` (two positional tokens) while a negative lookahead spares `--get`/`--get-all`/`--list`/`-l` — a single positional token (`git config user.name`, a GET) is also spared since the two-token shape never matches."
+            },
+            "DIFF_OUTPUT_RE": {
+              "tests": ["infra/claude-hooks/test_readonly_git_verbs.py"],
+              "note": "7th over-match PR (2026-09-09): `git diff --output=<file>` (or `--output <file>`) writes a file directly, bypassing the shell-redirect write-target channel entirely (`_write_hits_main` never sees it — there is no `>`). Plain `git diff` without `--output` is unaffected."
+            },
+            "TAG_INVOCATION_RE": {
+              "tests": ["infra/claude-hooks/test_readonly_git_verbs.py"],
+              "note": "7th over-match PR (2026-09-09): captures the full `git tag<rest>` tail for `_tag_is_write` to classify — see that symbol for why a plain regex alternative cannot do this alone."
+            },
+            "_tag_is_write": {
+              "tests": ["infra/claude-hooks/test_readonly_git_verbs.py"],
+              "note": "7th over-match PR (2026-09-09): `-l`/`--list` takes a glob-PATTERN positional (`git tag -l 'v1.*'`) that is syntactically identical to a create-target positional (`git tag v1.2.3`) — only the presence of the list flag tells them apart, which a single regex alternation (unlike BLOCKED_SUBCMD_RE's other members) cannot express. `-d`/`--delete` always writes regardless of any other flag."
+            },
+            "_extra_write_verdicts": {
+              "tests": ["infra/claude-hooks/test_readonly_git_verbs.py"],
+              "note": "7th over-match PR (2026-09-09): folds BRANCH_WRITE_RE/CONFIG_SET_RE/DIFF_OUTPUT_RE/TAG_INVOCATION_RE matches into the SAME `blocked_matches` list `_git_verb_verdict` builds from BLOCKED_SUBCMD_RE — no second decision path, so remote-dispatch segment-scoping and worktree-target resolution apply to these verbs identically. guard_fuzz_harness.py's existing 445-case corpus re-ran green with 0 unexplained mismatches after this symbol was wired in, proving it introduced no new over/under-match in the pre-existing corpus even though the corpus itself was not extended to name it."
             },
             "_main_tree_tracked_clean": {
               "tests": [
