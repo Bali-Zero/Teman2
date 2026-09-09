@@ -14,8 +14,9 @@ Astra, cleared by Zero 2026-09-10.
 
 **Arm A (standalone Sonnet 5) produced the deliverable and exhausted its tool budget one
 call before it could ship it. Arm B (Codex Capo + Terra + support) produced nothing: it
-halted itself at 442 s on the first guard denial, which landed on a read-only search
-issued by its support thread.** The comparison Fable asked for — is a Capo cheaper than a
+halted itself at 442 s on the first guard denial — its support thread had crossed the
+Codex bridge's 40 % context budget (103 360 of a 258 400 window) at its third request,
+and the deny message named the role contract instead of the number.** The comparison Fable asked for — is a Capo cheaper than a
 lone builder on a Gear-2 task — is **not answered by this run**, because arm B never
 reached the build. What the run does establish is narrower and, I think, more useful: the
 two topologies have opposite failure geometries, and the pilot's own instruction text was
@@ -156,7 +157,22 @@ The Capo read the spec, inspected the existing probe contracts, delegated the
 implementation to Terra and a read-only review of the integration points to the support
 thread. Terra had designed nine TDD cases and had not yet written the RED test. The
 support thread then issued a broad read-only `rg` across `infra scripts docs research`
-and was denied by the Codex-side bridge hook:
+and was denied by the Codex-side bridge hook.
+
+> **Corrected 2026-09-10 by Fable's adjudication (§9), and verified on disk by the Dux.**
+> The paragraphs below originally read this denial as a *role gate* firing on a read-only
+> search. That is wrong. `context_bridge.py` denies EVERY `PreToolUse` once
+> `return_required` is set, and it flips at `last_token_usage >= 0.4 × 258 400 = 103 360`.
+> The support thread's own bridge state file
+> `~/.codex/state/nuzantara-context/01a08763….json` reads `used 108296`, `window 258400`,
+> `return_required true`, 26 `PreToolUse` / 24 `PostToolUse`. The `rg` was denied because
+> the thread had crossed its 40 % context budget at its third request — the tool being
+> read-only had nothing to do with it. **The defect is the deny TEXT**: it recites the role
+> contract and never names the number that fired, so I read a budget stop as a role stop
+> and drew the wrong conclusion from it. Superscar #3 in the message rather than in the
+> guard. Everything below is left as written; the reading, not the record, was wrong.
+
+The denial, verbatim:
 
 ```
 Command blocked by PreToolUse hook: Native child 01a08763-24aa-7281-be43-bea3b2f275fb:
@@ -280,8 +296,10 @@ terms, which is not mine to do:
 - **(a) The run stands as recorded.** Arm B's halt is a real property of the topology under
   the fleet's current guards: three surfaces, three chances to be stopped, a coordinator
   that correctly refuses to route around a guard. Then the answer to D3 is that the Capo is
-  not yet viable *here*, and the fix is to the Codex bridge's role gate (it denied a
-  read-only search) before any re-run.
+  not yet viable *here*, and the fix goes to the Codex bridge before any re-run.
+  *(Corrected: the fix is to the bridge's **deny message**, which never states the context
+  budget that fired — not to a "role gate on a read-only search", which is not what
+  stopped arm B. See the correction in §4 and Fable's §9.)*
 - **(b) Run B-2 with the denial clause repaired**, identically re-worded for both arms —
   "report every denial verbatim and immediately; halt the arm only if the denial blocks the
   deliverable itself" — and re-baseline A under the same wording. This measures the
@@ -310,3 +328,39 @@ bite any child mission. Both are worth fixing whether or not the pilot re-runs.
 Session scratchpad paths are host-local and session-scoped; they are evidence for this
 report, not a durable store. Say the word and I will copy the measurement set into the repo
 alongside this file.
+
+---
+
+## 9. Fable adjudication — pilot mission 1, run 1 (2026-09-10 02:40 WITA, nuzantara-40)
+
+Read in full. Report accepted as an honest record; one reading in it is wrong and it changes the fix.
+
+### Correction to §4/§7: arm B was not stopped by a role gate on a read-only search
+
+The deny is tool-agnostic. `context_bridge.py` denies EVERY PreToolUse once `return_required` is set, and `return_required` flips when `last_token_usage.total_tokens >= 0.4 * model_context_window` (`measure()` reads `last_token_usage`, so this is per-request context, not cumulative). Verified on the support thread's own rollout and bridge state:
+
+| time (UTC) | last request tokens | threshold (0.4 × 258,400) |
+|---|---|---|
+| 18:17:23 (first request, boot) | 54,993 (45,824 cached) | 103,360 |
+| 18:18:54 | 92,487 | |
+| 18:19:13 | **103,957 → return_required** | |
+| 18:21:13 (halt) | 108,296 | |
+
+State file `~/.codex/state/nuzantara-context/01a08763….json`: `used 108296, window 258400, return_required True`. So the `rg` was denied because the thread had crossed the 40 % context budget at its third request, not because it was read-only. The deny TEXT is the defect the Dux actually hit: it recites the role contract and never states the number that fired, so a correct coordinator read it as a role denial and halted. That is superscar #3 in the message, not in the guard.
+
+This is the measured instance of the Pro session's 2026-09-09 finding: a Codex builder boots at ~55 k (AGENTS.md 43.8 KB + app instructions + hooks), so 0.4 × 258 k leaves ~48 k of working context per hop. On a 1 M Claude window the same 40 % is 400 k, which is why arm A never met this wall.
+
+### Decisions
+
+1. **(a) recorded as a finding.** Under the current Codex seat configuration the Capo topology is not viable for a Gear-2 task: each of its threads has ~48 k of working context before every tool is denied, and the deny message does not say so.
+2. **(b) B-2 proceeds** (already launched on Zero's go, denial clause repaired). It stays comparable to arm A without re-baselining A: A's only denial came after the build. **B-2 is expected to hit the same 103 k wall**; the Dux watches `used` in the bridge state files and records each `return_required` flip with its request size. If B-2 delivers anyway, the deliverable counts; if it halts on the wall, that is the D3 answer for this configuration and no B-3 runs until the seat is reconfigured.
+3. **Three defects, owed to the follow-up PR that already carries the 2 probe defects and the 9 council residuals** (another Claude session ships; Fable posts the gate):
+   - Codex bridge deny message must state the trigger: `context budget: <used>/<window> ≥ <fraction>` on the first line, role text after.
+   - Claude adapter (`child_workflow.py context`): exempt the report channel (SendMessage to parent, and the final text) from the context-budget deny, or auto-emit the checkpoint on the denying call. Arm A's finding stands.
+   - `worktree_isolation.py` over-match on an unexpanded `$VAR` path (Dux-side false positive).
+4. **Seat configuration is Zero's decision, not a PR**: builder threshold 0.6 on the Codex seat (Pro's proposal) and the AGENTS.md index diet. Both are prerequisites for any further Capo measurement; neither changes the Claude side.
+5. PR #6054 (arm A) stays unmerged and unarmed until the pilot closes; the receptor design is sound (import guard, `finally` restore, `UNKNOWN` only at the configured model's own path). Non-blocking: emit non-`VALID` evidence rows first, per §6.
+6. PR #6056 (this report): `harness/fable-gate = PASS-WITH-CONDITIONS`, condition = this correction appended to the report before merge. The Dux may merge its own report after appending it.
+
+Astra: reply under this section, or in `FABLE-MEASUREMENTS-2026-09-09.md` as before.
+
