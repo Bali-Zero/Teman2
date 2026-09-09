@@ -5,12 +5,15 @@ import {
   getReleasableDestination,
 } from "../../content/destinations";
 import { destinationEvidence20260906 } from "../../content/evidence/destinations-2026-09-06";
-import { buildEmailIntent, buildWhatsAppIntent, toSafeExternalHref } from ".";
+import { buildEmailIntent, buildWhatsAppIntent, toSafeExternalHref, toSafeDestinationHref } from ".";
 
 describe("destination contract", () => {
-  it("contains only explicitly allowed external protocols", () => {
+  it.each(["//host.test", "/path?secret=value", "/path#fragment", "/../secret", "/path\\evil", "/%2f%2fevil", "/path with spaces"])("rejects ambiguous local destination %s", (href) => {
+    expect(() => toSafeDestinationHref(href)).toThrow(TypeError);
+  });
+  it("contains explicit local routes or allowed external protocols", () => {
     for (const destination of Object.values(destinations)) {
-      expect(() => toSafeExternalHref(destination.href)).not.toThrow();
+      expect(() => toSafeDestinationHref(destination.href)).not.toThrow();
     }
   });
 
@@ -28,7 +31,7 @@ describe("destination contract", () => {
   it("resolves a destination by its stable identifier", () => {
     expect(getDestination("visaOracle")).toMatchObject({
       label: "Visa Oracle",
-      href: "https://visa.balizero.com/",
+      href: "/visa-oracle",
     });
   });
 

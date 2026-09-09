@@ -9,6 +9,19 @@ export type SafeExternalHref = string & {
   readonly [safeExternalHrefBrand]: true;
 };
 
+declare const safeLocalHrefBrand: unique symbol;
+export type SafeLocalHref = string & { readonly [safeLocalHrefBrand]: true };
+export type SafeDestinationHref = SafeExternalHref | SafeLocalHref;
+
+/** A local path has an implemented website/retained owner, not an implied host. */
+export function toSafeDestinationHref(value: string): SafeDestinationHref {
+  if (!value.startsWith("/")) return toSafeExternalHref(value);
+  if (!/^\/[a-zA-Z0-9/_-]*$/.test(value) || value.includes("//")) {
+    throw new TypeError("Local destinations must be canonical root-relative paths.");
+  }
+  return value as SafeLocalHref;
+}
+
 function hasAllowedProtocol(
   protocol: string,
 ): protocol is AllowedExternalProtocol {

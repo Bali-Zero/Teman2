@@ -6,6 +6,8 @@ export {
 } from "./intents";
 export {
   toSafeExternalHref,
+  toSafeDestinationHref,
   type AllowedExternalProtocol,
   type SafeExternalHref,
+  type SafeDestinationHref,
 } from "./safe-href";
