@@ -2,5 +2,6 @@
   "version": 2,
   "framework": "nextjs",
   "buildCommand": "npm run build",
-  "installCommand": "cd ../.. && npm ci --include=dev"
+  "installCommand": "cd ../.. && npm ci --include=dev",
+  "ignoreCommand": "S=\"$(git rev-parse --show-toplevel)/scripts/ci/vercel_should_build.sh\"; [ -f \"$S\" ] || exit 1; bash \"$S\"; [ $? = 0 ] && exit 0 || exit 1"
 }
