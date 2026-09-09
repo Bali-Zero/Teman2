@@ -283,6 +283,13 @@ evidence (model seen, window assumed and why) and three routes in order:
    resort. See the module docstring's SELF-CURE section for the exact
    one-liner and rationale.
 
+A sibling disarmed-guard reminder exists for `host_boundary` (Zero ruling,
+2026-09-09: stays off on Pro/M5/Mini via `HOST_BOUNDARY_OFF=1` until Zero
+decides otherwise): `scripts/hooks/host_boundary_reminder_sessionstart.sh`,
+a SessionStart receptor that prints a short re-arm reminder (same
+`! python3 -c "..."` prompt-bar route, different one-liner) whenever that
+env var is `1`, and stays silent otherwise.
+
 ## Broker-aware spawn convention (W62 ANTIBODY #4)
 
 Il TTL da solo non basta: nessun consumer lo applicava. La hygiene è ora a 3 livelli, in ordine di affidabilità decrescente:
