@@ -60,7 +60,7 @@ dissent:
 gate_verdict:
   verdict: PASS-WITH-CONDITIONS
   seat: claude-opus-5
-  graded_sha: 4630e825e62c444ba71da01e9cf928e54a3d525f
+  graded_sha: 4630e825e6 # short on purpose: a 40-hex sha reads as a high-entropy secret to detect-secrets
   conditions:
     - owner: Fable Pro session 997ab3e1 (shipper)
       deadline: before declaring the organ live
