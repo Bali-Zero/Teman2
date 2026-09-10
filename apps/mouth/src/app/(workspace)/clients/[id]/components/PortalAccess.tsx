@@ -92,6 +92,14 @@ export function PortalAccess({
     }
   };
 
+  // team_members.email (the login) vs clients.email (what the CRM shows).
+  // Only meaningful once a portal account exists.
+  const loginEmailDiverged = Boolean(
+    status?.portal_email &&
+    clientEmail &&
+    status.portal_email.toLowerCase() !== clientEmail.toLowerCase(),
+  );
+
   const formatDate = (value: string | null) =>
     value
       ? new Date(value).toLocaleDateString(undefined, {
@@ -155,6 +163,20 @@ export function PortalAccess({
                   ? `Last signed in ${formatDate(status.last_login)}`
                   : "Registered, but has never signed in yet"}
               </p>
+              {/* The login identity is team_members.email, which a CRM email
+                  edit does not move (portal audit F1). Saying so is the whole
+                  point: the panel used to render the stale address as if it
+                  were current, so a consultant who had just changed the email
+                  had no way to know the client still signs in with the old
+                  one. */}
+              {loginEmailDiverged ? (
+                <p className="text-xs text-[var(--bz-warning,#d97706)] mt-1">
+                  Signs in as {status.portal_email} — the CRM now has{" "}
+                  {clientEmail}. Changing the email here does not move the
+                  portal login; the client must keep using {status.portal_email}
+                  .
+                </p>
+              ) : null}
             </div>
           </div>
         ) : status?.pending_invite ? (

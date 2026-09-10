@@ -251,15 +251,50 @@ class InviteService:
                     if already_registered and existing_user["active"]:
                         raise ValueError("This client already has an active portal account")
 
+                    # The login identity must be the address the invitation
+                    # was SENT to, or registration succeeds and login fails.
+                    #
+                    # Measured 2026-09-11 (portal audit F1): `update_client`
+                    # lets a consultant change `clients.email` freely, the
+                    # re-invite correctly goes to the NEW address, the client
+                    # sets a PIN through it — and then cannot sign in, because
+                    # `auth.py`'s login matches `team_members.email` only and
+                    # this UPDATE never touched it. `ensure_portal_profile`
+                    # cannot repair it either: `email` IS its ON CONFLICT key.
+                    # Nothing surfaced the failure to either side; the CRM
+                    # panel kept reporting "Portal active — <dead address>".
+                    invite_email = invitation["email"]
+                    if invite_email:
+                        # team_members.email is unique. A different row already
+                        # holding it is a real identity collision, not something
+                        # to overwrite silently — refuse and say so.
+                        conflict = await conn.fetchval(
+                            """
+                            SELECT id FROM team_members
+                            WHERE LOWER(email) = LOWER($1) AND id <> $2
+                            LIMIT 1
+                            """,
+                            invite_email,
+                            existing_user["id"],
+                        )
+                        if conflict:
+                            raise ValueError(
+                                "Another account already uses this email address"
+                            )
+
                     # Update existing (never-registered or deactivated) user
                     await conn.execute(
                         """
                         UPDATE team_members
-                        SET pin_hash = $1, active = true, portal_access = true
+                        SET pin_hash = $1,
+                            active = true,
+                            portal_access = true,
+                            email = COALESCE($3, email)
                         WHERE id = $2
                         """,
                         pin_hash,
                         existing_user["id"],
+                        invite_email,
                     )
                     user_id = existing_user["id"]
                 else:
