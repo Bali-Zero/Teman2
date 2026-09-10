@@ -49,17 +49,28 @@ trap 'rm -f "$PIDFILE"' EXIT
 
 # ---- payload: collision-robust pull. The logic lives in a separately-TESTED script
 # (scripts/pro/pro-git-pull.sh + test_pro_git_pull.sh, 28 assertions) so it can be
-# exercised on any machine; this wrapper only adds the genome shell around it. Run it
-# from the DEPLOY checkout (kept current by the deploy-puller) so the puller never
-# executes from the very tree it rewrites (self-mod); fall back to the main tree.
+# exercised on any machine; this wrapper only adds the genome shell around it.
+#
+# ONE TREE (2026-09-10): the payload used to be read from the frozen ~/nuzantara-deploy
+# checkout precisely so the puller never executed from the very tree it rewrites — bash
+# reads a script incrementally, so a `git pull` that replaces those bytes mid-run can
+# hand the interpreter a spliced file. That checkout is retired, so the guarantee now
+# comes from a SNAPSHOT: copy the payload out of the tree, then run the copy. Same
+# property, one tree.
 log "run start"
-PAYLOAD="$HOME/nuzantara-deploy/scripts/pro/pro-git-pull.sh"
-[ -f "$PAYLOAD" ] || PAYLOAD="$HOME/nuzantara/scripts/pro/pro-git-pull.sh"
+PAYLOAD="$HOME/nuzantara/scripts/pro/pro-git-pull.sh"
 if [ -f "$PAYLOAD" ]; then
-    log "payload: $PAYLOAD"
-    bash "$PAYLOAD"; RC=$?
+    SNAPSHOT="$(mktemp -t pro-git-pull)" || SNAPSHOT=""
+    if [ -n "$SNAPSHOT" ] && cp "$PAYLOAD" "$SNAPSHOT"; then
+        log "payload: $PAYLOAD (snapshot $SNAPSHOT)"
+        bash "$SNAPSHOT"; RC=$?
+        rm -f "$SNAPSHOT"
+    else
+        log "WARN: snapshot failed — running payload in place"
+        bash "$PAYLOAD"; RC=$?
+    fi
 else
-    log "FATAL: payload not found in deploy or main"
+    log "FATAL: payload not found at $PAYLOAD"
     heartbeat "error" "payload missing"
     exit 1
 fi

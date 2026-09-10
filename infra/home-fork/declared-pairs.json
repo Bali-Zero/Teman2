@@ -17,7 +17,7 @@
       "live": "~/.nuzantara-cron/verify_connectome_run.sh",
       "repo": "scripts/verify_connectome_run.sh",
       "machines": ["m5"],
-      "_note": "Measured on all three machines 2026-08-06 (the skipped-pairs diagnostic of #3681, first live run, is what surfaced it): this live path exists on M5 only. Was 'all', which made --check chase a pair that is not there on Pro/Mini — the same mistake the regulatory-watcher entry already records. On Pro the payload runs from a repo path (the LaunchAgent's ProgramArguments name ~/nuzantara-deploy/scripts/verify_connectome_run.sh), not from a HOME copy, so there is nothing to mirror there."
+      "_note": "Measured on all three machines 2026-08-06 (the skipped-pairs diagnostic of #3681, first live run, is what surfaced it): this live path exists on M5 only. Was 'all', which made --check chase a pair that is not there on Pro/Mini — the same mistake the regulatory-watcher entry already records. On Pro the payload runs from a repo path (the LaunchAgent's ProgramArguments name ~/nuzantara/scripts/verify_connectome_run.sh — ~/nuzantara-deploy until the one-tree retire of 2026-09-10), not from a HOME copy, so there is nothing to mirror there."
     },
     {
       "live": "~/scripts/regulatory-watcher-run.sh",
