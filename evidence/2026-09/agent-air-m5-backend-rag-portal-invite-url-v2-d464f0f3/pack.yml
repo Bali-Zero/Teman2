@@ -25,7 +25,7 @@ lanes:
       trailing-slash normalisation off the router and onto the setting as a field_validator,
       deleted the router's local rstrip and the duplicate fake it had needed, and aligned the
       shared fixture with the service's own path template. This branch carries that code
-      unchanged, in one commit.
+      unchanged, squashed into a single product commit with the pack landing separately.
   - lane: portal-url-refute-crossfamily-1
     role: review
     seat: >-
@@ -55,13 +55,14 @@ seat_diversity_note: >-
   and one of kimi's was refuted with the measurement it questioned.
 
 diff:
-  files: 5
-  net_lines: 174
+  files: 8
+  net_lines: 556
   measured_at: >-
-    `git diff --numstat $(git merge-base origin/main HEAD)...HEAD -- apps/` on 80c1790989 —
-    merge-base ed07dda54c, 180 added / 6 deleted across 5 files. Scoped to apps/ because it
-    counts the PRODUCT lines; the one further commit on this branch adds only this pack under
-    evidence/.
+    `git diff --numstat $(git merge-base origin/main HEAD)..HEAD` at merge-base ed07dda54c,
+    re-run immediately before the commit that lands this value — which replaces one line with
+    one line, so it does not move the total it reports. Most of the count is this evidence
+    pack; the product half is the same command with `-- apps/`, and the commit that carries
+    it states its own numstat in the log.
 
 residual_risks:
   - >-
@@ -149,6 +150,16 @@ receipts:
     result: "52 passed in 0.92s"
     exit: 0
     ts: "2026-09-10T10:56Z"
+    seat: session (M5)
+  - claim: >-
+      The second acceptance probe on its own: the consumer-level case that runs the real router
+      with the real default and asserts the composed link
+    cmd: >-
+      cd apps/backend-rag && /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
+      "backend/tests/unit/routers/test_portal_invite.py::test_mailed_link_uses_the_live_portal_default_and_the_real_path"
+    result: "1 passed in 0.20s"
+    exit: 0
+    ts: "2026-09-10T11:30Z"
     seat: session (M5)
   - claim: "The two files this diff edits are green on their own"
     cmd: >-
