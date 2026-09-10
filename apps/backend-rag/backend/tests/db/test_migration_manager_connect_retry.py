@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, patch
 import asyncpg
 import pytest
 
+from backend.db.migration_base import MigrationError
 from backend.db.migration_manager import MigrationManager
 
 
@@ -67,9 +68,10 @@ async def test_connect_gives_up_after_bounded_attempts_with_exponential_backoff(
         patch("backend.db.migration_manager.asyncpg.create_pool", create_pool),
         patch("backend.db.migration_manager.asyncio.sleep", sleep),
     ):
-        with pytest.raises(ConnectionResetError):
+        with pytest.raises(MigrationError) as exc_info:
             await manager.connect()
 
+    assert isinstance(exc_info.value.__cause__, ConnectionResetError)
     assert manager.pool is None
     assert create_pool.await_count == MigrationManager.CONNECT_ATTEMPTS
     base = MigrationManager.CONNECT_BACKOFF_BASE_SECONDS
@@ -90,9 +92,10 @@ async def test_connect_does_not_retry_postgres_level_refusals() -> None:
         patch("backend.db.migration_manager.asyncpg.create_pool", create_pool),
         patch("backend.db.migration_manager.asyncio.sleep", sleep),
     ):
-        with pytest.raises(asyncpg.exceptions.InvalidPasswordError):
+        with pytest.raises(MigrationError) as exc_info:
             await manager.connect()
 
+    assert isinstance(exc_info.value.__cause__, asyncpg.exceptions.InvalidPasswordError)
     assert create_pool.await_count == 1
     sleep.assert_not_awaited()
 

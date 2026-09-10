@@ -5,8 +5,9 @@ Centralized migration management system
 
 import asyncio
 import logging
+import ssl
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import asyncpg
 
@@ -15,6 +16,7 @@ from backend.db.migration_base import (
     BaseMigration,
     MigrationError,
     assume_runtime_role,
+    migration_dsn_is_dedicated,
     resolve_migration_dsn,
     split_migration_sql,
 )
@@ -76,6 +78,14 @@ def _extract_rollback_sql(sql_text: str) -> str | None:
     return rollback
 
 
+def _dsn_has_sslmode(url: str) -> bool:
+    """True when `url`'s query string carries an explicit `sslmode`."""
+    try:
+        return "sslmode" in parse_qs(urlparse(url).query)
+    except ValueError:
+        return False
+
+
 class MigrationManager:
     """
     Centralized migration manager.
@@ -132,12 +142,28 @@ class MigrationManager:
         every such reset into a hard deploy failure; this is the bounded
         retry that was missing (superscar #8, network flap).
         """
-        if self.pool is not None:
-            return
+        if self.pool is None:
+            self.pool = await self._create_pool()
+            logger.info("Migration manager connection pool created")
+
+    async def _create_pool(self) -> asyncpg.Pool:
+        """Create the asyncpg pool, retrying transport-level failures, or
+        raise a `MigrationError` that names which DSN source was used and
+        hints at `sslmode` when relevant.
+
+        2026-09-10 incident: four consecutive Fly release_command failures
+        surfaced only a bare `ConnectionResetError` from inside asyncpg's TLS
+        handshake, with no hint which DSN was even in play. Name the source
+        (already known, not re-derived from env) and the exception, so the
+        next operator does not lose an hour reading a stack trace. Only
+        transport-level failures (`CONNECT_RETRY_EXCEPTIONS`) are retried
+        with bounded backoff; Postgres-level refusals (bad password, no such
+        database, role missing) still fail on the first attempt.
+        """
         last_error: BaseException | None = None
         for attempt in range(1, self.CONNECT_ATTEMPTS + 1):
             try:
-                self.pool = await asyncpg.create_pool(
+                return await asyncpg.create_pool(
                     self.database_url,
                     min_size=1,
                     max_size=5,
@@ -165,20 +191,25 @@ class MigrationManager:
                     delay,
                 )
                 await asyncio.sleep(delay)
-            else:
-                if attempt > 1:
-                    logger.info("Migration manager connection pool created on attempt %d", attempt)
-                else:
-                    logger.info("Migration manager connection pool created")
-                return
+            except Exception as exc:
+                last_error = exc
+                break
+
         assert last_error is not None
-        logger.error(
-            "Migration manager could not connect after %d attempts: %s: %s",
-            self.CONNECT_ATTEMPTS,
-            type(last_error).__name__,
-            last_error,
+        source = "MIGRATION_DATABASE_URL" if migration_dsn_is_dedicated() else "DATABASE_URL"
+        safe_url = self._sanitize_db_url(self.database_url)
+        message = (
+            f"Migration runner cannot connect via {source} ({safe_url}): "
+            f"{type(last_error).__name__}: {last_error}"
         )
-        raise last_error
+        if isinstance(last_error, (ConnectionResetError, OSError, ssl.SSLError)) and not _dsn_has_sslmode(
+            self.database_url
+        ):
+            message += (
+                "\nhint: DATABASE_URL uses sslmode=disable; add "
+                "?sslmode=disable to this DSN if the server does not speak TLS"
+            )
+        raise MigrationError(message) from last_error
 
     async def close(self) -> None:
         """Close connection pool"""
