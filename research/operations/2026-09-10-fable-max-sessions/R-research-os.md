@@ -47,6 +47,14 @@ adversarial_review: codex
 
 **Deferred, named:** statement atomizer (`naga_statement_atomizer.py`), invalidation/transition/review-queue services and the `invalidation/01` fixture's effects, consumer wiring (`app/routers/naga.py`, MCP tool), D7 cross-implementation hashing (P05), Consul activation on Fly (packaging of `research-os-core`), P01–P03, P05, P07–P23.
 
+## Rulings (Zero, Legge 5) — the authority record the windows read
+
+- **Z1 — RULED 2026-09-11 ~04:45 WITA: YES.** One tranche (P04-surface decisions → P06 NAGA claim ledger, slice 2); the 23 packets stay a roadmap.
+- **Z2a — RULED 2026-09-11 ~04:45 WITA: YES, with expiry.** R2's merge — deploy plus the additive DDL of `research_os_naga_claims` exactly as D5 describes it, nothing else — is authorized until **2026-09-25T00:00Z**. Zero accepted "with expiry" without naming a date; the staff room set this one, and a date from Zero replaces it. Recorded here because at ruling time the ledger barrier of R1 §3 was held by three open PRs touching the ledger (#6081, #6080, #5072); the tranche ledger PR appends the row when the barrier clears. R2 copies this grant, scope and expiry into its `brief.yml` `authority:` block before opening its PR.
+- **Z2b — open.** Until ruled (cohort, maximum count, kinds and tables, write identity), R2 ends at the admission dry-run and writes nothing to production.
+- **Z3 — open → BLUE by default** for R1 and R2 (§0, Z3).
+- **Z4 — no veto received.** The window closes when R1 opens. R1 may open now.
+
 ---
 
 # R1 — DESIGN · battle window
