@@ -236,6 +236,7 @@ decommission of ONE MAX x20 is PLANNED, not executed — remap cron/wrapper toke
   before any cloud egress.
 - **BUDGET** — verification depth ∝ blast-radius; council ≈ 15×; declare stop-loss at TRIAGE.
 - **RECONCILE** — new operator input mid-run → restate it FIRST, re-derive acceptance, drop stale plans.
+- **SESSION CWD** — A worktree entered by a child (`EnterWorktree` / `agent_start`) becomes the cwd of the WHOLE session, parent included (measured 2026-09-10): a window that coordinates several Dux uses absolute paths and never writes into an inherited cwd.
 - **ASYNC** — any job >30s (CI, deploy, render, external LLM panel) → background + wakeup.
   Busy-waiting a panel in foreground is a violation, not a nuance. A subagent/Workflow task marked
   completed is UNVERIFIED until its report/artifact is actually read (AMENDMENTS 2026-07-05: a13
@@ -294,6 +295,7 @@ Honest name: self-**healing/refinement** — NOT recursive self-improvement (A4 
 - The LAW: `research/operations/2026-06-30-claude-code-perfect-session-doctrine.md` (4 axes, PR #1852)
 - The scar families: `.claude/rules/cicatrix-superscar.md` (10 superscar + orphans; `scar query`)
 - Battle-window spec, seven sections: `.claude/skills/modus/battle-window-spec.md` (PARABELLUM)
+- **Gate commission depth:** The independent gate is commissioned by the level ABOVE the Dux whenever the Dux runs as a subagent (delegation depth 1 — measured 2026-09-10: two subagent Duxes could not spawn their gate and the imperator window did); a top-level Dux commissions its own. In every colour.
 - The colour table (BLUE/ORANGE), single copy: `docs/architecture/dual-consul/army-map.md` §1bis
 - Entry gate detail: `.claude/commands/stadio-zero.md` · Architecture detail: `sota-architecture-loop`
 - Adversarial verify artifact: `infra/workflows/verify-template.js` (A4, generator≠grader)
