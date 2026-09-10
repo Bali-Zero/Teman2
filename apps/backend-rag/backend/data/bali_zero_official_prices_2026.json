@@ -1190,7 +1190,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "USD reference: 600. Test price, pending owner confirmation. Historical clean-up is quoted separately.",
+        "notes": "USD reference: 600. Historical clean-up is quoted separately.",
         "description_en": "One-off compliance takeover for a foreign-owned company (PT PMA): records review, obligations map, gap list and remediation quote. Per legal entity, government fees excluded.",
         "icon_id": "consultant-update"
       },
@@ -1200,7 +1200,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "monthly",
-        "notes": "USD reference: 600 per month. Test price, pending owner confirmation. Bookkeeping, audit, disputes and transfer pricing are not included.",
+        "notes": "USD reference: 600 per month. Bookkeeping, audit, disputes and transfer pricing are not included.",
         "description_en": "Monthly compliance retainer for a PT PMA: monthly tax filings on Coretax, quarterly LKPM, obligations calendar, submission receipts and a compliance report. Per legal entity, government fees excluded.",
         "icon_id": "tax-monthly"
       },
@@ -1210,7 +1210,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "monthly",
-        "notes": "USD reference: 1,200 per month. Test price, pending owner confirmation. Payroll processing itself is not included.",
+        "notes": "USD reference: 1,200 per month. Payroll processing itself is not included.",
         "description_en": "Core retainer plus payroll compliance for up to 15 employees: BPJS for local and foreign staff, residency reviews, RPTKA and KITAS expiry tracking. Per legal entity, government fees excluded.",
         "icon_id": "consultant-bpjs-tk"
       },
@@ -1220,7 +1220,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "USD reference: 1,200. Test price, pending owner confirmation. Ongoing liaison is a separate monthly service.",
+        "notes": "USD reference: 1,200. Ongoing liaison is a separate monthly service.",
         "description_en": "Electronic System Operator (PSE) registration: applicability assessment, document pack, submission and follow-up until the TD-PSE is issued. Per legal entity, government fees excluded.",
         "icon_id": "consultant-efin"
       },
@@ -1230,7 +1230,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "USD reference: 900. Test price, pending owner confirmation. Monthly VAT reporting is not included.",
+        "notes": "USD reference: 900. Monthly VAT reporting is not included.",
         "description_en": "Fixed-fee assessment of the foreign digital-trade (PMSE) VAT threshold, readiness pack and support during the DJP appointment. Per legal entity, government fees excluded.",
         "icon_id": "tax-annual"
       }

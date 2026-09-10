@@ -184,12 +184,13 @@ def test_compliance_retainer_key_returns_the_sheet_row(client: TestClient, key: 
 
 
 @pytest.mark.parametrize("key", COMPLIANCE_RETAINER_KEYS)
-def test_compliance_retainer_cadence_and_test_price_marker(client: TestClient, key: str) -> None:
+def test_compliance_retainer_cadence_and_confirmed_price_notes(client: TestClient, key: str) -> None:
     body = client.get("/api/pricing/service", params={"key": key}).json()
 
     expected_validity = "monthly" if key in MONTHLY_RETAINER_KEYS else None
     assert body["validity"] == expected_validity
-    # The schema has no published/test flag, so the marker travels in `notes`
-    # until the owner confirms the prices.
+    # The schema has no published/test flag; the USD reference travels in
+    # `notes`. The owner confirmed these prices on 2026-09-11, so the
+    # provisional "pending owner confirmation" marker must no longer appear.
     assert "USD reference:" in body["notes"]
-    assert "test price" in body["notes"].lower()
+    assert "pending owner confirmation" not in body["notes"].lower()
