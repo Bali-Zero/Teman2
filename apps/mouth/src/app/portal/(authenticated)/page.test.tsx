@@ -21,7 +21,7 @@ const createMockDashboard = (
     totalCompanies: 1,
   },
   taxes: {
-    status: "compliant",
+    status: "upcoming",
     nextDeadline: null,
     daysToDeadline: null,
   },
@@ -49,7 +49,7 @@ const createEmptyDashboard = (): PortalDashboard => ({
     totalCompanies: 0,
   },
   taxes: {
-    status: "compliant", // Default to compliant for empty state
+    status: "none", // No deadline tracked for empty state
     nextDeadline: null,
     daysToDeadline: null,
   },

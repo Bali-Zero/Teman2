@@ -268,9 +268,9 @@ class TestPortalServiceHelpers:
         exc.sqlstate = "42P01"
         assert PortalService._is_undefined_table_error(exc) is True
 
-    def test_get_tax_status_compliant(self, portal_service):
-        """Tax status is compliant with no deadline."""
-        assert portal_service._get_tax_status(None) == "compliant"
+    def test_get_tax_status_none(self, portal_service):
+        """Tax status is 'none' with no deadline."""
+        assert portal_service._get_tax_status(None) == "none"
 
     def test_get_tax_status_overdue(self, portal_service):
         """Tax status is overdue when days < 0."""
@@ -280,9 +280,14 @@ class TestPortalServiceHelpers:
         """Tax status is attention when days <= 14."""
         assert portal_service._get_tax_status({"days_until": 7}) == "attention"
 
-    def test_get_tax_status_compliant_far(self, portal_service):
-        """Tax status is compliant when days > 14."""
-        assert portal_service._get_tax_status({"days_until": 30}) == "compliant"
+    def test_get_tax_status_upcoming_far(self, portal_service):
+        """Tax status is 'upcoming' when days > 14."""
+        assert portal_service._get_tax_status({"days_until": 30}) == "upcoming"
+
+    def test_get_tax_status_never_compliant(self, portal_service):
+        """Tax status never asserts compliance regardless of deadline distance."""
+        assert portal_service._get_tax_status(None) != "compliant"
+        assert portal_service._get_tax_status({"days_until": 400}) != "compliant"
 
 
 # ============================================================================

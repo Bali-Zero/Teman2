@@ -204,7 +204,7 @@ export default function PortalHomePage() {
       totalCompanies: 0,
     },
     taxes: {
-      status: "compliant" as const,
+      status: "none" as const,
       nextDeadline: null,
       daysToDeadline: null,
     },
@@ -273,12 +273,12 @@ export default function PortalHomePage() {
                   month: "short",
                   day: "numeric",
                 })
-              : "All Good"
+              : "No Deadline"
           }
           subLabel={
             defaultDashboard.taxes.daysToDeadline
               ? `${defaultDashboard.taxes.daysToDeadline} days`
-              : "Up to date"
+              : "None tracked"
           }
           onClick={() => router.push("/portal/taxes")}
         />
@@ -435,7 +435,7 @@ function StatusCard({
     | "expired"
     | "pending"
     | "none"
-    | "compliant"
+    | "upcoming"
     | "attention"
     | "overdue";
   label: string;
@@ -452,7 +452,6 @@ function StatusCard({
   const getStatusStyle = (s: string) => {
     switch (s) {
       case "active":
-      case "compliant":
         return "bg-[color-mix(in_srgb,var(--state-success)_6%,transparent)] text-[var(--state-success)] border-[color-mix(in_srgb,var(--state-success)_25%,transparent)]";
       case "warning":
       case "attention":
@@ -468,7 +467,6 @@ function StatusCard({
   const getIcon = (s: string) => {
     switch (s) {
       case "active":
-      case "compliant":
         return <CheckCircle2 className="w-5 h-5" />;
       case "warning":
       case "attention":
