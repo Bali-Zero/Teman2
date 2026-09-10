@@ -38,6 +38,15 @@ write path exists for.
    If the branch name carries a PR number that is not yours, **stop and wait** for a batch that
    is yours alone. This is the one step of the drill that can hurt somebody else.
 
+   In practice a busy queue almost never hands you a batch of one, and two drills died here.
+   Do not loosen the rule — change WHEN you arm: wait for the queue to hold no PR but yours,
+   arm the subject only then, and it enters as its own batch. The guard still runs and still
+   stops the drill if somebody armed in the same second.
+
+   The rule is OWNERSHIP, not arithmetic: a batch of several PRs that are ALL yours is fine —
+   the ejection costs only your own work and the shepherd re-arms it. A batch of one that
+   belongs to another lane is not.
+
 4. **Cancel the run**, not the PR — and do it FAST. A merge_group batch here finishes in
    minutes but most of its runs finish in SECONDS (change-map skips), so a poll loop that
    sleeps 12 s arrives after the fact. Poll every few seconds and cancel the moment the batch
@@ -90,4 +99,5 @@ One line per execution. A drill that was aborted is worth recording too: the abo
 | Date       | Subject PR | Outcome                                                                                                                                                                                                                                                                                                                  |
 | ---------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 2026-09-11 | #6160      | MISSED — the cancel came 28 s after the group was created and 11 of the 13 runs had already completed; `gh run cancel` answered `Cannot cancel a workflow run that is completed` and the PR merged normally. Two lessons, both in the procedure below: cancel within seconds, and never discard the cancel's own output. |
+| 2026-09-11 | #6163      | ABORTED BY THE GUARD — the batch carried 2 commits, so step 3 stopped the drill and cancelled nothing. Correct behaviour, and the reason the drill is hard to land: a busy queue almost never gives a batch of one.                                                                                                      |
 | 2026-09-11 | this PR    | pending                                                                                                                                                                                                                                                                                                                  |
