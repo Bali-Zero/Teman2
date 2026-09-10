@@ -1,3 +1,4 @@
+import base64
 import json
 import logging
 import os
@@ -30,6 +31,35 @@ class DriveAuthManager:
         self.db_pool = db_pool
         self.http_client = http_client
         self.scopes = ["https://www.googleapis.com/auth/drive"]
+
+    @property
+    def service_account_available(self) -> bool:
+        """True if a service-account credential is configured and structurally valid.
+
+        Lightweight, non-network check (no token mint): parses the same
+        credential `_get_service_account_token`/`ServiceAccountDriveService`
+        would load (raw or base64-encoded JSON, `settings.google_credentials_json`
+        which resolves GOOGLE_CREDENTIALS_JSON / GOOGLE_SERVICE_ACCOUNT_JSON /
+        GOOGLE_SERVICE_ACCOUNT / GEMINI_SA_TOKEN) and confirms it looks like a
+        service-account key. This used to be a bare `getattr(..., False)` probe
+        on an attribute this class never defined, so it was permanently False
+        regardless of whether a usable credential existed.
+        """
+        from backend.app.core.config import settings
+
+        creds_str = getattr(settings, "google_credentials_json", None)
+        if not creds_str:
+            return False
+
+        try:
+            info = json.loads(creds_str)
+        except json.JSONDecodeError:
+            try:
+                info = json.loads(base64.b64decode(creds_str).decode("utf-8"))
+            except Exception:
+                return False
+
+        return info.get("type") == "service_account"
 
     async def get_access_token(self, user_id: str = "system") -> str | None:
         """

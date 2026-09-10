@@ -1,6 +1,7 @@
 """Unit tests for PortalService document mixin helpers and failure paths."""
 
 import inspect
+import json
 from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -1113,6 +1114,65 @@ def test_team_drive_service_has_service_account_available_attribute() -> None:
         # Case 4: auth is None → safe fallback
         service.auth = None
         assert service.service_account_available is False
+
+
+def test_service_account_available_reflects_a_real_credential() -> None:
+    """Effect guard, not shape: True only when a usable SA credential exists.
+
+    The test above (BUG B) mocked `auth.service_account_available` directly,
+    so it stayed green even though `DriveAuthManager` never defined that
+    attribute at all — `getattr(auth, "service_account_available", False)`
+    silently fell through to `False` forever, on every real deploy, no matter
+    how valid the configured credential was. This is BUG C: the fallback in
+    `_upload_to_drive` could never engage despite `ServiceAccountDriveService`
+    constructing fine from the exact same credential.
+
+    Guilt-proof: revert `DriveAuthManager.service_account_available` (the
+    `@property` added in drive_auth.py) and this test fails — the True-branch
+    assertions below observe `False` instead.
+    """
+    from backend.app.core.config import settings
+    from backend.services.integrations.drive.drive_auth import DriveAuthManager
+    from backend.services.integrations.team_drive_service import TeamDriveService
+
+    valid_sa_json = json.dumps(
+        {
+            "type": "service_account",
+            "project_id": "test-project",
+            "private_key_id": "abc123",
+            "private_key": "-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----\n",
+            "client_email": "test@test-project.iam.gserviceaccount.com",
+        }
+    )
+    original = settings.google_credentials_json
+    try:
+        # Present + structurally valid → the auth manager itself must report True.
+        settings.google_credentials_json = valid_sa_json
+        auth = DriveAuthManager(db_pool=MagicMock(), http_client=MagicMock())
+        assert auth.service_account_available is True
+
+        # The facade `_upload_to_drive` actually reads must agree — real auth
+        # manager, not a mock standing in for it.
+        with (
+            patch("backend.services.integrations.team_drive_service.DriveOperationsManager"),
+            patch("backend.services.integrations.team_drive_service.DrivePermissionsManager"),
+            patch("backend.services.integrations.team_drive_service.DriveAuditLogger"),
+            patch("httpx.AsyncClient"),
+        ):
+            team_drive = TeamDriveService(db_pool=MagicMock())
+            assert team_drive.service_account_available is True
+
+        # Absent credential → no fallback, must stay False.
+        settings.google_credentials_json = None
+        auth_no_cred = DriveAuthManager(db_pool=MagicMock(), http_client=MagicMock())
+        assert auth_no_cred.service_account_available is False
+
+        # Malformed JSON → False, never raises.
+        settings.google_credentials_json = "{not json"
+        auth_bad_json = DriveAuthManager(db_pool=MagicMock(), http_client=MagicMock())
+        assert auth_bad_json.service_account_available is False
+    finally:
+        settings.google_credentials_json = original
 
 
 @pytest.mark.asyncio
