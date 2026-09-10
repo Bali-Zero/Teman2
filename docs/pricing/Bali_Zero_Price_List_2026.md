@@ -21,6 +21,7 @@
 - **VII.** [Bali Zero Consultant Services](#consultant-services)
 - **VIII.** [Other Process](#other-process)
 - **IX.** [Urgent Processing](#urgent-processing)
+- **X.** [Compliance Retainers](#compliance-retainers)
 
 ---
 
@@ -253,6 +254,24 @@ _Express processing tiers for time-sensitive filings._
 | **Urgent 1 Hari** | Urgent processing surcharge for 1-day turnaround on eligible immigration services. | 3.000.000 IDR |
 | **Urgent 2 Hari** | Urgent processing surcharge for 2-day turnaround on eligible immigration services. | 2.500.000 IDR |
 | **Urgent 3 Hari** | Urgent processing surcharge for 3-day turnaround on eligible immigration services. | 1.000.000 IDR |
+
+---
+
+<a id="compliance-retainers"></a>
+
+## X. Compliance Retainers
+
+![Compliance Retainers](./assets/2026/heros/04_company.png)
+
+_Compliance takeover, monthly retainers and fixed-fee registrations for foreign-owned companies. Test prices, pending owner confirmation._
+
+| Service                                    | Description                                                                                                                                                                                                                                                                                                                                            | Price          |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------- |
+| **Compliance Takeover**                    | One-off compliance takeover for a foreign-owned company (PT PMA): records review, obligations map, gap list and remediation quote. Per legal entity, government fees excluded. _(USD reference: 600. Test price, pending owner confirmation. Historical clean-up is quoted separately.)_                                                               | 9.500.000 IDR  |
+| **Compliance Core Retainer (Monthly)**     | Monthly compliance retainer for a PT PMA: monthly tax filings on Coretax, quarterly LKPM, obligations calendar, submission receipts and a compliance report. Per legal entity, government fees excluded. _(USD reference: 600 per month. Test price, pending owner confirmation. Bookkeeping, audit, disputes and transfer pricing are not included.)_ | 9.500.000 IDR  |
+| **Compliance Employer Retainer (Monthly)** | Core retainer plus payroll compliance for up to 15 employees: BPJS for local and foreign staff, residency reviews, RPTKA and KITAS expiry tracking. Per legal entity, government fees excluded. _(USD reference: 1,200 per month. Test price, pending owner confirmation. Payroll processing itself is not included.)_                                 | 19.000.000 IDR |
+| **PSE Registration (Fixed Fee)**           | Electronic System Operator (PSE) registration: applicability assessment, document pack, submission and follow-up until the TD-PSE is issued. Per legal entity, government fees excluded. _(USD reference: 1,200. Test price, pending owner confirmation. Ongoing liaison is a separate monthly service.)_                                              | 19.000.000 IDR |
+| **PMSE VAT Assessment**                    | Fixed-fee assessment of the foreign digital-trade (PMSE) VAT threshold, readiness pack and support during the DJP appointment. Per legal entity, government fees excluded. _(USD reference: 900. Test price, pending owner confirmation. Monthly VAT reporting is not included.)_                                                                      | 14.000.000 IDR |
 
 ---
 
