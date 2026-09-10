@@ -67,6 +67,7 @@ const MOBILE_DOMAIN = "mo.balizero.com";
 const ZANTARA_DOMAIN = "zantara.balizero.com";
 const VISA_DOMAIN = "visa.balizero.com";
 const TAX_DOMAIN = "tax.balizero.com";
+const NUZANTARA_DOMAIN = "nuzantara.co.id";
 const ASSESSMENT_DOMAIN = "subhi.balizero.com";
 // SSO subdomains: standalone apps on *.balizero.com that share auth via cookie.
 // mouth does not serve these hostnames directly (each is its own Vercel deploy
@@ -235,6 +236,7 @@ export function proxy(request: NextRequest) {
   );
   const isVisaDomain = matchesDomain(hostname, VISA_DOMAIN);
   const isTaxDomain = matchesDomain(hostname, TAX_DOMAIN);
+  const isNuzantaraDomain = matchesDomain(hostname, NUZANTARA_DOMAIN);
   const isPublicDomain = matchesDomain(hostname, PUBLIC_DOMAIN);
   const isAppDomain =
     matchesDomain(hostname, APP_DOMAIN) ||
@@ -351,6 +353,26 @@ export function proxy(request: NextRequest) {
     }
     const rewriteResponse = NextResponse.rewrite(rewriteUrl);
     rewriteResponse.headers.set("x-pathname", pathname);
+    return rewriteResponse;
+  }
+
+  // === NUZANTARA DOMAIN (nuzantara.co.id) ===
+  // Bahasa Indonesia holding page for the domestic brand, same shape as the
+  // TAX DOMAIN block: every path is rewritten under the (nuzantara) route
+  // group at /nuzantara/*. noindex until launch (docs/ops/nuzantara-co-id-dns-setup.md).
+  if (isNuzantaraDomain) {
+    const rewriteUrl = request.nextUrl.clone();
+    if (pathname === "/" || pathname === "") {
+      rewriteUrl.pathname = "/nuzantara";
+    } else if (
+      pathname !== "/nuzantara" &&
+      !pathname.startsWith("/nuzantara/")
+    ) {
+      rewriteUrl.pathname = `/nuzantara${pathname}`;
+    }
+    const rewriteResponse = NextResponse.rewrite(rewriteUrl);
+    rewriteResponse.headers.set("x-pathname", pathname);
+    rewriteResponse.headers.set("X-Robots-Tag", "noindex, nofollow");
     return rewriteResponse;
   }
 
