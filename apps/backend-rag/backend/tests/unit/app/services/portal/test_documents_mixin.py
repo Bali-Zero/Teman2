@@ -1025,6 +1025,105 @@ async def test_upload_to_drive_uses_service_account_fallback() -> None:
     service._upload_with_service_account.assert_awaited_once()
 
 
+# =============================================================================
+# BUG C REGRESSION — _upload_with_service_account never had a working Drive
+# client (drive-sa-upload-attr worktree). team_drive.drive_service does not
+# exist on TeamDriveService; every prior test of this branch mocked
+# _upload_with_service_account itself (see test_upload_to_drive_uses_
+# service_account_fallback above), so the branch's own body had never
+# actually executed, in production or in a test. These exercise the real
+# method — only the external Google Drive API boundary
+# (ServiceAccountDriveService) is mocked, not the method's own control flow.
+# =============================================================================
+
+
+@pytest.mark.asyncio
+async def test_upload_with_service_account_routes_through_service_account_drive_service() -> None:
+    """Guilt-proof: restore `team_drive.drive_service.files()...execute()`
+    (the old body) and this fails — result["success"] stays False with
+    "...has no attribute 'drive_service'" in result["error"], because nothing
+    in that old code path can reach ServiceAccountDriveService at all.
+    """
+    service = PortalService(MagicMock())
+    result: dict[str, Any] = {
+        "success": False,
+        "file_id": None,
+        "file_url": None,
+        "folder_path": "",
+        "error": None,
+    }
+
+    mock_sa_instance = MagicMock()
+    mock_sa_instance.upload_file_to_folder = AsyncMock(
+        return_value={
+            "id": "sa_file_1",
+            "name": "20260910_000000_passport.pdf",
+            "webViewLink": "https://drive.google.com/file/d/sa_file_1/view",
+        }
+    )
+
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=mock_sa_instance,
+    ) as sa_cls:
+        out = await service._upload_with_service_account(
+            client_id=1,
+            client_name="Client One!",
+            document_type="passport_scan",
+            file_content=b"PDF",
+            file_name="passport.pdf",
+            mime_type="application/pdf",
+            result=result,
+        )
+
+    sa_cls.assert_called_once()
+    mock_sa_instance.upload_file_to_folder.assert_awaited_once()
+    call_kwargs = mock_sa_instance.upload_file_to_folder.call_args.kwargs
+    assert call_kwargs["file_content"] == b"PDF"
+    assert call_kwargs["file_name"].endswith("_passport.pdf")
+    assert call_kwargs["mime_type"] == "application/pdf"
+
+    assert out["success"] is True
+    assert out["file_id"] == "sa_file_1"
+    assert out["file_url"] == "https://drive.google.com/file/d/sa_file_1/view"
+    assert out["method"] == "service_account"
+    assert out["folder_path"] == "Zantara Portal Uploads/1_Client One/Passport Scan"
+
+
+@pytest.mark.asyncio
+async def test_upload_with_service_account_surfaces_drive_errors_without_raising() -> None:
+    """A real Drive-side failure (bad/expired credential, API error) must
+    still return an error dict, never raise — the method's own error
+    contract, now actually exercised end to end instead of asserted in the
+    abstract."""
+    service = PortalService(MagicMock())
+    result: dict[str, Any] = {
+        "success": False,
+        "file_id": None,
+        "file_url": None,
+        "folder_path": "",
+        "error": None,
+    }
+
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        side_effect=ValueError("GOOGLE_SERVICE_ACCOUNT_JSON not configured in settings"),
+    ):
+        out = await service._upload_with_service_account(
+            client_id=1,
+            client_name="Client One",
+            document_type="passport",
+            file_content=b"PDF",
+            file_name="passport.pdf",
+            mime_type="application/pdf",
+            result=result,
+        )
+
+    assert out["success"] is False
+    assert "Service Account upload failed" in out["error"]
+    assert "GOOGLE_SERVICE_ACCOUNT_JSON" in out["error"]
+
+
 @pytest.mark.asyncio
 async def test_upload_to_drive_oauth_success() -> None:
     service, _mock_conn = _make_service_with_fetchrow(row=None)
