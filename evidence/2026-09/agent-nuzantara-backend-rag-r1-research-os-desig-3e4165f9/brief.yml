@@ -1,0 +1,175 @@
+task_id: r1-research-os-design
+gear: 2
+l_level: L2
+gate_class: opus
+mission:
+  id: R1
+  colour: BLUE
+  organ: >-
+    the Research OS contract surface (Work Packet 04) as tests, fixtures and design
+    records — the core's test suite, the P06 preparation bundle, the control room.
+  host: Pro
+  worktree: .worktrees/backend-rag-r1-research-os-design
+  branch: agent/nuzantara/backend-rag/r1-research-os-design
+  base: 9304392d1a3c1f50dc6be847e8cd16d29a0c738b
+  base_equals_origin_main_at: "2026-09-10T21:12:47Z"
+  mandate_ref: research/operations/2026-09-10-fable-max-sessions/R-research-os.md
+  build_spec_ref: evidence/2026-09/agent-nuzantara-backend-rag-r1-research-os-desig-3e4165f9/R1-build-spec.md
+
+objective: |
+  Turn D3 (the bitemporal reader) and D4 (legacy admission) from prose in the
+  staff-room spec into executable rows and canonical fixtures; make the P06
+  preparation bundle's Evidence mapping and fixtures truthful; and make the
+  Research OS control room say what is actually true.
+
+  What success changes: R2 (the ENGINE window) builds against decided semantics
+  and validated fixtures instead of prose, and PENDING-ARMS row 21 — open since
+  2026-08-26 with an owner nobody ever took — finally has one.
+
+  Scope is P06 SLICE COMPLETION, not the Research OS engine. The 23 packets stay
+  a roadmap (D1, ruled Z1 YES by Zero 2026-09-11 ~04:45 WITA).
+
+authority:
+  z1: "RULED 2026-09-11 ~04:45 WITA, YES — one tranche, P06 slice 2; roadmap kept."
+  z2a: >-
+    Not R1's. R2's merge (deploy + additive DDL of research_os_naga_claims) is
+    authorized until 2026-09-25T00:00Z. R1 deploys nothing: tests, fixtures, docs.
+  z2b: "open — R1 writes nothing to production and reads nothing from it."
+  z3: "open -> BLUE by default."
+  z4: "no veto received; the window closes when R1 opens."
+
+acceptance:
+  - text: >-
+      NEGATIVE / innocence. WHILE this branch is in force, the frozen contract
+      surface SHALL be byte-identical to origin/main and the core fixture corpus
+      SHALL still validate: `fixtures --check` reports checked 218, failures [],
+      and `git diff --stat origin/main -- packages/research-os-core` is EMPTY.
+    probe: >-
+      PYTHONPATH=packages/research-os-core apps/backend-rag/.venv/bin/python -m
+      research_os.cli fixtures --check; git diff --stat origin/main -- packages/research-os-core
+  - text: >-
+      NEGATIVE / innocence. Consul's persistence consumer — the one existing
+      executable INSERT into research_os_objects — SHALL still pass its unit
+      tests, because R1 must not move the ground under it.
+    probe: >-
+      cd apps/backend-rag/backend && PYTHONPATH=../../../packages/research-os-core
+      ../../../../nuzantara/apps/backend-rag/.venv/bin/python -m pytest tests/unit/services/autonomous_lab
+  - text: >-
+      TEMPORAL. Every case in the mandate's temporal list SHALL be an EXECUTED
+      test over canonical fixtures — both interval boundaries, zero and non-zero
+      microseconds, unknown bounds, a correction recorded before AND after
+      discovery, a scheduled change known in advance, an existing finite expiry,
+      a no-answer result, and a quarantined fork — with no skip and no xfail.
+    probe: >-
+      cd apps/backend-rag/backend && pytest tests/unit/research_os -p no:randomly
+      --collect-only | grep -c temporal ; pytest tests/unit/research_os -rs
+  - text: >-
+      TEMPORAL / shape. bitemporal/03 SHALL answer as TWO families under one
+      subject_key, each with a unique current member and no successor edge
+      between them; supersession/01 SHALL be one atomic correction with ONE
+      exact predecessor hash; a fork SHALL return quarantine and a gap SHALL
+      return abstention, both as explicit return values, never as None.
+    probe: pytest tests/unit/research_os -k "bitemporal or supersession or quarantine or abstain"
+  - text: >-
+      TEMPORAL / extension. The subject_key extension SHALL be defined once, in
+      a namespaced extension, and SHALL validate against the exported Claim
+      schema without any contract change.
+    probe: pytest tests/unit/research_os -k subject_key
+  - text: >-
+      ADMISSION. The D4 predicate SHALL be executable: a legacy-shaped record
+      with a URL hash is EXCLUDED with reason content_hash_is_url; one without a
+      span -> exact_span_missing; one with a fabricated triple ->
+      statement_not_from_source; a fully-sourced seed fixture is ADMITTED; and
+      on the mixed set the three counts (documented_mapping_coverage,
+      available_source_information, admissible_records) SHALL differ from each
+      other.
+    probe: pytest tests/unit/research_os -k admission
+  - text: >-
+      MAPPING. test_naga_evidence_mapping_preconditions.py SHALL no longer
+      assert `len(absent) == 15` nor `named < absent`; the 15 SHALL be gone, and
+      in its place an EXECUTED mapping over a canonical fixture that validates
+      against evidence.schema.json, with §2 documenting 32 of 32 required paths.
+    probe: >-
+      grep -c "absent) == 15" apps/backend-rag/backend/tests/unit/research_os/test_naga_evidence_mapping_preconditions.py;
+      pytest tests/unit/research_os/test_naga_evidence_mapping_preconditions.py
+  - text: >-
+      CONTROL ROOM. README.md:7 SHALL read the real program state and name the
+      mandate file; SESSION-BOARD.md SHALL carry a §13 with the 2026-09-11
+      measurement; §5's head line SHALL read the max+1 rule with the MEASURED
+      head.
+    probe: >-
+      sed -n '7p' research/operations/execution/research-os-v1.0.0/README.md;
+      grep -n "^## 13" research/operations/execution/research-os-v1.0.0/SESSION-BOARD.md
+  - text: >-
+      BITES. The consumer is R2's persistence tests, which import these
+      fixtures. R2 does not exist yet, so the observation made BEFORE reporting
+      done is the schema validation of EVERY fixture in the P06 bundle, run in
+      CI on this branch — not a promise that a future job will run it.
+    probe: pytest tests/unit/research_os -k fixture_bundle
+
+assumptions:
+  - text: >-
+      The mandate's §4 asks SESSION-BOARD §5 to record "308 on 2026-09-11". The
+      measured head on this base sha is 309 — 309_client_obligations.sql landed
+      at 2026-09-10T20:52:33Z as b2b2ceac76, after the staff room measured 308 at
+      01:55 WITA. We record the number we measured and name the deviation rather
+      than write a number we did not measure.
+    status: verified
+    probe: ls apps/backend-rag/backend/db/migrations_v2/ | tail -3
+  - text: >-
+      nuzantara-04, the staff room the opening prompt names, is not reachable
+      from Pro. docs-bot-staff-room-v6-fa accepted the role at 2026-09-10T21:20:13Z
+      and is the named staff room for every checkpoint of this window.
+    status: verified
+    probe: ListAgents on Pro, 2026-09-10T21:18Z
+  - text: >-
+      The runtime mandate ledger had NO entry for this mission at open and
+      MANDATE_SECONDS is 3600, so it would have initialised to opening + 1h. The
+      Dux bound it before the first dispatch per R1 §6.
+    status: verified
+    probe: >-
+      infra/codex-hooks/mandate_budget.py renew() — previous_deadline
+      2026-09-10T22:22:47Z, new_deadline 2026-09-11T01:05:00Z, counters untouched.
+
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 2
+  tokens: 1200000
+
+deadline: "2026-09-11T01:05:00Z"
+opening: "2026-09-10T21:05:00Z"
+
+descendants:
+  max_attempts: 4
+  concurrency: 2
+  depth: 1
+  continuation_hops: 1
+  adapter_tool_ceiling: 120
+  ship_reserve: 0
+
+team:
+  - role: dux
+    seat: claude-opus-5
+    effort: xhigh
+    note: release owner; also implemented the mapping-guard rewrite directly
+  - role: implementer
+    seat: claude-sonnet-5
+    note: lane FIXTURES — P06 canonical fixtures and the seed cohort
+  - role: implementer
+    seat: claude-sonnet-5
+    note: lane DOCS — §2 completion to 32 paths, dispositions, control room
+  - role: adversarial-review
+    seat: codex-gpt-5.6-sol
+    note: read-only, outside the author chain, two rounds maximum
+  - role: final-gate
+    seat: claude-opus-5
+    note: >-
+      a FRESH session outside the contribution chain, commissioned by the staff
+      room, not by this window; it signs and never arms.
+
+checkpoints:
+  - generation: 1
+    state: open
+    envelope: 20260910T211744Z-45a3.md
+    sent: "2026-09-10T21:17:44Z"
+    ack: "R1-ack-1, docs-bot-staff-room-v6-fa, 2026-09-10T21:20:13Z"
