@@ -162,7 +162,7 @@ EOF
   # same branch prefix (entity, not substring). A PR already occupying a merge-
   # queue slot is left alone: it is about to land and closing it would evict it
   # (queue_unstick.py's rule 1).
-  OLDER=$(gh pr list --state open --search "docs(automations): promote nightly automations snapshot in:title" \
+  OLDER=$(gh pr list --state open --search "promote nightly automations snapshot in:title" \
       --json number,headRefName \
       --jq ".[] | select(.number != $PR_NUM) | select(.headRefName | startswith(\"agent/nuzantara/docs/automations-\")) | .number" 2>>"$LOG")
   for old in ${(f)OLDER}; do

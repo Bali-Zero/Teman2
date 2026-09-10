@@ -220,6 +220,16 @@ check "gh pr create WAS called" "$(yesno eval 'grep -q "pr create" "$GHLOG"')"
 check "gh pr merge --auto WAS called" "$(yesno eval 'grep -q -- "--auto" "$GHLOG"')"
 check "heartbeat sidecar status=ok" "$(yesno eval 'grep -q "\"status\": *\"ok\"" "$W/home/.organism/last_seen/pro.automations_reference.json"')"
 check "agent_start.py --release NOT called (worktree left pending merge)" "$(yesno eval '! grep -q -- "--release" "$PYLOG"')"
+# GitHub's `--search` matches WORDS, not a `type(scope):` prefix — measured on
+# Pro: `gh pr list --state merged --search "chore(mouth): promote
+# hourly-translated in:title"` returned [] while the same query without the
+# `chore(mouth): ` prefix returned 5 PRs. The supersede clause was a silent
+# no-op with the prefix in it. This asserts the shipped wrapper's --search
+# value carries no `(` or `:` before the trailing `in:title` qualifier.
+SEARCH_ARG="$(grep 'pr list' "$GHLOG" | sed -n 's/.*--search \(.*\) --json.*/\1/p')"
+check "gh pr list --search value was captured" "$(yesno test -n "$SEARCH_ARG")"
+check "supersede --search is words-only (no type(scope): prefix)" \
+  "$(yesno eval 'case "${SEARCH_ARG% in:title}" in *"("*|*":"*) false ;; *) true ;; esac')"
 
 echo "generator failure, no output -> heartbeat error, worktree released, exit 1:"
 new_world
