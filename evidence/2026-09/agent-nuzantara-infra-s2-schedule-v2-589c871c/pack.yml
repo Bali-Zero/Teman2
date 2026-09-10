@@ -75,7 +75,7 @@ receipts:
     seat: S2 Dux
   - claim: After the cure, the changed files carry exactly ONE finding and it is already audited in the baseline
     cmd: detect-secrets scan <changed files> (no --baseline, so nothing is filtered out of the report)
-    result: "scripts/tests/test_secrets_permissions_audit.py:297 Private Key — the `-----BEGIN PRIVATE KEY-----` literal of the .pem fixture, present in .secrets.baseline with is_secret false and the same hashed_secret (its recorded line was 265; detect-secrets matches by hash, not by line). Zero findings in the four files this PR adds or edits"
+    result: "scripts/tests/test_secrets_permissions_audit.py:297 Private Key — the PEM header literal that the .pem fixture writes (not quoted here: quoting it is itself a finding, which is how this receipt earned its own line), present in .secrets.baseline with is_secret false and the same hashed_secret (its recorded line was 265; detect-secrets matches by hash, not by line). Zero findings in the four files this PR adds or edits"
     exit: 0
     ts: 2026-09-10T18:57Z
     seat: S2 Dux
