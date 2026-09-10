@@ -10,9 +10,9 @@ adversarial_review: codex
 |---|---|
 | Mandate id | **S3** |
 | Colour | **BLUE** unless Zero declares ORANGE before the window opens. No fallback between colours. |
-| Dux role | Opus 5 `xhigh` on BLUE (Sol `gpt-5.6-sol` `xhigh` on ORANGE), appointed by the staff room (Fable 5.1 with Zero; Astra reading pending — README). Dux and release owner. |
+| Dux role | Opus 5 `xhigh` on BLUE (Sol `gpt-5.6-sol` `xhigh` on ORANGE), appointed by the staff room (Fable 5.1 with Zero; the Astra reading of this board at a named commit, or Zero's waiver, is pending — README). Dux and release owner. |
 | Worktree / branch | `agent/nuzantara/ops/s3-arm-the-auditor`, created by the command in §1 |
-| Wave | 2, in parallel with S4. Opens only after S1's shepherd PR is MERGED, pulled on Pro (puller rc=0), the S1 window has reported six clean ticks, and the Astra reading or its waiver is recorded (README). |
+| Wave | 2, in parallel with S4. Opens only after S1's shepherd PR is MERGED, pulled on Pro (puller rc=0), the staff room has acked S1's six-clean-ticks checkpoint, and the Astra reading or its waiver is recorded (README). |
 | Opening | The opening follows the colour. BLUE: Zero opens a fresh `claude --model claude-opus-5` window at effort `xhigh` and pastes this file. ORANGE: a Codex window on the Sol seat as army-map §1bis names it ("Sol (`gpt-5.6-sol`) `xhigh`"). The first message restates colour, Dux role, mandate id and worktree path, then executes. |
 
 ## 1. Mandate
@@ -84,7 +84,11 @@ Every seat comes from the colour table (`docs/architecture/dual-consul/army-map.
 - **Budget:** 5 h, 2 rounds, 1.5M tokens, declared as `appetite:` in `brief.yml`; `spend:` in `pack.yml` (`scripts/evidence_pack_lint.py` rule 14). Steps 2–4 of §4 each wait for a scheduled run: set the plist's interval so they fit, and record the choice.
 - **Deadline:** open + 5 h. ONE mission deadline, owned by the root mandate and read through `infra/codex-hooks/mandate_budget.py` (the spec's `scripts/mandate_budget.py` does not exist). Only the staff room renews it, once; on expiry the mission suspends.
 - **Limits:** three reds for one cause → suspend; fix-of-a-fix depth 1; at most 2 children, depth 1, 1 continuation hop; adapter tool ceiling with no ship reserve (N = 0); child active time reported separately.
-- **Checkpoints:** `scripts/fleet_mail.sh local broadcast --key S3-checkpoint --ttl 24 "$STATE"`, where `$STATE` is one line of state with no PII. `local` is Pro; the staff room reads the Pro mailbox.
+- **Checkpoints — published, then delivered** (`docs/architecture/dual-consul/army-map.md:81-90`: a file written is published, not delivered; the sender owns the wake-up):
+  1. Publish: `scripts/fleet_mail.sh local broadcast --key S3-checkpoint --ttl 24 "$STATE"` (`$STATE` = one line of state, no PII; `local` is Pro). Record the file name it prints in parentheses as the envelope id.
+  2. Wake up: `SendMessage` the same text and envelope id to the staff-room Claude window Zero names when he opens this window (today `website-03`).
+  3. Ack: the staff room answers with key `S3-ack` in the Pro mailbox, or a session reply, within 15 minutes of wall clock.
+  4. No ack → one retry with the same text and envelope id; still none → a `BLOCKED: undelivered` ledger row and the mission suspends. Never a silent wait.
 - **Stop and return to the staff room if:** #6054 is still open when the schedule is proven (comment on it, ship nothing more); the probe needs a credential inside launchd; the receptor would have to change; three reds for the same cause.
 
 ## 7. Evidence and release
@@ -112,3 +116,7 @@ Every seat comes from the colour table (`docs/architecture/dual-consul/army-map.
 - **F9 applied:** checkpoints use `local broadcast`; the label and probe id are real (proposed) values, not placeholders.
 - **F11 applied:** schedule PR → probe PR (DIVERGED, attributed via `launchctl print` and `invoked_by`, not mtime) → separate INDEX.md PR (OK) → ledger-only PR; §4 and merge order agree. The report had no invocation field (verified), so the probe PR adds `invoked_by`.
 - **F12 applied:** tests run with `~/nuzantara/.venv/bin/python3 -m pytest`.
+
+**Round 3 — REWORK** (on v3 `b701479b33`; 15 RESOLVED, 2 PARTIAL, 3 new blockers). On this file:
+- **Blocker 1 applied:** §6 checkpoints are published, woken by `SendMessage`, acked within 15 minutes, retried once, then `BLOCKED: undelivered`. The Wave row waits for the staff room's ack of S1's checkpoint, not for a published file.
+- **F2 partial → applied:** the Astra reading is of this board at a named commit; it covers waves 2 and 3 only (README).

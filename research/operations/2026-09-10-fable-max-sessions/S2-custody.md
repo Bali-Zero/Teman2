@@ -10,7 +10,7 @@ adversarial_review: codex
 |---|---|
 | Mandate id | **S2** |
 | Colour | **BLUE** (the default). Chosen before the window opens; no fallback between colours. |
-| Dux role | Opus 5 `xhigh` on BLUE (Sol `gpt-5.6-sol` `xhigh` on ORANGE), appointed by the staff room (Fable 5.1 with Zero; Astra reading pending — README). Dux and release owner. |
+| Dux role | Opus 5 `xhigh` on BLUE (Sol `gpt-5.6-sol` `xhigh` on ORANGE), appointed by the staff room (Fable 5.1 with Zero; two-imperator approval was not met for wave 1, and no later Astra reading covers it — README). Dux and release owner. |
 | Worktree / branch | `agent/nuzantara/infra/s2-custody`, created by the command in §1 |
 | Wave | 1, in parallel with S1 |
 | Opening | The opening follows the colour. BLUE: Zero opens a fresh `claude --model claude-opus-5` window at effort `xhigh` and pastes this file. ORANGE: a Codex window on the Sol seat as army-map §1bis names it ("Sol (`gpt-5.6-sol`) `xhigh`"). The first message restates colour, Dux role, mandate id and worktree path, then executes. |
@@ -37,8 +37,8 @@ S2 · BLUE · **organ: the credential-custody detector** — `scripts/secrets_pe
 
 ## 2. Owned perimeter
 
-- **Writable:** `scripts/secrets_permissions_audit.py`; `scripts/tests/test_secrets_permissions_audit.py`; one new canon plist `infra/launchagents/com.nuzantara.secrets-permissions-audit.plist` (to be created: `StartInterval` 3600 unless the window records a reason to differ, no `KeepAlive`, clean under `scripts/lint_plist_keepalive.py`).
-- **chmod** only under `~/nuzantara/.secrets` (correct today) and on the audit's own log and state files. Never `--fix` anywhere else.
+- **Writable:** `scripts/secrets_permissions_audit.py`; `scripts/tests/test_secrets_permissions_audit.py`; one new canon plist `infra/launchagents/com.nuzantara.secrets-permissions-audit.plist` (to be created: `StartInterval` 3600 unless the window records a reason to differ, no `KeepAlive`, no `--fix` in its ProgramArguments, clean under `scripts/lint_plist_keepalive.py`).
+- **Detect and report only.** Neither the detector nor this window changes a credential's mode: no `chmod` and no `--fix` on any live path. Findings go out through tg_notify and a ledger row; the chmod is Zero's gesture, filed as an operator item (Builder Contract rule 5: credentials stay with the human). The only chmods in this mandate are on the §4 `mktemp` fixture, which is not a credential.
 - **`.env*` — explicit read-only exception.** The detector `stat`s `.env*` files for their MODE only. It never opens them, never chmods them, never fixes them; the off-limits rule still holds for their content. Their modes are REPORTED and escalated to Zero as a ledger row (directory and mode class only).
 - **Forbidden:** the restore-drill workflow (queued); memory.db and its backups (S5/S5b); `scripts/tg_notify.py` (S4); the `zantara-codex` account and its groups; crontab (plist only).
 - **Shared:** `infra/launchagents/` (convention owner #6101, merged; S3 adds a different plist); the ledger (§3).
@@ -57,11 +57,11 @@ Frozen before BUILD. Changes go to the staff room through Zero.
 ## 4. Acceptance
 
 - **Negative (innocence):** a 0600 file and a 0400 file in a scratch `.secrets`-shaped directory are clean; a `.env.example` elsewhere is never flagged; a `.env*` finding produces one report line and zero chmod calls (a test asserts no mode change).
-- **Integration (guilt, on a fixture, never on the live directory):** `SCR="$(mktemp -d)/.secrets"; mkdir -p "$SCR"; : > "$SCR/probe.json"; chmod 644 "$SCR/probe.json"; python3 scripts/secrets_permissions_audit.py --no-default-roots --root "$SCR" --json`. On origin/main it reports 0 findings (Ground); on the branch exactly one. After `chmod 600 "$SCR/probe.json"` the same command is clean. Tests: `cd "$WT" && ~/nuzantara/.venv/bin/python3 -m pytest scripts/tests/test_secrets_permissions_audit.py -q`, including one proving the default roots contain `~/nuzantara/.secrets` that fails without the change.
+- **Integration (guilt, on a fixture, never on the live directory):** `SCR="$(mktemp -d)/.secrets"; mkdir -p "$SCR"; : > "$SCR/probe.json"; chmod 644 "$SCR/probe.json"; python3 scripts/secrets_permissions_audit.py --no-default-roots --root "$SCR" --json`. On origin/main it reports 0 findings (Ground); on the branch exactly one. After `chmod 600 "$SCR/probe.json"` the same command is clean. Both chmods touch the scratch fixture, never a credential. Tests: `cd "$WT" && ~/nuzantara/.venv/bin/python3 -m pytest scripts/tests/test_secrets_permissions_audit.py -q`, including one proving the default roots contain `~/nuzantara/.secrets` that fails without the change.
 - **Production observation** (label `com.nuzantara.secrets-permissions-audit`, to be created):
   1. Content proof after the puller — blobs, not ancestry (superscar #9, `scripts/branch_graveyard_cleanup.sh::content_on_main()`), with `$WT` on the PR's final head: `[ "$(git -C ~/nuzantara rev-parse HEAD:scripts/secrets_permissions_audit.py)" = "$(git -C "$WT" rev-parse HEAD:scripts/secrets_permissions_audit.py)" ] && echo live`.
   2. `launchctl list | grep -c com.nuzantara.secrets-permissions-audit` → 1. `launchctl print gui/$(id -u)/com.nuzantara.secrets-permissions-audit | grep -E '^\s*(runs|last exit code) ='` shows runs ≥ 1 and exit 0. Always this projection: the full print dumps the job's environment.
-  3. **Agreement in the same minute.** The run's file count for the `~/nuzantara/.secrets` root (a per-root field the roots PR adds) equals `find ~/nuzantara/.secrets -type f | wc -l`, and its findings under that root equal `find ~/nuzantara/.secrets -type f -perm +077 | wc -l` (group or other bits set; the legitimate 0400 file is not one). A true finding on the live directory is the detector PASSING, not the window failing: file it, don't hide it.
+  3. **Agreement in the same minute.** The run's file count for the `~/nuzantara/.secrets` root (a per-root field the roots PR adds) equals `find ~/nuzantara/.secrets -type f | wc -l`, and its findings under that root equal `find ~/nuzantara/.secrets -type f -perm +077 | wc -l` (group or other bits set; the legitimate 0400 file is not one). A true finding on the live directory is the detector PASSING, not the window failing: report it and file it for Zero; never fix it.
   4. The next scheduled run, at most 60 minutes plus run time later, agrees again.
 
   Fixture success never stands in for this observation.
@@ -80,15 +80,19 @@ Every seat comes from the colour table (`docs/architecture/dual-consul/army-map.
 - **Budget:** 5 h, 2 adversarial rounds, 1.5M tokens, declared as `appetite:` in `brief.yml`; `spend:` in `pack.yml` (`scripts/evidence_pack_lint.py` rule 14).
 - **Deadline:** open + 5 h. ONE mission deadline, owned by the root mandate and read through `infra/codex-hooks/mandate_budget.py` (the spec's `scripts/mandate_budget.py` does not exist). The staff room may renew it once; on expiry the mission suspends.
 - **Limits:** three reds for one cause → suspend; fix-of-a-fix depth 1; at most 2 children, depth 1, 1 continuation hop; adapter tool ceiling with no ship reserve (N = 0) — a capped child checkpoints and returns, shipping is the Dux's; child active time reported separately.
-- **Checkpoints:** `scripts/fleet_mail.sh local broadcast --key S2-checkpoint --ttl 24 "$STATE"`, where `$STATE` is one line of state with no PII. `local` is Pro; the staff room reads the Pro mailbox.
-- **Stop and escalate if:** evidence that another account read a credential; any fix would touch `.env*`; a useful alert would need a filename; three reds for the same cause.
+- **Checkpoints — published, then delivered** (`docs/architecture/dual-consul/army-map.md:81-90`: a file written is published, not delivered; the sender owns the wake-up):
+  1. Publish: `scripts/fleet_mail.sh local broadcast --key S2-checkpoint --ttl 24 "$STATE"` (`$STATE` = one line of state, no PII; `local` is Pro). Record the file name it prints in parentheses as the envelope id.
+  2. Wake up: `SendMessage` the same text and envelope id to the staff-room Claude window Zero names when he opens this window (today `website-03`).
+  3. Ack: the staff room answers with key `S2-ack` in the Pro mailbox, or a session reply, within 15 minutes of wall clock.
+  4. No ack → one retry with the same text and envelope id; still none → a `BLOCKED: undelivered` ledger row and the mission suspends. Never a silent wait.
+- **Stop and escalate if:** evidence that another account read a credential; a cure would need a chmod on a live credential or on `.env*` (file it for Zero); a useful alert would need a filename; three reds for the same cause.
 
 ## 7. Evidence and release
 
 - **Evidence:** `cd "$WT" && python3 scripts/ci/evidence_paths.py --ref "$(git rev-parse --abbrev-ref HEAD)"` names the directory. `brief.yml`: gear, appetite, team with thread ids, four timestamped sibling outputs (open PRs' paths, `python3 scripts/agent_start.py --list`, `ListAgents`, `scripts/fleet_mail.sh local --list`). `pack.yml` alongside. Every code PR carries `Bites:`.
 - **Release**, three separate commands: `git -C "$WT" push -u origin HEAD`; `cd "$WT" && gh pr create --title "$TITLE" --body-file "$BODY"`; `gh pr merge "$PR" --auto` at once (`$PR` = the number `gh pr create` printed). Bare `--auto`: the queue rejects every strategy flag (`docs/runbooks/merge-queue-discipline.md:274-278`; `scripts/queue_shepherd.py:819-821`). At Gear 2 or above, the `harness/fable-gate` success must sit on the real head sha.
 - **Gate receipt:** a PR comment with mission id, colour, HEAD sha, gate thread id, commands with exit codes, verdict; re-checked against the current HEAD before posting. Publish: `HEAD=$(gh pr view "$PR" --json headRefOid --jq .headRefOid)`, then `python3 scripts/harness_fable_gate.py --verdict PASS --sha "$HEAD" --description "$RECEIPT"` (`$RECEIPT` = the receipt comment's short reference, ≤140 characters). PASS-WITH-CONDITIONS needs `--conditions-ref`.
-- **Merge order:** (1) roots PR; (2) schedule PR; (3) the ledger-only PR: rotation of the Google service-account and combined-env credentials, the Telegram bot token and the GCP key; the second local account; whether it read the credentials; the `.env*` mode findings. No backend path.
+- **Merge order:** (1) roots PR; (2) schedule PR; (3) the ledger-only PR: rotation of the Google service-account and combined-env credentials, the Telegram bot token and the GCP key; the second local account; whether it read the credentials; the `.env*` mode findings; the chmod of any live finding, as Zero's gesture. No backend path.
 - **Deploy:** puller, then install the canon plist per #6101's convention and `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.nuzantara.secrets-permissions-audit.plist`, then `launchctl kickstart -k gui/$(id -u)/com.nuzantara.secrets-permissions-audit` once.
 - **Rollback trigger:** scheduled runs raise findings outside `.secrets` that are not real exposures, or send more than one alert per interval → `launchctl bootout gui/$(id -u)/com.nuzantara.secrets-permissions-audit`, then a revert PR from a fresh origin/main.
 
@@ -107,3 +111,8 @@ Every seat comes from the colour table (`docs/architecture/dual-consul/army-map.
 - **F9 applied:** checkpoints use `local broadcast`; labels and PR numbers are real values or named shell variables.
 - **F10 applied:** `StartInterval` 3600, so one interval is ≤ 60 min + run time; the hardcoded "7 files, 0 findings" became same-minute agreement with `find`; the `.env*` read-only exception is explicit. The ruling's "mode not 600" oracle would count the legitimate 0400 file, so the oracle counts group/other bits (`-perm +077`), the same correction the staff room sent the running window.
 - **F12 applied:** tests run with `~/nuzantara/.venv/bin/python3 -m pytest`.
+
+**Round 3 — REWORK** (on v3 `b701479b33`; 15 RESOLVED, 2 PARTIAL, 3 new blockers). On this file:
+- **Blocker 1 applied:** §6 checkpoints are published, woken by `SendMessage`, acked within 15 minutes, retried once, then `BLOCKED: undelivered`.
+- **Blocker 2 applied:** the live `chmod` under `.secrets` is gone. §2 is detect-and-report only (tg_notify + ledger row), the plist carries no `--fix`, and the chmod of a live finding is Zero's item (Builder Contract rule 5). The §4 fixture chmods are declared as the only ones, on a non-credential.
+- **F2 partial → applied:** the Dux role says two-imperator approval was not met for wave 1 and no later reading covers it.

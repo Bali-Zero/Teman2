@@ -10,7 +10,7 @@ adversarial_review: codex
 |---|---|
 | Mandate id | **S1** |
 | Colour | **BLUE** (the default). Chosen before the window opens; no fallback between colours. |
-| Dux role | Opus 5 `xhigh` on BLUE (Sol `gpt-5.6-sol` `xhigh` on ORANGE), appointed by the staff room (Fable 5.1 with Zero; Astra reading pending — README). Dux and release owner. |
+| Dux role | Opus 5 `xhigh` on BLUE (Sol `gpt-5.6-sol` `xhigh` on ORANGE), appointed by the staff room (Fable 5.1 with Zero; two-imperator approval was not met for wave 1, and no later Astra reading covers it — README). Dux and release owner. |
 | Worktree / branch | `agent/nuzantara/ops/s1-arm-the-armer`, created by the command in §1 |
 | Wave | 1, in parallel with S2 |
 | Opening | The opening follows the colour. BLUE: Zero opens a fresh `claude --model claude-opus-5` window at effort `xhigh` and pastes this file. ORANGE: a Codex window on the Sol seat as army-map §1bis names it ("Sol (`gpt-5.6-sol`) `xhigh`"). The first message restates colour, Dux role, mandate id and worktree path, then executes. |
@@ -69,7 +69,7 @@ Frozen before BUILD. Changes go to the staff room through Zero, never window-to-
 - **Production observation:**
   1. Puller: `tail -5 ~/logs/pro-git_pull_main/run.log` and `cat ~/.organism/last_seen/pro.git_pull_main.json` show a recent rc=0 and status ok.
   2. Content proof — a squash merge leaves no ancestor to test, so compare blobs (superscar #9, `scripts/branch_graveyard_cleanup.sh::content_on_main()`), with `$WT` still on the PR's final head: `[ "$(git -C ~/nuzantara rev-parse HEAD:scripts/queue_shepherd.py)" = "$(git -C "$WT" rev-parse HEAD:scripts/queue_shepherd.py)" ] && echo live`.
-  3. Six consecutive scheduled `tick complete` lines (~60 minutes), each with an examined count and none saying CANNOT-VERIFY. Report them to the staff room as a checkpoint: that report is one of wave 2's triggers.
+  3. Six consecutive scheduled `tick complete` lines (~60 minutes), each with an examined count and none saying CANNOT-VERIFY. Report them through the §6 checkpoint procedure; the staff room's ack of that report is one of wave 2's triggers.
 
   `rearmed=0` is legitimate only next to an examined count. A PR ejected for a non-INFRA reason is never auto-rearmed by design (#6099 was ejected with `reason=merged`). Fixture success never stands in for this observation.
 
@@ -92,7 +92,11 @@ Every seat comes from the colour table (`docs/architecture/dual-consul/army-map.
 - **Deadline:** open + 6 h. ONE mission deadline, owned by the root mandate and read through `infra/codex-hooks/mandate_budget.py` (the spec's `scripts/mandate_budget.py` does not exist). Continuations inherit it; the staff room may renew it once, explicitly. On expiry the mission suspends.
 - **Limits:** three reds for one cause → suspend and write the spec; fix-of-a-fix depth 1; at most 2 children, depth 1; at most 1 continuation hop.
 - **Adapter tool ceiling, no ship reserve (N = 0):** a child at its cap checkpoints and returns the remaining work; shipping is the Dux's and comes out of this budget. Child active time is reported apart from wall clock.
-- **Checkpoints:** `scripts/fleet_mail.sh local broadcast --key S1-checkpoint --ttl 24 "$STATE"`, where `$STATE` is one line of state with no PII. `local` is Pro; the staff room reads the Pro mailbox.
+- **Checkpoints — published, then delivered** (`docs/architecture/dual-consul/army-map.md:81-90`: a file written is published, not delivered; the sender owns the wake-up):
+  1. Publish: `scripts/fleet_mail.sh local broadcast --key S1-checkpoint --ttl 24 "$STATE"` (`$STATE` = one line of state, no PII; `local` is Pro). Record the file name it prints in parentheses as the envelope id.
+  2. Wake up: `SendMessage` the same text and envelope id to the staff-room Claude window Zero names when he opens this window (today `website-03`).
+  3. Ack: the staff room answers with key `S1-ack` in the Pro mailbox, or a session reply, within 15 minutes of wall clock.
+  4. No ack → one retry with the same text and envelope id; still none → a `BLOCKED: undelivered` ledger row and the mission suspends. Never a silent wait.
 - **Stop and file a row if:** the query fix needs a change on GitHub's side; three reds for the same cause; you want to widen the allowlist or arm someone else's PR; a change would alter what a required context means.
 
 ## 7. Evidence and release
@@ -104,7 +108,7 @@ Every seat comes from the colour table (`docs/architecture/dual-consul/army-map.
 - **Merge order:** (1) the shepherd PR; (2) the ledger-only PR, carrying the Dependabot ruling for #5528/#5529 and any promotion request. No backend paths.
 - **Deploy path:** puller (≤15 minutes), then the next tick (≤10 minutes).
 - **Rollback trigger:** a tick re-arms a PR the classifier marks CODE, CONFLICT or MANUAL, or two consecutive ticks error after the merge. Revert through a PR cut from a fresh origin/main.
-- **Wave note:** wave 2 opens only after this PR is MERGED, pulled on Pro (puller rc=0) and this window has reported the six clean ticks (§4). "Armed" is not enough: an armed PR still runs the old re-armer.
+- **Wave note:** wave 2 opens only after this PR is MERGED, pulled on Pro (puller rc=0) and the staff room has acked this window's six-clean-ticks checkpoint (§4, §6). "Armed" is not enough: an armed PR still runs the old re-armer.
 
 ## Adversarial review
 
@@ -122,3 +126,7 @@ Every seat comes from the colour table (`docs/architecture/dual-consul/army-map.
 - **F8 rejected:** bare `gh pr merge "$PR" --auto` stays. The queue rejects every strategy flag (`merge-queue-discipline.md:274-278`, measured on PR #3347; `queue_shepherd.py:819-821`). modus SKILL.md:100 does say `--auto --squash`, but that line predates the queue (README, Doctrine gaps).
 - **F9 applied:** checkpoints use `local broadcast`; no placeholder remains in any command.
 - **F12 applied:** tests run with `~/nuzantara/.venv/bin/python3 -m pytest`.
+
+**Round 3 — REWORK** (on v3 `b701479b33`; 15 RESOLVED, 2 PARTIAL, 3 new blockers). On this file:
+- **Blocker 1 applied:** §6 checkpoints are published, woken by `SendMessage`, acked within 15 minutes, retried once, then `BLOCKED: undelivered`; the wave-2 trigger (§4 step 3, §7 wave note) is the staff room's ack.
+- **F2 partial → applied:** the Dux role says two-imperator approval was not met for wave 1 and no later reading covers it.

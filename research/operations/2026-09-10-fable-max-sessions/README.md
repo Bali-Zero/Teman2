@@ -8,7 +8,7 @@ adversarial_review: codex
 
 This board was produced by the **Fable 5.1 imperator window with Zero**. It decides the windows, the teams and the specs and appoints a Dux for each window; it never fans out and never implements.
 
-**Recorded deviation (Codex round 2, F2).** Doctrine seats the staff room as Fable 5.1 **and Astra** with Zero (`docs/architecture/dual-consul/army-map.md` §1bis; `docs/rules/RULINGS.md`, PARABELLUM). Astra's co-signature was **not** obtained on this board. Wave 1 opened on Zero's decision on 2026-09-10 (~22:55 WITA). Before wave 2 opens, Zero either runs an Astra reading of this board (a Codex `gpt-6-astra` window at effort `xhigh`, with its objections recorded in this README) or records the waiver in the ledger row.
+**Recorded deviation (Codex rounds 2–3, F2).** Doctrine seats the staff room as Fable 5.1 **and Astra** with Zero, and appointing a Dux takes both imperators (`docs/architecture/dual-consul/army-map.md` §1bis; `docs/rules/RULINGS.md`, PARABELLUM). **Two-imperator approval was NOT met for wave 1:** Astra's co-signature was not obtained, and wave 1 (S1, S2) opened on Zero's decision on 2026-09-10 (~22:55 WITA). Before wave 2 opens, Zero either runs an Astra reading of this board **at a named commit hash** (a Codex `gpt-6-astra` window at effort `xhigh`; the hash and Astra's objections are recorded in the ledger row and in this README when done) or records the waiver in that ledger row. No later reading retroactively covers wave 1: it covers waves 2 and 3 only.
 
 Each S-file is one battle window written against the seven-section spec (`.claude/skills/modus/battle-window-spec.md`): one mandate, one organ, one worktree, at most two or three windows at once.
 
@@ -40,14 +40,14 @@ Each S-file is one battle window written against the seven-section spec (`.claud
 | [S2](S2-custody.md) | CUSTODY · the credential-custody detector | 1 (opened ~22:55 WITA) | Pro | BLUE | Opus 5 `xhigh` | The secrets audit never looks in `~/nuzantara/.secrets` and has no schedule | 4 |
 | [S3](S3-arm-the-auditors.md) | ARM THE AUDITOR · proprioception | 2 | Pro | BLUE (default) | Opus 5 `xhigh` | The auditor runs only when typed, and INDEX.md's core tables go unchecked | 0 |
 | [S4](S4-reaper-and-signal.md) | THE SIGNAL · alert gateway + weekly digest | 2 | Pro | BLUE (default) | Opus 5 `xhigh` | A persisting P0 went silent for a week, and the digest is built but unarmed | 3 |
-| [S5](S5-brain-that-can-forget.md) | A BRAIN THAT CAN FORGET · MOS store, mechanism only | 3 | Pro | BLUE (default) | Opus 5 `xhigh` | TTL is set on 0 of ~15,800 memories; this window ships the dry-run tool, S5b cuts | 1 |
+| [S5](S5-brain-that-can-forget.md) | A BRAIN THAT CAN FORGET · MOS store, mechanism only | 3 | Pro | BLUE (default) | Opus 5 `xhigh` | TTL is set on 0 of ~15,800 memories; this window ships the dry-run tool and installs the inert worker, S5b cuts | 1 |
 
 ## Sequencing
 
 - **Concurrency:** two or three windows at a time, each in its own worktree; never two on the same path.
 - **Wave 1: S1 and S2** (opened ~22:55 WITA). An optional third is the queued RESTORE DRILL (red since 09-01, next cron 10-01) once its own file exists.
-- **Wave 2: S3 and S4** open only when (a) S1's shepherd PR is **MERGED**, (b) Pro has pulled it (puller rc=0), (c) the S1 window has reported its six clean ticks, and (d) the Astra reading or its waiver is recorded. An armed PR still runs the old re-armer, so "armed" is not the trigger. Inside wave 2, S3's probe waits for #6054 (open at 15:40Z); #6101 merged 2026-09-10T14:24Z.
-- **Wave 3: S5**, mechanism only (dry-run tool, no write to the live DB), before or after Zero's retention ruling. **S5b — THE CUT** opens only after the ruling and after S5's PR is merged. Neither runs alongside the queued REAPER window.
+- **Wave 2: S3 and S4** open only when (a) S1's shepherd PR is **MERGED**, (b) Pro has pulled it (puller rc=0), (c) the staff room has acked the S1 window's six-clean-ticks checkpoint, and (d) the Astra reading or its waiver is recorded. An armed PR still runs the old re-armer, so "armed" is not the trigger. Inside wave 2, S3's probe waits for #6054 (open at 15:40Z); #6101 merged 2026-09-10T14:24Z.
+- **Wave 3: S5**, mechanism only (dry-run tool plus the inert worker installed on HOME; no direct write to the live DB), before or after Zero's retention ruling. **S5b — THE CUT** opens only after the ruling and after S5's PR is merged. Neither runs alongside the queued REAPER window.
 
 ## Sibling contract — summary
 
@@ -66,12 +66,18 @@ Apart from the ledger the windows share no writable file: S1 the shepherd, S2 th
 - **Phantom DIRTY** (GitHub reports DIRTY and the queue still accepts it — `autoMergeRequest` still set): the queue cures it by merging. Judge the diff first; never disarm.
 - **Never** `--disable-auto` → merge origin/main → push → re-arm.
 
+**Checkpoint delivery (every window; `docs/architecture/dual-consul/army-map.md:81-90`).** A file written is published, not delivered, and the sender owns the wake-up.
+1. Publish with `scripts/fleet_mail.sh local broadcast --key S1-checkpoint --ttl 24 "$STATE"` (S2–S5 likewise); the file name it prints in parentheses is the envelope id.
+2. `SendMessage` the same text and id to the staff-room Claude window (today `website-03`).
+3. **The staff room's duty:** ack with key `S1-ack` (S2–S5 likewise) in the Pro mailbox, or a session reply, within 15 minutes of wall clock.
+4. No ack → one retry with the same text and id, then a `BLOCKED: undelivered` ledger row and the window suspends — never a silent wait. S1's wave-2 trigger travels the same way.
+
 ## Queued windows
 
 The staff room opens each one; each needs its own seven-section file first, and the staff room opens a ledger row when it schedules it.
 
 1. **QUEUE SIBLINGS (Mini)** (split from S1). `scripts/queue_unstick.py` and `scripts/queue_stall_classifier.py` (notifier `scripts/queue_stall_notify.py`) on Mini. Input: what S1's pack notes they need.
-2. **S5b — THE CUT** (split from S5). Opens after Zero's retention ruling and S5's merge. Owns everything irreversible: backup, pause, `--apply`, VACUUM, the HOME worker `cp` with sha256 proof, ttl on save in `~/.claude/scripts/mem`, the declared-pair follow-up PR, the ledger. **Gate coverage:** the gate signs the dry-run before `--apply` AND re-reads the post-apply state (per-class counts == predicted, `PRAGMA integrity_check` ok) before success is reported. **Backup:** into the existing `~/.claude/backups/` under a `memory_*.db` name, so the existing C2.14 prune removes it after 30 days; `chmod 600` explicitly (the directory is 0755 today); the archive is a table inside memory.db, never a dated cleartext file. **Rollback:** quiescence = compression daemon paused AND no `mem` writes (`select max(id) from memories` equal before and after); `.restore` only if max(id) is unchanged since the backup, otherwise export the delta rows (id above the backup's max) to the scratch dir, restore, re-insert them. The "next morning" backup proof belongs here.
+2. **S5b — THE CUT** (split from S5). Opens after Zero's retention ruling and S5's merge. Owns everything irreversible: backup, pause, `--apply`, VACUUM, ttl on save in `~/.claude/scripts/mem`, the declared-pair widening PR, the ledger. (The HOME worker `cp` is S5's live consumer, not S5b's.) **Gate coverage:** the gate signs the dry-run before `--apply` AND re-reads the post-apply state (per-class counts == predicted, `PRAGMA integrity_check` ok) before success is reported. **Backup:** into the existing `~/.claude/backups/` under a `memory_*.db` name, so the existing C2.14 prune removes it after 30 days; `chmod 600` explicitly (the directory is 0755 today); the archive is a table inside memory.db, never a dated cleartext file. **Rollback:** quiescence = compression daemon paused AND no `mem` writes AND no capture-hook writes. `~/.claude/hooks/mos_capture_post_tool.py`, `mos_capture_stop.py` and `mos_capture_session_end.py` INSERT into `raw_observations` from every live Claude session even while the daemon is paused, with no kill switch, so a delta is the expected case. `.restore` only if `max(id)` of BOTH `memories` and `raw_observations` is unchanged since the backup; otherwise export both deltas (ids above each table's backup max) to the scratch dir, restore, re-insert them. The "next morning" backup proof belongs here.
 3. **RESTORE DRILL** (split from S2). Red since 2026-09-01: the service container never creates `backend_rag_v2`, so psql exits 3 before the Level-5 verifier runs. Fix: create the role or restore with `--no-owner`, `workflow_dispatch`, prove a Level-5 pass; a red drill alerts through a transport that exists inside Actions.
 4. **IMMUNE REGISTRY** (C6, split from S3). Executable scar gates in `scripts/verify_the_verifiers_gates.yaml`, each proven to fail on synthetic re-injection. MANIFEST.json is not regenerated: its only consumer is orphaned.
 5. **ORGAN CENSUS** (split from S3). A provably-dead manifest (organ id, heartbeat age, log error class only); conversation tables never proposed for a drop (five-year retention); the "176 daemon" derivation.
@@ -120,14 +126,14 @@ The gate's decisions, unchanged; rework destinations in *italics*.
 
 PII-free. Each item names the window it gates or the window that files it.
 
-0. **ASTRA READING OR WAIVER (gates wave 2).** See the recorded deviation at the top.
+0. **ASTRA READING OR WAIVER (gates wave 2).** Astra reads this board at a named commit, or you waive it in the ledger row. It covers waves 2–3 only, never wave 1 (recorded deviation, top).
 1. **COLOUR PER MISSION.** BLUE by default; say ORANGE before a window opens. Fixed at mission start.
 2. **RETENTION WINDOWS (gates S5b).** Default: (a) processed `raw_observations` older than 30 days purgeable; (b) `osint_sensitive` rows older than 7 days purgeable, existing backups age out under the 30-day prune; (c) unresolved memories older than 90 days archived, not deleted. Reply "default" or give numbers.
 3. **MEMORY.md CAP (MEMORY GUARD).** Documented 2,560 B vs coded 25,600 B: which is authoritative?
 4. **`~/.claude` DOTFILES REPO (S5 files it).** No remote, yet it holds the memory save path and the SessionStart wiring for three machines. Give it a remote?
 5. **THE WHATSAPP BOT LINE AFTER #5494 (SENTINEL HONESTY).** Retire, quiet fallback, or advertise again?
 6. **INSTAGRAM.** Dark for 35 days: retired on purpose, or restore?
-7. **`.secrets` CREDENTIALS (S2 files it).** Modes were loosened; the orchestrator corrected 4 of 7 by hand at ~21:05 WITA. Rotation depends on whether the second local account read them; only you have the audit-log access.
+7. **`.secrets` CREDENTIALS (S2 files it).** Modes were loosened; the orchestrator corrected 4 of 7 by hand at ~21:05 WITA. Rotation depends on whether the second local account read them; only you have the audit-log access. Any future live finding's chmod is yours too: S2 reports, it never fixes.
 8. **SECOND LOCAL ACCOUNT (S2 files it).** `zantara-codex` is in `staff` on Pro. Keep or retire?
 9. **GITHUB SECRET SCANNING (S2 files it).** Alerts #7 (Telegram bot token) and #1 (GCP service-account key): rotate first, resolve after.
 10. **GOOGLE MAPS KEY.** The /prime 3D map is dead since 2026-08-29 (key expired); rotation is in the GCP Console.
@@ -169,3 +175,13 @@ PII-free. Each item names the window it gates or the window that files it.
 | F15 | S5 contradicted its DELETE ban | Applied: probe insert/delete only on a scratch copy; S5b gate re-reads the post-apply state | README, S5 |
 | F16 | Sensitive copies without lifecycle | Applied: `~/.claude/backups/` under C2.14's prune, explicit `chmod 600`, archive table not a file | README, S5 |
 | F17 | Rollback could lose valid rows | Applied: quiescence by max(id); delta export before `.restore` | README, S5 |
+
+**Round 3 — REWORK (all six), on v3 `b701479b33`:** 15 RESOLVED, 2 PARTIAL (F2, F17), 3 new blockers; F8 not reopened. Staff-room dispositions, all applied:
+
+| # | Finding | Disposition | Where |
+|---|---|---|---|
+| B1 | Checkpoints published, not delivered (army-map.md:81-90) | Four steps: publish + envelope id, `SendMessage` wake-up, ack within 15 min, one retry, then `BLOCKED: undelivered`; S1's wave-2 trigger is the ack | README, every S-file §6, S1 §4/§7, S3/S4 Wave rows |
+| B2 | S2 authorized a live chmod on credentials | Detect and report only; no `--fix`; the chmod is Zero's (Builder Contract rule 5); only the `mktemp` fixture is chmod'ed | S2 §2, §4, §6, §7; README queue item 7 |
+| B3 | S5's worker had no live consumer | The HOME worker `cp` + sha256 proof + the daemon's next run moved from S5b into S5; inert without a ruling file | README, S5 |
+| F2 | A later reading ≠ two-imperator approval | Wave 1 recorded as not approved by both; the Astra reading is at a named commit and covers waves 2–3 only | README, every S-file header |
+| F17 | Quiescence ignored `raw_observations` | `.restore` only if `max(id)` of BOTH tables is unchanged, else both deltas exported and re-inserted; the three capture hooks named | README, S5 |
