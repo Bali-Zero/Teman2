@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.nuzantara.proprioception : the boundary reconciliation organ, LaunchAgent
+  mode. Runs scripts/proprioception.py with NO arguments: the report is written
+  to ~/.nuzantara-proprioception/last.{json,md} (atomic rename) and the exit code
+  is the ORGAN's own health, not the fleet's. Canon (probe registry, severities,
+  fix lines) lives in the script; this file only schedules it.
+
+  This closes the script's own recorded debt, verbatim from its docstring: "v1
+  has NO cron: with no session there is no alarm. This is ACCEPTED and recorded
+  (PENDING-ARMS); the receptor is the consumption point." The receptor
+  (scripts/hooks/proprioception_sessionstart.sh) stays the consumption point; it
+  just stops depending on somebody having typed the auditor's name.
+
+  NOTE ON COMMENT STYLE, paid for here: an XML comment may not contain a double
+  hyphen. plutil accepts one anyway; expat (which scripts/lint_plist_keepalive.py
+  uses) refuses the whole file and reports the plist as unparseable, so a CLI
+  flag is spelled in words below, never with its dashes.
+
+  No strict flag. The strict flag exits 1 when any P1 has DIVERGED, i.e. exactly
+  when the organ is doing its job, and launchd would then record `last exit code
+  = 1` for a healthy run. Attribution to launchd is read as `runs` incremented
+  with last exit 0 (`launchctl print gui/$(id -u)/com.nuzantara.proprioception`),
+  never from the report's mtime: the report has no invocation field, and an mtime
+  proves only that SOMETHING wrote it. Exit 2 stays the real alarm (no probes
+  ran, report unwritable, or registry invalid).
+
+  StartInterval 1800 (30 min). Measured on Pro 2026-09-11: a full 16 probe run
+  is 18.4s wall, about 1% of the interval, so the rollback trigger "runs longer
+  than its own interval" has two orders of magnitude of margin. The receptor
+  goes LOUD at 48h, so 30 min is not what keeps the report fresh; it is what
+  makes a P1 reach the NEXT boot rather than the next but one, and what lets a
+  window's acceptance step observe a scheduled run inside its own appetite.
+  KeepAlive false: this is a one shot, and KeepAlive true on a one shot reads
+  every ordinary exit as a death (superscar #7).
+
+  Environment: HOME and PATH only, plus PROPRIOCEPTION_INVOKED_BY. That is not a
+  credential: it is the literal string "launchd", so a future report can name its
+  own invoker instead of inferring it. Verified 2026-09-11 on Pro that this exact
+  environment (`env -i` with HOME and PATH alone) produces the SAME 16 per probe
+  verdicts as a full interactive shell, diff empty, exit 0: no probe silently
+  degrades to UNPROBEABLE under launchd's bare environment.
+
+  Umask 0077 applies to files the JOB creates; it does NOT apply to
+  StandardOutPath/StandardErrorPath, which launchd creates itself under its own
+  umask. Every ~/logs/*.log on this fleet is 0644, measured (S2, Kimi council
+  finding M3). The proprioception log carries filesystem paths and process
+  command lines, never contents; the log files are still pre created 0600 below
+  so launchd appends to an existing inode and keeps its mode.
+
+  Install:
+    umask 077 && : >> ~/logs/proprioception.log \
+      && : >> ~/logs/proprioception.err.log \
+      && chmod 600 ~/logs/proprioception.log ~/logs/proprioception.err.log && \
+    install -m 0644 infra/launchagents/com.nuzantara.proprioception.plist \
+      ~/Library/LaunchAgents/ && \
+    launchctl bootstrap gui/$(id -u) \
+      ~/Library/LaunchAgents/com.nuzantara.proprioception.plist
+
+  Rollback:
+    launchctl bootout gui/$(id -u)/com.nuzantara.proprioception
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.proprioception</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>PROPRIOCEPTION_INVOKED_BY</key>
+        <string>launchd</string>
+    </dict>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/python3</string>
+        <string>/Users/nuzantara/nuzantara/scripts/proprioception.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/nuzantara</string>
+
+    <key>StartInterval</key>
+    <integer>1800</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>Umask</key>
+    <integer>63</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/proprioception.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/proprioception.err.log</string>
+</dict>
+</plist>

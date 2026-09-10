@@ -1,0 +1,190 @@
+gear: 3 # the board expected 2; the FLOOR wins. evidence_pack_lint.py --print-floor on the changed path prints 3, --print-floor-source prints "path" (infra/launchagents/* is a hot zone, same as S2)
+task_id: s3-arm-the-auditor
+mission: S3
+colour: BLUE
+l_level: L1
+deadline: 2026-09-11T02:15:00Z # opening (2026-09-10T21:15Z, worktree created) + 5 h, per S3 section 6; only the staff room renews it, once
+base_sha: 7404d90f7efca3ea4229917855e86a955fec711c # origin/main at 2026-09-10T21:15Z (the board file at this sha is 124 lines, sha256 8f98f65ab3c9dfcc...)  # pragma: allowlist secret
+objective: >-
+  As written by the board: proprioception runs on a schedule and carries ONE re-derivation probe
+  whose first subject is INDEX.md's core-table list, so that a P1 divergence reaches the next
+  session's boot whether or not anyone typed the auditor's name, and one hand-written countable
+  claim is re-derived by a machine.
+  AMENDED AT CHECKPOINT 1, by the staff room, on a measurement this window made and did not
+  inherit: the FIRST half of that objective was already met before the window opened (see
+  finding_that_amended_the_mandate below). The schedule PR is therefore NOT shipped. What is
+  left of S3 is the SECOND half — the re-derivation probe — plus the honest record of why the
+  first half was withdrawn.
+recorded_deviation:
+  what: >-
+    S3 opened with the wave-2 gate (README line 49) only half closed, by Zero's explicit decision
+    ("open now, the two are settled in parallel"). This is carried as a recorded deviation, not
+    inherited in silence, and neither half is treated as closed by silence.
+  closed_at_open:
+    - "(a) #6127 MERGED — confirmed from S1 checkpoint 9"
+    - "(b) pulled on Pro (puller rc=0) — confirmed from S1 checkpoint 9"
+  open_at_open:
+    - text: >-
+        (c) the staff room's ack of S1's six-clean-ticks checkpoint (envelope 20260910T195615Z-0c2a)
+        is NOT FOUND. The only S1-ack in Pro's mailbox is of checkpoint 8 (envelope
+        20260910T184606Z-17ef, 18:46Z) and no ack quotes checkpoint 9's envelope.
+      status: still open at checkpoint 1 (2026-09-10T21:23Z)
+    - text: >-
+        (d) no Astra reading of this board at a named commit, and no waiver row, exists in
+        .claude/skills/modus/PENDING-ARMS.md on origin/main.
+      status: still open at checkpoint 1 (2026-09-10T21:23Z)
+finding_that_amended_the_mandate:
+  id: S3-F1
+  severity: P1
+  claim: >-
+    proprioception is NOT unscheduled on Pro. The board's ground is literally true where it
+    counts characters (`ls ~/Library/LaunchAgents | grep -ci propriocep` = 0, `crontab -l | grep -ci
+    propriocep` = 0) and false where it counts CONSEQUENCE: the organ already runs under launchd
+    every 6 h and already writes the report the SessionStart receptor consumes.
+  measured:
+    - "infra/launchagents/wrappers/pro-healer.sh:154 runs `python3 scripts/proprioception.py --json --no-fetch` unconditionally, with NO --no-report, so the run WRITES ~/.nuzantara-proprioception/last.{json,md}"
+    - "com.nuzantara.healer-pro.6h is bootstrapped on Pro: StartInterval 21600, runs=3, last exit code 0"
+    - "its third tick began 2026-09-10T18:30:25Z (~/logs/pro-healer/run.log) and the live report's ts is 2026-09-11T02:30:54+0800 = 18:30:54Z — 29 s later. The report THIS session read at SessionStart was written by launchd, not by a session"
+    - "the live wrapper is blob-identical to repo canon: git hash-object ~/scripts/pro-healer.sh == git rev-parse HEAD:infra/launchagents/wrappers/pro-healer.sh == bb28df609cb3f4c2112c6f1e46630782b50875f1 — so this is not a HOME-fork artefact (superscar #1)" # pragma: allowlist secret
+    - ".claude/skills/modus/PENDING-ARMS.md:244 already ruled it, closed 2026-07-06: 'proprioception daily cron | SUPERSEDED BY THE HEALER ORGAN ... No separate proprioception plist needed — the 177th-daemon concern is resolved by riding the healer's tick'"
+  consequence: >-
+    A schedule PR would have added a daemon duplicating an already-armed consumer and contradicted
+    a CLOSED ledger row — the same shape the S2 final gate raised against PENDING-ARMS:268, one
+    window earlier, in this same session-evening.
+  ruling: >-
+    Staff room (docs-bot-staff-room-v6-fa, acting in place of website-03), envelope
+    20260910T212520Z-1f59.md, 21:25:20Z, acking checkpoint 1 (envelope 20260910T212311Z-65f0.md):
+    the schedule PR is NOT shipped; the built plist stays in the worktree as withheld evidence.
+    Zero, asked directly in the same window, ruled identically and named website-b4 as the
+    checkpoint staff room from checkpoint 2 onward.
+withheld_artifact:
+  path: infra/launchagents/com.nuzantara.proprioception.plist
+  state: >-
+    BUILT, LINTED, MEASURED — and deliberately NOT shipped. It is in the worktree and in no PR.
+    Recorded here so the next window does not rebuild it from scratch, and does not ship it
+    without re-reading S3-F1 first.
+  measured_anyway:
+    - "a full 16-probe run is 18.4 s wall on Pro — 1% of the 1800 s interval it declares, so the rollback trigger 'runs longer than its own interval' has two orders of magnitude of margin"
+    - "under `env -i` with HOME and PATH only (the launchd shape), the 16 per-probe verdicts are IDENTICAL to an interactive shell's — diff empty, exit 0. No probe degrades to UNPROBEABLE for want of environment"
+    - "no strict flag: it exits 1 exactly when a P1 has DIVERGED, i.e. when the organ is doing its job, which would make every healthy run read `last exit code = 1`"
+  scar_paid_building_it: >-
+    An XML comment may not contain a double hyphen. `plutil -lint` ACCEPTS one anyway and prints
+    OK; expat — which scripts/lint_plist_keepalive.py uses — refuses the whole file and reports
+    the plist as unreadable/unparseable (ExpatError, exit 4). A green plutil is NOT evidence that
+    a plist parses for the repo's own linters. CLI flags are now spelled in words in that comment.
+residuals_recorded_not_built:
+  - text: >-
+      The healer runs proprioception with --no-fetch, so git_alignment is judged against a local
+      ref rather than a fetched origin/main. A real fidelity gap, small, and NOT S3's to fix:
+      pro-healer.sh is outside S3's section-2 perimeter.
+    owner: the healer organ's owner, via the staff room
+  - text: >-
+      Scheduling is coupled to the healer's own liveness: if the healer dies, the auditor stops
+      with it and the 48 h receptor is the only thing that says so.
+    owner: the healer organ's owner, via the staff room
+  - text: >-
+      pro-healer.sh does not export PROPRIOCEPTION_INVOKED_BY, so any invoked_by field added later
+      reads UNSET on the healer's path while reading `launchd` on a dedicated agent's path. An
+      invocation field that only knows one of the two live invokers is not complete.
+    owner: whoever ships invoked_by (S3's probe PR, or #6054)
+scope:
+  - infra/launchagents/com.nuzantara.proprioception.plist # BUILT, WITHHELD — in no PR
+  - evidence/2026-09/agent-nuzantara-ops-s3-arm-the-auditor-ce22c73f/
+  - scripts/proprioception.py # NOT TOUCHED: owned by #6054 until it merges (S3 section 3)
+  - INDEX.md # NOT TOUCHED: line 71 only, and only after the probe observes DIVERGED (S3 section 4)
+  - .claude/skills/modus/PENDING-ARMS.md # NOT TOUCHED: rows only in a final ledger-only PR, and that PR is blocked (see blocked_work)
+constraints:
+  - >-
+    No Claude model through a paid per-token Anthropic endpoint, by any alias, wrapper, Bedrock or
+    Vertex route. No client PII or OSINT in cleartext: this window read prod only through
+    information_schema.tables — table NAMES, never a row.
+  - >-
+    No credential in a plist. Measured instead of assumed: scripts/pg.sh reads its credential from
+    a 0600 file in $HOME (~/.nuzantara-pg-readonly.env, overridable by NUZANTARA_PG_RO_CRED_FILE),
+    NOT from an env var, and it runs to exit 0 under `env -i` with HOME and PATH only. So a
+    launchd job with HOME set reaches the credential and the plist stays clean — S3's
+    "stop if the probe needs a credential launchd lacks" condition resolves in the NEGATIVE.
+  - >-
+    The ledger carries merge=union, which GitHub's mergeability ignores. Rows go in ONE final,
+    separate, ledger-only PR, cut from a fresh origin/main, and only when no open PR touches
+    that file.
+  - "Plist only, never crontab. Nothing installed: no launchctl bootstrap was run, since nothing shipped."
+acceptance:
+  - text: >-
+      Board item 1 (schedule PR). WITHDRAWN by staff-room ruling on S3-F1, not failed and not
+      deferred: the objective it served is already met by com.nuzantara.healer-pro.6h.
+    probe: staff-room ack envelope 20260910T212520Z-1f59.md (21:25:20Z) + Zero's ruling in-window
+    status: WITHDRAWN
+  - text: >-
+      WHEN the INDEX.md:71 core-table list is re-derived against prod information_schema.tables
+      THEN exactly six of its fifteen names SHALL be absent (articles, crm_clients, crm_practices,
+      messages, routing_stats, failed_queries) — the hand-written countable claim the probe exists
+      to re-derive.
+    probe: >-
+      `env -i HOME=… PATH=… bash scripts/pg.sh -At -c "select table_name from
+      information_schema.tables where table_schema='public' and table_name in (<the 15)>"` — exit 0,
+      returns 9 of 15. Re-measured in this window, not inherited from the board's ground.
+    status: VERIFIED (the claim the probe will assert; the probe itself is blocked)
+  - text: >-
+      Board item 2 (probe PR, id index_core_tables + additive invoked_by). BLOCKED on #6054, which
+      owns scripts/proprioception.py until it merges.
+    probe: "gh pr view 6054 — OPEN, CLEAN, autoMergeRequest=null, unchanged since 2026-09-09T18:16:36Z (~35 h)"
+    status: BLOCKED
+  - text: "Board item 3 (INDEX.md:71 correction PR). BLOCKED downstream of item 2 by the board's own merge order."
+    status: BLOCKED
+  - text: >-
+      Board item 4 (ledger-only PR). BLOCKED: S3 section 3 permits it only when no open PR touches
+      the ledger, and three do — and they are DIRTY for the merge=union reason that can never
+      self-clear.
+    probe: >-
+      `gh pr list --state open --limit 200 --json number,files --jq '[…PENDING-ARMS.md…]'` printed
+      [6081, 6080, 5072], all three OPEN and DIRTY (last updated 2026-09-10T03:03Z, 2026-09-09T21:14Z,
+      2026-09-09T20:36Z)
+    status: BLOCKED
+blocked_work:
+  summary: >-
+    S3 ends with ZERO PRs opened. One board item was withdrawn on a measurement (item 1) and the
+    other three are blocked by state outside S3's perimeter (items 2-4). This is reported as the
+    outcome, not dressed up as a partial success.
+  blockers:
+    - "#6054 OPEN, CLEAN and UN-ARMED for ~35 h, owning scripts/proprioception.py — blocks items 2 and 3. S3 posted a coordination comment (issuecomment-5626206526), took nothing over, and asked for either arming or closure."
+    - "#6081, #6080, #5072 all touch .claude/skills/modus/PENDING-ARMS.md and are all DIRTY — blocks item 4. Per mini fleet-watch (20260910T214112Z-6d94), a merge=union DIRTY never self-clears: git honours the driver, GitHub honours none."
+assumptions:
+  - text: "The healer's proprioception call writes the report (no --no-report), rather than merely reading it."
+    status: verified
+    probe: "pro-healer.sh:154 read on disk in this turn; report ts 18:30:54Z lands 29 s after the tick's 18:30:25Z log line"
+  - text: "The live pro-healer.sh is not a HOME-fork of the repo canon."
+    status: verified
+    probe: "git hash-object of the live file == git rev-parse HEAD:<canon> == bb28df609cb3f4c2112c6f1e46630782b50875f1" # pragma: allowlist secret
+  - text: "A launchd job could reach the prod read-only DB credential without a credential in the plist."
+    status: verified
+    probe: "scripts/pg.sh:46 CRED_FILE default is $HOME/.nuzantara-pg-readonly.env, present at mode 600; the query above ran to exit 0 under env -i"
+appetite:
+  wall_clock_hours: 5
+  adversarial_rounds: 2
+  tokens: 1500000
+team:
+  dux:
+    seat: claude-opus-5
+    effort: xhigh # as the board names it
+    thread: d11625cb-2fc3-464e-bb49-abc55e518176 -> 54789a96-c0a9-45fd-a8d5-38b290d92de3 (context jump, salto 1)
+    role: ground, the S3-F1 measurement, the withheld plist, release owner
+  implementer:
+    seat: none dispatched
+    note: >-
+      No child was spawned. The window's whole output turned out to be a measurement and a
+      withdrawal; there was no build lane left to delegate once the schedule PR was withdrawn and
+      the probe was blocked. Recorded rather than padded: the routing floor's "one lane through
+      Kimi or GLM" presupposes three code PRs, and this window shipped none.
+  staff_room:
+    named_at_open: website-03 (S3 section 6.2) — NOT among the live sessions at 21:1xZ
+    acting_checkpoint_1: docs-bot-staff-room-v6-fa (Fable 5.1), in place of website-03, Zero informed, veto open
+    named_by_zero_from_checkpoint_2: website-b4
+  reviewer:
+    seat: not commissioned
+    note: "no diff was shipped, so no adversarial round was spent; the appetite's 2 rounds are unused"
+siblings:
+  ts: 2026-09-10T21:2xZ
+  open_prs_touching_perimeter_or_ledger: "#6054 (scripts/proprioception.py); #6081, #6080, #5072 (the ledger) — all four OPEN, the last three DIRTY"
+  worktrees: "python3 scripts/agent_start.py --list — 8 ops-lane worktrees live; this one is .worktrees/ops-s3-arm-the-auditor"
+  live_sessions: "ListAgents 21:2xZ — nuzantara-20, docs-bot-staff-room-v6-fa, desktop-a7, nuzantara-60, website-b4 (website-03 absent)"
