@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!-- Nightly regeneration of docs/AUTOMATIONS_REFERENCE.md promoted to main as a docs-only PR (Pro, 23:15 WITA). Runs scripts/automations-reference-cron-wrapper.sh, which builds the file inside an isolated worktree (scripts/agent_start.py, lane=docs) instead of writing straight into the main checkout, so the live regen and the hand-edited committed copy no longer overwrite each other (two-authors scar, 2026-09-11). -->
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin</string>
+		<key>AUTOMATIONS_PYTHON</key>
+		<string>/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3</string>
+	</dict>
+	<key>Label</key>
+	<string>com.nuzantara.automations-reference</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/zsh</string>
+		<string>/Users/nuzantara/nuzantara/scripts/automations-reference-cron-wrapper.sh</string>
+	</array>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/automations-reference.error.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/automations-reference.log</string>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>23</integer>
+		<key>Minute</key>
+		<integer>15</integer>
+	</dict>
+</dict>
+</plist>
