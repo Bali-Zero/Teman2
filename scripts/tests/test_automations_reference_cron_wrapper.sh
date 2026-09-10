@@ -60,8 +60,8 @@ new_world() {
   # own, same as translate-articles-cron-wrapper.sh — so the fixture must
   # match that pre-existing production state, not paper over a real gap.
   mkdir -p "$W/bin" "$W/fgh" "$W/fpy" "$W/home/nuzantara/scripts" "$W/home/logs" "$W/wtbase"
-  GHLOG="$W/ghlog"; PYLOG="$W/pylog"
-  : > "$GHLOG"; : > "$PYLOG"
+  GHLOG="$W/ghlog"; PYLOG="$W/pylog"; NPXLOG="$W/npxlog"
+  : > "$GHLOG"; : > "$PYLOG"; : > "$NPXLOG"
   : > "$W/home/nuzantara/scripts/agent_start.py"
 
   cat > "$W/bin/gh" <<'FAKEGH'
@@ -133,6 +133,19 @@ case "${1:-}" in
         git -C "$WT" config user.name "Test"
         mkdir -p "$WT/scripts" "$WT/docs"
         : > "$WT/scripts/generate_automations_reference.py"
+        # Real pre-commit hook, real git — flips on $FAKE_PY_STATE/commit_fail
+        # so the "commit fails" scenario below exercises the wrapper's actual
+        # `git commit` rc handling, not a git shim standing in for it.
+        mkdir -p "$WT/.git/hooks"
+        cat > "$WT/.git/hooks/pre-commit" <<HOOK
+#!/usr/bin/env bash
+if [ -f "${FAKE_PY_STATE}/commit_fail" ]; then
+  echo "pre-commit: simulated style errors (unformatted file)" >&2
+  exit 1
+fi
+exit 0
+HOOK
+        chmod +x "$WT/.git/hooks/pre-commit"
         if [ -n "${FAKE_BROKEN_REMOTE:-}" ]; then
           git -C "$WT" remote set-url origin "$W_DOES_NOT_EXIST"
         fi
@@ -155,6 +168,18 @@ exit 97
 FAKEPY
   chmod +x "$W/bin/python3"
 
+  # Fake npx — records cwd + args for every invocation, so the wrapper-side
+  # `(cd "$WT_PATH" && npx prettier --write docs/AUTOMATIONS_REFERENCE.md)`
+  # belt-and-braces call can be asserted to run FROM the worktree, on the
+  # RELATIVE path (the exact defect: it used to run from the main checkout's
+  # cwd against an absolute path prettier's own .gitignore silently ignored).
+  cat > "$W/bin/npx" <<'FAKENPX'
+#!/usr/bin/env bash
+printf 'PWD=%s ARGS=%s\n' "$(pwd)" "$*" >> "$FAKE_NPX_LOG"
+exit 0
+FAKENPX
+  chmod +x "$W/bin/npx"
+
   # Real bare "origin" + a real seed clone with one commit on main.
   git init --quiet --bare "$W/origin.git"
   git init --quiet "$W/seed"
@@ -176,6 +201,7 @@ run() {
              PATH="$W/bin:$PATH" \
              FAKE_GH_LOG="$GHLOG" FAKE_GH_STATE="$W/fgh" \
              FAKE_PY_LOG="$PYLOG" FAKE_PY_STATE="$W/fpy" \
+             FAKE_NPX_LOG="$NPXLOG" \
              FAKE_ORIGIN="$W/origin.git" FAKE_WT_BASE="$W/wtbase" \
              W_DOES_NOT_EXIST="$W/does-not-exist.git" \
              "$@" \
@@ -188,8 +214,9 @@ run() {
 new_world
 resolved_gh="$(env PATH="$W/bin:$PATH" command -v gh)"
 resolved_py="$(env PATH="$W/bin:$PATH" command -v python3)"
-if [ "$resolved_gh" != "$W/bin/gh" ] || [ "$resolved_py" != "$W/bin/python3" ]; then
-  echo "HARNESS TOO POOR TO JUDGE: PATH did not resolve to the fakes (gh=$resolved_gh python3=$resolved_py)" >&2
+resolved_npx="$(env PATH="$W/bin:$PATH" command -v npx)"
+if [ "$resolved_gh" != "$W/bin/gh" ] || [ "$resolved_py" != "$W/bin/python3" ] || [ "$resolved_npx" != "$W/bin/npx" ]; then
+  echo "HARNESS TOO POOR TO JUDGE: PATH did not resolve to the fakes (gh=$resolved_gh python3=$resolved_py npx=$resolved_npx)" >&2
   exit 2
 fi
 
@@ -267,6 +294,36 @@ run
 check "exit 0" "$(yesno test "$RC" -eq 0)"
 check "gh pr merge WAS attempted" "$(yesno eval 'grep -q "pr merge" "$GHLOG"')"
 check "heartbeat sidecar status=degraded" "$(yesno eval 'grep -q "\"status\": *\"degraded\"" "$W/home/.organism/last_seen/pro.automations_reference.json"')"
+
+echo "commit fails (pre-commit hook) -> no push, no gh pr create, heartbeat error:"
+new_world
+: > "$W/fpy/gen_change"
+: > "$W/fpy/commit_fail"
+run
+check "exit 1" "$(yesno test "$RC" -eq 1)"
+check "log names commit failure" "$(yesno eval 'grep -q "commit failed" "$W/home/logs/automations-reference-wrapper.log"')"
+check "origin gained NO new ref (never pushed)" "$(yesno eval '! git -C "$W/origin.git" for-each-ref --format="%(refname)" | grep -q "agent/testhost/docs/automations-"')"
+check "gh never invoked" "$(yesno eval '[ ! -s "$GHLOG" ]')"
+check "heartbeat sidecar status=error" "$(yesno eval 'grep -q "\"status\": *\"error\"" "$W/home/.organism/last_seen/pro.automations_reference.json"')"
+check "heartbeat note mentions commit failed" "$(yesno eval 'grep -q "commit failed" "$W/home/.organism/last_seen/pro.automations_reference.json"')"
+
+echo "prettier (wrapper-side belt-and-braces) runs FROM the worktree, on the relative path:"
+new_world
+: > "$W/fpy/gen_change"
+run
+check "exit 0" "$(yesno test "$RC" -eq 0)"
+check "npx WAS invoked" "$(yesno eval '[ -s "$NPXLOG" ]')"
+# Canonicalize $W before comparing — mktemp under TMPDIRs with a trailing slash
+# (macOS: /var/folders/.../T/) can leave a double slash baked into the shell
+# variable's string form, which a real `pwd` inside the subprocess normalises
+# away; comparing the raw strings would be a harness false negative, not a
+# defect in the wrapper.
+WNORM="$(cd "$W" && pwd)"
+check "npx ran with PWD inside the worktree (not the fake \$HOME/nuzantara placeholder)" \
+  "$(yesno eval 'grep -q "PWD=$WNORM/wtbase/" "$NPXLOG"')"
+check "npx was given the RELATIVE path, not an absolute one" \
+  "$(yesno eval 'grep -q "ARGS=prettier --write docs/AUTOMATIONS_REFERENCE.md" "$NPXLOG"')"
+check "npx was NOT given an absolute worktree path" "$(yesno eval '! grep -q "ARGS=prettier --write $WNORM/wtbase" "$NPXLOG"')"
 
 echo
 if [ "$failures" -eq 0 ]; then echo "PASS (all checks)"; exit 0; fi
