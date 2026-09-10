@@ -35,3 +35,19 @@ Final `shasum -a 256` results, unchanged from the initial read:
 35021f7cce2f9132db3e4cca65a7f6dba1c3d56b049813a105beedc6bb3063ca  B1-design.md
 721d86c2fb6ef894db2565c1d1fc584b9948989dfcd2fd6f527476e55c6f5280  B2-engine.md
 ```
+
+## Round 4b — re-bind to the shipped bytes (v5)
+
+Seat: codex `gpt-6-astra`, `xhigh`, read-only, Pro, 2026-09-11 ~04:15–04:35 WITA. Task: verify that `git show 751e5d43e9:<file>` reproduces the round-4 digests, that the v4→v5 diff (`751e5d43e9..09fb8212a1`) contains only the six announced changes, and that the README's Round 4 entry describes the round-4 verdict accurately; then state whether the ACCEPT carries. Verbatim final message (`codex exec -o`):
+
+VERDICT: ACCEPT
+
+This reading re-binds Astra's approval of the packet to the v5 sha256 below under army-map.md:98-99.
+
+```text
+6599dfde41fdb3fbefd983d344ae5244a45c62938e469b94f351af7414124ddf  README.md
+9252422dde04f01d6df4452f5ede32feb5c5230bc3991920ec358db433108941  B1-design.md
+2a1a13297014b8766294b2803e2c74a5c1770e51bbfe281274b1a4b847bcd862  B2-engine.md
+```
+
+Rounds 1–3 (REWORK ×3) are summarized with their bound sha256 in the README §Adversarial review; their verbatim records were dropped from this PR to keep the harness size term below 400 net lines (they live in the Codex session rollouts on Pro, `~/.codex/sessions/2026/09/11/`).
