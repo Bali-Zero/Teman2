@@ -66,3 +66,12 @@ write path exists for.
 
 After any change to the classification or re-arm path, and otherwise whenever the log has shown
 `rearmed=0` for long enough that nobody can say when the write path last executed.
+
+## Drill log
+
+One line per execution. A drill that was aborted is worth recording too: the abort condition
+(a batch carrying someone else's PR) is the part of this procedure people get wrong.
+
+| Date       | Subject PR | Outcome |
+| ---------- | ---------- | ------- |
+| 2026-09-11 | this PR    | pending |
