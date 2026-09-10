@@ -422,3 +422,19 @@ def _run_all():
 
 if __name__ == "__main__":
     _run_all()
+
+
+def test_above_threshold_allows_toolsearch_only_for_the_handoff_tools():
+    """The parent's copy of the defect the child adapter fixed in PR #6077.
+
+    A capped session is told to hand off with SendMessage. Under a deferred
+    tool schema that call is unreachable until ToolSearch loads it, so the
+    guard was naming a route it had just closed.
+    """
+    for query in ("select:SendMessage", "+taskstop handoff"):
+        rc, _, err, _ = run_gate("ToolSearch", {"query": query}, tokens=150_000)
+        assert rc == 0, f"{query!r} must reach the handoff schema, got rc={rc} err={err!r}"
+    rc_none, _, _, _ = run_gate("ToolSearch", {}, tokens=150_000)
+    assert rc_none == 0, "no readable query must not trap the session"
+    rc_other, _, _, _ = run_gate("ToolSearch", {"query": "select:Bash"}, tokens=150_000)
+    assert rc_other == 2, "an unrelated search is not a handoff and stays denied"

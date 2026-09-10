@@ -12,8 +12,11 @@ preservation of previous hooks were independently checked on every profile.
 | Pro    | `.codex`, `.codex-acct2`              | Astra, primary profile | Two continuations and failed-launch retention |
 | Mini   | `.codex`, `.codex-acct2`              | Astra, primary profile | Two continuations and failed-launch retention |
 
-The adapter measures Codex's current reported context window, with a 20% limit
-for the imperator role and 40% for other roles. Fresh continuations carry the
+The adapter measures Codex's current reported context window and takes its
+limit from the seat's policy file, which `install.py` seeds at 60% for the
+imperator, builder and dux roles; a role the policy does not declare falls back
+to 40%. Before 2026-09-10 the seeded values were 20% imperator and 40% builder,
+and the native child ignored the policy entirely in favour of a hardcoded 40%. Fresh continuations carry the
 original text mandate, intervening instructions and checkpoint; the destination
 must acknowledge the exact source and start actual model work before the source
 turn stops. Failed launches retain the source. Verification receipts bind real
