@@ -389,6 +389,15 @@ class TestRenderPendingSnapshotSection(unittest.TestCase):
         joined = "\n".join(lines)
         self.assertIn("`com.example.bar` (`com.example.bar.legacy.plist`)", joined)
 
+    def test_pipe_in_purpose_is_escaped(self):
+        rows = [{
+            "label": "com.example.pipe", "host": "Pro", "schedule": "daily 08:00 WITA",
+            "purpose": "daemon|cron classification",
+        }]
+        joined = "\n".join(gen._render_pending_snapshot_section(rows))
+        self.assertIn("daemon\\|cron classification", joined)
+        self.assertNotIn("daemon|cron classification", joined)
+
 
 class TestGenerateSurvivesRegen(unittest.TestCase):
     """End-to-end regression for task #10: generate() must re-derive the pending-
@@ -472,6 +481,26 @@ class TestResolvePlistPurpose(unittest.TestCase):
         purpose = gen._resolve_plist_purpose(Path("com.example.d.plist"), raw, parsed)
         self.assertEqual(purpose, "runs `bar.sh`")
 
+    def test_interpreter_with_shell_lc_script_uses_the_script_basename(self):
+        """2026-09-11 gate finding: a bare `/bin/bash -lc "... foo.py"` payload
+        used to fall back to the useless `runs \\`bash\\``."""
+        raw = _plist_bytes("com.example.e", ["/bin/bash", "-lc", "cd /tmp && python3 foo.py"]).decode()
+        parsed = plistlib.loads(raw.encode())
+        purpose = gen._resolve_plist_purpose(Path("com.example.e.plist"), raw, parsed)
+        self.assertEqual(purpose, "runs `foo.py`")
+
+    def test_interpreter_with_module_flag_uses_the_module(self):
+        raw = _plist_bytes("com.example.f", ["/usr/bin/python3", "-m", "pkg.mod"]).decode()
+        parsed = plistlib.loads(raw.encode())
+        purpose = gen._resolve_plist_purpose(Path("com.example.f.plist"), raw, parsed)
+        self.assertEqual(purpose, "runs `pkg.mod`")
+
+    def test_bare_interpreter_with_nothing_else_falls_back_to_label(self):
+        raw = _plist_bytes("com.example.g", ["/bin/bash"]).decode()
+        parsed = plistlib.loads(raw.encode())
+        purpose = gen._resolve_plist_purpose(Path("com.example.g.plist"), raw, parsed)
+        self.assertEqual(purpose, "runs `com.example.g`")
+
 
 class TestInferPlistHost(unittest.TestCase):
     def test_balizero_program_argument_is_m5(self):
@@ -487,6 +516,37 @@ class TestInferPlistHost(unittest.TestCase):
     def test_mini_subdirectory_path_is_mini(self):
         path = Path("infra/launchagents/mini/com.example.z.plist")
         self.assertEqual(gen._infer_plist_host("", "com.example.z", {}, path), "Mini")
+
+    def test_gemini_relay_label_is_not_mini(self):
+        """2026-09-11 gate finding: a plain substring check on 'mini-' false-
+        positived on 'gemini-relay' (the label contains 'mini' embedded inside
+        'gemini', not as a .-/- -delimited segment)."""
+        self.assertEqual(gen._infer_plist_host("", "com.balizero.gemini-relay", {}), "Pro")
+
+    def test_mini_pro2_header_spelling_is_mini(self):
+        self.assertEqual(gen._infer_plist_host("Runs on Mini-Pro2 only.", "com.example.h", {}), "Mini")
+
+    def test_real_fleet_watch_plist_embedded_mini_script_path_is_mini(self):
+        """com.nuzantara.fleet-watch.plist's own ProgramArguments names
+        mini-fleet-watch.sh — a 'mini-' segment embedded in the plist's OWN
+        text, no comment needed."""
+        plist_path = gen.REPO_LAUNCHAGENTS_DIR / "com.nuzantara.fleet-watch.plist"
+        raw = plist_path.read_text()
+        with plist_path.open("rb") as f:
+            parsed = plistlib.load(f)
+        self.assertEqual(gen._infer_plist_host(raw, parsed["Label"], parsed), "Mini")
+
+    def test_real_healer_4h_plist_has_no_mini_marker_of_its_own(self):
+        """Known limitation, reported rather than silently papered over: this
+        plist's OWN text carries no 'mini' marker at all — the 'Mini-Pro2'
+        spelling lives only in the resolved target script's header
+        (infra/healer/healer-run.sh), which _infer_plist_host does not read
+        (it only sees the plist itself). Stays Pro until that's plumbed in."""
+        plist_path = gen.REPO_LAUNCHAGENTS_DIR / "com.nuzantara.healer.4h.plist"
+        raw = plist_path.read_text()
+        with plist_path.open("rb") as f:
+            parsed = plistlib.load(f)
+        self.assertEqual(gen._infer_plist_host(raw, parsed["Label"], parsed), "Pro")
 
 
 class TestFindScheduledWorkflows(unittest.TestCase):
@@ -579,6 +639,18 @@ class TestRenderScheduledWorkflowsSection(unittest.TestCase):
         self.assertIn("| Workflow | Name | Cron (UTC) | Purpose |", joined)
         self.assertIn("| `a.yml` | A | 0 0 * * * | does a |", joined)
         self.assertIn("| `b.yml` | B | 0 1 * * * | does b |", joined)
+
+    def test_pipe_in_name_and_purpose_is_escaped(self):
+        """Repro (2026-09-11 gate finding): .github/workflows/catB-daemon-cron-xor.yml:1
+        has a leading comment reading '# lint — daemon|cron classification', which
+        _extract_workflow_purpose passes through verbatim — the render step must
+        escape it so the table row stays well-formed."""
+        purpose = gen._extract_workflow_purpose("# lint — daemon|cron classification\njobs:\n", "x.yml")
+        self.assertIn("|", purpose)  # extraction itself does not escape
+        rows = [{"workflow": "x.yml", "name": "lint | xor", "cron": "0 0 * * *", "purpose": purpose}]
+        joined = "\n".join(gen._render_scheduled_workflows_section(rows))
+        self.assertIn("lint \\| xor", joined)
+        self.assertIn("daemon\\|cron classification", joined)
 
 
 if __name__ == "__main__":

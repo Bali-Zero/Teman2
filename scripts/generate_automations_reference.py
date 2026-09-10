@@ -516,6 +516,13 @@ def _first_sentence(text: str, max_len: int = 160) -> str:
     return first_sentence
 
 
+def _escape_table_cell(text: str) -> str:
+    """Escape a literal `|` so a derived value (purpose text, a workflow's own
+    `name:`, a plist label cell, a humanized schedule) can never break a
+    markdown table row it's interpolated into."""
+    return text.replace("|", "\\|")
+
+
 def _extract_plist_purpose(raw_text: str) -> str:
     """Best-effort purpose string from a plist's leading XML comment, if any.
     Most repo-canon plists document their intent in a `<!-- ... -->` header
@@ -540,13 +547,16 @@ _SCRIPT_EXTENSIONS = (".sh", ".py", ".mjs", ".js")
 def _find_program_script_arg(parsed: dict) -> str:
     """First `ProgramArguments` entry (else `Program`) that looks like a path to
     a .sh/.py/.mjs/.js file — the actual payload, as opposed to an interpreter
-    like `/bin/bash` that may precede it in the argv list."""
+    like `/bin/bash` that may precede it in the argv list. Whitespace in the
+    argument disqualifies it: a real path never contains a space, so a
+    `-lc "shell command ending in foo.py"` payload is not mistaken for one
+    (that's `_runs_basename`'s job, via `_basename_via_interpreter`)."""
     args = parsed.get("ProgramArguments") or []
     for arg in args:
-        if isinstance(arg, str) and arg.endswith(_SCRIPT_EXTENSIONS):
+        if isinstance(arg, str) and " " not in arg and arg.endswith(_SCRIPT_EXTENSIONS):
             return arg
     program = parsed.get("Program")
-    if isinstance(program, str) and program.endswith(_SCRIPT_EXTENSIONS):
+    if isinstance(program, str) and " " not in program and program.endswith(_SCRIPT_EXTENSIONS):
         return program
     return ""
 
@@ -614,16 +624,50 @@ def _extract_script_header_purpose(text: str, suffix: str) -> str:
     return _first_sentence(text_block) if text_block else ""
 
 
+_INTERPRETER_BASENAMES = {"python", "python3", "bash", "zsh", "sh", "node", "npx"}
+_RUNS_EXTENSIONS = (".py", ".sh", ".mjs", ".js", ".ts")
+
+
+def _basename_via_interpreter(args: list, label: str) -> str:
+    """When the first ProgramArguments entry is a bare interpreter, its own
+    basename ("python3") is not a useful `runs` fallback — scan the rest of
+    argv (splitting each remaining entry on whitespace, so a `-lc "shell
+    command"` string is searched too) for a `-m <module>` flag or a token
+    ending in a script extension. Falls back to the plist's own label, never
+    a bare interpreter name."""
+    words: list[str] = []
+    for arg in args[1:]:
+        if isinstance(arg, str):
+            words.extend(arg.split())
+    for i, word in enumerate(words):
+        if word == "-m" and i + 1 < len(words):
+            return words[i + 1]
+        if word.endswith(_RUNS_EXTENSIONS):
+            return Path(word).name
+    return label
+
+
+def _runs_basename(args: list, label: str) -> str:
+    """basename for the `runs \\`<x>\\`` fallback: the first argv entry's own
+    basename, unless it's a bare interpreter — then `_basename_via_interpreter`."""
+    first_name = Path(args[0]).name
+    if first_name in _INTERPRETER_BASENAMES:
+        return _basename_via_interpreter(args, label)
+    return first_name
+
+
 def _resolve_plist_purpose(plist_path: Path, raw_text: str, parsed: dict) -> str:
     """Purpose chain for a repo-canon plist, never the empty string:
       (a) the plist's own `<!-- ... -->` header comment;
       (b) else the header of the target script named in ProgramArguments,
           resolved via `_resolve_repo_script_path`;
       (c) else `runs \\`<basename>\\`` of the resolved script arg, or of the
-          plist's Program/ProgramArguments[0] if no script arg was found."""
+          plist's Program/ProgramArguments[0] if no script arg was found —
+          never a bare interpreter name (`_runs_basename`)."""
     purpose = _extract_plist_purpose(raw_text)
     if purpose:
         return purpose
+    label = parsed.get("Label", plist_path.stem)
     script_arg = _find_program_script_arg(parsed)
     if script_arg:
         script_path = _resolve_repo_script_path(script_arg)
@@ -639,27 +683,41 @@ def _resolve_plist_purpose(plist_path: Path, raw_text: str, parsed: dict) -> str
         return f"runs `{Path(script_arg).name}`"
     args = parsed.get("ProgramArguments") or []
     if args and isinstance(args[0], str):
-        return f"runs `{Path(args[0]).name}`"
+        return f"runs `{_runs_basename(args, label)}`"
     program = parsed.get("Program")
     if isinstance(program, str) and program:
-        return f"runs `{Path(program).name}`"
+        return f"runs `{_runs_basename([program], label)}`"
     return f"runs `{plist_path.name}`"
+
+
+# `mini` as a whole `.`/`-`/`_`/`/`/whitespace-delimited segment — never a bare
+# substring, so `com.balizero.gemini-relay` (the "mini" is embedded inside
+# "gemini", bounded by 'e' on the left) does not false-positive. Applied to
+# both the label and the full lowercased plist text, this single pattern also
+# covers every spelling seen in the wild ("mini-only", "Mini-Pro2", "mini
+# pro2", "mini_pro2") and a `mini-`-prefixed script path inside
+# ProgramArguments (e.g. `/Users/nuzantara/scripts/mini-fleet-watch.sh`).
+_MINI_SEGMENT_RE = re.compile(r"(?:^|[./_\-\s])mini(?:[./_\-\s]|$)")
 
 
 def _infer_plist_host(raw_text: str, label: str, parsed: dict, plist_path: Path | None = None) -> str:
     """Host hint for a repo-canon plist not yet on a live snapshot: M5 if any
     ProgramArguments/EnvironmentVariables string is balizero-absolute, Mini if
-    the plist text/label says so OR the plist lives under an `infra/launchagents/
-    mini/` directory (rglob picks those up too), else Pro (the default machine)."""
+    the plist text or label says so (via `_MINI_SEGMENT_RE`) OR the plist lives
+    under an `infra/launchagents/mini/` directory (rglob picks those up too),
+    else Pro (the default machine). NOTE: this only reads the plist's OWN text —
+    a `mini`-only marker that lives solely in a resolved target script's header
+    (not in the plist itself, e.g. an interpreter-script pair) is invisible
+    here; that would require plumbing the resolved script text in too."""
     strings_to_check: list[str] = [a for a in (parsed.get("ProgramArguments") or []) if isinstance(a, str)]
     env = parsed.get("EnvironmentVariables") or {}
     if isinstance(env, dict):
         strings_to_check.extend(v for v in env.values() if isinstance(v, str))
     if any(s.startswith("/Users/balizero/") for s in strings_to_check):
         return "M5"
-    low = raw_text.lower()
     if (
-        "mini-only" in low or "mini pro2" in low or ".mini." in label or "mini-" in label
+        _MINI_SEGMENT_RE.search(raw_text.lower())
+        or _MINI_SEGMENT_RE.search(label.lower())
         or (plist_path is not None and plist_path.parent.name == "mini")
     ):
         return "Mini"
@@ -729,8 +787,10 @@ def _render_pending_snapshot_section(rows: list[dict]) -> list[str]:
         "| --- | --- | --- | --- |",
     ]
     for row in rows:
-        label_cell = row.get("label_cell") or f"`{row['label']}`"
-        lines.append(f"| {label_cell} | {row['host']} | {row['schedule']} | {row['purpose']} |")
+        label_cell = _escape_table_cell(row.get("label_cell") or f"`{row['label']}`")
+        schedule = _escape_table_cell(row["schedule"])
+        purpose = _escape_table_cell(row["purpose"])
+        lines.append(f"| {label_cell} | {row['host']} | {schedule} | {purpose} |")
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -842,7 +902,9 @@ def _render_scheduled_workflows_section(rows: list[dict]) -> list[str]:
         "| --- | --- | --- | --- |",
     ]
     for row in rows:
-        lines.append(f"| `{row['workflow']}` | {row['name']} | {row['cron']} | {row['purpose']} |")
+        name = _escape_table_cell(row["name"])
+        purpose = _escape_table_cell(row["purpose"])
+        lines.append(f"| `{row['workflow']}` | {name} | {row['cron']} | {purpose} |")
     lines.append("")
     lines.append("---")
     lines.append("")
