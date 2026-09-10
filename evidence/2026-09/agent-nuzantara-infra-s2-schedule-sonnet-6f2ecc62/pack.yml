@@ -1,0 +1,181 @@
+task_id: s2-custody-schedule
+gear: 3
+l_level: L1
+brief_ref: evidence/brief.yml # the STAGING layout harness-floor.yml lints in, never the real per-PR path (S12/C6; 206 of the packs on main say exactly this)
+plan_ref: >-
+  S2 mandate (staff room website-03, wave 1), PR2 of 2: the schedule of the credential-custody
+  detector. PR1 #6113 merged as 2ee842d045 and is live on Pro (checkpoint 8, 18:09Z).
+grader: >-
+  claude-opus-5 --effort xhigh, a fresh claude -p session outside the chain, commissioned by the
+  S2 Dux (NOT this session); it publishes nothing, the Dux posts its receipt and verdict
+lanes:
+  - lane: s2-pr2-build
+    role: build
+    seat: >-
+      claude-sonnet-5 (Agent s2-pr2-sonnet, model pinned, prepare-only) for the first commit;
+      claude-opus-5 (the Dux) for the Codex round-1 fixes and the gate round-1 rework
+  - lane: s2-pr2-codex
+    role: review
+    seat: >-
+      codex (.claude/scripts/codex-spalla.sh, account default model, xhigh), round 1, cross-family,
+      read the frozen diff itself: 2 BLOCKER + 3 MEDIUM + 1 LOW, all taken
+  - lane: s2-pr2-kimi
+    role: review
+    seat: >-
+      kimi-code/k3 (kimi -p under env -i, read-only, handed the frozen diff and the seven
+      invariants with no brief), R9 quorum's second seat alongside Codex
+  - lane: s2-pr2-gate-r1
+    role: review
+    seat: >-
+      claude-opus-5 xhigh, fresh session 5a85a6f6-1bf1-4cb7-a8ee-31a7af1d82c4 on bd704a1af8:
+      REWORK-BUILD (two required checks red), all four findings taken
+seat_diversity: satisfied
+seat_diversity_note: >-
+  Two build seats (Sonnet 5, Opus 5) and three review seats, TWO of them non-Anthropic
+  (codex-gpt-5.6-sol, kimi-code/k3) — the R9 quorum, journaled in council-journal.jsonl.
+  The diversity was not ceremony. Codex caught that the gateway's exit code is always 0; the
+  fresh Opus gate caught what neither the builder nor Codex looked for, the CI's organ-genes
+  and harness-floor checks; Kimi caught what all three had accepted as true — that the alert
+  text was HOME-relative only by accident of the current roots, and that the plist's Umask
+  does not reach the log files launchd itself creates.
+adversarial_rounds: 2
+council_run: council-journal.jsonl
+pii_scan: clean
+appetite_exceeded: >-
+  The S2 appetite was 2 adversarial rounds for the mission; PR1 used two and this PR one Codex
+  round, so the mission spent three. The gate rounds are verification, not adversarial rounds.
+  The mission deadline was renewed once by the staff room (19:59:24Z -> 21:30:00Z).
+diff:
+  net_lines: >-
+    +1465/-11 over merge-base..HEAD (git diff --numstat), evidence directory included.
+    By file: the auditor script adds 359 lines and removes 10; its test file adds 666; the new
+    plist adds 65; organs_registry.yaml adds 26 and removes 1 — one organ entry and its checksum
+    line, the only change the staff room approved in that file; the evidence directory (brief,
+    pack, council journal) adds 349.
+  behaviour_change: >-
+    New --notify mode and one new LaunchAgent (not installed by the PR). Report mode and --fix
+    are unchanged: the base's own tests pass against HEAD, and the kill switch and heartbeat
+    live on the --notify path only.
+receipts:
+  - claim: The organ-genes check that the gate saw red is green on the rework
+    cmd: ~/nuzantara/.venv/bin/python3 infra/organ-conformance/check_organ_conformance.py
+    result: "163 plists scanned, 106 grandfathered, 0 regressions, 0 non-conformant births (was: NEW organ without genes, missing G1/G2/G5)"
+    exit: 0
+    ts: 2026-09-10T18:22Z
+    seat: S2 Dux (session 666cc4e2 -> b087a88d)
+  - claim: The registry change is one entry plus its checksum, and the registry validates
+    cmd: git diff --numstat origin/main -- apps/organism/organism/organs_registry.yaml; cd apps/organism && PYTHONPATH=. python3 -m organism.tools.validate_organs_registry ../../apps/organism/organism/organs_registry.yaml
+    result: "26 1; valid, checksum 59aaafb3a2... computed with the validator's compute_checksum (its --update-checksum re-dumps the whole YAML and drops comments, so it was not used)"
+    exit: 0
+    ts: 2026-09-10T18:25Z
+    seat: S2 Dux
+  - claim: The whole test file passes on the SHIPPED head (re-run after the Kimi round, not carried over from before it)
+    cmd: ~/nuzantara/.venv/bin/python3 -m pytest scripts/tests/test_secrets_permissions_audit.py -q -p no:cacheprovider
+    result: 73 passed
+    exit: 0
+    ts: 2026-09-10T18:47Z
+    seat: S2 Dux
+  - claim: The new gene tests are red without the change
+    cmd: HEAD test file against the pre-rework script (git show 492b68c25e:scripts/secrets_permissions_audit.py, scratch copy)
+    result: "3 failed / 68 passed: test_n16 and test_n18[sent|p0_unsent_spooled]; test_n17 passes there by design (it is the innocence test: the switch and the heartbeat must NOT reach report mode or --fix)"
+    exit: 1
+    ts: 2026-09-10T18:22Z
+    seat: S2 Dux
+  - claim: test_n11 now discriminates against the base sha
+    cmd: test_n11 against git show 8edef9c2c8:scripts/secrets_permissions_audit.py (scratch copy)
+    result: "1 failed: argparse's 'unrecognized arguments' does not carry '--notify and --fix are mutually exclusive'"
+    exit: 1
+    ts: 2026-09-10T18:23Z
+    seat: S2 Dux
+  - claim: The script still parses under the Python that Mini's --fix sweep uses
+    cmd: /usr/bin/python3 -c "import ast; ast.parse(open('scripts/secrets_permissions_audit.py').read(), feature_version=(3,9))"
+    result: ast39 OK under 3.9.6
+    exit: 0
+    ts: 2026-09-10T18:21Z
+    seat: S2 Dux
+  - claim: The two red tests seen in the registry-dependent suites are pre-existing on origin/main, not caused by this PR
+    cmd: pytest apps/organism/tests/test_genome_no_active_active.py and infra/organ-conformance/test_gene_g2_heartbeat_fires.py::test_a_wall_clock_that_is_well_formed_but_impossible_is_refused, in the main checkout at 074b4fde01
+    result: "both fail identically on main (com.balizero.wr2control active-active; DID NOT RAISE ValueError); the other suites: organism registry 30 passed, healer + poller-interval 4 passed, organ-conformance 168 passed"
+    exit: 1
+    ts: 2026-09-10T18:24Z
+    seat: S2 Dux
+  - claim: "PII scan of the whole diff is clean (pii_scan: clean above)"
+    cmd: git diff origin/main | grep -inE "passport|npwp|ktp|nik|whatsapp|msisdn|full_name|client_name|kitas|visa_number|<email regex>|\+62[0-9]{6,}"; python3 scripts/audit_pii_in_logs.py <dir holding only the two changed .py files>
+    result: "0 matches; auditor: control 4 guilty / 6 innocent 0 failures, then 'scanned 2 files, 0 logger calls interpolate PII-named values'. This organ handles credential PATHS, never client data, and its alerts carry counts and mode classes only (test_n1, test_n15, test_n18 assert the absence by name)"
+    exit: 0
+    ts: 2026-09-10T18:31Z
+    seat: S2 Dux
+  - claim: "Acceptance probes B1-B9 were run and recorded by the gate at round 1 (brief acceptance list); the two probes added by the rework are the receipts above"
+    cmd: see evidence pack of gate round 1 (thread 5a85a6f6) — 36 subprocess checks B1-B3/B8/B9, in-process audit hook 8/8 for B4, plutil + 3.9 parse for B5/B6
+    result: "every acceptance line verified ✅ at bd704a1af8; the two reworks after it changed the --notify path's genes and its alert-location rendering, and the full suite (73) plus the base-vs-HEAD differential were re-run on the shipped head"
+    exit: 0
+    ts: 2026-09-10T18:14Z
+    seat: claude-opus-5 final gate round 1 (fresh session)
+  - claim: "Kimi M1 is cured and the cure is discriminating: a root outside HOME is redacted, one inside HOME is still named"
+    cmd: ~/nuzantara/.venv/bin/python3 -m pytest scripts/tests/test_secrets_permissions_audit.py -q -p no:cacheprovider -k "n19 or n20"
+    result: "2 passed; n19 asserts <outside-home>/.secrets and the absence of the mount point AND the directory name, then ~/kept/.secrets on the innocence half"
+    exit: 0
+    ts: 2026-09-10T18:47Z
+    seat: S2 Dux
+  - claim: "Kimi M2's contract test found a real drift on its FIRST run, which is why it exists"
+    cmd: pytest test_n20 (reads scripts/tg_notify.py's source with ast, never runs it)
+    result: "first run RED: the gateway can return 'logged', which this script reads as unknown-status and counts as NOT handed. Investigated: 'logged' is returned only for tier 'log' (tg_notify.py:509-512), a tier this script never sends — so the test now pins that too (the tiers are read off build_alerts' own source) instead of assuming it"
+    exit: 1
+    ts: 2026-09-10T18:43Z
+    seat: S2 Dux
+  - claim: "Kimi M3 is a measured fact on this host, not a theory: launchd's log files do not inherit the plist's Umask"
+    cmd: ls -l ~/logs/*.log
+    result: "every one is -rw-r--r-- (0644), including agent-broker.log and agent-worktree-cleanup.log — so the install now pre-creates this job's two log files 0600 and the plist comment that claimed the Umask covered them is corrected"
+    exit: 0
+    ts: 2026-09-10T18:44Z
+    seat: S2 Dux
+  - claim: The evidence pack passes the lint the way CI runs it, not the way it passes locally
+    cmd: stage pack+brief into <tmp>/evidence-check/evidence/, run scripts/ci/stage_council_journal.py, then evidence_pack_lint.py --repo-root <tmp>/evidence-check (mirrors harness-floor.yml)
+    result: "clean; 2 NOTICEs (acceptance probes recorded in the gate's own receipts, and the acknowledged appetite). brief_ref is the staging path evidence/brief.yml — a per-PR brief_ref passes locally and fails in CI (S1's #6125 died of exactly this at 18:29Z)"
+    exit: 0
+    ts: 2026-09-10T18:50Z
+    seat: S2 Dux
+dissent:
+  - seat: codex (round 1)
+    objection: "BLOCKER: an alert counted as handed on the gateway's exit code, which is always 0"
+    status: CONFIRMED
+  - seat: codex (round 1)
+    objection: "BLOCKER: a blind audit with no blind custody report raised no p0"
+    status: CONFIRMED
+  - seat: codex (round 1)
+    objection: "MEDIUM: a symlinked HOME's real name reached the alert text; N10 lacked an ordinary credential; the brief misstated the dedup ladder and the count oracle"
+    status: CONFIRMED
+  - seat: claude-opus-5 final gate round 1
+    objection: "The new plist is an organ without genes (G1/G2/G5) and the path floor is 3 against a declared 2: two required checks red"
+    status: CONFIRMED
+  - seat: claude-opus-5 final gate round 1
+    objection: "PENDING-ARMS.md:268 records live scheduling of this tool as a DELIBERATE FIREBREAK; this PR contradicts it"
+    status: CONFIRMED
+  - seat: claude-opus-5 final gate round 1
+    objection: "launchd's Umask 0077 applying to the job's log files could not be verified without installing; the constant dedup key counts a new incident inside the mute window as deduped"
+    status: CONFIRMED
+  - seat: kimi-code/k3 (round 2)
+    objection: "M1: any finding outside HOME printed its absolute path into the alert — invariant 2 held only by accident of the current default roots; the tests asserted the absolute path WAS there"
+    status: CONFIRMED
+  - seat: kimi-code/k3 (round 2)
+    objection: "M2: every gateway test uses a fake that echoes the exact format the parser expects, so a drift in the real tg_notify.py would be invisible and would turn every hourly run red while alerts may still be leaving"
+    status: CONFIRMED
+  - seat: kimi-code/k3 (round 2)
+    objection: "M3: launchd creates StandardOutPath itself, under its own umask, not the plist's Umask — measured 0644 across ~/logs on this fleet — and the log does list credential paths; the plist comment claimed otherwise"
+    status: CONFIRMED
+  - seat: kimi-code/k3 (round 2)
+    objection: "L2: expected_hb_seconds at 2x the cadence pages every morning on a host that sleeps; L3: the disabled heartbeat note hardcoded one spelling of the switch"
+    status: CONFIRMED
+  - seat: kimi-code/k3 (round 2)
+    objection: "L1: the alert text is readable in `ps` argv for the lifetime of each gateway call; L4: a run killed between write and os.replace leaves a .tmp heartbeat forever"
+    status: PLAUSIBLE
+residuals:
+  - "ACCEPTED EXPOSURE (Kimi L1): send_alerts passes the alert text as argv to the gateway, so any local user can read the directory-and-count text with `ps` while the call runs. tg_notify.py's CLI surface is frozen and owned by S4; fixing it means stdin or a file, which is S4's change, not this PR's. Recorded, not hidden."
+  - "Kimi L4: a run killed between the heartbeat's tmp write and os.replace leaves a `.json.tmp.<pid>` behind forever. Harmless to the monitor (it reads only the .json) and negligible at an hourly cadence; no reaper added."
+  - "Kimi's untested gap: no test exercises the heartbeat's unwritable-directory path. It is covered by the blanket try/except (returns False, never raises), verified by reading, not by a probe."
+  - "The firebreak row (PENDING-ARMS.md:268) is amended in the mission's ledger-only PR, cut after this PR merges (S2 mandate section 3: no rows inside a code PR)."
+  - "Prove-live: after bootstrap, stat -f %Lp ~/logs/secrets-permissions-audit.log must print 600, and the launchd run's custody counts must equal the same-minute find oracle."
+spend:
+  wall_clock_hours: 4.6
+  adversarial_rounds: 3
+  tokens: 1400000
