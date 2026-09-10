@@ -39,6 +39,7 @@ from backend.services.portal.document_processing import (
 )
 from backend.services.portal.qa_document_sink import QADocumentSinkClient
 from backend.services.portal.qa_support_mail_sink import QASupportMailSinkClient
+from backend.services.portal.upload_validation import DuplicateDocumentError
 
 logger = get_logger(__name__)
 
@@ -561,13 +562,18 @@ class PortalDocumentsMixin:
         file_name = self._sanitize_filename(file_name)
 
         async with self.pool.acquire() as conn:
-            # Check for duplicate file (same hash, same client, last 1 hour)
+            # Check for duplicate file (same name, same client, last 1 hour).
+            # Soft-deleted rows are NOT duplicates: a client who removes a file
+            # from the vault and uploads it again is doing the one thing the
+            # Remove button invites — before 2026-09-11 that re-upload was
+            # rejected here and surfaced as 404 "Client not found".
             duplicate = await conn.fetchrow(
                 """
                 SELECT id, file_name, created_at
                 FROM documents
                 WHERE client_id = $1
                 AND file_name LIKE $2
+                AND deleted_at IS NULL
                 AND created_at > NOW() - INTERVAL '1 hour'
                 ORDER BY created_at DESC
                 LIMIT 1
@@ -579,7 +585,9 @@ class PortalDocumentsMixin:
                 logger.info(
                     f"Duplicate file detected: {file_name} uploaded at {duplicate['created_at']}",
                 )
-                raise ValueError(f"File already uploaded recently at {duplicate['created_at']}")
+                raise DuplicateDocumentError(
+                    f"File already uploaded recently at {duplicate['created_at']}"
+                )
 
             # Verify practice belongs to client if provided
             if practice_id:
