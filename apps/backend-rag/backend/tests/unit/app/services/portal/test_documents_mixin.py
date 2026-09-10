@@ -10,6 +10,7 @@ import pytest
 
 from backend.services.pii.violation_store import hash_subject
 from backend.services.portal.portal_service import PortalService
+from backend.services.portal.upload_validation import DuplicateDocumentError
 
 
 class _AsyncCtx:
@@ -375,7 +376,7 @@ async def test_upload_document_rejects_recent_duplicate() -> None:
         }
     )
 
-    with pytest.raises(ValueError, match="File already uploaded recently"):
+    with pytest.raises(DuplicateDocumentError, match="File already uploaded recently"):
         await service.upload_document(
             client_id=1,
             file_content=b"%PDF-1.4 clean passport",
@@ -386,6 +387,40 @@ async def test_upload_document_rejects_recent_duplicate() -> None:
         )
 
     assert mock_conn.fetchrow.await_count == 1
+    # The typed error is still a ValueError: every pre-existing
+    # `except ValueError` around upload_document keeps its behaviour.
+    assert issubclass(DuplicateDocumentError, ValueError)
+
+
+@pytest.mark.asyncio
+async def test_upload_document_duplicate_check_ignores_soft_deleted_rows() -> None:
+    """Re-uploading a file the client just REMOVED must not be a duplicate.
+
+    Born 2026-09-11 on my.balizero.com: upload -> Remove -> upload again of
+    the same file came back 404 "Client not found". The duplicate query
+    matched the soft-deleted row (same name, < 1 hour), raised ValueError,
+    and the router's generic ValueError branch renamed it. The predicate
+    must exclude `deleted_at IS NOT NULL` rows, and it must be the FIRST
+    fetchrow (the duplicate check runs before the practice/client lookups).
+    """
+    service, mock_conn = _make_service_with_fetchrow(row=None)
+    # duplicate check -> None, client lookup -> None (stops there, no Drive)
+    mock_conn.fetchrow.side_effect = [None, None]
+
+    with pytest.raises(ValueError, match="Client 1 not found"):
+        await service.upload_document(
+            client_id=1,
+            file_content=b"%PDF-1.4 clean passport",
+            file_name="passport.pdf",
+            document_type="passport",
+            mime_type="application/pdf",
+            current_user={"client_id": 1, "email": "client@example.com"},
+        )
+
+    duplicate_sql = mock_conn.fetchrow.await_args_list[0].args[0]
+    assert "FROM documents" in duplicate_sql
+    assert "deleted_at IS NULL" in duplicate_sql
+    assert "INTERVAL '1 hour'" in duplicate_sql
 
 
 @pytest.mark.asyncio

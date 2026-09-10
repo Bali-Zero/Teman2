@@ -335,6 +335,47 @@ class TestDocuments:
         assert data["success"] is True
         assert data["message"] == "Document uploaded successfully"
 
+    def test_upload_document_duplicate_is_409_not_client_not_found(
+        self, client, mock_portal_service
+    ):
+        """A recent same-name upload is a conflict the client can act on.
+
+        Before 2026-09-11 DuplicateDocumentError was a plain ValueError and
+        fell into the `except ValueError` branch below it, which answers
+        404 "Client not found" — false (the client exists) and unactionable
+        (the vault shows "Upload failed (404)"). The typed error must be
+        caught FIRST and answered 409 with the reason.
+        """
+        from backend.services.portal.upload_validation import DuplicateDocumentError
+
+        mock_portal_service.upload_document.side_effect = DuplicateDocumentError(
+            "File already uploaded recently at 2026-09-11 02:53:18+00:00"
+        )
+
+        response = client.post(
+            "/api/portal/documents/upload",
+            data={"document_type": "passport"},
+            files={"file": ("passport.pdf", _synthetic_pdf(), "application/pdf")},
+        )
+
+        assert response.status_code == 409
+        detail = response.json()["detail"]
+        assert "less than an hour ago" in detail
+        assert "Client not found" not in detail
+
+    def test_upload_document_other_value_error_still_404(self, client, mock_portal_service):
+        """The generic ValueError branch is untouched: a gone client is still 404."""
+        mock_portal_service.upload_document.side_effect = ValueError("Client 42 not found")
+
+        response = client.post(
+            "/api/portal/documents/upload",
+            data={"document_type": "passport"},
+            files={"file": ("passport.pdf", _synthetic_pdf(), "application/pdf")},
+        )
+
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Client not found"
+
     def test_download_document_success_uses_portal_proxy(self, client, mock_portal_service):
         """Download returns bytes through the portal without exposing Drive URLs."""
         mock_portal_service.download_document.return_value = {
@@ -475,9 +516,7 @@ class TestMessages:
         mock_portal_service.send_message.assert_awaited_once()
         assert mock_portal_service.send_message.await_args.kwargs["practice_id"] == 603
 
-    def test_send_message_client_not_found_returns_404_not_500(
-        self, client, mock_portal_service
-    ):
+    def test_send_message_client_not_found_returns_404_not_500(self, client, mock_portal_service):
         """DEFECT 1: if the portal account is linked to a soft-deleted
         client, send_message raises ValueError('Client X not found') —
         same not-found shape as get_dashboard (BUG C) — and must surface

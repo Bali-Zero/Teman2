@@ -29,6 +29,7 @@ from backend.app.utils.logging_utils import get_logger, sanitize_for_log
 from backend.core.cache import invalidate_cache
 from backend.services.portal.upload_validation import (
     PORTAL_UPLOAD_MIME_TYPES,
+    DuplicateDocumentError,
 )
 from backend.services.portal.upload_validation import (
     read_upload_bounded as _read_upload_bounded,
@@ -668,6 +669,17 @@ async def upload_document(
             "message": "Document uploaded successfully",
             "data": document,
         }
+    except DuplicateDocumentError as e:
+        # Same file name, same client, within the last hour: the client IS
+        # found — say what actually happened, as a conflict, not a 404.
+        logger.info(f"Duplicate upload rejected for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "A file with this name was uploaded less than an hour ago. "
+                "Rename the file or wait before uploading it again."
+            ),
+        ) from e
     except ValueError as e:
         # Client soft-deleted / gone -> not-found, not a 500 (see get_dashboard).
         logger.warning(f"Client not found in upload_document for client {sanitize_for_log(client['client_id'])}: {sanitize_for_log(e)}")
