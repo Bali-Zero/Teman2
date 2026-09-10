@@ -4,8 +4,9 @@ Centralized migration management system
 """
 
 import logging
+import ssl
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 import asyncpg
 
@@ -14,6 +15,7 @@ from backend.db.migration_base import (
     BaseMigration,
     MigrationError,
     assume_runtime_role,
+    migration_dsn_is_dedicated,
     resolve_migration_dsn,
     split_migration_sql,
 )
@@ -75,6 +77,14 @@ def _extract_rollback_sql(sql_text: str) -> str | None:
     return rollback
 
 
+def _dsn_has_sslmode(url: str) -> bool:
+    """True when `url`'s query string carries an explicit `sslmode`."""
+    try:
+        return "sslmode" in parse_qs(urlparse(url).query)
+    except ValueError:
+        return False
+
+
 class MigrationManager:
     """
     Centralized migration manager.
@@ -109,20 +119,39 @@ class MigrationManager:
         Should be called before using the manager.
         """
         if self.pool is None:
-            self.pool = await asyncpg.create_pool(
-                self.database_url,
-                min_size=1,
-                max_size=5,
-                command_timeout=60,
-                # Every ACQUIRE assumes the runtime role (not just connection
-                # creation): the ledger tables (`_ensure_migration_log`) and the
-                # advisory lock go through this pool, a `CREATE TABLE IF NOT
-                # EXISTS` here must not mint a migrator-owned table, and
-                # asyncpg's release-time `RESET ALL` undoes `SET ROLE` -- so an
-                # `init`-only hook would hold for the first acquire and silently
-                # lapse on the second (kimi, 2026-09-11). The hook is idempotent.
-                setup=assume_runtime_role,
-            )
+            try:
+                self.pool = await asyncpg.create_pool(
+                    self.database_url,
+                    min_size=1,
+                    max_size=5,
+                    command_timeout=60,
+                    # Every ACQUIRE assumes the runtime role (not just connection
+                    # creation): the ledger tables (`_ensure_migration_log`) and the
+                    # advisory lock go through this pool, a `CREATE TABLE IF NOT
+                    # EXISTS` here must not mint a migrator-owned table, and
+                    # asyncpg's release-time `RESET ALL` undoes `SET ROLE` -- so an
+                    # `init`-only hook would hold for the first acquire and silently
+                    # lapse on the second (kimi, 2026-09-11). The hook is idempotent.
+                    setup=assume_runtime_role,
+                )
+            except Exception as e:
+                # 2026-09-10 incident: four consecutive Fly release_command
+                # failures surfaced only a bare `ConnectionResetError` from
+                # inside asyncpg's TLS handshake, with no hint which DSN was
+                # even in play. Name the source (already known, not
+                # re-derived from env) and the exception, so the next
+                # operator does not lose an hour reading a stack trace.
+                source = "MIGRATION_DATABASE_URL" if migration_dsn_is_dedicated() else "DATABASE_URL"
+                safe_url = self._sanitize_db_url(self.database_url)
+                message = f"Migration runner cannot connect via {source} ({safe_url}): {type(e).__name__}: {e}"
+                if isinstance(e, (ConnectionResetError, OSError, ssl.SSLError)) and not _dsn_has_sslmode(
+                    self.database_url
+                ):
+                    message += (
+                        "\nhint: DATABASE_URL uses sslmode=disable; add "
+                        "?sslmode=disable to this DSN if the server does not speak TLS"
+                    )
+                raise MigrationError(message) from e
             logger.info("Migration manager connection pool created")
 
     async def close(self) -> None:
