@@ -39,7 +39,7 @@ class FakeInviteService:
             "client_id": client_id,
             "client_name": "Test Client",
             "email": email,
-            "invite_url": "/portal/invite?token=tok-123",
+            "invite_url": INVITE_PATH_TEMPLATE.format(token="tok-123"),
             "token": "tok-123",
         }
 
@@ -55,7 +55,7 @@ async def test_send_portal_invite_email_uses_internal_brevo_adapter() -> None:
         await send_portal_invite_email(
             to="client@example.com",
             client_name='Test Client & "Demo"',
-            invite_url="https://my.balizero.com/portal/invite?token=abc&x=1",
+            invite_url="https://my.balizero.com/portal/register?token=abc&x=1",
             db_pool=db_pool,
             client_id=11898,
         )
@@ -118,7 +118,7 @@ async def test_send_invitation_sends_email_through_internal_adapter(
     mock_sender.assert_awaited_once_with(
         to="client@example.com",
         client_name="Test Client",
-        invite_url="https://my.balizero.com/portal/invite?token=tok-123",
+        invite_url="https://my.balizero.com/portal/register?token=tok-123",
         db_pool=db_pool,
         client_id=11898,
     )
@@ -298,11 +298,12 @@ async def test_mailed_link_uses_the_live_portal_default_and_the_real_path(
     machine has FRONTEND_PORTAL_URL unset (measured 2026-09-10), so the FIELD
     DEFAULT is what ships in the mail, and a test that patches the value can
     stay green while the default rots. The path half comes from the service's
-    own `INVITE_PATH_TEMPLATE`, not from a hand-written string — the sibling
-    tests above hard-code `/portal/invite?token=`, a path
-    `InviteService.create_invitation` has not produced for a long time, which
-    is exactly the drift this case exists to catch (cross-family review
-    finding, 2026-09-10).
+    own `INVITE_PATH_TEMPLATE`, not from a hand-written string. The shared
+    fixture above used to mint `/portal/invite?token=`, a path
+    `InviteService.create_invitation` has not produced for a long time — it now
+    reads the same template, so no case in this file can assert a link shape
+    the service cannot produce (cross-family review + independent Gear-3 gate,
+    2026-09-10).
     """
     db_pool = mock_db_pool
     db_pool._mock_conn.fetchrow.return_value = {
@@ -311,18 +312,6 @@ async def test_mailed_link_uses_the_live_portal_default_and_the_real_path(
         "created_by": None,
     }
 
-    class RealPathInviteService:
-        async def create_invitation(self, **kwargs: object) -> dict[str, object]:
-            return {
-                "invitation_id": 1,
-                "client_id": 11898,
-                "client_name": "Test Client",
-                "email": "client@example.com",
-                "token": "tok-123",
-                "expires_at": "2026-09-13T00:00:00+00:00",
-                "invite_url": INVITE_PATH_TEMPLATE.format(token="tok-123"),
-            }
-
     with patch(
         "backend.app.routers.portal_invite.send_portal_invite_email",
         new=AsyncMock(),
@@ -330,7 +319,7 @@ async def test_mailed_link_uses_the_live_portal_default_and_the_real_path(
         await send_invitation(
             SendInviteRequest(client_id=11898, email="client@example.com"),
             current_user={"email": "zero@balizero.com", "role": "Founder"},
-            invite_service=RealPathInviteService(),  # type: ignore[arg-type]
+            invite_service=FakeInviteService(),  # type: ignore[arg-type]
             db_pool=db_pool,
         )
 

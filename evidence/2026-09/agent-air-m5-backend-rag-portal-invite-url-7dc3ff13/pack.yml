@@ -206,3 +206,12 @@ dissent:
     status: CONFIRMED
     objection: >-
       The PR body still described only the first commit. CURED: rewritten against head.
+  - seat: claude-opus-5 (independent Gear-3 gate, first pass)
+    status: CONFIRMED
+    objection: >-
+      The shared `FakeInviteService` fixture still minted `/portal/invite?token=`. The previous
+      round added one case that read `INVITE_PATH_TEMPLATE` and left the stale shape asserted by
+      every other case in the file — curing the symptom in one place while the fixture kept
+      teaching the wrong link. CURED: the fixture reads the template, the assertions that consume
+      it expect `/portal/register`, and the duplicate fake the previous round introduced was
+      deleted, since a correct fixture made it redundant.
