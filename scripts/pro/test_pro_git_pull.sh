@@ -345,5 +345,33 @@ else
 fi
 rm -rf "$SANDBOX"
 
+# ── K: acquire_lock's own stale-lock branch. It had NO coverage, and on GNU it was a
+# silent no-op: `stat -f %m` failed, the `|| echo "$now"` fallback made every held lock
+# measure 0s, the steal never fired and the function returned 1 without writing a single log
+# line. A crash leftover would stall the puller forever while looking like a busy peer.
+# The fixture plants a lock dir whose recorded pid is DEAD — note the script decides on the
+# DIRECTORY's age and never reads that pid file, so the pid documents the scenario while the
+# assertion rests on mtime, which is the thing that was broken.
+echo "[K1] stale lock dir (dead pid) → stolen, tick proceeds"
+setup_case K1; advance_origin "docs/k1.md" "hello"; git -C "$LOCAL" fetch -q origin main
+sleep 0 & DEADPID=$!; wait "$DEADPID" 2>/dev/null   # a pid that has certainly exited
+mkdir -p "$SANDBOX/pull.lock.d" || fatal "K1 lock dir"
+echo "$DEADPID" > "$SANDBOX/pull.lock.d/pid" || fatal "K1 pid file"
+backdate_2h "$SANDBOX/pull.lock.d" || fatal "K1 backdate"
+RC=$(run_puller); eq_ne "$RC" "0" "K1 rc=0"
+eq_ne "$(head_of)" "$(remote_head)" "K1 HEAD advanced (stale lock was stolen)"
+grep -q "Stale lock" "$SANDBOX/pull.log" 2>/dev/null && ok "K1 steal is logged, not silent" || bad "K1 no log line (the GNU silent no-op)"
+[ "$(cat "$SANDBOX/pull.lock.d/pid" 2>/dev/null)" != "$DEADPID" ] && ok "K1 lock dir retaken by this run" || bad "K1 dead pid still owns the lock"
+rm -rf "$SANDBOX"
+
+echo "[K2] fresh lock dir → live peer presumed, tick skipped"
+setup_case K2; advance_origin "docs/k2.md" "hello"; git -C "$LOCAL" fetch -q origin main
+mkdir -p "$SANDBOX/pull.lock.d" || fatal "K2 lock dir"
+echo "999999" > "$SANDBOX/pull.lock.d/pid" || fatal "K2 pid file"
+RC=$(run_puller); eq_ne "$RC" "0" "K2 rc=0 (silent skip, a peer is running)"
+ne_ne "$(head_of)" "$(remote_head)" "K2 HEAD did NOT move"
+[ "$(cat "$SANDBOX/pull.lock.d/pid" 2>/dev/null)" = "999999" ] && ok "K2 young lock left to its owner" || bad "K2 stole a lock a peer may still hold!"
+rm -rf "$SANDBOX"
+
 echo "=== $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ]

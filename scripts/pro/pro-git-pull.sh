@@ -211,16 +211,33 @@ clear_stale_git_index_lock() {
 
 # Atomic single-instance lock via mkdir (POSIX-atomic). Steals a lock older than
 # LOCK_STALE_SECONDS (crash leftover). Returns 0 if acquired, 1 if a live peer holds it.
+#
+# The age is read through file_mtime() for the same reason clear_stale_git_index_lock does:
+# the old `stat -f %m ... || echo "$now"` was BSD-only, and its fallback did not fail, it
+# LIED. On GNU every held lock measured 0s, the steal branch never fired, and the function
+# returned 1 with no log line at all — the log file was not even created. A crash leftover
+# would have blocked the puller forever while looking like ordinary contention with a live
+# peer. That is the same invisible-stall class as W89's sibling rule: once the helper exists,
+# the sibling in the same file gets fixed, not ledgered.
+#
+# An unreadable mtime now DECLINES and says so. Refusing to steal is the safe half — the
+# worst case is a skipped tick that retries in 15 minutes — but refusing SILENTLY is not,
+# because a permanent stall and a busy peer then look identical from the outside.
 acquire_lock() {
   if mkdir "$LOCK_DIR" 2>/dev/null; then echo $$ > "$LOCK_DIR/pid" 2>/dev/null; return 0; fi
   local now mtime age
   now=$(date +%s)
-  mtime=$(stat -f %m "$LOCK_DIR" 2>/dev/null || echo "$now")
+  mtime="$(file_mtime "$LOCK_DIR")"
+  if [ -z "$mtime" ]; then
+    log "Lock dir held but its mtime is unreadable (no usable stat/python3) — declining to steal, skip tick"
+    return 1
+  fi
   age=$(( now - mtime ))
   if [ "$age" -gt "$LOCK_STALE_SECONDS" ]; then
     log "Stale lock ${age}s old, stealing"
     rm -rf "$LOCK_DIR"
     if mkdir "$LOCK_DIR" 2>/dev/null; then echo $$ > "$LOCK_DIR/pid" 2>/dev/null; return 0; fi
+    log "  ERROR: could not recreate the lock dir after clearing a stale one — skip tick"
   fi
   return 1
 }
