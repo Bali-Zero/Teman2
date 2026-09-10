@@ -4,10 +4,17 @@ colour: BLUE
 gear: 3
 gate_class: final-on-disk
 council_run: council-journal.jsonl
-brief_ref: evidence/2026-09/agent-nuzantara-ops-s1-arm-the-armer-v2-01fae61f/brief.yml
+brief_ref: evidence/brief.yml # the canonical staged layout CI lints against (86 of 87 packs); the real file lives beside this pack
 date: 2026-09-10
 machine: Pro
-successor_of: "#6114 (armed, then closed: the harness floor computed gear 3 from the diff size and Detect Secrets flagged the brief's base_sha; the branch was frozen, so the commits were cherry-picked onto a fresh origin/main)"
+successor_of: >-
+  #6125, itself the successor of #6114. Each was armed at open, so each was frozen, and each
+  correction became a fresh branch cut from origin/main rather than a rewrite. #6114: the harness
+  floor computed gear 3 from the diff's size against a declared 2, and Detect Secrets flagged the
+  brief's base_sha. #6125: the pack's `brief_ref` named this PR's own per-PR brief path, which
+  resolves locally but not in CI — the workflow stages pack and brief into a canonical
+  `evidence/{pack,brief}.yml` layout and lints with that as the repo root, which is why 86 of the
+  87 packs on main say `evidence/brief.yml`. The code and tests are unchanged across all three.
 lanes:
   - lane: ground + design + review disposition + ship
     role: ground_truth
@@ -121,6 +128,12 @@ receipts:
     cmd: "git rev-parse HEAD:<file> on the successor vs ea9ca85c8e:<file> for scripts/queue_shepherd.py and scripts/tests/test_queue_shepherd.py"
     result: "both blob-identical"
     ts: "2026-09-10T17:37Z"
+    seat: claude-opus-5 (Dux)
+    exit: 0
+  - claim: "the Gear-3 pack lint passes the way CI actually runs it, not only the way it runs locally"
+    cmd: "stage pack + brief into <tmp>/evidence-check/evidence/{pack,brief}.yml as .github/workflows/harness-floor.yml does, run scripts/ci/stage_council_journal.py, then scripts/evidence_pack_lint.py --repo-root <tmp>/evidence-check --source-path <per-PR pack path> --numstat-file --changed-files-file"
+    result: "council journal staged beside the pack; evidence_pack_lint: clean (the same invocation reported 'brief_ref does not resolve to a file on disk' on #6125's pack, the red this successor exists to fix)"
+    ts: "2026-09-10T18:26Z"
     seat: claude-opus-5 (Dux)
     exit: 0
   - claim: "letter J: tests green, red-first proven, nothing written outside tmp, 3.9 compiles, live dry-run clean"
