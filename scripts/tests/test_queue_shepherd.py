@@ -2889,3 +2889,77 @@ def test_fetch_open_pr_heads_walks_two_real_pages_C4(monkeypatch):
     assert len(seen_variables) == 2
     assert "cursor" not in seen_variables[0]
     assert seen_variables[1]["cursor"] == "CURSOR-H1"
+
+
+# ── K-5: INFRA job-name signatures matched as ENTITIES, never as substrings ─────────────────
+# Kimi council finding K-5, deferred at #6127 and closed here. Superscar #3: a guard that judges
+# a substring judges the wrong entity, and OVER-match is as real as UNDER-match.
+
+
+def test_is_infra_job_name_guilt_whole_name_shapes_are_infra_K5():
+    for name in ("Set up job", "complete job", "checkout", "cache", "docker", "runner",
+                 "setup-python", "setup-node-20", "Set up Python 3.11", "  SET  UP   JOB  "):
+        assert qs._is_infra_job_name(name) is True, name
+
+
+def test_is_infra_job_name_innocence_real_repo_job_names_are_code_K5():
+    """Every one of these is a REAL check name of this repository (measured against PR #6144's
+    72 checks) or the ledger row's own example. Under the old bare-substring rule `Snyk Docker
+    Security` matched `docker` and a failing security job re-armed as INFRA."""
+    for name in ("Snyk Docker Security", "Build Docker image", "Cache dependencies",
+                 "docker-build", "Install test runner", "Backend Tests (Python)",
+                 "Checkout PR head", "cache-warm-tests"):
+        assert qs._is_infra_job_name(name) is False, name
+
+
+def test_run_has_infra_signature_failing_snyk_docker_job_is_code_K5():
+    run = {"name": "CI", "conclusion": "failure"}
+    jobs = [{"name": "Snyk Docker Security", "conclusion": "failure"}]
+    assert qs._run_has_infra_signature(run, jobs) is False
+
+
+def test_run_has_infra_signature_failing_setup_job_is_still_infra_K5():
+    run = {"name": "CI", "conclusion": "failure"}
+    jobs = [{"name": "setup-python", "conclusion": "failure"}]
+    assert qs._run_has_infra_signature(run, jobs) is True
+
+
+def test_rearm_pass_failing_snyk_docker_job_is_never_rearmed_K5(monkeypatch, tmp_path):
+    """The consequence at tick level: the ejection of a PR whose only failing job is the security
+    scan must classify CODE and re-arm nothing. Under the substring rule this tick re-armed."""
+    monkeypatch.setattr(qs, "BUDGET_FILE", tmp_path / "budget.json")
+    monkeypatch.setattr(qs, "ALERTED_FILE", tmp_path / "alerted.json")
+    monkeypatch.setattr(qs, "RED_FILE", tmp_path / "red.json")
+
+    sha = "5" * 40
+    run = {
+        "id": 501, "head_branch": f"gh-readonly-queue/main/pr-713-{sha}",
+        "conclusion": "failure", "created_at": _iso(NOW), "head_sha": sha,
+    }
+
+    def fake_run(cmd, timeout=30):
+        if "jobs" in cmd[-1]:
+            return 0, '{"jobs": [{"name": "Snyk Docker Security", "conclusion": "failure"}], "total_count": 1}', ""
+        return 0, json.dumps({"workflow_runs": [run], "total_count": 1}), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    monkeypatch.setattr(
+        qs, "fetch_open_prs",
+        lambda repo=qs.REPO: [_pr(number=713, head_sha=sha, head_ref_name="agent/x/y")],
+    )
+    monkeypatch.setattr(
+        qs, "fetch_last_ejection",
+        lambda repo, number: {
+            "reason": "failed_checks", "removed_at": _iso(NOW), "before_commit": sha
+        },
+    )
+    monkeypatch.setattr(
+        qs, "rearm_pr",
+        lambda repo, number: (_ for _ in ()).throw(
+            AssertionError("a failing security scan is CODE and must never be re-armed")
+        ),
+    )
+
+    result = qs.run_rearm_pass(dry_run=False, now=NOW)
+    assert result["rearmed"] == 0
+    assert result["unverified"] == 0
