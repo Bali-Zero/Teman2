@@ -1010,6 +1010,10 @@ def test_n1_custody_finding_notify_sends_one_p0_call(
     log_path = _fake_gateway(tmp_path, monkeypatch)
     scr = tmp_path / ".secrets"
     probe = _touch(scr / "probe.json", 0o644, "{}\n")
+    # HOME is the fixture root: in production every custody root lives under
+    # HOME, and the alert must name it home-relative. A root OUTSIDE home is
+    # a different case with its own test (n19).
+    monkeypatch.setenv("HOME", str(tmp_path))
 
     module = _load_module(open_chain=False)
     monkeypatch.setattr(module, "machine_label", lambda *a, **k: "pro")
@@ -1025,7 +1029,8 @@ def test_n1_custody_finding_notify_sends_one_p0_call(
     ]
     text = argv[-1]
     assert "[pro]" in text
-    assert str(scr) in text
+    assert "~/.secrets" in text
+    assert str(scr) not in text  # home-relative, never the absolute path
     assert "1 credential file(s)" in text
     assert "other-read" in text
     assert probe.name not in text
@@ -1037,9 +1042,12 @@ def test_n2_env_report_only_notify_sends_one_digest_call(
 ) -> None:
     log_path = _fake_gateway(tmp_path, monkeypatch)
     monkeypatch.setattr(audit, "machine_label", lambda *a, **k: "pro")
-    target = _touch(tmp_path / ".env.master", 0o644, "SECRET=1\n")
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    target = _touch(home / ".env.master", 0o644, "SECRET=1\n")
 
-    rc = audit.main(["--no-default-roots", "--root", str(tmp_path), "--notify"])
+    rc = audit.main(["--no-default-roots", "--root", str(home), "--notify"])
     capsys.readouterr()
 
     calls = _read_fake_log(log_path)
@@ -1051,7 +1059,8 @@ def test_n2_env_report_only_notify_sends_one_digest_call(
     ]
     text = argv[-1]
     assert "[pro]" in text
-    assert str(tmp_path) in text
+    assert "~ —" in text or "~ (" in text  # HOME itself, collapsed
+    assert str(home) not in text
     assert "1 file(s)" in text
     assert target.name not in text
     assert rc == 0
@@ -1505,3 +1514,110 @@ def test_n18_every_notify_run_leaves_a_heartbeat_without_names(
     assert "p0=1" in beat["note"]
     assert probe.name not in beat["note"]
     assert str(tmp_path) not in beat["note"]
+
+
+# --------------------------------------------------------------------------
+# S2/PR2 council round 2 (Kimi seat) — M1 and M2.
+# --------------------------------------------------------------------------
+
+
+def test_n19_a_root_outside_home_is_redacted_not_spelled_out(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """GUILT: a custody root that is NOT under HOME (a `--root`, or a root
+    symlinked onto another volume) used to print its absolute path into the
+    alert — a mount point and a directory name in a Telegram message.
+    INNOCENCE: the same directory, once it IS under HOME, still reads
+    home-relative."""
+    module = _load_module(open_chain=False)
+    home = tmp_path / "home"
+    home.mkdir()
+    outside = tmp_path / "elsewhere" / "vault-name" / ".secrets"
+    _touch(outside / "probe.json", 0o644, "{}\n")
+    monkeypatch.setenv("HOME", str(home))
+
+    alerts = module.build_alerts(module.audit([outside]), "pro")
+
+    assert len(alerts) == 1
+    assert "<outside-home>/.secrets" in alerts[0].text
+    assert str(outside) not in alerts[0].text
+    assert "vault-name" not in alerts[0].text
+    assert "elsewhere" not in alerts[0].text
+
+    inside = home / "kept" / ".secrets"  # innocence: under HOME it is named
+    _touch(inside / "probe.json", 0o644, "{}\n")
+
+    alerts = module.build_alerts(module.audit([inside]), "pro")
+
+    assert "~/kept/.secrets" in alerts[0].text
+
+
+def _every_alert_shape(module) -> list:
+    """Every tier this script can hand to the gateway, read off its own
+    source: the keyword `tier=` of each `Alert(...)` construction in
+    build_alerts. Source-read rather than a fixture sweep, so a tier added
+    on a path no fixture reaches is still seen."""
+    import ast as _ast
+    import inspect as _inspect
+
+    tree = _ast.parse(_inspect.getsource(module.build_alerts))
+    tiers = []
+    for node in _ast.walk(tree):
+        if not (isinstance(node, _ast.Call) and getattr(node.func, "id", "") == "Alert"):
+            continue
+        for kw in node.keywords:
+            if kw.arg == "tier" and isinstance(kw.value, _ast.Constant):
+                tiers.append(module.Alert(tier=kw.value.value, dedup_key="", text=""))
+    assert tiers, "parsed zero Alert(tier=...) constructions out of build_alerts"
+    return tiers
+
+
+def test_n20_the_real_gateway_still_speaks_the_status_vocabulary_we_parse() -> None:
+    """The --notify tests all point at a FAKE gateway that echoes the very
+    format `_gateway_status` expects, so they would stay green through any
+    drift in the real scripts/tg_notify.py — and a drift there means every
+    hourly run records `no-status`, exits 1 and turns the organ red while
+    alerts may well be leaving (Kimi council seat, finding M2). This reads
+    the real gateway's SOURCE (never runs it: it sends real Telegram
+    messages) and pins the two things we depend on."""
+    import ast as _ast
+
+    gateway = Path(__file__).parents[1] / "tg_notify.py"
+    source = gateway.read_text(encoding="utf-8")
+    tree = _ast.parse(source)
+
+    assert 'print(f"tg_notify: {status}", file=sys.stderr)' in source, (
+        "the gateway no longer prints its status as `tg_notify: <status>` on "
+        "stderr — _gateway_status parses exactly that line"
+    )
+
+    notify_fn = next(
+        node for node in tree.body
+        if isinstance(node, _ast.FunctionDef) and node.name == "notify"
+    )
+    returned = {
+        node.value.value
+        for node in _ast.walk(notify_fn)
+        if isinstance(node, _ast.Return)
+        and isinstance(node.value, _ast.Constant)
+        and isinstance(node.value.value, str)
+    }
+
+    assert returned, "parsed zero string returns out of tg_notify.notify()"
+
+    missing = set(audit._GATEWAY_KNOWN) - returned
+    assert not missing, (
+        f"this script still whitelists {sorted(missing)}, which the gateway "
+        "no longer returns — the whitelist has drifted out of date"
+    )
+
+    # `logged` is returned only for tier "log", and this script sends p0 and
+    # digest exclusively — asserted here rather than assumed, so a future
+    # alert tier cannot quietly start landing in unknown-status territory.
+    tiers = {a.tier for a in _every_alert_shape(audit)}
+    assert tiers == {"p0", "digest"}, f"this script now sends tiers {sorted(tiers)}"
+    unexpected = returned - set(audit._GATEWAY_KNOWN) - {"logged"}
+    assert not unexpected, (
+        f"the gateway can now return {sorted(unexpected)}, which this script "
+        "reads as 'unknown-status' and counts as NOT handed over"
+    )

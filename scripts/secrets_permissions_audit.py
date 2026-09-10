@@ -69,7 +69,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Iterable, Iterator, List, Optional, Sequence, Tuple
 
 # --------------------------------------------------------------------------
@@ -722,7 +722,15 @@ def _home_relative(path: object) -> str:
     report already uses for CUSTODY lines, reused here so an alert never
     spells out the home directory's real name. HOME's realpath is collapsed
     too: the scanner reports resolved paths, so a symlinked HOME would
-    otherwise print the directory it points at."""
+    otherwise print the directory it points at.
+
+    A path OUTSIDE home is not printable either: it would put an absolute
+    path (a mount point, another user's home) into a Telegram message. It
+    is rendered as `<outside-home>/<basename>` — enough for a human to go
+    look, never the whole location (Kimi council seat, finding M1: today
+    every default root is under HOME, so the fallback was reachable only
+    through `--root` or a root symlinked onto another volume — "holds by
+    accident" is not an invariant)."""
     shown = str(path)
     home = Path.home()
     for prefix in dict.fromkeys((str(home), os.path.realpath(home))):
@@ -730,7 +738,7 @@ def _home_relative(path: object) -> str:
             return "~"
         if shown.startswith(prefix + os.sep):
             return "~" + shown[len(prefix):]
-    return shown
+    return f"<outside-home>/{PurePath(shown).name}"
 
 
 def _union_classes(findings: Sequence[Finding]) -> List[str]:
@@ -1008,11 +1016,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         parser.error("--notify and --fix are mutually exclusive")
 
     if args.notify and kill_switch_off():
-        organism_heartbeat("disabled", note=f"{KILL_SWITCH_ENV}=false")
+        spelling = os.environ.get(KILL_SWITCH_ENV, "").strip()
+        organism_heartbeat("disabled", note=f"{KILL_SWITCH_ENV}={spelling}")
         if args.json:
             print(json.dumps({"schema": 1, "disabled": True}))
         else:
-            print(f"DISABLED {_run_timestamp()} {KILL_SWITCH_ENV}=false: no scan, no alert")
+            print(
+                f"DISABLED {_run_timestamp()} {KILL_SWITCH_ENV}={spelling}: "
+                "no scan, no alert"
+            )
         return 0
 
     roots = resolve_roots(args.roots, no_defaults=args.no_default_roots)
