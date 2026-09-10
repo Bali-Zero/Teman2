@@ -1,0 +1,52 @@
+brief_ref: evidence/2026-09/agent-nuzantara-docs-pse-self-registration-9b95ae0e/brief.yml
+task_id: pse-self-registration
+gear: 1
+date: 2026-09-11
+machine: Pro
+machine_note: worktree /Users/nuzantara/nuzantara/.worktrees/docs-pse-self-registration, branch agent/nuzantara/docs/pse-self-registration
+floor: >-
+  compute_floor = 1, floor source "none" (python3 scripts/evidence_pack_lint.py
+  --changed-files-file <hotzone_changed_files.sh list + this pack> --numstat-file <git diff
+  --numstat origin/main...HEAD> --print-floor); measured 2 files +272/-29, below
+  SIZE_GEAR2_THRESHOLD 400; no hot-zone path.
+lanes:
+  - lane: pse-self-registration
+    role: build
+    seat: claude-opus-5 (Lane C Dux, Pro worktree)
+pii_scan: clean
+dissent: []
+receipts:
+  - claim: Every URL in the doc answers HEAD with 200 or 3xx (13 URLs, 0 failures), except the POST-only Komdigi tdpse-list API, which answers HEAD 405 and its documented POST 200.
+    cmd: "grep -oE 'https?://[^ )`|]+' docs/ops/pse-registration-balizero.md | sort -u, then curl -sI -m 20 per URL; curl -s -X POST https://pse.komdigi.go.id/api/v1/tdpse/tdpse-list with the JSON body in the doc"
+    result: balizero.com 200, www 308, kita 307, my 307, zantara 200, tax 200, prime 200, /privacy 200, /terms 200, /visa-oracle/privacy 200, oss.go.id 307, pse.komdigi.go.id 200, tdpse-list HEAD 405 POST 200
+    exit: 0
+    ts: "2026-09-10T17:33:33Z"
+    seat: claude-opus-5
+  - claim: The Fly API host named in the doc (not written as a URL) serves GET /health 200; HEAD is not routed by the API (404).
+    cmd: curl -s -m 20 -o /dev/null -w '%{http_code}' https://nuzantara-rag.fly.dev/health
+    result: GET 200, HEAD 404
+    exit: 0
+    ts: "2026-09-10T17:31:00Z"
+    seat: claude-opus-5
+  - claim: The registry has no row for Bali Zero, balizero, balizero.com, Nuzantara or zantara, while the Tokopedia control returns rows.
+    cmd: POST https://pse.komdigi.go.id/api/v1/tdpse/tdpse-list with {"keyword":<k>,"length":5,"start":0}, 1.2 s apart
+    result: Tokopedia total_rows 22; the five Bali Zero keywords total_rows 0
+    exit: 0
+    ts: "2026-09-10T17:28:09Z"
+    seat: claude-opus-5
+  - claim: The placeholder appears 9 times; the only @ in the doc is the role address privacy@balizero.com; the index links the doc.
+    cmd: grep -c '<to be named by the owner>' docs/ops/pse-registration-balizero.md; grep -n '@' docs/ops/pse-registration-balizero.md; grep -n 'pse-registration-balizero' docs/DOCUMENTATION_INDEX.md
+    result: "9; line 53 privacy@balizero.com; index line 95"
+    exit: 0
+    ts: "2026-09-10T17:33:33Z"
+    seat: claude-opus-5
+  - claim: The docs-sync gate and Prettier pass on both changed markdown files.
+    cmd: PYTHON=python3 bash scripts/ci/docs_sync_gate.sh check <changed-files>; npx prettier --check docs/ops/pse-registration-balizero.md docs/DOCUMENTATION_INDEX.md
+    result: DOCSYNC OK; All matched files use Prettier code style
+    exit: 0
+    ts: "2026-09-10T17:33:35Z"
+    seat: claude-opus-5
+outcome: >-
+  docs/ops/pse-registration-balizero.md (242 lines) added and linked from the Operations table of
+  docs/DOCUMENTATION_INDEX.md. The pre-commit Prettier hook re-padded the index's existing tables
+  (30 additions, 29 deletions, one new row). No file outside docs/ and this pack touched.
