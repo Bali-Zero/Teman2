@@ -485,8 +485,42 @@ def _humanize_single(sched: str) -> str:
     return sched
 
 
+_LAUNCHD_WEEKDAY_NAMES = {0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat", 7: "Sun"}
+
+
+def _humanize_single_calendar_interval(interval: dict) -> str:
+    """One StartCalendarInterval dict -> a human string. Honors `Weekday` and
+    `Day`, not just `Hour`/`Minute` — a plist scheduled weekly or monthly used
+    to read as `daily HH:MM`, silently wrong (e.g. com.balizero.curiosity.weekly
+    and com.balizero.codex-spalla-calibrate both carry `Weekday: 0` (Sunday)
+    and used to render as "daily", contradicting their own header-comment
+    purpose text, which already said "Sunday HH:MM"). Only promotes to
+    weekly/monthly when a full HH:MM is also present — an hourly-minute-only
+    entry combined with Weekday/Day is not a shape any plist in this repo
+    uses, so it is left as the pre-existing hourly/dash fallback rather than
+    guessed at."""
+    hr, mi = interval.get("Hour"), interval.get("Minute")
+    if hr is not None and mi is not None:
+        time_str = f"{hr:02d}:{mi:02d}"
+        weekday = interval.get("Weekday")
+        day = interval.get("Day")
+        if weekday is not None:
+            name = _LAUNCHD_WEEKDAY_NAMES.get(weekday, f"weekday{weekday}")
+            return f"weekly {name} {time_str} WITA"
+        if day is not None:
+            return f"monthly day {day} {time_str} WITA"
+        return f"daily {time_str} WITA"
+    if mi is not None:
+        return f"hourly :{mi:02d}"
+    return "—"
+
+
+
 def _humanize_plist_schedule(parsed: dict) -> str:
-    """Humanize a parsed plist's StartInterval / StartCalendarInterval / RunAtLoad."""
+    """Humanize a parsed plist's StartInterval / StartCalendarInterval / RunAtLoad.
+    StartCalendarInterval may be a single dict OR a list of dicts (multiple
+    fire times) — e.g. com.matagaruda.public-channel.plist fires 6x/day via a
+    6-entry list; each entry is humanized independently and joined."""
     if "StartInterval" in parsed:
         secs = parsed["StartInterval"]
         if isinstance(secs, int) and secs % 3600 == 0:
@@ -495,12 +529,17 @@ def _humanize_plist_schedule(parsed: dict) -> str:
             return f"every {secs // 60}m"
         return f"every {secs}s"
     interval = parsed.get("StartCalendarInterval")
-    if isinstance(interval, dict):
-        hr, mi = interval.get("Hour"), interval.get("Minute")
-        if hr is not None and mi is not None:
-            return f"daily {hr:02d}:{mi:02d} WITA"
-        if mi is not None:
-            return f"hourly :{mi:02d}"
+    if isinstance(interval, list):
+        parts = [
+            _humanize_single_calendar_interval(i) for i in interval if isinstance(i, dict)
+        ]
+        parts = [p for p in parts if p and p != "—"]
+        if parts:
+            return "; ".join(parts)
+    elif isinstance(interval, dict):
+        result = _humanize_single_calendar_interval(interval)
+        if result != "—":
+            return result
     if parsed.get("RunAtLoad"):
         return "RunAtLoad"
     return "—"
