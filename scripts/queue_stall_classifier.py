@@ -32,8 +32,9 @@ guess, and never a silent skip (queue_shepherd.py's own fail-visible convention)
 CORRECTNESS TRAPS THIS SCRIPT RESPECTS (each already measured, live, in this repo):
 
   (a) `gh pr view --json` has NO `mergeQueueEntry` field at all — every field this script needs
-      (mergeStateStatus, autoMergeRequest, mergeQueueEntry, statusCheckRollup, checkSuites) is
-      read via `gh api graphql`, mirroring queue_shepherd.py's own REARM_CANDIDATES_QUERY.
+      (mergeStateStatus, autoMergeRequest, mergeQueueEntry, statusCheckRollup) is read via
+      `gh api graphql`, mirroring queue_shepherd.py's own REARM_CANDIDATES_QUERY. The one
+      exception is the named check-run conclusion (trap (d)), which is a REST read, not GraphQL.
 
   (b) `autoMergeRequest: null` ALONE never means "not armed" — a queued PR has it consumed
       (null) while it still holds a `mergeQueueEntry` (W111,
@@ -46,16 +47,26 @@ CORRECTNESS TRAPS THIS SCRIPT RESPECTS (each already measured, live, in this rep
       whose bulk `mergeStateStatus == "DIRTY"` gets ONE extra, immediate, single-PR re-fetch
       (fetch_fresh_merge_state) before the verdict is finalized.
 
-  (d) checkSuites PAGINATION: a real PR in this repo (#4569, measured live 2026-08-31) carries
-      38 check suites / 59 check runs — "Harness floor recompute" was suite #30. A naive
-      `checkSuites(first:20)` (the size queue_shepherd.py's OWN REARM_CANDIDATES_QUERY uses for
-      an unrelated, lower-stakes lookup) would silently never find it on a PR shaped like this
-      one, misreading "not found" as "gate not applicable" when it is really "gate hiding past
-      page 1". CHECK_SUITES_PAGE_SIZE is sized at 100 (>2.5x that measurement, not a guess), and
-      `fetch_check_runs_flat` explicitly detects truncation (totalCount > fetched nodes, at
-      EITHER the suite or the per-suite checkRuns level) and reports it — a truncated "not
-      found" downgrades that PR's row to CANNOT-VERIFY rather than silently defaulting to
-      required-check-red, which would make the table lie about the single most common cause.
+  (d) checkSuites FAN-OUT ELIMINATED (S1 diet, 2026-09-11 — the Mini sibling brought into the
+      same perimeter queue_shepherd.py's own S1 cure already occupies). The ORIGINAL shape here
+      paginated `checkSuites(first:100){ totalCount nodes { checkRuns(first:20) { totalCount
+      nodes {...} } } }` to find "Harness floor recompute" among EVERY check suite on the commit
+      — a real PR in this repo (#4569, measured live 2026-08-31) carries 38 check suites / 59
+      check runs, and the job this classifier hunts for was suite #30; a naively-small page
+      (queue_shepherd.py's OWN REARM_CANDIDATES_QUERY used `checkSuites(first:20)` for an
+      unrelated, lower-stakes lookup before its own S1 cure dropped it outright — see that
+      module's docstring) would silently never find it, misreading "not found" as "gate not
+      applicable" when it is really "gate hiding past page 1". That whole fan-out is GONE:
+      `fetch_check_runs_flat` now calls GitHub's REST "list check runs for a git reference"
+      endpoint (`commits/{sha}/check-runs`) with `check_name=<HARNESS_FLOOR_CHECK_NAME>` — the
+      exact server-side name filter the ledger item names ("check-runs filtered by name") — so
+      GitHub itself returns only check runs actually named "Harness floor recompute", never all
+      59. `per_page=100` is now headroom for a DUPLICATE workflow_dispatch rerun sharing that one
+      name (trap (h)), not for an unrelated suite/job the fetch never touches at all. The
+      `truncated` detection (`total_count` > entries actually returned) is kept anyway —
+      belt-and-braces, not because this endpoint is known to paginate past 100 same-named runs in
+      practice — and a truncated read still downgrades that PR's row to CANNOT-VERIFY rather than
+      silently defaulting to required-check-red, exactly as before.
 
   (e) The `harness/fable-gate` verdict is read the SAME way scripts/ci/harness_gate_read.py
       itself reads it — the combined `commits/{sha}/status` REST endpoint for the literal
@@ -82,9 +93,10 @@ CORRECTNESS TRAPS THIS SCRIPT RESPECTS (each already measured, live, in this rep
 
   (h) TWO checkRuns can share the exact name "Harness floor recompute" on the SAME commit — a
       `workflow_dispatch` rerun of the gate lands in a DIFFERENT check suite than the original
-      `pull_request` run (Agent PR Contract rule 3), so a naive first-match lookup is
-      order-dependent on GraphQL's unspecified checkSuites ordering and can misclassify in
-      EITHER direction (found by an independent second-opinion review, kimi-code/k3,
+      `pull_request` run (Agent PR Contract rule 3), and the name filter in trap (d) does not
+      collapse the two into one: GitHub returns BOTH entries for `check_name=...`, so a naive
+      first-match lookup is order-dependent on the REST endpoint's unspecified ordering and can
+      misclassify in EITHER direction (found by an independent second-opinion review, kimi-code/k3,
       2026-08-31). `find_named_check_conclusion` returns AMBIGUOUS_CHECK_CONCLUSION when
       matches disagree, and `_classify_one` reads that as CANNOT-VERIFY rather than guessing —
       the same discipline already applied to a truncated fetch in trap (d). The same review
@@ -99,6 +111,15 @@ the very report that exists to catch it. DEFAULT_MIN_AGE_MINUTES=30 is 3x
 queue_shepherd.py's own 10-minute tick cadence: long enough that ordinary CI/queue churn
 resolves itself, short enough to catch a same-night stall.
 
+S1 "MINI SIBLING OUT OF PERIMETER" (2026-09-11, PENDING-ARMS row "S1 BLUE, Pro — Mini sibling
+out of perimeter"): this module was the one member of the `checkSuites(first:N){checkRuns(...)}`
+fan-out family queue_shepherd.py's own S1 cure (2026-09-10) had NOT yet reached — it kept the
+exact shape that blinded that sibling for 1892 ticks (module docstring trap (d), pre-cure text
+preserved there for the archaeology). Put on the same diet here: see trap (d) for the full
+before/after. Output vocabulary (STALL_CAUSES / CANNOT_VERIFY, and every row's `cause`/`detail`
+keys) is UNCHANGED by this cure — queue_stall_notify.py and fleet mail readers consume it
+untouched; only the I/O this module performs to reach a verdict changed.
+
 Tests: scripts/tests/test_queue_stall_classifier.py.
 """
 
@@ -112,6 +133,7 @@ import logging
 import subprocess
 import sys
 from typing import Any
+from urllib.parse import quote as _urlquote
 
 REPO_DEFAULT = "Bali-Zero/Teman2"
 DEFAULT_MIN_AGE_MINUTES = 30
@@ -127,10 +149,10 @@ HARNESS_FLOOR_CHECK_NAME = "Harness floor recompute"  # the required WORKFLOW JO
 FABLE_GATE_STATUS_CONTEXT = "harness/fable-gate"  # duplicated from
 # scripts/ci/harness_gate_read.py::CONTEXT — see module docstring trap (e).
 
-CHECK_SUITES_PAGE_SIZE = 100  # see module docstring trap (d) — measured live 2026-08-31: a
-# real PR here carries 38 check suites.
-CHECK_RUNS_PAGE_SIZE = 20  # every suite sampled live carries exactly 1 checkRun; generous
-# headroom for a matrix job.
+CHECK_RUNS_REST_PAGE_SIZE = 100  # see module docstring trap (d), post-S1-diet: the REST
+# "list check runs for a git reference" read below is filtered server-side by check_name, so
+# this is headroom for a DUPLICATE run sharing that one name (trap (h)), never for an unrelated
+# suite/job — the fetch never sees those at all anymore.
 
 RED_ROLLUP_STATES = ("FAILURE", "ERROR")
 RED_CHECK_CONCLUSIONS = ("FAILURE", "TIMED_OUT")  # deliberately narrow: CANCELLED/NEUTRAL/
@@ -203,8 +225,8 @@ def find_named_check_conclusion(check_runs: list[dict[str, Any]], name: str) -> 
     so `fetch_check_runs_flat`'s flattened list can contain two (or more) entries named
     "Harness floor recompute" with potentially different conclusions (found by an independent
     second-opinion review, kimi-code/k3, 2026-08-31). Picking the textually-first one by list
-    order — which is what this function did before that review — is order-dependent on
-    GraphQL's unspecified checkSuites ordering, and can go wrong in BOTH directions: a stale
+    order — which is what this function did before that review — is order-dependent on the
+    REST check-runs endpoint's unspecified ordering, and can go wrong in BOTH directions: a stale
     FAILURE found first while the latest rerun is green fabricates a gate-verdict-missing; a
     stale SUCCESS found first while the latest run is red demotes a real gate-verdict-missing
     into required-check-red — exactly the swallow this module's docstring says must never
@@ -450,59 +472,48 @@ def fetch_fresh_merge_state(repo: str, number: int) -> str | None:
     return pr.get("mergeStateStatus")
 
 
-CHECK_RUNS_QUERY = """
-query($owner:String!, $repo:String!, $number:Int!) {
-  repository(owner:$owner, name:$repo) {
-    pullRequest(number:$number) {
-      commits(last:1) {
-        nodes {
-          commit {
-            checkSuites(first:100) {
-              totalCount
-              nodes { checkRuns(first:20) { totalCount nodes { name conclusion } } }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-"""
+def fetch_check_runs_flat(repo: str, sha: str) -> tuple[list[dict[str, Any]], bool]:
+    """S1 diet (2026-09-11, module docstring trap (d)): a plain REST GET, filtered SERVER-SIDE by
+    `check_name=<HARNESS_FLOOR_CHECK_NAME>` — GitHub's "list check runs for a git reference"
+    endpoint — never a GraphQL `checkSuites(first:N){checkRuns(first:M)}` fan-out over every
+    check suite on the commit. Mirrors queue_shepherd.py's own S1 cure in SHAPE only (that sibling
+    dropped its checkSuites lookup outright because harness/fable-gate is a commit STATUS
+    context, never a check-run, so it needed no replacement fetch at all; THIS module genuinely
+    needs the "Harness floor recompute" check-run's conclusion — a real GH Actions job, not a
+    status context — so its cure is filtering check-runs by name server-side, exactly what the
+    ledger item names, rather than dropping the read).
 
-
-def fetch_check_runs_flat(repo: str, number: int) -> tuple[list[dict[str, Any]], bool]:
-    """Returns (flattened [{"name":..,"conclusion":..}], truncated). `truncated` is True when
-    EITHER the checkSuites page or ANY individual suite's checkRuns page did not fit the
-    fetched window (module docstring trap (d)) — CHECK_SUITES_PAGE_SIZE/CHECK_RUNS_PAGE_SIZE
-    are sized against a LIVE measurement, not a guess, but a future PR could still exceed them;
-    the caller must never read a truncated 'not found' as a reliable absence. Raises on fetch
-    failure."""
-    owner, name = repo.split("/", 1)
-    data = _gh_graphql(CHECK_RUNS_QUERY, {"owner": owner, "repo": name, "number": number})
+    Returns (flattened [{"name":..,"conclusion":..}], truncated). `truncated` is True when
+    `total_count` exceeds what this one page actually returned — belt-and-braces (see trap (d)
+    for why this is not expected to fire in practice against a name-filtered read, but the caller
+    must still never read a truncated 'not found' as a reliable absence). Raises on fetch
+    failure, a non-dict response, or a missing/non-list `check_runs`."""
+    encoded_name = _urlquote(HARNESS_FLOOR_CHECK_NAME, safe="")
+    url = (
+        f"repos/{repo}/commits/{sha}/check-runs"
+        f"?check_name={encoded_name}&per_page={CHECK_RUNS_REST_PAGE_SIZE}"
+    )
+    rc, out, err = _run(["gh", "api", url], timeout=30)
+    if rc != 0:
+        raise RuntimeError(f"gh api commits/{sha}/check-runs failed rc={rc}: {err.strip()[:300]}")
     try:
-        pr = data["data"]["repository"]["pullRequest"]
-        if pr is None:
-            raise RuntimeError(f"PR #{number} not found (closed/merged mid-run?)")
-        commit_nodes = pr["commits"]["nodes"]
-    except (KeyError, TypeError) as exc:
-        raise RuntimeError(f"unexpected graphql shape: {exc}: {json.dumps(data)[:300]}") from exc
-    if not commit_nodes:
-        # CONFIRMED finding (gpt-5.6-sol, 2026-08-31): an open PR always has >=1 commit for real
-        # — an empty commits.nodes here is an anomalous GraphQL response, not "no check runs".
-        # Raising (-> CANNOT-VERIFY at the caller) beats silently returning ([], False), which
-        # would let a possibly-red gate hide behind a data anomaly instead of being flagged.
-        raise RuntimeError(f"PR #{number}: commits.nodes empty on an open PR (anomalous response)")
-    suites = (commit_nodes[0].get("commit") or {}).get("checkSuites") or {}
-    suite_nodes = suites.get("nodes") or []
-    truncated = (suites.get("totalCount") or 0) > len(suite_nodes)
-    flat: list[dict[str, Any]] = []
-    for suite in suite_nodes:
-        runs = suite.get("checkRuns") or {}
-        run_nodes = runs.get("nodes") or []
-        if (runs.get("totalCount") or 0) > len(run_nodes):
-            truncated = True
-        for run in run_nodes:
-            flat.append({"name": run.get("name"), "conclusion": run.get("conclusion")})
+        data = json.loads(out)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"commits/{sha}/check-runs returned unparseable JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise RuntimeError(f"commits/{sha}/check-runs response is not a JSON object: {str(data)[:300]}")
+    check_runs = data.get("check_runs")
+    if not isinstance(check_runs, list):
+        raise RuntimeError(
+            f"commits/{sha}/check-runs response missing a 'check_runs' array: {str(data)[:300]}"
+        )
+    flat = [
+        {"name": run.get("name"), "conclusion": run.get("conclusion")}
+        for run in check_runs
+        if isinstance(run, dict)
+    ]
+    total_count = data.get("total_count")
+    truncated = isinstance(total_count, int) and total_count > len(flat)
     return flat, truncated
 
 
@@ -580,9 +591,9 @@ def _classify_one(repo: str, pr: dict[str, Any], now: _dt.datetime) -> dict[str,
     fable_gate_posted: bool | None = None
     if pr["status_rollup_state"] in RED_ROLLUP_STATES:
         try:
-            check_runs, truncated = fetch_check_runs_flat(repo, number)
+            check_runs, truncated = fetch_check_runs_flat(repo, pr["head_sha"])
         except RuntimeError as exc:
-            return {**base, "cause": CANNOT_VERIFY, "detail": f"checkSuites fetch failed: {exc}"}
+            return {**base, "cause": CANNOT_VERIFY, "detail": f"check-runs fetch failed: {exc}"}
         conclusion = find_named_check_conclusion(check_runs, HARNESS_FLOOR_CHECK_NAME)
         if conclusion is None and truncated:
             return {
@@ -591,8 +602,8 @@ def _classify_one(repo: str, pr: dict[str, Any], now: _dt.datetime) -> dict[str,
                 "detail": (
                     f"statusCheckRollup={pr['status_rollup_state']} but the "
                     f"'{HARNESS_FLOOR_CHECK_NAME}' check run could not be reliably located — "
-                    "checkSuites/checkRuns pagination truncated before reaching it (see module "
-                    "docstring trap (d)); silently reading 'not found' as 'not the gate' here "
+                    "the name-filtered check-runs read was truncated before reaching it (see "
+                    "module docstring trap (d)); silently reading 'not found' as 'not the gate' here "
                     "would risk misclassifying a possible gate-verdict-missing as "
                     "required-check-red"
                 ),
