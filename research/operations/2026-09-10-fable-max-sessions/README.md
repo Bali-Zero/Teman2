@@ -86,6 +86,7 @@ The staff room opens each one; each needs its own seven-section file first, and 
 8. **SENTINEL HONESTY** (L1 residue). The throughput sentinel stops hardcoding `status="ok"`. Waits on THE REAPER.
 9. **PRE-PUSH FLOOR GATE** (C9, split from S1). `.husky/pre-push` refuses a floor-2 push without a brief, re-baselined after #6100. Fleet-wide hook.
 10. **MEMORY GUARD** (split from S5). A MEMORY_INDEX cap check that can fire: extend `scripts/memory/mos_recall_sessionstart.py` or fix and register `scripts/harness/harness_lifecycle_guard.py`. Waits on IMMUNE REGISTRY.
+11. **R1 DESIGN + R2 ENGINE — RESEARCH OS** (mandate 7, staff room Fable + Astra 2026-09-11). Seven-section files in [`R-research-os.md`](R-research-os.md): one tranche, P04-surface decisions → P06 NAGA claim ledger slice 2; the 23 packets stay a roadmap. Opens after Zero rules Z1–Z4 of that file (scope, bounded production writes, colour, veto). R2 releases only after R1 merged.
 
 ## Gear-1 one-liners (the former grunt lane)
 
