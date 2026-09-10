@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 88ee800ce53c07dba4c6213a8bb11dda00e2c4e331962ec1addc27b22be6118d
+checksum: 4e2b2d42046b48573794b2421e58b24a31e444a47f8b7db3f630f924821e1217
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2368,6 +2368,28 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.launchd_liveness.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.secrets_permissions_audit
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 7200
+  owner_module: scripts/secrets_permissions_audit.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.secrets-permissions-audit
+  severity_on_silence: error
+  notes: 'The credential-custody detector on a schedule (mission S2): hourly --notify
+    run over the default roots, ~/nuzantara/.secrets included; custody findings leave
+    as one p0 through tg_notify.py, .env* modes as one digest. Never chmods. Silence
+    means a loosened credential file goes unseen, hence error. Pro-only (plist paths).
+    Heartbeat status ok / error (blind scan or gateway refusal) / disabled. Kill switch
+    env var: SECRETS_PERMISSIONS_AUDIT_ENABLED=false.'
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.secrets_permissions_audit.json
     timestamp_field: ts
     status_field: status
 - id: pro.kbli_surface_conformance
