@@ -1014,6 +1014,12 @@
       "repo": "infra/codex-hooks/mandate_budget.py",
       "machines": ["all"],
       "_note": "CODEX_HOME half of the child adapter, undeclared from birth until 2026-09-10 (PARABELLUM \u00a74.7): the Claude copies under ~/.claude/hooks/ were declared and the Codex ones were not, so lint_home_fork.py reported clean over the seat that actually enforces the Codex context wall \u2014 superscar #1 and W107, census the producers not the one that bit you. Installed by infra/codex-hooks/install.py, which copies the exact source bytes into $CODEX_HOME/hooks/nuzantara-context/. Expect DRIFT on each host between this PR merging and the installer being re-run there; that is the pair doing its job, not a regression."
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.automations-reference.plist",
+      "repo": "infra/launchagents/com.nuzantara.automations-reference.plist",
+      "machines": ["pro"],
+      "_note": "Born 2026-09-11 to end the two-authors overwrite of docs/AUTOMATIONS_REFERENCE.md (Pro's 23:15 live regen into the main checkout vs the hand-edited committed copy, PENDING-ARMS #6137). The plist now points at scripts/automations-reference-cron-wrapper.sh, which runs the generator in an isolated worktree and promotes via PR instead."
     }
   ],
   "allow": [

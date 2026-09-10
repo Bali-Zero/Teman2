@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 7869d9e012342a75c210d68b170bc5d6f69b99dd7441351cdca4117bbcde749e # pragma: allowlist secret
+checksum: 9104b0aec4d131448483391eee77e3995aa37792e46bfd125321a803ca919df0 # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1788,15 +1788,29 @@ organs:
 - id: pro.automations_reference
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 90000
-  owner_module: scripts/generate-automations-all.sh
+  expected_hb_seconds: 93600
+  owner_module: scripts/automations-reference-cron-wrapper.sh
   dependencies: []
   recovery_action: launchctl_kickstart
   recovery_params:
     host: pro
     label: com.nuzantara.automations-reference
-  severity_on_silence: info
+  severity_on_silence: warning
+  notes: Nightly (23:15 WITA) regeneration of docs/AUTOMATIONS_REFERENCE.md, runs
+    scripts/generate_automations_reference.py inside an isolated worktree
+    (scripts/agent_start.py, lane=docs) via scripts/automations-reference-cron-wrapper.sh
+    so the main checkout is never written to directly — ends the two-authors overwrite
+    between Pro's live regen and the hand-edited committed copy (PENDING-ARMS ledger,
+    2026-09-11). Output is promoted via an auto-merge PR only when something actually
+    changed. The retired xlsx export step (scripts/generate_automations_excel.py,
+    28 of 28 runs failed on missing openpyxl) is not carried over. Kill switch
+    AUTOMATIONS_REFERENCE_ENABLED=false.
   cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.automations_reference.json
+    timestamp_field: ts
+    status_field: status
 - id: pro.prime_tunnel
   runtime: pro_launchd
   type: daemon
