@@ -476,7 +476,14 @@ class PortalBillingMixin:
                    c.nationality, c.passport_number, c.passport_expiry,
                    c.date_of_birth, c.gender, c.address, c.created_at as member_since,
                    tm.email as assigned_to_email, tm.full_name as assigned_to_name,
-                   tm.avatar_url as assigned_to_avatar
+                   -- `avatar`, not `avatar_url`: team_members carries the former and
+                   -- has never carried the latter (information_schema, live, 2026-09-10).
+                   -- The read path in routers/portal.py always had this right; this copy
+                   -- drifted, and because it is the ONLY caller here, every profile SAVE
+                   -- raised UndefinedColumnError AFTER the UPDATE had committed — a 500
+                   -- on a write that succeeded. See the tripwire in
+                   -- tests/test_data_invariant_tripwires.py.
+                   tm.avatar as assigned_to_avatar
             FROM clients c
             LEFT JOIN team_members tm ON tm.email = c.assigned_to AND tm.active = true
             WHERE c.id = $1 AND c.deleted_at IS NULL

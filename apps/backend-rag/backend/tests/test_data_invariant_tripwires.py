@@ -1219,3 +1219,111 @@ def test_the_voa_prices_are_the_ones_the_owner_ruled():
             f"ruled {expected}. The database half of the price has drifted "
             "from the sheet half — exactly the divergence migration 302 closed."
         )
+
+
+# ---------------------------------------------------------------------------
+# Invariant 6 — the portal-profile READ and UPDATE paths project the same
+# `team_members` columns
+# ---------------------------------------------------------------------------
+#
+# Born 2026-09-10 from a live 500. `_get_profile_data` in
+# services/portal/_mixins/billing.py selected `tm.avatar_url` — a column
+# that has never existed on `team_members` (verified live via
+# `information_schema.columns`: `team_members` carries `avatar`, and
+# `avatar_url` exists only on `clients`). The read path in
+# app/routers/portal.py has always selected `tm.avatar`, correctly.
+# `_get_profile_data` is also what `update_profile` returns, so every
+# `PATCH /api/portal/profile` committed its UPDATE and only THEN raised
+# `UndefinedColumnError` re-fetching the row to hand back — a 500 on a write
+# that had already landed.
+#
+# The defect was never a misspelling to allowlist: the same projection lives
+# in TWO files and nothing kept them in agreement. A column allowlist would
+# rot the moment `team_members` legitimately grows a column, exactly like
+# the query it would be guarding.
+#
+# A raw "the two `tm.*` column SETS must be equal" is not quite the right
+# invariant, though — measured directly: billing.py's query also selects
+# `tm.email as assigned_to_email` (it uses that value both to build
+# `assigned_to.email` and as the truthy gate deciding whether `assigned_to`
+# is `None`), while portal.py's read path gets the same conceptual value
+# from `c.assigned_to` — the join's FK column — and never aliases `tm.email`
+# at all. That is a legitimate structural difference, not drift: both
+# queries produce the same `assigned_to.email` value, they just source it
+# from different sides of the join. A set-equality assertion would flag it
+# and defeat the "prove the tripwire bites, then prove it's quiet on good
+# code" check every tripwire here has to pass.
+#
+# What actually broke was narrower and is what this pins: for an ALIAS both
+# queries share (`assigned_to_name`, `assigned_to_avatar`), the `tm.<column>`
+# feeding it must be the SAME column in both files. That is exactly the shape
+# of the `avatar` / `avatar_url` drift, and it does not false-positive on the
+# `assigned_to_email` asymmetry above, since that alias isn't shared.
+
+_SQL_LINE_COMMENT = re.compile(r"--[^\n]*")
+_TM_ALIASED_COLUMN = re.compile(r"\btm\.(\w+)\s+as\s+(\w+)", re.I)
+_CLIENTS_TM_SELECT = re.compile(
+    r"SELECT\s.*?FROM\s+clients\s+c\s+LEFT\s+JOIN\s+team_members\s+tm",
+    re.DOTALL,
+)
+
+
+def _tm_alias_to_column(path: Path) -> dict[str, str]:
+    """`{alias: source_column}` for every `tm.<column> as <alias>` in the
+    `SELECT ... FROM clients c LEFT JOIN team_members tm` block of `path`.
+
+    Comments are stripped first so a column named in prose (this file's own
+    "not `avatar_url`" explanation) is never counted. The match is cut off at
+    the literal `team_members tm` alias declaration — before the JOIN's `ON
+    ...` clause — so a filter-only column there (billing.py's `tm.active`,
+    used to exclude inactive team members) never enters the map: that is a
+    filter, not a projection.
+    """
+    src = path.read_text(encoding="utf-8")
+    match = _CLIENTS_TM_SELECT.search(src)
+    assert match, (
+        f"No `SELECT ... FROM clients c LEFT JOIN team_members tm` found in "
+        f"{path} — the query moved or was rewritten. Point this test at its "
+        "new location rather than deleting the check."
+    )
+    block = _SQL_LINE_COMMENT.sub("", match.group(0))
+    return {alias: column for column, alias in _TM_ALIASED_COLUMN.findall(block)}
+
+
+def test_portal_profile_read_and_update_paths_agree_on_team_members_columns() -> None:
+    """See the "Invariant 6" block comment above for the incident this pins."""
+    router_path = _repo_root() / "apps/backend-rag/backend/app/routers/portal.py"
+    billing_path = (
+        _repo_root()
+        / "apps/backend-rag/backend/services/portal/_mixins/billing.py"
+    )
+    assert router_path.exists(), f"portal.py router missing at {router_path}"
+    assert billing_path.exists(), f"billing.py mixin missing at {billing_path}"
+
+    read_aliases = _tm_alias_to_column(router_path)
+    update_aliases = _tm_alias_to_column(billing_path)
+
+    shared = read_aliases.keys() & update_aliases.keys()
+    assert shared, (
+        "portal.py and billing.py's profile queries share no `tm.<col> as "
+        f"<alias>` aliases at all (read: {sorted(read_aliases)}, update: "
+        f"{sorted(update_aliases)}) — either one query stopped aliasing its "
+        "tm columns, or this test's regex no longer matches its style."
+    )
+
+    mismatches = {
+        alias: (read_aliases[alias], update_aliases[alias])
+        for alias in shared
+        if read_aliases[alias] != update_aliases[alias]
+    }
+    assert not mismatches, (
+        "portal.py's profile-read query and billing.py's _get_profile_data "
+        f"both alias {sorted(mismatches)} but source it from a DIFFERENT "
+        f"`team_members` column in each file: {mismatches} (alias -> "
+        "(read_column, update_column)). This is exactly how `tm.avatar_url` "
+        "shipped: one copy of the query fixed to `tm.avatar`, the other left "
+        "aliasing a column that doesn't exist — and the drifted copy only "
+        "fails at request time, after its UPDATE has already committed. If "
+        "an alias's source column legitimately moved, update BOTH files in "
+        "the same commit — not just one."
+    )
