@@ -381,8 +381,10 @@ class TestPortalServiceDashboardHelpers:
         result = self.service._build_visa_dashboard_data(visa)
         assert result["status"] == "pending"
 
-    def test_get_tax_status_compliant(self) -> None:
-        assert self.service._get_tax_status(None) == "compliant"
+    def test_get_tax_status_none_without_deadline(self) -> None:
+        # Never "compliant": the status is only distance to the next generic
+        # calendar deadline, not filing/payment data (PR #6150).
+        assert self.service._get_tax_status(None) == "none"
 
     def test_get_tax_status_attention(self) -> None:
         deadline = {"days_until": 10}
@@ -392,9 +394,13 @@ class TestPortalServiceDashboardHelpers:
         deadline = {"days_until": -5}
         assert self.service._get_tax_status(deadline) == "overdue"
 
-    def test_get_tax_status_compliant_far(self) -> None:
+    def test_get_tax_status_upcoming_far(self) -> None:
         deadline = {"days_until": 30}
-        assert self.service._get_tax_status(deadline) == "compliant"
+        assert self.service._get_tax_status(deadline) == "upcoming"
+
+    def test_get_tax_status_never_asserts_compliance(self) -> None:
+        for deadline in (None, {"days_until": 15}, {"days_until": 30}, {"days_until": 400}):
+            assert self.service._get_tax_status(deadline) != "compliant"
 
     def test_build_action_items_empty(self) -> None:
         visa_data = {"status": "active", "daysRemaining": 200}

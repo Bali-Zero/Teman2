@@ -220,18 +220,37 @@ FABLE_GATE_CONTEXT_NAMES = ("harness/fable-gate", "harness-floor")
 
 EJECTION_CLASSES = ("CODE", "INFRA", "CONFLICT", "MANUAL", "NEVER_QUEUED", "UNKNOWN")
 
-# Same tiny heuristic queue_ejection_attribution.py::INFRA_JOB_NAME_SIGNATURES declares and
-# duplicates rather than imports (see module docstring STANDALONE note above).
-INFRA_JOB_NAME_SIGNATURES = (
-    "set up job",
-    "complete job",
-    "checkout",
-    "cache",
-    "setup-",
-    "set up ",
-    "docker",
-    "runner",
+# K-5 (Kimi council finding, S1 2026-09-11): the signatures are matched against a job's WHOLE
+# NAME, never as bare substrings. queue_ejection_attribution.py and queue_baseline_probe.py keep
+# the substring form on purpose — they are RETROSPECTIVE readers, and over-reading INFRA there
+# costs a mislabelled row in an audit. This module MUTATES (it re-arms), so it takes the same
+# deliberate divergence already taken for all()-vs-ANY: when the two rules disagree, the mutating
+# one is the strict one. The substrings were unsafe as substrings, and not hypothetically —
+# measured against the 72 real check names of PR #6144, exactly one matched: `Snyk Docker
+# Security`, whose failure is the least infra-flavoured event in the repository. `docker` used to
+# read it as INFRA and re-arm a real security red. Anchored, it reads CODE.
+#
+# Whole-name match means a job called `checkout` or `setup-python` is still INFRA, while
+# `Build Docker image`, `Cache dependencies` and `docker-build` are CODE. Failing closed in this
+# direction is the safe one: a missed INFRA costs one un-re-armed PR that the next human notices,
+# an over-read INFRA re-arms a red that a human never sees.
+INFRA_JOB_NAME_PATTERNS = (
+    re.compile(r"^set up job$"),
+    re.compile(r"^complete job$"),
+    re.compile(r"^checkout$"),
+    re.compile(r"^cache$"),
+    re.compile(r"^docker$"),
+    re.compile(r"^runner$"),
+    re.compile(r"^setup-[\w.+-]+$"),
+    re.compile(r"^set up [\w.+ -]+$"),
 )
+
+
+def _is_infra_job_name(name: Any) -> bool:
+    """True when a job's WHOLE name is one of the infra shapes (K-5). Whitespace-normalised and
+    lowercased first, so `  Set Up   Job ` matches and `Snyk Docker Security` does not."""
+    normalized = " ".join(str(name or "").lower().split())
+    return any(pattern.match(normalized) for pattern in INFRA_JOB_NAME_PATTERNS)
 
 PR_SHA_RE = re.compile(r"pr-(\d+)-([0-9a-f]{40})")
 
@@ -303,7 +322,7 @@ def _run_has_infra_signature(run: dict[str, Any], jobs: list[dict[str, Any]]) ->
         if job.get("conclusion") != "failure":
             continue
         name = str(job.get("name") or "").lower()
-        if not any(sig in name for sig in INFRA_JOB_NAME_SIGNATURES):
+        if not _is_infra_job_name(name):
             return False  # a real (non-infra-flavoured) job failure -> CODE, regardless of siblings
     if run.get("conclusion") in ("cancelled", "timed_out"):
         return True
@@ -312,7 +331,7 @@ def _run_has_infra_signature(run: dict[str, Any], jobs: list[dict[str, Any]]) ->
         if job_conclusion in ("cancelled", "timed_out"):
             return True
         name = str(job.get("name") or "").lower()
-        if job_conclusion == "failure" and any(sig in name for sig in INFRA_JOB_NAME_SIGNATURES):
+        if job_conclusion == "failure" and _is_infra_job_name(name):
             return True
     return False
 

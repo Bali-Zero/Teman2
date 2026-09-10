@@ -36,7 +36,7 @@ const createMockDashboard = (
     totalCompanies: 1,
   },
   taxes: {
-    status: "compliant",
+    status: "upcoming",
     nextDeadline: null,
     daysToDeadline: null,
   },
@@ -100,7 +100,7 @@ const createMockTaxOverview = (
   overrides?: Partial<TaxOverview>,
 ): TaxOverview => ({
   summary: {
-    status: "ok",
+    status: "none",
     totalDue: 0,
     nextDeadline: null,
     daysToDeadline: null,

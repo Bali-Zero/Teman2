@@ -472,7 +472,8 @@ async def test_get_tax_overview_shapes_obligations_and_history() -> None:
 
     result = await service.get_tax_overview(1, current_user=_ctx())
 
-    assert result["summary"]["status"] in {"compliant", "attention", "overdue"}
+    assert result["summary"]["status"] in {"none", "upcoming", "attention", "overdue"}
+    assert result["summary"]["status"] != "compliant"
     assert result["summary"]["totalDue"] == 0
     assert len(result["obligations"]) == 3
     assert result["history"] == [

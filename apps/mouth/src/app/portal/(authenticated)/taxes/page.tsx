@@ -200,7 +200,10 @@ export default function TaxesPage() {
             />
             <h2 className="text-lg font-semibold">Tax Status</h2>
           </div>
-          <StatusBadge status={taxData.summary.status} />
+          {(taxData.summary.status === "attention" ||
+            taxData.summary.status === "overdue") && (
+            <StatusBadge status={taxData.summary.status} />
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">

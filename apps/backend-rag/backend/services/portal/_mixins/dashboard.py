@@ -238,15 +238,20 @@ class PortalDashboardMixin:
         }
 
     def _get_tax_status(self, next_deadline) -> str:
-        """Determine tax compliance status."""
+        """Determine tax status relative to the next generic deadline.
+
+        Never returns "compliant": status is derived only from distance to
+        the next calendar deadline, not from actual filing/payment data, so
+        it cannot assert compliance.
+        """
         if not next_deadline:
-            return "compliant"
+            return "none"
         days = next_deadline["days_until"]
         if days < 0:
             return "overdue"
         if days <= 14:
             return "attention"
-        return "compliant"
+        return "upcoming"
 
     def _build_action_items(self, action_items, visa_data) -> list[dict[str, Any]]:
         """Build action items for dashboard."""
@@ -845,8 +850,10 @@ class PortalDashboardMixin:
                 next_deadline = deadlines[0]["due_date"]
                 days_to_deadline = deadlines[0]["days_until"]
 
-            # Determine status based on deadlines
-            status = "compliant"
+            # Determine status based on deadlines (never "compliant": this
+            # is only distance to the next generic calendar deadline, not
+            # actual filing/payment data)
+            status = "none" if days_to_deadline is None else "upcoming"
             if days_to_deadline is not None:
                 if days_to_deadline < 0:
                     status = "overdue"
