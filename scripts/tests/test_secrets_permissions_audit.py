@@ -975,6 +975,7 @@ def _fake_gateway(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         "import json, os, sys\n"
         "with open(os.environ['FAKE_TG_LOG'], 'a') as fh:\n"
         "    fh.write(json.dumps(sys.argv[1:]) + chr(10))\n"
+        "sys.stderr.write('tg_notify: ' + os.environ.get('FAKE_TG_STATUS', 'sent') + chr(10))\n"
     )
     monkeypatch.setenv("FAKE_TG_LOG", str(log_path))
     monkeypatch.setenv("SECRETS_AUDIT_TG_NOTIFY", str(script))
@@ -1200,6 +1201,10 @@ def test_n10_notify_never_chmods(
     custody_file = _touch(scr / "probe.json", 0o644, "{}\n")
     env_root = tmp_path / "enviroot"
     env_file = _touch(env_root / ".env.master", 0o644, "SECRET=1\n")
+    # An ORDINARY credential too: the one --fix would chmod, so a --notify
+    # path that ever reached fix_findings() turns this test red.
+    ordinary = _touch(env_root / "credentials.json", 0o644, "{}\n")
+    log_path = tmp_path / "fake_tg_log.jsonl"
 
     chmod_calls: list = []
     fchmod_calls: list = []
@@ -1222,6 +1227,11 @@ def test_n10_notify_never_chmods(
     assert fchmod_calls == []
     assert _mode_of(custody_file) == 0o644
     assert _mode_of(env_file) == 0o644
+    assert _mode_of(ordinary) == 0o644
+    assert [call[:2] for call in _read_fake_log(log_path)] == [
+        ["--tier", "p0"],
+        ["--tier", "digest"],
+    ]
 
 
 def test_n11_notify_and_fix_together_exit_2_no_gateway_call(
@@ -1294,3 +1304,95 @@ def test_n12_custody_alert_covers_symlinked_root_and_walked_custody(
     for path in (vault / "probe.json", outer / ".secrets" / "walked.json"):
         path.chmod(0o600)  # innocence on the same fixture
     assert module.build_alerts(module.audit([link, outer]), "pro") == []
+
+
+@pytest.mark.parametrize(
+    "status, handed, rc",
+    [
+        ("sent", 1, 0),
+        ("deduped", 1, 0),
+        ("internal error (boom) — best-effort spooled", 0, 1),
+        ("p0_unsent_spooled", 0, 1),
+    ],
+)
+def test_n13_gateway_status_decides_handed_not_its_exit_code(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+    status: str,
+    handed: int,
+    rc: int,
+) -> None:
+    """tg_notify.py exits 0 even when it could neither send nor spool; only
+    its status line says whether the alert left. `deduped` is handed but
+    reported as such, never as delivered."""
+    _fake_gateway(tmp_path, monkeypatch)
+    monkeypatch.setenv("FAKE_TG_STATUS", status)
+    module = _load_module(open_chain=False)
+    monkeypatch.setattr(module, "machine_label", lambda *a, **k: "pro")
+    scr = tmp_path / ".secrets"
+    _touch(scr / "probe.json", 0o644, "{}\n")
+
+    got = module.main(["--no-default-roots", "--root", str(scr), "--notify"])
+    out = capsys.readouterr().out
+
+    notify = [ln for ln in out.splitlines() if ln.startswith("NOTIFY ")][0]
+    assert f"handed={handed}" in notify
+    assert f"failed={1 - handed}" in notify
+    if handed:
+        assert f"outcomes=p0:{status}" in notify
+    assert "boom" not in out
+    assert got == rc
+    assert out.rstrip().endswith(f"RUN-END rc={rc}")
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root ignores permission bits")
+def test_n14_blind_without_a_custody_report_still_raises_p0(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """A `.secrets` met during an ordinary walk that lists but cannot be
+    traversed (0400) makes the audit BLIND with no custody root report —
+    the p0 alert must still say custody was not verified."""
+    log_path = _fake_gateway(tmp_path, monkeypatch)
+    module = _load_module(open_chain=False)
+    monkeypatch.setattr(module, "machine_label", lambda *a, **k: "pro")
+    root = tmp_path / "plain"
+    _touch(root / "readme.txt", 0o600, "x\n")
+    scr = root / ".secrets"
+    _touch(scr / "probe.json", 0o600, "{}\n")
+    scr.chmod(0o400)
+    try:
+        got = module.main(["--no-default-roots", "--root", str(root), "--notify"])
+    finally:
+        scr.chmod(0o700)
+    capsys.readouterr()
+
+    calls = _read_fake_log(log_path)
+    assert got == 2
+    assert len(calls) == 1 and calls[0][:2] == ["--tier", "p0"]
+    assert "audit BLIND" in calls[0][-1] and "probe.json" not in calls[0][-1]
+
+    got = module.main(["--no-default-roots", "--root", str(root), "--notify"])
+    capsys.readouterr()
+    assert got == 0  # innocence: same tree, access restored
+    assert len(_read_fake_log(log_path)) == 1
+
+
+def test_n15_alert_never_spells_out_a_symlinked_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """HOME is a symlink; the custody root resolves into the real home. The
+    alert collapses the real path to `~` as well, never printing its name."""
+    module = _load_module(open_chain=False)
+    real = tmp_path / "canonical-home-name"
+    _touch(real / "vault" / "probe.json", 0o644, "{}\n")
+    (real / ".secrets").symlink_to(real / "vault")
+    alias = tmp_path / "home-alias"
+    alias.symlink_to(real)
+    monkeypatch.setenv("HOME", str(alias))
+
+    alerts = module.build_alerts(module.audit([alias / ".secrets"]), "pro")
+
+    assert len(alerts) == 1
+    assert "~/vault — 1 credential file(s)" in alerts[0].text
+    assert "canonical-home-name" not in alerts[0].text

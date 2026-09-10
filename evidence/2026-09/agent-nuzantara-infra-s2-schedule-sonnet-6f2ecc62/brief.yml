@@ -4,12 +4,15 @@ mission: S2
 colour: BLUE
 l_level: L1
 deadline: 2026-09-10T19:59:24Z # the S2 mission deadline (mandate_budget.py), shared with PR1
-base_sha: 8edef9c2c86d2eb8d88363148aeb1b62e15b53f5 # PR1 head (#6113); rebased on origin/main once #6113 merges
+base_sha: 8edef9c2c86d2eb8d88363148aeb1b62e15b53f5 # PR1 head (#6113); rebased on origin/main once #6113 merges  # pragma: allowlist secret
 objective: >-
   The credential-custody detector runs on a schedule on Pro: a canon LaunchAgent runs
   scripts/secrets_permissions_audit.py --notify every hour, custody findings leave as one p0
   Telegram alert and .env* mode findings as one digest, so the next loosened credential file is
   caught by a machine within one audit interval (<= 60 min + run time), not by a late reader.
+  Detection is hourly; delivery follows the gateway's own policy for the constant dedup key
+  (first alert at once, then its repeat ladder — 6 h, then 24/72/168 h — while the condition
+  persists), and the run record prints the gateway's status per alert (sent / deduped / spooled).
 scope:
   - scripts/secrets_permissions_audit.py
   - scripts/tests/test_secrets_permissions_audit.py
@@ -46,8 +49,16 @@ acceptance:
       IF a custody root cannot be listed THEN the run SHALL exit 2 and still hand the p0 alert; IF
       the gateway cannot be reached THEN the run SHALL exit 1 with a failed=1 NOTIFY line.
     probe: pytest test_n5 + test_n6
-  - text: --notify SHALL make zero chmod/fchmod calls; --notify with --fix SHALL be refused.
+  - text: >-
+      --notify SHALL make zero chmod/fchmod calls on any audited file (an ordinary credential
+      included); --notify with --fix SHALL be refused. (The gateway hardens its OWN spool files;
+      that is tg_notify.py's contract, not an audited file.)
     probe: pytest test_n10 + test_n11
+  - text: >-
+      An alert SHALL count as handed over only when the gateway reports an accepted status (its
+      exit code is 0 even when it could not send or spool); an audit BLIND without a custody root
+      report SHALL still raise the p0; an alert SHALL never print the real name of a symlinked HOME.
+    probe: pytest test_n13 + test_n14 + test_n15 (Codex review of this PR, round 1)
   - text: >-
       The plist SHALL run the main checkout's script with --notify every 3600 s under Umask 0077,
       with only HOME and PATH in its environment.
@@ -55,8 +66,11 @@ acceptance:
   - text: >-
       WHEN launchd starts the job (launchctl kickstart -k) THEN its own log SHALL show one run with
       launcher=launchd whose custody line's file count equals `find ~/nuzantara/.secrets -type f |
-      wc -l` and whose finding count equals the files there with a mode other than 0600/0400, taken
-      in the same minute; one scheduled run later the result SHALL still hold.
+      wc -l` and whose finding count equals the oracle below, taken
+      in the same minute (the custody line counts every entry walked — the live directory holds
+      only regular files — and its findings are the regular files with any group/other bit,
+      i.e. `find ~/nuzantara/.secrets -type f -perm +077 | wc -l`); one scheduled run later the
+      result SHALL still hold.
     probe: production observation after deploy (log ~/logs/secrets-permissions-audit.log)
 assumptions:
   - text: >-
@@ -85,7 +99,12 @@ team:
     thread: s2-pr2-sonnet@session-666cc4e2
   reviewer:
     seat: codex (.claude/scripts/codex-spalla.sh, account default model, model_reasoning_effort=xhigh)
-    thread: ~/logs/codex-spalla/ (report path quoted in the PR body)
+    thread: ~/logs/codex-spalla/20260910T173648Z-eb8c-review-S2-PR2-the-schedule-of-the-credential-cu.md
+    result: 2 BLOCKER + 3 MEDIUM + 1 LOW, all accepted and fixed in the commit after d5bbcf1aab (N13-N15, N10 strengthened, brief corrected)
+    appetite_exceeded: >-
+      This is the mission's third adversarial round (PR1 used two). It is PR2's first and only one:
+      a new PR's first review, not a fix-of-a-fix. The fixes are verified by the final gate, not by
+      another Codex round.
   final_gate:
     seat: claude-opus-5 --effort xhigh, fresh `claude -p` session outside the chain, commissioned by this Dux
     thread: recorded in the gate receipt comment

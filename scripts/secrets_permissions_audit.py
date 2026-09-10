@@ -715,13 +715,16 @@ def mode_classes(mode: int) -> List[str]:
 def _home_relative(path: object) -> str:
     """Render a path with HOME collapsed to `~` — same convention the text
     report already uses for CUSTODY lines, reused here so an alert never
-    spells out the home directory's real name."""
-    home = str(Path.home())
+    spells out the home directory's real name. HOME's realpath is collapsed
+    too: the scanner reports resolved paths, so a symlinked HOME would
+    otherwise print the directory it points at."""
     shown = str(path)
-    if shown == home:
-        return "~"
-    if shown.startswith(home + os.sep):
-        return "~" + shown[len(home):]
+    home = Path.home()
+    for prefix in dict.fromkeys((str(home), os.path.realpath(home))):
+        if shown == prefix:
+            return "~"
+        if shown.startswith(prefix + os.sep):
+            return "~" + shown[len(prefix):]
     return shown
 
 
@@ -770,6 +773,13 @@ def build_alerts(result: AuditResult, machine: str) -> List[Alert]:
         for r in result.custody
         if r.blind
     ]
+    if result.blind and not any(r.blind for r in result.custody):
+        # Blind without a blind custody root: zero files seen, or a custody
+        # file met during a walk could not be lstat'ed. Still "could not see".
+        clauses.append(
+            f"audit BLIND ({result.files_traversed} file(s) seen under "
+            f"{result.roots_existing} root(s)): custody NOT verified"
+        )
 
     if clauses:
         body = "; ".join(clauses)
@@ -801,11 +811,35 @@ def build_alerts(result: AuditResult, machine: str) -> List[Alert]:
     return alerts
 
 
+#: tg_notify.py statuses that mean the gateway took the alert under its own
+#: policy (sent now, deduped by its repeat ladder, or spooled for a digest
+#: or budget slot). `p0_unsent_spooled` (no token, no relay) is not one.
+_GATEWAY_ACCEPTED = frozenset({"sent", "deduped", "spooled", "p0_overflow_spooled"})
+_GATEWAY_KNOWN = _GATEWAY_ACCEPTED | {"p0_unsent_spooled"}
+
+
+def _gateway_status(stderr: bytes) -> str:
+    """The gateway's own verdict, from its last `tg_notify: <status>` stderr
+    line. It exits 0 even when it could neither send nor spool (it never
+    fails its caller), so the exit code alone cannot say an alert left.
+    Only a known status token is returned, never free text."""
+    for line in reversed(stderr.decode("utf-8", "replace").splitlines()):
+        if line.startswith("tg_notify: "):
+            status = line[len("tg_notify: "):].strip()
+            if status.startswith("internal error"):
+                return "internal-error"
+            return status if status in _GATEWAY_KNOWN else "unknown-status"
+    return "no-status"
+
+
 def send_alerts(alerts: Sequence[Alert]) -> Tuple[int, List[str]]:
     """Hand each alert to tg_notify.py's frozen CLI:
     `tg_notify.py --tier <t> --source secrets-audit --dedup-key <k> "<text>"`.
     Never shell=True. Returns (handed_over, failures); a failure is recorded
-    as "<tier>: <exception class name or rc=N>" — never the alert text.
+    as "<tier>: <exception class name, rc=N or gateway status>" — never the
+    alert text. An alert counts as handed over only when the gateway exits 0
+    AND reports an accepted status (see _GATEWAY_ACCEPTED); a handed alert
+    is recorded in the module's last-run outcomes as "<tier>:<status>".
 
     `<gateway>` = env SECRETS_AUDIT_TG_NOTIFY when set (tests point it at a
     fake script — the real tg_notify.py sends real Telegram messages and
@@ -837,8 +871,18 @@ def send_alerts(alerts: Sequence[Alert]) -> Tuple[int, List[str]]:
         if proc.returncode != 0:
             failures.append(f"{alert.tier}: rc={proc.returncode}")
             continue
+        status = _gateway_status(proc.stderr or b"")
+        if status not in _GATEWAY_ACCEPTED:
+            failures.append(f"{alert.tier}: {status}")
+            continue
         handed += 1
+        LAST_OUTCOMES.append(f"{alert.tier}:{status}")
     return handed, failures
+
+
+#: "<tier>:<status>" for every alert the last send_alerts() handed over —
+#: `deduped` is handed but NOT delivered now, so the run record says which.
+LAST_OUTCOMES: List[str] = []
 
 
 def _run_timestamp() -> str:
@@ -958,6 +1002,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         run_ppid = os.getppid()
         run_service = os.environ.get("XPC_SERVICE_NAME", "-")
         alerts = build_alerts(result, run_machine)
+        LAST_OUTCOMES.clear()
         if alerts:
             handed, notify_failures = send_alerts(alerts)
 
@@ -1006,6 +1051,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "p0": sum(1 for a in alerts if a.tier == "p0"),
                 "digest": sum(1 for a in alerts if a.tier == "digest"),
                 "handed": handed,
+                "outcomes": list(LAST_OUTCOMES),
                 "failed": notify_failures,
             }
         print(json.dumps(payload))
@@ -1054,7 +1100,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             digest_count = sum(1 for a in alerts if a.tier == "digest")
             print(
                 f"NOTIFY p0={p0_count} digest={digest_count} handed={handed} "
-                f"failed={len(notify_failures)}"
+                f"failed={len(notify_failures)} "
+                f"outcomes={','.join(LAST_OUTCOMES) or '-'}"
             )
             for failure in notify_failures:
                 print(f"  ! {failure}")
