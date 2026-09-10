@@ -6,10 +6,10 @@ objective: >-
   Land the GARUDA VOA final spec (G0 + eight windows, reconciled with Astra) and commit
   Astra's option-D proof pack verbatim so Zero's operator steps and the reproduction driver
   live on main. Docs and evidence only; no runtime, migration, router or service change.
-  The floor is 2 via the SIZE term alone (1293 added lines, of which ~830 are the verbatim
-  pack and 194 are audit decisions in .secrets.baseline); the blast radius a reviewer reads
+  The floor is 2 via the SIZE term alone (1283 added lines, of which ~830 are the verbatim
+  pack and 184 are audit decisions in .secrets.baseline); the blast radius a reviewer reads
   is one spec, one pointer bullet, twelve evidence files that execute nowhere in CI or
-  production, and 23 is_secret=false entries.
+  production, and 22 baseline entries audited as false positives.
 scope:
   - docs/plans/2026-09-11-garuda-voa-final-spec.md
   - docs/plans/2026-09-03-relaunch-lanes/LANE-A-garuda-voa.md
