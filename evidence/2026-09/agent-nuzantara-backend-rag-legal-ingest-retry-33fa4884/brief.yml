@@ -12,12 +12,13 @@ lane: backend-rag/legal-ingest-retry
 machine: Pro
 date: 2026-09-11
 
-gear: 1
+gear: 2
 gear_reason: >-
-  Deterministic floor 1, source `size`: `git diff --numstat` against main is 335 added lines
-  (35+40+139+121), below SIZE_GEAR2_THRESHOLD (400). No off-limits or hot-zone path touched
-  (router + worker + their unit tests only). `scripts/evidence_pack_lint.py --print-floor`
-  confirms 1 on the committed diff (origin/main...HEAD).
+  Deterministic floor 2, source `size`: CI run 34519886876 measured the diff against main
+  (396+/8- lines, brief included) above SIZE_GEAR2_THRESHOLD (400) and below the Gear-3
+  threshold (1828). No hot-zone path (app/routers, services/ingestion, tests, evidence only).
+  The first revision declared 1 from a local measurement taken before the brief itself was
+  part of the diff; a fresh Opus 5 gate is commissioned on this head.
 
 appetite:
   wall_clock_hours: 1
