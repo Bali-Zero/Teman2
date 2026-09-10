@@ -631,8 +631,9 @@ Tests: `scripts/tests/test_mq_sh.sh` (fake `gh` on `PATH`, no network).
 
 ## 6septies. The red is an external commit status, not the code
 
-A job that reads a commit status on the head SHA — the Gear-3 `harness/fable-gate` verdict is the
-one in this repo — fails identically whether the verdict is REWORK or simply **not posted yet**.
+A job that reads a commit status on the head SHA — the `harness/fable-gate` verdict is the one in
+this repo, required from **Gear 2** since RULED 2026-09-10 and not only from Gear 3 — fails
+identically whether the verdict is REWORK or simply **not posted yet**.
 Once the gate session posts it, the job has to run again, and the obvious gesture is the wrong one.
 
 **Do not use `gh workflow run --ref`.** A `workflow_dispatch` run creates its check-run in a
