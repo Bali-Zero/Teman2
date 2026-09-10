@@ -925,7 +925,6 @@ class PortalDocumentsMixin:
                     return result
                 # Use Service Account for upload
                 return await self._upload_with_service_account(
-                    team_drive,
                     client_id,
                     client_name,
                     document_type,
@@ -1033,7 +1032,6 @@ class PortalDocumentsMixin:
 
     async def _upload_with_service_account(
         self,
-        team_drive: Any,
         client_id: int,
         client_name: str,
         document_type: str,
@@ -1042,11 +1040,23 @@ class PortalDocumentsMixin:
         mime_type: str | None,
         result: dict[str, Any],
     ) -> dict[str, Any]:
-        """Upload file using Service Account (fallback when OAuth fails)."""
+        """Upload file using Service Account (fallback when OAuth fails).
+
+        Routes through ServiceAccountDriveService — the component that
+        actually owns a Drive API client built from the same
+        settings.google_credentials_json that
+        TeamDriveService.service_account_available checks — instead of a
+        `team_drive.drive_service` attribute TeamDriveService never defined.
+        That attribute meant this branch raised AttributeError on every real
+        invocation (production and test alike); see cicatrix BUG C.
+        """
         try:
             from datetime import datetime
 
             from backend.app.core.config import settings
+            from backend.services.integrations.service_account_drive_service import (
+                ServiceAccountDriveService,
+            )
 
             # Create folder structure
             timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
@@ -1056,26 +1066,18 @@ class PortalDocumentsMixin:
             folder_path = f"Zantara Portal Uploads/{client_id}_{safe_client_name}/{document_type.replace('_', ' ').title()}"
             drive_file_name = f"{timestamp}_{file_name}"
 
-            # Upload using Service Account
-            file_metadata = {
-                "name": drive_file_name,
-                "parents": [settings.google_drive_root_folder_id or "root"],
-            }
-
-            import io
-
-            from googleapiclient.http import MediaIoBaseUpload
-
-            media = MediaIoBaseUpload(
-                io.BytesIO(file_content),
-                mimetype=mime_type or "application/octet-stream",
-                resumable=True,
-            )
-
-            uploaded_file = (
-                team_drive.drive_service.files()
-                .create(body=file_metadata, media_body=media, fields="id, name, webViewLink")
-                .execute()
+            # Upload using Service Account. ServiceAccountDriveService wraps
+            # the (synchronous) googleapiclient .execute() call in
+            # asyncio.to_thread internally, so this does not block the
+            # event loop the way the old team_drive.drive_service.files()...
+            # .execute() call would have (never reached in practice).
+            root_folder_id = settings.google_drive_root_folder_id or "root"
+            sa_drive = ServiceAccountDriveService(root_folder_id=root_folder_id)
+            uploaded_file = await sa_drive.upload_file_to_folder(
+                folder_id=root_folder_id,
+                file_content=file_content,
+                file_name=drive_file_name,
+                mime_type=mime_type,
             )
 
             result["success"] = True
