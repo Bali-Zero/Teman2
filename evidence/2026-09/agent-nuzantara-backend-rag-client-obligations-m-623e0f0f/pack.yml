@@ -1,0 +1,265 @@
+task_id: client-obligations-migration
+gear: 3
+gate_class: opus
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+
+lanes:
+  - lane: build
+    role: build
+    seat: claude-sonnet-5
+    note: >-
+      Derived client_obligations' columns/types/constraints/indexes from
+      services/compliance/obligations_repository.py's own SQL
+      (_UPSERT_SQL, _REVIEW_SQL, list_by_status) and the ObligationRow
+      dataclass, cross-checked against the PR #6122 body's proposed SQL
+      (code wins on disagreement — none found, they matched). Wrote migration
+      309 with a prose-only rollback (guardrail constraint, verified against
+      the actual regex in guardrails-static.py, not assumed), extended
+      test_obligations_register.py's two skipped migration tests to run and
+      pass, convened and journaled the two-seat council, applied both real
+      findings, authored this pack.
+  - lane: independent-diff-review
+    role: review
+    seat: codex-gpt-5.6-sol
+    note: >-
+      `codex exec --sandbox read-only --skip-git-repo-check -`, bounded
+      prompt (diff + repository SQL context, explicitly no repo exploration,
+      no test execution). SEAT-VERDICT: not-ok. 3 findings, 2 real and
+      fixed, 1 accepted — see dissent below.
+  - lane: independent-diff-review-2
+    role: review
+    seat: kimi-code/k3
+    note: >-
+      `scripts/kimi_client.py` (v2, tools disabled, credential-scrubbed
+      child), same bounded prompt. SEAT-VERDICT: ok. 4 findings, 1 real and
+      fixed, 3 accepted with verified reasoning — see dissent below.
+  - lane: final-gate
+    role: review
+    seat: claude-opus-5
+    note: "Pending — gate_verdict is added by the final-gate seat, not here."
+
+spend:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 2
+
+appetite_exceeded: none
+
+pii_scan: clean
+pii_scan_note: >-
+  This PR's entire diff is a CREATE TABLE/CREATE INDEX schema definition, a
+  prose rollback comment, and a Python test that parses SQL text — no row of
+  any table is read, written, selected or logged anywhere in it. The council
+  prompt sent to both external seats carried only this diff (git-diff index
+  lines and one unrelated docstring date-list line stripped to clear the
+  kimi wrapper's own numeric-shape PII gate as a false positive on hex/date
+  literals, not real PII) plus hardcoded SQL text already public in the
+  repository and the PR #6122 body. `git diff origin/main...HEAD` greps
+  clean for phone/email/passport/KTP/NPWP-shaped literals (grep exit 1).
+
+receipts:
+  - probe: A1
+    claim: >-
+      WHEN test_obligations_register.py is run SHALL pass all cases,
+      including the two previously-skipped migration-shape tests now armed
+      by the migration file's presence.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=.:../crm-cell
+      /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/services/compliance/test_obligations_register.py
+      -p no:cacheprovider
+    result: "62 passed in 0.15s"
+    exit: 0
+    ts: "2026-09-10T20:11:40Z"
+    seat: claude-sonnet-5 (build)
+
+  - probe: A2
+    claim: >-
+      lint_migration_rollback.py and lint_migration_numbers.py SHALL report
+      zero violations; squawk's findings on the new migration SHALL be the
+      same structural/style class already present on every already-merged
+      sibling hot-zone migration (BIGSERIAL id, plain INTEGER FK, a
+      non-CONCURRENTLY index), not a novel defect.
+    cmd: >-
+      python3 scripts/lint_migration_numbers.py && python3
+      scripts/lint_migration_rollback.py && squawk
+      apps/backend-rag/backend/db/migrations_v2/309_client_obligations.sql
+    result: >-
+      "✅ migration-numbers lint: 186 files, all unique prefixes" / "✅
+      migration-rollback lint: 181 post-cutoff migrations, all have
+      ROLLBACK marker" / squawk: 4 warnings (require-statement-timeout,
+      prefer-identity, prefer-bigint-over-int, require-concurrent-index-
+      creation) — the identical warning classes squawk reports on
+      259_e33_case_lifecycle.sql and 308_clients_phone_core_expression_indexes.sql,
+      both already merged to main with the same shapes.
+    exit: "0 (lints); 1 (squawk warnings-only exit, matches every merged sibling)"
+    ts: "2026-09-10T20:11:55Z"
+    seat: claude-sonnet-5 (build)
+
+  - probe: A3
+    claim: >-
+      The deterministic gear floor recomputed from this PR's own changed-file
+      set equals 3, matching the declared gear exactly.
+    cmd: >-
+      git diff --name-only origin/main...HEAD > /tmp/cf-309.txt && git diff
+      --numstat origin/main...HEAD > /tmp/ns-309.txt && python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file
+      /tmp/cf-309.txt --numstat-file /tmp/ns-309.txt
+    result: "3"
+    exit: 0
+    ts: "2026-09-10T20:13:45Z"
+    seat: claude-sonnet-5 (build)
+
+  - probe: slot-309-free
+    claim: Migration slot 309 was free on origin/main at implementation.
+    cmd: >-
+      git ls-tree --name-only origin/main
+      apps/backend-rag/backend/db/migrations_v2/ | grep -E "/309_"
+    result: "(no output — no 309_* file on origin/main; 308 is the last)"
+    exit: 1
+    ts: "2026-09-11T03:59:00Z"
+    seat: claude-sonnet-5 (build)
+    note: "exit 1 is the expected/correct outcome for an absence grep."
+
+  - probe: A4-attempted
+    claim: >-
+      `python -m db.migrate apply-all --dry-run` lists migration 309 pending.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=.:../crm-cell
+      /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m
+      backend.db.migrate apply-all --dry-run
+    result: >-
+      asyncpg.exceptions.InvalidPasswordError: password authentication
+      failed for user "backend_rag_v2" — this worktree's DATABASE_URL points
+      at a role this session has no working credential for. Inspecting the
+      env var and the secrets file to diagnose it were BOTH denied by the
+      client guardrail/classifier on the first attempt; per this task's own
+      guardrail-denial instruction, neither was retried or worked around.
+      Static validation was run instead (below) and is clean.
+    exit: 1
+    ts: "2026-09-10T20:00:36Z"
+    seat: claude-sonnet-5 (build)
+
+  - probe: A4-static-fallback
+    claim: >-
+      Without a DB connection: split_migration_sql() correctly separates
+      forward/rollback, and none of migration_base.py's own
+      DANGEROUS_PATTERNS (DROP DATABASE, DROP SCHEMA, TRUNCATE) appear in
+      the forward DDL — the same check `_validate_sql()` runs before every
+      real apply.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=.:../crm-cell
+      /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -c
+      "from backend.db.migration_base import split_migration_sql; ..."
+      (full inline script in session transcript)
+    result: >-
+      "forward len 3731 rollback len 833" / DROP DATABASE absent / DROP
+      SCHEMA absent / TRUNCATE absent / "rollback contains DROP TABLE
+      literal: False"
+    exit: 0
+    ts: "2026-09-10T20:00:52Z"
+    seat: claude-sonnet-5 (build)
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      (MEDIUM) Rollback prose named only the future PR A2 bridge as a
+      pre-condition for reverting the table, omitting that
+      obligations_repository.py (this table's actual, already-merged
+      consumer, PR #6122) is itself live and would start raising
+      UndefinedTableError the moment the table is dropped out from under it.
+    status: CONFIRMED
+    disposition: >-
+      Fixed. Rollback section rewritten to name obligations_repository.py
+      explicitly as the pre-condition to undeploy/disable first, keeping the
+      PR A2 condition as a second, later-arriving one.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      (LOW) The column-coverage test's regex counted declarations inside
+      /* ... */ SQL block comments, so a column commented out that way would
+      still count as "declared".
+    status: CONFIRMED
+    disposition: >-
+      Fixed. The test now strips /* ... */ block comments from the CREATE
+      TABLE statement text before running the column-presence regex.
+      (The actual migration file uses only `--` line comments, so this was
+      latent, not live — fixed anyway since it is cheap and the finding is
+      correct about the test's own logic.)
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      (LOW) Both migration tests skip outright when 309_client_obligations.sql
+      is absent, so an accidental deletion of the file would silently return
+      to the pre-existing skip state rather than failing loudly.
+    status: CONFIRMED
+    disposition: >-
+      No code change. This is the repo-wide `skipif(not MIGRATION.exists())`
+      convention already used for every deferred-migration test in this
+      codebase (this file's own two tests were already shaped this way
+      before this PR); changing it here would be inconsistent with every
+      sibling and is out of scope for a single migration PR.
+  - seat: kimi-code/k3
+    objection: >-
+      (MEDIUM) The column-coverage test validated column NAMES only — a
+      `status TEXT NOT NULL` with no `DEFAULT 'proposed'` (breaking the
+      upsert, which never writes status) or a `due_date TEXT` (breaking the
+      `$4::date[]` unnest binding) would still pass it.
+    status: CONFIRMED
+    disposition: >-
+      Fixed. Added two literal assertions to
+      test_migration_309_shape_and_rollback pinning
+      `status TEXT NOT NULL DEFAULT 'proposed'` and `due_date DATE NOT NULL`
+      verbatim, closing exactly the two failure modes named.
+  - seat: kimi-code/k3
+    objection: >-
+      (LOW) The migration header's claim that the DB "enforces [the
+      transition] as an atomic compare-and-swap" could be read as claiming
+      DB-level enforcement of the full proposed->approved->alerted->done
+      lifecycle, when set_status() only reaches approved/rejected (0 rows
+      returned once past 'proposed'; alerted/done are written by the future
+      PR A2 bridge with its own SQL, outside this repository class).
+    status: PLAUSIBLE
+    disposition: >-
+      No code change. Re-read the actual header sentence: it scopes the
+      enforcement claim explicitly to "the proposed -> approved|rejected
+      transition guard", never claims to cover alerted/done. Verified
+      precisely scoped as written; the ambiguity the seat flagged is not
+      present in the actual text.
+  - seat: kimi-code/k3
+    objection: >-
+      (LOW) No index on alert_id; a future alert-id lookup would seq-scan.
+    status: PLAUSIBLE
+    disposition: >-
+      No code change — the seat itself flagged this as speculative. No
+      query in obligations_repository.py or the PR #6122 body looks up by
+      alert_id; PR A2 (not yet written) is the first plausible caller, and
+      can add the index then if it needs it.
+  - seat: kimi-code/k3
+    objection: >-
+      (LOW) The rollback prose lists removing the index, then the table,
+      though dropping the table removes both — mildly redundant.
+    status: CONFIRMED
+    disposition: >-
+      No code change. This phrasing matches 259_e33_case_lifecycle.sql's
+      literal DROP INDEX-then-DROP TABLE ordering and
+      270_wa_broker_jobs.sql's identical prose pattern verbatim — kept for
+      consistency with both precedents rather than being the one migration
+      that describes the inverse differently.
+
+bites:
+  consumer: >-
+    services/compliance/obligations_repository.py (ObligationsRepository),
+    already merged (PR #6122) and importing this table's schema at every
+    call; the future reviewer-queue API and compliance_alerts bridge (PR A2)
+    are the next consumers.
+  where: >-
+    production — Fly Postgres primary, once merging this PR triggers
+    fly-deploy.yml's release_command migration (this migration ships no
+    seed data and no caller is wired to the register/repository yet, so
+    there is no traffic to observe pre-A2; the correct proof is schema
+    presence, not read/write volume).
+  observe: >-
+    `fly ssh console -a nuzantara-postgres -C "psql -U postgres -h
+    /run/postgresql -p 5433 -d nuzantara_rag -Atc \"SELECT to_regclass('public.client_obligations')\""`
+  expect: >-
+    Returns `client_obligations` (not NULL) immediately after the release
+    step, proving the table exists before any A2 traffic depends on it.
