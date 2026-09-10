@@ -8,9 +8,13 @@ mandate: >
   (M engines, D identity) and the verbatim prompts of the two windows to open now. Documents only.
 gear: 2
 gear_reason: >
-  Deterministic floor 2 via the SIZE term alone: about 1,000 net lines of new markdown/json
-  under docs/plans/ and evidence/, all non-hot-zone paths. No workflow, guard, schema, lockfile,
-  product code or CODEOWNERS-tier path is touched; nothing raises the floor above 2.
+  Deterministic floor 2 via the SIZE term: measured churn (added+deleted against the merge-base
+  with origin/main) of about 1624 lines after the rework asked by the first gate, below the
+  1,828-line gear-3 threshold; three non-load-bearing Astra evidence files were removed and are
+  recorded by sha256 in evidence/EXCLUDED-FILES.sha256. New markdown/json under docs/plans/ and
+  evidence/, one narrow file-exclusion regex in .secrets.baseline for two pinned JSON manifests,
+  four lines in .prettierignore. No workflow, guard, schema, lockfile, product code or
+  CODEOWNERS-tier path is touched.
 origin: >
   Zero's instruction of 2026-09-11 to the two sessions: "discutete e portami la spec finale con il
   prompt e la/le window da lanciare per ultimare motore e design". Inputs: PR #6124 (Fable design

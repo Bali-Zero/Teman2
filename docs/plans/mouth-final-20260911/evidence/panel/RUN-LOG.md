@@ -9,7 +9,7 @@ qwen: FAILED — TP1 responded "403 Access to model denied" (same as topic 3 run
 gemini attempt 1: 0 bytes — agy (jetski) auto-denied a "command" tool call in headless mode; re-run with explicit no-tools instruction, NOT with --dangerously-skip-permissions
 gemini attempt 2 start 2026-09-10T20:59:01Z model=gemini-3.1-pro-preview
 gemini attempt 2 exit=0 bytes=    7289
-panel input FINAL.md sha256 at launch: ed7d483613b6a4ca13d0eb4525835a4fc274111a364a81b23b8170b5162bb220
+panel input FINAL.md sha256 at launch: ed7d483613b6 (prefix)
 gemini attempt 2 self-reported SEAT line: "Gemini 3.8 Flash" (agy settings.json model=gemini-3.1-pro-preview; served model not verifiable from CLI output) -> attempt 3 with explicit --model gemini-3.1-pro-preview into gemini-3.1-pro.md
 gemini attempt 3 start 2026-09-10T21:02:33Z --model gemini-3.1-pro-preview
 gemini attempt 3 exit=1 bytes=       0
@@ -18,4 +18,4 @@ gemini attempt 4 start 2026-09-10T21:03:18Z --model 'Gemini 3.1 Pro (High)'
 kimi exit=0
 astra exit=0
 gemini attempt 4 exit=0 bytes=    2391
-panel closed 2026-09-10T21:10:45Z — astra.md = lines 8130-8142 of the codex transcript (transcript 657 KB kept in the session scratchpad, not in the PR); gemini.md = agy default seat (self-reported Gemini 3.8 Flash); gemini-3.1-pro.md = the requested seat; kimi.md; qwen failed 403
+panel closed 2026-09-10T21:10:45Z — astra.md = lines 8130-8142 of the codex transcript (transcript 657 KB kept in the session scratchpad, not in the PR); panel-gemini-default-agy.md (was gemini.md, renamed: .gitignore:430 GEMINI.md swallows it on a case-insensitive FS) = agy default seat (self-reported Gemini 3.8 Flash); gemini-3.1-pro.md = the requested seat; kimi.md; qwen failed 403
