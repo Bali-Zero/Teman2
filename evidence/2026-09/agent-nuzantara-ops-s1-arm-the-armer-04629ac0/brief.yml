@@ -1,0 +1,167 @@
+task_id: s1-arm-the-armer
+mandate_id: S1
+colour: BLUE
+gear: 2
+l_level: L2
+objective: >-
+  S1 ARM THE ARMER (staff room session e8a86e26, wave 1 alongside S2). Organ: merge-queue
+  remediation, `scripts/queue_shepherd.py` (LaunchAgent `com.nuzantara.queue-shepherd`,
+  StartInterval 600 on Pro). The re-armer reads its candidates, reports CANNOT-VERIFY when it
+  cannot read them (non-ok heartbeat, non-zero exit, one stable-key alert), and stops re-arming a
+  PR that has gone red three times for the same cause. What success changes: a GitHub degradation
+  no longer reads as "nothing to do".
+opened_at: "2026-09-10T14:56:38Z"
+deadline: "2026-09-10T20:56:38Z"
+deadline_source: "infra/codex-hooks/mandate_budget.py mandate_deadline(<codex state>/mandates, 'S1'), opened 15:12Z against the 14:56:38Z opening"
+base_sha: af8f2da124fe6ae3003fb615170af45216298f2b
+appetite:
+  wall_clock_hours: 6
+  adversarial_rounds: 2
+  tokens: 2500000
+ground:
+  - "14:57Z ~/logs/queue-shepherd.err.log: 1890 'rearmed=0 cancelled=0' of 1891 '^tick complete' lines; 1892 'CANNOT-VERIFY rearm candidates' lines since 2026-08-28 02:44 local; 0 ' class=' lines ever — the candidate read has never succeeded once."
+  - "Error mix of those reads: 1143 'Resource limits for this query exceeded', 474 HTTP 502, 266 HTTP 504, 7 truncated JSON, 1 timeout, 1 connect error. Every such tick exited 0 with heartbeat 'ok'."
+  - "15:04Z live probe: REARM_CANDIDATES_QUERY verbatim -> HTTP 504 at first:100, 'Resource limits' at first:25; the same query without checkSuites(first:20){checkRuns(first:20)} -> OK in 4.3 s, cost 1, 45 PRs examined."
+  - "The checkRuns branch never matched: harness/fable-gate is a commit status context; no job/check-run is named harness-floor or harness/fable-gate (the floor check-run is 'Harness floor recompute')."
+  - "LaunchAgent plist com.nuzantara.queue-shepherd.10min.plist: /usr/bin/python3 (3.9.6) ~/nuzantara/scripts/queue_shepherd.py --tick, KeepAlive false, StartInterval 600 — a non-zero exit cannot respawn it."
+  - "Live timelines 15:0xZ: #5746 Removed failed_checks twice on two different heads; #5838 and #6054 carry no merge-queue event at all; #6099 Removed reason 'merged'."
+  - "Mini siblings already truthful: queue_unstick summary carries examined=45 and exits 4 on cannot_verify (44 of 2349 runs); queue_stall_notify exits 1 on classifier/fleet-mail timeouts (11 of 55). Mini-sibling PR not warranted on this evidence; the heavy checkSuites(first:100)xcheckRuns(first:20) query also lives in scripts/queue_stall_classifier.py, outside this perimeter -> ledger row."
+team:
+  dux:
+    seat: claude-opus-5
+    effort: xhigh
+    thread: 9a3559a9-e38c-4b79-87e7-7a30043c7b9b
+    role: Dux and release owner
+  implementer:
+    seat: claude-sonnet-5
+    effort: default
+    pinned: 'Agent model: "sonnet"'
+    thread: "attempt 1: s1-implementer, in-process teammate (ListAgents ref 4975f6), last tool call 15:12:29Z, stalled with zero writes, stopped 15:40:54Z; attempt 2: unnamed background Agent subagent dispatched 15:41Z (replacement 1, same spec, small-step method, 35-min ceiling)"
+  adversarial_reviewer:
+    seat: "codex CLI, account ~/.codex-acct2, account default model"
+    effort: xhigh
+    invocation: ".claude/scripts/codex-spalla.sh review origin/main '<focus>'"
+    self_test: "2026-09-10T15:11:21Z verdict LGTM (~/logs/codex-spalla/20260910T151121Z-105eb-self-test-self-test.md)"
+    thread: pending
+  final_gate:
+    seat: claude-opus-5
+    effort: xhigh
+    session: "fresh `claude -p` session outside the contribution chain, commissioned by this top-level Dux"
+    thread: pending
+routing_floor: >-
+  Not triggered: one code PR. Staff-room correction 5 puts the Mini siblings outside S1's
+  perimeter, and the evidence agreed before it arrived (they already report CANNOT-VERIFY with
+  examined counts), so there is no second code lane to route through Kimi/GLM.
+constraints:
+  - "Writable: scripts/queue_shepherd.py, scripts/tests/test_queue_shepherd.py, this evidence dir. Untouched: scripts/tg_notify.py (S4), .husky/pre-push, .github/workflows/**, scripts/lib/heartbeat.py, the plist, PENDING-ARMS.md (ledger rows go in a separate ledger-only PR)."
+  - "Python 3.9 compatible (the LaunchAgent runs /usr/bin/python3 3.9.6)."
+  - "tg_notify surface consumed as frozen (--tier, --source, --dedup-key); every CANNOT-VERIFY uses the single key queue-shepherd:cannot-verify."
+  - "Heartbeat keeps the organ's own writer and schema {ts, status, organ_id, metadata}; scripts/lib/heartbeat.py writes {ts, status, note}, so routing through it would itself be a schema change. 'error' is in organism_stale_detector's unhealthy set. Reported to the staff room in checkpoint 1."
+  - "No client PII anywhere."
+acceptance:
+  - "A1 (negative): a failing gh api graphql on the candidate read -> tick complete: CANNOT-VERIFY=..., heartbeat status error, exit 2, one send with dedup_key queue-shepherd:cannot-verify (none in dry-run)."
+  - "A2 (negative): three reds from ONE cause -> not re-armed and marked suspended in red-causes.json; three reds from three different causes -> still eligible (re-armed under the INFRA budget)."
+  - "A3 (integration): cd $WT && /usr/bin/python3 scripts/queue_shepherd.py --tick --dry-run completes the candidate read with no 502 and logs examined=N."
+  - 'A4 (production, staff-room correction 6): puller rc=0 and status ok; live by CONTENT, not ancestry (squash merge): [ "$(git -C ~/nuzantara rev-parse HEAD:scripts/queue_shepherd.py)" = "$(git -C "$WT" rev-parse HEAD:scripts/queue_shepherd.py)" ] && echo live; then six consecutive scheduled tick complete lines (~60 min), each with examined=, none CANNOT-VERIFY.'
+  - "Rollback trigger: a tick re-arms a PR classified CODE, CONFLICT or MANUAL, or two consecutive post-merge ticks error -> revert PR cut from a fresh origin/main."
+sibling_outputs:
+  open_pr_changed_paths:
+    ts: "2026-09-10T15:12:54Z"
+    cmd: "gh pr list --state open --limit 200 --json number,headRefName,files"
+    prs:
+      - "#6104 agent/nuzantara/docs/fable-max-sessions-0910 :: research/operations/2026-09-10-fable-max-sessions/README.md,research/operations/2026-09-10-fable-max-sessions/S1-arm-the-armer.md,research/operations/2026-09-10-fable-max-sessions/S2-custody.md,resear"
+      - "#6096 sancho/kbli-secondary-text-contrast :: apps/mouth/src/app/kbli/page.tsx,apps/mouth/src/components/kbli/KBLIPersonaDoors.tsx,apps/mouth/src/components/kbli/KBLISearch.tsx,apps/mouth/src/components/kbli/ZantaraChat.tsx"
+      - "#6095 sancho/kbli-a11y-log-focusable :: apps/mouth/src/components/kbli/ZantaraChat.a11y.test.tsx,apps/mouth/src/components/kbli/ZantaraChat.tsx"
+      - "#6094 sancho/kbli-a11y-chatlog :: apps/mouth/src/components/kbli/ZantaraChat.a11y.test.tsx,apps/mouth/src/components/kbli/ZantaraChat.tsx"
+      - "#6093 sancho/kbli-a11y-combobox :: apps/mouth/src/components/kbli/KBLISearch.a11y-combobox.test.tsx,apps/mouth/src/components/kbli/KBLISearch.quick-filters.test.tsx,apps/mouth/src/components/kbli/KBLISearch.tsx"
+      - "#6092 sancho/kbli-brand-red :: apps/mouth/src/app/kbli/page.tsx"
+      - "#6084 agent/nuzantara/intel/regwatch-20260910071144 :: research/regulatory/2026-09-10-delta.json"
+      - "#6081 agent/air-m5/backend-rag/developer-log-access :: .claude/skills/modus/PENDING-ARMS.md,apps/backend-rag/backend/app/core/config.py,apps/backend-rag/backend/app/routers/admin_conversation_cleanup.py,apps/backend-rag/backend/app/routers/admin_logs.py,a"
+      - "#6080 agent/nuzantara/ops/pending-arms-6048-c3-closed :: .claude/skills/modus/PENDING-ARMS.md"
+      - "#6066 agent/air-m5/infra/change-map-coverage-0910 :: docs/reports/change-map-coverage/2026-09-10.md,docs/reports/change-map-coverage/README.md,scripts/change_map_coverage_cron.sh,scripts/ci/change_map_coverage.py,scripts/ci/test_change_map_coverage.py"
+      - "#6065 agent/air-m5/infra/flaky-harvest-0910 :: docs/reports/flaky-harvest/2026-09-10.md,docs/reports/flaky-harvest/README.md,scripts/ci/flaky_harvest.py,scripts/ci/test_flaky_harvest.py,scripts/flaky_harvest_cron.sh"
+      - "#6061 agent/air-m5/infra/collision-armed-only-0910 :: scripts/ci/pr_collision_check.py,scripts/ci/test_pr_collision_check.py"
+      - "#6054 agent/air-m5/infra/pilot1-arm-a :: scripts/proprioception.py,scripts/tests/test_proprioception_child_calibration.py"
+      - "#6028 dependabot/npm_and_yarn/minor-and-patch-a6b04725a7 :: apps/admin-dashboard-local/package.json,apps/admin-dashboard/package.json,apps/autonomous-lab/package.json,apps/mouth/package.json,apps/web/package.json,package-lock.json,package.json,packages/core/pa"
+      - "#6015 dependabot/npm_and_yarn/sharp-0.35.4 :: apps/mouth/package.json,package-lock.json"
+      - "#6014 dependabot/npm_and_yarn/apps/wa-mirror/npm_and_yarn-a3d6433439 :: apps/wa-mirror/package-lock.json,apps/wa-mirror/package.json,packages/core/package.json"
+      - "#5986 sancho/kbli-breadcrumb-jsonld :: apps/mouth/src/app/kbli/builder/page.tsx,apps/mouth/src/app/kbli/decoder/page.tsx,apps/mouth/src/app/kbli/sectors/[id]/page.tsx,apps/mouth/src/app/kbli/sectors/page.tsx"
+      - "#5975 dependabot/npm_and_yarn/vitest-5.0.0 :: apps/admin-dashboard-local/package.json,apps/admin-dashboard/package.json,apps/autonomous-lab/package.json,apps/mouth/package.json,apps/web/package.json,package-lock.json,packages/core/package.json"
+      - "#5904 dependabot/pip/apps/backend-rag/minor-and-patch-9488b0e0f5 :: apps/backend-rag/requirements-ci-tools.txt,apps/backend-rag/requirements-livekit-worker.txt,apps/backend-rag/requirements-local-audio.txt,apps/backend-rag/requirements-test.txt,apps/backend-rag/requir"
+      - "#5872 agent/air-m5/docs/workflow-reality-audit :: research/operations/2026-09-07-workflow-reality-audit-sintesi-it.md,research/operations/2026-09-07-workflow-reality-audit.md"
+      - "#5860 agent/air-m5/infra/codex-patch-guard :: evidence/2026-09/agent-air-m5-infra-codex-patch-guard-5fa44cd9/brief.yml,infra/claude-hooks/test_hook_innocence.py,infra/claude-hooks/worktree_file_write_check.py"
+      - "#5859 agent/air-m5/ops/dual-consul-readiness :: docs/architecture/dual-consul/broker-activation.md,docs/runbooks/dual-consul-windows.md,evidence/2026-09/agent-air-m5-ops-dual-consul-readiness-2a36edbb/brief.yml,scripts/conductor/consul_packet.py,sc"
+      - "#5838 agent/air-m5/mouth/homepage-founding-year-20260906 :: apps/mouth/src/app/v2/_components/HeroBlueprint.tsx,apps/mouth/src/app/v2/_components/SocialProof.tsx"
+      - "#5835 agent/nuzantara/mouth/newsroom-live-dedup-20260906 :: apps/mouth/next.config.ts,apps/mouth/src/content/articles/business/bali-vs-koh-samui-where-your-property-money-actually-works-h.fr.mdx,apps/mouth/src/content/articles/business/bali-vs-koh-samui-where-"
+      - "#5819 agent/air-m5/ops/generals-exam :: research/operations/generals-exam/EXAM.md,research/operations/generals-exam/PROMPT.md,research/operations/generals-exam/answer-key/01-product/5761.patch,research/operations/generals-exam/answer-key/01"
+      - "#5746 agent/air-m5/backend-rag/lane-a7-freeze-no-swallow :: apps/backend-rag/backend/tests/unit/core/test_ingest_2026_laws_document_ids.py"
+      - "#5734 agent/nuzantara/ops/bites-1b-lint :: .github/workflows/guard-conformance.yml,.github/workflows/harness-floor.yml,.github/workflows/immune-enforcement.yml,evidence/2026-09/agent-nuzantara-ops-bites-1b-lint-8599c508/brief.yml,evidence/2026"
+      - "#5623 agent/nuzantara/intel/regwatch-20260904071539 :: research/regulatory/2026-09-04-delta.json"
+      - "#5619 agent/nuzantara/ops/bot-wa-corner-round1 :: .agents/skills/bot/SKILL.md"
+      - "#5608 sancho/kbli-sector-offcanvas :: apps/mouth/e2e/kbli-sector-offcanvas.spec.ts,apps/mouth/src/app/kbli/@panel/(.)sectors/[id]/page.tsx,apps/mouth/src/app/kbli/@panel/default.tsx,apps/mouth/src/app/kbli/layout.tsx,apps/mouth/src/compon"
+      - "#5607 sancho/blog-notfound-gold :: apps/mouth/src/app/v2/_components/Footer.tsx"
+      - "#5569 agent/nuzantara/infra/council-seats-roster :: MODEL_ROSTER.md,evidence/2026-09/agent-nuzantara-infra-council-seats-roster-eab0e08d/brief.yml,evidence/2026-09/agent-nuzantara-infra-council-seats-roster-eab0e08d/journal.jsonl,evidence/2026-09/agent"
+      - "#5565 dependabot/pip/apps/backend-rag/anthropic-gte-1.2.0 :: apps/backend-rag/requirements-prod.txt,apps/backend-rag/requirements.txt"
+      - "#5564 dependabot/pip/apps/backend-rag/openai-gte-3.6.0 :: apps/backend-rag/requirements-prod.txt,apps/backend-rag/requirements.txt"
+      - "#5529 dependabot/github_actions/sonarsource/sonarqube-scan-action-5bc5285b684b9f0e940031dc8ddc4b6387a2f493 :: .github/workflows/sonarqube.yml"
+      - "#5528 dependabot/github_actions/anchore/sbom-action-0.24.2 :: .github/workflows/sbom.yml"
+      - "#5526 agent/air-m5/ops/garuda-voa-documents :: apps/backend-rag/backend/app/routers/garuda_documents_router.py,apps/backend-rag/backend/db/migrations_v2/304_garuda_documents.sql,apps/backend-rag/backend/services/garuda_documents/ports.py,apps/back"
+      - "#5453 dependabot/pip/apps/backend-rag/openinference-instrumentation-anthropic-2.1.1 :: apps/backend-rag/requirements-prod.lock.txt,apps/backend-rag/requirements-prod.txt,apps/backend-rag/requirements.lock.txt,apps/backend-rag/requirements.txt"
+      - "#5452 dependabot/pip/apps/backend-rag/portalocker-4.3.0 :: apps/backend-rag/requirements-prod.lock.txt,apps/backend-rag/requirements.lock.txt"
+      - "#5337 agent/air-m5/backend-rag/wa-price-split-veto :: apps/backend-rag/backend/db/migrations_v2/304_wa_outbox_fall_off_reason_price_split_fee.sql,apps/backend-rag/backend/services/integrations/wa_codex_leg.py,apps/backend-rag/backend/services/integration"
+      - "#5155 agent/nuzantara/ops/marketing-flow-instructions :: apps/nuzantara-mcp/nuzantara_mcp/server_workspace_marketing.py,apps/nuzantara-mcp/tests/test_workspace_marketing_bridge.py"
+      - "#5072 agent/air-m5/ops/practice-status-log-0827 :: .claude/skills/modus/PENDING-ARMS.md,apps/backend-rag/backend/app/routers/portal_process_timeline.py,apps/backend-rag/backend/db/migrations_v2/289_practice_status_log.sql,apps/backend-rag/backend/test"
+      - "#5037 agent/pro/visa-oracle/slice0-migrations :: apps/backend-rag/backend/db/migrations_v2/293_visa_oracle_consultant_requests.sql,apps/backend-rag/backend/db/migrations_v2/294_visa_oracle_consultant_requests_retention_policy.sql,apps/backend-rag/ba"
+      - "#5028 agent/mini-pro2/ops/codex-taxonomy-pr :: apps/backend-rag/backend/llm/codex_exec_client.py,apps/backend-rag/backend/services/integrations/wa_codex_daemon.py,apps/backend-rag/backend/tests/llm/test_codex_exec_client.py,apps/backend-rag/backen"
+      - "#4815 agent/air-m5/docs/kimi-gate-removal :: .claude/skills/modus/SKILL.md,.claude/skills/workflow/SKILL.md,QWEN.md,kimi.md,scripts/codex_tri_llm_review.py,scripts/kimi_client.py,scripts/tests/test_kimi_client.py"
+  agent_start_list:
+    ts: "2026-09-10T15:12:56Z"
+    cmd: "python3 scripts/agent_start.py --list"
+    output: |
+      TASK                     LANE           HOST            AGE_MIN   TTL WIP  ORPHAN  BRANCH
+      astra-loop06-d12-proposal backend-rag    nuzantara        2000.7   480 yes  ORPHAN  agent/nuzantara/backend-rag/astra-loop06-d12-proposal
+      fable-max-sessions-0910  docs           nuzantara          74.7    60 yes          agent/nuzantara/docs/fable-max-sessions-0910
+      fly-cost-review          docs           nuzantara        1350.8   240 yes  ORPHAN  agent/nuzantara/docs/fly-cost-review
+      r19-tax-property-acceptance infra          nuzantara        1485.3   240 no   ORPHAN  agent/nuzantara/infra/r19-tax-property-acceptance
+      s2-custody               infra          nuzantara          13.5    60 no           agent/nuzantara/infra/s2-custody
+      website-cutover-flips    infra          nuzantara        1114.8   600 no           agent/nuzantara/infra/website-cutover-flips
+      website-mdx-loader       infra          nuzantara        1255.7   600 no   ORPHAN  agent/nuzantara/infra/website-mdx-loader
+      regwatch-20260910071144  intel          nuzantara         961.1    30 no   ORPHAN  agent/nuzantara/intel/regwatch-20260910071144
+      pending-arms-6048-c3-closed ops            nuzantara        1079.9    60 no   ORPHAN  agent/nuzantara/ops/pending-arms-6048-c3-closed
+      s1-arm-the-armer         ops            nuzantara          16.2    60 no           agent/nuzantara/ops/s1-arm-the-armer
+      WARN: 6 orphan worktree(s) detected (age > 2× TTL) — review then run --cleanup or --release.
+  fleet_mail_list:
+    ts: "2026-09-10T15:12:58Z"
+    cmd: "scripts/fleet_mail.sh local --list (the spec's 'pro' host has no ssh route from Pro itself); first-prompt snippets stripped"
+    sessions:
+      - "86522742-f762-4095-9c2a-3b03f7eaded0 20:13"
+      - "97a193fc-597e-4149-86d0-1a6d3d6a9b8f 20:30"
+      - "21e24097-3138-4a81-bd88-293f819b1518 20:49"
+      - "b80ce991-c5c6-4362-8b9a-3701ac152d1a 21:06"
+      - "e5578f19-643a-4789-bb51-d384bef4443a 23:10"
+      - "62ff10cb-ae75-4d72-b348-d449ab45f63e 23:11"
+      - "6cc8e20d-825d-495b-bff4-333830b1f81a 23:11"
+      - "e8a86e26-7c18-4e34-ae49-9fec32448e73 23:11"
+      - "6af50aa5-da92-4525-959f-920760515b84 23:11"
+      - "2afdb3b5-13b4-44b2-946b-bdc3375d3062 23:12"
+      - "9a3559a9-e38c-4b79-87e7-7a30043c7b9b 23:12"
+      - "ea090110-657a-4b53-8e80-5206bf604633 23:12"
+  list_agents:
+    ts: "2026-09-10T15:14:25Z"
+    cmd: "ListAgents (Claude Code tool, same batch as agent_start_list)"
+    output: |
+      This session is website-77 [4ed26b]
+      Teammates (1): s1-implementer [4975f6] general-purpose, pane, started 58s ago
+      Peer sessions (2): website-03 [a1ddc8] interactive busy started 1m ago; website-30 [d5a805] interactive busy started 15m ago
+staff_room_corrections:
+  received: "2026-09-10T15:24:07Z"
+  sender: "website-03, the Fable 5.1 imperator window on Pro, after Codex adversarial round 2 on the board; board corrected in PR #6104"
+  applied:
+    - "1 freeze rule: once armed the branch is read-only; a real DIRTY -> close with a comment naming the successor, cherry-pick onto a fresh origin/main branch, open and arm the successor; a phantom DIRTY -> the queue cures it, judge the diff first; never disarm, merge origin/main, push, re-arm."
+    - "2 checkpoints: scripts/fleet_mail.sh local broadcast --key S1-checkpoint --ttl 24 (checkpoint 1 went to session e8a86e26 directly at 15:12Z and was re-sent as broadcast)."
+    - "3 release: gh pr merge <N> --auto, bare."
+    - "4 pytest: ~/nuzantara/.venv/bin/python3 -m pytest (homebrew python3 has no pytest, measured 15:23Z); relayed to the implementer."
+    - "5 perimeter: scripts/queue_shepherd.py (with its test and this evidence dir) on Pro only; the Mini siblings are out of scope and what they would need is written in pack.yml."
+    - "6 live proof by content: the blob of scripts/queue_shepherd.py at ~/nuzantara HEAD equals the candidate's, then six clean ticks."
+    - "7 merged + pulled + six clean ticks is the wave-2 trigger, sent as a checkpoint the moment it is observed."
+    - "8 (round 3, received 2026-09-10T15:56:51Z; army-map.md 81-90) a broadcast is published, not delivered: every checkpoint, the wave-2 trigger included, is broadcast (envelope = the mailbox file name printed), then SendMessaged with the same text to website-03; ack S1-ack within 15 min of wall clock; no ack -> one retry with the same text, then a ledger row BLOCKED: undelivered and the mission suspends. Checkpoint 1b acked (S1-ack, 15:55Z, per the staff room)."
