@@ -955,3 +955,342 @@ def test_t17_fix_findings_refuses_symlinks_and_custody_flags(tmp_path: Path) -> 
     assert _mode_of(target) == 0o644
     assert _mode_of(flagged) == 0o644
     assert _mode_of(ordinary) == 0o600
+
+
+# --------------------------------------------------------------------------
+# S2/PR2 — credential-custody detector: the schedule (--notify). Every test
+# points the gateway at a fake script in tmp_path (SECRETS_AUDIT_TG_NOTIFY);
+# the real scripts/tg_notify.py is never invoked.
+# --------------------------------------------------------------------------
+
+
+def _fake_gateway(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Write a tiny gateway script into tmp_path and point
+    SECRETS_AUDIT_TG_NOTIFY at it. It appends json.dumps(argv[1:]) plus a
+    newline to the file named by env FAKE_TG_LOG — never the real
+    tg_notify.py, which sends real Telegram messages."""
+    log_path = tmp_path / "fake_tg_log.jsonl"
+    script = tmp_path / "fake_tg_notify.py"
+    script.write_text(
+        "import json, os, sys\n"
+        "with open(os.environ['FAKE_TG_LOG'], 'a') as fh:\n"
+        "    fh.write(json.dumps(sys.argv[1:]) + chr(10))\n"
+    )
+    monkeypatch.setenv("FAKE_TG_LOG", str(log_path))
+    monkeypatch.setenv("SECRETS_AUDIT_TG_NOTIFY", str(script))
+    return log_path
+
+
+def _read_fake_log(log_path: Path) -> list:
+    import json as _json
+
+    if not log_path.exists():
+        return []
+    return [_json.loads(line) for line in log_path.read_text().splitlines() if line]
+
+
+def test_n1_custody_finding_notify_sends_one_p0_call(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    log_path = _fake_gateway(tmp_path, monkeypatch)
+    scr = tmp_path / ".secrets"
+    probe = _touch(scr / "probe.json", 0o644, "{}\n")
+
+    module = _load_module(open_chain=False)
+    monkeypatch.setattr(module, "machine_label", lambda *a, **k: "pro")
+    rc = module.main(["--no-default-roots", "--root", str(scr), "--notify"])
+    capsys.readouterr()
+
+    calls = _read_fake_log(log_path)
+    assert len(calls) == 1
+    argv = calls[0]
+    assert argv[:6] == [
+        "--tier", "p0", "--source", "secrets-audit",
+        "--dedup-key", "secrets-audit:secrets-dir",
+    ]
+    text = argv[-1]
+    assert "[pro]" in text
+    assert str(scr) in text
+    assert "1 credential file(s)" in text
+    assert "other-read" in text
+    assert probe.name not in text
+    assert rc == 0
+
+
+def test_n2_env_report_only_notify_sends_one_digest_call(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    log_path = _fake_gateway(tmp_path, monkeypatch)
+    monkeypatch.setattr(audit, "machine_label", lambda *a, **k: "pro")
+    target = _touch(tmp_path / ".env.master", 0o644, "SECRET=1\n")
+
+    rc = audit.main(["--no-default-roots", "--root", str(tmp_path), "--notify"])
+    capsys.readouterr()
+
+    calls = _read_fake_log(log_path)
+    assert len(calls) == 1
+    argv = calls[0]
+    assert argv[:6] == [
+        "--tier", "digest", "--source", "secrets-audit",
+        "--dedup-key", "secrets-audit:env-modes",
+    ]
+    text = argv[-1]
+    assert "[pro]" in text
+    assert str(tmp_path) in text
+    assert "1 file(s)" in text
+    assert target.name not in text
+    assert rc == 0
+
+
+def test_n3_clean_root_notify_zero_calls_rc0(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    log_path = _fake_gateway(tmp_path, monkeypatch)
+    monkeypatch.setattr(audit, "machine_label", lambda *a, **k: "pro")
+    (tmp_path / "README.md").write_text("benign\n")  # empty dir would be BLIND
+
+    rc = audit.main(["--no-default-roots", "--root", str(tmp_path), "--notify"])
+    out = capsys.readouterr().out
+
+    assert _read_fake_log(log_path) == []
+    assert rc == 0
+    lines = out.splitlines()
+    assert lines[0].startswith("RUN ")
+    assert "machine=pro" in lines[0]
+    assert lines[-1] == "RUN-END rc=0"
+
+
+def test_n4_ordinary_finding_notify_zero_calls_path_in_stdout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    log_path = _fake_gateway(tmp_path, monkeypatch)
+    monkeypatch.setattr(audit, "machine_label", lambda *a, **k: "pro")
+    target = _touch(tmp_path / "credentials.json", 0o644, "{}\n")
+
+    rc = audit.main(["--no-default-roots", "--root", str(tmp_path), "--notify"])
+    out = capsys.readouterr().out
+
+    assert _read_fake_log(log_path) == []
+    assert rc == 0
+    assert str(target) in out
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root ignores permission bits")
+def test_n5_blind_custody_root_notify_one_p0_call_rc2(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    log_path = _fake_gateway(tmp_path, monkeypatch)
+    scr = tmp_path / ".secrets"
+    scr.mkdir()
+    _touch(scr / "a.json", 0o600, "{}\n")
+    scr.chmod(0o000)
+    module = _load_module(open_chain=False)
+    monkeypatch.setattr(module, "machine_label", lambda *a, **k: "pro")
+    try:
+        rc = module.main(["--no-default-roots", "--root", str(scr), "--notify"])
+    finally:
+        scr.chmod(0o700)
+    capsys.readouterr()
+
+    calls = _read_fake_log(log_path)
+    assert len(calls) == 1
+    assert calls[0][:2] == ["--tier", "p0"]
+    assert "cannot be listed" in calls[0][-1]
+    assert rc == 2
+
+
+def test_n6_missing_gateway_rc1_and_failed_line(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    monkeypatch.setenv("SECRETS_AUDIT_TG_NOTIFY", str(tmp_path / "does-not-exist.py"))
+    scr = tmp_path / ".secrets"
+    _touch(scr / "probe.json", 0o644, "{}\n")
+
+    module = _load_module(open_chain=False)
+    monkeypatch.setattr(module, "machine_label", lambda *a, **k: "pro")
+    rc = module.main(["--no-default-roots", "--root", str(scr), "--notify"])
+    out = capsys.readouterr().out
+
+    assert rc == 1
+    assert any(
+        line.startswith("NOTIFY ") and "failed=1" in line for line in out.splitlines()
+    )
+
+
+def test_n7_launcher_from_ppid(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    _fake_gateway(tmp_path, monkeypatch)
+    monkeypatch.setattr(audit, "machine_label", lambda *a, **k: "pro")
+    (tmp_path / "README.md").write_text("benign\n")
+    real_getppid = os.getppid
+
+    monkeypatch.setattr(os, "getppid", lambda: 1)
+    audit.main(["--no-default-roots", "--root", str(tmp_path), "--notify"])
+    out1 = capsys.readouterr().out
+    assert "launcher=launchd" in out1.splitlines()[0]
+
+    monkeypatch.setattr(os, "getppid", real_getppid)
+    audit.main(["--no-default-roots", "--root", str(tmp_path), "--notify"])
+    out2 = capsys.readouterr().out
+    assert "launcher=shell" in out2.splitlines()[0]
+
+
+def test_n8_subprocess_notify_rc0_and_fake_log(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import subprocess as _subprocess
+
+    log_path = _fake_gateway(tmp_path, monkeypatch)
+    scr = tmp_path / ".secrets"
+    _touch(scr / "probe.json", 0o644, "{}\n")
+    stdout_file = tmp_path / "stdout.txt"
+
+    with open(stdout_file, "w") as fh:
+        _subprocess.run(
+            [
+                sys.executable,
+                str(_MODULE_PATH),
+                "--notify",
+                "--no-default-roots",
+                "--root",
+                str(scr),
+            ],
+            stdout=fh,
+            stderr=_subprocess.PIPE,
+            timeout=30,
+        )
+
+    out_text = stdout_file.read_text()
+    assert out_text.rstrip().splitlines()[-1] == "RUN-END rc=0"
+    calls = _read_fake_log(log_path)
+    assert len(calls) == 1
+    assert calls[0][:2] == ["--tier", "p0"]
+
+
+def test_n9_build_alerts_two_custody_findings_one_alert_union_classes(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / ".secrets"
+    f1 = audit.Finding(path=root / "a.json", mode=0o644, custody=True, report_only=True)
+    f2 = audit.Finding(path=root / "b.json", mode=0o640, custody=True, report_only=True)
+    report = audit.CustodyRootReport(
+        root=root, files_traversed=2, findings=2, dir_mode="0755", blind=False
+    )
+    result = audit.AuditResult(
+        findings=[f1, f2], custody=[report], roots_existing=1, files_traversed=2, blind=False
+    )
+
+    alerts = audit.build_alerts(result, "nuzantara")
+
+    assert len(alerts) == 1
+    alert = alerts[0]
+    assert alert.tier == "p0"
+    assert alert.dedup_key == "secrets-audit:secrets-dir"
+    assert "2 credential file(s)" in alert.text
+    assert "group-read, other-read" in alert.text
+
+
+def test_n10_notify_never_chmods(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    _fake_gateway(tmp_path, monkeypatch)
+    custody_root = tmp_path / "secroot"
+    scr = custody_root / ".secrets"
+    custody_file = _touch(scr / "probe.json", 0o644, "{}\n")
+    env_root = tmp_path / "enviroot"
+    env_file = _touch(env_root / ".env.master", 0o644, "SECRET=1\n")
+
+    chmod_calls: list = []
+    fchmod_calls: list = []
+    monkeypatch.setattr(os, "chmod", lambda *a, **k: chmod_calls.append(a))
+    monkeypatch.setattr(os, "fchmod", lambda *a, **k: fchmod_calls.append(a))
+
+    module = _load_module(open_chain=True)
+    monkeypatch.setattr(module, "machine_label", lambda *a, **k: "pro")
+    module.main(
+        [
+            "--no-default-roots",
+            "--root", str(scr),
+            "--root", str(env_root),
+            "--notify",
+        ]
+    )
+    capsys.readouterr()
+
+    assert chmod_calls == []
+    assert fchmod_calls == []
+    assert _mode_of(custody_file) == 0o644
+    assert _mode_of(env_file) == 0o644
+
+
+def test_n11_notify_and_fix_together_exit_2_no_gateway_call(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    log_path = _fake_gateway(tmp_path, monkeypatch)
+
+    with pytest.raises(SystemExit) as exc_info:
+        audit.main(["--no-default-roots", "--root", str(tmp_path), "--notify", "--fix"])
+    capsys.readouterr()
+
+    assert exc_info.value.code == 2
+    assert _read_fake_log(log_path) == []
+
+
+def test_p1_plist_contract() -> None:
+    import plistlib
+
+    plist_path = (
+        Path(__file__).parents[2]
+        / "infra"
+        / "launchagents"
+        / "com.nuzantara.secrets-permissions-audit.plist"
+    )
+    with open(plist_path, "rb") as fh:
+        data = plistlib.load(fh)
+
+    assert data["Label"] == "com.nuzantara.secrets-permissions-audit"
+    assert data["ProgramArguments"] == [
+        "/opt/homebrew/bin/python3",
+        "/Users/nuzantara/nuzantara/scripts/secrets_permissions_audit.py",
+        "--notify",
+    ]
+    assert data["StartInterval"] == 3600
+    assert data["RunAtLoad"] is True
+    assert data["KeepAlive"] is False
+    assert data["Umask"] == 63
+    assert data["StandardOutPath"].startswith("/Users/nuzantara/logs/")
+    assert data["StandardErrorPath"].startswith("/Users/nuzantara/logs/")
+    assert set(data["EnvironmentVariables"].keys()) == {"HOME", "PATH"}
+
+
+def test_n12_custody_alert_covers_symlinked_root_and_walked_custody(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A custody finding whose path lies under no CustodyRootReport root — a
+    `.secrets` symlink resolved to its target, or a `.secrets` met during an
+    ordinary walk — still reaches the one p0 alert, by directory only."""
+    module = _load_module(open_chain=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    vault = tmp_path / "vault"
+    _touch(vault / "probe.json", 0o644, "{}\n")
+    link = tmp_path / ".secrets"
+    link.symlink_to(vault)
+    outer = tmp_path / "outer"
+    outer.mkdir()
+    outer.chmod(0o700)
+    _touch(outer / ".secrets" / "walked.json", 0o640, "{}\n")
+
+    alerts = module.build_alerts(module.audit([link, outer]), "pro")
+
+    assert [(a.tier, a.dedup_key) for a in alerts] == [
+        ("p0", "secrets-audit:secrets-dir")
+    ]
+    text = alerts[0].text
+    assert "~/vault — 1 credential file(s) open beyond the owner (group-read, other-read)" in text
+    assert "~/outer/.secrets — 1 credential file(s) open beyond the owner (group-read)" in text
+    assert "probe.json" not in text and "walked.json" not in text
+
+    for path in (vault / "probe.json", outer / ".secrets" / "walked.json"):
+        path.chmod(0o600)  # innocence on the same fixture
+    assert module.build_alerts(module.audit([link, outer]), "pro") == []
