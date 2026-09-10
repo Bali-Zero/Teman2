@@ -51,11 +51,11 @@ appetite_exceeded: >-
   The mission deadline was renewed once by the staff room (19:59:24Z -> 21:30:00Z).
 diff:
   net_lines: >-
-    +1465/-11 over merge-base..HEAD (git diff --numstat), evidence directory included.
+    +1481/-11 over merge-base..HEAD (git diff --numstat), evidence directory included.
     By file: the auditor script adds 359 lines and removes 10; its test file adds 666; the new
     plist adds 65; organs_registry.yaml adds 26 and removes 1 — one organ entry and its checksum
     line, the only change the staff room approved in that file; the evidence directory (brief,
-    pack, council journal) adds 349.
+    pack, council journal) adds 365.
   behaviour_change: >-
     New --notify mode and one new LaunchAgent (not installed by the PR). Report mode and --fix
     are unchanged: the base's own tests pass against HEAD, and the kill switch and heartbeat
