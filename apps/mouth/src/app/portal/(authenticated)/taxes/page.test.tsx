@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const { mockGetTaxOverview, mockToastError } = vi.hoisted(() => ({
@@ -185,5 +185,53 @@ describe("TaxesPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(await screen.findByText("Tax Status")).toBeInTheDocument();
     expect(mockGetTaxOverview).toHaveBeenCalledTimes(callsAfterFailure + 1);
+  });
+
+  it("shows no compliance badge or wording in the Tax Status card when there is no deadline", async () => {
+    mockGetTaxOverview.mockResolvedValue({
+      ...TAX_DATA,
+      summary: {
+        ...TAX_DATA.summary,
+        status: "none",
+        nextDeadline: null,
+        daysToDeadline: null,
+      },
+    });
+    render(<TaxesPage />);
+    const headerRow = (await screen.findByText("Tax Status")).closest(
+      "div.justify-between",
+    ) as HTMLElement;
+
+    expect(screen.queryByText("Compliant")).not.toBeInTheDocument();
+    expect(within(headerRow).queryByText("Compliant")).not.toBeInTheDocument();
+    expect(headerRow.querySelector(".rounded-full")).toBeNull();
+  });
+
+  it("shows no compliance badge or wording in the Tax Status card when the deadline is far away", async () => {
+    mockGetTaxOverview.mockResolvedValue({
+      ...TAX_DATA,
+      summary: { ...TAX_DATA.summary, status: "upcoming" },
+    });
+    render(<TaxesPage />);
+    const headerRow = (await screen.findByText("Tax Status")).closest(
+      "div.justify-between",
+    ) as HTMLElement;
+
+    expect(screen.queryByText("Compliant")).not.toBeInTheDocument();
+    expect(within(headerRow).queryByText("Compliant")).not.toBeInTheDocument();
+    expect(headerRow.querySelector(".rounded-full")).toBeNull();
+  });
+
+  it("renders the Overdue badge in the Tax Status card when tax status is overdue", async () => {
+    mockGetTaxOverview.mockResolvedValue({
+      ...TAX_DATA,
+      summary: { ...TAX_DATA.summary, status: "overdue" },
+    });
+    render(<TaxesPage />);
+    const summarySection = (await screen.findByText("Tax Status")).closest(
+      "section",
+    ) as HTMLElement;
+
+    expect(within(summarySection).getByText("Overdue")).toBeInTheDocument();
   });
 });

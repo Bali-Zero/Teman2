@@ -20,7 +20,7 @@ export interface PortalDashboard {
     totalCompanies: number;
   };
   taxes: {
-    status: "compliant" | "attention" | "overdue";
+    status: "none" | "upcoming" | "attention" | "overdue";
     nextDeadline: string | null;
     daysToDeadline: number | null;
   };
@@ -130,7 +130,7 @@ export interface ComplianceItem {
 
 export interface TaxOverview {
   summary: {
-    status: "ok" | "attention" | "critical";
+    status: "none" | "upcoming" | "attention" | "overdue";
     totalDue: number;
     nextDeadline: string | null;
     daysToDeadline: number | null;
