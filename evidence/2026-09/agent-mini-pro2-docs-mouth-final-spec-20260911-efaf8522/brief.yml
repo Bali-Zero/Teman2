@@ -1,0 +1,35 @@
+mandate: >
+  Converged final specification for the 2026-09-11 "motore e design" programme on apps/mouth
+  (Visa Oracle engine copy/flow, Second Home Studio hygiene, R19 design reuse on the live site),
+  requested by Zero from the Fable topic-5 session and the Astra Website session. This PR carries
+  Astra's consolidated package (README, LAUNCH, W0-W7 battle windows, discussion record and
+  manifests, prepared in the untracked worktree docs-mouth-final-windows-20260911 and copied here
+  with hashes) plus FINAL.md: the converged decisions, the two rulings Zero must record at launch
+  (M engines, D identity) and the verbatim prompts of the two windows to open now. Documents only.
+gear: 2
+gear_reason: >
+  Deterministic floor 2 via the SIZE term: measured churn (added+deleted against the merge-base
+  with origin/main) of about 1624 lines after the rework asked by the first gate, below the
+  1,828-line gear-3 threshold; three non-load-bearing Astra evidence files were removed and are
+  recorded by sha256 in evidence/EXCLUDED-FILES.sha256. New markdown/json under docs/plans/ and
+  evidence/, one narrow file-exclusion regex in .secrets.baseline for two pinned JSON manifests,
+  four lines in .prettierignore. No workflow, guard, schema, lockfile, product code or
+  CODEOWNERS-tier path is touched.
+origin: >
+  Zero's instruction of 2026-09-11 to the two sessions: "discutete e portami la spec finale con il
+  prompt e la/le window da lanciare per ultimare motore e design". Inputs: PR #6124 (Fable design
+  map, Codex-refuted), Astra package (session Website 01a08c5a-f5a4-7dc1-8c38-820dd1542c7c, hashes
+  in FINAL.md), the concurrent Studio spec in worktree docs-studio-engine-design-final-20260911,
+  and the topic-3 (nuzantara-c8) engine window proposal received by cross-session message.
+instruction_to_the_grader: >
+  Do not grade the brief. Attack FINAL.md on three points: (1) that the copied package files are
+  byte-identical to Astra's originals (compare the sha256 prefixes listed in FINAL.md against the
+  worktree docs-mouth-final-windows-20260911 if it still exists); (2) that the converged W0 prompt
+  does not widen Astra's W0 perimeter silently — the flow.ts sub-scope from topic 3 is named,
+  bounded and carries its own negative test, and the schema/emitter/pack freeze is intact;
+  (3) that no window is launched, no ruling is inferred from silence, and no release authority is
+  claimed by the document. Live numbers quoted from the input documents are their authors'
+  measurements.
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
