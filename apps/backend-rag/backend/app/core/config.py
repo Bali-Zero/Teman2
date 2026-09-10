@@ -1252,6 +1252,22 @@ class Settings(BaseSettings):
             "deploy's, not the product's) — see the PR that set it."
         ),
     )
+    @field_validator("frontend_portal_url")
+    @classmethod
+    def _strip_portal_url_trailing_slash(cls, v: str) -> str:
+        """Normalise HERE, not at each call site — there are two call sites.
+
+        Consumers concatenate this base with a path that already starts with
+        "/", so a trailing slash (a natural thing to type into an env var)
+        yields "//portal/register?token=...". The first cure for this put an
+        `rstrip` in the invite router only, and the independent Gear-3 gate
+        pointed out that `garuda_orders/outbox_handlers.py` passes the same
+        setting as `portal_base_url` and would still have mailed the doubled
+        separator. A normalisation that has to be repeated by every consumer is
+        one a new consumer will forget, so it belongs to the value itself.
+        """
+        return v.rstrip("/")
+
     balizero_website_url: str = Field(
         default="https://balizero.com",
         description="Bali Zero public website URL for article publishing. Set via BALIZERO_WEBSITE_URL env var",

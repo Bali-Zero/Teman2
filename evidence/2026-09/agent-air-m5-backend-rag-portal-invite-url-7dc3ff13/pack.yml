@@ -51,7 +51,7 @@ seat_diversity_note: >-
 
 diff:
   files: 8
-  net_lines: 421
+  net_lines: 470
   measured_at: >-
     counted with `git diff --numstat $(git merge-base origin/main HEAD)...HEAD` (three-dot,
     W102-safe) immediately before the final commit that lands this pack.
@@ -83,8 +83,10 @@ residual_risks:
     hybrid_auth.py and apps/mouth/src/lib/api/openapi.yaml. Harmless — an allowed origin that
     resolves nowhere grants nothing — and removing it is a different concern.
   - >-
-    The GARUDA outbox consumer reads the same setting and gets the same correction, but has no
-    consumer-level test of its own here. Named by kimi; declared.
+    The GARUDA outbox consumer still has no consumer-level test of its own here. It no longer needs
+    one for the trailing slash — that normalisation moved onto the setting, so GARUDA inherits it by
+    construction rather than by remembering to repeat it — but nothing in this diff exercises
+    `outbox_handlers.py` end to end. Named by kimi, narrowed by the gate round; declared.
 
 pii_scan: clean
 
@@ -180,3 +182,27 @@ dissent:
     objection: >-
       The dead alias lingers in cors_config.py, hybrid_auth.py and openapi.yaml. True and
       harmless — an allowed origin that resolves nowhere grants nothing. Different concern.
+  - seat: claude-opus-5 (independent Gear-3 gate, first pass)
+    status: CONFIRMED
+    objection: >-
+      The trailing-slash cure was applied inside the invite router, but
+      `garuda_orders/outbox_handlers.py` passes the same setting as `portal_base_url` and would
+      still have mailed `//portal/...`. A normalisation each consumer must repeat is one the next
+      consumer forgets. CURED at the source: a `field_validator` on `frontend_portal_url`; the
+      router's local `rstrip` removed as redundant; the case moved from the router suite to the
+      settings suite, where it binds both consumers. Guilt re-proven: neutralising the validator
+      fails 3 of the 4 new cases.
+  - seat: claude-opus-5 (independent Gear-3 gate, first pass)
+    status: CONFIRMED
+    objection: >-
+      The declared prove-live observation proved nothing. It read
+      `settings.frontend_portal_url` on the deployed machine — which already answers the live
+      domain because FRONTEND_PORTAL_URL was set ahead of this PR to cure production — so it would
+      have been green with or without this diff. CURED: the observation now pops the env var out of
+      the process environment and constructs `Settings`, isolating the DEFAULT. Measured that way on
+      the live machine BEFORE the merge, it prints `https://nuzantara-mouth.vercel.app`; after the
+      merge it must print `https://my.balizero.com`.
+  - seat: claude-opus-5 (independent Gear-3 gate, first pass)
+    status: CONFIRMED
+    objection: >-
+      The PR body still described only the first commit. CURED: rewritten against head.

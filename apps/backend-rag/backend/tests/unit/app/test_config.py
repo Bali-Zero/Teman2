@@ -108,3 +108,46 @@ class TestPortalInviteUrl:
         settings = Settings(_env_file=None)
 
         assert settings.frontend_portal_url == "https://portal.example.test"
+
+
+class TestPortalUrlTrailingSlash:
+    """The doubled separator, cured on the VALUE rather than at a call site.
+
+    Two consumers concatenate this base with a path that already starts with
+    "/": `portal_invite.send_invitation` and
+    `garuda_orders/outbox_handlers.py` (as `portal_base_url`). The first cure
+    normalised inside the invite router only, and the independent Gear-3 gate
+    caught that GARUDA would still mail `//portal/...`. Normalising on the
+    setting is what makes a NEW consumer safe without being told.
+    """
+
+    def test_env_var_trailing_slash_is_stripped(self, monkeypatch):
+        monkeypatch.setenv("FRONTEND_PORTAL_URL", "https://my.balizero.com/")
+
+        settings = Settings(_env_file=None)
+
+        assert settings.frontend_portal_url == "https://my.balizero.com"
+
+    def test_repeated_trailing_slashes_are_stripped(self, monkeypatch):
+        monkeypatch.setenv("FRONTEND_PORTAL_URL", "https://portal.example.test///")
+
+        settings = Settings(_env_file=None)
+
+        assert settings.frontend_portal_url == "https://portal.example.test"
+
+    def test_composed_link_has_no_doubled_separator(self, monkeypatch):
+        """Compose as both consumers do, from a base that carried a slash."""
+        monkeypatch.setenv("FRONTEND_PORTAL_URL", "https://my.balizero.com/")
+
+        settings = Settings(_env_file=None)
+        composed = f"{settings.frontend_portal_url}/portal/register?token=abc123"
+
+        assert "//portal" not in composed
+        assert composed == "https://my.balizero.com/portal/register?token=abc123"
+
+    def test_a_clean_base_is_left_alone(self, monkeypatch):
+        monkeypatch.setenv("FRONTEND_PORTAL_URL", "https://my.balizero.com")
+
+        settings = Settings(_env_file=None)
+
+        assert settings.frontend_portal_url == "https://my.balizero.com"
