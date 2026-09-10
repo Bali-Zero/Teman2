@@ -3157,3 +3157,61 @@ def test_run_rearm_pass_gcs_alerted_state_after_a_pr_closes_K8(monkeypatch, tmp_
     qs.run_rearm_pass(dry_run=False, now=NOW)
 
     assert qs._load_json(alerted_path) == {}
+
+
+# ── spalla-review findings on the K-3/K-7/K-8 commit itself (2026-09-11) ────────────────────
+
+
+def test_run_rearm_pass_red_state_gc_failure_still_reports_real_candidates_count(monkeypatch, tmp_path):
+    """The review's finding 1: on a `red_state_gc` CANNOT-VERIFY the pass returns early, and with
+    the candidate filter left downstream the tick logged `candidates=0` — the initial value, not
+    a measurement, and `list_read_failed` does not mask it to `-`. The count is now taken before
+    the GC step, so the failure log tells the truth about how many PRs were waiting."""
+    monkeypatch.setattr(qs, "BUDGET_FILE", tmp_path / "budget.json")
+    monkeypatch.setattr(qs, "ALERTED_FILE", tmp_path / "alerted.json")
+    monkeypatch.setattr(qs, "RED_FILE", tmp_path / "red.json")
+    qs._save_json(qs.RED_FILE, {"not-a-number": {"reds": []}})  # the hand-edited key K-7 guards
+
+    monkeypatch.setattr(
+        qs, "fetch_open_prs",
+        lambda repo=qs.REPO: [
+            _pr(number=801, head_sha="shaA", head_ref_name="agent/x/y"),
+            _pr(number=802, head_sha="shaB", head_ref_name="agent/x/y"),
+            _pr(number=803, merge_state_status="DIRTY"),  # not a candidate
+        ],
+    )
+
+    result = qs.run_rearm_pass(dry_run=False, now=NOW)
+
+    assert result["cannot_verify"] == "red_state_gc"
+    assert result["examined"] == 3
+    assert result["candidates"] == 2, "a real count, never the initial 0 that reads as a measurement"
+
+
+def test_gc_rearm_fail_state_drops_aged_entries_and_keeps_fresh_ones(tmp_path):
+    """The review's finding 2: `gc_rearm_fail_state` shipped with no direct test, so the K-3 state
+    file's own 'never grows unbounded' claim was asserted rather than proven. Guilt and innocence
+    on the same entity, in one pass."""
+    old = (NOW - _dt.timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    fresh = NOW.strftime("%Y-%m-%dT%H:%M:%SZ")
+    state = {
+        "901:shaOld": {"consecutive": 2, "last_attempt_at": old},
+        "902:shaNew": {"consecutive": 1, "last_attempt_at": fresh},
+    }
+    kept = qs.gc_rearm_fail_state(state, NOW)
+    assert "902:shaNew" in kept, "a fresh entry must survive"
+    assert "901:shaOld" not in kept, "an aged entry must be pruned"
+
+
+def test_gc_alerted_state_keeps_both_key_families_apart(tmp_path):
+    """The review's finding 3: K-3 put a second key family (`rearm-write-fail:<pr>:<sha>`) in the
+    file K-8's GC prunes, and no test drove a MIXED dict through it. Both families for an open PR
+    survive; both for a closed one are dropped; neither is misread as the other."""
+    state = {
+        "910:shaOpen": {"at": "x"},
+        "rearm-write-fail:910:shaOpen": {"at": "x"},
+        "911:shaGone": {"at": "x"},
+        "rearm-write-fail:911:shaGone": {"at": "x"},
+    }
+    kept = qs.gc_alerted_state(state, {910})
+    assert set(kept) == {"910:shaOpen", "rearm-write-fail:910:shaOpen"}

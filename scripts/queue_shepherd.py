@@ -1534,6 +1534,12 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> dict[str, Any]:
     result["examined"] = examined
     result["unknown"] = unknown
     open_pr_numbers = {pr["number"] for pr in all_prs}
+    # Computed BEFORE the GC step below, not after: a `red_state_gc` CANNOT-VERIFY returns early,
+    # and with the filter left downstream the tick's own log printed `candidates=0` — the initial
+    # value, indistinguishable from a real zero. An organ whose failure log lies about how many
+    # PRs were waiting is the exact defect K-3/K-7/K-8 exist to remove (spalla review, 2026-09-11).
+    candidates = [pr for pr in all_prs if is_rearm_candidate(pr)]
+    result["candidates"] = len(candidates)
     try:
         red_state = gc_red_state(red_state, open_pr_numbers)  # only after a successful read
         alerted_state = gc_alerted_state(alerted_state, open_pr_numbers)  # K-8
@@ -1546,9 +1552,6 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> dict[str, Any]:
         result["cannot_verify"] = "red_state_gc"
         result["detail"] = str(exc)[:300]
         return result
-    candidates = [pr for pr in all_prs if is_rearm_candidate(pr)]
-    result["candidates"] = len(candidates)
-
     rearmed = 0
     unverified = 0
     new_unknown_keys: list[str] = []  # collected, sent as ONE alert after the loop (MEDIUM fix)
