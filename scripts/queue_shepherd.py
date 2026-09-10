@@ -207,9 +207,9 @@ UNCANCELLABLE_RETRY_COOLDOWN_HOURS = 24  # past this since quarantined_at, allow
 # Same-cause suspension (letter E, S1 2026-09-10 — Builder Contract §1: "three reds for the SAME
 # cause and the PR suspends instead of taking a fourth round"). PR-level, not head-level: a new
 # head SHA does NOT reset this (unlike the INFRA budget) — the cause, not the commit, is what
-# repeats.
+# repeats. No cap on history length (B3(a), Codex review 2026-09-11): the PR's full red history
+# is kept for as long as the PR stays open — see record_red / gc_red_state.
 RED_SAME_CAUSE_LIMIT = 3
-RED_HISTORY_MAX = 10  # keep at most the last 10 reds per PR in the red-causes file
 
 _UNCANCELLABLE_ERROR_LABELS = {
     "uncancellable_409": "both cancel and force-cancel endpoints answered HTTP 409 (not queued yet)",
@@ -238,19 +238,23 @@ PR_SHA_RE = re.compile(r"pr-(\d+)-([0-9a-f]{40})")
 logger = logging.getLogger("queue_shepherd")
 
 
-def _configure_logging() -> None:
+def _configure_logging(dry_run: bool = False) -> None:
+    """B4 (Codex review, 2026-09-11): dry-run writes nothing, anywhere — including LOG_FILE.
+    main() now parses args BEFORE calling this, so a --dry-run invocation never creates the
+    RotatingFileHandler at all; logging goes to stderr only via the plain stream handler."""
     if logger.handlers:
         return
     logger.setLevel(logging.INFO)
-    try:
-        LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-        handler: logging.Handler = logging.handlers.RotatingFileHandler(
-            LOG_FILE, maxBytes=1_000_000, backupCount=5
-        )
-    except OSError:
-        handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-    logger.addHandler(handler)
+    if not dry_run:
+        try:
+            LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+            handler: logging.Handler = logging.handlers.RotatingFileHandler(
+                LOG_FILE, maxBytes=1_000_000, backupCount=5
+            )
+        except OSError:
+            handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        logger.addHandler(handler)
     stream = logging.StreamHandler()
     stream.setFormatter(logging.Formatter("%(message)s"))
     logger.addHandler(stream)
@@ -332,6 +336,15 @@ def red_cause_fingerprint(run: dict[str, Any] | None, jobs: list[dict[str, Any]]
     )
     if failed_job_names:
         return f"{name}::{'|'.join(failed_job_names)}"
+    # B3(c) (Codex review, 2026-09-11): no job failed/timed_out for real, but some WERE cancelled
+    # (e.g. a fail-fast sibling of a real failure this correlation didn't see) — a job-level
+    # cancelled fingerprint is more specific than the coarser run-level fallback below, so it
+    # wins whenever it exists.
+    cancelled_job_names = sorted(
+        str(job.get("name") or "") for job in jobs if job.get("conclusion") == "cancelled"
+    )
+    if cancelled_job_names:
+        return f"{name}::cancelled:{'|'.join(cancelled_job_names)}"
     if run.get("conclusion") in ("cancelled", "timed_out"):
         return f"{name}::run:{run.get('conclusion')}"
     return None  # no job-level detail and the run's own conclusion doesn't say infra either
@@ -437,19 +450,28 @@ def record_red(
     pr_number — PR-level, not head-level (unlike the INFRA budget, a new head SHA does NOT reset
     this; the recurring CAUSE is what matters, not the commit). Deduped by removed_at: the SAME
     RemovedFromMergeQueueEvent read again on a later tick (the timeline query re-reads the last
-    10 items every time) must never double-count toward RED_SAME_CAUSE_LIMIT. Capped at the
-    RED_HISTORY_MAX most-recent entries so the file never grows unbounded. A None cause is still
-    recorded (for --report visibility) — count_same_cause_reds below is what refuses to ever
-    count it."""
+    10 items every time) must never double-count toward RED_SAME_CAUSE_LIMIT. No history cap
+    (B3(a), Codex review 2026-09-11 — RED_HISTORY_MAX removed): a capped history could evict the
+    very reds a same-cause count depends on once enough OTHER-cause reds piled up after them,
+    silently losing progress toward RED_SAME_CAUSE_LIMIT. The file is bounded by the PR's
+    lifetime instead — gc_red_state drops the whole entry once the PR is no longer open. A None
+    cause is still recorded (for --report visibility) — count_same_cause_reds is what refuses to
+    ever count it. B3(b): if the SAME removed_at is already recorded with cause None and this
+    call resolves a real (non-None) cause, the existing entry is UPGRADED in place — a later
+    tick correlating what an earlier tick could not must not be lost as a second, competing
+    record of the identical event; an already-resolved cause is never downgraded back to None."""
     new_state = json.loads(json.dumps(red_state))  # cheap deep copy, JSON-safe by contract
     key = str(pr_number)
     entry = new_state.setdefault(key, {"reds": []})
     reds = entry.get("reds") or []
-    if any(r.get("removed_at") == removed_at for r in reds):
-        return new_state  # already recorded this exact event this tick or a past one — dedup
+    for r in reds:
+        if r.get("removed_at") == removed_at:
+            if r.get("cause") is None and cause is not None:
+                r["cause"] = cause
+            return new_state  # dedup either way — never a second entry for the same event
     reds = reds + [{"removed_at": removed_at, "cause": cause, "head_sha": head_sha}]
     reds.sort(key=lambda r: r.get("removed_at") or "")
-    entry["reds"] = reds[-RED_HISTORY_MAX:]
+    entry["reds"] = reds
     return new_state
 
 
@@ -809,8 +831,15 @@ def fetch_infra_hint_and_fingerprint(
     queue_ejection_attribution.py's audit-grade version — that module exists for retrospective
     accuracy across a whole day; this one exists to make ONE re-arm decision right now, and a
     None (unresolved) hint here falls through to the conservative CODE default in
-    classify_ejection_reason, never to a guessed INFRA. Returns (None, None) on any fetch/parse
-    failure or when no correlated run is found — never silently invents a hint OR a fingerprint."""
+    classify_ejection_reason, never to a guessed INFRA. "No correlated run found" (a genuinely
+    resolved, non-failure answer) stays (None, None) — but a FAILED or unparseable read (the
+    runs list, or the jobs list for the correlated run) now RAISES RuntimeError (B1, Codex
+    review 2026-09-11): before this fix a read failure silently collapsed to the SAME (None,
+    None) a clean "nothing correlates" answer produces, which a jobs-fetch failure in particular
+    made actively wrong — jobs=[] on a run whose own conclusion is cancelled/timed_out reads as
+    INFRA (_run_has_infra_signature's OWN documented rule), so a transient jobs-fetch error could
+    get a PR re-armed on a fabricated INFRA verdict. The caller (run_rearm_pass, via B2) is
+    responsible for turning this raise into a CANNOT-VERIFY outcome, never a guess."""
     owner, name = repo.split("/", 1)
     rc, out, err = _run(
         [
@@ -820,12 +849,11 @@ def fetch_infra_hint_and_fingerprint(
         timeout=30,
     )
     if rc != 0:
-        logger.warning("fetch_infra_hint: gh api runs failed rc=%s err=%s", rc, err.strip()[:200])
-        return None, None
+        raise RuntimeError(f"fetch_infra_hint: gh api runs failed rc={rc}: {err.strip()[:300]}")
     try:
         runs = json.loads(out).get("workflow_runs") or []
-    except json.JSONDecodeError:
-        return None, None
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"fetch_infra_hint: unparseable runs response: {exc!s}: {out[:300]}") from exc
     removed_dt = _parse_iso(removed_at)
     # W111-adjacent fix (refuter round, agy pass, 2026-08-27): a merge_group run's real
     # head_branch is the full `gh-readonly-queue/main/pr-<n>-<sha>` ref, never a bare
@@ -851,16 +879,20 @@ def fetch_infra_hint_and_fingerprint(
         return None, None
     candidates.sort(key=lambda r: r.get("created_at") or "", reverse=True)
     run = candidates[0]
-    rc, jobs_out, _err = _run(
+    rc, jobs_out, jobs_err = _run(
         ["gh", "api", f"repos/{owner}/{name}/actions/runs/{run['id']}/jobs?per_page=50"],
         timeout=30,
     )
-    jobs: list[dict[str, Any]] = []
-    if rc == 0:
-        try:
-            jobs = json.loads(jobs_out).get("jobs") or []
-        except json.JSONDecodeError:
-            jobs = []
+    if rc != 0:
+        raise RuntimeError(
+            f"fetch_infra_hint: gh api jobs failed rc={rc}: {jobs_err.strip()[:300]}"
+        )
+    try:
+        jobs = json.loads(jobs_out).get("jobs") or []
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"fetch_infra_hint: unparseable jobs response: {exc!s}: {jobs_out[:300]}"
+        ) from exc
     return _run_has_infra_signature(run, jobs), red_cause_fingerprint(run, jobs)
 
 
@@ -1197,14 +1229,21 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> dict[str, Any]:
 
     rearmed = 0
     unverified = 0
+    new_unknown_keys: list[str] = []  # collected, sent as ONE alert after the loop (MEDIUM fix)
     for pr in candidates:
         number = pr["number"]
         head_sha = pr["head_sha"]
         try:
             ejection = fetch_last_ejection(REPO, number)
         except RuntimeError as exc:
+            # B2 (Codex review, 2026-09-11): a late per-PR read failure is CANNOT-VERIFY for the
+            # WHOLE pass, never a quiet skip — before this fix `unverified` counted it but the
+            # pass still reported cannot_verify=None, so a tick with every candidate unreadable
+            # still logged as a clean success.
             logger.error("PR #%s: CANNOT-VERIFY ejection timeline: %s", number, exc)
             unverified += 1
+            result["cannot_verify"] = "rearm_pr_reads"
+            result["detail"] = str(exc)[:300]
             continue
         if ejection == "NEVER_QUEUED":
             # letter F, S1 2026-09-10: no Added/Removed timeline event at all — this PR never
@@ -1225,7 +1264,16 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> dict[str, Any]:
             try:
                 infra_hint, fingerprint = fetch_infra_hint_and_fingerprint(REPO, number, removed_at)
             except RuntimeError as exc:
-                logger.warning("PR #%s: infra_hint fetch failed: %s", number, exc)
+                # B2 (Codex review, 2026-09-11): skip this PR outright on a failed infra-
+                # correlation read — no re-arm decision, no red recorded this tick (the next
+                # tick re-reads the SAME removed_at and records it then). Never silently fall
+                # through with infra_hint=None, which used to look identical to the legitimate
+                # "no correlated run found" answer.
+                logger.error("PR #%s: CANNOT-VERIFY infra_hint fetch: %s", number, exc)
+                unverified += 1
+                result["cannot_verify"] = "rearm_pr_reads"
+                result["detail"] = str(exc)[:300]
+                continue
             if removed_at:  # a red = an observed failed_checks removal (Builder Contract §1)
                 red_state = record_red(red_state, number, removed_at, fingerprint, head_sha)
         klass = classify_ejection_reason(reason_raw, infra_hint)
@@ -1252,14 +1300,8 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> dict[str, Any]:
         )
         alert_key = f"{number}:{head_sha}"
         if not allowed:
-            if klass == "UNKNOWN" and not dry_run and not alerted_state.get(alert_key):
-                sent = send_telegram(
-                    f"PR #{number} looks disarmed (head {head_sha[:8]}) with no readable "
-                    f"ejection reason — fail-closed, no auto-rearm. Needs a human look.",
-                    dedup_key=f"queue-shepherd-unknown-{alert_key}",
-                )
-                if sent:  # only a DELIVERED alert may be dedup-suppressed on future ticks
-                    alerted_state[alert_key] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+            if klass == "UNKNOWN" and not alerted_state.get(alert_key):
+                new_unknown_keys.append(alert_key)  # batched below (MEDIUM fix)
             continue
         if dry_run:
             logger.info("[dry-run] would run: gh pr merge %s --auto", number)
@@ -1269,6 +1311,22 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> dict[str, Any]:
             budget_state = record_infra_rearm(budget_state, number, head_sha, now)
             alerted_state.pop(alert_key, None)  # a live re-arm supersedes any stale alert
             rearmed += 1
+
+    if new_unknown_keys and not dry_run:
+        # MEDIUM (Codex review, 2026-09-11): ONE batched alert per tick listing every newly-
+        # UNKNOWN PR, not one send per PR — a first tick with N newly-disarmed PRs used to fire
+        # N separate Telegram sends. A DELIVERED send records EVERY listed key; a failed send
+        # records none, so every key is retried together on the next tick (same posture as the
+        # single-PR case this replaces).
+        sorted_keys = sorted(new_unknown_keys)
+        sent = send_telegram(
+            "PRs look disarmed with no readable ejection reason — fail-closed, no auto-rearm. "
+            "Needs a human look:\n" + "\n".join(f"  PR {k}" for k in sorted_keys),
+            dedup_key="queue-shepherd-unknown-" + "+".join(sorted_keys),
+        )
+        if sent:
+            for k in sorted_keys:
+                alerted_state[k] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     result["rearmed"] = rearmed
     result["unverified"] = unverified
@@ -1355,7 +1413,12 @@ def run_janitor_pass(dry_run: bool) -> dict[str, Any]:
             else:
                 still_stale = run["head_branch"] not in fetch_live_queue_branches(REPO)
         except RuntimeError as exc:
-            logger.warning("run %s: CANNOT-VERIFY at cancel-time recheck, skipping: %s", run["id"], exc)
+            # B2 (Codex review, 2026-09-11): a failed cancel-time recheck is CANNOT-VERIFY for
+            # the whole pass, not a quiet per-run skip — before this fix the run was skipped but
+            # the pass still reported cannot_verify=None.
+            logger.error("run %s: CANNOT-VERIFY at cancel-time recheck, skipping: %s", run["id"], exc)
+            result["cannot_verify"] = "janitor_recheck"
+            result["detail"] = str(exc)[:300]
             continue
         if not still_stale:
             logger.info("run %s (%s): became live between discovery and cancel, skipping", run["id"], run.get("name"))
@@ -1416,14 +1479,17 @@ def tick(dry_run: bool) -> int:
         # G5: a kill-switched organ is alive-but-idle, not silent — write an explicit
         # disabled heartbeat so the staleness monitor never mistakes this for a dead
         # organ (agy cross-family review, PR #5071: "disabled state is ambiguous").
-        _write_heartbeat("disabled", {"reason": "QUEUE_SHEPHERD_ENABLED=false"})
+        # B4 (Codex review, 2026-09-11): dry-run writes NOTHING, anywhere — including this path.
+        if not dry_run:
+            _write_heartbeat("disabled", {"reason": "QUEUE_SHEPHERD_ENABLED=false"})
         return 0
     now = _now()
     try:
         rearm_result = run_rearm_pass(dry_run, now)
         janitor_result = run_janitor_pass(dry_run)
     except Exception as exc:  # noqa: BLE001 — G2: heartbeat the failure path too, then re-raise
-        _write_heartbeat("error", {"error": str(exc), "dry_run": dry_run})
+        if not dry_run:  # B4: no heartbeat write on the exception path in dry-run either
+            _write_heartbeat("error", {"error": str(exc), "dry_run": dry_run})
         raise
 
     rearmed = rearm_result["rearmed"]
@@ -1437,26 +1503,29 @@ def tick(dry_run: bool) -> int:
     if cannot_verify_labels:
         # CANNOT-VERIFY is a tick OUTCOME, never a zero (S1, 2026-09-10 — see the module
         # docstring's S1 section for the measured incident this branch responds to).
-        # examined/candidates are only meaningful when the REARM read itself succeeded; a "-"
-        # makes that explicit rather than a misleading 0.
+        # examined/candidates are only unknowable when the LIST READ itself failed
+        # (rearm_candidates/rearm_state, before examined/candidates are ever computed) — a "-"
+        # makes that explicit. "rearm_pr_reads" fails AFTER that read succeeds, so examined/
+        # candidates are real numbers then and must be printed, not masked.
         labels_str = ",".join(cannot_verify_labels)
-        examined_str = "-" if rearm_result["cannot_verify"] else str(rearm_result["examined"])
-        candidates_str = "-" if rearm_result["cannot_verify"] else str(rearm_result["candidates"])
+        list_read_failed = rearm_result["cannot_verify"] in ("rearm_candidates", "rearm_state")
+        examined_str = "-" if list_read_failed else str(rearm_result["examined"])
+        candidates_str = "-" if list_read_failed else str(rearm_result["candidates"])
         logger.error(
             "tick complete: CANNOT-VERIFY=%s examined=%s candidates=%s rearmed=%s cancelled=%s "
             "dry_run=%s",
             labels_str, examined_str, candidates_str, rearmed, cancelled, dry_run,
         )
         details = [d for d in (rearm_result["detail"], janitor_result["detail"]) if d]
-        _write_heartbeat(
-            "error",
-            {
-                "cannot_verify": cannot_verify_labels,
-                "error": "; ".join(details)[:300],
-                "dry_run": dry_run,
-            },
-        )
-        if not dry_run:
+        if not dry_run:  # B4: no heartbeat write, no send, anywhere in dry-run
+            _write_heartbeat(
+                "error",
+                {
+                    "cannot_verify": cannot_verify_labels,
+                    "error": "; ".join(details)[:300],
+                    "dry_run": dry_run,
+                },
+            )
             # ONE dedup_key for every CANNOT-VERIFY label, so the gateway's dedup ladder turns
             # a whole outage into one alert, never one per tick per label.
             send_telegram(
@@ -1473,19 +1542,20 @@ def tick(dry_run: bool) -> int:
         rearm_result["examined"], rearm_result["candidates"], rearm_result["unknown"],
         rearmed, rearm_result["suspended"], rearm_result["unverified"], cancelled, dry_run,
     )
-    _write_heartbeat(
-        "ok",
-        {
-            "examined": rearm_result["examined"],
-            "candidates": rearm_result["candidates"],
-            "unknown": rearm_result["unknown"],
-            "rearmed": rearmed,
-            "suspended": rearm_result["suspended"],
-            "unverified": rearm_result["unverified"],
-            "cancelled": cancelled,
-            "dry_run": dry_run,
-        },
-    )
+    if not dry_run:  # B4 (Codex review, 2026-09-11): dry-run writes nothing, anywhere
+        _write_heartbeat(
+            "ok",
+            {
+                "examined": rearm_result["examined"],
+                "candidates": rearm_result["candidates"],
+                "unknown": rearm_result["unknown"],
+                "rearmed": rearmed,
+                "suspended": rearm_result["suspended"],
+                "unverified": rearm_result["unverified"],
+                "cancelled": cancelled,
+                "dry_run": dry_run,
+            },
+        )
     return 0
 
 
@@ -1538,12 +1608,14 @@ def report() -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    _configure_logging()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tick", action="store_true", help="run one shepherd tick (cron entry)")
     parser.add_argument("--report", action="store_true", help="print state, budget, last actions")
     parser.add_argument("--dry-run", action="store_true", help="tick only: zero mutations")
     args = parser.parse_args(argv)
+    # B4 (Codex review, 2026-09-11): args parsed BEFORE logging is configured, so --dry-run can
+    # steer _configure_logging away from ever creating the RotatingFileHandler on LOG_FILE.
+    _configure_logging(dry_run=args.dry_run)
 
     if args.report:
         return report()
