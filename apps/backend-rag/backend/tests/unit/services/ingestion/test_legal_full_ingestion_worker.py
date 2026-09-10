@@ -117,6 +117,37 @@ class TestUpdateJob:
 
 
 # ---------------------------------------------------------------------------
+# _format_job_error
+# ---------------------------------------------------------------------------
+
+
+class TestFormatJobError:
+    def test_includes_status_and_message(self):
+        from backend.services.ingestion.legal_full_ingestion_worker import (
+            _format_job_error,
+        )
+
+        msg = _format_job_error("qdrant_done", ValueError("bad title"))
+        assert msg == "qdrant_done: ValueError: bad title"
+
+    def test_names_exception_class_when_str_is_empty(self):
+        """Job 88a120aa failed with error='pending: ' — an empty str(e) (typical
+        of httpx timeout exceptions) left the failure undiagnosable. The class
+        name must survive even then."""
+        from backend.services.ingestion.legal_full_ingestion_worker import (
+            _format_job_error,
+        )
+
+        class _EmptyStrError(Exception):
+            def __str__(self):
+                return ""
+
+        msg = _format_job_error("pending", _EmptyStrError())
+        assert msg == "pending: _EmptyStrError: "
+        assert "_EmptyStrError" in msg
+
+
+# ---------------------------------------------------------------------------
 # _download_pdf
 # ---------------------------------------------------------------------------
 
@@ -152,11 +183,19 @@ class TestDownloadPdf:
 
     @pytest.mark.asyncio
     async def test_download_http_error(self):
+        """HTTPStatusError is wrapped in a RuntimeError naming host + status.
+
+        Prior behaviour re-raised the bare httpx.HTTPStatusError, and separately
+        the job's error column recorded only f"{status}: {e}" — an empty string
+        for exceptions like httpx timeouts whose str() is "". Wrapping here (and
+        formatting via _format_job_error) keeps a failed job row diagnosable.
+        """
         import httpx
 
         mock_response = MagicMock()
+        mock_response.status_code = 404
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "404", request=MagicMock(), response=MagicMock()
+            "404", request=MagicMock(), response=mock_response
         )
 
         mock_client = AsyncMock()
@@ -175,8 +214,87 @@ class TestDownloadPdf:
                 _download_pdf,
             )
 
-            with pytest.raises(httpx.HTTPStatusError):
-                await _download_pdf("https://example.com/bad", "PP", "1", "2024")
+            with pytest.raises(RuntimeError) as exc_info:
+                await _download_pdf("https://example.com/bad?token=secret", "PP", "1", "2024")
+
+        assert "example.com" in str(exc_info.value)
+        assert "404" in str(exc_info.value)
+        assert "token=secret" not in str(exc_info.value)
+        assert isinstance(exc_info.value.__cause__, httpx.HTTPStatusError)
+
+    @pytest.mark.asyncio
+    async def test_download_timeout_wrapped_with_empty_str_exception(self):
+        """A timeout whose str() is empty still yields a RuntimeError naming the class.
+
+        Reproduces the live failure (job 88a120aa, error="pending: "): the
+        default httpx timeout exception str() was empty, so the raw exception
+        alone is undiagnosable in the job row.
+        """
+        import httpx
+
+        class _SilentTimeout(httpx.TimeoutException):
+            def __str__(self):
+                return ""
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(side_effect=_SilentTimeout("", request=MagicMock()))
+
+        with (
+            patch(
+                "backend.services.ingestion.legal_full_ingestion_worker.httpx.AsyncClient",
+                return_value=mock_client,
+            ),
+            patch("tempfile.mkdtemp", return_value="/tmp/timeout"),
+        ):
+            from backend.services.ingestion.legal_full_ingestion_worker import (
+                _download_pdf,
+            )
+
+            with pytest.raises(RuntimeError) as exc_info:
+                await _download_pdf("https://peraturan.go.id/files/bn1376-2020.pdf", "PMK", "5", "2020")
+
+        assert "_SilentTimeout" in str(exc_info.value)
+        assert "peraturan.go.id" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_download_sets_user_agent_and_hardened_timeout(self):
+        """The client is built with a browser-like User-Agent and a widened timeout.
+
+        Reproduces the live cause for PP 71/2019 (582KB) and Permenkominfo 5/2020
+        (446KB): the previous 60s flat timeout + no User-Agent caused first-attempt
+        failures against peraturan.go.id.
+        """
+        mock_response = MagicMock()
+        mock_response.content = b"%PDF-1.4 test content"
+        mock_response.raise_for_status = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        with (
+            patch(
+                "backend.services.ingestion.legal_full_ingestion_worker.httpx.AsyncClient",
+                return_value=mock_client,
+            ) as mock_async_client,
+            patch("pathlib.Path.write_bytes"),
+            patch("tempfile.mkdtemp", return_value="/tmp/test_dl"),
+        ):
+            from backend.services.ingestion.legal_full_ingestion_worker import (
+                _download_pdf,
+            )
+
+            await _download_pdf("https://peraturan.go.id/files/LN185-PP71.pdf", "PP", "71", "2019")
+
+        _, kwargs = mock_async_client.call_args
+        assert kwargs["follow_redirects"] is True
+        assert "Mozilla" in kwargs["headers"]["User-Agent"]
+        timeout = kwargs["timeout"]
+        assert timeout.connect == 30.0
+        assert timeout.read == 180.0
 
 
 # ---------------------------------------------------------------------------
