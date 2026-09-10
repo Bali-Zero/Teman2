@@ -31,7 +31,7 @@ describe("KBLISearch quick filters", () => {
 
   it("writes the chip term into the search input", () => {
     render(<KBLISearch quickFilters={FILTERS} />);
-    const input = screen.getByRole("textbox") as HTMLInputElement;
+    const input = screen.getByRole("combobox") as HTMLInputElement;
     expect(input.value).toBe("");
 
     fireEvent.click(screen.getByRole("button", { name: "Search Restaurant" }));
@@ -50,7 +50,7 @@ describe("KBLISearch quick filters", () => {
 
   it("replaces a previous term instead of appending to it", () => {
     render(<KBLISearch quickFilters={FILTERS} />);
-    const input = screen.getByRole("textbox") as HTMLInputElement;
+    const input = screen.getByRole("combobox") as HTMLInputElement;
 
     fireEvent.change(input, { target: { value: "villa" } });
     fireEvent.click(screen.getByRole("button", { name: "Search Tech" }));
