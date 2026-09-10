@@ -24,6 +24,13 @@ logger = get_logger(__name__)
 INVITE_TOKEN_LENGTH = 64
 INVITE_EXPIRY_HOURS = 72  # 3 days
 
+# The path an invitation link points at, relative to `settings.frontend_portal_url`.
+# A constant rather than an inline f-string because the ROUTER concatenates the two
+# halves and the router's tests used to hand-write the other half — they asserted a
+# `/portal/invite?token=` link that this service has not produced for a long time, so
+# a test could stay green while the real link rotted (cross-family review, 2026-09-10).
+INVITE_PATH_TEMPLATE = "/portal/register?token={token}"
+
 
 class InviteService:
     """Service for managing client portal invitations."""
@@ -114,7 +121,7 @@ class InviteService:
                 "email": email,
                 "token": token,
                 "expires_at": invitation["expires_at"].isoformat(),
-                "invite_url": f"/portal/register?token={token}",
+                "invite_url": INVITE_PATH_TEMPLATE.format(token=token),
             }
 
     async def validate_token(self, token: str) -> dict[str, Any] | None:

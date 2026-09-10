@@ -218,6 +218,9 @@ async def send_invitation(
         )
 
         # Build full invite URL
+        # No rstrip here on purpose: the trailing slash is normalised on the
+        # SETTING itself, so this router and the GARUDA outbox handler — the
+        # other consumer of the same value — cannot disagree about it.
         base_url = settings.frontend_portal_url
         full_invite_url = f"{base_url}{result['invite_url']}"
 
