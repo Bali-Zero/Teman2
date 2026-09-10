@@ -7,9 +7,11 @@
 #   bash infra/launchagents/install_wr3_reflexion.sh            # install + bootstrap
 #   bash infra/launchagents/install_wr3_reflexion.sh --uninstall
 #
-# PRECONDITION: the plist points at the main checkout
+# PRECONDITION: the plist points at the main checkout, which the 15-min puller
+#   com.nuzantara.git-pull-main.15min holds at origin/main (one tree, 2026-09-10 —
+#   there is no deploy-puller to wait for any more; it was retired with its tree)
 #   /Users/nuzantara/nuzantara/scripts/wr3_reflexion_synthesis.py
-# which only exists AFTER this PR merges to main and the deploy-puller syncs it.
+# which only exists AFTER this PR merges to main and the 15-min puller syncs it.
 # Run this on the Pro AFTER merge+sync (same runtime-host pattern as the supervisor).
 set -uo pipefail
 
@@ -39,7 +41,7 @@ case "$MODE" in
         [[ -f "$SRC" ]] || { echo "[install] FATAL: source plist missing: $SRC" >&2; exit 1; }
         if [[ ! -f "$TARGET_SCRIPT" ]]; then
             echo "[install] WARN: target script not present yet: $TARGET_SCRIPT" >&2
-            echo "[install] WARN: run this AFTER the PR merges + deploy-puller syncs scripts/." >&2
+            echo "[install] WARN: run this AFTER the PR merges + the 15-min puller syncs scripts/." >&2
         fi
         if [[ -f "$DEST" ]]; then
             bak="$DEST.pre-install-$(date +%Y%m%d-%H%M%S)"

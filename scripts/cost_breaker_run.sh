@@ -8,8 +8,10 @@
 # time, and we point LLM_COST_JSONL_ROOT at the cost-ledger export dir that
 # cost_ledger_export.py refreshes from the Fly PG ledger.
 #
-# RUNTIME HOME = the deploy worktree (~/nuzantara-deploy), the
-# deploy-puller-refreshed checkout that carries the FASE-0 scripts (same
+# RUNTIME HOME = the main checkout (~/nuzantara, one tree 2026-09-10), kept at
+# origin/main by the 15-min puller — NOT by the deploy-puller, which was retired
+# with the frozen checkout. The
+# 15-min-puller-refreshed checkout that carries the FASE-0 scripts (same
 # convention as install_fase0_governance.sh).
 #
 # Kill-switch: COST_BREAKER_RUN_OFF=1
@@ -21,7 +23,7 @@ if [[ "${COST_BREAKER_RUN_OFF:-0}" == "1" ]]; then
     exit 0
 fi
 
-RUNTIME_ROOT="${COST_BREAKER_RUNTIME_ROOT:-$HOME/nuzantara-deploy}"
+RUNTIME_ROOT="${COST_BREAKER_RUNTIME_ROOT:-$HOME/nuzantara}"
 BREAKER="$RUNTIME_ROOT/scripts/cost_breaker.py"
 
 # Export dir the breaker reads (cost_ledger_export.py writes here). Default

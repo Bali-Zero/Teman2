@@ -15,23 +15,33 @@ lanes:
   - lane: pro-one-tree-refute
     role: review
     seat: >-
-      claude-opus-5 (same session, self-review — delegation depth was exhausted and the
-      Agent tool refused a subagent, so the adversarial pass was run in-session against a
-      written attack list rather than skipped. Declared as the weaker form it is: see
-      dissent[3] for what a separate seat would have added.)
-seat_diversity: not_applicable
+      claude-opus-5 (same session, round 1 self-review — delegation depth was exhausted and
+      the Agent tool refused a subagent, so round 1 was run in-session against a written
+      attack list rather than skipped. Declared as the weaker form it is.)
+  - lane: pro-one-tree-council
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol (round 2, cross-family, handed the diff and the same attack list with
+      no brief — it found two BLOCKERS the Anthropic-seat round 1 had missed, both fixed here)
+  - lane: pro-one-tree-council-2
+    role: review
+    seat: kimi-code/k3 (round 2, cross-family, second independent read of the corrected diff)
+seat_diversity: satisfied
 seat_diversity_note: >-
-  One build lane, so the >=2-lane diversity floor does not apply. Declared rather than left
-  to read as satisfied: the arbiter here is almost entirely a probe — launchctl print, a log
-  tail, plutil -lint, a pid — not an opinion, and the one genuinely judgemental call (which
-  agents are safe to kickstart) was resolved by NOT running the two with outward-facing side
-  effects.
-adversarial_rounds: 1
+  One build lane (claude-opus-5) and three review lanes, two of them non-Anthropic:
+  codex-gpt-5.6-sol and kimi-code/k3. The diversity was not ceremony — it is what caught the
+  two blockers. Round 1, run by the same family as the build lane, checked the surfaces its
+  author thought to list and reported them clean; the cross-family round read the CALLEES
+  instead and found that the snapshot broke `dirname "$0"` resolution inside the payload and
+  that three runtime scripts still defaulted to the retired path internally.
+adversarial_rounds: 2
+council_run: council-journal.jsonl
 diff:
   net_lines: >-
-    27 files, +139/-171 excluding the ledger row (net -32), measured by
-    `git diff --cached --numstat`. 16 plists, 4 installers, 2 wrappers, 1 watchdog script,
-    1 declared-pairs note, 1 plist deleted, 2 ledger rows, brief + pack.
+    35 files, +651/-241 measured by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
+    16 plists, 4 installers, 2 wrappers, 4 runtime scripts, 1 declared-pairs note, 1 plist
+    deleted, 2 ledger rows, and the evidence directory (brief, pack, council journal and the
+    two council seats' verdicts).
   behaviour_change: >-
     Eighteen LaunchAgents change the directory they execute from. No agent gains or loses a
     schedule, a KeepAlive, an environment variable other than a path, or a privilege. One
@@ -69,9 +79,21 @@ receipts:
     exit: 0
     ts: 2026-09-10T20:30 WITA
     seat: session (M5 over ssh pro)
+  - claim: THE HAZARD THE SNAPSHOT DEFENDED AGAINST DOES NOT EXIST — git replaces a worktree file by unlink+create, so a bash process already executing it keeps its fd on the old inode and runs the original to completion
+    cmd: "scratch git repo: commit v1 (echo A; sleep 3; echo B), commit v2 with entirely different and longer content, run `bash s.sh &`, then `git checkout HEAD -- s.sh` one second in, then wait"
+    result: "disk showed v2 mid-run; the running process still printed v1's last line; rc=0. So running the payload IN PLACE is safe and the snapshot was solving nothing while breaking $0 resolution."
+    exit: 0
+    ts: 2026-09-10T12:50Z
+    seat: session (M5)
+  - claim: The rewritten invariant 4 reads the checkout's own FETCH_HEAD and passes on a live Pro
+    cmd: ssh pro 'ls -l ~/nuzantara/.git/FETCH_HEAD; RUNTIME_RECONCILE_STRICT=0 bash /tmp/runtime-reconcile-new.sh'
+    result: "FETCH_HEAD mtime 20:52 (3 min old); rc=0; only the two expected one-tree breaches logged, invariants 1-4 silent"
+    exit: 0
+    ts: 2026-09-10T20:55:21 WITA
+    seat: session (M5 over ssh pro)
   - claim: Every changed plist is still a valid plist and every changed shell file still parses
     cmd: plutil -lint on each changed .plist; bash -n on each changed .sh
-    result: 16/16 plists OK, 6/6 shell files OK
+    result: 16/16 plists OK, 9/9 shell files OK
     exit: 0
     ts: 2026-09-10T12:44Z
     seat: session (M5)
@@ -83,6 +105,44 @@ pii_scan_note: >-
   moves them intact with the tree; a second copy would be superscar #4, and a filename listing
   would be an output-boundary breach on its own.
 dissent:
+  - seat: codex-gpt-5.6-sol (cross-family council, round 2, no brief)
+    objection: >-
+      BLOCKER. "Executing the temporary copy changes $0, so scripts/pro/pro-git-pull.sh:67
+      resolves SELF_DIR under /tmp; consequently the allowlist and Telegram gateway paths at
+      lines 83 and 103 disappear, disabling protected-file handling and alerts." The snapshot
+      added by round 1's own fix would have silently switched OFF the runtime-state allowlist
+      that stops the puller clobbering daemon-written files — the single protection the main
+      checkout has and the frozen one did not need.
+    status: CONFIRMED
+    resolution: >-
+      Snapshot removed entirely; the payload runs in place again. The removal is not a
+      retreat to the old risk: a scratch-repo measurement (receipt above) shows git replaces
+      a worktree file by unlink+create, so the running bash keeps its fd on the old inode and
+      cannot be handed a spliced file. The two-tree design was defending against a hazard
+      that git's own write strategy already prevents, which is why the cure could be deleted
+      rather than patched.
+  - seat: codex-gpt-5.6-sol (cross-family council, round 2, no brief)
+    objection: >-
+      BLOCKER. "scripts/cost_breaker_run.sh:24 and scripts/cost_ledger_export_run.sh:20 still
+      default internally to the retired checkout, so the repointed LaunchAgents immediately
+      fail." The plists were repointed and the scripts they call then pointed themselves back.
+    status: CONFIRMED
+    resolution: >-
+      Both fixed, plus a third the council's grep implied and this lane then found:
+      scripts/verify_connectome_run.sh:26. This is the finding that justifies the whole
+      cross-family round — cost-breaker had been PROVEN live from the main checkout at
+      20:27:49 with real output, and it only worked because the frozen tree still existed.
+      The proof was true and would have expired at the rename.
+  - seat: codex-gpt-5.6-sol (cross-family council, round 2, no brief)
+    objection: >-
+      "runtime-reconcile.sh:140 treats heartbeat freshness as pull freshness; a permanently
+      hung payload causes later ticks to emit fresh status=ok 'previous run alive' heartbeats,
+      hiding the dead puller." The new invariant 4 reproduced W81's silent-death shape.
+    status: CONFIRMED
+    resolution: >-
+      Invariant 4 now reads $RUNTIME_DIR/.git/FETCH_HEAD, which git rewrites only on a fetch
+      that actually happened and which a hung wrapper cannot forge. The heartbeat is still
+      read for the one thing it is authoritative about, its own status=error.
   - seat: session (self-review, attack list item 5 — the surface most likely to be missed)
     objection: >-
       "You fixed the LaunchAgent surface and left a script surface broken." A repo-wide grep
@@ -106,6 +166,54 @@ dissent:
       The EXIT trap already owns cleanup, so it was given the file: SNAPSHOT="" is declared
       BEFORE the trap (under set -u a trap that reads an unset variable fails) and the trap is
       rm -f "$PIDFILE" ${SNAPSHOT:+"$SNAPSHOT"}. Verified the empty case does not break the trap.
+  - seat: kimi-code/k3 (cross-family council, round 2, no brief)
+    objection: >-
+      "Evasion and false positive both exist" in invariant 5. The line-based grep cannot cross
+      a newline, and this fleet ALREADY ships a multi-line <string> —
+      com.nuzantara.verify-the-verifiers.plist:18-21 — so the evasion is demonstrated, not
+      hypothetical. In the other direction the pattern matches any <string> carrying the
+      substring, so a StandardOutPath or a booted-out plist still sitting in the directory
+      pages every six hours forever under STRICT=1, and the remediation hint fixes none of
+      those shapes.
+    status: CONFIRMED
+    resolution: >-
+      The guard now judges the ENTITY, which is what superscar #3 asks for and what the
+      previous version only claimed to do: it parses each plist with plistlib and reads only
+      Program, ProgramArguments, WorkingDirectory and EnvironmentVariables — the keys that say
+      what launchd EXECUTES. Multi-line values and XML entities are decoded by the parser, and
+      a log path is no longer mistaken for an execution. Re-proved on Pro at 21:11:30 WITA: it
+      reports exactly 1 offender, the healer-reverted web-lead-funnel, and does not count the
+      four plists whose only mention is a historical comment.
+  - seat: kimi-code/k3 (cross-family council, round 2, no brief)
+    objection: >-
+      Two further defects in the same file. `git clone` writes no FETCH_HEAD, so a
+      disaster-recovery re-clone of ~/nuzantara breaches invariant 4 and pages until the first
+      puller tick — "never fetched" mislabels "cloned, not yet pulled". And the comment's claim
+      that FETCH_HEAD "cannot lie" is overclaimed: a human running `git fetch` by hand
+      refreshes it and masks a dead puller for as long as they keep doing it.
+    status: CONFIRMED
+    resolution: >-
+      A missing FETCH_HEAD now falls back to the clone's own age via .git/HEAD and logs
+      "cloned, not yet pulled" without a breach while it is younger than the staleness window.
+      The overclaim is corrected in place to say what is actually true — harder to forge, not
+      impossible — and names the manual-fetch hole as the narrower one it traded for.
+  - seat: kimi-code/k3 (cross-family council, round 2, no brief)
+    objection: >-
+      Contradictory canon shipped. The wrapper now declares the self-mod hazard void and
+      MEASURED, while the payload it execs still mandates "run from ~/nuzantara-deploy … a
+      puller must not live in the tree it rewrites (self-mod)" and still describes its
+      allowlist as read from the deploy checkout "rather than the TARGET being pulled" — under
+      one tree $SELF_DIR/../.. IS the target. Also: install_wr3_reflexion.sh and
+      cost_breaker_run.sh still tell the operator to wait for a deploy-puller sync that this
+      same diff deletes.
+    status: CONFIRMED
+    resolution: >-
+      Both headers in scripts/pro/pro-git-pull.sh rewritten (comment-only, to stay clear of
+      open PR #6098's logic change in the same file), and the stale puller instructions
+      corrected. The allowlist rollout-lag hole is now NAMED rather than silently inherited:
+      under one tree the pull that ships an allowlist change reads the pre-change allowlist for
+      exactly one tick, and self-heals on the next. That is the price of one tree and it
+      belongs in the header, not in a reviewer's memory.
   - seat: session (self-review, attack list item 5 — findings deliberately NOT fixed)
     objection: >-
       Three more references to the frozen tree survive this PR and it should say so rather than

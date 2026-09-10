@@ -131,20 +131,39 @@ if $runtime_exists; then
 fi
 
 # --- Invariant 4: pulled recently (puller not silently dead, the other half of W81) ---
-# The 15-min puller writes a genome heartbeat on EVERY exit path, so its mtime is the
-# freshness signal and its status field is the health one. Absent file = never ran.
+# The AUTHORITATIVE signal is the checkout's own .git/FETCH_HEAD mtime, not the puller's
+# heartbeat. Cross-family review (codex-gpt-5.6-sol, 2026-09-10) killed the heartbeat-only
+# version: the wrapper writes status=ok with note "skipped: previous run alive" whenever its
+# pidfile is held, so a puller hung forever on one invocation goes on emitting FRESH ok
+# heartbeats while nothing is ever fetched — the exact silent-death shape of W81, rebuilt.
+# FETCH_HEAD is harder to forge that way: git rewrites it only on a fetch that actually
+# happened. Not IMPOSSIBLE to forge — cross-family review (kimi-code/k3) noted that a human
+# running `git fetch` by hand in this checkout also refreshes it and would mask a dead puller
+# for as long as they kept doing it. That is a narrower hole than a wrapper that refreshes it
+# on its own skip path every 15 minutes unattended, which is what this replaced.
+# The heartbeat is still read, for the one thing it is authoritative about — its own errors.
 if $runtime_exists; then
-  if [[ ! -f "$PULL_HEARTBEAT" ]]; then
-    note "puller heartbeat absent: $PULL_HEARTBEAT — the 15-min puller has never reported"
+  fetch_head="$RUNTIME_DIR/.git/FETCH_HEAD"
+  if [[ ! -f "$fetch_head" ]]; then
+    # `git clone` writes no FETCH_HEAD (kimi-code/k3): a disaster-recovery re-clone is
+    # CLONED-NOT-YET-PULLED, not "never fetched", and must not page for the first tick.
+    # Fall back to the clone's own age — .git/HEAD is written at clone time.
+    clone_mtime="$(stat -f %m "$RUNTIME_DIR/.git/HEAD" 2>/dev/null || echo 0)"
+    clone_age=$(( $(date +%s) - clone_mtime ))
+    if (( clone_age > MAX_PULL_AGE_SEC )); then
+      note "no FETCH_HEAD and the checkout is ${clone_age}s old (> ${MAX_PULL_AGE_SEC}s) — cloned but never pulled since"
+    else
+      log "no FETCH_HEAD yet but the checkout is only ${clone_age}s old — cloned, not yet pulled; not a breach"
+    fi
   else
-    pull_mtime="$(stat -f %m "$PULL_HEARTBEAT" 2>/dev/null || echo 0)"
-    age=$(( $(date +%s) - pull_mtime ))
+    fetch_mtime="$(stat -f %m "$fetch_head" 2>/dev/null || echo 0)"
+    age=$(( $(date +%s) - fetch_mtime ))
     if (( age > MAX_PULL_AGE_SEC )); then
-      note "runtime pull is stale: ${age}s since last puller heartbeat (> ${MAX_PULL_AGE_SEC}s) — puller may be dead"
+      note "runtime pull is stale: ${age}s since the last real fetch (> ${MAX_PULL_AGE_SEC}s) — puller may be dead or hung"
     fi
-    if grep -q '"status": *"error"' "$PULL_HEARTBEAT" 2>/dev/null; then
-      note "puller heartbeat reports status=error — see ~/logs/pro-git_pull_main/run.log"
-    fi
+  fi
+  if [[ -f "$PULL_HEARTBEAT" ]] && grep -q '"status": *"error"' "$PULL_HEARTBEAT" 2>/dev/null; then
+    note "puller heartbeat reports status=error — see ~/logs/pro-git_pull_main/run.log"
   fi
 fi
 
@@ -156,12 +175,36 @@ if [[ -e "$RETIRED_DEPLOY_DIR" ]]; then
   note "retired deploy checkout is BACK at $RETIRED_DEPLOY_DIR — one-tree ruling 2026-09-10 breached"
 fi
 if [[ -d "$LAUNCHAGENTS_DIR" ]]; then
-  # FUNCTIONAL refs only: a path inside a <string> is what launchd executes. Historical
-  # prose in an XML comment is a record of why the tree existed and must not page anyone
-  # forever (superscar #3 — a guard that judges the substring instead of the entity).
-  offenders="$(grep -lE '<string>[^<]*nuzantara-deploy' "$LAUNCHAGENTS_DIR"/*.plist 2>/dev/null | wc -l | tr -d ' ')"
+  # Judge the ENTITY, not the substring (superscar #3). A line-based grep for
+  # `<string>...nuzantara-deploy` fails in BOTH directions, and cross-family review
+  # (kimi-code/k3, 2026-09-10) demonstrated both on this fleet: it MISSES a value split
+  # across lines — com.nuzantara.verify-the-verifiers.plist already ships a multi-line
+  # <string> — and it FIRES on a StandardOutPath or an XML comment, which would page the
+  # operator every six hours forever for something that is not an execution at all.
+  # So: parse each plist and read only the keys that say what launchd EXECUTES.
+  offenders="$(/usr/bin/python3 - "$LAUNCHAGENTS_DIR" "$RETIRED_DEPLOY_DIR" <<'PYEOF' 2>/dev/null || echo 0
+import pathlib, plistlib, sys
+d, retired = pathlib.Path(sys.argv[1]), sys.argv[2]
+EXEC_KEYS = ("Program", "ProgramArguments", "WorkingDirectory", "EnvironmentVariables")
+def values(v):
+    if isinstance(v, str): yield v
+    elif isinstance(v, list):
+        for x in v: yield from values(x)
+    elif isinstance(v, dict):
+        for x in v.values(): yield from values(x)
+bad = 0
+for f in sorted(d.glob("*.plist")):
+    try:
+        pl = plistlib.loads(f.read_bytes())
+    except Exception:
+        continue
+    if any(retired in s for k in EXEC_KEYS for s in values(pl.get(k, ""))):
+        bad += 1
+print(bad)
+PYEOF
+)"
   if [[ "${offenders:-0}" != "0" ]]; then
-    note "$offenders LaunchAgent plist(s) still execute from nuzantara-deploy — run the launchagent installers"
+    note "$offenders LaunchAgent plist(s) still EXECUTE from $RETIRED_DEPLOY_DIR — run the launchagent installers"
   fi
 fi
 

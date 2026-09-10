@@ -47,8 +47,12 @@
 # untracked file (verified), so detection is per-incoming-path ("exists on disk ∧ not
 # tracked", or "tracked ∧ locally modified"), never the `--exclude-standard` lens.
 #
-# EXECUTION LOCATION: run from ~/nuzantara-deploy (kept current by the deploy-puller),
-# NOT from ~/nuzantara — a puller must not live in the tree it rewrites (self-mod).
+# EXECUTION LOCATION: ~/nuzantara — the tree it also pulls. ONE TREE (2026-09-10): the old
+# rule ("run from ~/nuzantara-deploy, a puller must not live in the tree it rewrites") is void
+# because the hazard was not real. MEASURED that day: git replaces a worktree file by
+# unlink+create, so a bash process already executing this script keeps its fd on the OLD inode
+# and runs the original to completion — a scratch-repo `git checkout` that swapped a running
+# script for entirely different content mid-run still finished the original and exited 0.
 # TARGET is $HOME/nuzantara; only origin/main (Pro pushes straight to GitHub).
 #
 # FAIL-SAFE INVARIANT: every error path leaves the repo untouched or recoverable and
@@ -77,9 +81,13 @@ LOCK_STALE_SECONDS=1800
 # version is Pro's OWN older promoted snapshot. Resetting published_articles.json to it
 # would drop dedup history and re-publish already-published intel (run_intel_pipeline.py
 # loads it as the publish-history dedup set). Read from the SAME checkout the puller runs
-# from ($SELF_DIR/../..: the deploy checkout, version-matched to THIS script) rather than the
-# TARGET being pulled — else the FIRST pull that ships this correction would still see the
-# target's OLD allowlist and could origin-win the very file it protects (rollout lag).
+# from $SELF_DIR/../.. — the checkout this script itself lives in, so the allowlist is always
+# version-matched to THIS script. Under two trees that was a DIFFERENT tree from the target and
+# closed a rollout-lag hole: the first pull shipping a correction would otherwise read the
+# target's OLD allowlist and origin-win the very file it protects. ONE TREE (2026-09-10):
+# $SELF_DIR/../.. IS the target now, so that hole is open again for exactly one tick — the pull
+# that ships an allowlist change reads the pre-change allowlist. Named rather than hidden; it is
+# the price of one tree and it self-heals on the next tick.
 ALLOWLIST_FILE="${PRO_GIT_PULL_ALLOWLIST:-$SELF_DIR/../../infra/claude-hooks/runtime_state_allowlist.json}"
 KEEP_LOCAL_DIR=""        # backup/staging dir for kept-local files (set when first staged)
 KEEP_LOCAL_FILES=""      # newline list of repo-rel paths kept local (deferred checkout + restore)

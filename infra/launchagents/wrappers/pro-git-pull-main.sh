@@ -45,31 +45,31 @@ if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; the
     exit 0
 fi
 echo $$ > "$PIDFILE"
-SNAPSHOT=""          # declared before the trap: `set -u` fails a trap that reads an unset var
-trap 'rm -f "$PIDFILE" ${SNAPSHOT:+"$SNAPSHOT"}' EXIT
+trap 'rm -f "$PIDFILE"' EXIT
 
 # ---- payload: collision-robust pull. The logic lives in a separately-TESTED script
 # (scripts/pro/pro-git-pull.sh + test_pro_git_pull.sh, 28 assertions) so it can be
 # exercised on any machine; this wrapper only adds the genome shell around it.
 #
 # ONE TREE (2026-09-10): the payload used to be read from the frozen ~/nuzantara-deploy
-# checkout precisely so the puller never executed from the very tree it rewrites — bash
-# reads a script incrementally, so a `git pull` that replaces those bytes mid-run can
-# hand the interpreter a spliced file. That checkout is retired, so the guarantee now
-# comes from a SNAPSHOT: copy the payload out of the tree, then run the copy. Same
-# property, one tree.
+# checkout so the puller never executed from the very tree it rewrites. That checkout is
+# retired, and the hazard it defended against turns out not to exist — MEASURED, not
+# assumed: git replaces a worktree file by unlink+create, so a bash process already
+# executing it keeps its open fd on the OLD inode and runs the original script to
+# completion. Proved on 2026-09-10 with a scratch repo: a `git checkout` that swapped a
+# running script for entirely different content mid-`sleep` still printed the original's
+# last line and exited 0.
+#
+# A first attempt at this cure ran a mktemp SNAPSHOT of the payload instead. Cross-family
+# review (codex-gpt-5.6-sol) killed it: the payload resolves both its runtime-state
+# allowlist and its Telegram gateway from `dirname "$0"`, so running the copy out of /tmp
+# silently disabled the protected-file handling this puller exists to honour. Running in
+# place keeps `$0` inside the checkout, which is what those two lookups need.
 log "run start"
 PAYLOAD="$HOME/nuzantara/scripts/pro/pro-git-pull.sh"
 if [ -f "$PAYLOAD" ]; then
-    SNAPSHOT="$(mktemp -t pro-git-pull)" || SNAPSHOT=""   # cleaned by the EXIT trap too
-    if [ -n "$SNAPSHOT" ] && cp "$PAYLOAD" "$SNAPSHOT"; then
-        log "payload: $PAYLOAD (snapshot $SNAPSHOT)"
-        bash "$SNAPSHOT"; RC=$?
-        rm -f "$SNAPSHOT"
-    else
-        log "WARN: snapshot failed — running payload in place"
-        bash "$PAYLOAD"; RC=$?
-    fi
+    log "payload: $PAYLOAD"
+    bash "$PAYLOAD"; RC=$?
 else
     log "FATAL: payload not found at $PAYLOAD"
     heartbeat "error" "payload missing"
