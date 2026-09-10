@@ -79,6 +79,32 @@ describe("ZantaraChat accessibility surface", () => {
     ).toBeInTheDocument();
   });
 
+  // COVERS THIS DIFF — must be red against the parent commit.
+  // The log scrolls (max-h-96 over min-h-[300px]), and a scrollable region with
+  // no tab stop cannot be reached, let alone scrolled, without a mouse.
+  it("makes the conversation log reachable by keyboard", () => {
+    render(<ZantaraChat />);
+    const log = screen.getByRole("log", {
+      name: "Conversation with Zantara AI",
+    });
+
+    expect(log).toHaveAttribute("tabindex", "0");
+    log.focus();
+    expect(document.activeElement).toBe(log);
+  });
+
+  // GUARD — green on both sides of this diff. Adding a tab stop must not cost
+  // the region the role and name PR #6094 gave it.
+  it("keeps the log's role and name once it is focusable", () => {
+    render(<ZantaraChat />);
+    const log = screen.getByRole("log", {
+      name: "Conversation with Zantara AI",
+    });
+
+    expect(log).toHaveAttribute("aria-live", "polite");
+    expect(log).toHaveAttribute("aria-label", "Conversation with Zantara AI");
+  });
+
   it("puts the opener inside the log so it is announced with the thread", () => {
     render(<ZantaraChat opener="Ask me about this code." />);
     const log = screen.getByRole("log", {

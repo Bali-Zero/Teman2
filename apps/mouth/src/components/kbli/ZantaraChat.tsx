@@ -149,6 +149,7 @@ export function ZantaraChat({
       <div
         ref={messagesBoxRef}
         role="log"
+        tabIndex={0}
         aria-live="polite"
         aria-label="Conversation with Zantara AI"
         className="relative z-10 max-h-96 min-h-[300px] space-y-5 overflow-y-auto p-5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
