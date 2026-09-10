@@ -351,7 +351,7 @@ def test_classify_one_red_gate_never_posted_is_gate_verdict_missing(monkeypatch)
     pr = _pr(1, status_rollup_state="FAILURE")
     monkeypatch.setattr(
         sc, "fetch_check_runs_flat",
-        lambda repo, number: ([{"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "FAILURE"}], False),
+        lambda repo, sha: ([{"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "FAILURE"}], False),
     )
     monkeypatch.setattr(sc, "read_fable_gate_state", lambda repo, sha: (None, None))
     row = sc._classify_one("Bali-Zero/Teman2", pr, NOW)
@@ -362,7 +362,7 @@ def test_classify_one_red_gate_with_real_verdict_is_required_check_red(monkeypat
     pr = _pr(1, status_rollup_state="FAILURE")
     monkeypatch.setattr(
         sc, "fetch_check_runs_flat",
-        lambda repo, number: ([{"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "FAILURE"}], False),
+        lambda repo, sha: ([{"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "FAILURE"}], False),
     )
     monkeypatch.setattr(sc, "read_fable_gate_state", lambda repo, sha: ("failure", "REWORK"))
     row = sc._classify_one("Bali-Zero/Teman2", pr, NOW)
@@ -374,7 +374,7 @@ def test_classify_one_red_other_check_not_the_gate_is_required_check_red(monkeyp
     pr = _pr(1, status_rollup_state="FAILURE")
     monkeypatch.setattr(
         sc, "fetch_check_runs_flat",
-        lambda repo, number: ([{"name": "Backend Tests", "conclusion": "FAILURE"}], False),
+        lambda repo, sha: ([{"name": "Backend Tests", "conclusion": "FAILURE"}], False),
     )
 
     def never_called(repo, sha):
@@ -386,13 +386,13 @@ def test_classify_one_red_other_check_not_the_gate_is_required_check_red(monkeyp
 
 
 def test_classify_one_truncated_and_gate_not_found_is_cannot_verify_never_guessed(monkeypatch):
-    """Module docstring trap (d), the live-measured checkSuites pagination bug: if the fetch
-    was truncated and 'Harness floor recompute' was not found among what WAS fetched, this must
-    never silently fall through to required-check-red -- it might be hiding past the page."""
+    """Module docstring trap (d): if the name-filtered check-runs fetch was truncated and
+    'Harness floor recompute' was not found among what WAS fetched, this must never silently
+    fall through to required-check-red -- it might be hiding past the page."""
     pr = _pr(1, status_rollup_state="FAILURE")
     monkeypatch.setattr(
         sc, "fetch_check_runs_flat",
-        lambda repo, number: ([{"name": "Some Other Check", "conclusion": "FAILURE"}], True),
+        lambda repo, sha: ([{"name": "Some Other Check", "conclusion": "FAILURE"}], True),
     )
 
     def never_called(repo, sha):
@@ -409,15 +409,15 @@ def test_classify_one_not_truncated_and_gate_not_found_falls_through_normally(mo
     pr = _pr(1, status_rollup_state="FAILURE")
     monkeypatch.setattr(
         sc, "fetch_check_runs_flat",
-        lambda repo, number: ([{"name": "Some Other Check", "conclusion": "FAILURE"}], False),
+        lambda repo, sha: ([{"name": "Some Other Check", "conclusion": "FAILURE"}], False),
     )
     row = sc._classify_one("Bali-Zero/Teman2", pr, NOW)
     assert row["cause"] == "required-check-red"
 
 
-def test_classify_one_checksuites_fetch_failure_is_cannot_verify(monkeypatch):
-    def boom(repo, number):
-        raise RuntimeError("gh api graphql failed rc=1")
+def test_classify_one_check_runs_fetch_failure_is_cannot_verify(monkeypatch):
+    def boom(repo, sha):
+        raise RuntimeError("gh api commits/.../check-runs failed rc=1")
 
     pr = _pr(1, status_rollup_state="FAILURE")
     monkeypatch.setattr(sc, "fetch_check_runs_flat", boom)
@@ -429,7 +429,7 @@ def test_classify_one_fable_gate_read_failure_is_cannot_verify(monkeypatch):
     pr = _pr(1, status_rollup_state="FAILURE")
     monkeypatch.setattr(
         sc, "fetch_check_runs_flat",
-        lambda repo, number: ([{"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "FAILURE"}], False),
+        lambda repo, sha: ([{"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "FAILURE"}], False),
     )
 
     def boom(repo, sha):
@@ -441,9 +441,9 @@ def test_classify_one_fable_gate_read_failure_is_cannot_verify(monkeypatch):
 
 
 def test_classify_one_never_fetches_check_runs_when_rollup_is_green(monkeypatch):
-    # efficiency + correctness: the heavier per-candidate checkSuites fetch must only fire when
+    # efficiency + correctness: the heavier per-candidate check-runs fetch must only fire when
     # the cheap bulk rollup was already red.
-    def never_called(repo, number):
+    def never_called(repo, sha):
         raise AssertionError("must not fetch check runs for a green PR")
 
     monkeypatch.setattr(sc, "fetch_check_runs_flat", never_called)
@@ -726,77 +726,90 @@ def test_fetch_open_prs_innocence_stops_after_exhausted_first_page(monkeypatch):
     assert calls == 1
 
 
-def _check_runs_graphql_payload(*, suite_total: int, run_total: int) -> dict:
-    return {
-        "data": {
-            "repository": {
-                "pullRequest": {
-                    "commits": {
-                        "nodes": [
-                            {
-                                "commit": {
-                                    "checkSuites": {
-                                        "totalCount": suite_total,
-                                        "nodes": [
-                                            {
-                                                "checkRuns": {
-                                                    "totalCount": run_total,
-                                                    "nodes": [
-                                                        {
-                                                            "name": sc.HARNESS_FLOOR_CHECK_NAME,
-                                                            "conclusion": "FAILURE",
-                                                        }
-                                                    ],
-                                                }
-                                            }
-                                        ],
-                                    }
-                                }
-                            }
-                        ]
-                    }
-                }
-            }
-        }
-    }
+def _check_runs_rest_payload(*, total_count: int, check_runs: list[dict]) -> dict:
+    return {"total_count": total_count, "check_runs": check_runs}
 
 
-def test_fetch_check_runs_flat_guilt_marks_suite_level_truncation(monkeypatch):
-    monkeypatch.setattr(
-        sc,
-        "_gh_graphql",
-        lambda query, variables: _check_runs_graphql_payload(suite_total=2, run_total=1),
-    )
+def test_fetch_check_runs_flat_sends_no_checksuites_fan_out(monkeypatch):
+    """S1 diet pin (mandate, verbatim): the classifier must no longer send a
+    `checkSuites(first:N){checkRuns(first:M)}` GraphQL fan-out — it reads a plain REST GET,
+    filtered server-side by check_name, exactly like queue_shepherd.py's own status-context cure
+    in shape (never in mechanism -- see fetch_check_runs_flat's own docstring)."""
+    captured = {}
 
-    runs, truncated = sc.fetch_check_runs_flat("Bali-Zero/Teman2", 1)
+    def fake_run(cmd, timeout=30):
+        captured["cmd"] = cmd
+        return 0, json.dumps(_check_runs_rest_payload(
+            total_count=1,
+            check_runs=[{"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "FAILURE"}],
+        )), ""
+
+    monkeypatch.setattr(sc, "_run", fake_run)
+
+    def graphql_must_not_be_called(query, variables):
+        raise AssertionError("fetch_check_runs_flat must not use GraphQL at all")
+
+    monkeypatch.setattr(sc, "_gh_graphql", graphql_must_not_be_called)
+
+    runs, truncated = sc.fetch_check_runs_flat("Bali-Zero/Teman2", "a" * 40)
 
     assert runs == [{"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "FAILURE"}]
-    assert truncated is True
+    assert truncated is False
+    cmd = captured["cmd"]
+    assert "checkSuites" not in " ".join(cmd)
+    assert any("check-runs" in part for part in cmd)
+    assert any("check_name=" in part for part in cmd)
 
 
-def test_fetch_check_runs_flat_guilt_marks_check_run_level_truncation(monkeypatch):
+def test_fetch_check_runs_flat_requests_check_name_filter_and_per_page(monkeypatch):
+    captured = {}
+
+    def fake_run(cmd, timeout=30):
+        captured["cmd"] = cmd
+        return 0, json.dumps(_check_runs_rest_payload(total_count=0, check_runs=[])), ""
+
+    monkeypatch.setattr(sc, "_run", fake_run)
+    sc.fetch_check_runs_flat("Bali-Zero/Teman2", "a" * 40)
+    url = captured["cmd"][-1]
+    assert "Harness" in url and "floor" in url and "recompute" in url
+    assert f"per_page={sc.CHECK_RUNS_REST_PAGE_SIZE}" in url
+    assert f"commits/{'a' * 40}/check-runs" in url
+
+
+def test_fetch_check_runs_flat_guilt_total_count_exceeding_page_is_truncated(monkeypatch):
     monkeypatch.setattr(
-        sc,
-        "_gh_graphql",
-        lambda query, variables: _check_runs_graphql_payload(suite_total=1, run_total=2),
+        sc, "_run",
+        lambda cmd, timeout=30: (0, json.dumps(_check_runs_rest_payload(
+            total_count=2,
+            check_runs=[{"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "FAILURE"}],
+        )), ""),
     )
 
-    _runs, truncated = sc.fetch_check_runs_flat("Bali-Zero/Teman2", 1)
+    runs, truncated = sc.fetch_check_runs_flat("Bali-Zero/Teman2", "a" * 40)
 
+    assert len(runs) == 1
     assert truncated is True
 
 
 def test_fetch_check_runs_flat_innocence_complete_cardinality_is_not_truncated(monkeypatch):
     monkeypatch.setattr(
-        sc,
-        "_gh_graphql",
-        lambda query, variables: _check_runs_graphql_payload(suite_total=1, run_total=1),
+        sc, "_run",
+        lambda cmd, timeout=30: (0, json.dumps(_check_runs_rest_payload(
+            total_count=1,
+            check_runs=[{"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "FAILURE"}],
+        )), ""),
     )
 
-    runs, truncated = sc.fetch_check_runs_flat("Bali-Zero/Teman2", 1)
+    runs, truncated = sc.fetch_check_runs_flat("Bali-Zero/Teman2", "a" * 40)
 
     assert len(runs) == 1
     assert truncated is False
+
+
+def test_fetch_check_runs_flat_gh_failure_raises(monkeypatch):
+    monkeypatch.setattr(sc, "_run", lambda cmd, timeout=30: (1, "", "gh: not found"))
+    with pytest.raises(RuntimeError):
+        sc.fetch_check_runs_flat("Bali-Zero/Teman2", "a" * 40)
 
 
 def test_render_table_escapes_markdown_pipe_in_detail():
@@ -954,15 +967,25 @@ def test_classify_one_innocence_commits_missing_false_proceeds_normally(monkeypa
     assert row["cause"] == "queued-and-advancing"
 
 
-def test_fetch_check_runs_flat_guilt_empty_commit_nodes_raises(monkeypatch):
+def test_fetch_check_runs_flat_guilt_missing_check_runs_key_raises(monkeypatch):
+    # REST-shape anomaly (post-S1-diet successor to the old GraphQL "empty commits.nodes" guard):
+    # a response body that parses as JSON but lacks a 'check_runs' list must never be read as
+    # "zero check runs" -- that would silently hide a real gate result behind a malformed read.
     monkeypatch.setattr(
-        sc, "_gh_graphql",
-        lambda query, variables: {
-            "data": {"repository": {"pullRequest": {"commits": {"nodes": []}}}}
-        },
+        sc, "_run",
+        lambda cmd, timeout=30: (0, json.dumps({"total_count": 0}), ""),
     )
     with pytest.raises(RuntimeError):
-        sc.fetch_check_runs_flat("Bali-Zero/Teman2", 1)
+        sc.fetch_check_runs_flat("Bali-Zero/Teman2", "a" * 40)
+
+
+def test_fetch_check_runs_flat_guilt_non_dict_response_raises(monkeypatch):
+    monkeypatch.setattr(
+        sc, "_run",
+        lambda cmd, timeout=30: (0, json.dumps([1, 2, 3]), ""),
+    )
+    with pytest.raises(RuntimeError):
+        sc.fetch_check_runs_flat("Bali-Zero/Teman2", "a" * 40)
 
 
 # ── fetch_open_prs MAX_PAGES (2026-08-31 fix #4, gpt-5.6-sol review): exhausting the page ─────
@@ -1046,7 +1069,7 @@ def test_classify_one_guilt_disagreeing_duplicate_gate_runs_is_cannot_verify(mon
     pr = _pr(1, status_rollup_state="FAILURE")
     monkeypatch.setattr(
         sc, "fetch_check_runs_flat",
-        lambda repo, number: (
+        lambda repo, sha: (
             [
                 {"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "SUCCESS"},
                 {"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "FAILURE"},
@@ -1068,7 +1091,7 @@ def test_classify_one_innocence_agreeing_duplicate_gate_runs_classifies_normally
     pr = _pr(1, status_rollup_state="FAILURE")
     monkeypatch.setattr(
         sc, "fetch_check_runs_flat",
-        lambda repo, number: (
+        lambda repo, sha: (
             [
                 {"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "FAILURE"},
                 {"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "FAILURE"},
@@ -1089,7 +1112,7 @@ def test_classify_one_guilt_timed_out_gate_run_is_gate_verdict_missing_not_swall
     pr = _pr(1, status_rollup_state="FAILURE")
     monkeypatch.setattr(
         sc, "fetch_check_runs_flat",
-        lambda repo, number: ([{"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "TIMED_OUT"}], False),
+        lambda repo, sha: ([{"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "TIMED_OUT"}], False),
     )
     monkeypatch.setattr(sc, "read_fable_gate_state", lambda repo, sha: (None, None))
     row = sc._classify_one("Bali-Zero/Teman2", pr, NOW)
@@ -1102,7 +1125,7 @@ def test_classify_one_innocence_skipped_gate_run_is_not_treated_as_red(monkeypat
     pr = _pr(1, status_rollup_state="FAILURE")
     monkeypatch.setattr(
         sc, "fetch_check_runs_flat",
-        lambda repo, number: ([{"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "SKIPPED"}], False),
+        lambda repo, sha: ([{"name": sc.HARNESS_FLOOR_CHECK_NAME, "conclusion": "SKIPPED"}], False),
     )
 
     def never_called(repo, sha):
