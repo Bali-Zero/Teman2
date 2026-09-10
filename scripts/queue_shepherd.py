@@ -657,6 +657,39 @@ def _gh_graphql(query: str, variables: dict[str, Any], timeout: int = 45) -> dic
         raise RuntimeError(f"unparseable graphql response: {exc!s}: {out[:300]}") from exc
 
 
+def _expect_list(obj: Any, key: str, where: str) -> list:
+    """The read contract (H, S1 spec R2): a read is a response whose SHAPE is what the code
+    consumes — anything else is a failed read, never a fabricated empty list. Raises RuntimeError
+    when `obj` is not a dict or `obj[key]` is not a list; `{key: []}` stays legitimate."""
+    value = obj.get(key) if isinstance(obj, dict) else None
+    if not isinstance(obj, dict) or not isinstance(value, list):
+        raise RuntimeError(f"{where}: expected a dict with list '{key}', got: {str(obj)[:300]}")
+    return value
+
+
+def _expect_pull_requests_page(data: Any, where: str) -> dict[str, Any]:
+    """H3/H4 (S1 spec R2): the GraphQL pullRequests connection shape shared by fetch_open_prs
+    (via _fetch_candidates_page, with a retry) and fetch_open_pr_heads (no retry). Raises
+    RuntimeError unless data.repository.pullRequests is a dict, 'nodes' is a list, 'pageInfo' is
+    a dict with a bool 'hasNextPage', and — when hasNextPage is True — 'endCursor' is a non-empty
+    str. `nodes: []` stays legitimate."""
+    try:
+        page = data["data"]["repository"]["pullRequests"]
+    except (KeyError, TypeError) as exc:
+        raise RuntimeError(f"{where}: unexpected graphql shape: {exc}: {str(data)[:300]}") from exc
+    _expect_list(page, "nodes", where)
+    page_info = page.get("pageInfo") if isinstance(page, dict) else None
+    if not isinstance(page_info, dict) or not isinstance(page_info.get("hasNextPage"), bool):
+        raise RuntimeError(f"{where}: pageInfo malformed: {str(page_info)[:300]}")
+    if page_info["hasNextPage"] and not (
+        isinstance(page_info.get("endCursor"), str) and page_info["endCursor"]
+    ):
+        raise RuntimeError(
+            f"{where}: hasNextPage True but endCursor missing/empty: {str(page_info)[:300]}"
+        )
+    return page
+
+
 REARM_CANDIDATES_QUERY = """
 query($owner:String!, $repo:String!, $cursor:String) {
   repository(owner:$owner, name:$repo) {
@@ -722,15 +755,21 @@ def _normalize_rearm_pr(node: dict[str, Any]) -> dict[str, Any]:
 def _fetch_candidates_page(variables: dict[str, Any]) -> dict[str, Any]:
     """One retry, after RETRY_BACKOFF_SECONDS, for a single REARM_CANDIDATES_QUERY page. A
     second consecutive failure propagates RuntimeError unchanged (see _gh_graphql) — CANNOT-
-    VERIFY must never be swallowed by a retry that also failed."""
+    VERIFY must never be swallowed by a retry that also failed. H3 (S1 spec R2): a malformed-
+    shape response (via _expect_pull_requests_page) is retried exactly like a transport failure,
+    through this same except branch."""
     try:
-        return _gh_graphql(REARM_CANDIDATES_QUERY, variables)
+        data = _gh_graphql(REARM_CANDIDATES_QUERY, variables)
+        _expect_pull_requests_page(data, "candidate page")
+        return data
     except RuntimeError as exc:
         logger.warning(
             "candidate page fetch failed, retrying once after %ss: %s", RETRY_BACKOFF_SECONDS, exc
         )
         _sleep(RETRY_BACKOFF_SECONDS)
-        return _gh_graphql(REARM_CANDIDATES_QUERY, variables)
+        data = _gh_graphql(REARM_CANDIDATES_QUERY, variables)
+        _expect_pull_requests_page(data, "candidate page")
+        return data
 
 
 def fetch_open_prs(repo: str = REPO) -> list[dict[str, Any]]:
@@ -748,10 +787,9 @@ def fetch_open_prs(repo: str = REPO) -> list[dict[str, Any]]:
         if cursor:
             variables["cursor"] = cursor
         data = _fetch_candidates_page(variables)
-        try:
-            page = data["data"]["repository"]["pullRequests"]
-        except (KeyError, TypeError) as exc:
-            raise RuntimeError(f"unexpected graphql shape: {exc}: {json.dumps(data)[:300]}") from exc
+        # H3 (S1 spec R2): shape is already guaranteed by _fetch_candidates_page's own
+        # _expect_pull_requests_page call — this navigation can no longer raise KeyError/TypeError.
+        page = data["data"]["repository"]["pullRequests"]
         for node in page["nodes"]:
             out.append(_normalize_rearm_pr(node))
         if page["pageInfo"]["hasNextPage"]:
@@ -802,9 +840,12 @@ def fetch_last_ejection(repo: str, number: int) -> dict[str, Any] | None | str:
     owner, name = repo.split("/", 1)
     data = _gh_graphql(TIMELINE_QUERY, {"owner": owner, "repo": name, "number": number})
     try:
-        nodes = data["data"]["repository"]["pullRequest"]["timelineItems"]["nodes"]
+        timeline_items = data["data"]["repository"]["pullRequest"]["timelineItems"]
     except (KeyError, TypeError) as exc:
         raise RuntimeError(f"unexpected graphql shape: {exc}: {json.dumps(data)[:300]}") from exc
+    # H5 (S1 spec R2): `nodes` must be a list; a `null`/non-list value raises instead of silently
+    # becoming NEVER_QUEUED (a malformed read is a failed read, never a legitimate empty answer).
+    nodes = _expect_list(timeline_items, "nodes", "fetch_last_ejection timeline")
     if not nodes:
         return "NEVER_QUEUED"
     last = nodes[-1]
@@ -817,14 +858,31 @@ def fetch_last_ejection(repo: str, number: int) -> dict[str, Any] | None | str:
     }
 
 
+def _fetch_run_jobs(owner: str, name: str, run_id: int) -> list[dict[str, Any]]:
+    """H2 (S1 spec R2): one run's jobs list. Raises RuntimeError on a failed fetch or a
+    malformed body (`jobs` missing or not a list); `{"jobs": []}` is legitimate."""
+    rc, jobs_out, jobs_err = _run(
+        ["gh", "api", f"repos/{owner}/{name}/actions/runs/{run_id}/jobs?per_page=50"],
+        timeout=30,
+    )
+    if rc != 0:
+        raise RuntimeError(f"fetch_infra_hint: gh api jobs failed rc={rc}: {jobs_err.strip()[:300]}")
+    try:
+        parsed = json.loads(jobs_out)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"fetch_infra_hint: unparseable jobs response: {exc!s}: {jobs_out[:300]}"
+        ) from exc
+    return _expect_list(parsed, "jobs", "fetch_infra_hint jobs")
+
+
 def fetch_infra_hint_and_fingerprint(
     repo: str, number: int, removed_at: str | None
 ) -> tuple[bool | None, str | None]:
-    """ONE fetch (merge_group runs + jobs) yielding BOTH the existing best-effort INFRA
-    correlation (see fetch_infra_hint, now a thin wrapper over this — letter E, S1 2026-09-10)
-    AND a same-cause fingerprint (red_cause_fingerprint) for the Builder Contract §1 suspension.
-    A second independent fetch for the fingerprint would double this organ's `gh api` calls per
-    candidate for no reason — both signals come from the IDENTICAL correlated run + its jobs.
+    """One runs-list fetch, plus one jobs fetch per run in the correlated ATTEMPT (I3, S1 spec
+    R2, via _fetch_run_jobs), yielding BOTH the existing best-effort INFRA correlation (see
+    fetch_infra_hint, now a thin wrapper over this — letter E, S1 2026-09-10) AND a same-cause
+    fingerprint (red_cause_fingerprint) for the Builder Contract §1 suspension.
 
     Best-effort, honest about its own gap: this looks at the PR's most recent merge_group runs by
     branch-name prefix (`pr-<number>-`), NOT an exhaustive day-window reconstruction like
@@ -832,36 +890,49 @@ def fetch_infra_hint_and_fingerprint(
     accuracy across a whole day; this one exists to make ONE re-arm decision right now, and a
     None (unresolved) hint here falls through to the conservative CODE default in
     classify_ejection_reason, never to a guessed INFRA. "No correlated run found" (a genuinely
-    resolved, non-failure answer) stays (None, None) — but a FAILED or unparseable read (the
-    runs list, or the jobs list for the correlated run) now RAISES RuntimeError (B1, Codex
-    review 2026-09-11): before this fix a read failure silently collapsed to the SAME (None,
-    None) a clean "nothing correlates" answer produces, which a jobs-fetch failure in particular
-    made actively wrong — jobs=[] on a run whose own conclusion is cancelled/timed_out reads as
-    INFRA (_run_has_infra_signature's OWN documented rule), so a transient jobs-fetch error could
-    get a PR re-armed on a fabricated INFRA verdict. The caller (run_rearm_pass, via B2) is
-    responsible for turning this raise into a CANNOT-VERIFY outcome, never a guess."""
+    resolved, non-failure answer) stays (None, None) — but a FAILED or unparseable read (the runs
+    list, or any attempt run's jobs list — H1/H2) now RAISES RuntimeError: before this fix a read
+    failure silently collapsed to the SAME (None, None) a clean "nothing correlates" answer
+    produces, which a jobs-fetch failure in particular made actively wrong — jobs=[] on a run
+    whose own conclusion is cancelled/timed_out reads as INFRA (_run_has_infra_signature's OWN
+    documented rule), so a transient jobs-fetch error could get a PR re-armed on a fabricated
+    INFRA verdict. The caller (run_rearm_pass, via B2) turns this raise into a CANNOT-VERIFY
+    outcome, never a guess.
+
+    ONE QUEUE ATTEMPT (I, S1 spec R2): a merge-queue attempt launches ~13 runs sharing one
+    head_sha; the old tie-break `candidates.sort()[0]` picked an arbitrary sibling of the attempt
+    (a `cancelled` run instead of the real `failure` run) and read it alone. The runs list is now
+    fetched with `per_page=100` plus `created=<=<removed_at>` server-side (removed_at None omits
+    it), the prior client-side `created_at <= removed_at` filter kept as a second fence. The
+    ATTEMPT: the latest failing candidate by (created_at, id) defines head_sha; every failing
+    candidate sharing that head_sha is the attempt (just that one run if head_sha is missing); an
+    older attempt of the same PR (a different head_sha) is never mixed in. `infra` is `all()`
+    across the attempt's runs — CODE wins across runs exactly as it wins across one run's jobs, a
+    DELIBERATE divergence from queue_ejection_attribution.py's ANY rule (that module is
+    retrospective; this one makes a re-arm decision and fails closed). `fingerprint` is the
+    sorted, deduped, "||"-joined union of each run's own fingerprint — independent of API order.
+    """
     owner, name = repo.split("/", 1)
-    rc, out, err = _run(
-        [
-            "gh", "api",
-            f"repos/{owner}/{name}/actions/runs?event=merge_group&per_page=20",
-        ],
-        timeout=30,
-    )
+    removed_dt = _parse_iso(removed_at)
+    url = f"repos/{owner}/{name}/actions/runs?event=merge_group&per_page=100"
+    if removed_dt is not None:
+        url += f"&created=<={removed_dt.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+    rc, out, err = _run(["gh", "api", url], timeout=30)
     if rc != 0:
         raise RuntimeError(f"fetch_infra_hint: gh api runs failed rc={rc}: {err.strip()[:300]}")
     try:
-        runs = json.loads(out).get("workflow_runs") or []
+        parsed = json.loads(out)
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"fetch_infra_hint: unparseable runs response: {exc!s}: {out[:300]}") from exc
-    removed_dt = _parse_iso(removed_at)
+    # H1 (S1 spec R2): `workflow_runs` must be a list — a malformed body (e.g. `{}`) raises
+    # instead of silently becoming `[]` (which used to make a cancelled sibling read as "no
+    # correlated run found", a legitimate-looking but fabricated answer).
+    runs = _expect_list(parsed, "workflow_runs", "fetch_infra_hint runs")
     # W111-adjacent fix (refuter round, agy pass, 2026-08-27): a merge_group run's real
     # head_branch is the full `gh-readonly-queue/main/pr-<n>-<sha>` ref, never a bare
-    # `pr-<n>-<sha>` — a plain .startswith(f"pr-{number}-") NEVER matches it, so this used to
-    # find zero candidates on every call and fall through to the conservative CODE default
-    # unconditionally. PR_SHA_RE (module-level, previously unused) is matched anywhere in the
-    # ref instead of anchored at position 0, and the captured PR number is compared numerically
-    # so it never confuses PR #4 with PR #47.
+    # `pr-<n>-<sha>` — a plain .startswith(f"pr-{number}-") NEVER matches it. PR_SHA_RE is
+    # matched anywhere in the ref, and the captured PR number is compared numerically so it
+    # never confuses PR #4 with PR #47.
     candidates = []
     for r in runs:
         match = PR_SHA_RE.search(str(r.get("head_branch") or ""))
@@ -877,23 +948,24 @@ def fetch_infra_hint_and_fingerprint(
         ]
     if not candidates:
         return None, None
-    candidates.sort(key=lambda r: r.get("created_at") or "", reverse=True)
-    run = candidates[0]
-    rc, jobs_out, jobs_err = _run(
-        ["gh", "api", f"repos/{owner}/{name}/actions/runs/{run['id']}/jobs?per_page=50"],
-        timeout=30,
-    )
-    if rc != 0:
-        raise RuntimeError(
-            f"fetch_infra_hint: gh api jobs failed rc={rc}: {jobs_err.strip()[:300]}"
-        )
-    try:
-        jobs = json.loads(jobs_out).get("jobs") or []
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(
-            f"fetch_infra_hint: unparseable jobs response: {exc!s}: {jobs_out[:300]}"
-        ) from exc
-    return _run_has_infra_signature(run, jobs), red_cause_fingerprint(run, jobs)
+    # I2: the attempt = the latest failing candidate by (created_at, id); its head_sha defines
+    # every OTHER run of the same attempt. A candidate missing head_sha stands alone.
+    latest = max(candidates, key=lambda r: (r.get("created_at") or "", r.get("id") or 0))
+    attempt_head_sha = latest.get("head_sha")
+    if attempt_head_sha:
+        attempt_runs = [r for r in candidates if r.get("head_sha") == attempt_head_sha]
+    else:
+        attempt_runs = [latest]
+    attempt_runs.sort(key=lambda r: r.get("id") or 0)
+    # I3: one jobs fetch per run of the attempt — any failure raises (H2, via _fetch_run_jobs).
+    jobs_by_id = {r["id"]: _fetch_run_jobs(owner, name, r["id"]) for r in attempt_runs}
+    # I4: CODE wins across the attempt's runs (all() — see the docstring's ANY-vs-all divergence).
+    infra = all(_run_has_infra_signature(r, jobs_by_id[r["id"]]) for r in attempt_runs)
+    # I5: fingerprint independent of API order — a sorted, deduped, joined set.
+    fingerprints = {red_cause_fingerprint(r, jobs_by_id[r["id"]]) for r in attempt_runs}
+    fingerprints.discard(None)
+    fingerprint = "||".join(sorted(fingerprints)) if fingerprints else None
+    return infra, fingerprint
 
 
 def fetch_infra_hint(repo: str, number: int, removed_at: str | None) -> bool | None:
@@ -924,10 +996,9 @@ def fetch_open_pr_heads(repo: str = REPO) -> set[str]:
         if cursor:
             variables["cursor"] = cursor
         data = _gh_graphql(query, variables)
-        try:
-            page = data["data"]["repository"]["pullRequests"]
-        except (KeyError, TypeError) as exc:
-            raise RuntimeError(f"unexpected graphql shape: {exc}") from exc
+        # H4 (S1 spec R2): same page validator fetch_open_prs uses (via _fetch_candidates_page),
+        # no retry added here.
+        page = _expect_pull_requests_page(data, "fetch_open_pr_heads page")
         for node in page["nodes"]:
             sha = node.get("headRefOid")
             if sha:
@@ -968,6 +1039,10 @@ def fetch_live_queue_branches(repo: str = REPO) -> set[str]:
             refs = json.loads(out)
         except json.JSONDecodeError as exc:
             raise RuntimeError(f"unparseable matching-refs response: {exc!s}") from exc
+        # H6 (S1 spec R2): the endpoint's own body is a bare list — malformed (e.g. a dict)
+        # raises instead of a TypeError surfacing later at iteration time.
+        if not isinstance(refs, list):
+            raise RuntimeError(f"fetch_live_queue_branches: expected a list, got: {str(refs)[:300]}")
         for ref in refs:
             name_ref = str(ref.get("ref") or "")
             if name_ref.startswith("refs/heads/"):
@@ -1001,7 +1076,8 @@ def fetch_queued_runs(repo: str = REPO) -> list[dict[str, Any]]:
             payload = json.loads(body)
         except json.JSONDecodeError as exc:
             raise RuntimeError(f"unparseable actions/runs response: {exc!s}") from exc
-        runs = payload.get("workflow_runs") or []
+        # H6 (S1 spec R2): `workflow_runs` must be a list; `{}` raises instead of becoming `[]`.
+        runs = _expect_list(payload, "workflow_runs", "fetch_queued_runs")
         for run in runs:
             out.append(
                 {
