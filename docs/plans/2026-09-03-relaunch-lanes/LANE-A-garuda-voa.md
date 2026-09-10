@@ -81,5 +81,15 @@ flag, simulate payment. Nothing is "done" because it merged — done is proved o
 
 ## LIVE STATE (update before ending the session)
 
+- 2026-09-11 (M5, re-measured from `origin/main` @ `be45266252` and prod read-only): the table
+  above is stale on three rows. **Step 7 EXISTS** (`apps/mouth/src/app/visa/voa/orders/[orderId]`,
+  #5761 + #5779, 2026-09-05). **The public funnel is OPEN** since 2026-09-06 (Zero,
+  `GARUDA_PUBLIC_ENABLED=true` on Fly and Vercel; `/visa/voa` answers 200) — prod still holds
+  0 practices / 0 orders, so the PR-02 click-through of step 8 stays unprovable (ledger row
+  2026-09-03). **A4 is moot**: migration 303 (Zero's 2026-08-31 reversal) is applied and prod
+  quotes 750.000, not 790.000. **Step 5 is RULED (option D)** — runner shipped in this lane's
+  PR; the role + `MIGRATION_DATABASE_URL` secret are Zero's next physical step, then 304 gets
+  its `RESET ROLE`/`SET ROLE` bracket and #5526 is rebased and armed.
+
 - 2026-09-03 (written from `origin/main` @ `c4d48071a7`): nothing in this lane proved yet; A1 is
   the first move; A3 waits for Zero.

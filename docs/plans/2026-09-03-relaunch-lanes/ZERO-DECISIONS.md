@@ -7,6 +7,8 @@ one question, the options with their measured cost, and who executes once ruled.
    owns the DDL path, or (E) a fully specified superuser transaction with `SET LOCAL ROLE` and
    runner-compatible tracking. Costs and ownership measured in PR #5573. Option A (temporary
    GRANT to the runtime role) is superseded and unsafe. → Lane A executes.
+   **RULED 2026-09-11 — D.** Runner shipped (see `STEP5-PRIVILEGE-DECISION.md` header for the
+   three remaining steps; step 1 is Zero's superuser session + Fly secret, `operator[secret]`).
 
 2. **KBLI — the 61 non-OSS-issued codes.** Relabel now with what the statute implies, or gate on
    the F2 router increment that renders the issuer (Phase 1b)? Spec §9 of

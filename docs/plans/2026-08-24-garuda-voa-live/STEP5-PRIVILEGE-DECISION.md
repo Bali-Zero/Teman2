@@ -1,5 +1,31 @@
 # Step 5 — the privilege decision, measured (2026-09-02)
 
+> **RULED 2026-09-11 (Zero, `operator[business]`): option D.** A dedicated migration role. The
+> runner change shipped in the PR that carries this line (`MIGRATION_DATABASE_URL` →
+> `backend.db.migration_base.resolve_migration_dsn` / `assume_runtime_role`, unit + real-Postgres
+> tests in `backend/tests/db/test_migration_runner_dedicated_role.py`). What remains, in order:
+>
+> 1. **Zero, once, `operator[secret]`** — one superuser session on `nuzantara-postgres`:
+>    `CREATE ROLE backend_rag_migrator LOGIN NOSUPERUSER IN ROLE backend_rag_v2, visa_ledger_owner;`
+>    then `ALTER ROLE backend_rag_migrator PASSWORD '<new>'`; then
+>    `fly secrets set MIGRATION_DATABASE_URL='postgresql://backend_rag_migrator:<new>@<same host and db as DATABASE_URL>' --app nuzantara-rag`.
+>    The runner refuses a superuser on that DSN by design, so `postgres`/`flypgadmin` cannot be
+>    substituted "just this once".
+> 2. **Session** — prove read-only (`scripts/pg.sh`): `pg_has_role('backend_rag_migrator', 'backend_rag_v2', 'MEMBER')`
+>    and `('visa_ledger_owner')` both true, `rolsuper=false`, `rolcanlogin=true`.
+> 3. **Session** — migration 304 (PR #5526) gets the bracket: `RESET ROLE;` before the block that
+>    needs the ledger owner (the `visa_decision_retention_policies` CHECK widening AND the
+>    `OWNER TO` transfer — the 2026-09-01 evidence pack found both), `SET ROLE backend_rag_v2;`
+>    after it. **The bracket must be CI-portable** (kimi, 2026-09-11): a bare `SET ROLE backend_rag_v2`
+>    raises `42704` where the role does not exist (CI's `test` superuser) — so both statements go
+>    inside a `DO` block that checks `pg_roles` and `pg_has_role(session_user, 'backend_rag_v2', 'MEMBER')`
+>    before `EXECUTE 'SET ROLE backend_rag_v2'` (a plain `SET` inside plpgsql persists past the block; a
+>    `SECURITY DEFINER` block cannot `SET ROLE`). Migrations 268/300/301 already use the guarded-DO
+>    shape for the transfer itself.
+>    Then rebase #5526 on `origin/main`, arm, merge = deploy; prove
+>    `_schema_versions.applied_as = 'backend_rag_v2 (session_user=backend_rag_migrator)'` for 304
+>    and `pg_get_userbyid(proowner) = 'visa_ledger_owner'` on the binder.
+
 > One question for the codeowner, with the costs measured first. This closes the "measure before
 > asking" instruction in `NEXT-SESSION.md` §Step 5. The spec that frames the problem is
 > `research/operations/2026-09-02-retention-policy-scope-enum-cross-owner-ddl.md` (PR #5548, merged

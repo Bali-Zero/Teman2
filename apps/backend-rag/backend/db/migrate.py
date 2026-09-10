@@ -14,8 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import logging
 
-from backend.app.core.config import settings
-from backend.db.migration_base import MigrationError
+from backend.db.migration_base import MigrationError, resolve_migration_dsn
 from backend.db.migration_manager import MigrationManager
 
 logging.basicConfig(
@@ -29,13 +28,11 @@ async def cmd_status(manager: MigrationManager):
     """Show migration status"""
     status = await manager.get_status()
 
-
     if status["applied_list"]:
         pass
 
     if status["pending_list"]:
         pass
-
 
 
 async def cmd_list(manager: MigrationManager):
@@ -44,11 +41,9 @@ async def cmd_list(manager: MigrationManager):
     applied_migrations = await manager.get_applied_migrations()
     {m["migration_number"] for m in applied_migrations}
 
-
     for migration_info in sorted(discovered, key=lambda x: x["number"]):
         migration_info["number"]
         migration_info["file"]
-
 
 
 async def cmd_apply(
@@ -68,7 +63,6 @@ async def cmd_apply(
 
         result = await manager.apply_all_pending(dry_run=dry_run)
 
-
         if result["applied"]:
             for _num in result["applied"]:
                 pass
@@ -80,7 +74,6 @@ async def cmd_apply(
             for _failure in result["failed"]:
                 pass
 
-
         return len(result["failed"]) == 0
 
 
@@ -89,12 +82,10 @@ async def cmd_info(manager: MigrationManager, migration_number: int):
     applied_migrations = await manager.get_applied_migrations()
     applied_dict = {m["migration_number"]: m for m in applied_migrations}
 
-
     if migration_number in applied_dict:
         applied_dict[migration_number]
     else:
         pass
-
 
 
 def main():
@@ -147,7 +138,7 @@ Examples:
         sys.exit(1)
 
     # Check database URL
-    if not settings.database_url:
+    if not resolve_migration_dsn():
         logger.error("❌ DATABASE_URL not configured")
         logger.error("Set DATABASE_URL environment variable or configure in .env file")
         sys.exit(1)
