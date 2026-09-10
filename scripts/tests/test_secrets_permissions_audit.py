@@ -48,6 +48,20 @@ def _load_module(open_chain: bool = True) -> ModuleType:
 audit = _load_module()
 
 
+@pytest.fixture(autouse=True)
+def _organ_state(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> Path:
+    """A --notify run writes the organ's heartbeat. Under test it lands in a
+    directory of its own — never the real ~/.organism/last_seen (a test run
+    on Pro would read as a live, healthy organ) and never inside a scanned
+    tmp_path. The kill switch starts unset whatever the caller's shell says."""
+    last_seen = tmp_path_factory.mktemp("last_seen")
+    monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(last_seen))
+    monkeypatch.delenv("SECRETS_PERMISSIONS_AUDIT_ENABLED", raising=False)
+    return last_seen
+
+
 def _mode_of(path: Path) -> int:
     return stat.S_IMODE(os.lstat(path).st_mode)
 
@@ -1241,9 +1255,12 @@ def test_n11_notify_and_fix_together_exit_2_no_gateway_call(
 
     with pytest.raises(SystemExit) as exc_info:
         audit.main(["--no-default-roots", "--root", str(tmp_path), "--notify", "--fix"])
-    capsys.readouterr()
+    err = capsys.readouterr().err
 
     assert exc_info.value.code == 2
+    # The base sha also exits 2 here (argparse rejects the unknown --notify);
+    # only the refusal of the PAIR says the new mode knows its own boundary.
+    assert "--notify and --fix are mutually exclusive" in err
     assert _read_fake_log(log_path) == []
 
 
@@ -1396,3 +1413,95 @@ def test_n15_alert_never_spells_out_a_symlinked_home(
     assert len(alerts) == 1
     assert "~/vault — 1 credential file(s)" in alerts[0].text
     assert "canonical-home-name" not in alerts[0].text
+
+
+# --------------------------------------------------------------------------
+# S2/PR2 gate round 1 — the schedule is an organ: kill switch (G5) and
+# heartbeat (G2), both on the --notify path only.
+# --------------------------------------------------------------------------
+
+
+def _heartbeat(last_seen: Path) -> dict:
+    import json as _json
+
+    return _json.loads((last_seen / "pro.secrets_permissions_audit.json").read_text())
+
+
+def test_n16_kill_switch_makes_the_scheduled_run_a_no_op(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+    _organ_state: Path,
+) -> None:
+    log_path = _fake_gateway(tmp_path, monkeypatch)
+    scr = tmp_path / ".secrets"
+    _touch(scr / "probe.json", 0o644, "{}\n")
+    module = _load_module(open_chain=False)
+    args = ["--no-default-roots", "--root", str(scr), "--notify"]
+
+    monkeypatch.setenv("SECRETS_PERMISSIONS_AUDIT_ENABLED", "false")
+    rc = module.main(args)
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    assert out.startswith("DISABLED ")
+    assert "CUSTODY" not in out
+    assert _read_fake_log(log_path) == []
+    assert _heartbeat(_organ_state)["status"] == "disabled"
+
+    monkeypatch.setenv("SECRETS_PERMISSIONS_AUDIT_ENABLED", "true")  # innocence
+    rc = module.main(args)
+    capsys.readouterr()
+
+    assert rc == 0
+    assert len(_read_fake_log(log_path)) == 1
+    assert _heartbeat(_organ_state)["status"] == "ok"
+
+
+def test_n17_kill_switch_and_heartbeat_never_reach_report_or_fix(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+    _organ_state: Path,
+) -> None:
+    """Mini's --fix sweep runs this script too: the schedule's switch must
+    not silence it, and neither mode may pose as the scheduled organ."""
+    monkeypatch.setenv("SECRETS_PERMISSIONS_AUDIT_ENABLED", "false")
+    target = _touch(tmp_path / "credentials.json", 0o644, "{}\n")
+    args = ["--no-default-roots", "--root", str(tmp_path)]
+
+    rc_report = audit.main(args)
+    rc_fix = audit.main(args + ["--fix"])
+    out = capsys.readouterr().out
+
+    assert rc_report == 1
+    assert rc_fix == 0
+    assert "DISABLED" not in out
+    assert _mode_of(target) == 0o600
+    assert list(_organ_state.iterdir()) == []
+
+
+@pytest.mark.parametrize("gateway_status", ["sent", "p0_unsent_spooled"])
+def test_n18_every_notify_run_leaves_a_heartbeat_without_names(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+    _organ_state: Path,
+    gateway_status: str,
+) -> None:
+    _fake_gateway(tmp_path, monkeypatch)
+    monkeypatch.setenv("FAKE_TG_STATUS", gateway_status)
+    scr = tmp_path / ".secrets"
+    probe = _touch(scr / "probe.json", 0o644, "{}\n")
+    module = _load_module(open_chain=False)
+
+    rc = module.main(["--no-default-roots", "--root", str(scr), "--notify"])
+    capsys.readouterr()
+    beat = _heartbeat(_organ_state)
+
+    assert rc == (0 if gateway_status == "sent" else 1)
+    assert beat["status"] == ("ok" if rc == 0 else "error")
+    assert f"rc={rc} " in beat["note"]
+    assert "p0=1" in beat["note"]
+    assert probe.name not in beat["note"]
+    assert str(tmp_path) not in beat["note"]

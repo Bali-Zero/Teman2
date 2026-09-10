@@ -33,7 +33,12 @@ off-limits in this repo.
 `--notify` (the LaunchAgent mode) hands findings to the Telegram gateway
 (`tg_notify.py`) instead of printing them for a human, and wraps the normal
 report in a run record. Never chmods anything; mutually exclusive with
-`--fix` (argparse error, exit 2 for the pair).
+`--fix` (argparse error, exit 2 for the pair). Every `--notify` run writes
+its heartbeat to ~/.organism/last_seen/pro.secrets_permissions_audit.json
+(counts only, never a path), and SECRETS_PERMISSIONS_AUDIT_ENABLED=false
+turns the scheduled run into a no-op that says so (heartbeat `disabled`).
+Report mode and `--fix` ignore both: the kill switch belongs to the
+schedule, not to the tool.
 
 Exit codes:
     Report mode (default): 0 if no findings, 1 if any findings.
@@ -817,6 +822,37 @@ def build_alerts(result: AuditResult, machine: str) -> List[Alert]:
 _GATEWAY_ACCEPTED = frozenset({"sent", "deduped", "spooled", "p0_overflow_spooled"})
 _GATEWAY_KNOWN = _GATEWAY_ACCEPTED | {"p0_unsent_spooled"}
 
+#: The scheduled organ's registry id (apps/organism/organism/organs_registry.yaml).
+ORGAN_ID = "pro.secrets_permissions_audit"
+KILL_SWITCH_ENV = "SECRETS_PERMISSIONS_AUDIT_ENABLED"
+_KILL_SWITCH_OFF = frozenset({"false", "0", "no", "off"})
+
+
+def kill_switch_off() -> bool:
+    return os.environ.get(KILL_SWITCH_ENV, "").strip().lower() in _KILL_SWITCH_OFF
+
+
+def organism_heartbeat(status: str, note: str = "") -> bool:
+    """Write this organ's heartbeat to ~/.organism/last_seen/<ORGAN_ID>.json
+    (ORGANISM_LAST_SEEN_DIR overrides the directory — tests point it at
+    tmp_path). Same single-line shape as scripts/lib/heartbeat.py, inlined
+    so /usr/bin/python3 runs need no package path. Atomic, never raises.
+    `note` carries counts only — never a path or a file name."""
+    try:
+        directory = Path(
+            os.environ.get("ORGANISM_LAST_SEEN_DIR")
+            or Path.home() / ".organism" / "last_seen"
+        )
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / f"{ORGAN_ID}.json"
+        payload = {"ts": _run_timestamp(), "status": status, "note": note[:500]}
+        tmp = path.with_suffix(path.suffix + f".tmp.{os.getpid()}")
+        tmp.write_text(json.dumps(payload, separators=(",", ":")) + "\n", encoding="utf-8")
+        os.replace(tmp, path)
+        return True
+    except Exception:  # noqa: BLE001 - a heartbeat never fails its run
+        return False
+
 
 def _gateway_status(stderr: bytes) -> str:
     """The gateway's own verdict, from its last `tg_notify: <status>` stderr
@@ -971,6 +1007,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.notify and args.fix:
         parser.error("--notify and --fix are mutually exclusive")
 
+    if args.notify and kill_switch_off():
+        organism_heartbeat("disabled", note=f"{KILL_SWITCH_ENV}=false")
+        if args.json:
+            print(json.dumps({"schema": 1, "disabled": True}))
+        else:
+            print(f"DISABLED {_run_timestamp()} {KILL_SWITCH_ENV}=false: no scan, no alert")
+        return 0
+
     roots = resolve_roots(args.roots, no_defaults=args.no_default_roots)
     result = audit(roots, max_depth=args.max_depth)
 
@@ -1016,6 +1060,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         rc = 0 if failed == 0 and report_only == 0 else 1
     else:
         rc = 0 if not findings else 1
+
+    if args.notify:
+        organism_heartbeat(
+            "ok" if rc == 0 else "error",
+            note=(
+                f"rc={rc} blind={blind} findings={len(findings)} "
+                f"p0={sum(1 for a in alerts if a.tier == 'p0')} "
+                f"digest={sum(1 for a in alerts if a.tier == 'digest')} "
+                f"handed={handed} failed={len(notify_failures)}"
+            ),
+        )
 
     if args.json:
         payload = {
