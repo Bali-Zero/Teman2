@@ -562,6 +562,41 @@ def _harness_floor_steps() -> list[dict]:
     return doc["jobs"]["harness-floor"]["steps"]
 
 
+def _eval_if(expr: str, ctx: dict[str, str]) -> bool:
+    """Evaluate a GitHub Actions `if:` over `ctx`, for the `&&`-joined
+    `<context.path> ==|!= '<literal>'` shape both gear steps use.
+
+    The FIX the #6100 gate demanded: the partition pin below used to decide membership with `in`
+    against the raw expression text — superscar #3 UNDER-match on an expression guard. The
+    reviewer's counterexample `gear != '1' && gear != '2'` leaves Gear 2 covered by NEITHER step,
+    and the substring version stayed green on it (pinned below). Only reading the expression
+    catches a clause a mutation ADDS rather than removes. Unmodelled input FAILS rather than
+    passing vacuously: an unparseable clause or a path absent from `ctx` raises, so a condition
+    that grows an `||` or a function call reads as a broken test, never a satisfied one."""
+    for clause in (c.strip() for c in expr.replace("\n", " ").split("&&")):
+        if not clause:
+            continue
+        match = re.fullmatch(r"([A-Za-z0-9_.]+)\s*(==|!=)\s*'([^']*)'", clause)
+        if match is None:
+            raise AssertionError(f"unsupported clause in an `if:` — extend _eval_if: {clause!r}")
+        path, operator, literal = match.groups()
+        if path not in ctx:
+            raise AssertionError(f"`if:` reads an unmodelled context path {path!r} — extend the ctx")
+        if ((ctx[path] == literal) is not (operator == "==")):
+            return False
+    return True
+
+
+def _ctx_for_gear(gear: str) -> dict[str, str]:
+    """The context a Gear-`gear` PR presents to Steps 7a/7c: enforcement on, a brief of its own
+    present (the only path on which gearcheck runs at all), and that brief's declared gear."""
+    return {
+        "steps.kill_switch.outputs.disabled": "false",
+        "steps.brief.outputs.present": "true",
+        "steps.gearcheck.outputs.gear": gear,
+    }
+
+
 def _step_by_name_fragment(fragment: str) -> dict:
     matches = [s for s in _harness_floor_steps() if fragment in str(s.get("name", ""))]
     assert len(matches) == 1, (
@@ -579,14 +614,12 @@ def test_verdict_read_step_fires_from_gear_2_not_only_gear_3():
     form is the total one, and a future Gear 4 would inherit the gate rather than silently escape
     it (fail-closed, superscar #3 UNDER-match)."""
     cond = _step_by_name_fragment("read the real gate verdict")["if"]
-    assert "steps.gearcheck.outputs.gear != '1'" in cond, (
-        "Step 7c must read the harness/fable-gate verdict for every gear above 1 — "
-        f"got: {cond!r}"
-    )
-    assert "steps.gearcheck.outputs.gear == '3'" not in cond, (
-        "Step 7c's pre-2026-09-10 condition (gear == '3') is the regression this pins: it lets a "
-        "Gear-2 diff merge with no verdict on its head sha at all"
-    )
+    for gear in ("2", "3"):
+        assert _eval_if(cond, _ctx_for_gear(gear)), (
+            f"Step 7c must read the harness/fable-gate verdict at gear {gear}. Its pre-2026-09-10 "
+            f"condition (gear == '3') let a Gear-2 diff merge with no verdict on its head sha at "
+            f"all — got: {cond!r}"
+        )
 
 
 def test_the_not_applicable_step_exempts_gear_1_only():
@@ -608,12 +641,35 @@ def test_the_two_gear_steps_partition_every_gear_with_no_gap_and_no_overlap():
     halves — this fails if either side is edited alone."""
     exempt = _step_by_name_fragment("fable-gate not applicable")["if"]
     gated = _step_by_name_fragment("read the real gate verdict")["if"]
-    gated_all_above_1 = "steps.gearcheck.outputs.gear != '1'" in gated
-    for gear in ("1", "2", "3"):
-        in_exempt = f"steps.gearcheck.outputs.gear == '{gear}'" in exempt
-        in_gated = gated_all_above_1 and gear != "1"
+    for gear, expect_gated in (("1", False), ("2", True), ("3", True)):
+        ctx = _ctx_for_gear(gear)
+        in_exempt, in_gated = _eval_if(exempt, ctx), _eval_if(gated, ctx)
+        assert in_gated is expect_gated, f"gear {gear}: expected gated={expect_gated}"
         assert in_exempt or in_gated, f"gear {gear} is matched by NEITHER step — silent pass"
         assert not (in_exempt and in_gated), f"gear {gear} is matched by BOTH steps"
+
+
+def test_the_partition_check_catches_the_gear_2_escape_mutation():
+    """The guilt pin for the pin — the counterexample the #6100 gate supplied. ADDING a clause is
+    what the substring version could not see: the mutant still CONTAINS the string that version
+    asserted, so it stayed green while Gear 2 fell through both steps into a silent pass."""
+    mutant = (
+        "steps.kill_switch.outputs.disabled != 'true' &&\n"
+        "steps.brief.outputs.present == 'true' &&\n"
+        "steps.gearcheck.outputs.gear != '1' &&\n"
+        "steps.gearcheck.outputs.gear != '2'\n"
+    )
+    assert "steps.gearcheck.outputs.gear != '1'" in mutant, (
+        "the mutant must keep the substring the old pin matched on — that is what made it invisible"
+    )
+    assert _eval_if(mutant, _ctx_for_gear("2")) is False, (
+        "a Gear-2 PR must NOT reach the verdict read under this mutant — if it does, the "
+        "counterexample is not being modelled and this pin proves nothing"
+    )
+    assert _eval_if(mutant, _ctx_for_gear("3")) is True, (
+        "innocence: the mutant still gates Gear 3, so the pin is catching the Gear-2 hole "
+        "specifically, not just any change to the expression"
+    )
 
 
 def test_floor_1_with_no_brief_still_resolves_to_success():
