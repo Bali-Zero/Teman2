@@ -7,9 +7,11 @@ compliance_alerts (PR A2), not to this class.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass, fields
 from datetime import date, datetime
+from typing import Any
 
 import asyncpg
 
@@ -35,6 +37,27 @@ UPDATE client_obligations
        reviewed_at = NOW(), updated_at = NOW()
  WHERE id = $1 AND status = 'proposed'
 RETURNING *
+"""
+
+_MARK_ALERTED_SQL = """
+UPDATE client_obligations
+   SET status = 'alerted', alert_id = $2, updated_at = NOW()
+ WHERE id = $1 AND status = 'approved'
+RETURNING *
+"""
+
+_LIST_FILTERED_SQL = """
+SELECT * FROM client_obligations
+ WHERE ($1::integer IS NULL OR client_id = $1)
+   AND ($2::text IS NULL OR status = $2)
+ ORDER BY due_date, id
+ LIMIT $3 OFFSET $4
+"""
+
+_COUNT_FILTERED_SQL = """
+SELECT COUNT(*) FROM client_obligations
+ WHERE ($1::integer IS NULL OR client_id = $1)
+   AND ($2::text IS NULL OR status = $2)
 """
 
 
@@ -65,7 +88,34 @@ def _to_row(record: asyncpg.Record) -> ObligationRow:
 
 
 class ObligationsRepository(BaseRepository):
-    """CRUD for client_obligations."""
+    """CRUD for client_obligations.
+
+    Supports two modes, mirroring ``alert_repository.AlertRepository``: pool mode
+    (``ObligationsRepository(pool)``, each call acquires its own connection) and
+    connection mode (``ObligationsRepository.with_connection(conn)``), which binds
+    every call to a single pre-acquired connection so the obligation transition and
+    the bridge into ``compliance_alerts`` (PR A2's ``approve``) commit or roll back
+    together in one transaction.
+    """
+
+    def __init__(self, db_pool: asyncpg.Pool) -> None:
+        super().__init__(db_pool)
+        self._conn: asyncpg.Connection | None = None
+
+    @classmethod
+    def with_connection(cls, conn: asyncpg.Connection) -> ObligationsRepository:
+        """Bind the repo to a single pre-acquired connection (transactional use)."""
+        inst = cls.__new__(cls)
+        inst.db_pool = None  # type: ignore[assignment]
+        inst.logger = logging.getLogger(cls.__qualname__)
+        inst._conn = conn
+        return inst
+
+    async def _exec(self, fn_name: str, query: str, *args: Any) -> Any:
+        if self._conn is not None:
+            return await getattr(self._conn, fn_name)(query, *args)
+        async with self.db_pool.acquire() as conn:
+            return await getattr(conn, fn_name)(query, *args)
 
     async def upsert_proposals(
         self, client_id: int, proposals: Sequence[ProposedObligation]
@@ -77,7 +127,8 @@ class ObligationsRepository(BaseRepository):
         """
         if not proposals:
             return 0
-        records = await self.fetch_safe(
+        records = await self._exec(
+            "fetch",
             _UPSERT_SQL,
             client_id,
             [p.rule_id for p in proposals],
@@ -93,7 +144,8 @@ class ObligationsRepository(BaseRepository):
         """Rows with the given status (None = all), earliest due date first."""
         if status is not None and status not in STATUSES:
             raise ValueError(f"unknown status {status!r}")
-        records = await self.fetch_safe(
+        records = await self._exec(
+            "fetch",
             """
             SELECT * FROM client_obligations
              WHERE ($1::text IS NULL OR status = $1::text)
@@ -106,9 +158,39 @@ class ObligationsRepository(BaseRepository):
         )
         return [_to_row(r) for r in records]
 
+    async def list_filtered(
+        self,
+        *,
+        client_id: int | None = None,
+        status: str | None = "proposed",
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[ObligationRow]:
+        """Rows filtered by client_id and/or status (either None = no filter on it)."""
+        if status is not None and status not in STATUSES:
+            raise ValueError(f"unknown status {status!r}")
+        records = await self._exec(
+            "fetch",
+            _LIST_FILTERED_SQL,
+            client_id,
+            status,
+            max(1, min(limit, MAX_PAGE)),
+            max(0, offset),
+        )
+        return [_to_row(r) for r in records]
+
+    async def count_filtered(
+        self, *, client_id: int | None = None, status: str | None = "proposed"
+    ) -> int:
+        """Total rows matching the same filters as ``list_filtered`` (for pagination)."""
+        if status is not None and status not in STATUSES:
+            raise ValueError(f"unknown status {status!r}")
+        value = await self._exec("fetchval", _COUNT_FILTERED_SQL, client_id, status)
+        return int(value or 0)
+
     async def get(self, obligation_id: int) -> ObligationRow | None:
-        record = await self.fetchrow_safe(
-            "SELECT * FROM client_obligations WHERE id = $1", obligation_id
+        record = await self._exec(
+            "fetchrow", "SELECT * FROM client_obligations WHERE id = $1", obligation_id
         )
         return _to_row(record) if record else None
 
@@ -124,9 +206,21 @@ class ObligationsRepository(BaseRepository):
             raise ValueError(f"review outcome must be approved or rejected, got {status!r}")
         if not reviewer_email or not reviewer_email.strip():
             raise ValueError("reviewer_email is required")
-        record = await self.fetchrow_safe(
-            _REVIEW_SQL, obligation_id, status, reviewer_email.strip().lower(), note
+        record = await self._exec(
+            "fetchrow", _REVIEW_SQL, obligation_id, status, reviewer_email.strip().lower(), note
         )
+        return _to_row(record) if record else None
+
+    async def mark_alerted(self, obligation_id: int, alert_id: str) -> ObligationRow | None:
+        """Bridge step of ``approve``: approved -> alerted, stamping the compliance_alerts id.
+
+        Returns None when the row does not exist or is no longer ``approved`` — the caller
+        (running inside the same transaction as the ``compliance_alerts`` insert) should treat
+        that as a reason to roll back rather than leave an orphaned alert.
+        """
+        if not alert_id or not alert_id.strip():
+            raise ValueError("alert_id is required")
+        record = await self._exec("fetchrow", _MARK_ALERTED_SQL, obligation_id, alert_id)
         return _to_row(record) if record else None
 
 

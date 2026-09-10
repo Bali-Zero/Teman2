@@ -31,6 +31,7 @@ rules:
     verified: false
     applies_if:
       - {attr: has_employees, op: is_true}
+      - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, KP3A, KPPA, OTHER]}
     due: {frequency: monthly, day: 15, month: null, months_after_period_end: 1, roll: next_business_day}
 
   - id: spt_masa_pph21
@@ -40,6 +41,7 @@ rules:
     verified: false
     applies_if:
       - {attr: has_employees, op: is_true}
+      - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, KP3A, KPPA, OTHER]}
     due: {frequency: monthly, day: 20, month: null, months_after_period_end: 1, roll: next_business_day}
 
   - id: pph23_26_payment
@@ -69,6 +71,7 @@ rules:
     verified: false
     applies_if:
       - {attr: pkp, op: is_true}
+      - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, KP3A, KPPA, OTHER]}
     due: {frequency: monthly, day: 31, month: null, months_after_period_end: 1, roll: next_business_day}
 
   - id: pph25_installment
@@ -97,6 +100,7 @@ rules:
     verified: false
     applies_if:
       - {attr: has_employees, op: is_true}
+      - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, KP3A, KPPA, OTHER]}
     due: {frequency: monthly, day: 10, month: null, months_after_period_end: 0, roll: none}
 
   - id: bpjs_ketenagakerjaan_monthly
@@ -106,6 +110,7 @@ rules:
     verified: false
     applies_if:
       - {attr: has_employees, op: is_true}
+      - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, KP3A, KPPA, OTHER]}
     due: {frequency: monthly, day: 15, month: null, months_after_period_end: 1, roll: none}
     notes: "Expat layer: foreign workers employed 6+ months must be enrolled; payroll SaaS may disable BPJS fields for 'ekspatriat' tax status. Check the enrolment anniversary per expat."
 
@@ -181,6 +186,7 @@ rules:
     verified: false
     applies_if:
       - {attr: has_employees, op: is_true}
+      - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, KP3A, KPPA, OTHER]}
     due: {frequency: event, month: null, months_after_period_end: 0, roll: none}
     trigger: "first hire (report within 30 days), then yearly in the same month (verify); the first-hire date is not a profile attribute"
 
