@@ -755,6 +755,47 @@ def test_rearm_pass_unknown_ejection_alerts_once_then_dedups(monkeypatch, tmp_pa
     assert len(alerts) == 1  # deduped on the second tick — same (pr, head sha)
 
 
+# ── MEDIUM (Codex review, 2026-09-11): first-tick alert volume — batch, don't spam ──────────
+
+
+def test_rearm_pass_batches_three_unknown_prs_into_one_send_then_zero_next_tick(monkeypatch, tmp_path):
+    monkeypatch.setattr(qs, "BUDGET_FILE", tmp_path / "budget.json")
+    monkeypatch.setattr(qs, "ALERTED_FILE", tmp_path / "alerted.json")
+    monkeypatch.setattr(qs, "RED_FILE", tmp_path / "red.json")
+
+    def fake_open_prs(repo=qs.REPO):
+        return [
+            _pr(number=1, head_sha="s1", head_ref_name="agent/a/b"),
+            _pr(number=2, head_sha="s2", head_ref_name="agent/a/c"),
+            _pr(number=3, head_sha="s3", head_ref_name="agent/a/d"),
+        ]
+
+    monkeypatch.setattr(qs, "fetch_open_prs", fake_open_prs)
+    monkeypatch.setattr(qs, "fetch_last_ejection", lambda repo, number: None)  # UNKNOWN for all
+
+    sends = []
+
+    def fake_send_telegram(message, dedup_key=""):
+        sends.append(dedup_key)
+        return True
+
+    monkeypatch.setattr(qs, "send_telegram", fake_send_telegram)
+    monkeypatch.setattr(qs, "rearm_pr", lambda repo, number: (_ for _ in ()).throw(AssertionError()))
+
+    result = qs.run_rearm_pass(dry_run=False, now=NOW)
+
+    assert len(sends) == 1  # ONE batched send, not three
+    assert sends[0] == "queue-shepherd-unknown-1:s1+2:s2+3:s3"
+    saved = qs._load_json(qs.ALERTED_FILE)
+    assert set(saved.keys()) == {"1:s1", "2:s2", "3:s3"}  # all three recorded on the one send
+    assert result["rearmed"] == 0
+
+    # next tick: same PRs, still UNKNOWN, already alerted -> zero sends
+    sends.clear()
+    qs.run_rearm_pass(dry_run=False, now=NOW + _dt.timedelta(minutes=10))
+    assert sends == []
+
+
 def test_rearm_pass_dry_run_never_writes_state_files(monkeypatch, tmp_path):
     budget_path = tmp_path / "budget.json"
     alerted_path = tmp_path / "alerted.json"
@@ -808,8 +849,9 @@ def test_rearm_pass_fetch_failure_is_cannot_verify_never_reads_as_nothing_to_do(
 
 
 def test_infra_signature_guilt_run_conclusion_cancelled_with_no_jobs_is_infra():
-    # No job data at all (jobs fetch failed) but the run's OWN conclusion is cancelled/timed_out
-    # -> still INFRA, nothing here contradicts it.
+    # No job ran at all (a run cancelled before any job started legitimately has zero jobs — a
+    # FAILED jobs fetch is a different case entirely and now raises, see B1) but the run's OWN
+    # conclusion is cancelled/timed_out -> still INFRA, nothing here contradicts it.
     assert qs._run_has_infra_signature({"conclusion": "cancelled"}, []) is True
 
 
@@ -841,6 +883,58 @@ def test_infra_signature_guilt_infra_named_job_failure_is_still_infra():
 
 
 # 2. fetch_infra_hint: merge_group head_branch matching (gh-readonly-queue prefix, not bare pr-N-).
+
+
+# ── B1 (Codex review, 2026-09-11): a failed read must never become INFRA ────────────────────
+
+
+def test_fetch_infra_hint_and_fingerprint_runs_fetch_failure_raises(monkeypatch):
+    def fake_run(cmd, timeout=30):
+        return 1, "", "gh: HTTP 502"
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    with pytest.raises(RuntimeError):
+        qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, None)
+
+
+def test_fetch_infra_hint_and_fingerprint_jobs_fetch_failure_raises_never_defaults_to_infra(monkeypatch):
+    sha = "a" * 40
+    runs_payload = {
+        "workflow_runs": [
+            {
+                "id": 999,
+                "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
+                "conclusion": "cancelled",
+                "created_at": _iso(NOW),
+            }
+        ]
+    }
+
+    def fake_run(cmd, timeout=30):
+        if "jobs" in cmd[-1]:
+            return 1, "", "gh: HTTP 500"
+        return 0, json.dumps(runs_payload), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    with pytest.raises(RuntimeError):
+        qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, _iso(NOW))
+
+
+def test_fetch_infra_hint_and_fingerprint_innocence_no_correlated_run_stays_none_none(monkeypatch):
+    def fake_run(cmd, timeout=30):
+        return 0, '{"workflow_runs": []}', ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    assert qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, None) == (None, None)
+
+
+def test_fetch_infra_hint_propagates_the_raise(monkeypatch):
+    def fake_run(cmd, timeout=30):
+        return 1, "", "gh: HTTP 502"
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    with pytest.raises(RuntimeError):
+        qs.fetch_infra_hint("Bali-Zero/Teman2", 501, None)
 
 
 def test_fetch_infra_hint_matches_full_gh_readonly_queue_branch_name(monkeypatch):
@@ -1415,6 +1509,18 @@ def test_red_cause_fingerprint_innocence_no_job_detail_and_run_not_cancelled_is_
     assert qs.red_cause_fingerprint(run, []) is None
 
 
+# ── B3 (Codex review, 2026-09-11): same-cause counting must not lose events ─────────────────
+
+
+def test_red_cause_fingerprint_cancelled_jobs_only_gives_non_none_fingerprint_before_run_level():
+    # No job failed/timed_out for real, but two DID get cancelled (a fail-fast sibling of a red
+    # this module never saw the real failure of) -> a job-level cancelled fingerprint, not the
+    # coarser run-level fallback.
+    run = {"name": "CI", "conclusion": "failure"}
+    jobs = [{"name": "b-job", "conclusion": "cancelled"}, {"name": "a-job", "conclusion": "cancelled"}]
+    assert qs.red_cause_fingerprint(run, jobs) == "CI::cancelled:a-job|b-job"
+
+
 def test_record_red_dedups_by_removed_at():
     state: dict = {}
     state = qs.record_red(state, 42, "2026-09-10T00:00:00Z", "CI::a", "sha1")
@@ -1422,11 +1528,27 @@ def test_record_red_dedups_by_removed_at():
     assert len(state["42"]["reds"]) == 1
 
 
-def test_record_red_caps_at_history_max():
+def test_record_red_resolves_a_none_cause_to_a_real_cause_on_the_same_removed_at():
     state: dict = {}
-    for i in range(qs.RED_HISTORY_MAX + 5):
-        state = qs.record_red(state, 42, f"2026-09-10T00:{i:02d}:00Z", "CI::a", "sha1")
-    assert len(state["42"]["reds"]) == qs.RED_HISTORY_MAX
+    state = qs.record_red(state, 42, "2026-09-10T00:00:00Z", None, "sha1")  # tick N: unresolved
+    state = qs.record_red(state, 42, "2026-09-10T00:00:00Z", "CI::a", "sha1")  # tick N+1: resolved
+    reds = state["42"]["reds"]
+    assert len(reds) == 1  # still one event, never a duplicate
+    assert reds[0]["cause"] == "CI::a"
+
+
+def test_record_red_never_downgrades_a_resolved_cause_back_to_none():
+    state: dict = {}
+    state = qs.record_red(state, 42, "2026-09-10T00:00:00Z", "CI::a", "sha1")
+    state = qs.record_red(state, 42, "2026-09-10T00:00:00Z", None, "sha1")
+    assert state["42"]["reds"][0]["cause"] == "CI::a"
+
+
+def test_record_red_no_history_cap_keeps_more_than_the_old_ten_limit():
+    state: dict = {}
+    for i in range(15):
+        state = qs.record_red(state, 42, f"2026-09-10T00:{i:02d}:00Z", f"cause-{i}", "sha1")
+    assert len(state["42"]["reds"]) == 15  # nothing evicted
 
 
 def test_count_same_cause_reds_none_cause_never_counts():
@@ -1449,6 +1571,65 @@ def test_gc_red_state_drops_closed_pr_keeps_open():
 
 
 # ── S1 letter E: run_rearm_pass end-to-end — same-cause suspension ──────────────────────────
+
+
+def test_rearm_pass_three_A_reds_interleaved_with_ten_other_causes_suspend_on_third(monkeypatch, tmp_path):
+    """B3(a) end-to-end: under the OLD RED_HISTORY_MAX=10 cap, 10 other-cause reds recorded
+    BEFORE the 2 earlier "A" reds would have evicted them, losing the count. With no cap, the
+    3rd live "A" red must still suspend."""
+    red_path = tmp_path / "red.json"
+    state: dict = {}
+    for i in range(10):
+        state = qs.record_red(state, 705, f"2026-09-10T00:{i:02d}:00Z", f"other-{i}", "shaI")
+    state = qs.record_red(state, 705, "2026-09-10T00:20:00Z", "A", "shaI")
+    state = qs.record_red(state, 705, "2026-09-10T00:21:00Z", "A", "shaI")
+    qs._save_json(red_path, state)
+    monkeypatch.setattr(qs, "RED_FILE", red_path)
+
+    monkeypatch.setattr(
+        qs, "fetch_open_prs",
+        lambda repo=qs.REPO: [_pr(number=705, head_sha="shaI", head_ref_name="agent/x/y")],
+    )
+    monkeypatch.setattr(qs, "rearm_pr", lambda repo, number: True)
+    monkeypatch.setattr(
+        qs, "fetch_last_ejection",
+        lambda repo, number: {
+            "reason": "failed_checks", "removed_at": "2026-09-10T00:22:00Z", "before_commit": "shaI"
+        },
+    )
+    monkeypatch.setattr(qs, "fetch_infra_hint_and_fingerprint", lambda repo, number, removed_at: (True, "A"))
+
+    result = qs.run_rearm_pass(dry_run=False, now=NOW)
+
+    assert result["suspended"] == 1
+
+
+def test_rearm_pass_three_cancelled_jobs_only_reds_suspend_on_third(monkeypatch, tmp_path):
+    """B3(c) end-to-end: a run whose OWN conclusion isn't cancelled/timed_out but whose jobs are
+    ALL cancelled still resolves a non-None fingerprint, and three of them still suspend."""
+    monkeypatch.setattr(
+        qs, "fetch_open_prs",
+        lambda repo=qs.REPO: [_pr(number=706, head_sha="shaJ", head_ref_name="agent/x/y")],
+    )
+    monkeypatch.setattr(qs, "rearm_pr", lambda repo, number: True)
+    run = {"name": "CI", "conclusion": "failure"}
+    jobs = [{"name": "b-job", "conclusion": "cancelled"}, {"name": "a-job", "conclusion": "cancelled"}]
+    fp = qs.red_cause_fingerprint(run, jobs)
+    assert fp is not None
+    monkeypatch.setattr(qs, "fetch_infra_hint_and_fingerprint", lambda repo, number, removed_at: (False, fp))
+
+    times = [NOW + _dt.timedelta(minutes=i) for i in range(3)]
+    results = []
+    for i in range(3):
+        monkeypatch.setattr(
+            qs, "fetch_last_ejection",
+            lambda repo, number, i=i: {
+                "reason": "failed_checks", "removed_at": _iso(times[i]), "before_commit": "shaJ"
+            },
+        )
+        results.append(qs.run_rearm_pass(dry_run=False, now=times[i]))
+
+    assert results[2]["suspended"] == 1
 
 
 def test_rearm_pass_three_reds_same_cause_suspends_on_third_stays_suspended_on_fourth(monkeypatch, tmp_path):
@@ -1721,6 +1902,152 @@ def test_tick_success_line_and_heartbeat_carry_examined_and_candidates(monkeypat
     assert hb["status"] == "ok"
     assert hb["metadata"]["examined"] == 2
     assert hb["metadata"]["candidates"] == 1
+
+
+# ── B2 (Codex review, 2026-09-11): every late read failure is CANNOT-VERIFY, never a quiet skip
+
+
+def test_tick_rearm_pr_reads_failure_is_cannot_verify_rc2_heartbeat_error_one_send(monkeypatch, tmp_path):
+    _no_op_janitor(monkeypatch)
+
+    def fake_open_prs(repo=qs.REPO):
+        return [_pr(number=9, head_sha="sha9", head_ref_name="agent/a/b")]
+
+    def boom_ejection(repo, number):
+        raise RuntimeError("gh api graphql failed rc=1: HTTP 502")
+
+    monkeypatch.setattr(qs, "fetch_open_prs", fake_open_prs)
+    monkeypatch.setattr(qs, "fetch_last_ejection", boom_ejection)
+    monkeypatch.setattr(qs, "rearm_pr", lambda repo, number: (_ for _ in ()).throw(AssertionError()))
+
+    alerts = []
+
+    def fake_send_telegram(message, dedup_key=""):
+        alerts.append(dedup_key)
+        return True
+
+    monkeypatch.setattr(qs, "send_telegram", fake_send_telegram)
+
+    rc = qs.tick(dry_run=False)
+
+    assert rc == 2
+    hb = json.loads((qs.ORGANISM_DIR / f"{qs.ORGAN_ID}.json").read_text())
+    assert hb["status"] == "error"
+    assert "rearm_pr_reads" in hb["metadata"]["cannot_verify"]
+    assert alerts == ["queue-shepherd:cannot-verify"]  # exactly one send
+
+
+def test_tick_rearm_pr_reads_failure_prints_real_examined_and_candidates(monkeypatch, tmp_path, caplog):
+    _no_op_janitor(monkeypatch)
+
+    def fake_open_prs(repo=qs.REPO):
+        return [
+            _pr(number=9, head_sha="sha9", head_ref_name="agent/a/b"),
+            _pr(number=10, head_sha="sha10", head_ref_name="feature/x", merge_state_status="DIRTY"),
+        ]
+
+    monkeypatch.setattr(qs, "fetch_open_prs", fake_open_prs)
+    monkeypatch.setattr(
+        qs, "fetch_last_ejection",
+        lambda repo, number: (_ for _ in ()).throw(RuntimeError("gh api graphql failed rc=1")),
+    )
+    monkeypatch.setattr(qs, "send_telegram", lambda message, dedup_key="": True)
+
+    with caplog.at_level("ERROR"):
+        rc = qs.tick(dry_run=False)
+
+    assert rc == 2
+    # examined/candidates ARE known (the list read itself succeeded) -> must print real numbers,
+    # never "-" (that dash is reserved for rearm_candidates/rearm_state, the list-read failures).
+    assert "examined=2" in caplog.text
+    assert "candidates=1" in caplog.text
+    assert "examined=-" not in caplog.text
+
+
+def test_tick_janitor_recheck_failure_is_cannot_verify_rc2_heartbeat_error_one_send(monkeypatch, tmp_path):
+    monkeypatch.setattr(qs, "fetch_open_prs", lambda repo=qs.REPO: [])  # rearm pass: clean, no-op
+
+    def fake_fetch_queued_runs(repo=qs.REPO):
+        return [{"id": 77, "event": "pull_request", "head_sha": "dead", "head_branch": None, "name": "CI"}]
+
+    call_count = {"n": 0}
+
+    def flaky_open_pr_heads(repo=qs.REPO):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            return set()  # discovery: stale
+        raise RuntimeError("gh api failed rc=1: HTTP 502")  # cancel-time recheck: fails
+
+    monkeypatch.setattr(qs, "fetch_queued_runs", fake_fetch_queued_runs)
+    monkeypatch.setattr(qs, "fetch_open_pr_heads", flaky_open_pr_heads)
+    monkeypatch.setattr(qs, "fetch_live_queue_branches", lambda repo=qs.REPO: set())
+    monkeypatch.setattr(qs, "cancel_run", lambda repo, run_id: (_ for _ in ()).throw(AssertionError()))
+
+    alerts = []
+
+    def fake_send_telegram(message, dedup_key=""):
+        alerts.append(dedup_key)
+        return True
+
+    monkeypatch.setattr(qs, "send_telegram", fake_send_telegram)
+
+    rc = qs.tick(dry_run=False)
+
+    assert rc == 2
+    hb = json.loads((qs.ORGANISM_DIR / f"{qs.ORGAN_ID}.json").read_text())
+    assert hb["status"] == "error"
+    assert "janitor_recheck" in hb["metadata"]["cannot_verify"]
+    assert alerts == ["queue-shepherd:cannot-verify"]  # exactly one send, zero cancels happened
+
+
+# ── B4 (Codex review, 2026-09-11): dry-run writes nothing, anywhere ─────────────────────────
+
+
+def test_tick_dry_run_success_writes_no_heartbeat_and_no_log_file(monkeypatch):
+    monkeypatch.setattr(qs, "fetch_open_prs", lambda repo=qs.REPO: [])
+    monkeypatch.setattr(qs, "fetch_queued_runs", lambda repo=qs.REPO: [])
+    monkeypatch.setattr(qs, "fetch_open_pr_heads", lambda repo=qs.REPO: set())
+    monkeypatch.setattr(qs, "fetch_live_queue_branches", lambda repo=qs.REPO: set())
+
+    rc = qs.tick(dry_run=True)
+
+    assert rc == 0
+    assert not (qs.ORGANISM_DIR / f"{qs.ORGAN_ID}.json").exists()
+    assert not qs.LOG_FILE.exists()
+
+
+def test_tick_dry_run_cannot_verify_writes_no_heartbeat_and_never_sends(monkeypatch):
+    def boom(repo=qs.REPO):
+        raise RuntimeError("gh api graphql failed rc=1")
+
+    monkeypatch.setattr(qs, "fetch_open_prs", boom)
+    monkeypatch.setattr(qs, "fetch_queued_runs", lambda repo=qs.REPO: [])
+    monkeypatch.setattr(qs, "fetch_open_pr_heads", lambda repo=qs.REPO: set())
+    monkeypatch.setattr(qs, "fetch_live_queue_branches", lambda repo=qs.REPO: set())
+
+    def never_called(*_a, **_k):
+        raise AssertionError("dry-run must never send telegram")
+
+    monkeypatch.setattr(qs, "send_telegram", never_called)
+
+    rc = qs.tick(dry_run=True)
+
+    assert rc == 2
+    assert not (qs.ORGANISM_DIR / f"{qs.ORGAN_ID}.json").exists()
+    assert not qs.LOG_FILE.exists()
+
+
+def test_main_dry_run_tick_creates_no_log_file(monkeypatch):
+    monkeypatch.setattr(qs.logger, "handlers", [])  # force _configure_logging to actually run
+    monkeypatch.setattr(qs, "fetch_open_prs", lambda repo=qs.REPO: [])
+    monkeypatch.setattr(qs, "fetch_queued_runs", lambda repo=qs.REPO: [])
+    monkeypatch.setattr(qs, "fetch_open_pr_heads", lambda repo=qs.REPO: set())
+    monkeypatch.setattr(qs, "fetch_live_queue_branches", lambda repo=qs.REPO: set())
+
+    rc = qs.main(["--tick", "--dry-run"])
+
+    assert rc == 0
+    assert not qs.LOG_FILE.exists()
 
 
 def test_fetch_rearm_candidate_prs_filters_through_is_rearm_candidate(monkeypatch):
