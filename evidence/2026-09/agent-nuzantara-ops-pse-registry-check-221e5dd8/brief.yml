@@ -33,20 +33,20 @@ constraints:
     No outreach, no email generation, no schedule. Manual use until a human has worked
     the list for two weeks (roundtable decision).
 acceptance:
-  - >-
-    WHEN the suite runs with the HTTP layer mocked, THEN it passes with at least 8 tests.
+  - text: WHEN the suite runs with the HTTP layer mocked, THEN it passes with at least 8 tests.
     probe: pytest tests/scripts/test_pse_registry_check.py -q
-  - >-
-    WHEN --probe runs live, THEN Tokopedia returns rows and the exit code is 0.
+  - text: WHEN --probe runs live, THEN Tokopedia returns rows and the exit code is 0.
     probe: python3 scripts/pse_registry_check.py --probe
-  - >-
-    WHEN a CSV holds "Tokopedia" and "Bali Zero", THEN they come back located and
-    not_located. probe: test_tokopedia_located_and_bali_zero_not_located, and live-probe.csv
-  - >-
-    WHEN the endpoint answers HTTP 500 or 503, THEN every input is an error row and the
-    exit code is 2. probe: test_forced_http_error_exits_2_with_backoff_and_hard_stop,
-    test_http_error_through_urllib_transport_exits_2
-  - >-
-    WHEN several inputs are checked, THEN no two requests are less than one second apart
-    on a fake clock. probe: test_no_request_faster_than_one_per_second
+  - text: >-
+      WHEN a CSV holds "Tokopedia" and "Bali Zero", THEN they come back located and
+      not_located (live run below; mocked in test_tokopedia_located_and_bali_zero_not_located).
+    probe: python3 scripts/pse_registry_check.py live-input.csv -o live-probe.csv --no-cache
+  - text: >-
+      WHEN the endpoint answers HTTP 500 or 503, THEN every input is an error row and the
+      exit code is 2.
+    probe: pytest tests/scripts/test_pse_registry_check.py -q -k "forced_http_error or urllib_transport"
+  - text: >-
+      WHEN several inputs are checked, THEN no two requests are less than one second apart
+      on a fake clock.
+    probe: pytest tests/scripts/test_pse_registry_check.py -q -k one_per_second
 pii_scan: clean
