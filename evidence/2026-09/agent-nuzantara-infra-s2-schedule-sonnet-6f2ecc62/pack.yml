@@ -5,6 +5,10 @@ brief_ref: evidence/brief.yml # the STAGING layout harness-floor.yml lints in, n
 plan_ref: >-
   S2 mandate (staff room website-03, wave 1), PR2 of 2: the schedule of the credential-custody
   detector. PR1 #6113 merged as 2ee842d045 and is live on Pro (checkpoint 8, 18:09Z).
+  This PR SUPERSEDES #6132, which was armed-and-frozen when Detect Secrets went red on four
+  false positives; the five commits are cherry-picked with -x onto a fresh origin/main and the
+  sixth commit is the cure. Arming freezes a branch, so the successor is the contract, not a
+  force-push.
 grader: >-
   claude-opus-5 --effort xhigh, a fresh claude -p session outside the chain, commissioned by the
   S2 Dux (NOT this session); it publishes nothing, the Dux posts its receipt and verdict
@@ -63,9 +67,21 @@ receipts:
     exit: 0
     ts: 2026-09-10T18:22Z
     seat: S2 Dux (session 666cc4e2 -> b087a88d)
+  - claim: "Detect Secrets went red on the predecessor PR (#6132) and the cause was found before any rerun: four FALSE positives introduced by this diff, none of them a secret"
+    cmd: detect-secrets-hook --baseline .secrets.baseline <changed files>; then a probe file isolating each candidate phrase
+    result: "registry checksum line (Hex High Entropy, the baseline audited the OLD digest), the two `NAME_ENABLED=false` sentences (Secret Keyword: the token carries SECRET, so `=value` reads as keyword=secret — the sibling LAUNCHD_LIVENESS_DETECTOR_ENABLED=false is NOT flagged because its name has no such token), and a commit sha in brief.yml. Cured by rewording to `set to false` and by the repo's own `# pragma: allowlist secret` on the two hex lines. Rejected cure: regenerating .secrets.baseline — the local detect-secrets 1.5.0 rewrites the whole file, 24k lines of churn"
+    exit: 3
+    ts: 2026-09-10T18:55Z
+    seat: S2 Dux
+  - claim: After the cure, the changed files carry exactly ONE finding and it is already audited in the baseline
+    cmd: detect-secrets scan <changed files> (no --baseline, so nothing is filtered out of the report)
+    result: "scripts/tests/test_secrets_permissions_audit.py:297 Private Key — the `-----BEGIN PRIVATE KEY-----` literal of the .pem fixture, present in .secrets.baseline with is_secret false and the same hashed_secret (its recorded line was 265; detect-secrets matches by hash, not by line). Zero findings in the four files this PR adds or edits"
+    exit: 0
+    ts: 2026-09-10T18:57Z
+    seat: S2 Dux
   - claim: The registry change is one entry plus its checksum, and the registry validates
     cmd: git diff --numstat origin/main -- apps/organism/organism/organs_registry.yaml; cd apps/organism && PYTHONPATH=. python3 -m organism.tools.validate_organs_registry ../../apps/organism/organism/organs_registry.yaml
-    result: "26 1; valid, checksum 59aaafb3a2... computed with the validator's compute_checksum (its --update-checksum re-dumps the whole YAML and drops comments, so it was not used)"
+    result: "26 1; valid, checksum 7869d9e012... computed with the validator's compute_checksum (its --update-checksum re-dumps the whole YAML and drops comments, so it was not used)"
     exit: 0
     ts: 2026-09-10T18:25Z
     seat: S2 Dux

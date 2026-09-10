@@ -92,7 +92,7 @@ acceptance:
       becomes visible, since no test may run it.
     probe: production observation (log ~/logs/secrets-permissions-audit.log, NOTIFY line)
   - text: >-
-      The schedule is an organ with its genes: IF SECRETS_PERMISSIONS_AUDIT_ENABLED=false THEN a
+      The schedule is an organ with its genes: IF SECRETS_PERMISSIONS_AUDIT_ENABLED is set to false THEN a
       --notify run SHALL scan nothing, hand no alert, exit 0 and write heartbeat status disabled;
       report mode and --fix SHALL ignore the switch and write no heartbeat (Mini's --fix sweep
       keeps its behaviour). Every other --notify run SHALL write
@@ -149,7 +149,7 @@ team:
       a .tmp heartbeat) accepted as residuals, filed in the pack.
   gate_round_1:
     seat: claude-opus-5 --effort xhigh, fresh claude -p session, thread 5a85a6f6-1bf1-4cb7-a8ee-31a7af1d82c4
-    head: bd704a1af80a81f086fe2c30a48ea2a4b2b8e3f2
+    head: bd704a1af80a81f086fe2c30a48ea2a4b2b8e3f2 # pragma: allowlist secret
     result: >-
       REWORK-BUILD: B1-B9 met, but two required checks red — organ genes (G1 registry, G2
       heartbeat, G5 kill switch) and harness floor (path floor 3 vs declared 2); LOW: n11 passed

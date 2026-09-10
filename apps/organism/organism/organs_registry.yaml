@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 59aaafb3a2a09f4e2c926dd851650bbbcd9d2dca4dc710803bb24adef3b8d062
+checksum: 7869d9e012342a75c210d68b170bc5d6f69b99dd7441351cdca4117bbcde749e # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2386,7 +2386,7 @@ organs:
     as one p0 through tg_notify.py, .env* modes as one digest. Never chmods. Silence
     means a loosened credential file goes unseen, hence error. Pro-only (plist paths).
     Heartbeat status ok / error (blind scan or gateway refusal) / disabled. Kill switch
-    env var: SECRETS_PERMISSIONS_AUDIT_ENABLED=false. 14400 = 4x the plist''s own 3600s
+    env var SECRETS_PERMISSIONS_AUDIT_ENABLED, set to false. 14400 = 4x the plist''s own 3600s
     cadence (self-reporting cron, not bridge-fed): launchd coalesces the intervals missed
     while the host sleeps and fires once on wake, so 2x would page every morning on a
     machine that ever sleeps (Kimi council seat, finding L2).'
