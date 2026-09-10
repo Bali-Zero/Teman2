@@ -296,6 +296,7 @@ Honest name: self-**healing/refinement** — NOT recursive self-improvement (A4 
 - The scar families: `.claude/rules/cicatrix-superscar.md` (10 superscar + orphans; `scar query`)
 - Battle-window spec, seven sections: `.claude/skills/modus/battle-window-spec.md` (PARABELLUM)
 - **Gate commission depth:** The independent gate is commissioned by the level ABOVE the Dux whenever the Dux runs as a subagent (delegation depth 1 — measured 2026-09-10: two subagent Duxes could not spawn their gate and the imperator window did); a top-level Dux commissions its own. In every colour.
+- **Gate gear threshold:** A brief declaring **Gear 2 or Gear 3** cannot merge without a `harness/fable-gate` success on its own head sha — `Harness floor recompute` reads it and stays red until then, so the queue never takes the PR (RULED 2026-09-10, `docs/rules/RULINGS.md`). Gear 1 stays advisory. Arm at PR-open as usual, then have the gate posted; the Evidence Pack is still a Gear-3-only demand.
 - The colour table (BLUE/ORANGE), single copy: `docs/architecture/dual-consul/army-map.md` §1bis
 - Entry gate detail: `.claude/commands/stadio-zero.md` · Architecture detail: `sota-architecture-loop`
 - Adversarial verify artifact: `infra/workflows/verify-template.js` (A4, generator≠grader)
