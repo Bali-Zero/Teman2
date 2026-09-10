@@ -45,7 +45,8 @@ if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; the
     exit 0
 fi
 echo $$ > "$PIDFILE"
-trap 'rm -f "$PIDFILE"' EXIT
+SNAPSHOT=""          # declared before the trap: `set -u` fails a trap that reads an unset var
+trap 'rm -f "$PIDFILE" ${SNAPSHOT:+"$SNAPSHOT"}' EXIT
 
 # ---- payload: collision-robust pull. The logic lives in a separately-TESTED script
 # (scripts/pro/pro-git-pull.sh + test_pro_git_pull.sh, 28 assertions) so it can be
@@ -60,7 +61,7 @@ trap 'rm -f "$PIDFILE"' EXIT
 log "run start"
 PAYLOAD="$HOME/nuzantara/scripts/pro/pro-git-pull.sh"
 if [ -f "$PAYLOAD" ]; then
-    SNAPSHOT="$(mktemp -t pro-git-pull)" || SNAPSHOT=""
+    SNAPSHOT="$(mktemp -t pro-git-pull)" || SNAPSHOT=""   # cleaned by the EXIT trap too
     if [ -n "$SNAPSHOT" ] && cp "$PAYLOAD" "$SNAPSHOT"; then
         log "payload: $PAYLOAD (snapshot $SNAPSHOT)"
         bash "$SNAPSHOT"; RC=$?

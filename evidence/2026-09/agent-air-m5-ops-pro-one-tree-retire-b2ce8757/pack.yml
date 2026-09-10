@@ -1,0 +1,143 @@
+task_id: ops-pro-one-tree-retire
+gear: 3
+l_level: L1
+brief_ref: evidence/2026-09/agent-air-m5-ops-pro-one-tree-retire-b2ce8757/brief.yml
+plan_ref: >-
+  PR #6101 (agent/air-m5/ops/pro-one-tree-retire) — PARABELLUM lane 9, Pro one-tree retire.
+  Governing ruling: Zero, 2026-09-10, "seconda" — one tree on Pro.
+grader: claude-opus-5 (final on-disk gate, commissioned by the lane's Dux — NOT this session)
+lanes:
+  - lane: pro-one-tree-repoint
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session on M5 — inventoried the 18 agents on Pro, repointed
+      and proved them group by group, authored the repo canon and this pack)
+  - lane: pro-one-tree-refute
+    role: review
+    seat: >-
+      claude-opus-5 (same session, self-review — delegation depth was exhausted and the
+      Agent tool refused a subagent, so the adversarial pass was run in-session against a
+      written attack list rather than skipped. Declared as the weaker form it is: see
+      dissent[3] for what a separate seat would have added.)
+seat_diversity: not_applicable
+seat_diversity_note: >-
+  One build lane, so the >=2-lane diversity floor does not apply. Declared rather than left
+  to read as satisfied: the arbiter here is almost entirely a probe — launchctl print, a log
+  tail, plutil -lint, a pid — not an opinion, and the one genuinely judgemental call (which
+  agents are safe to kickstart) was resolved by NOT running the two with outward-facing side
+  effects.
+adversarial_rounds: 1
+diff:
+  net_lines: >-
+    27 files, +139/-171 excluding the ledger row (net -32), measured by
+    `git diff --cached --numstat`. 16 plists, 4 installers, 2 wrappers, 1 watchdog script,
+    1 declared-pairs note, 1 plist deleted, 2 ledger rows, brief + pack.
+  behaviour_change: >-
+    Eighteen LaunchAgents change the directory they execute from. No agent gains or loses a
+    schedule, a KeepAlive, an environment variable other than a path, or a privilege. One
+    deleted plist (the deploy tree's own puller) was already disabled. runtime-reconcile
+    changes WHICH tree it asserts on and gains a regression guard; it can still only exit
+    non-zero under STRICT=1.
+receipts:
+  - claim: The deterministic gear floor for this diff is 3, path-sourced (infra/launchagents/** is hot zone)
+    cmd: git diff --name-only origin/main...HEAD > /tmp/ot.txt && python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/ot.txt
+    result: "3 (source: path)"
+    exit: 0
+    ts: 2026-09-10T12:45Z
+    seat: session (M5)
+  - claim: The frozen tree holds ZERO modifications to tracked files, so nothing needs merging back before it is retired
+    cmd: git -C /Users/nuzantara/nuzantara-deploy status --porcelain | grep -vc '^??'
+    result: 0 — all 18 dirty entries are untracked artifacts
+    exit: 0
+    ts: 2026-09-10T12:35Z
+    seat: session (M5 over ssh pro)
+  - claim: THE CENTRAL RECEIPT — the rewritten runtime-reconcile, run on Pro against the state at commit time, reports exactly the two breaches still open and passes every main-checkout invariant
+    cmd: scp scripts/runtime-reconcile.sh pro:/tmp/ && ssh pro 'RUNTIME_RECONCILE_STRICT=0 bash /tmp/runtime-reconcile-new.sh'
+    result: "rc=0; log: 'retired deploy checkout is BACK at /Users/nuzantara/nuzantara-deploy' + '1 LaunchAgent plist(s) still execute from nuzantara-deploy' — the invariants on ~/nuzantara (exists, clone, branch main, puller heartbeat fresh) all silent"
+    exit: 0
+    ts: 2026-09-10T20:38:48 WITA
+    seat: session (M5 over ssh pro)
+  - claim: The four KeepAlive daemons came back with a NEW pid AND fresh output of their own, not just a zero exit
+    cmd: launchctl print gui/$(id -u)/<label> plus a tail of each agent's own log
+    result: "intake-worker pid 50386 'intake worker Nuzantara:50386 started'; organism.supervisor pid 82308 with live PYTHONPATH=/Users/nuzantara/nuzantara/apps/organism and a cell_pulse_observed at 20:33; wa-meta-inbox pid 17263 'listening on http://127.0.0.1:7791'; merge-train tick 2026-09-10T12:30:31Z queue=11 exit=0"
+    exit: 0
+    ts: 2026-09-10T20:31-20:34 WITA
+    seat: session (M5 over ssh pro)
+  - claim: The repo canon really is what arms this — a live-only edit does not survive
+    cmd: tail of ~/logs/pro-healer/run.log plus launchctl print gui/$(id -u)/com.nuzantara.web-lead-funnel
+    result: "healer session 20:25:43-20:30:24 logged '1 home-fork refresh (web-lead-funnel.plist, cmp-clean)'; the in-memory job went back to /Users/nuzantara/nuzantara-deploy/scripts/web_lead_funnel_report_run.sh six minutes after the main-checkout path had been proven"
+    exit: 0
+    ts: 2026-09-10T20:30 WITA
+    seat: session (M5 over ssh pro)
+  - claim: Every changed plist is still a valid plist and every changed shell file still parses
+    cmd: plutil -lint on each changed .plist; bash -n on each changed .sh
+    result: 16/16 plists OK, 6/6 shell files OK
+    exit: 0
+    ts: 2026-09-10T12:44Z
+    seat: session (M5)
+pii_scan: clean
+pii_scan_note: >-
+  This PR adds no client data. The one place client PII was in scope is the frozen tree's
+  untracked Nuzantara-PII-Quarantine (769 MB) and key/ (76 KB): they are NOT copied into the
+  backup directory and are NOT enumerated by filename anywhere. The retire is a rename, which
+  moves them intact with the tree; a second copy would be superscar #4, and a filename listing
+  would be an output-boundary breach on its own.
+dissent:
+  - seat: session (self-review, attack list item 5 — the surface most likely to be missed)
+    objection: >-
+      "You fixed the LaunchAgent surface and left a script surface broken." A repo-wide grep
+      outside infra/launchagents found infra/openclaw/wr2/wr2-script-wrapper.sh:132 setting
+      REPO_ROOT="${WR2_REPO_ROOT:-${HOME}/nuzantara-deploy}" — a HARD default with no fallback,
+      driving every WR2 cron script through that wrapper. The rename would have resolved all of
+      them to a path that does not exist.
+    status: CONFIRMED
+    resolution: >-
+      Fixed in this PR: the default is ~/nuzantara and the comment now says why the 2026-05-06
+      reason (branch-toggling sessions on the main checkout) no longer holds — agents run in
+      dedicated worktrees. The stale ~/nuzantara-deploy candidate in _wr2_gateway's loop was
+      dropped too; after the rename it could never match.
+  - seat: session (self-review, attack list item 1 — my own new code)
+    objection: >-
+      The mktemp snapshot leaks. rm -f "$SNAPSHOT" only runs after bash returns; if the wrapper
+      is killed between mktemp and that line, the temp file survives, and this runs every 15
+      minutes forever.
+    status: CONFIRMED
+    resolution: >-
+      The EXIT trap already owns cleanup, so it was given the file: SNAPSHOT="" is declared
+      BEFORE the trap (under set -u a trap that reads an unset variable fails) and the trap is
+      rm -f "$PIDFILE" ${SNAPSHOT:+"$SNAPSHOT"}. Verified the empty case does not break the trap.
+  - seat: session (self-review, attack list item 5 — findings deliberately NOT fixed)
+    objection: >-
+      Three more references to the frozen tree survive this PR and it should say so rather than
+      claim a clean sweep.
+    status: CONFIRMED
+    resolution: >-
+      Named, not fixed, with the reason for each. (a) tests/lint/test_wr2_deploy_pull.sh:57 sets
+      DEPLOY_DIR="$HOME/nuzantara-deploy" but exports a sandbox HOME first, so it is a fabricated
+      fixture path and the rename cannot touch it — checked rather than assumed. (b)
+      infra/claude-hooks/worktree_file_write_check.py:115 and worktree_isolation.py:976 carry a
+      regex protecting <base>/nuzantara-deploy as a repo root; after the rename it stops matching,
+      which is correct — a retired tree is not a live checkout to protect. (c)
+      docs/wr2/manual-assets/2026-06-13-june-deadlines/slides.json holds absolute hero_image_path
+      values into the tree; that is June asset data, already stale, and rewriting it is a
+      different concern.
+  - seat: session (self-review — the limit of this pack, stated rather than hidden)
+    objection: >-
+      The adversarial lane and the build lane are the same seat. Generator is grader here, which
+      is exactly what the doctrine forbids, and a self-review finds what its author thought to
+      look for.
+    status: CONFIRMED
+    resolution: >-
+      Not resolved, declared. The Agent tool refused a subagent with "Child delegation depth
+      reached", so the choice was a written attack list run in-session or no adversarial pass at
+      all. Two of the five surfaces on that list produced CONFIRMED findings that changed the
+      diff, so it was not ceremonial — but the FINAL gate is commissioned by this lane's Dux
+      from a seat outside the contribution chain, and that is where generator-is-not-grader is
+      actually enforced for this PR. A known blind spot it could not test: invariant 5's guard
+      matches nuzantara-deploy inside a <string> only when both sit on ONE line. Every plist on
+      Pro is written that way and plutil always emits it that way, but a hand-written plist with
+      a newline after the opening tag would evade the guard. Accepted, and recorded here so the
+      gate can weigh it.
+tokens: >-
+  Not separately metered — a single interactive session, no council convened, no grader
+  dispatched (the subagent was refused). The Dux's gate is billed to the Dux.
