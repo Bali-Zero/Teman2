@@ -239,5 +239,48 @@ class MailboxInjectTests(unittest.TestCase):
         self.assertEqual(ctx.count("<cross-machine-message"), 1)  # no forged second opening tag
 
 
+    # ── chained Stop (stop_hook_active) ────────────────────────────────
+    def test_chained_stop_never_delivers_broadcast(self):
+        bmsg = self.root / "broadcast" / "20260101T000000-0001.md"
+        write_msg(bmsg, "mini:cron", "Fleet-wide notice.")
+        chained = {"session_id": self.sid, "hook_event_name": "Stop", "stop_hook_active": True}
+        p1 = run_hook(chained, self.root)
+        self.assertEqual(p1.returncode, 0)
+        self.assertEqual(p1.stdout.strip(), "")  # a backlog must never chain wake-ups
+        # not consumed by the chained Stop: the next NATURAL Stop still gets it
+        natural = {"session_id": self.sid, "hook_event_name": "Stop", "stop_hook_active": False}
+        p2 = run_hook(natural, self.root)
+        out = json.loads(p2.stdout)
+        self.assertIn("Fleet-wide notice.", out["hookSpecificOutput"]["additionalContext"])
+
+    def test_chained_stop_still_delivers_direct_mail(self):
+        write_msg(self.root / "broadcast" / "20260101T000000-0001.md", "mini:cron", "Fleet-wide notice.")
+        write_msg(self.root / self.sid / "20260101T000000-0002.md", "pro:sess", "Direct for you.")
+        chained = {"session_id": self.sid, "hook_event_name": "Stop", "stop_hook_active": True}
+        p = run_hook(chained, self.root)
+        out = json.loads(p.stdout)
+        ctx = out["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("Direct for you.", ctx)
+        self.assertNotIn("Fleet-wide notice.", ctx)
+        # direct mail is at-most-once on the chained path too
+        p2 = run_hook(chained, self.root)
+        self.assertEqual(p2.stdout.strip(), "")
+        # the broadcast survived untouched for the next natural Stop
+        p3 = run_hook({"session_id": self.sid, "hook_event_name": "Stop"}, self.root)
+        ctx3 = json.loads(p3.stdout)["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("Fleet-wide notice.", ctx3)
+        self.assertNotIn("Direct for you.", ctx3)
+
+    def test_flag_outside_stop_events_or_non_boolean_is_ignored(self):
+        write_msg(self.root / "broadcast" / "20260101T000000-0001.md", "mini:cron", "Fleet-wide notice.")
+        for payload in (
+            {"session_id": self.sid, "hook_event_name": "PostToolUse", "stop_hook_active": True},
+            {"session_id": self.sid2, "hook_event_name": "Stop", "stop_hook_active": "true"},
+        ):
+            p = run_hook(payload, self.root)
+            ctx = json.loads(p.stdout)["hookSpecificOutput"]["additionalContext"]
+            self.assertIn("Fleet-wide notice.", ctx, payload)
+
+
 if __name__ == "__main__":
     unittest.main()
