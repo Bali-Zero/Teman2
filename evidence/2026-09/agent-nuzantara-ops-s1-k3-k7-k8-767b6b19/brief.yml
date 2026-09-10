@@ -1,0 +1,81 @@
+gear: 2
+task_id: s1-k3-k7-k8
+l_level: L1
+objective: >-
+  Close the last three deferred Kimi council findings from #6127, which are one concern:
+  scripts/queue_shepherd.py reported success while a failure was happening. K-3 — a
+  `gh pr merge --auto` re-arm WRITE that fails every tick ended rc=0 with a healthy
+  heartbeat and was retried silently forever. K-7 — a PR node missing `number`, or a
+  hand-edited red-state key, escaped as a bare KeyError/ValueError instead of reaching the
+  existing CANNOT-VERIFY path. K-8 — alerted_state was never garbage-collected.
+scope:
+  - scripts/queue_shepherd.py
+  - scripts/tests/test_queue_shepherd.py
+constraints:
+  - >-
+    Tests only and one module. No workflow, no plist, no ledger row in this PR; the two
+    PENDING-ARMS rows this discharges are filed separately, rebuilt on fresh origin/main
+    (a merge=union DIRTY on that file never self-clears).
+  - >-
+    K-3 reuses the EXISTING batched send_telegram/alerted_state mechanism rather than
+    adding a second alerting path.
+  - >-
+    The RuntimeError wraps are narrow — the named access only, never a blanket try/except
+    that would swallow real bugs and turn a correct re-arm into a CANNOT-VERIFY.
+  - >-
+    3.9.6 compatibility required (the fleet still runs it in places).
+  - >-
+    No paid per-token Anthropic endpoint, no secret printed, no client PII.
+acceptance:
+  - text: >-
+      Each of the three guards SHALL be load-bearing: neutering it in a throwaway copy of
+      queue_shepherd.py turns EXACTLY its own test(s) red and nothing else.
+    probe: guilt-mutation-in-throwaway-copy
+  - text: >-
+      The suite SHALL pass at 184 (169 before), and /usr/bin/python3 -m py_compile
+      (3.9.6) SHALL exit 0.
+    probe: pytest-and-py-compile
+  - text: >-
+      A tick that fails on red_state_gc SHALL report the REAL candidate count, never the
+      initial 0 that reads as a measurement.
+    probe: pytest-red-state-gc-candidates-test
+  - text: >-
+      rc=3 SHALL NOT read as a crashed daemon to launchd — the plist is KeepAlive=false
+      with StartInterval=600 and no wrapper, so the child's exit code is not consumed.
+    probe: read-the-plist
+assumptions:
+  - assumption: >-
+      The three findings were still unfixed on origin/main.
+    status: verified
+    evidence: >-
+      Read on disk before implementing, not assumed. No "already fixed" case among the three.
+  - assumption: >-
+      Every guard is proven by its own mutation.
+    status: verified
+    evidence: >-
+      Four mutations run independently of the implementer, each in a throwaway copy, the
+      real file never touched — sticky-limit check neutered 1 failed/180; the
+      _normalize_rearm_pr RuntimeError wrap removed 2 failed/179; the gc_alerted_state call
+      site removed 1 failed/180; the candidate count moved back below the GC step
+      1 failed/183.
+  - assumption: >-
+      K-3's alert path works end to end in production.
+    status: unverified
+    evidence: >-
+      It stays unexercised until a re-arm write actually FAILS three times in a row against
+      the live API, which has not happened since #6127 shipped. Covered by tests, not by
+      observation. Stated as a limit rather than claimed — the same distinction that made
+      the live-fire drill necessary for the write path at all.
+  - assumption: >-
+      The second state file this PR adds (REARM_FAIL_FILE) does not itself grow unbounded.
+    status: verified
+    evidence: >-
+      gc_rearm_fail_state ages entries on last_attempt_at like gc_budget_state, and an
+      adversarial review found it shipped UNTESTED — the fix for an unbounded-growth bug
+      had introduced a second un-proven GC. Now pinned by a guilt+innocence test.
+consumer_map:
+  - >-
+    launchd on Pro runs scripts/queue_shepherd.py every 600s as
+    com.nuzantara.queue-shepherd.10min; it is the only consumer of the three guards.
+  - >-
+    scripts/tests/test_queue_shepherd.py runs in CI in this PR and is the shipped proof.
