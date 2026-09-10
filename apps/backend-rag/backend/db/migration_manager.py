@@ -9,11 +9,12 @@ from urllib.parse import urlparse
 
 import asyncpg
 
-from backend.app.core.config import settings
 from backend.db.migration_base import (
     ROLLBACK_MARKER_RE,
     BaseMigration,
     MigrationError,
+    assume_runtime_role,
+    resolve_migration_dsn,
     split_migration_sql,
 )
 
@@ -91,9 +92,12 @@ class MigrationManager:
         Initialize migration manager.
 
         Args:
-            database_url: Database URL (defaults to settings.database_url)
+            database_url: Database URL (defaults to `resolve_migration_dsn()`:
+                MIGRATION_DATABASE_URL, else DATABASE_URL)
         """
-        self.database_url = database_url or settings.database_url
+        # Option D (RULED 2026-09-11): `MIGRATION_DATABASE_URL` wins over
+        # `DATABASE_URL` for the RUNNER only; see `resolve_migration_dsn`.
+        self.database_url = database_url or resolve_migration_dsn()
         if not self.database_url:
             raise MigrationError("DATABASE_URL not configured")
         self.pool: asyncpg.Pool | None = None
@@ -110,6 +114,14 @@ class MigrationManager:
                 min_size=1,
                 max_size=5,
                 command_timeout=60,
+                # Every ACQUIRE assumes the runtime role (not just connection
+                # creation): the ledger tables (`_ensure_migration_log`) and the
+                # advisory lock go through this pool, a `CREATE TABLE IF NOT
+                # EXISTS` here must not mint a migrator-owned table, and
+                # asyncpg's release-time `RESET ALL` undoes `SET ROLE` -- so an
+                # `init`-only hook would hold for the first acquire and silently
+                # lapse on the second (kimi, 2026-09-11). The hook is idempotent.
+                setup=assume_runtime_role,
             )
             logger.info("Migration manager connection pool created")
 
@@ -360,7 +372,7 @@ class MigrationManager:
         Raises:
             MigrationError: If migration fails
         """
-        return await migration.apply()
+        return await migration.apply(database_url=self.database_url)
 
     # Process-wide advisory lock id used to serialise concurrent migration
     # runs. `pg_advisory_lock` / `pg_advisory_unlock` are *session-scoped* —

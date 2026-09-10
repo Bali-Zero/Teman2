@@ -477,6 +477,29 @@ class Settings(BaseSettings):
     # ========================================
     database_url: str | None = None  # Set via DATABASE_URL env var
 
+    # The DSN the MIGRATION RUNNER connects with, when it differs from the
+    # runtime's. RULED 2026-09-11 (Zero, GARUDA VOA step 5, option D of
+    # docs/plans/2026-08-24-garuda-voa-live/STEP5-PRIVILEGE-DECISION.md): a
+    # dedicated LOGIN role `backend_rag_migrator` that is a member of BOTH
+    # `backend_rag_v2` (the runtime role, owner of every table) and
+    # `visa_ledger_owner` (owner of the SECURITY DEFINER retention binders).
+    # The runner connects as the migrator and immediately `SET ROLE`s to the
+    # runtime role, so ordinary DDL still produces objects owned exactly as
+    # before; a migration that needs the ledger owner does `RESET ROLE` around
+    # that one block. Unset (every environment but Fly, and Fly until the
+    # secret is set) means: single DSN, exactly the pre-2026-09-11 behaviour.
+    # Never the runtime's DSN: `backend.db.migration_base.assume_runtime_role`
+    # refuses a superuser here on purpose.
+    migration_database_url: str | None = None  # Set via MIGRATION_DATABASE_URL
+
+    @field_validator("migration_database_url", mode="before")
+    @classmethod
+    def validate_migration_database_url(cls, v: Any) -> Any:
+        """Same scheme normalisation as `database_url`; never warns (optional)."""
+        if v and v.startswith("postgres://"):
+            v = v.replace("postgres://", "postgresql://", 1)
+        return v or None
+
     @field_validator("database_url", mode="before")
     @classmethod
     def validate_database_url(cls, v: Any) -> Any:

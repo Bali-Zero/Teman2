@@ -151,3 +151,27 @@ class TestPortalUrlTrailingSlash:
         settings = Settings(_env_file=None)
 
         assert settings.frontend_portal_url == "https://my.balizero.com"
+
+
+# --- option D (RULED 2026-09-11): the migration runner's own DSN -----------------
+
+
+def test_migration_database_url_defaults_to_none(monkeypatch):
+    """Unset means single-DSN: exactly the pre-2026-09-11 runner behaviour."""
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    monkeypatch.delenv("MIGRATION_DATABASE_URL", raising=False)
+    settings = Settings(_env_file=None)
+    assert settings.migration_database_url is None
+
+
+def test_migration_database_url_normalizes_postgres_scheme(monkeypatch):
+    """The migrator DSN gets the same scheme fix as DATABASE_URL (option D)."""
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    monkeypatch.setenv(
+        "MIGRATION_DATABASE_URL",
+        "postgres://backend_rag_migrator:secret@nuzantara-postgres.flycast:5432/nuzantara_rag",
+    )
+    settings = Settings(_env_file=None)
+    assert settings.migration_database_url == (
+        "postgresql://backend_rag_migrator:secret@nuzantara-postgres.flycast:5432/nuzantara_rag"
+    )
