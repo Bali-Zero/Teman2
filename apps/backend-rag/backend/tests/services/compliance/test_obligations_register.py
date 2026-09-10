@@ -299,6 +299,16 @@ def test_profile_from_rows_foreign_platform_only_by_flag():
     assert profile_from_rows(None, {**flagged, "company_type": "PT PMA"}).company_type == "PT_PMA"
 
 
+@pytest.mark.parametrize("raw", ["PT. PMA", "PT PMA (Persero)", " pt  pma "])
+def test_profile_from_rows_normalises_company_type_spelling(raw):
+    assert profile_from_rows(None, {"company_type": raw}).company_type == "PT_PMA"
+
+
+def test_leap_day_fiscal_year_end_is_kept():
+    company = {"company_type": "CV", "custom_fields": {"fiscal_year_end": "02-29"}}
+    assert profile_from_rows(None, company).fiscal_year_end == "02-29"
+
+
 def test_profile_from_rows_survives_unhashable_values():
     company = {"company_type": "PT PMA", "custom_fields": {"investment_stage": [], "pkp": {}}}
     assert profile_from_rows(None, company) == ClientProfile(company_type="PT_PMA")

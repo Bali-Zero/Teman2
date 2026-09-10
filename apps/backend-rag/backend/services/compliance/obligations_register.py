@@ -81,7 +81,7 @@ def _valid_fye(value: Any) -> bool:
     if not isinstance(value, str) or not _FYE_RE.match(value):
         return False
     try:
-        date(2001, int(value[:2]), int(value[3:]))
+        date(2000, int(value[:2]), int(value[3:]))  # leap year: 02-29 is a valid year end
     except ValueError:
         return False
     return True
@@ -409,7 +409,8 @@ def profile_from_rows(
     back to the ClientProfile defaults. has_employees is true if set or if employee_count > 0.
     """
     custom = {**_custom_fields(client_row), **_custom_fields(company_row)}
-    raw_type = " ".join(str((company_row or {}).get("company_type") or "").upper().split())
+    raw_type = str((company_row or {}).get("company_type") or "").upper()
+    raw_type = " ".join(re.sub(r"\(.*?\)|\.", " ", raw_type).split())  # "PT. PMA (Persero)"
     company_type = _COMPANY_TYPE_MAP.get(raw_type, "OTHER")
     if company_type == "OTHER" and _as_bool(custom.get("is_foreign_platform")):
         company_type = "FOREIGN_PLATFORM"
