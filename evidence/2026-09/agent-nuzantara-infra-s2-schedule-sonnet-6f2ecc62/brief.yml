@@ -1,0 +1,95 @@
+gear: 2
+task_id: s2-custody-schedule
+mission: S2
+colour: BLUE
+l_level: L1
+deadline: 2026-09-10T19:59:24Z # the S2 mission deadline (mandate_budget.py), shared with PR1
+base_sha: 8edef9c2c86d2eb8d88363148aeb1b62e15b53f5 # PR1 head (#6113); rebased on origin/main once #6113 merges
+objective: >-
+  The credential-custody detector runs on a schedule on Pro: a canon LaunchAgent runs
+  scripts/secrets_permissions_audit.py --notify every hour, custody findings leave as one p0
+  Telegram alert and .env* mode findings as one digest, so the next loosened credential file is
+  caught by a machine within one audit interval (<= 60 min + run time), not by a late reader.
+scope:
+  - scripts/secrets_permissions_audit.py
+  - scripts/tests/test_secrets_permissions_audit.py
+  - infra/launchagents/com.nuzantara.secrets-permissions-audit.plist
+  - evidence/2026-09/agent-nuzantara-infra-s2-schedule-sonnet-6f2ecc62/
+constraints:
+  - >-
+    --notify never chmods anything (no os.chmod, no os.fchmod, not even its own logs: the plist's
+    Umask 0077 protects them). Credentials and their modes stay with the human.
+  - >-
+    Alert text carries only machine label, directory (HOME shown as ~), count and mode class —
+    never a file name, never contents. Consumes tg_notify.py's frozen CLI surface
+    (--tier p0|digest --source secrets-audit --dedup-key secrets-audit:secrets-dir|env-modes);
+    tg_notify.py is not edited. Tests never run the real gateway (SECRETS_AUDIT_TG_NOTIFY fake).
+  - >-
+    The script stays Python 3.9 compatible: Mini's com.nuzantara.secrets-perms-sweep runs it with
+    /usr/bin/python3 3.9.6 in --fix mode, which this change leaves byte-for-byte in behaviour
+    (--notify is a new, separate mode; --notify with --fix is a usage error).
+  - >-
+    Plist only, never crontab. #6101 (the launchd canon, ProgramArguments on
+    /Users/nuzantara/nuzantara) merged 2026-09-10T14:24Z, so the schedule is unblocked.
+acceptance:
+  - text: >-
+      WHEN a custody file is loosened THEN --notify SHALL hand exactly one p0 alert with dedup key
+      secrets-audit:secrets-dir to the gateway, naming the directory, the count and the mode class
+      and never the file name — also when the root is reached through a symlink or the .secrets
+      directory is met during a walk.
+    probe: pytest test_n1 + test_n9 + test_n12_custody_alert_covers_symlinked_root_and_walked_custody
+  - text: >-
+      WHEN only .env* files are loosened THEN one digest alert (secrets-audit:env-modes) SHALL be
+      handed; an ordinary finding or a clean tree SHALL hand none.
+    probe: pytest test_n2 + test_n3 + test_n4
+  - text: >-
+      IF a custody root cannot be listed THEN the run SHALL exit 2 and still hand the p0 alert; IF
+      the gateway cannot be reached THEN the run SHALL exit 1 with a failed=1 NOTIFY line.
+    probe: pytest test_n5 + test_n6
+  - text: --notify SHALL make zero chmod/fchmod calls; --notify with --fix SHALL be refused.
+    probe: pytest test_n10 + test_n11
+  - text: >-
+      The plist SHALL run the main checkout's script with --notify every 3600 s under Umask 0077,
+      with only HOME and PATH in its environment.
+    probe: pytest test_p1 + plutil -lint
+  - text: >-
+      WHEN launchd starts the job (launchctl kickstart -k) THEN its own log SHALL show one run with
+      launcher=launchd whose custody line's file count equals `find ~/nuzantara/.secrets -type f |
+      wc -l` and whose finding count equals the files there with a mode other than 0600/0400, taken
+      in the same minute; one scheduled run later the result SHALL still hold.
+    probe: production observation after deploy (log ~/logs/secrets-permissions-audit.log)
+assumptions:
+  - text: >-
+      tg_notify.py finds its own credentials when launched with only HOME and PATH (it reads
+      ~/.nuzantara-secrets.env itself: token chain env -> that file -> relay -> spool).
+    status: verified
+    probe: scripts/tg_notify.py lines 29 and 63 (TG_SECRETS_FILE default) read at 16:5xZ
+  - text: The first launchd run on Pro's current state hands no alert.
+    status: verified
+    probe: >-
+      default-roots scan with PR1's code at 17:26Z — custody 7 files / 0 findings, report_only 0;
+      the one ordinary finding (a 0644 .npmrc in a plugin marketplace checkout) raises no alert
+appetite:
+  wall_clock_hours: 5 # the S2 mission budget, shared with PR1
+  adversarial_rounds: 2
+  tokens: 1500000
+team:
+  dux:
+    seat: claude-opus-5[1m]
+    effort: max # observed from the harness; the board names xhigh — recorded, not hidden
+    thread: e5578f19-643a-4789-bb51-d384bef4443a -> 666cc4e2-c599-44ca-81fc-79098782d319 (context jump)
+    role: plan, spec, rebase onto PR1-R1, alert-grouping fix + N12, release (release owner)
+  implementer:
+    seat: claude-sonnet-5 (Agent s2-pr2-sonnet, model pinned sonnet, prepare-only)
+    worktree: .worktrees/infra-s2-schedule-sonnet
+    thread: s2-pr2-sonnet@session-666cc4e2
+  reviewer:
+    seat: codex (.claude/scripts/codex-spalla.sh, account default model, model_reasoning_effort=xhigh)
+    thread: ~/logs/codex-spalla/ (report path quoted in the PR body)
+  final_gate:
+    seat: claude-opus-5 --effort xhigh, fresh `claude -p` session outside the chain, commissioned by this Dux
+    thread: recorded in the gate receipt comment
+siblings:
+  open_prs_touching_perimeter_or_ledger:
+    ts: 2026-09-10T17:3xZ
+    result: "#6113 (this mission's PR1) touches the script and its tests; PR2 is stacked on it and rebased after it merges"
