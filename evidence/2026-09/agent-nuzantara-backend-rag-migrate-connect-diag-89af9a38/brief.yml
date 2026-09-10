@@ -1,0 +1,62 @@
+task: >-
+  Diagnostics-only fix for the migration runner's connection failure path. Four consecutive
+  'Deploy Backend to Fly.io' failures (2026-09-10 19:13Z-20:04Z) died inside
+  MigrationManager.connect() / asyncpg.create_pool() with a bare ConnectionResetError from
+  asyncpg's TLS handshake -- the traceback never named which DSN source was used.
+  MIGRATION_DATABASE_URL was created that day without ?sslmode=disable while DATABASE_URL
+  carries it; operators lost an hour with no source and no hint. connect() now wraps
+  create_pool() and raises MigrationError naming the DSN source (via the existing
+  migration_dsn_is_dedicated(), not re-read from env), the sanitized DSN, the exception
+  class/message, and a one-line sslmode hint on connection/TLS errors when the DSN has no
+  sslmode param. No fallback between DSNs added; option D stays strict. No behaviour change
+  on the success path.
+lane: backend-rag/migrate-connect-diag
+machine: Pro
+date: 2026-09-11
+
+gear: 1
+gear_reason: >-
+  Deterministic floor 1 via `evidence_pack_lint.py --print-floor` against origin/main:
+  2 files changed, 142 added / 15 removed lines (well under SIZE_GEAR2_THRESHOLD 400). Neither
+  changed file matches HOTZONE_PATTERNS -- `apps/backend-rag/backend/db/migration_manager.py`
+  is not `migrations_v2/*`, `app/auth/*`, `app/core/config.py`, invoicing/pricing, or any other
+  listed pattern; the new test file is a plain unit test. Path term is 1.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    MIGRATION_DATABASE_URL set, create_pool raises ConnectionResetError -> MigrationError text
+    names "MIGRATION_DATABASE_URL", "ConnectionResetError", carries the sslmode hint, and never
+    contains the password.
+    probe: PYTHONPATH=.:../crm-cell pytest backend/tests/db/test_migration_manager_connect_diag.py::test_connect_error_names_migration_database_url_and_hints_sslmode
+  A2: >-
+    Only DATABASE_URL configured -> MigrationError text names "DATABASE_URL" and never the
+    "MIGRATION_DATABASE_URL" word, and never the password.
+    probe: PYTHONPATH=.:../crm-cell pytest backend/tests/db/test_migration_manager_connect_diag.py::test_connect_error_names_database_url_when_not_dedicated
+  A3: >-
+    DSN already carries ?sslmode=... -> no hint line is appended (would be redundant).
+    probe: PYTHONPATH=.:../crm-cell pytest backend/tests/db/test_migration_manager_connect_diag.py::test_connect_error_no_hint_when_sslmode_present
+  A4: >-
+    Full pre-existing migration_manager/migration_base test suite is unaffected (95 passed,
+    6 pre-existing skips for missing local DB, none newly broken).
+    probe: >-
+      PYTHONPATH=.:../crm-cell pytest backend/tests/db/test_migrations.py
+      backend/tests/db/test_migration_advisory_lock.py
+      backend/tests/db/test_migration_rollback_extraction.py
+      backend/tests/db/test_migration_runner_dedicated_role.py
+      backend/tests/services/misc/test_migration_runner.py
+      backend/tests/db/test_migration_114_115_116_roundtrip.py
+      backend/tests/db/test_rollback_clears_both_ledgers.py
+      backend/tests/db/test_migration_303_voa_price_roundtrip.py
+      backend/tests/db/test_migration_manager_connect_diag.py
+      backend/tests/db/test_schema_audit.py
+      backend/tests/scripts/visa_engine/test_security_definer_owner_invariant.py
+
+out_of_scope: >-
+  No fallback between MIGRATION_DATABASE_URL and DATABASE_URL (option D stays strict). No change
+  to migrate.py's logging call -- `logger.error("... %s", e, exc_info=True)` already places the
+  formatted MigrationError message as the first line, ahead of the traceback, so nothing there
+  needed editing. No change to migrations_v2/ or app/auth or config.py.
