@@ -1,7 +1,11 @@
 task_id: s1-arm-the-armer
 mandate_id: S1
 colour: BLUE
-gear: 2
+gear: 3
+gear_note: >-
+  Declared 2 at opening. Re-declared 3 on the successor PR because the harness floor computes 3
+  from the diff's size term (churn 2445 > SIZE_GEAR3_THRESHOLD 1828, measured by the
+  "Harness floor recompute" check on #6114 at 17:31Z); the brief never declares below the floor.
 l_level: L2
 objective: >-
   S1 ARM THE ARMER (staff room session e8a86e26, wave 1 alongside S2). Organ: merge-queue
@@ -11,9 +15,9 @@ objective: >-
   PR that has gone red three times for the same cause. What success changes: a GitHub degradation
   no longer reads as "nothing to do".
 opened_at: "2026-09-10T14:56:38Z"
-deadline: "2026-09-10T20:56:38Z"
-deadline_source: "infra/codex-hooks/mandate_budget.py mandate_deadline(<codex state>/mandates, 'S1'), opened 15:12Z against the 14:56:38Z opening"
-base_sha: af8f2da124fe6ae3003fb615170af45216298f2b
+deadline: "2026-09-10T22:30:00Z"
+deadline_source: "infra/codex-hooks/mandate_budget.py mandate_deadline(<codex state>/mandates, 'S1'), opened 15:12Z against the 14:56:38Z opening (original deadline 20:56:38Z); renewed once to 22:30:00Z by the staff room (website-03) at 17:59Z, envelope 20260910T175911Z-7600.md — the only renewal"
+base_sha: af8f2da124fe6ae3003fb615170af45216298f2b # pragma: allowlist secret (a git commit SHA, not a credential)
 appetite:
   wall_clock_hours: 6
   adversarial_rounds: 2
