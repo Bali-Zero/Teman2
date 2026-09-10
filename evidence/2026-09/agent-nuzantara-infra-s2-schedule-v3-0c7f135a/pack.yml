@@ -5,10 +5,12 @@ brief_ref: evidence/brief.yml # the STAGING layout harness-floor.yml lints in, n
 plan_ref: >-
   S2 mandate (staff room website-03, wave 1), PR2 of 2: the schedule of the credential-custody
   detector. PR1 #6113 merged as 2ee842d045 and is live on Pro (checkpoint 8, 18:09Z).
-  This PR SUPERSEDES #6132, which was armed-and-frozen when Detect Secrets went red on four
-  false positives; the five commits are cherry-picked with -x onto a fresh origin/main and the
-  sixth commit is the cure. Arming freezes a branch, so the successor is the contract, not a
-  force-push.
+  This PR is the third head of the same work. #6132 was armed-and-frozen when Detect Secrets went
+  red on four false positives; #6135 carried that cure and its own final-gate verdict
+  (PASS-WITH-CONDITIONS) but was armed-and-frozen when the `antidotes` census called this file's
+  gateway caller blind. Arming freezes a branch, so each successor cherry-picks with -x onto a
+  fresh origin/main and adds the cure — no force-push to a frozen branch, ever. This head also
+  carries the three conditions the gate attached to #6135, cured in code rather than promised.
 grader: >-
   claude-opus-5 --effort xhigh, a fresh claude -p session outside the chain, commissioned by the
   S2 Dux (NOT this session); it publishes nothing, the Dux posts its receipt and verdict
@@ -51,11 +53,11 @@ appetite_exceeded: >-
   The mission deadline was renewed once by the staff room (19:59:24Z -> 21:30:00Z).
 diff:
   net_lines: >-
-    +1481/-11 over merge-base..HEAD (git diff --numstat), evidence directory included.
-    By file: the auditor script adds 359 lines and removes 10; its test file adds 666; the new
+    +1558/-11 over merge-base..HEAD (git diff --numstat), evidence directory included.
+    By file: the auditor script adds 359 lines and removes 10; its test file adds 729; the new
     plist adds 65; organs_registry.yaml adds 26 and removes 1 — one organ entry and its checksum
     line, the only change the staff room approved in that file; the evidence directory (brief,
-    pack, council journal) adds 365.
+    pack, council journal) adds 380.
   behaviour_change: >-
     New --notify mode and one new LaunchAgent (not installed by the PR). Report mode and --fix
     are unchanged: the base's own tests pass against HEAD, and the kill switch and heartbeat
@@ -93,7 +95,7 @@ receipts:
     seat: S2 Dux
   - claim: The new gene tests are red without the change
     cmd: HEAD test file against the pre-rework script (git show 492b68c25e:scripts/secrets_permissions_audit.py, scratch copy)
-    result: "3 failed / 68 passed: test_n16 and test_n18[sent|p0_unsent_spooled]; test_n17 passes there by design (it is the innocence test: the switch and the heartbeat must NOT reach report mode or --fix)"
+    result: "4 failed / 69 passed: test_n16, test_n18[sent], test_n18[p0_unsent_spooled] and test_n19; test_n17 passes there by design (it is the innocence test: the switch and the heartbeat must NOT reach report mode or --fix). Corrected from an earlier 3/68 — that count predated n19 and was stale at the shipped head (final gate condition C3)"
     exit: 1
     ts: 2026-09-10T18:22Z
     seat: S2 Dux
@@ -150,6 +152,18 @@ receipts:
     result: "clean; 2 NOTICEs (acceptance probes recorded in the gate's own receipts, and the acknowledged appetite). brief_ref is the staging path evidence/brief.yml — a per-PR brief_ref passes locally and fails in CI (S1's #6125 died of exactly this at 18:29Z)"
     exit: 0
     ts: 2026-09-10T18:50Z
+    seat: S2 Dux
+  - claim: "The final gate's condition C1 is cured IN CODE, not promised: the install hardens exactly the two files launchd writes"
+    cmd: pytest -k "p2 or p3"; then mutate the plist comment back to the wrong name and re-run
+    result: "green; mutated (comment says .error.log while StandardErrorPath is .err.log) -> 1 failed. The first cure for Kimi M3 pre-created ~/logs/secrets-permissions-audit.error.log while launchd writes .err.log, so the stderr log — which carries the job's own tracebacks — would have stayed 0644. test_p2 now pins the two sets equal, and test_p3 pins expected_hb_seconds >= 4x StartInterval and the registry label == the plist Label (the gate's other LOW: true but unguarded)"
+    exit: 0
+    ts: 2026-09-10T19:28Z
+    seat: S2 Dux
+  - claim: "The repo's own antidote census counts this caller as reading the gateway's VERDICT"
+    cmd: python3 scripts/tests/test_gateway_callers_read_the_verdict.py
+    result: "was: 29 read / 1 blind, naming scripts/secrets_permissions_audit.py::send_alerts. The code DID read the verdict, but it called it `status`, and the census matches on the repo's vocabulary (VERDICT / tg_notify: / gateway_delivered). Renamed to _gateway_verdict / _GATEWAY_VERDICT_ACCEPTED / _GATEWAY_VERDICT_KNOWN — the name now says what the code does. Now: 30 read / 0 blind"
+    exit: 0
+    ts: 2026-09-10T19:26Z
     seat: S2 Dux
 dissent:
   - seat: codex (round 1)

@@ -17,7 +17,7 @@ scope:
   - scripts/secrets_permissions_audit.py
   - scripts/tests/test_secrets_permissions_audit.py
   - infra/launchagents/com.nuzantara.secrets-permissions-audit.plist
-  - evidence/2026-09/agent-nuzantara-infra-s2-schedule-v2-589c871c/
+  - evidence/2026-09/agent-nuzantara-infra-s2-schedule-v3-0c7f135a/
   - apps/organism/organism/organs_registry.yaml # one entry + checksum: G1 of the required organ-genes check; widening filed to the staff room in S2 checkpoint 9 (18:17Z)
 constraints:
   - >-

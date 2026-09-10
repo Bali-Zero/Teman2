@@ -827,8 +827,8 @@ def build_alerts(result: AuditResult, machine: str) -> List[Alert]:
 #: tg_notify.py statuses that mean the gateway took the alert under its own
 #: policy (sent now, deduped by its repeat ladder, or spooled for a digest
 #: or budget slot). `p0_unsent_spooled` (no token, no relay) is not one.
-_GATEWAY_ACCEPTED = frozenset({"sent", "deduped", "spooled", "p0_overflow_spooled"})
-_GATEWAY_KNOWN = _GATEWAY_ACCEPTED | {"p0_unsent_spooled"}
+_GATEWAY_VERDICT_ACCEPTED = frozenset({"sent", "deduped", "spooled", "p0_overflow_spooled"})
+_GATEWAY_VERDICT_KNOWN = _GATEWAY_VERDICT_ACCEPTED | {"p0_unsent_spooled"}
 
 #: The scheduled organ's registry id (apps/organism/organism/organs_registry.yaml).
 ORGAN_ID = "pro.secrets_permissions_audit"
@@ -862,7 +862,7 @@ def organism_heartbeat(status: str, note: str = "") -> bool:
         return False
 
 
-def _gateway_status(stderr: bytes) -> str:
+def _gateway_verdict(stderr: bytes) -> str:
     """The gateway's own verdict, from its last `tg_notify: <status>` stderr
     line. It exits 0 even when it could neither send nor spool (it never
     fails its caller), so the exit code alone cannot say an alert left.
@@ -872,7 +872,7 @@ def _gateway_status(stderr: bytes) -> str:
             status = line[len("tg_notify: "):].strip()
             if status.startswith("internal error"):
                 return "internal-error"
-            return status if status in _GATEWAY_KNOWN else "unknown-status"
+            return status if status in _GATEWAY_VERDICT_KNOWN else "unknown-status"
     return "no-status"
 
 
@@ -882,7 +882,7 @@ def send_alerts(alerts: Sequence[Alert]) -> Tuple[int, List[str]]:
     Never shell=True. Returns (handed_over, failures); a failure is recorded
     as "<tier>: <exception class name, rc=N or gateway status>" — never the
     alert text. An alert counts as handed over only when the gateway exits 0
-    AND reports an accepted status (see _GATEWAY_ACCEPTED); a handed alert
+    AND reports an accepted VERDICT (see _GATEWAY_VERDICT_ACCEPTED); a handed alert
     is recorded in the module's last-run outcomes as "<tier>:<status>".
 
     `<gateway>` = env SECRETS_AUDIT_TG_NOTIFY when set (tests point it at a
@@ -915,12 +915,12 @@ def send_alerts(alerts: Sequence[Alert]) -> Tuple[int, List[str]]:
         if proc.returncode != 0:
             failures.append(f"{alert.tier}: rc={proc.returncode}")
             continue
-        status = _gateway_status(proc.stderr or b"")
-        if status not in _GATEWAY_ACCEPTED:
-            failures.append(f"{alert.tier}: {status}")
+        verdict = _gateway_verdict(proc.stderr or b"")
+        if verdict not in _GATEWAY_VERDICT_ACCEPTED:
+            failures.append(f"{alert.tier}: {verdict}")
             continue
         handed += 1
-        LAST_OUTCOMES.append(f"{alert.tier}:{status}")
+        LAST_OUTCOMES.append(f"{alert.tier}:{verdict}")
     return handed, failures
 
 

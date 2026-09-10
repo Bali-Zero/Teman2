@@ -1273,6 +1273,69 @@ def test_n11_notify_and_fix_together_exit_2_no_gateway_call(
     assert _read_fake_log(log_path) == []
 
 
+def _plist_path() -> Path:
+    return (
+        Path(__file__).parents[2]
+        / "infra"
+        / "launchagents"
+        / "com.nuzantara.secrets-permissions-audit.plist"
+    )
+
+
+def test_p2_the_install_hardens_exactly_the_logs_launchd_writes() -> None:
+    """launchd creates StandardOutPath/StandardErrorPath itself, under ITS
+    umask and not the plist's Umask — measured 0644 across this fleet — and
+    those logs list credential paths. The install comment therefore
+    pre-creates them 0600, and this pins the two sets equal: the first
+    version hardened `…​.error.log` while launchd writes `…​.err.log`, so the
+    stderr log would have been left world-readable (final gate, C1)."""
+    import plistlib
+    import re
+
+    path = _plist_path()
+    payload = plistlib.loads(path.read_bytes())
+    declared = {payload["StandardOutPath"], payload["StandardErrorPath"]}
+    home = "/Users/nuzantara"
+    hardened = {
+        f"{home}/logs/{m.group(1)}"
+        for m in re.finditer(r"~/logs/([A-Za-z0-9._-]+\.log)", path.read_text())
+    }
+
+    assert declared == hardened, (
+        "the install pre-creates a different set of files than launchd writes: "
+        f"only launchd's {sorted(declared - hardened)}, only the install's "
+        f"{sorted(hardened - declared)}"
+    )
+
+
+def test_p3_the_heartbeat_window_absorbs_a_missed_run() -> None:
+    """The registry's expected_hb_seconds and the plist's StartInterval are
+    two files that must agree: launchd coalesces the intervals missed while
+    a host sleeps and fires once on wake, so a window at 2x the cadence
+    pages every morning. 4x was chosen (Kimi L2) and was true but unguarded
+    — no probe read both files until this one (final gate, LOW)."""
+    import plistlib
+
+    import yaml
+
+    payload = plistlib.loads(_plist_path().read_bytes())
+    registry = yaml.safe_load(
+        (
+            Path(__file__).parents[2]
+            / "apps" / "organism" / "organism" / "organs_registry.yaml"
+        ).read_text(encoding="utf-8")
+    )
+    organ = next(
+        o for o in registry["organs"] if o["id"] == "pro.secrets_permissions_audit"
+    )
+
+    assert organ["recovery_params"]["label"] == payload["Label"]
+    assert organ["expected_hb_seconds"] >= 4 * payload["StartInterval"], (
+        f"heartbeat window {organ['expected_hb_seconds']}s is less than 4x the "
+        f"{payload['StartInterval']}s cadence — a coalesced run after sleep reads dead"
+    )
+
+
 def test_p1_plist_contract() -> None:
     import plistlib
 
@@ -1341,7 +1404,7 @@ def test_n12_custody_alert_covers_symlinked_root_and_walked_custody(
         ("p0_unsent_spooled", 0, 1),
     ],
 )
-def test_n13_gateway_status_decides_handed_not_its_exit_code(
+def test_n13_gateway_verdict_decides_handed_not_its_exit_code(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture,
@@ -1574,7 +1637,7 @@ def _every_alert_shape(module) -> list:
 
 def test_n20_the_real_gateway_still_speaks_the_status_vocabulary_we_parse() -> None:
     """The --notify tests all point at a FAKE gateway that echoes the very
-    format `_gateway_status` expects, so they would stay green through any
+    format `_gateway_verdict` expects, so they would stay green through any
     drift in the real scripts/tg_notify.py — and a drift there means every
     hourly run records `no-status`, exits 1 and turns the organ red while
     alerts may well be leaving (Kimi council seat, finding M2). This reads
@@ -1588,7 +1651,7 @@ def test_n20_the_real_gateway_still_speaks_the_status_vocabulary_we_parse() -> N
 
     assert 'print(f"tg_notify: {status}", file=sys.stderr)' in source, (
         "the gateway no longer prints its status as `tg_notify: <status>` on "
-        "stderr — _gateway_status parses exactly that line"
+        "stderr — _gateway_verdict parses exactly that line"
     )
 
     notify_fn = next(
@@ -1605,7 +1668,7 @@ def test_n20_the_real_gateway_still_speaks_the_status_vocabulary_we_parse() -> N
 
     assert returned, "parsed zero string returns out of tg_notify.notify()"
 
-    missing = set(audit._GATEWAY_KNOWN) - returned
+    missing = set(audit._GATEWAY_VERDICT_KNOWN) - returned
     assert not missing, (
         f"this script still whitelists {sorted(missing)}, which the gateway "
         "no longer returns — the whitelist has drifted out of date"
@@ -1616,7 +1679,7 @@ def test_n20_the_real_gateway_still_speaks_the_status_vocabulary_we_parse() -> N
     # alert tier cannot quietly start landing in unknown-status territory.
     tiers = {a.tier for a in _every_alert_shape(audit)}
     assert tiers == {"p0", "digest"}, f"this script now sends tiers {sorted(tiers)}"
-    unexpected = returned - set(audit._GATEWAY_KNOWN) - {"logged"}
+    unexpected = returned - set(audit._GATEWAY_VERDICT_KNOWN) - {"logged"}
     assert not unexpected, (
         f"the gateway can now return {sorted(unexpected)}, which this script "
         "reads as 'unknown-status' and counts as NOT handed over"
