@@ -1,10 +1,10 @@
-gear: 2
+gear: 3 # floor 3, source path: infra/launchagents/* is a hot zone (final gate round 1, 18:14Z)
 task_id: s2-custody-schedule
 mission: S2
 colour: BLUE
 l_level: L1
-deadline: 2026-09-10T19:59:24Z # the S2 mission deadline (mandate_budget.py), shared with PR1
-base_sha: 8edef9c2c86d2eb8d88363148aeb1b62e15b53f5 # PR1 head (#6113); rebased on origin/main once #6113 merges  # pragma: allowlist secret
+deadline: 2026-09-10T21:30:00Z # the S2 mission deadline (mandate_budget.py), renewed once by the staff room from 19:59:24Z
+base_sha: 074b4fde010aa6d4228decffc568d802ae2914f8 # origin/main after #6113 merged as 2ee842d045; PR2 rebased onto it 18:17Z  # pragma: allowlist secret
 objective: >-
   The credential-custody detector runs on a schedule on Pro: a canon LaunchAgent runs
   scripts/secrets_permissions_audit.py --notify every hour, custody findings leave as one p0
@@ -18,12 +18,19 @@ scope:
   - scripts/tests/test_secrets_permissions_audit.py
   - infra/launchagents/com.nuzantara.secrets-permissions-audit.plist
   - evidence/2026-09/agent-nuzantara-infra-s2-schedule-sonnet-6f2ecc62/
+  - apps/organism/organism/organs_registry.yaml # one entry + checksum: G1 of the required organ-genes check; widening filed to the staff room in S2 checkpoint 9 (18:17Z)
 constraints:
   - >-
-    --notify never chmods anything (no os.chmod, no os.fchmod, not even its own logs: the plist's
-    Umask 0077 protects them). Credentials and their modes stay with the human.
+    --notify never chmods anything (no os.chmod, no os.fchmod, not even its own logs).
+    Credentials and their modes stay with the human. CORRECTED after the Kimi seat (M3): the
+    plist's Umask 0077 covers files the JOB creates, NOT StandardOutPath/StandardErrorPath,
+    which launchd creates under its own umask — measured on Pro, every ~/logs/*.log is 0644.
+    The log DOES list credential paths, so the two log files are pre-created 0600 at install
+    (launchd appends to the existing inode and keeps the mode); the install comment in the
+    plist previously claimed the Umask covered them and was wrong.
   - >-
-    Alert text carries only machine label, directory (HOME shown as ~), count and mode class —
+    Alert text carries only machine label, directory (HOME shown as ~, and a directory OUTSIDE
+    home rendered as <outside-home>/<basename> — Kimi M1), count and mode class —
     never a file name, never contents. Consumes tg_notify.py's frozen CLI surface
     (--tier p0|digest --source secrets-audit --dedup-key secrets-audit:secrets-dir|env-modes);
     tg_notify.py is not edited. Tests never run the real gateway (SECRETS_AUDIT_TG_NOTIFY fake).
@@ -72,6 +79,29 @@ acceptance:
       i.e. `find ~/nuzantara/.secrets -type f -perm +077 | wc -l`); one scheduled run later the
       result SHALL still hold.
     probe: production observation after deploy (log ~/logs/secrets-permissions-audit.log)
+  - text: >-
+      An alert SHALL NOT spell out a location outside HOME: a custody root reached through
+      --root or symlinked onto another volume SHALL read <outside-home>/<basename>, never the
+      mount point or the directory name. The gateway status vocabulary this script treats as
+      "handed over" SHALL stay pinned to the REAL scripts/tg_notify.py, not only to the test
+      fake that echoes our own assumption back at us.
+    probe: pytest test_n19 (guilt + innocence) + test_n20 (source-read contract, Kimi M1/M2)
+  - text: >-
+      AFTER deploy, the first launchd run SHALL report handed=<number of alerts built> with a
+      known gateway status in its NOTIFY line — the only place a drift in the real gateway
+      becomes visible, since no test may run it.
+    probe: production observation (log ~/logs/secrets-permissions-audit.log, NOTIFY line)
+  - text: >-
+      The schedule is an organ with its genes: IF SECRETS_PERMISSIONS_AUDIT_ENABLED=false THEN a
+      --notify run SHALL scan nothing, hand no alert, exit 0 and write heartbeat status disabled;
+      report mode and --fix SHALL ignore the switch and write no heartbeat (Mini's --fix sweep
+      keeps its behaviour). Every other --notify run SHALL write
+      ~/.organism/last_seen/pro.secrets_permissions_audit.json with status ok (rc 0) or error
+      (blind or gateway refusal) and a note of counts only, never a path. The plist's Label is
+      registered in organs_registry.yaml (G1).
+    probe: >-
+      pytest test_n16 + test_n17 + test_n18; infra/organ-conformance/check_organ_conformance.py
+      rc 0 (0 non-conformant births); validate_organs_registry rc 0 (final gate round 1, 18:14Z)
 assumptions:
   - text: >-
       tg_notify.py finds its own credentials when launched with only HOME and PATH (it reads
@@ -105,6 +135,28 @@ team:
       This is the mission's third adversarial round (PR1 used two). It is PR2's first and only one:
       a new PR's first review, not a fix-of-a-fix. The fixes are verified by the final gate, not by
       another Codex round.
+  council_seat_2:
+    seat: kimi-code/k3 (kimi -p under env -i, read-only, no worktree access to the real tree)
+    thread: scratchpad kimi-pr2.out, 18:29-18:41Z, handed the frozen diff + the seven invariants
+    result: >-
+      3 MEDIUM + 4 LOW, no BLOCKER. M1 (absolute paths outside HOME reach the alert text),
+      M2 (the fake gateway mirrors our own parser, so a drift in the real tg_notify.py is
+      invisible) and M3 (launchd creates the log files under its own umask, not the plist's
+      Umask — measured 0644 on this fleet, and the log lists credential paths) all accepted
+      and cured. L2 (heartbeat window vs a host that sleeps) and L3 (the disabled note
+      hardcoded one spelling) cured; L1 (alert text visible in ps argv while the gateway runs,
+      forced by tg_notify.py's frozen text-as-argv CLI, S4's file) and L4 (a killed run leaves
+      a .tmp heartbeat) accepted as residuals, filed in the pack.
+  gate_round_1:
+    seat: claude-opus-5 --effort xhigh, fresh claude -p session, thread 5a85a6f6-1bf1-4cb7-a8ee-31a7af1d82c4
+    head: bd704a1af80a81f086fe2c30a48ea2a4b2b8e3f2
+    result: >-
+      REWORK-BUILD: B1-B9 met, but two required checks red — organ genes (G1 registry, G2
+      heartbeat, G5 kill switch) and harness floor (path floor 3 vs declared 2); LOW: n11 passed
+      at base, PENDING-ARMS:268 firebreak row. All four taken: G2/G5 in the script (--notify only),
+      G1 as one registry entry, gear 3 with pack.yml, n11 now asserts the pair refusal; the
+      firebreak row is amended in the mission's ledger-only PR. The rework was written by the Dux
+      (child budget of 2 already spent: Kimi on PR1, Sonnet on PR2).
   final_gate:
     seat: claude-opus-5 --effort xhigh, fresh `claude -p` session outside the chain, commissioned by this Dux
     thread: recorded in the gate receipt comment
