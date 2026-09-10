@@ -360,5 +360,167 @@ class TestGenerateSurvivesRegen(unittest.TestCase):
         self.assertIn("com.balizero.magazine.breaking", content)
 
 
+class TestMatagarudaPrefix(unittest.TestCase):
+    """2026-09-11 coverage gap: 23 repo-canon com.matagaruda.* plists were
+    invisible to both the live tables and the pending table."""
+
+    def test_matagaruda_label_is_eligible(self):
+        self.assertTrue(any("com.matagaruda.x".startswith(p) for p in gen.OUR_LAUNCHAGENT_PREFIXES))
+
+
+def _plist_bytes(label: str, program_arguments: list, comment: str | None = None) -> bytes:
+    """Build a minimal plist XML document, optionally with a leading `<!-- -->`
+    header comment, for tests that need both the raw text AND a plistlib-parsed
+    dict (mirroring what _find_pending_live_snapshot reads off disk)."""
+    parsed = {"Label": label, "ProgramArguments": program_arguments}
+    body = plistlib.dumps(parsed).decode()
+    if comment:
+        body = body.replace("<plist version=\"1.0\">", f"<!-- {comment} -->\n<plist version=\"1.0\">", 1)
+    return body.encode()
+
+
+class TestResolvePlistPurpose(unittest.TestCase):
+    def test_plist_comment_wins(self):
+        raw = _plist_bytes("com.example.a", ["/bin/bash", "/Users/nuzantara/scripts/anything.sh"], comment="Does the thing.").decode()
+        parsed = plistlib.loads(raw.encode())
+        purpose = gen._resolve_plist_purpose(Path("com.example.a.plist"), raw, parsed)
+        self.assertEqual(purpose, "Does the thing.")
+
+    def test_falls_back_to_nuzantara_root_script_header(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "scripts").mkdir()
+            (root / "scripts" / "foo.sh").write_text("#!/usr/bin/env bash\n# foo.sh — does X.\necho hi\n")
+            raw = _plist_bytes("com.example.b", ["/Users/nuzantara/nuzantara/scripts/foo.sh"]).decode()
+            parsed = plistlib.loads(raw.encode())
+            with unittest.mock.patch.object(gen, "NUZANTARA_ROOT", root):
+                purpose = gen._resolve_plist_purpose(Path("com.example.b.plist"), raw, parsed)
+            self.assertEqual(purpose, "foo.sh — does X.")
+
+    def test_falls_back_to_declared_pairs_home_script_header(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "scripts").mkdir()
+            (root / "scripts" / "bar.sh").write_text("#!/usr/bin/env bash\n# Does the bar thing.\necho hi\n")
+            pairs_path = root / "declared-pairs.json"
+            pairs_path.write_text(json.dumps({"pairs": [{"live": "~/scripts/bar.sh", "repo": "scripts/bar.sh"}]}))
+            raw = _plist_bytes("com.example.c", ["/Users/nuzantara/scripts/bar.sh"]).decode()
+            parsed = plistlib.loads(raw.encode())
+            with unittest.mock.patch.object(gen, "NUZANTARA_ROOT", root), \
+                 unittest.mock.patch.object(gen, "DECLARED_PAIRS_PATH", pairs_path):
+                purpose = gen._resolve_plist_purpose(Path("com.example.c.plist"), raw, parsed)
+            self.assertEqual(purpose, "Does the bar thing.")
+
+    def test_nothing_resolvable_falls_back_to_runs_basename(self):
+        raw = _plist_bytes("com.example.d", ["/usr/local/bin/bar.sh"]).decode()
+        parsed = plistlib.loads(raw.encode())
+        purpose = gen._resolve_plist_purpose(Path("com.example.d.plist"), raw, parsed)
+        self.assertEqual(purpose, "runs `bar.sh`")
+
+
+class TestInferPlistHost(unittest.TestCase):
+    def test_balizero_program_argument_is_m5(self):
+        parsed = {"ProgramArguments": ["/Users/balizero/scripts/x.sh"]}
+        self.assertEqual(gen._infer_plist_host("", "com.example.x", parsed), "M5")
+
+    def test_mini_only_text_is_mini(self):
+        self.assertEqual(gen._infer_plist_host("this is mini-only.", "com.example.y", {}), "Mini")
+
+    def test_default_is_pro(self):
+        self.assertEqual(gen._infer_plist_host("", "com.nuzantara.z", {}), "Pro")
+
+
+class TestFindScheduledWorkflows(unittest.TestCase):
+    def _write(self, path: Path, content: str) -> None:
+        path.write_text(content)
+
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmpdir.cleanup)
+        self.workflows_dir = Path(self.tmpdir.name)
+        self._write(self.workflows_dir / "a-two-crons.yml", (
+            "name: Two Cron Workflow\n"
+            "on:\n"
+            "  schedule:\n"
+            "    - cron: \"0 19 * * *\"\n"
+            "    - cron: \"0 7 * * *\"\n"
+            "  workflow_dispatch: {}\n"
+            "jobs:\n"
+            "  run:\n"
+            "    runs-on: ubuntu-latest\n"
+        ))
+        self._write(self.workflows_dir / "b-no-schedule.yml", (
+            "name: No Schedule Workflow\n"
+            "on:\n"
+            "  push:\n"
+            "    branches: [main]\n"
+            "jobs:\n"
+            "  run:\n"
+            "    runs-on: ubuntu-latest\n"
+        ))
+        self._write(self.workflows_dir / "c-commented.yml", (
+            "name: Commented Workflow\n"
+            "# This workflow does something useful for testing. Extra sentence here.\n"
+            "on:\n"
+            "  schedule:\n"
+            "    - cron: \"*/5 * * * *\"\n"
+            "jobs:\n"
+            "  run:\n"
+            "    runs-on: ubuntu-latest\n"
+        ))
+
+    def test_only_scheduled_workflows_are_returned(self):
+        rows = gen._find_scheduled_workflows(self.workflows_dir)
+        found = {r["workflow"] for r in rows}
+        self.assertIn("a-two-crons.yml", found)
+        self.assertIn("c-commented.yml", found)
+        self.assertNotIn("b-no-schedule.yml", found)
+
+    def test_crons_joined_with_semicolon(self):
+        rows = {r["workflow"]: r for r in gen._find_scheduled_workflows(self.workflows_dir)}
+        self.assertEqual(rows["a-two-crons.yml"]["cron"], "0 19 * * *;0 7 * * *")
+
+    def test_purpose_from_comment_vs_fallback_to_name(self):
+        rows = {r["workflow"]: r for r in gen._find_scheduled_workflows(self.workflows_dir)}
+        self.assertEqual(rows["c-commented.yml"]["purpose"], "This workflow does something useful for testing.")
+        self.assertEqual(rows["a-two-crons.yml"]["purpose"], "Two Cron Workflow")
+
+    def test_names_parsed(self):
+        rows = {r["workflow"]: r for r in gen._find_scheduled_workflows(self.workflows_dir)}
+        self.assertEqual(rows["a-two-crons.yml"]["name"], "Two Cron Workflow")
+        self.assertEqual(rows["c-commented.yml"]["name"], "Commented Workflow")
+
+    def test_filename_echo_line_is_skipped(self):
+        self._write(self.workflows_dir / "d-echo.yml", (
+            "name: Echo Workflow\n"
+            "# d-echo.yml — describes the echo case.\n"
+            "on:\n"
+            "  schedule:\n"
+            "    - cron: \"0 0 * * *\"\n"
+            "jobs:\n"
+            "  run:\n"
+            "    runs-on: ubuntu-latest\n"
+        ))
+        rows = {r["workflow"]: r for r in gen._find_scheduled_workflows(self.workflows_dir)}
+        self.assertEqual(rows["d-echo.yml"]["purpose"], "describes the echo case.")
+
+
+class TestRenderScheduledWorkflowsSection(unittest.TestCase):
+    def test_empty_rows_render_nothing(self):
+        self.assertEqual(gen._render_scheduled_workflows_section([]), [])
+
+    def test_header_and_one_row_per_workflow(self):
+        rows = [
+            {"workflow": "a.yml", "name": "A", "cron": "0 0 * * *", "purpose": "does a"},
+            {"workflow": "b.yml", "name": "B", "cron": "0 1 * * *", "purpose": "does b"},
+        ]
+        lines = gen._render_scheduled_workflows_section(rows)
+        joined = "\n".join(lines)
+        self.assertIn("### GitHub Actions scheduled workflows (repo-canon)", joined)
+        self.assertIn("| Workflow | Name | Cron (UTC) | Purpose |", joined)
+        self.assertIn("| `a.yml` | A | 0 0 * * * | does a |", joined)
+        self.assertIn("| `b.yml` | B | 0 1 * * * | does b |", joined)
+
+
 if __name__ == "__main__":
     unittest.main()
