@@ -96,6 +96,16 @@ PYTHON="${AUTOMATIONS_PYTHON:-python3}"
 RUN_RC=$?
 log "generate_automations_reference.py exit=$RUN_RC"
 
+# Belt and braces: the generator already formats the file itself (cwd=NUZANTARA_ROOT,
+# relative path — fixed 2026-09-1x after prettier's own .gitignore matching silently
+# no-op'd when it ran with the MAIN checkout's cwd, where .worktrees/ is gitignored).
+# This wrapper must not depend on that internal behaviour holding: run prettier again,
+# explicitly cd'd INTO the worktree, so a future regression in the generator's own cwd
+# handling still leaves the committed file formatted.
+(cd "$WT_PATH" && npx prettier --write docs/AUTOMATIONS_REFERENCE.md) >>"$LOG" 2>&1
+PRETTIER_RC=$?
+log "prettier (wrapper-side) rc=$PRETTIER_RC"
+
 CHANGED=$(git -C "$WT_PATH" status --porcelain -- docs/AUTOMATIONS_REFERENCE.md | wc -l | tr -d ' ')
 
 if [ "$RUN_RC" -ne 0 ] && [ "$CHANGED" -eq 0 ]; then
@@ -123,6 +133,19 @@ file is output (decision 2026-09-11).
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 EOF
   )" >>"$LOG" 2>&1
+  COMMIT_RC=$?
+  if [ "$COMMIT_RC" -ne 0 ]; then
+    # Measured on Pro's first live run: husky's pre-commit lint failed on the
+    # unformatted file (prettier had silently no-op'd, see above) and this
+    # branch used to ignore that non-zero rc entirely — it pushed a branch
+    # IDENTICAL to main (nothing was ever committed) and `gh pr create` died
+    # with "No commits between main and branch", so the heartbeat went error
+    # for the wrong reason and only after a useless push. A failed commit must
+    # never reach push or gh at all.
+    log "ERROR: commit failed rc=$COMMIT_RC — worktree left for recovery"
+    heartbeat error "commit failed (pre-commit hook?) — worktree left for recovery"
+    exit 1
+  fi
 
   git -C "$WT_PATH" push -u origin "$BRANCH" >>"$LOG" 2>&1
   PUSH_RC=$?

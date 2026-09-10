@@ -145,12 +145,53 @@ class Job:
     autonomy_action: str = "—"
 
 
-def _run(cmd: str, timeout: int = 10) -> str:
+def _run(cmd: str, timeout: int = 10, cwd: Path | None = None) -> str:
     try:
-        r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
+        r = subprocess.run(
+            cmd, shell=True, capture_output=True, text=True, timeout=timeout, cwd=cwd
+        )
         return r.stdout.strip()
     except (subprocess.TimeoutExpired, Exception):
         return ""
+
+
+def _run_prettier(relative_path: str, cwd: Path = NUZANTARA_ROOT, timeout: int = 30) -> None:
+    """Format `relative_path` (relative to `cwd`) with prettier, running FROM `cwd`
+    explicitly.
+
+    First live run on Pro (2026-09-1x) measured the defect this exists to close:
+    the generator wrote the file inside an isolated worktree, but this call ran
+    with the CALLER's cwd — the main checkout, where `.worktrees/` is gitignored.
+    Prettier honours .gitignore, so it matched ZERO files against the absolute
+    worktree path and reported "All matched files use Prettier code style" in
+    ~1s — a lie of omission, not a real pass. From the worktree's own cwd the
+    same file showed real style warnings. Passing `cwd` explicitly and a path
+    RELATIVE to it removes the caller's cwd as a variable entirely.
+
+    stderr and the return code are NOT swallowed into /dev/null any more (the
+    previous call embedded `2>/dev/null` in the shell string): a caller with
+    its own stdout/stderr redirected to a log file needs to see WHY prettier
+    failed, not just silence. A failure here does not raise — prettier
+    formatting the generated doc is best-effort, same contract as before.
+    """
+    try:
+        result = subprocess.run(
+            ["npx", "prettier", "--write", relative_path],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"prettier rc=timeout ({timeout}s)")
+        return
+    except Exception as exc:  # npx missing, permissions, etc. — best-effort
+        print(f"prettier rc=exception: {exc}")
+        return
+    if result.returncode != 0:
+        print(f"prettier rc={result.returncode}")
+        if result.stderr:
+            print(result.stderr.strip())
 
 
 def _codex_state_key_for_job(job: Job) -> str | None:
@@ -1096,8 +1137,10 @@ def generate(dry_run: bool = False) -> str:
 
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_FILE.write_text(content)
-    # Applica prettier per rispettare le regole di formatting del monorepo
-    _run(f"npx prettier --write {OUTPUT_FILE} 2>/dev/null", timeout=30)
+    # Applica prettier per rispettare le regole di formatting del monorepo — da
+    # NUZANTARA_ROOT, su un path relativo (see _run_prettier's docstring for why
+    # the caller's own cwd cannot be trusted here).
+    _run_prettier(str(OUTPUT_FILE.relative_to(NUZANTARA_ROOT)), cwd=NUZANTARA_ROOT)
     print(f"Written: {OUTPUT_FILE} ({total} jobs, {len(lines)} lines)")
     return content
 
