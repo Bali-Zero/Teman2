@@ -55,7 +55,7 @@ seat_diversity_note: >-
 
 diff:
   files: 8
-  net_lines: 470
+  net_lines: 562
   measured_at: >-
     counted with `git diff --numstat $(git merge-base origin/main HEAD)...HEAD` (three-dot,
     W102-safe) immediately before the final commit that lands this pack.
@@ -138,7 +138,24 @@ receipts:
       backend/tests/unit/routers/test_portal_invite_p0_capability.py
       backend/tests/services/garuda_orders/test_portal_invite_handler.py
       backend/tests/unit/app/routers/test_crm_portal_status_placeholder.py
-    result: "52 passed in 0.78s (21 passed over the two files this diff edits; 8 over the two new classes)"
+    result: "52 passed"
+    exit: 0
+    ts: "2026-09-10T10:29Z"
+    seat: session (M5)
+  - claim: "The two files this diff edits are green on their own"
+    cmd: >-
+      cd apps/backend-rag && /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/unit/app/test_config.py backend/tests/unit/routers/test_portal_invite.py
+    result: "21 passed"
+    exit: 0
+    ts: "2026-09-10T10:29Z"
+    seat: session (M5)
+  - claim: "The two classes this diff adds are green on their own"
+    cmd: >-
+      cd apps/backend-rag && /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/unit/app/test_config.py::TestPortalInviteUrl
+      backend/tests/unit/app/test_config.py::TestPortalUrlTrailingSlash
+    result: "8 passed"
     exit: 0
     ts: "2026-09-10T10:29Z"
     seat: session (M5)
@@ -262,3 +279,21 @@ dissent:
       teaching the wrong link. CURED: the fixture reads the template, the assertions that consume
       it expect `/portal/register`, and the duplicate fake the previous round introduced was
       deleted, since a correct fixture made it redundant.
+  - seat: claude-opus-5 (independent Gear-3 gate, round 2)
+    status: CONFIRMED
+    objection: >-
+      Six findings, every one about this pack rather than the code: an acceptance probe naming
+      a test the branch had deleted, a build lane narrating only the first round, two receipts
+      carrying counts measured before a test existed, two receipts written as prose where a
+      command belongs, and "fails 3 cases" in the PR body. CURED in the commit that re-measured
+      every number and made every receipt a literal command — the guilt counts came back 4 and
+      3, not the 3 and 1 previously claimed.
+  - seat: claude-opus-5 (independent Gear-3 gate, round 3)
+    status: CONFIRMED
+    objection: >-
+      Three more, same class: the innocence receipt's `result` narrated counts its own command
+      does not produce (52 from five suites, with 21 and 8 from two other invocations folded
+      into the same line); `assumptions[1]` still asserted "FRONTEND_PORTAL_URL is unset" as a
+      present-tense verified fact while `risks[1]` said production now sets it; and `net_lines`
+      had drifted with the commits that cured the earlier rounds. CURED: one command per
+      receipt, the assumption states both halves and their times, and the count re-measured.

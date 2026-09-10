@@ -63,11 +63,17 @@ assumptions:
     probe: >-
       curl -o /dev/null -w '%{http_code}' 'https://my.balizero.com/portal/register?token=x'
       -> 200, measured on the full path (not the root) 2026-09-10
-  - text: FRONTEND_PORTAL_URL is unset on the production machine.
+  - text: >-
+      FRONTEND_PORTAL_URL was unset on the production machine when the defect was found, which
+      is what made the field default load-bearing. It is SET as of 2026-09-10, because
+      production was cured ahead of this PR — so the default is the safety net now, not the
+      live value. Both halves are stated because the first alone would read as still true.
     status: verified
     probe: >-
       fly ssh console -a nuzantara-rag reading os.environ.get("FRONTEND_PORTAL_URL","UNSET")
-      -> UNSET, 2026-09-10
+      -> UNSET at 02:05Z; the live domain after `fly secrets set` at 03:10Z. The default
+      itself is read with the env var popped out of the process environment — see the
+      prove-live receipt.
 grader: >-
   Two cross-family review seats (codex-gpt-5.6-sol, kimi-code/k3) plus an
   independent Gear-3 gate session; generator != grader.
