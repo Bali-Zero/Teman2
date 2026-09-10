@@ -1097,11 +1097,21 @@ async def test_upload_with_service_account_routes_through_service_account_drive_
         }
     )
 
+    mock_conn = AsyncMock()
+    # client already has its CRM root folder; 00_Profile subfolder id is in
+    # client_drive_subfolders, so no Drive list call is needed
+    mock_conn.fetchrow.return_value = {
+        "google_drive_folder_id": "crm_root_1",
+        "client_type": "individual",
+    }
+    mock_conn.fetchval.return_value = "profile_subfolder_1"
+
     with patch(
         "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
         return_value=mock_sa_instance,
     ) as sa_cls:
         out = await service._upload_with_service_account(
+            conn=mock_conn,
             client_id=1,
             client_name="Client One!",
             document_type="passport_scan",
@@ -1117,12 +1127,15 @@ async def test_upload_with_service_account_routes_through_service_account_drive_
     assert call_kwargs["file_content"] == b"PDF"
     assert call_kwargs["file_name"].endswith("_passport.pdf")
     assert call_kwargs["mime_type"] == "application/pdf"
+    # THE finding: the file lands in the client's own category subfolder,
+    # never in the global root the old body passed.
+    assert call_kwargs["folder_id"] == "profile_subfolder_1"
 
     assert out["success"] is True
     assert out["file_id"] == "sa_file_1"
     assert out["file_url"] == "https://drive.google.com/file/d/sa_file_1/view"
     assert out["method"] == "service_account"
-    assert out["folder_path"] == "Zantara Portal Uploads/1_Client One/Passport Scan"
+    assert out["folder_path"] == "1_Client One!/00_Profile"
 
 
 @pytest.mark.asyncio
@@ -1145,6 +1158,7 @@ async def test_upload_with_service_account_surfaces_drive_errors_without_raising
         side_effect=ValueError("GOOGLE_SERVICE_ACCOUNT_JSON not configured in settings"),
     ):
         out = await service._upload_with_service_account(
+            conn=AsyncMock(),
             client_id=1,
             client_name="Client One",
             document_type="passport",
@@ -1157,6 +1171,138 @@ async def test_upload_with_service_account_surfaces_drive_errors_without_raising
     assert out["success"] is False
     assert "Service Account upload failed" in out["error"]
     assert "GOOGLE_SERVICE_ACCOUNT_JSON" in out["error"]
+
+
+# =============================================================================
+# F2 (2026-09-11 portal↔CRM bridge audit) — the live Service Account branch
+# uploaded flat into settings.google_drive_root_folder_id, the global root
+# shared by EVERY client, so no portal upload was ever visible from the
+# client's Drive folder in the CRM. These pin the per-client destination.
+# =============================================================================
+
+
+def _sa_service_and_conn(
+    *,
+    root: str | None,
+    subfolder_row: str | None,
+) -> tuple[PortalService, AsyncMock, MagicMock]:
+    service = PortalService(MagicMock())
+    mock_conn = AsyncMock()
+    mock_conn.fetchrow.return_value = (
+        {"google_drive_folder_id": root, "client_type": "individual"} if root is not None else None
+    )
+    mock_conn.fetchval.return_value = subfolder_row
+
+    sa = MagicMock()
+    sa.upload_file_to_folder = AsyncMock(
+        return_value={"id": "sa_file_2", "webViewLink": "https://drive.google.com/x"}
+    )
+    sa.ensure_client_folder = AsyncMock(return_value={"root_folder_id": "made_root_9"})
+    sa.find_folder = AsyncMock(return_value=None)
+    sa.create_folder = AsyncMock(return_value={"id": "made_subfolder_9"})
+    return service, mock_conn, sa
+
+
+def _blank_result() -> dict[str, Any]:
+    return {
+        "success": False,
+        "file_id": None,
+        "file_url": None,
+        "folder_path": "",
+        "error": None,
+    }
+
+
+@pytest.mark.asyncio
+async def test_service_account_upload_creates_client_root_and_category_subfolder() -> None:
+    """No root on the client row and no persisted subfolder: go through the
+    idempotent ensure_client_folder chokepoint, then create the category
+    subfolder under THAT root — not under the global one."""
+    service, mock_conn, sa = _sa_service_and_conn(root=None, subfolder_row=None)
+
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=sa,
+    ):
+        out = await service._upload_with_service_account(
+            conn=mock_conn,
+            client_id=42,
+            client_name="Client Two",
+            document_type="kitas",
+            file_content=b"PDF",
+            file_name="kitas.pdf",
+            mime_type="application/pdf",
+            result=_blank_result(),
+        )
+
+    sa.ensure_client_folder.assert_awaited_once()
+    assert sa.ensure_client_folder.call_args.kwargs["client_id"] == 42
+    sa.find_folder.assert_awaited_once_with("01_Immigration", "made_root_9")
+    assert sa.create_folder.call_args.kwargs == {
+        "name": "01_Immigration",
+        "parent_id": "made_root_9",
+    }
+    assert sa.upload_file_to_folder.call_args.kwargs["folder_id"] == "made_subfolder_9"
+    assert out["success"] is True
+    assert out["folder_path"] == "42_Client Two/01_Immigration"
+
+
+@pytest.mark.asyncio
+async def test_service_account_upload_reuses_existing_category_subfolder_from_drive() -> None:
+    """Root known, no client_drive_subfolders row, but the folder exists in
+    Drive: reuse it instead of creating a twin."""
+    service, mock_conn, sa = _sa_service_and_conn(root="crm_root_7", subfolder_row=None)
+    sa.find_folder = AsyncMock(return_value={"id": "found_tax_7"})
+
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=sa,
+    ):
+        out = await service._upload_with_service_account(
+            conn=mock_conn,
+            client_id=7,
+            client_name="Client Three",
+            document_type="spt_tahunan",
+            file_content=b"PDF",
+            file_name="spt.pdf",
+            mime_type="application/pdf",
+            result=_blank_result(),
+        )
+
+    sa.ensure_client_folder.assert_not_awaited()
+    sa.create_folder.assert_not_awaited()
+    assert sa.upload_file_to_folder.call_args.kwargs["folder_id"] == "found_tax_7"
+    assert out["folder_path"] == "7_Client Three/03_Tax"
+
+
+@pytest.mark.asyncio
+async def test_service_account_upload_fails_closed_when_folder_unresolvable() -> None:
+    """Guilt-proof for the regression shape: if the client folder cannot be
+    resolved, REFUSE — never fall back to the shared global root, which is
+    what silently swallowed every portal upload before this fix. The caller
+    turns an unsuccessful drive_result into 'Document storage is
+    unavailable', so the client is told rather than misled."""
+    service, mock_conn, sa = _sa_service_and_conn(root=None, subfolder_row=None)
+    sa.ensure_client_folder = AsyncMock(side_effect=RuntimeError("Drive 404"))
+
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=sa,
+    ):
+        out = await service._upload_with_service_account(
+            conn=mock_conn,
+            client_id=8,
+            client_name="Client Four",
+            document_type="passport",
+            file_content=b"PDF",
+            file_name="p.pdf",
+            mime_type="application/pdf",
+            result=_blank_result(),
+        )
+
+    sa.upload_file_to_folder.assert_not_awaited()
+    assert out["success"] is False
+    assert "Drive 404" in out["error"]
 
 
 @pytest.mark.asyncio

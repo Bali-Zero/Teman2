@@ -929,6 +929,7 @@ class PortalDocumentsMixin:
                     return result
                 # Use Service Account for upload
                 return await self._upload_with_service_account(
+                    conn,
                     client_id,
                     client_name,
                     document_type,
@@ -1034,8 +1035,71 @@ class PortalDocumentsMixin:
 
         return result
 
+    async def _resolve_client_drive_folder(
+        self,
+        conn: asyncpg.Connection,
+        sa_drive: Any,
+        client_id: int,
+        client_name: str,
+        category_folder: str,
+    ) -> str:
+        """Resolve the client's OWN Drive folder + category subfolder id.
+
+        Same tree the CRM upload path files into
+        (`crm_enhanced_documents.py`: `clients.google_drive_folder_id` +
+        a `CATEGORY_TO_FOLDER`-named subfolder), so a team member browsing a
+        client's Drive folder from the CRM sees portal uploads too.
+
+        Root creation goes through the idempotent
+        `ensure_client_folder` chokepoint (advisory lock, one root per
+        client). Raises on failure — filing a client document into a folder
+        that is not that client's is worse than refusing the upload.
+        """
+        row = await conn.fetchrow(
+            "SELECT google_drive_folder_id, client_type FROM clients WHERE id = $1",
+            client_id,
+        )
+        root_folder_id = row["google_drive_folder_id"] if row else None
+        if not root_folder_id:
+            ensure_result = await sa_drive.ensure_client_folder(
+                client_id=client_id,
+                client_name=client_name,
+                client_type=(row["client_type"] if row else None) or "individual",
+                db_pool=self.pool,
+            )
+            root_folder_id = ensure_result["root_folder_id"]
+        if not root_folder_id:
+            raise RuntimeError(f"No Drive root folder for client {client_id}")
+
+        # The subfolder ids created by ensure_client_folder are persisted in
+        # client_drive_subfolders (that is how DrivePollService matches a
+        # dropped file back to a client) — prefer that read over a Drive list.
+        subfolder_id = await conn.fetchval(
+            """
+            SELECT subfolder_id
+              FROM client_drive_subfolders
+             WHERE client_id = $1 AND subfolder_name = $2
+             LIMIT 1
+            """,
+            client_id,
+            category_folder,
+        )
+        if subfolder_id:
+            return subfolder_id
+
+        found = await sa_drive.find_folder(category_folder, root_folder_id)
+        if found:
+            return found["id"]
+
+        created = await sa_drive.create_folder(
+            name=category_folder,
+            parent_id=root_folder_id,
+        )
+        return created["id"]
+
     async def _upload_with_service_account(
         self,
+        conn: asyncpg.Connection,
         client_id: int,
         client_name: str,
         document_type: str,
@@ -1053,32 +1117,48 @@ class PortalDocumentsMixin:
         `team_drive.drive_service` attribute TeamDriveService never defined.
         That attribute meant this branch raised AttributeError on every real
         invocation (production and test alike); see cicatrix BUG C.
+
+        Files into the CLIENT's own Drive folder. Until 2026-09-11 this
+        branch — the one live in production — passed
+        `folder_id=settings.google_drive_root_folder_id`, the flat global
+        root shared by every client, while computing a `folder_path` string
+        it never handed to the API: a team member opening a client's Drive
+        folder from the CRM could not see anything that client had uploaded
+        through the portal.
         """
         try:
             from datetime import datetime
 
-            from backend.app.core.config import settings
             from backend.services.integrations.service_account_drive_service import (
                 ServiceAccountDriveService,
             )
 
-            # Create folder structure
             timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
-            safe_client_name = "".join(
-                c for c in client_name if c.isalnum() or c in (" ", "_")
-            ).rstrip()[:30]
-            folder_path = f"Zantara Portal Uploads/{client_id}_{safe_client_name}/{document_type.replace('_', ' ').title()}"
             drive_file_name = f"{timestamp}_{file_name}"
+
+            # The SAME category folder the OCR dispatch already tells the
+            # pipeline this file lives in (`folder_hint`, STEP 6b) — so the
+            # hint and the physical location can no longer disagree.
+            category_folder = self._get_drive_folder_for_category(
+                self._classify_document_category(document_type, file_name),
+            )
 
             # Upload using Service Account. ServiceAccountDriveService wraps
             # the (synchronous) googleapiclient .execute() call in
             # asyncio.to_thread internally, so this does not block the
             # event loop the way the old team_drive.drive_service.files()...
             # .execute() call would have (never reached in practice).
-            root_folder_id = settings.google_drive_root_folder_id or "root"
-            sa_drive = ServiceAccountDriveService(root_folder_id=root_folder_id)
+            sa_drive = ServiceAccountDriveService()
+            target_folder_id = await self._resolve_client_drive_folder(
+                conn=conn,
+                sa_drive=sa_drive,
+                client_id=client_id,
+                client_name=client_name,
+                category_folder=category_folder,
+            )
+            folder_path = f"{client_id}_{client_name}/{category_folder}"
             uploaded_file = await sa_drive.upload_file_to_folder(
-                folder_id=root_folder_id,
+                folder_id=target_folder_id,
                 file_content=file_content,
                 file_name=drive_file_name,
                 mime_type=mime_type,
