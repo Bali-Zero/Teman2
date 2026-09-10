@@ -1,0 +1,156 @@
+task_id: s1-arm-the-armer
+mandate_id: S1
+colour: BLUE
+gear: 2
+gate_class: final-on-disk
+brief_ref: evidence/2026-09/agent-nuzantara-ops-s1-arm-the-armer-04629ac0/brief.yml
+date: 2026-09-10
+machine: Pro
+lanes:
+  - lane: ground + design + review + ship
+    role: dux
+    seat: "claude-opus-5 xhigh (session 9a3559a9-e38c-4b79-87e7-7a30043c7b9b, continued after a context jump as 0ca7e1c8-5dc8-492a-80bd-d0f1122ee7bd)"
+    note: >-
+      Re-derived the ground, measured the query live, wrote both implementer specs, reviewed each
+      diff on disk, found the test-isolation leak, measured the merge_group attempt shape live,
+      disposed of every review finding, committed each revision, commissioned the gate, owns the
+      release.
+  - lane: build attempt 1
+    role: build
+    seat: claude-sonnet-5 (in-process teammate)
+    note: "Read both files, then stalled: no tool call after 15:12:29Z, zero writes; stopped 15:40:54Z by the Dux."
+  - lane: build attempt 2
+    role: build
+    seat: claude-sonnet-5 (background Agent subagent)
+    note: "Letters A-G of the first spec plus the two Dux review fixes, then fix round 1 after Codex round 1."
+  - lane: build round-2 rework
+    role: build
+    seat: claude-sonnet-5 (background Agent subagent s1-implementer-r2)
+    note: >-
+      Letters H-I of the round-2 spec (read contract, queue-attempt correlation). It reported that
+      it wrote tests after the code, not red-first; the Dux ran the 26 new tests against the
+      pre-rework module: 20 fail, the other 6 are legitimate-empty innocence cases and two
+      regression guards the old code happened to satisfy.
+  - lane: adversarial review
+    role: review
+    seat: "codex CLI, gpt-5.6-sol, effort xhigh (codex-spalla review origin/main)"
+    note: >-
+      Round 1 on 848fc2a37f (~/logs/codex-spalla/20260910T161123Z-651c-review-*.md); round 2 on the
+      fix-round-1 commit (~/logs/codex-spalla/20260910T165457Z-15a76-review-*.md). The first round-2
+      run was killed by the Dux's context jump before its verdict and was rerun from scratch.
+outcome: >-
+  The re-armer reads its candidates again — the first successful candidate read since 2026-08-28
+  (dry-run, live GitHub, 17:25Z): examined=44 candidates=3 unknown=0, #5746 CODE, #5838/#6054
+  NEVER_QUEUED. A failed or wrong-shaped read is CANNOT-VERIFY (exit 2, heartbeat error, one
+  stable-key alert) instead of "rearmed=0, nothing to do"; a PR with three same-cause reds is
+  suspended; never-queued PRs no longer look like ejections; the INFRA correlation judges the
+  whole queue attempt instead of one arbitrary run.
+diff:
+  files: 4
+  shape: >-
+    scripts/queue_shepherd.py (query diet + retry, read-shape contract, result dicts, tick
+    outcome, red-cause state and suspension, NEVER_QUEUED, queue-attempt correlation, dry-run
+    state reads), its test file (72 new cases + one autouse isolation fixture), this brief and
+    this pack.
+pii_scan: clean
+mini_siblings_out_of_scope:
+  - "scripts/queue_stall_classifier.py (used by queue_stall_notify.py on Mini) still fetches checkSuites(first:100){checkRuns(first:20)} per PR — the same fan-out family that blinded the shepherd. Its classifier already times out live (TLS handshake / i/o timeouts in the fleet-watch CANNOT-VERIFY messages of 2026-09-10). Needs the same diet: status contexts, or check-runs filtered by name."
+  - "scripts/queue_unstick.py and scripts/queue_stall_notify.py already report CANNOT-VERIFY with examined counts (exit 4 and exit 1), so the S1 disease is absent there; neither writes an organism heartbeat on Mini, so their failures live only in the cron logs."
+  - "scripts/queue_ejection_attribution.py correlates a removal with ANY-infra across the attempt's runs; the shepherd now uses ALL (CODE wins) because it makes a re-arm decision. The divergence is deliberate and documented in fetch_infra_hint_and_fingerprint."
+receipts:
+  - claim: "the candidate read never succeeded before this change"
+    cmd: "grep -c 'CANNOT-VERIFY rearm candidates' ~/logs/queue-shepherd.err.log; grep -c ' class=' ~/logs/queue-shepherd.err.log"
+    result: "1892 and 0 (1890 'rearmed=0 cancelled=0' of 1891 tick lines)"
+    ts: "2026-09-10T14:57Z"
+    exit: 0
+  - claim: "the cause is the checkSuites x checkRuns fan-out, not the rate limit"
+    cmd: "probe_query.py: REARM_CANDIDATES_QUERY verbatim vs without checkSuites"
+    result: "verbatim: HTTP 504 at first:100, Resource limits at first:25; light: OK 4.3 s, cost 1, 45 PRs"
+    ts: "2026-09-10T15:04:55Z"
+    exit: 0
+  - claim: "the LaunchAgent runs Python 3.9.6 and cannot respawn on a non-zero exit"
+    cmd: "plutil -p ~/Library/LaunchAgents/com.nuzantara.queue-shepherd.10min.plist; /usr/bin/python3 --version"
+    result: "/usr/bin/python3 ~/nuzantara/scripts/queue_shepherd.py --tick, KeepAlive false, StartInterval 600; Python 3.9.6"
+    ts: "2026-09-10T15:00Z"
+    exit: 0
+  - claim: "the suite on origin/main writes the production heartbeat"
+    cmd: "HOME=$(mktemp -d) venv pytest <origin/main module + test>; find $HOME -type f"
+    result: "79 passed; 1 file: .organism/last_seen/pro.queue_shepherd.json"
+    ts: "2026-09-10T17:27Z"
+    exit: 0
+  - claim: "one merge-queue attempt is ~13 runs sharing one head_sha, and created<= is honoured"
+    cmd: "gh api 'actions/runs?event=merge_group&per_page=100' grouped by head_sha; gh api '...&created=<=2026-09-10T16:00:00Z'; gh api '...&created=2026-09-10T04:04:00Z..2026-09-10T12:00:00Z'"
+    result: "groups of 13/13/13/9/13 runs, 1 distinct created_at in 5 of 6; newest under the <= boundary 15:47:25Z; empty window total 0"
+    ts: "2026-09-10T17:11Z"
+    exit: 0
+  - claim: "tests green, nothing written outside tmp, 3.9 compiles, the round-2 tests can say no"
+    cmd: "venv pytest -q; HOME=$(mktemp -d) (same) + find; /usr/bin/python3 -m py_compile; new test file against the pre-rework module in a mktemp copy"
+    result: "151 passed; 0 files; rc 0; 20 of 26 round-2 tests fail on the pre-rework module"
+    ts: "2026-09-10T17:25Z"
+    exit: 0
+  - claim: "integration: the live candidate read completes, logs the examined count, writes nothing in dry-run"
+    cmd: "cd $WT && /usr/bin/python3 scripts/queue_shepherd.py --tick --dry-run (heartbeat mtime + error-log line count before/after)"
+    result: "tick complete: examined=44 candidates=3 unknown=0 rearmed=0 suspended=0 unverified=0 cancelled=0 dry_run=True; heartbeat untouched; log delta 0"
+    ts: "2026-09-10T17:25Z"
+    exit: 0
+review_findings:
+  - {
+      id: R1-B1,
+      severity: BLOCKER,
+      disposition: accepted,
+      finding: "a failed/unparseable jobs fetch became jobs=[] -> cancelled run read INFRA -> re-armed",
+    }
+  - {
+      id: R1-B2,
+      severity: BLOCKER,
+      disposition: accepted,
+      finding: "unreadable per-PR timeline / janitor recheck ended exit 0, heartbeat ok",
+    }
+  - {
+      id: R1-B3,
+      severity: BLOCKER,
+      disposition: accepted,
+      finding: "same-cause counting lost events (history cap, None never upgraded, cancelled-only jobs unfingerprinted)",
+    }
+  - {
+      id: R1-B4,
+      severity: BLOCKER,
+      disposition: accepted,
+      finding: "--dry-run wrote the heartbeat and opened the log file",
+    }
+  - {
+      id: R1-M1,
+      severity: MEDIUM,
+      disposition: accepted,
+      finding: "N UNKNOWN candidates sent N P0s",
+    }
+  - {
+      id: R2-B1,
+      severity: BLOCKER,
+      disposition: "accepted as a spec'd rework (letter H), not a fix-of-a-fix",
+      finding: "a well-formed but wrong-shaped jobs body {} still became jobs=[] -> INFRA",
+    }
+  - {
+      id: R2-M1,
+      severity: MEDIUM,
+      disposition: "accepted (letter I)",
+      finding: "correlation read only the latest 20 merge_group runs and picked one arbitrary run among ties",
+    }
+  - {
+      id: R2-M2,
+      severity: MEDIUM,
+      disposition: "accepted (letter H3)",
+      finding: "candidate-page shape validation outside the retry; malformed page -> raw KeyError, no stable alert",
+    }
+dissent:
+  - seat: "codex gpt-5.6-sol (round 1)"
+    objection: "LOW — the 'NEVER_QUEUED' string sentinel is mixed into a dict|None return"
+    status: "declined: one call site compares it before any indexing and two tests pin it; a misuse raises inside tick(), which writes heartbeat error and exits non-zero"
+  - seat: "codex gpt-5.6-sol (round 2)"
+    objection: "LOW — the net diff is far above the ~400-line PR guide"
+    status: "declined: one concern (the re-armer reads truthfully or says it cannot); 1354 of the added lines are tests; a split would ship a re-armer that reads but guesses"
+spend:
+  wall_clock_hours: "2.6 at pack commit (14:56:38Z -> 17:29Z), of 6"
+  adversarial_rounds: "2 of 2; the round-2 rework is judged by the final on-disk gate only"
+  tokens: "not metered end to end; build attempt 2 reported 325413 subagent tokens"
+appetite_exceeded: ""
