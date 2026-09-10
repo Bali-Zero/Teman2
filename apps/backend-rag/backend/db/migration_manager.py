@@ -3,6 +3,7 @@ NUZANTARA PRIME - Migration Manager
 Centralized migration management system
 """
 
+import asyncio
 import logging
 from pathlib import Path
 from urllib.parse import urlparse
@@ -102,28 +103,82 @@ class MigrationManager:
             raise MigrationError("DATABASE_URL not configured")
         self.pool: asyncpg.Pool | None = None
 
+    # Transport-level failures while the pool is being created. Each of these
+    # means "the socket died before Postgres said anything", which is what a
+    # cold release_command machine sees when the private network resets the
+    # TLS handshake. Postgres-level refusals (bad password, no such database,
+    # role missing) are NOT in this set and still fail on the first attempt.
+    CONNECT_RETRY_EXCEPTIONS: tuple[type[BaseException], ...] = (
+        ConnectionError,  # ConnectionResetError, ConnectionRefusedError, ...
+        OSError,
+        asyncio.TimeoutError,
+        asyncpg.exceptions.InterfaceError,
+        asyncpg.exceptions.TargetServerAttributeNotMatched,
+    )
+    CONNECT_ATTEMPTS = 5
+    CONNECT_BACKOFF_BASE_SECONDS = 2.0
+
     async def connect(self) -> None:
         """
-        Create connection pool.
+        Create connection pool, retrying transport-level failures.
 
         Should be called before using the manager.
+
+        Born 2026-09-10 19:13Z-19:57Z: four consecutive Fly release_commands
+        died in this call with ``ConnectionResetError`` inside asyncpg's TLS
+        ``start_tls`` (plus ``TargetServerAttributeNotMatched`` from its
+        multi-host fallback) while the Postgres cluster reported 3/3 checks
+        passing and ~36/300 connections. A single bare ``create_pool`` turned
+        every such reset into a hard deploy failure; this is the bounded
+        retry that was missing (superscar #8, network flap).
         """
-        if self.pool is None:
-            self.pool = await asyncpg.create_pool(
-                self.database_url,
-                min_size=1,
-                max_size=5,
-                command_timeout=60,
-                # Every ACQUIRE assumes the runtime role (not just connection
-                # creation): the ledger tables (`_ensure_migration_log`) and the
-                # advisory lock go through this pool, a `CREATE TABLE IF NOT
-                # EXISTS` here must not mint a migrator-owned table, and
-                # asyncpg's release-time `RESET ALL` undoes `SET ROLE` -- so an
-                # `init`-only hook would hold for the first acquire and silently
-                # lapse on the second (kimi, 2026-09-11). The hook is idempotent.
-                setup=assume_runtime_role,
-            )
-            logger.info("Migration manager connection pool created")
+        if self.pool is not None:
+            return
+        last_error: BaseException | None = None
+        for attempt in range(1, self.CONNECT_ATTEMPTS + 1):
+            try:
+                self.pool = await asyncpg.create_pool(
+                    self.database_url,
+                    min_size=1,
+                    max_size=5,
+                    command_timeout=60,
+                    # Every ACQUIRE assumes the runtime role (not just connection
+                    # creation): the ledger tables (`_ensure_migration_log`) and the
+                    # advisory lock go through this pool, a `CREATE TABLE IF NOT
+                    # EXISTS` here must not mint a migrator-owned table, and
+                    # asyncpg's release-time `RESET ALL` undoes `SET ROLE` -- so an
+                    # `init`-only hook would hold for the first acquire and silently
+                    # lapse on the second (kimi, 2026-09-11). The hook is idempotent.
+                    setup=assume_runtime_role,
+                )
+            except self.CONNECT_RETRY_EXCEPTIONS as exc:
+                last_error = exc
+                if attempt == self.CONNECT_ATTEMPTS:
+                    break
+                delay = self.CONNECT_BACKOFF_BASE_SECONDS * (2 ** (attempt - 1))
+                logger.warning(
+                    "Migration manager connect attempt %d/%d failed (%s: %s); retrying in %.0fs",
+                    attempt,
+                    self.CONNECT_ATTEMPTS,
+                    type(exc).__name__,
+                    exc,
+                    delay,
+                )
+                await asyncio.sleep(delay)
+            else:
+                if attempt > 1:
+                    logger.info("Migration manager connection pool created on attempt %d", attempt)
+                else:
+                    logger.info("Migration manager connection pool created")
+                return
+        assert last_error is not None
+        logger.error(
+            "Migration manager could not connect after %d attempts: %s: %s",
+            self.CONNECT_ATTEMPTS,
+            type(last_error).__name__,
+            last_error,
+        )
+        raise last_error
 
     async def close(self) -> None:
         """Close connection pool"""
