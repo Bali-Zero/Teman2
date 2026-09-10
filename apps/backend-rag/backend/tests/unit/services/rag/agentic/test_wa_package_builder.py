@@ -49,6 +49,7 @@ from unittest.mock import patch
 
 import pytest
 
+from backend.core import score_provenance
 from backend.services.rag.agentic import wa_package_builder as wpb_module
 from backend.services.rag.agentic._abstain_policy import build_abstain_policy
 from backend.services.rag.agentic.wa_package_builder import (
@@ -293,10 +294,13 @@ class TestAllowlistSchema:
             "package_hash",
         }
 
-    async def test_chunks_drop_retriever_extras_to_exactly_three_keys(self) -> None:
+    async def test_chunks_drop_retriever_extras_to_exactly_four_keys(self) -> None:
         """The fake retriever hands back `id` + `metadata.source_path` on every
         hit (mirroring a real `format_search_results()` result) — every
-        chunk in the built package must carry ONLY collection/text/score.
+        chunk in the built package must carry ONLY collection/text/score
+        plus B1.1's declared `score_kind` (the fake hit declares none, so
+        it reads back UNKNOWN; `score_raw` is therefore absent, not just
+        empty — the hit has no `score_raw` to carry through either).
         """
         package = await build_context_package(
             query=VISA_QUERY,
@@ -306,7 +310,8 @@ class TestAllowlistSchema:
         )
         assert package.chunks, "expected at least one chunk from the fake retriever"
         for chunk in package.chunks:
-            assert set(chunk.keys()) == {"collection", "text", "score"}
+            assert set(chunk.keys()) == {"collection", "text", "score", "score_kind"}
+            assert chunk["score_kind"] == score_provenance.UNKNOWN
 
     async def test_history_extra_keys_are_dropped(self) -> None:
         """findings 3+8 (GUILT): a caller-supplied entry smuggling phone /

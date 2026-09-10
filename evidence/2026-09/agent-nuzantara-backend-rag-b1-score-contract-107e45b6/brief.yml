@@ -1,0 +1,108 @@
+task_id: backend-rag-b1-score-contract
+gear: 2
+l_level: L2
+gate_class: opus
+base_sha: 1d726045c9ca75ab64a75e92b062e52b0b763a98 # pragma: allowlist secret
+mandate: B1
+colour: BLUE
+objective: >-
+  B1.1 of mandate B1 (BLUE). Give the number that reaches
+  `calculate_evidence_score` a NAME and a PROVENANCE, end to end, without
+  changing a single served value. The scorer's own comment
+  (reasoning_utils.py:650) calls the field "Qdrant's per-source cosine
+  similarity"; it is a Reciprocal Rank Fusion output put through
+  1/(1+distance). Measured on the running prod server (Qdrant 1.16.3,
+  read-only, one existing point's own stored vectors as the query, no
+  embedding call, no write, nothing exported but ranks/membership/scores):
+  server-side RRF returns sum over contributing lists of 1/(2 + rank0),
+  exact on all ten measured rows, with the k=60/1-based alternative refuted
+  on all ten. With production's prefetch_limit = limit*3 that is bounded
+  below by 1/31, so result_formatter.py:89 maps every hybrid result into
+  [0.508, 1.000] and the dense fallback into [0.5, 1.000] for any
+  non-negative cosine. Consequence recorded as finding F-B1.1a: the
+  semantic-alignment penalty at reasoning_utils.py:665 ("0 < top < 0.5 and
+  final_score > 0.15") cannot be entered from any live path, so it is dead
+  code in production — a measured claim, not a reading.
+appetite:
+  wall_clock_hours: 5
+  adversarial_rounds: 2
+  tokens: 1500000
+constraints:
+  - >-
+    Additive only. No field renamed or removed, no numeric value changed, no
+    served behaviour changed. Ruling R1: `search_type` is NOT corrected here
+    even though the dense fallback is served as "hybrid_rrf" — it is a served
+    field (the rag_vector_search metric label, app/metrics.py:852, and it is
+    written into the cached dict), so changing its value belongs to B2. The
+    kind is declared by the branch that knows instead.
+  - >-
+    Ruling R2: provenance lives INSIDE the sealed bytes, so package_hash and
+    wire_text() change. That is B1's stated objective (B1-design.md:26), not a
+    side effect. The §4(d) STOP is measured and not triggered — wa_outbox holds
+    only terminal rows (241 failed, 179 done, newest 2026-09-01 09:27:53Z,
+    zero pending/generating). evidence_inputs is deliberately untouched.
+  - >-
+    Read-only, never edited: reasoning_utils.py, _abstain_policy.py,
+    orchestrator_core.py, wa_finalize.py. Forbidden entirely: wa_codex_leg.py,
+    zantara_core.py, RC2/RC3 paths, any migration, any prod write, any
+    embedding/generation/reranking/paid call.
+  - >-
+    _reasoning_evidence.py touched ONLY to name the flat 0.85 with its kind in
+    a log line; the returned value stays exactly 0.85 and `sources` is
+    untouched on that branch.
+acceptance:
+  - text: >-
+      A1: every writer declares a kind, and a kind is never inferred from
+      magnitude — a rank-1-in-both fusion hit and a curated block both arrive
+      at 1.0, so any magnitude heuristic is a coin flip.
+    probe: >-
+      pytest backend/tests/unit/services/rag/agentic/test_score_contract_crossing.py
+  - text: >-
+      A2 (NEGATIVE, §4(c)): the crossing suite is RED on the base sha. Proved
+      by execution, not argued: a throwaway checkout of 1d726045c9 carrying
+      ONLY the vocabulary module (pure data, no writer wiring) runs the same
+      file and reports 13 failed / 1 passed, with case 9 failing on
+      KeyError 'score_kind' — a behavioural red, not a collection error.
+    probe: >-
+      git worktree add --detach <tmp> 1d726045c9; cp core/score_provenance.py
+      and the test file in; pytest the file -> 13 failed, 1 passed
+  - text: >-
+      A3 (staff-room requirement): the list handed to calculate_evidence_score
+      at wa_package_builder.py:601-608 carries score_kind on EVERY element, and
+      at least one element carries a kind a WRITER declared — presence alone
+      would pass while everything reached the scorer as UNKNOWN, which is the
+      exact hole the strengthened assertion caught during review.
+    probe: >-
+      test_10_scorer_projection_carries_score_kind_on_every_element, whose
+      retriever mints its hits through the REAL format_search_results
+  - text: >-
+      A4 (R2 condition): a package sealed BEFORE score_kind existed still
+      verifies hash==wire under the new code, through the real
+      ContextPackage.__post_init__ rather than a re-implementation.
+    probe: test_a_package_sealed_before_score_kind_existed_still_verifies
+  - text: >-
+      A5 (innocence): base sha and branch produce IDENTICAL results on the
+      same twelve-file command — 2 failed, 819 passed, 2 skipped, 8 xfailed on
+      both. The two failures are pre-existing cross-file order pollution in
+      TestDetectTeamQuery (the file alone is 84 passed on both trees); this PR
+      moves nothing.
+    probe: >-
+      the twelve-file pytest command run on the branch and on a throwaway
+      checkout of 1d726045c9
+assumptions:
+  - text: >-
+      The production retriever handed to build_context_package is a
+      SearchService-shaped object whose hybrid_search() results are the ones
+      format_search_results stamps, so the kind reaches the package.
+    status: verified
+    probe: >-
+      app/routers/wa_package.py:147-152 passes orchestrator.core.retriever;
+      wa_package_builder.py:261-267 calls retriever.hybrid_search and reads
+      result["results"], which is exactly SearchService.hybrid_search's shape.
+  - text: >-
+      Nothing in production branches on search_type, so leaving the mislabel
+      alone costs nothing beyond the declared residual.
+    status: verified
+    probe: >-
+      grep search_type across backend excluding tests: only app/metrics.py:852
+      (a label) and the qdrant_db writers. No conditional reads it.
