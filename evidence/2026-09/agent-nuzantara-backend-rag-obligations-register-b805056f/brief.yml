@@ -1,0 +1,43 @@
+task: >-
+  Obligations register, PR A1 of the compliance-stack build (lane A): a structured catalog of
+  Indonesian statutory obligations, a pure due-date engine that proposes (rule, period, due date)
+  per client profile, and a repository whose review transition is proposed -> approved | rejected
+  once. Nothing is sent from the register. Migration 309 (client_obligations) is DEFERRED: the
+  client guardrail blocks the DROP TABLE lines of its rollback section until the owner's two-key
+  bypass; its full SQL ships in the PR body. The reviewer queue API is PR A2.
+lane: backend-rag/obligations-register
+machine: Pro
+date: 2026-09-11
+
+gear: 1
+gear_reason: >-
+  The computed floor, measured before writing this line: `evidence_pack_lint.py --print-floor`
+  over the changed files gives 1, source `none` (no hot-zone path once the migration is deferred,
+  1257 lines is under the size term). With migration 309 in the diff the floor would be 3; the PR
+  that lands 309 must carry a Gear-3 brief and pack of its own.
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The catalog loads and every rule validates; unknown ops and attributes, impossible predicate
+    values, duplicate rule ids and duplicate YAML keys are refused.
+    probe: PYTHONPATH=.:../crm-cell pytest backend/tests/services/compliance/test_obligations_register.py -k catalog
+  A2: >-
+    Due dates are deterministic: weekend roll, month-end clamp, LKPM on calendar quarters for a
+    June fiscal year, SPT Tahunan Badan 4 months after fiscal year end, payment and return as
+    separate deadlines, start-inclusive and end-exclusive horizon, one_time/event rules produce
+    nothing.
+    probe: PYTHONPATH=.:../crm-cell pytest backend/tests/services/compliance/test_obligations_register.py
+  A3: >-
+    Re-proposing never resets a reviewed row (ON CONFLICT DO NOTHING) and the review UPDATE only
+    touches rows still in proposed (mock_db_pool; the real-table proof waits for 309).
+    probe: pytest ...::test_upsert_proposals_is_idempotent_and_never_resets_reviewed_rows
+
+out_of_scope: >-
+  Migration 309 itself (owner bypass). The reviewer queue router, admin gate, bridge into
+  compliance_alerts and scheduling (PR A2). National holidays in the business-day roll.
+  Declaring PyYAML as a direct requirement (pinned in the lockfiles as a transitive dependency;
+  lockfiles are forbidden in this lane).
