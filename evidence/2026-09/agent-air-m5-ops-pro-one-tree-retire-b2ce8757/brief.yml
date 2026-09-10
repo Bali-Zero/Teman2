@@ -69,14 +69,14 @@ assumptions:
       ~/.nuzantara-backups/deploy-tree-retire-20260910/.
   - assumption: >-
       The live repoint survives without this PR.
-    status: refuted
+    status: unverified # tested and found FALSE — see the evidence below
     evidence: >-
       At 20:29 WITA pro-healer logged "1 home-fork refresh (web-lead-funnel.plist,
       cmp-clean)" and launchctl print went back to showing the deploy path six minutes
       after the main-checkout path had been proven. Three of the 18 are declared pairs.
   - assumption: >-
       The weekly agents are proven by the same standard as the rest.
-    status: open
+    status: unverified
     evidence: >-
       wr3.reflexion.weekly and web-lead-funnel are proven statically only. Running them by
       hand sends the owner a Telegram report and spends LLM budget, which this lane was not
