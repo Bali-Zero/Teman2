@@ -1,0 +1,42 @@
+task_id: fable-max-sessions-0910
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Land the 2026-09-10 fable-max session board: the program README and the five
+  battle-window mandates (S1 ARM THE ARMER, S2 CUSTODY, S3 ARM THE AUDITORS,
+  S4 REAPER AND SIGNAL, S5 BRAIN THAT CAN FORGET) that Zero pastes into fresh
+  Opus 5 windows. The board is the cross-machine record of the five mother
+  diseases found by the 2026-09-10 organism audit and of the queue Zero opens
+  next. Version 3: corrected on two Codex adversarial rounds (gpt-5.6-sol,
+  REWORK twice), R1 frontmatter and "Adversarial review" sections added.
+constraints:
+  - >-
+    Docs only. Six files under research/operations/2026-09-10-fable-max-sessions/
+    and this brief; no code, no plist, no ledger row.
+  - >-
+    Every command in the six files runs as written: no angle-bracket placeholder
+    inside a code span. Every path cited exists at origin/main or is marked
+    "to be created".
+  - >-
+    Release commands stay bare `gh pr merge <N> --auto`. This repo's merge queue
+    rejects every strategy flag (scripts/queue_shepherd.py:819-821,
+    docs/runbooks/merge-queue-discipline.md:274-278); modus SKILL.md:100 is the
+    stale line and is listed as a separate fix.
+  - >-
+    No client PII, OSINT or credential in any of the six files.
+acceptance:
+  - >-
+    WHEN scripts/check_adversarial_review.py --files <the six files> runs, THEN
+    it exits 0 with "PASS — 6 research file(s) carry a valid adversarial
+    review". probe: R1 gate — adversarial review present (CI)
+  - >-
+    WHEN the Codex round-3 reviewer reads the v3 text against its own 17
+    round-2 findings, THEN none is UNRESOLVED and no file is REWORK.
+    probe: codex-round-3.md in this evidence directory
+  - >-
+    WHEN a window is opened from an S-file, THEN its first message restates
+    colour, Dux role, mandate id and worktree path from the header alone.
+    probe: the S1 and S2 windows opened 2026-09-10 ~22:55 WITA did so and
+    registered their worktrees in the broker (agent_start.py --list)
+pii_scan: clean
