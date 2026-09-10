@@ -383,6 +383,17 @@ struct SeatChip: View {
     }
 }
 
+/// Drag the widget from any point of the card; buttons keep their clicks.
+struct DragAnywhere: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 15, *) {
+            content.gesture(WindowDragGesture())
+        } else {
+            content
+        }
+    }
+}
+
 struct RootView: View {
     @ObservedObject var model: Model
 
@@ -460,6 +471,7 @@ struct RootView: View {
         .background(Palette.card)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .environment(\.colorScheme, .dark)
+        .modifier(DragAnywhere())
         .contextMenu {
             Button("Aggiorna adesso") { model.refresh() }
             Button(model.expanded ? "Riduci" : "Espandi") { model.expanded.toggle() }

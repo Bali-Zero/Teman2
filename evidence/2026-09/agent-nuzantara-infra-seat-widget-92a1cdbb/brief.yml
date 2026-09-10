@@ -1,0 +1,41 @@
+task_id: seat-widget
+gear: 2
+l_level: L1
+gate_class: opus
+grader: opus-gate-session
+objective: >-
+  Zero asked (2026-09-11, four rulings in one sitting): a desk widget showing quota used
+  and reset for the six Claude seats, refreshed by a button; in the real Claude colours
+  (orange card, white type); nailed to the desktop so it hides under app windows; collapsible
+  to a small square; draggable; installed on Pro and on M5. infra/seat-widget/ is one SwiftUI
+  file, a build script, an Info.plist and a README. Nothing else in the repo changes.
+
+  Gear 2 by SIZE, deterministically: 639 net lines across four new files. The path term is
+  1 (infra/seat-widget/ is not a hot zone); harness-floor.yml computed floor 2 on the first
+  push and failed for want of this brief. Declared 2, not argued down.
+constraints:
+  - >-
+    The widget never reads a token and never talks to the Anthropic endpoint. It shells out
+    to scripts/claude_seat_quota.py --json, the single measured source of quota on this
+    fleet, so the panel and the CLI table can never disagree. ANTHROPIC_API_KEY,
+    CLAUDE_CODE_OAUTH_TOKEN and CLAUDE_CONFIG_DIR are stripped from the child environment.
+  - >-
+    Quota is Keychain-backed and readable only where the logged-in profiles live (Pro).
+    M5's Keychain holds only stale Claude entries (measured 2026-09-11, every entry "no
+    access token"), so M5 runs the widget in remote mode: build.sh --remote pro, one host
+    name in ~/Library/Application Support/Claude Seats/remote, ssh -o BatchMode=yes.
+  - >-
+    The script and FLEET_TOPOLOGY.json are bundled into the .app at build time. The widget
+    must not depend on the state of any checkout; NUZANTARA_REPO is a development override.
+  - >-
+    Desktop level means CGWindowLevelForKey(.desktopIconWindow) + 1 with canJoinAllSpaces
+    and stationary: under every app window, on every Space, never in Mission Control.
+    Borderless, so quitting is a right-click menu item, not a close button.
+acceptance:
+  - ~/Library/Logs/SeatWidget.log on Pro carries an `ok … local seats=6` line stamped after the final build.
+  - ~/Library/Logs/SeatWidget.log on M5 carries an `ok … via pro seats=6` line stamped after the final build.
+  - A screenshot on Pro shows the orange card under an app window, and the collapsed square.
+budget:
+  hours: 3
+  adversarial_rounds: 1
+  tokens: 1500000
