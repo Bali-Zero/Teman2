@@ -1,0 +1,67 @@
+task_id: bot-rc3-citation-rule-exit
+gear: 2
+# Floor computed this run: `python3 scripts/evidence_pack_lint.py --print-floor
+# --changed-files-file ...` returns 1. Path term: no HOTZONE_PATTERNS hit
+# (backend/prompts/ is not a hot zone). Size term: the diff is far under
+# SIZE_GEAR2_THRESHOLD (400 churn). Declared ABOVE the floor on purpose: the
+# change edits the live WhatsApp bot's prompt SSOT, one of the off-limits
+# files (docs/rules/RULINGS.md), under an owner ruling. It gets a cross-family
+# adversarial spalla and a fresh Opus 5 on-disk gate commissioned by the
+# imperator: Gear-2 machinery, not a Gear-3 council.
+l_level: L2
+gate_class: opus
+base_sha: 19d47e938674b856039e53c541a03660673b3ef0 # pragma: allowlist secret - verified public Git commit
+objective: >-
+  Replace the `MANDATORY LAW CITATION` bullet of `CITATION_RULES` in
+  apps/backend-rag/backend/prompts/zantara_core.py with the paragraph Zero
+  ratified on 2026-09-11 (RULED Zero 2026-09-11: ZERO-DECISIONS §Item 3
+  ratified), byte-exact, so the bot cites a law only when a law is the basis
+  of the answer and has a licit way to cite nothing. Measured before (cycle
+  359, WhatsApp thread 30, 2026-09-01): a bank-transfer question closed with
+  PP 36/2021 (a wages regulation) and a passport-photo refusal cited
+  immigration law. Both are the old rule working as written.
+grader: >-
+  Fresh Opus 5 on-disk gate commissioned by the imperator on the head sha; no
+  verdict asserted here.
+constraints:
+  - "Only the MANDATORY LAW CITATION bullet moves; the LEGAL/MONEY and CHAT bullets stay byte-identical and nothing else in zantara_core.py changes."
+  - "The ratified wording is applied verbatim: extracted programmatically from the ZERO-DECISIONS §Item 3 fence, never retyped."
+  - "The new paragraph carries no curly braces: the templates go through str.format() (v1) and _safe_template_fill() (v2-v5)."
+acceptance:
+  - text: >-
+      WHEN any prompt version is built (v1-v4 master templates, the three v5
+      audience builds) or the WhatsApp codex-leg persona digest is assembled,
+      THEN it SHALL NOT contain "MANDATORY LAW CITATION" or "you MUST cite the
+      source law".
+    probe: PYTHONPATH=. pytest backend/tests/unit/prompts/test_citation_rule_exit.py
+  - text: >-
+      WHEN the same prompts are built, THEN each SHALL contain the ratified
+      bullet verbatim, the untouched LEGAL/MONEY and CHAT bullets, and the 📜
+      citation format for answers that do rest on a law.
+    probe: PYTHONPATH=. pytest backend/tests/unit/prompts/test_citation_rule_exit.py
+  - text: >-
+      WHEN CITATION_RULES goes through str.format() or _safe_template_fill(),
+      THEN the new bullet SHALL survive unchanged.
+    probe: PYTHONPATH=. pytest backend/tests/unit/prompts/test_citation_rule_exit.py
+  - text: >-
+      WHEN the live model answers the two cycle-359 questions, THEN no 📜 line
+      SHALL appear; WHEN it answers a substantive immigration or tax question,
+      THEN a 📜 line SHALL still appear. NOT PROVEN by this PR: it needs a live
+      model and belongs to the cycle-360 battery.
+    probe: cycle-360 battery on real WhatsApp delivery (not run here)
+consumer_map:
+  - "`backend/prompts/zantara_core.py::ZANTARA_MASTER_TEMPLATE` (v1)"
+  - "`backend/prompts/zantara_core_v2.py`, `zantara_core_v3.py`, `zantara_core_v4.py` master templates"
+  - "`backend/prompts/zantara_core_v5.py::CORE_FACTUAL` via `build_master_template` (client, team, creator)"
+  - "`backend/services/rag/agentic/wa_package_builder.py::_PERSONA_SECTIONS` via `_build_persona_digest` (the live WhatsApp codex leg)"
+risks:
+  - >-
+    The model may over-apply case (c) and drop citations on substantive
+    answers. The innocence half of the cycle-360 battery measures it.
+  - >-
+    A stale redacted copy of the old wording lives in
+    data/kb_sources/zantara_core_redacted.md (last touched 2026-03-28, no
+    runtime loader found by grep). Left out of this concern.
+pii: >-
+  none. The diff carries prompt text, test code and doc status lines only; the
+  cycle-359 questions are quoted generically with no client identifier.
