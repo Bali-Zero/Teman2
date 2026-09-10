@@ -84,19 +84,6 @@ def verify_debug_access(
                 role = (payload.get("role") or "").lower().strip()
                 if role in ("admin", "founder", "owner", "board", "board member", "ceo"):
                     return True
-                # Developer perimeter: reading runtime logs to debug production
-                # is not the same authority as administering the CRM book, so it
-                # gets its own allowlist instead of forcing a developer to be
-                # made a CRM admin (which would hand them the whole client book)
-                # or to be handed ADMIN_API_KEY (which is not revocable per
-                # person). Matched by EQUALITY on the normalised address, never
-                # as a substring or a domain suffix — cicatrix-superscar #3.
-                # `email` may be missing from a token; the empty string can never
-                # be in the set because the parser drops blank entries, and the
-                # explicit truthiness test says so rather than relying on it.
-                email = (payload.get("email") or "").lower().strip()
-                if email and email in settings.developer_emails_set:
-                    return True
         except Exception:
             # Not a valid admin JWT — fall through to the 401 below.
             logger.debug("debug access: bearer token is not a valid admin JWT")

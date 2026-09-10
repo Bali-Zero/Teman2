@@ -1033,13 +1033,18 @@ class Settings(BaseSettings):
     developer_emails: str | None = Field(
         default=None,
         description=(
-            "Comma-separated allowlist of developer addresses that may read the runtime "
-            "observability endpoints (/api/debug/*, /api/admin/logs/*) with their ordinary "
-            "team JWT. Set via DEVELOPER_EMAILS env var. Deliberately SEPARATE from "
-            "admin_emails: a developer needs to read logs to debug production, which is not "
-            "the same authority as administering the CRM book, and conflating the two would "
-            "force one to be widened to grant the other. Empty by default — an unset var "
-            "grants nobody, and revoking is removing the address from the list."
+            "Comma-separated allowlist of developer addresses that may read the five "
+            "read-only team-activity log endpoints under /api/admin/logs/* with their "
+            "ordinary team JWT, through admin_logs.verify_log_read_access. Set via "
+            "DEVELOPER_EMAILS env var. It grants NOTHING under /api/debug/* — that router "
+            "keeps its admin-only gate because it holds POST /api/debug/postgres/query "
+            "(caller-supplied SQL against production), DELETE /api/debug/traces and "
+            "POST /api/debug/profile; granting log access through it would have handed a "
+            "developer arbitrary SELECT over the client book. Deliberately SEPARATE from "
+            "admin_emails for the same reason: reading logs is not administering the CRM "
+            "book, and conflating them would force one to be widened to grant the other. "
+            "Empty by default — an unset var grants nobody, and revoking is removing the "
+            "address from the list."
         ),
     )
 
