@@ -1,0 +1,300 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  No ledger row: this diff was opened from a live measurement taken while preparing the
+  Subhi/Krisna/Ari portal pilot — the invitation link's base URL named a host that answers
+  404. One concern, one setting and the two halves that compose the link. This branch is a
+  RE-LAND: PR #6088 carried the same product code and was suspended under the three-reds
+  rule, every red about this pack rather than the code.
+
+lanes:
+  - lane: portal-url-ground
+    role: read
+    seat: >-
+      claude-opus-5 (conducting session, M5). Read FRONTEND_PORTAL_URL on the live machine,
+      confirmed fly.toml and fly secrets carry no such name, measured both hosts with curl on
+      the FULL registration path, read the mouth project's domain list, and counted the
+      invitation table in production (242 minted, 7 used, none since 2026-07-10).
+  - lane: portal-url-build
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session, M5). Three rounds on #6088. Round 1 changed the
+      default and pinned it with 4 cases. Round 2, on the cross-family findings, extracted the
+      service's path into INVITE_PATH_TEMPLATE and added a consumer-level test that runs the
+      real router with the real default. Round 3, on the gate's findings, moved the
+      trailing-slash normalisation off the router and onto the setting as a field_validator,
+      deleted the router's local rstrip and the duplicate fake it had needed, and aligned the
+      shared fixture with the service's own path template. This branch carries that code
+      unchanged, squashed into a single product commit with the pack landing separately.
+  - lane: portal-url-refute-crossfamily-1
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol, sandbox read-only, foreground. Read the diff and the repository.
+      4 findings, no blocker; 2 cured in the code, 1 declared, 1 named out of scope.
+      Verdict in journal.jsonl.
+  - lane: portal-url-refute-crossfamily-2
+    role: review
+    seat: >-
+      kimi-code/k3, single-shot prompt, read the repo itself rather than the diff text.
+      6 findings, no blocker; 1 cured (trailing slash), 3 declared, 1 out of scope, 1
+      refuted with the measurement it doubted. Verdict in journal.jsonl.
+  - lane: portal-url-gate-independent
+    role: review
+    seat: >-
+      claude-opus-5, independent Gear-3 gate, fresh dispatch in its own worktree, never reads
+      the build lane's reasoning. Four rounds on #6088; the fourth returned BLOCK under the
+      three-reds rule and directed the code onto a fresh branch. It re-gates this one.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane, so D3's non-Anthropic BUILD-seat requirement does not bind by its own
+  terms (">= 2 build lanes"). Both named non-Anthropic review seats delivered substantive,
+  non-overlapping judgements: codex found the test-design gap (the suite could stay green
+  while the real composition rotted) and kimi found the trailing-slash defect neither the
+  author nor codex saw. Two of their findings were cured in the code rather than argued with,
+  and one of kimi's was refuted with the measurement it questioned.
+
+diff:
+  files: 8
+  net_lines: 567
+  measured_at: >-
+    `git diff --numstat $(git merge-base origin/main HEAD)..HEAD` at merge-base ed07dda54c,
+    re-run immediately before the commit that lands this value — which replaces one line with
+    one line, so it does not move the total it reports. Most of the count is this evidence
+    pack; the product half is the same command with `-- apps/`, and the commit that carries
+    it states its own numstat in the log.
+
+residual_risks:
+  - >-
+    The production hostname is now the default in EVERY environment — named independently by
+    both review seats. NOT cured here: an environment-aware default would have to read
+    `settings.environment` from inside a field default, which pydantic does not do without a
+    validator, and adding one widens a one-setting diff into a config-machinery change. The
+    exposure is bounded: production sets FRONTEND_PORTAL_URL explicitly, and a dev machine that
+    mails a production link is a dev machine whose mail endpoint is deliberately dead.
+  - >-
+    Two sibling endpoints still report success without mailing anything:
+    `portal_invite.resend_invitation` returns "Invitation resent successfully" after minting a
+    NEW token (which expires the previous one) and never calls the mailer, and
+    `crm_portal_integration.send_portal_invite` returns "Invitation sent to <email>" while only
+    minting. Found by codex, verified on disk. Out of scope for a base-URL change, and neither
+    is reachable from the workspace panel — its "Send again" button calls
+    /api/portal/invite/send, which does mail. Recorded so the next reader does not discover it
+    the way this session did.
+  - >-
+    The tests assert a string, not liveness: if my.balizero.com itself ever stops serving
+    /portal/register, this suite stays green. A composed-link liveness probe belongs in the
+    deploy QA, not in a unit test, and is a separate change.
+  - >-
+    The dead `nuzantara-mouth.vercel.app` alias still appears in cors_config.py,
+    hybrid_auth.py and apps/mouth/src/lib/api/openapi.yaml. Harmless — an allowed origin that
+    resolves nowhere grants nothing — and removing it is a different concern.
+  - >-
+    The GARUDA outbox consumer has no consumer-level test of its own here. It no longer needs
+    one for the trailing slash — that normalisation moved onto the setting, so GARUDA inherits
+    it by construction rather than by remembering to repeat it — but nothing in this diff
+    exercises `outbox_handlers.py` end to end. Named by kimi, narrowed by the gate; declared.
+
+pii_scan: clean
+
+receipts_note: >-
+  Every receipt below was executed as written, in this window, on this branch at 80c1790989,
+  and its `result` is what that one command printed — nothing folded in from another
+  invocation. This is the discipline whose absence suspended #6088: its first receipt named a
+  `fly ssh` command that, re-executed, raised NameError and exited 1 while the receipt claimed
+  exit 0, and asserted UNSET for a variable that is now SET. The two `fly` receipts here
+  replace it, and the historical "it was unset when the defect was found" is recorded in the
+  journal as history, not as a receipt — a past observation is not re-executable and must not
+  be dressed as one.
+
+receipts:
+  - claim: "The old default is dead on every path; the new one serves the registration route"
+    cmd: >-
+      for U in https://nuzantara-mouth.vercel.app/ https://nuzantara-mouth.vercel.app/portal/register
+      "https://my.balizero.com/portal/register?token=x"; do printf "%s -> " "$U"; curl -s -o /dev/null
+      -w "%{http_code}\n" "$U"; done
+    result: |-
+      https://nuzantara-mouth.vercel.app/ -> 404
+      https://nuzantara-mouth.vercel.app/portal/register -> 404
+      https://my.balizero.com/portal/register?token=x -> 200
+    exit: 0
+    ts: "2026-09-10T10:53Z"
+    seat: session (M5)
+  - claim: >-
+      Production is cured ahead of this diff: the machine that serves the invite endpoint sets
+      FRONTEND_PORTAL_URL, so its LIVE value can no longer tell this PR apart from its absence
+    cmd: >-
+      fly ssh console -a nuzantara-rag -C env | grep -E "^(FRONTEND_PORTAL_URL|BACKEND_URL)="
+    result: "FRONTEND_PORTAL_URL=https://my.balizero.com  (BACKEND_URL is not set, hence one line)"
+    exit: 0
+    ts: "2026-09-10T11:05Z"
+    seat: session (M5)
+  - claim: >-
+      The DEFAULT still in force on the deployed machine is the dead alias — this is the
+      consumer observation, and it must move to https://my.balizero.com once this merge deploys
+    cmd: >-
+      B=$(python3 -c 'import base64; print(base64.b64encode(b"import os\nos.environ.pop(\"FRONTEND_PORTAL_URL\", None)\nfrom backend.app.core.config import Settings\nprint(\"DEFAULT=\" + Settings().frontend_portal_url)\n").decode())');
+      fly ssh console -a nuzantara-rag -C "python -cexec(__import__(\\\"base64\\\").b64decode(\\\"$B\\\"))"
+    result: "DEFAULT=https://nuzantara-mouth.vercel.app"
+    exit: 0
+    ts: "2026-09-10T11:08Z"
+    seat: session (M5)
+  - claim: >-
+      Innocence: the whole portal + GARUDA set is green, including every declared acceptance probe
+    cmd: >-
+      cd apps/backend-rag && /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/unit/app/test_config.py backend/tests/unit/routers/test_portal_invite.py
+      backend/tests/unit/routers/test_portal_invite_p0_capability.py
+      backend/tests/services/garuda_orders/test_portal_invite_handler.py
+      backend/tests/unit/app/routers/test_crm_portal_status_placeholder.py
+    result: "52 passed in 0.92s"
+    exit: 0
+    ts: "2026-09-10T10:56Z"
+    seat: session (M5)
+  - claim: >-
+      The second acceptance probe on its own: the consumer-level case that runs the real router
+      with the real default and asserts the composed link
+    cmd: >-
+      cd apps/backend-rag && /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
+      "backend/tests/unit/routers/test_portal_invite.py::test_mailed_link_uses_the_live_portal_default_and_the_real_path"
+    result: "1 passed in 0.20s"
+    exit: 0
+    ts: "2026-09-10T11:30Z"
+    seat: session (M5)
+  - claim: "The two files this diff edits are green on their own"
+    cmd: >-
+      cd apps/backend-rag && /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/unit/app/test_config.py backend/tests/unit/routers/test_portal_invite.py
+    result: "21 passed in 0.66s"
+    exit: 0
+    ts: "2026-09-10T10:56Z"
+    seat: session (M5)
+  - claim: "The two classes this diff adds are green on their own"
+    cmd: >-
+      cd apps/backend-rag && /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/unit/app/test_config.py::TestPortalInviteUrl
+      backend/tests/unit/app/test_config.py::TestPortalUrlTrailingSlash
+    result: "8 passed in 0.20s"
+    exit: 0
+    ts: "2026-09-10T10:56Z"
+    seat: session (M5)
+  - claim: "Guilt A — restoring the dead default fails 4 cases"
+    cmd: >-
+      cd apps/backend-rag && cp backend/app/core/config.py /tmp/g_cfg.py &&
+      sed -i "" "s|default=\"https://my.balizero.com\",|default=\"https://nuzantara-mouth.vercel.app\",|"
+      backend/app/core/config.py &&
+      /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/unit/app/test_config.py backend/tests/unit/routers/test_portal_invite.py ;
+      cp /tmp/g_cfg.py backend/app/core/config.py
+    result: >-
+      "4 failed, 17 passed in 0.49s" — the 3 TestPortalInviteUrl cases plus the consumer-level
+      test_mailed_link_uses_the_live_portal_default_and_the_real_path. The pytest exit code is
+      1; the trailing `cp` restores the file and would otherwise mask it, so it is read from
+      the pipeline status.
+    exit: 1
+    ts: "2026-09-10T11:14Z"
+    seat: session (M5)
+  - claim: "Guilt B — neutralising the validator fails 3 cases"
+    cmd: >-
+      cd apps/backend-rag && cp backend/app/core/config.py /tmp/g_cfg.py &&
+      sed -i "" "s|        return v.rstrip(\"/\")|        return v|" backend/app/core/config.py &&
+      /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/unit/app/test_config.py backend/tests/unit/routers/test_portal_invite.py ;
+      cp /tmp/g_cfg.py backend/app/core/config.py
+    result: >-
+      "3 failed, 18 passed in 0.47s" — the 3 TestPortalUrlTrailingSlash cases that carry a
+      slash. test_a_clean_base_is_left_alone stays green, which is the innocence half of the
+      same probe.
+    exit: 1
+    ts: "2026-09-10T11:14Z"
+    seat: session (M5)
+  - claim: "The code tree is byte-clean after both guilt probes"
+    cmd: "git status --porcelain -- apps/"
+    result: >-
+      empty — no output at all. Run AFTER the product commit 80c1790989, so the cure itself is
+      committed and anything printed here would be residue from a probe. Scoped to apps/ on
+      purpose: an unscoped run while this pack is being written also lists evidence/, which
+      would read as dirty for a reason unrelated to the probes.
+    exit: 0
+    ts: "2026-09-10T11:14Z"
+    seat: session (M5)
+  - claim: "No assertion in the test file still expects the stale /portal/invite path"
+    cmd: >-
+      grep -n "portal/invite?token=" apps/backend-rag/backend/tests/unit/routers/test_portal_invite.py
+    result: >-
+      one hit — "302:    fixture above used to mint `/portal/invite?token=`, a path" — inside a
+      docstring that records the drift as history. Zero assertions.
+    exit: 0
+    ts: "2026-09-10T11:14Z"
+    seat: session (M5)
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      The config cases reconstruct the expected URL by hand instead of invoking a consumer, and
+      the existing router tests assert a `/portal/invite?token=` link the service has not
+      produced for a long time — so the whole suite could pass while the real composition was
+      broken. CURED: the path is now a constant on the service (INVITE_PATH_TEMPLATE), and a
+      consumer-level case runs the real router with the real default, no monkeypatch.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      The Pydantic field description embedded dated production observations and incident
+      history, which will go stale in place. CURED: the description is contractual now and the
+      evidence lives in this pack.
+  - seat: codex-gpt-5.6-sol
+    status: RETRACTED
+    objection: >-
+      Sibling endpoints (resend_invitation, crm_portal_integration.send_portal_invite) claim
+      success without mailing. Verified true on disk, but a different defect from a base-URL
+      change and unreachable from the panel. Recorded in residual_risks.
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection: >-
+      No trailing-slash normalisation: the router concatenates base and path raw, so a base
+      ending in "/" would mail `//portal/register?token=...`, and every existing case used a
+      clean base. CURED — first at the composition point, then, on the gate's finding, on the
+      setting itself.
+  - seat: kimi-code/k3
+    status: RETRACTED
+    objection: >-
+      "200 on the root proves nothing about /portal/register?token=". The measurement was taken
+      on the full path, not the root, and is receipt 1 of this pack.
+  - seat: kimi-code/k3
+    status: RETRACTED
+    objection: >-
+      The dead alias lingers in cors_config.py, hybrid_auth.py and openapi.yaml. True and
+      harmless — an allowed origin that resolves nowhere grants nothing. Different concern.
+  - seat: claude-opus-5 (independent Gear-3 gate, round 1)
+    status: CONFIRMED
+    objection: >-
+      The trailing-slash cure sat inside the invite router, but `garuda_orders/outbox_handlers.py`
+      passes the same setting as `portal_base_url` and would still have mailed `//portal/...`.
+      CURED at the source: a `field_validator` on `frontend_portal_url`; the router's local
+      `rstrip` removed as redundant; the case moved into the settings suite, where it binds both
+      consumers. Also in the same round: the declared prove-live observation read
+      `settings.frontend_portal_url` on a machine that already sets the env var, so it would have
+      been green with or without the diff — CURED, the observation now pops the variable and
+      constructs Settings (receipt 3); and the shared FakeInviteService fixture still minted the
+      stale path — CURED, it reads INVITE_PATH_TEMPLATE.
+  - seat: claude-opus-5 (independent Gear-3 gate, rounds 2 and 3)
+    status: CONFIRMED
+    objection: >-
+      Nine findings across two rounds, every one about the pack rather than the code: an
+      acceptance probe naming a deleted test, a build lane narrating only the first round,
+      receipts carrying counts measured before the test existed, receipts written as prose where
+      a command belongs, an innocence result folding three invocations into one line, an
+      assumption contradicting its own risk entry, and a stale net_lines. Cured round by round
+      on #6088 and carried into this pack.
+  - seat: claude-opus-5 (independent Gear-3 gate, round 4 — BLOCK)
+    status: CONFIRMED
+    objection: >-
+      "Receipt 1 untouched: NameError/exit 1 vs exit:0, result UNSET but both vars SET. 3rd red
+      same cause — suspend, re-land code on a fresh branch." Right on all three counts: that
+      receipt's `fly ssh` command omitted `import os` and could never have exited 0, and the
+      variable it reported as UNSET had since been set. Three rounds of doc-only reds is the
+      signal the rule names. CURED by this branch: #6088 closed as superseded, the product code
+      re-landed unchanged in one commit, the broken receipt replaced by two that were executed
+      as written here (receipts 2 and 3), and every remaining receipt re-executed on this branch
+      rather than copied forward.
