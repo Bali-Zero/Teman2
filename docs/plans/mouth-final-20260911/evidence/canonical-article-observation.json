@@ -1,0 +1,387 @@
+{
+  "observedAt": "2026-09-10T18:10:24.023Z",
+  "baseSha": "2ee842d045bbcafd555a243218292f70079f102e",
+  "note": "19 noIndex sources plus one invalid category control. This is served metadata evidence, not a legal audit or a complete indexed corpus audit.",
+  "sitemapStatus": 200,
+  "results": [
+    {
+      "input": "apps/mouth/src/content/articles/digital-nomad/freelancing-legally-indonesia.mdx",
+      "slug": "freelancing-legally-indonesia",
+      "locale": "en",
+      "expectedTitle": "Freelancing Legally in Indonesia 2026: Complete Guide",
+      "url": "https://balizero.com/living/freelancing-legally-indonesia",
+      "status": 200,
+      "finalUrl": "https://balizero.com/living/freelancing-legally-indonesia",
+      "servedTitle": "How to Freelance Legally in Indonesia 2026: Visa, Permits &amp;...",
+      "h1": [
+        "Freelancing Legally in Indonesia 2026: Complete Guide",
+        "Freelancing Legally in Indonesia 2026: Complete Guide"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/living/freelancing-legally-indonesia\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/immigration/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now.fr.mdx",
+      "slug": "indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now",
+      "locale": "fr",
+      "expectedTitle": "Visa Second Home Indonésie 2026 : l’essentiel pour expatriés aisés",
+      "url": "https://balizero.com/visas/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now?lang=fr",
+      "status": 200,
+      "finalUrl": "https://balizero.com/visas/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now?lang=fr",
+      "servedTitle": "Visa Second Home Indonésie 2026 : l’essentiel pour expatriés aisés",
+      "h1": [
+        "Visa Second Home Indonésie 2026 : l’essentiel pour expatriés aisés"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/visas/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/immigration/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now.id.mdx",
+      "slug": "indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now",
+      "locale": "id",
+      "expectedTitle": "Visa Second Home Indonesia 2026: Apa yang Perlu Diketahui Ekspatriat Kaya Sekarang",
+      "url": "https://balizero.com/visas/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now?lang=id",
+      "status": 200,
+      "finalUrl": "https://balizero.com/visas/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now?lang=id",
+      "servedTitle": "Visa Second Home Indonesia 2026 | Panduan Lengkap",
+      "h1": [
+        "Visa Second Home Indonesia 2026: Apa yang Perlu Diketahui Ekspatriat Kaya Sekarang"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/visas/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/immigration/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now.it.mdx",
+      "slug": "indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now",
+      "locale": "it",
+      "expectedTitle": "Second Home Visa Indonesia 2026: Cosa Devono Sapere gli Espatriati Facoltosi Ora",
+      "url": "https://balizero.com/visas/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now?lang=it",
+      "status": 200,
+      "finalUrl": "https://balizero.com/visas/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now?lang=it",
+      "servedTitle": "Second Home Visa Indonesia 2026 | Guida Espatriati",
+      "h1": [
+        "Second Home Visa Indonesia 2026: Cosa Devono Sapere gli Espatriati Facoltosi Ora"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/visas/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/immigration/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now.mdx",
+      "slug": "indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now",
+      "locale": "en",
+      "expectedTitle": "Indonesia Second Home Visa 2026: What Wealthy Expats Need to Know Now",
+      "url": "https://balizero.com/visas/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now",
+      "status": 200,
+      "finalUrl": "https://balizero.com/visas/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now",
+      "servedTitle": "Indonesia Second Home Visa 2026: What Wealthy Expats Need...",
+      "h1": [
+        "Indonesia Second Home Visa 2026: What Wealthy Expats Need to Know Now"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/visas/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/immigration/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now.ru.mdx",
+      "slug": "indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now",
+      "locale": "ru",
+      "expectedTitle": "Виза Second Home в Индонезии 2026: главное для состоятельных экспатов",
+      "url": "https://balizero.com/visas/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now?lang=ru",
+      "status": 200,
+      "finalUrl": "https://balizero.com/visas/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now?lang=ru",
+      "servedTitle": "Виза Second Home в Индонезии 2026: главное для состоятельных экспатов",
+      "h1": [
+        "Виза Second Home в Индонезии 2026: главное для состоятельных экспатов"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/visas/indonesia-second-home-visa-2026-what-wealthy-expats-need-to-know-now\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/immigration/indonesias-second-home-visa-kitas-e33-the-complete-2025-framework.id.mdx",
+      "slug": "indonesias-second-home-visa-kitas-e33-the-complete-2025-framework",
+      "locale": "id",
+      "expectedTitle": "Indonesia's Second Home Visa KITAS E33: The Complete 2025 Framework",
+      "url": "https://balizero.com/visas/indonesias-second-home-visa-kitas-e33-the-complete-2025-framework?lang=id",
+      "status": 200,
+      "finalUrl": "https://balizero.com/visas/indonesias-second-home-visa-kitas-e33-the-complete-2025-framework?lang=id",
+      "servedTitle": "Indonesia&#x27;s Second Home Visa KITAS E33: The Complete 2025...",
+      "h1": [
+        "Indonesia&#x27;s Second Home Visa KITAS E33: The Complete 2025 Framework"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/visas/indonesias-second-home-visa-kitas-e33-the-complete-2025-framework\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/immigration/indonesias-second-home-visa-kitas-e33-the-complete-2025-framework.it.mdx",
+      "slug": "indonesias-second-home-visa-kitas-e33-the-complete-2025-framework",
+      "locale": "it",
+      "expectedTitle": "Indonesia's Second Home Visa KITAS E33: The Complete 2025 Framework",
+      "url": "https://balizero.com/visas/indonesias-second-home-visa-kitas-e33-the-complete-2025-framework?lang=it",
+      "status": 200,
+      "finalUrl": "https://balizero.com/visas/indonesias-second-home-visa-kitas-e33-the-complete-2025-framework?lang=it",
+      "servedTitle": "Indonesia&#x27;s Second Home Visa KITAS E33: The Complete 2025...",
+      "h1": [
+        "Indonesia&#x27;s Second Home Visa KITAS E33: The Complete 2025 Framework"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/visas/indonesias-second-home-visa-kitas-e33-the-complete-2025-framework\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/immigration/indonesias-second-home-visa-kitas-e33-the-complete-2025-framework.mdx",
+      "slug": "indonesias-second-home-visa-kitas-e33-the-complete-2025-framework",
+      "locale": "en",
+      "expectedTitle": "Indonesia's Second Home Visa KITAS E33: The Complete 2025 Framework",
+      "url": "https://balizero.com/visas/indonesias-second-home-visa-kitas-e33-the-complete-2025-framework",
+      "status": 200,
+      "finalUrl": "https://balizero.com/visas/indonesias-second-home-visa-kitas-e33-the-complete-2025-framework",
+      "servedTitle": "Indonesia&#x27;s Second Home Visa KITAS E33: The Complete 2025...",
+      "h1": [
+        "Indonesia&#x27;s Second Home Visa KITAS E33: The Complete 2025 Framework"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/visas/indonesias-second-home-visa-kitas-e33-the-complete-2025-framework\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/immigration/indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded.id.mdx",
+      "slug": "indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded",
+      "locale": "id",
+      "expectedTitle": "Indonesia's Second Home Visa: The 5-Year and 10-Year KITAS Fully Decoded",
+      "url": "https://balizero.com/visas/indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded?lang=id",
+      "status": 200,
+      "finalUrl": "https://balizero.com/visas/indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded?lang=id",
+      "servedTitle": "Indonesia&#x27;s Second Home Visa: The 5-Year and 10-Year KITAS...",
+      "h1": [
+        "Indonesia&#x27;s Second Home Visa: The 5-Year and 10-Year KITAS Fully Decoded"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/visas/indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/immigration/indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded.it.mdx",
+      "slug": "indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded",
+      "locale": "it",
+      "expectedTitle": "Indonesia's Second Home Visa: The 5-Year and 10-Year KITAS Fully Decoded",
+      "url": "https://balizero.com/visas/indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded?lang=it",
+      "status": 200,
+      "finalUrl": "https://balizero.com/visas/indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded?lang=it",
+      "servedTitle": "Indonesia&#x27;s Second Home Visa: The 5-Year and 10-Year KITAS...",
+      "h1": [
+        "Indonesia&#x27;s Second Home Visa: The 5-Year and 10-Year KITAS Fully Decoded"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/visas/indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/immigration/indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded.mdx",
+      "slug": "indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded",
+      "locale": "en",
+      "expectedTitle": "Indonesia's Second Home Visa: The 5-Year and 10-Year KITAS Fully Decoded",
+      "url": "https://balizero.com/visas/indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded",
+      "status": 200,
+      "finalUrl": "https://balizero.com/visas/indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded",
+      "servedTitle": "Indonesia&#x27;s Second Home Visa: The 5-Year and 10-Year KITAS...",
+      "h1": [
+        "Indonesia&#x27;s Second Home Visa: The 5-Year and 10-Year KITAS Fully Decoded"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/visas/indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/immigration/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm.fr.mdx",
+      "slug": "live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm",
+      "locale": "fr",
+      "expectedTitle": "Séjourner durablement en Indonésie | Second Home et Golden Visa - PNB Immigration Law Firm",
+      "url": "https://balizero.com/visas/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm?lang=fr",
+      "status": 200,
+      "finalUrl": "https://balizero.com/visas/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm?lang=fr",
+      "servedTitle": "Séjourner durablement en Indonésie | Second Home et Golden Visa - PNB Immigration Law Firm",
+      "h1": [
+        "Séjourner durablement en Indonésie | Second Home et Golden Visa - PNB Immigration Law Firm"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/visas/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/immigration/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm.id.mdx",
+      "slug": "live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm",
+      "locale": "id",
+      "expectedTitle": "Tinggal Jangka Panjang di Indonesia | Visa Second Home & Golden Visa - Konsultan Hukum Imigrasi PNB",
+      "url": "https://balizero.com/visas/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm?lang=id",
+      "status": 200,
+      "finalUrl": "https://balizero.com/visas/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm?lang=id",
+      "servedTitle": "Second Home &amp; Golden Visa Indonesia 2026: Panduan",
+      "h1": [
+        "Tinggal Jangka Panjang di Indonesia | Visa Second Home &amp; Golden Visa - Konsultan Hukum Imigrasi PNB"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/visas/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/immigration/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm.it.mdx",
+      "slug": "live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm",
+      "locale": "it",
+      "expectedTitle": "Vivere a Lungo Termine in Indonesia | Second Home & Golden Visa - Studio Legale Immigrazione PNB",
+      "url": "https://balizero.com/visas/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm?lang=it",
+      "status": 200,
+      "finalUrl": "https://balizero.com/visas/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm?lang=it",
+      "servedTitle": "Second Home e Golden Visa Indonesia 2026: Guida",
+      "h1": [
+        "Vivere a Lungo Termine in Indonesia | Second Home &amp; Golden Visa - Studio Legale Immigrazione PNB"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/visas/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/immigration/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm.mdx",
+      "slug": "live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm",
+      "locale": "en",
+      "expectedTitle": "Live Long-Term in Indonesia | Second Home & Golden Visa - PNB Immigration Law Firm",
+      "url": "https://balizero.com/visas/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm",
+      "status": 200,
+      "finalUrl": "https://balizero.com/visas/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm",
+      "servedTitle": "Live Long-Term in Indonesia | Second Home &amp; Golden Visa -...",
+      "h1": [
+        "Live Long-Term in Indonesia | Second Home &amp; Golden Visa - PNB Immigration Law Firm"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/visas/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/immigration/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm.ru.mdx",
+      "slug": "live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm",
+      "locale": "ru",
+      "expectedTitle": "Долгосрочное проживание в Индонезии | Second Home и Golden Visa - PNB Immigration Law Firm",
+      "url": "https://balizero.com/visas/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm?lang=ru",
+      "status": 200,
+      "finalUrl": "https://balizero.com/visas/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm?lang=ru",
+      "servedTitle": "Долгосрочное проживание в Индонезии | Second Home и Golden Visa - PNB Immigration Law Firm",
+      "h1": [
+        "Долгосрочное проживание в Индонезии | Second Home и Golden Visa - PNB Immigration Law Firm"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/visas/live-long-term-in-indonesia-second-home-golden-visa-pnb-immigration-law-firm\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/lifestyle/education-expat-children.mdx",
+      "slug": "education-expat-children",
+      "locale": "en",
+      "expectedTitle": "Schools for Expat Children Indonesia 2026: Education Guide",
+      "url": "https://balizero.com/living/education-expat-children",
+      "status": 200,
+      "finalUrl": "https://balizero.com/living/education-expat-children",
+      "servedTitle": "Schools for Expat Children in Bali &amp; Indonesia 2026: IB,...",
+      "h1": [
+        "Schools for Expat Children Indonesia 2026: Education Guide",
+        "Schools for Expat Children Indonesia 2026: Education Guide"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/living/education-expat-children\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "input": "apps/mouth/src/content/articles/lifestyle/living-in-bali-honest-guide.mdx",
+      "slug": "living-in-bali-honest-guide",
+      "locale": "en",
+      "expectedTitle": "Living in Bali: The Honest Guide 2026",
+      "url": "https://balizero.com/living/living-in-bali-honest-guide",
+      "status": 200,
+      "finalUrl": "https://balizero.com/living/living-in-bali-honest-guide",
+      "servedTitle": "Living in Bali 2026 | Honest Expat Guide",
+      "h1": [
+        "Living in Bali: The Honest Guide 2026",
+        "Living in Bali: The Honest Guide 2026"
+      ],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com/living/living-in-bali-honest-guide\"/>",
+      "notFound": false,
+      "sitemapContainsSlug": false
+    },
+    {
+      "negative": true,
+      "url": "https://balizero.com/blog/indonesias-second-home-visa-kitas-e33-the-complete-2025-framework",
+      "status": 200,
+      "finalUrl": "https://balizero.com/blog/indonesias-second-home-visa-kitas-e33-the-complete-2025-framework",
+      "servedTitle": "Page not found",
+      "h1": [],
+      "robots": [
+        "<meta name=\"robots\" content=\"noindex, nofollow\"/>",
+        "<meta name=\"robots\" content=\"noindex\"/>"
+      ],
+      "canonical": "<link rel=\"canonical\" href=\"https://balizero.com\"/>",
+      "notFound": true,
+      "sitemapContainsSlug": null
+    }
+  ]
+}

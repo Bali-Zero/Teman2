@@ -1,0 +1,21 @@
+# Decisioni di Zero per le finestre — 2026-09-11
+
+Compilato da Fable 5.1 su delega esplicita di Zero («fai tu», 2026-09-11 ~04:10 WITA). Zero può
+sovrascrivere qualsiasi riga in qualsiasi momento: la finestra rilegge questo file prima di ogni PR.
+Regola: una decisione NON scritta qui è MANCANTE; la finestra finisce ciò che non ne dipende, poi si ferma e riporta.
+
+| ID | Decisione | Blocca | RISPOSTA |
+|---|---|---|---|
+| D1 | Stesura in finestra della copy EN/ID per i 29 codici review senza testo | PR-O2 | **SÌ.** La finestra scrive; refuter Codex + gate Opus giudicano; nomi prodotto verbatim dal pack; UNKNOWN mai scritto come esclusione; nessun prezzo/tempo/claim nuovo. Zero non revisiona. |
+| D2 | Hold ACTIVITY_BOUNDARY (13 walk) e AMBIGUOUS_SPONSOR (16 walk): restano o si stringono | nulla | **RESTANO per ora.** Disposizione evidence-based dopo PR-O1 (census con flag per walk). Se la finestra ritiene che una hold sia più larga della regola che la giustifica, lo RIPORTA come nuovo mandato (adapter o fold seq-21 con cerimonia su M5): non la stringe da sola. |
+| D3 | `NEXT_PUBLIC_VISA_ORACLE_WHATSAPP_NUMBER` su Vercel `mouth` Production | chiusura handoff | **NON ORA.** Numero e consenso sono di Zero. La finestra tratta il contatto non configurato come impedimento esplicito: fallback neutro per il visitatore (PR-O4), mai un recapito inventato, mai una fixture positiva. |
+| D4 | Identità sito: D-A (R19 Direction A) o D-B (solo composizione) | W7 | **RINVIATA A ZERO.** Astra e topic 5 consigliano D-A. Nel frattempo W2 Team procede in D-B (colori/font attuali). W7 NON parte finché Zero non scrive qui «D-A» o «D-B». |
+| D5 | Denominatore, target di decisività, classi di review ammesse | accettazione PR-O3/PR-O4 | **Denominatore:** i 67 walk del corpus + le estensioni dichiarate (unsure, sponsor straniero, review gate, fonte non corrente), misurati con i flag reali del frontend e senza, a `signed_at` (gate) e orologio corrente (informativo). **Target:** (a) verdetti decisivi (SUPPORTED + NO_SUPPORTED_PATH) con flag ≥ 38/67, cioè nessuna regressione dal baseline; senza flag ≥ 57/67 dopo Δ1 (da MISURARE: se la misura contraddice, STOP e riporta); (b) NEEDS_INPUT senza domanda raggiungibile = 0, prima e dopo gli adattatori di disclosure; (c) 100% delle review residue con causa specifica EN/ID visibile nella OutcomeSheet, zero frase generica per un codice conosciuto. **Classi ammesse:** tutti i codici dell'inventario derivato (pack REQUIRE_REVIEW + on_unknown=HUMAN_REVIEW + emitter backend), purché con copy dedicata; nessun target artificiale sulla percentuale di review: ridurle passa solo da D2. «Quasi sempre» NON è un criterio: questi tre numeri lo sono. |
+| D6 | Δ1 (PR-O3: `family_sponsor_confirmed` chiesto su retirement/property e undecided) · Δ2 (PR-O4: spiega la causa della review + fallback neutro contatto) | PR-O3, PR-O4 | **Δ1: SÌ. Δ2: SÌ.** Perimetro esatto come spec §2: Δ1 apre `flow.ts`/`tree.ts` + corpus walk; Δ2 apre contenuto/markup di `OutcomeSheet.tsx`, `i18n.ts`, `outcome-fallbacks.ts`, testo di `ConsentHandoff.tsx`. `oracle.css` resta READ-ONLY anche sotto Δ2: un bisogno di stile è un ulteriore delta da riportare, non da prendere. |
+| M | Slot motori: solo Oracle o anche Studio | coda motori | **SOLO ORACLE** in questo lancio. Studio W1→W3 solo su nuova istruzione di Zero. |
+
+Note di Fable:
+- Baseline misurato 2026-09-11 (pack seq-20 v2026.9.6): senza flag 55/10/2 su 67; con flag reali 31/7/0/29. I due NEEDS_INPUT sono offshore/retirement/{property,undecided}/age64 su `family.sponsor_confirmed`; con i flag diventano review ACTIVITY_BOUNDARY, quindi Δ1 non li sposta nel conteggio con flag: per questo il target (a) con flag è «nessuna regressione», non un aumento.
+- Nota operativa per la finestra: su ogni PR gear ≥ 2 il check «Harness floor recompute» resta rosso finché il gate fresco non posta `harness/fable-gate` sul HEAD, poi `gh run rerun` del run pull_request originale (runbook `docs/runbooks/merge-queue-discipline.md` §6septies). Non è un rosso del codice: non toccare il branch per farlo passare.
+- Il file `08-WEBSITE-ADDENDUM-topic5.md` nel kit riguarda solo lo slot website (D4, W2, W7): non allarga il perimetro Oracle.
+- Rischi residui non di codice restano di Zero: DPIA v2 due righe High, gold replay non rimisurato su seq-20, firma manuale del team.

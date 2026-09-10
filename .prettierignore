@@ -151,3 +151,10 @@ docs/scars/cicatrix-scars-archive.md
 # W112 class as cicatrix-superscar.md above).
 docs/rules/RULINGS.md
 docs/rules/operations.md
+
+# docs/plans/mouth-final-20260911: external-seat package (Astra) pinned byte-identical by sha256 in FINAL.md
+# and in the Mini launch kit, plus raw panel outputs and kit snapshots — formatting them would break the pins.
+docs/plans/mouth-final-20260911/README.md
+docs/plans/mouth-final-20260911/LAUNCH.md
+docs/plans/mouth-final-20260911/W[0-7]-*.md
+docs/plans/mouth-final-20260911/evidence/**
