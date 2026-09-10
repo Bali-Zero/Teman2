@@ -15,20 +15,25 @@
 import AppKit
 import SwiftUI
 
-// MARK: - Palette (claude.ai tones)
+// MARK: - Palette (Claude orange card, white type)
 
 enum Palette {
-    static let ivory = Color(red: 0.980, green: 0.976, blue: 0.961)   // #FAF9F5 card
-    static let cloud = Color(red: 0.910, green: 0.902, blue: 0.863)   // #E8E6DC track/border
-    static let ink = Color(red: 0.078, green: 0.078, blue: 0.075)     // #141413 text
-    static let slate = Color(red: 0.420, green: 0.412, blue: 0.400)   // #6B6966 secondary
-    static let kraft = Color(red: 0.831, green: 0.635, blue: 0.498)   // #D4A27F calm
-    static let clay = Color(red: 0.851, green: 0.467, blue: 0.341)    // #D97757 Claude orange
-    static let ember = Color(red: 0.690, green: 0.255, blue: 0.243)   // #B0413E saturated
+    static let clay = Color(red: 0.851, green: 0.467, blue: 0.341)     // #D97757 Claude orange
+    static let clayDeep = Color(red: 0.788, green: 0.392, blue: 0.259) // #C96442 claude.ai button
+    static let ink = Color(red: 0.078, green: 0.078, blue: 0.075)      // #141413 "full" bar
+    static let text = Color.white
+    static let muted = Color.white.opacity(0.85)
+    static let track = Color.white.opacity(0.28)
+    static let line = Color.white.opacity(0.35)
 
+    static var card: LinearGradient {
+        LinearGradient(colors: [clay, clayDeep], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+
+    /// White while a window fills; ink once it is effectively gone (≥ 85 %).
     static func usage(_ v: Double?) -> Color {
-        guard let v else { return cloud }
-        return v >= 85 ? ember : v >= 50 ? clay : kraft
+        guard let v else { return track }
+        return v >= 85 ? ink : text
     }
 }
 
@@ -201,6 +206,12 @@ final class Model: ObservableObject {
     @Published var updatedAt: Date?
     @Published var loading = false
     @Published var source = ""
+    @Published var expanded: Bool = UserDefaults.standard.object(forKey: "expanded") as? Bool ?? true {
+        didSet {
+            UserDefaults.standard.set(expanded, forKey: "expanded")
+            onChange?()
+        }
+    }
     var onChange: (() -> Void)?
     private var timer: Timer?
 
@@ -298,17 +309,17 @@ struct QuotaBar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 5) {
-                Text(label).font(.system(size: 10, weight: .bold)).foregroundStyle(Palette.slate)
+                Text(label).font(.system(size: 10, weight: .bold)).foregroundStyle(Palette.muted)
                 Text(Fmt.pct(pct))
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(pct == nil ? Palette.slate : Palette.usage(pct))
+                    .foregroundStyle(pct == nil ? Palette.muted : Palette.usage(pct))
                 Spacer(minLength: 2)
                 Text("↻ " + Fmt.reset(reset, weekly: weekly))
-                    .font(.system(size: 10)).foregroundStyle(Palette.slate).lineLimit(1)
+                    .font(.system(size: 10)).foregroundStyle(Palette.muted).lineLimit(1)
             }
             GeometryReader { g in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Palette.cloud)
+                    Capsule().fill(Palette.track)
                     Capsule().fill(Palette.usage(pct))
                         .frame(width: g.size.width * CGFloat(min(max(pct ?? 0, 0), 100)) / 100)
                 }
@@ -327,13 +338,13 @@ struct SeatRow: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(seat.seat ?? "?")
                     .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(Palette.ink)
+                    .foregroundStyle(Palette.text)
                 Text(seat.shortAccount)
-                    .font(.system(size: 10)).foregroundStyle(Palette.slate).lineLimit(1)
+                    .font(.system(size: 10)).foregroundStyle(Palette.muted).lineLimit(1)
             }
             .frame(width: 118, alignment: .leading)
             if let e = seat.error {
-                Text(e).font(.system(size: 11)).foregroundStyle(Palette.ember).lineLimit(2)
+                Text(e).font(.system(size: 11)).foregroundStyle(Palette.text).lineLimit(2)
                 Spacer()
             } else {
                 QuotaBar(label: "5h", pct: seat.sessionPct, reset: seat.sessionResetsAt, weekly: false)
@@ -344,94 +355,169 @@ struct SeatRow: View {
     }
 }
 
+struct SeatChip: View {
+    let seat: Seat
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
+                Text((seat.seat ?? "?").split(separator: "/").first.map(String.init) ?? "?")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(Palette.muted)
+                Spacer(minLength: 0)
+                Text(seat.error == nil ? Fmt.pct(seat.sessionPct) : "!")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Palette.usage(seat.sessionPct))
+            }
+            GeometryReader { g in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Palette.track)
+                    Capsule().fill(Palette.usage(seat.sessionPct))
+                        .frame(width: g.size.width * CGFloat(min(max(seat.sessionPct ?? 0, 0), 100)) / 100)
+                }
+            }
+            .frame(height: 3)
+        }
+        .frame(width: 62)
+        .help("\(seat.seat ?? "?") \(seat.shortAccount) — 5h \(Fmt.pct(seat.sessionPct)) ↻ \(Fmt.reset(seat.sessionResetsAt, weekly: false)) · 7g \(Fmt.pct(seat.weeklyPct))")
+    }
+}
+
 struct RootView: View {
     @ObservedObject var model: Model
 
+    var header: some View {
+        HStack(spacing: 6) {
+            Circle().fill(Palette.text).frame(width: 8, height: 8)
+            Text(model.expanded ? "Claude seats" : "Claude")
+                .font(.system(size: model.expanded ? 15 : 13, weight: .medium, design: .serif))
+                .foregroundStyle(Palette.text)
+                .onTapGesture { model.expanded.toggle() }
+            Spacer(minLength: 4)
+            if model.expanded, let t = model.updatedAt {
+                Text("agg. " + Fmt.hm.string(from: t) + (model.source == "local" ? "" : " · " + model.source))
+                    .font(.system(size: 10)).foregroundStyle(Palette.muted)
+            }
+            if model.loading {
+                ProgressView().controlSize(.mini).tint(.white)
+            } else {
+                Button { model.refresh() } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Palette.text)
+                }
+                .buttonStyle(.borderless)
+                .help("Aggiorna adesso")
+            }
+            Button { model.expanded.toggle() } label: {
+                Image(systemName: model.expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Palette.text)
+            }
+            .buttonStyle(.borderless)
+            .help(model.expanded ? "Riduci" : "Espandi")
+        }
+        .frame(minHeight: 22)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Circle().fill(Palette.clay).frame(width: 10, height: 10)
-                Text("Claude seats")
-                    .font(.system(size: 16, weight: .medium, design: .serif))
-                    .foregroundStyle(Palette.ink)
-                Spacer()
-                if let t = model.updatedAt {
-                    Text("agg. " + Fmt.hm.string(from: t) + (model.source == "local" ? "" : " · " + model.source))
-                        .font(.system(size: 10)).foregroundStyle(Palette.slate)
-                }
-                if model.loading {
-                    ProgressView().controlSize(.small)
+            header
+            if model.expanded {
+                Rectangle().fill(Palette.line).frame(height: 1)
+                if model.seats.isEmpty {
+                    Text(model.loading ? "misuro i sei seat…" : (model.note ?? "nessun dato"))
+                        .font(.system(size: 12)).foregroundStyle(Palette.muted)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 40)
                 } else {
-                    Button { model.refresh() } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Palette.clay)
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Aggiorna adesso")
+                    ForEach(model.seats) { SeatRow(seat: $0) }
                 }
-            }
-            Rectangle().fill(Palette.cloud).frame(height: 1)
-            if model.seats.isEmpty {
-                Text(model.loading ? "misuro i sei seat…" : (model.note ?? "nessun dato"))
-                    .font(.system(size: 12)).foregroundStyle(Palette.slate)
+                if !model.seats.isEmpty, let n = model.note {
+                    Text(n).font(.system(size: 10)).foregroundStyle(Palette.text).lineLimit(2)
+                }
+                if model.hidden > 0 {
+                    Text("\(model.hidden) vecchi login ignorati")
+                        .font(.system(size: 10)).foregroundStyle(Palette.muted.opacity(0.8))
+                }
+            } else if model.seats.isEmpty {
+                Text(model.loading ? "misuro…" : "nessun dato")
+                    .font(.system(size: 11)).foregroundStyle(Palette.muted)
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 40)
+                    .padding(.vertical, 24)
             } else {
-                ForEach(model.seats) { SeatRow(seat: $0) }
-            }
-            if !model.seats.isEmpty, let n = model.note {
-                Text(n).font(.system(size: 10)).foregroundStyle(Palette.ember).lineLimit(2)
-            }
-            if model.hidden > 0 {
-                Text("\(model.hidden) vecchi login ignorati")
-                    .font(.system(size: 10)).foregroundStyle(Palette.slate.opacity(0.7))
+                LazyVGrid(columns: [GridItem(.fixed(62), spacing: 10), GridItem(.fixed(62), spacing: 0)],
+                          alignment: .leading, spacing: 9) {
+                    ForEach(model.seats) { SeatChip(seat: $0) }
+                }
+                .padding(.top, 2)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 26)
-        .padding(.bottom, 12)
-        .frame(width: 560, alignment: .top)
-        .background(Palette.ivory)
-        .environment(\.colorScheme, .light)
+        .padding(.horizontal, 12)
+        .padding(.top, 9)
+        .padding(.bottom, model.expanded ? 12 : 11)
+        .frame(width: model.expanded ? 560 : 158, alignment: .top)
+        .background(Palette.card)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .environment(\.colorScheme, .dark)
+        .contextMenu {
+            Button("Aggiorna adesso") { model.refresh() }
+            Button(model.expanded ? "Riduci" : "Espandi") { model.expanded.toggle() }
+            Divider()
+            Button("Esci") { NSApp.terminate(nil) }
+        }
     }
 }
 
 // MARK: - App
 
+/// Borderless panels refuse key status by default; the ↻ button needs it for a first click.
+final class WidgetPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let model = Model()
-    var panel: NSPanel!
+    var panel: WidgetPanel!
     var host: NSHostingView<RootView>!
 
-    /// Keep the panel exactly as tall as its content, anchored at the top edge.
+    /// Size the panel to its content. The top edge stays put; the horizontal anchor is the
+    /// screen edge the panel is nearer to, so a corner widget collapses into its corner.
     func fit() {
-        let h = host.fittingSize.height
-        guard h > 0, abs(panel.frame.height - h) > 1 else { return }
+        let size = host.fittingSize
+        guard size.width > 0, size.height > 0 else { return }
         var f = panel.frame
-        f.origin.y = f.maxY - h
-        f.size.height = h
+        if abs(f.width - size.width) < 1, abs(f.height - size.height) < 1 { return }
+        let screen = panel.screen ?? NSScreen.main
+        let anchorRight = screen.map { f.midX > $0.frame.midX } ?? false
+        let maxX = f.maxX, maxY = f.maxY
+        f.size = size
+        f.origin.y = maxY - size.height
+        if anchorRight { f.origin.x = maxX - size.width }
         panel.setFrame(f, display: true, animate: false)
     }
 
     func applicationDidFinishLaunching(_ note: Notification) {
         host = NSHostingView(rootView: RootView(model: model))
         host.sizingOptions = [.intrinsicContentSize]
-        model.onChange = { [weak self] in DispatchQueue.main.async { self?.fit() } }
-        panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 560, height: 320),
-                        styleMask: [.titled, .closable, .nonactivatingPanel, .utilityWindow, .fullSizeContentView],
-                        backing: .buffered, defer: false)
+        model.onChange = { [weak self] in
+            DispatchQueue.main.async { self?.fit() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { self?.fit() }
+        }
+        panel = WidgetPanel(contentRect: NSRect(x: 0, y: 0, width: 560, height: 320),
+                            styleMask: [.borderless, .nonactivatingPanel],
+                            backing: .buffered, defer: false)
         panel.title = "Claude seats"
-        panel.titleVisibility = .hidden
-        panel.titlebarAppearsTransparent = true
         panel.isMovableByWindowBackground = true
-        panel.level = .floating
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        // Nailed to the desktop: one notch above the Finder icons, under every app window.
+        panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
+        panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
         panel.isOpaque = false
         panel.backgroundColor = .clear
+        panel.hasShadow = true
         panel.delegate = self
         panel.contentView = host
         panel.setFrameAutosaveName("ClaudeSeatsPanel")
@@ -439,7 +525,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let v = screen.visibleFrame
             panel.setFrameOrigin(NSPoint(x: v.maxX - 560 - 24, y: v.maxY - 320 - 24))
         }
-        panel.makeKeyAndOrderFront(nil)
+        panel.orderFrontRegardless()
         fit()
         model.start(every: 30 * 60)
     }
