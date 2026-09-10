@@ -928,6 +928,76 @@ def test_fetch_infra_hint_and_fingerprint_innocence_no_correlated_run_stays_none
     assert qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, None) == (None, None)
 
 
+# ── H1 (S1 spec R2): runs list wrong-shape raises, {"workflow_runs": []} stays legitimate ──────
+
+
+def test_fetch_infra_hint_and_fingerprint_runs_wrong_shape_raises_H1(monkeypatch):
+    def fake_run(cmd, timeout=30):
+        return 0, "{}", ""  # no "workflow_runs" key at all — the read contract's guilt case
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    with pytest.raises(RuntimeError):
+        qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, None)
+
+
+def test_fetch_infra_hint_and_fingerprint_runs_not_a_list_raises_H1(monkeypatch):
+    def fake_run(cmd, timeout=30):
+        return 0, '{"workflow_runs": {}}', ""  # a dict, not a list
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    with pytest.raises(RuntimeError):
+        qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, None)
+
+
+# ── H2 (S1 spec R2): jobs list wrong-shape raises, {"jobs": []} stays legitimate ────────────────
+
+
+def test_fetch_infra_hint_and_fingerprint_jobs_null_raises_H2(monkeypatch):
+    sha = "e" * 40
+    runs_payload = {
+        "workflow_runs": [
+            {
+                "id": 1000,
+                "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
+                "conclusion": "cancelled",
+                "created_at": _iso(NOW),
+            }
+        ]
+    }
+
+    def fake_run(cmd, timeout=30):
+        if "jobs" in cmd[-1]:
+            return 0, '{"jobs": null}', ""
+        return 0, json.dumps(runs_payload), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    with pytest.raises(RuntimeError):
+        qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, _iso(NOW))
+
+
+def test_fetch_infra_hint_and_fingerprint_jobs_empty_list_is_legitimate_H2(monkeypatch):
+    sha = "e" * 40
+    runs_payload = {
+        "workflow_runs": [
+            {
+                "id": 1001,
+                "head_branch": f"gh-readonly-queue/main/pr-502-{sha}",
+                "conclusion": "cancelled",
+                "created_at": _iso(NOW),
+            }
+        ]
+    }
+
+    def fake_run(cmd, timeout=30):
+        if "jobs" in cmd[-1]:
+            return 0, '{"jobs": []}', ""
+        return 0, json.dumps(runs_payload), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    infra, fp = qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 502, _iso(NOW))
+    assert infra is True  # legitimately empty jobs on a cancelled run -> still infra, never raises
+
+
 def test_fetch_infra_hint_propagates_the_raise(monkeypatch):
     def fake_run(cmd, timeout=30):
         return 1, "", "gh: HTTP 502"
@@ -979,6 +1049,282 @@ def test_fetch_infra_hint_innocence_a_different_pr_number_is_not_matched(monkeyp
     monkeypatch.setattr(qs, "_run", fake_run)
     assert qs.fetch_infra_hint("Bali-Zero/Teman2", 4, _iso(NOW)) is None
     assert qs.fetch_infra_hint("Bali-Zero/Teman2", 451, _iso(NOW)) is None
+
+
+# ── _expect_list / _expect_pull_requests_page (H, S1 spec R2): the read-contract helpers ───────
+
+
+def test_expect_list_guilt_non_dict_raises():
+    with pytest.raises(RuntimeError):
+        qs._expect_list([], "workflow_runs", "where")
+
+
+def test_expect_list_guilt_key_not_a_list_raises():
+    with pytest.raises(RuntimeError):
+        qs._expect_list({"workflow_runs": {}}, "workflow_runs", "where")
+
+
+def test_expect_list_innocence_empty_list_is_legitimate():
+    assert qs._expect_list({"workflow_runs": []}, "workflow_runs", "where") == []
+
+
+def test_expect_pull_requests_page_guilt_missing_pageinfo_raises_H3():
+    data = {"data": {"repository": {"pullRequests": {"nodes": []}}}}
+    with pytest.raises(RuntimeError):
+        qs._expect_pull_requests_page(data, "where")
+
+
+def test_expect_pull_requests_page_guilt_has_next_page_without_end_cursor_raises_H3():
+    data = {
+        "data": {"repository": {"pullRequests": {
+            "pageInfo": {"hasNextPage": True, "endCursor": None}, "nodes": [],
+        }}}
+    }
+    with pytest.raises(RuntimeError):
+        qs._expect_pull_requests_page(data, "where")
+
+
+def test_expect_pull_requests_page_innocence_empty_nodes_is_legitimate_H3():
+    data = {
+        "data": {"repository": {"pullRequests": {
+            "pageInfo": {"hasNextPage": False, "endCursor": None}, "nodes": [],
+        }}}
+    }
+    page = qs._expect_pull_requests_page(data, "where")
+    assert page["nodes"] == []
+
+
+def test_fetch_open_pr_heads_wrong_shape_raises_no_retry_H4(monkeypatch):
+    calls = {"n": 0}
+
+    def fake_gh_graphql(query, variables, timeout=45):
+        calls["n"] += 1
+        return {"data": {"repository": {"pullRequests": {"nodes": []}}}}  # missing pageInfo
+
+    monkeypatch.setattr(qs, "_gh_graphql", fake_gh_graphql)
+    with pytest.raises(RuntimeError):
+        qs.fetch_open_pr_heads("Bali-Zero/Teman2")
+    assert calls["n"] == 1  # no retry added at this site (unlike _fetch_candidates_page)
+
+
+def test_fetch_open_pr_heads_innocence_empty_nodes_is_legitimate_H4(monkeypatch):
+    payload = {
+        "data": {"repository": {"pullRequests": {
+            "pageInfo": {"hasNextPage": False, "endCursor": None}, "nodes": [],
+        }}}
+    }
+    monkeypatch.setattr(qs, "_gh_graphql", lambda query, variables, timeout=45: payload)
+    assert qs.fetch_open_pr_heads("Bali-Zero/Teman2") == set()
+
+
+# ── H6: fetch_queued_runs / fetch_live_queue_branches wrong-shape raises ────────────────────────
+
+
+def test_fetch_queued_runs_wrong_shape_raises_H6(monkeypatch):
+    def fake_run(cmd, timeout=30):
+        return 0, "{}", ""  # no "workflow_runs" key
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    with pytest.raises(RuntimeError):
+        qs.fetch_queued_runs("Bali-Zero/Teman2")
+
+
+def test_fetch_queued_runs_empty_list_is_legitimate_H6(monkeypatch):
+    def fake_run(cmd, timeout=30):
+        return 0, '{"workflow_runs": []}', ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    assert qs.fetch_queued_runs("Bali-Zero/Teman2") == []
+
+
+def test_fetch_live_queue_branches_wrong_shape_raises_H6(monkeypatch):
+    def fake_run(cmd, timeout=30):
+        return 0, "{}", ""  # a dict, not the bare list this endpoint actually returns
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    with pytest.raises(RuntimeError):
+        qs.fetch_live_queue_branches("Bali-Zero/Teman2")
+
+
+def test_fetch_live_queue_branches_empty_list_is_legitimate_H6(monkeypatch):
+    def fake_run(cmd, timeout=30):
+        return 0, "[]", ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    assert qs.fetch_live_queue_branches("Bali-Zero/Teman2") == set()
+
+
+# ── H5: fetch_last_ejection timeline nodes wrong-shape raises ──────────────────────────────────
+
+
+def test_fetch_last_ejection_timeline_nodes_null_raises_H5(monkeypatch):
+    payload = {"data": {"repository": {"pullRequest": {"timelineItems": {"nodes": None}}}}}
+    monkeypatch.setattr(qs, "_gh_graphql", lambda query, variables, timeout=45: payload)
+    with pytest.raises(RuntimeError):
+        qs.fetch_last_ejection("Bali-Zero/Teman2", 5838)
+
+
+# ── I (S1 spec R2): one queue attempt correlation ───────────────────────────────────────────────
+
+
+def test_fetch_infra_hint_and_fingerprint_removed_at_none_omits_created_param_If(monkeypatch):
+    urls = []
+
+    def fake_run(cmd, timeout=30):
+        urls.append(cmd[-1])
+        return 0, '{"workflow_runs": []}', ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, None)
+    assert "created=" not in urls[0]
+    assert "per_page=100" in urls[0]
+
+
+def test_fetch_infra_hint_and_fingerprint_finds_correlated_run_behind_25_other_pr_runs_Ia(monkeypatch):
+    sha = "f" * 40
+    other_runs = [
+        {
+            "id": 9000 + i,
+            "head_branch": f"gh-readonly-queue/main/pr-{9000 + i}-{'0' * 40}",
+            "conclusion": "failure",
+            "created_at": _iso(NOW + _dt.timedelta(seconds=i)),
+        }
+        for i in range(25)
+    ]
+    correlated = {
+        "id": 501501,
+        "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
+        "conclusion": "failure",
+        "created_at": _iso(NOW),
+        "head_sha": sha,
+    }
+    runs_payload = {"workflow_runs": other_runs + [correlated]}
+
+    urls = []
+
+    def fake_run(cmd, timeout=30):
+        urls.append(cmd[-1])
+        if "jobs" in cmd[-1]:
+            return 0, '{"jobs": [{"name": "pytest", "conclusion": "failure"}]}', ""
+        return 0, json.dumps(runs_payload), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    infra, fp = qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, _iso(NOW))
+
+    assert infra is False  # real pytest failure -> CODE, the correlated run WAS found
+    runs_url = urls[0]
+    assert "per_page=100" in runs_url
+    assert f"created=<={_iso(NOW)}" in runs_url
+
+
+def test_fetch_infra_hint_and_fingerprint_attempt_two_runs_code_wins_both_orders_Ib(monkeypatch):
+    sha = "1" * 40
+    run_a = {
+        "id": 111, "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
+        "conclusion": "failure", "created_at": _iso(NOW), "head_sha": sha,
+    }
+    run_b = {
+        "id": 112, "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
+        "conclusion": "cancelled", "created_at": _iso(NOW), "head_sha": sha,
+    }
+
+    def make_fake_run(order):
+        runs_payload = {"workflow_runs": order}
+
+        def fake_run(cmd, timeout=30):
+            if "runs/111/jobs" in cmd[-1]:
+                return 0, '{"jobs": [{"name": "pytest", "conclusion": "failure"}]}', ""
+            if "runs/112/jobs" in cmd[-1]:
+                return 0, '{"jobs": []}', ""
+            return 0, json.dumps(runs_payload), ""
+
+        return fake_run
+
+    monkeypatch.setattr(qs, "_run", make_fake_run([run_a, run_b]))
+    infra1, fp1 = qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, _iso(NOW))
+
+    monkeypatch.setattr(qs, "_run", make_fake_run([run_b, run_a]))
+    infra2, fp2 = qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, _iso(NOW))
+
+    assert infra1 is False and infra2 is False
+    assert fp1 == fp2
+    assert fp1 is not None
+
+
+def test_fetch_infra_hint_and_fingerprint_attempt_all_cancelled_is_infra_true_Ic(monkeypatch):
+    sha = "2" * 40
+    run_a = {
+        "id": 201, "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
+        "conclusion": "cancelled", "created_at": _iso(NOW), "head_sha": sha,
+    }
+    run_b = {
+        "id": 202, "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
+        "conclusion": "cancelled", "created_at": _iso(NOW), "head_sha": sha,
+    }
+    runs_payload = {"workflow_runs": [run_a, run_b]}
+
+    def fake_run(cmd, timeout=30):
+        if "jobs" in cmd[-1]:
+            return 0, '{"jobs": []}', ""
+        return 0, json.dumps(runs_payload), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    infra, fp = qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, _iso(NOW))
+    assert infra is True
+
+
+def test_fetch_infra_hint_and_fingerprint_second_run_jobs_failure_raises_Id(monkeypatch):
+    sha = "3" * 40
+    run_a = {
+        "id": 301, "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
+        "conclusion": "cancelled", "created_at": _iso(NOW), "head_sha": sha,
+    }
+    run_b = {
+        "id": 302, "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
+        "conclusion": "cancelled", "created_at": _iso(NOW), "head_sha": sha,
+    }
+    runs_payload = {"workflow_runs": [run_a, run_b]}
+
+    def fake_run(cmd, timeout=30):
+        if "runs/301/jobs" in cmd[-1]:
+            return 0, '{"jobs": []}', ""
+        if "runs/302/jobs" in cmd[-1]:
+            return 1, "", "gh: HTTP 500"
+        return 0, json.dumps(runs_payload), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    with pytest.raises(RuntimeError):
+        qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, _iso(NOW))
+
+
+def test_fetch_infra_hint_and_fingerprint_older_attempt_not_mixed_in_Ie(monkeypatch):
+    sha_new = "4" * 40
+    sha_old = "5" * 40
+    newer = {
+        "id": 401, "head_branch": f"gh-readonly-queue/main/pr-501-{sha_new}",
+        "conclusion": "cancelled", "created_at": _iso(NOW), "head_sha": sha_new,
+    }
+    older = {
+        "id": 400, "head_branch": f"gh-readonly-queue/main/pr-501-{sha_old}",
+        "conclusion": "failure", "created_at": _iso(NOW - _dt.timedelta(minutes=30)),
+        "head_sha": sha_old,
+    }
+    runs_payload = {"workflow_runs": [older, newer]}
+
+    fetched_jobs_urls = []
+
+    def fake_run(cmd, timeout=30):
+        if "jobs" in cmd[-1]:
+            fetched_jobs_urls.append(cmd[-1])
+            return 0, '{"jobs": []}', ""
+        return 0, json.dumps(runs_payload), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    infra, fp = qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, _iso(NOW))
+
+    assert infra is True  # only the newer attempt (cancelled, empty jobs) counts
+    assert len(fetched_jobs_urls) == 1
+    assert "runs/401/jobs" in fetched_jobs_urls[0]  # the older attempt's run (400) never fetched
 
 
 # 3. _save_json atomic write + _load_json fail-closed on a corrupt (not merely absent) file.
@@ -2063,3 +2409,107 @@ def test_fetch_rearm_candidate_prs_filters_through_is_rearm_candidate(monkeypatc
     monkeypatch.setattr(qs, "_gh_graphql", lambda query, variables, timeout=45: payload)
     candidates = qs.fetch_rearm_candidate_prs("Bali-Zero/Teman2")
     assert [pr["number"] for pr in candidates] == [2]  # only the CLEAN agent/ PR survives
+
+
+# ── H tick level (S1 spec R2): the Codex repro + candidate-page malformation at tick() level ───
+
+
+def test_tick_codex_repro_cancelled_run_with_empty_jobs_object_is_cannot_verify_never_infra(
+    monkeypatch, tmp_path
+):
+    """The exact Codex R2 repro this spec exists for: a cancelled correlated run whose jobs
+    endpoint returns `{}` (no "jobs" key at all) must CANNOT-VERIFY the whole tick, never read
+    as INFRA and never re-arm."""
+    monkeypatch.setattr(qs, "UNCANCELLABLE_FILE", tmp_path / "uncancellable.json")
+    _no_op_janitor(monkeypatch)
+
+    def fake_open_prs(repo=qs.REPO):
+        return [_pr(number=5900, head_sha="shaC", head_ref_name="agent/a/b")]
+
+    def fake_ejection(repo, number):
+        return {"reason": "failed_checks", "removed_at": _iso(NOW), "before_commit": "shaC"}
+
+    sha = "d" * 40
+    runs_payload = {
+        "workflow_runs": [
+            {
+                "id": 4242,
+                "head_branch": f"gh-readonly-queue/main/pr-5900-{sha}",
+                "conclusion": "cancelled",
+                "created_at": _iso(NOW),
+            }
+        ]
+    }
+
+    def fake_run(cmd, timeout=30):
+        if "jobs" in cmd[-1]:
+            return 0, "{}", ""  # the Codex repro: malformed, no "jobs" key
+        return 0, json.dumps(runs_payload), ""
+
+    monkeypatch.setattr(qs, "fetch_open_prs", fake_open_prs)
+    monkeypatch.setattr(qs, "fetch_last_ejection", fake_ejection)
+    monkeypatch.setattr(qs, "_run", fake_run)
+    monkeypatch.setattr(
+        qs, "rearm_pr", lambda repo, number: (_ for _ in ()).throw(AssertionError("must never rearm"))
+    )
+
+    alerts = []
+    monkeypatch.setattr(qs, "send_telegram", lambda message, dedup_key="": alerts.append(dedup_key) or True)
+
+    rc = qs.tick(dry_run=False)
+
+    assert rc == 2
+    hb = json.loads((qs.ORGANISM_DIR / f"{qs.ORGAN_ID}.json").read_text())
+    assert hb["status"] == "error"
+    assert hb["metadata"]["cannot_verify"] == ["rearm_pr_reads"]
+    assert alerts == ["queue-shepherd:cannot-verify"]
+
+
+def test_tick_candidate_page_missing_pageinfo_on_both_attempts_is_cannot_verify_one_send(
+    monkeypatch, tmp_path
+):
+    _no_op_janitor(monkeypatch)
+    calls = {"n": 0}
+
+    def fake_gh_graphql(query, variables, timeout=45):
+        calls["n"] += 1
+        return {"data": {"repository": {"pullRequests": {"nodes": []}}}}  # no pageInfo, ever
+
+    monkeypatch.setattr(qs, "_gh_graphql", fake_gh_graphql)
+    monkeypatch.setattr(qs, "_sleep", lambda s: None)
+
+    alerts = []
+    monkeypatch.setattr(qs, "send_telegram", lambda message, dedup_key="": alerts.append(dedup_key) or True)
+
+    rc = qs.tick(dry_run=False)
+
+    assert rc == 2
+    assert calls["n"] == 2  # one retry, both malformed, then raise
+    assert alerts == ["queue-shepherd:cannot-verify"]
+
+
+def test_tick_candidate_page_malformed_once_then_good_is_success_no_alert(monkeypatch, tmp_path):
+    _no_op_janitor(monkeypatch)
+    calls = {"n": 0}
+
+    def fake_gh_graphql(query, variables, timeout=45):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return {"data": {"repository": {"pullRequests": {"nodes": []}}}}  # missing pageInfo
+        return {
+            "data": {"repository": {"pullRequests": {
+                "pageInfo": {"hasNextPage": False, "endCursor": None}, "nodes": [],
+            }}}
+        }
+
+    monkeypatch.setattr(qs, "_gh_graphql", fake_gh_graphql)
+    monkeypatch.setattr(qs, "_sleep", lambda s: None)
+    monkeypatch.setattr(
+        qs, "send_telegram",
+        lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("a successful tick must never alert")),
+    )
+
+    rc = qs.tick(dry_run=False)
+
+    assert rc == 0
+    assert calls["n"] == 2
