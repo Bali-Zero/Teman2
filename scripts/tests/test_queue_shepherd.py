@@ -2715,3 +2715,177 @@ def test_tick_candidate_page_malformed_once_then_good_is_success_no_alert(monkey
 
     assert rc == 0
     assert calls["n"] == 2
+
+
+# ── PWC conditions C2/C3/C4 of the #6127 final gate (2026-09-11) ────────────────────────────
+# Each of these covers a guilt mutation the 159-test suite left GREEN (C2, C3) or a branch that
+# is about to become live traffic without an innocence case (C4). See the PENDING-ARMS rows
+# "PWC-CONDITIONS C2+C3 for #6127" and "PWC-CONDITIONS C4 for #6127".
+
+
+def test_rearm_pass_fourth_red_with_a_DIFFERENT_cause_stays_suspended_C2(monkeypatch, tmp_path):
+    """C2: the sticky `if existing_suspended:` branch, isolated from the `elif` that hides it.
+    The pre-existing 4th-tick test reuses the SAME cause, so the elif re-suspends and the whole
+    branch can be deleted with the suite still green. Here the 4th red carries a DIFFERENT
+    fingerprint: count_same_cause_reds(new cause) == 1 < RED_SAME_CAUSE_LIMIT, so ONLY the sticky
+    branch can keep the PR suspended — remove it and this tick re-arms."""
+    monkeypatch.setattr(qs, "BUDGET_FILE", tmp_path / "budget.json")
+    monkeypatch.setattr(qs, "ALERTED_FILE", tmp_path / "alerted.json")
+    monkeypatch.setattr(qs, "RED_FILE", tmp_path / "red.json")
+
+    monkeypatch.setattr(
+        qs, "fetch_open_prs",
+        lambda repo=qs.REPO: [_pr(number=711, head_sha="shaS", head_ref_name="agent/x/y")],
+    )
+    monkeypatch.setattr(qs, "rearm_pr", lambda repo, number: True)
+
+    times = [NOW + _dt.timedelta(minutes=i) for i in range(4)]
+    causes = ["CI::job-a", "CI::job-a", "CI::job-a", "CI::job-z"]  # 4th differs
+
+    def run_tick(i):
+        monkeypatch.setattr(
+            qs, "fetch_last_ejection",
+            lambda repo, number, i=i: {
+                "reason": "failed_checks", "removed_at": _iso(times[i]), "before_commit": "shaS"
+            },
+        )
+        monkeypatch.setattr(
+            qs, "fetch_infra_hint_and_fingerprint",
+            lambda repo, number, removed_at, i=i: (True, causes[i]),
+        )
+        return qs.run_rearm_pass(dry_run=False, now=times[i])
+
+    assert run_tick(0)["rearmed"] == 1
+    assert run_tick(1)["rearmed"] == 1
+    r3 = run_tick(2)
+    assert r3["rearmed"] == 0 and r3["suspended"] == 1
+
+    r4 = run_tick(3)
+    assert r4["rearmed"] == 0, "a suspended PR must stay suspended even when the new red differs"
+    assert r4["suspended"] == 1
+    saved = qs._load_json(qs.RED_FILE)
+    assert saved["711"]["suspended"]["cause"] == "CI::job-a"  # the ORIGINAL cause, not the new one
+
+
+def test_fetch_attempt_runs_by_head_sha_empty_match_raises_C3(monkeypatch):
+    """C3, unit half: the per-sha re-read returning nothing that matches this PR must RAISE. The
+    guard's absence is invisible at this level too — [] is a perfectly well-formed list."""
+    other = {
+        "id": 900, "head_branch": "gh-readonly-queue/main/pr-999-" + "3" * 40,
+        "conclusion": "failure", "created_at": _iso(NOW), "head_sha": "3" * 40,
+    }
+    monkeypatch.setattr(
+        qs, "_run",
+        lambda cmd, timeout=30: (0, json.dumps({"workflow_runs": [other], "total_count": 1}), ""),
+    )
+    with pytest.raises(RuntimeError):
+        qs._fetch_attempt_runs_by_head_sha("Bali-Zero", "Teman2", 501, "3" * 40, None)
+
+
+def test_rearm_pass_empty_attempt_is_cannot_verify_never_a_fabricated_infra_rearm_C3(
+    monkeypatch, tmp_path
+):
+    """C3, consequence half: `all([])` is True, so an empty attempt would fabricate infra=True
+    and re-arm a CODE failure — exactly the class letter J exists to close. With the raise in
+    place the tick is CANNOT-VERIFY and re-arms nothing; remove it and rearmed becomes 1."""
+    monkeypatch.setattr(qs, "BUDGET_FILE", tmp_path / "budget.json")
+    monkeypatch.setattr(qs, "ALERTED_FILE", tmp_path / "alerted.json")
+    monkeypatch.setattr(qs, "RED_FILE", tmp_path / "red.json")
+
+    sha = "4" * 40
+    first_read = {
+        "id": 401, "head_branch": f"gh-readonly-queue/main/pr-712-{sha}",
+        "conclusion": "failure", "created_at": _iso(NOW), "head_sha": sha,
+    }
+
+    def fake_run(cmd, timeout=30):
+        url = cmd[-1]
+        if "jobs" in url:
+            return 0, '{"jobs": [{"name": "pytest", "conclusion": "failure"}], "total_count": 1}', ""
+        if f"head_sha={sha}" in url:
+            # the attempt's own re-read finds nothing for THIS PR (the run was re-run green, or
+            # the ref moved) — a well-formed body that matches no attempt run
+            return 0, json.dumps({"workflow_runs": [], "total_count": 0}), ""
+        return 0, json.dumps({"workflow_runs": [first_read], "total_count": 1}), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    monkeypatch.setattr(
+        qs, "fetch_open_prs",
+        lambda repo=qs.REPO: [_pr(number=712, head_sha=sha, head_ref_name="agent/x/y")],
+    )
+    monkeypatch.setattr(
+        qs, "fetch_last_ejection",
+        lambda repo, number: {
+            "reason": "failed_checks", "removed_at": _iso(NOW), "before_commit": sha
+        },
+    )
+    monkeypatch.setattr(
+        qs, "rearm_pr",
+        lambda repo, number: (_ for _ in ()).throw(
+            AssertionError("an unreadable attempt must never re-arm")
+        ),
+    )
+
+    result = qs.run_rearm_pass(dry_run=False, now=NOW)
+
+    assert result["rearmed"] == 0
+    assert result["unverified"] == 1
+    assert result["cannot_verify"] == "rearm_pr_reads"
+
+
+def test_fetch_open_prs_walks_two_real_pages_C4(monkeypatch):
+    """C4: the cursor branch of fetch_open_prs driven across two REAL pages (49 open PRs against
+    first:50 makes this live traffic). The suite's only prior hasNextPage:True case was the guilt
+    case for a missing endCursor."""
+    pages = [
+        {"data": {"repository": {"pullRequests": {
+            "pageInfo": {"hasNextPage": True, "endCursor": "CURSOR-1"},
+            "nodes": [_rearm_node(1), _rearm_node(2, merge_state_status="CLEAN",
+                                                 head_ref_name="agent/x/y")],
+        }}}},
+        {"data": {"repository": {"pullRequests": {
+            "pageInfo": {"hasNextPage": False, "endCursor": None},
+            "nodes": [_rearm_node(3)],
+        }}}},
+    ]
+    seen_variables = []
+
+    def fake_gh_graphql(query, variables, timeout=45):
+        seen_variables.append(dict(variables))
+        return pages[len(seen_variables) - 1]
+
+    monkeypatch.setattr(qs, "_gh_graphql", fake_gh_graphql)
+    all_prs = qs.fetch_open_prs("Bali-Zero/Teman2")
+
+    assert [pr["number"] for pr in all_prs] == [1, 2, 3]  # the union, in page order
+    assert len(seen_variables) == 2
+    assert "cursor" not in seen_variables[0]
+    assert seen_variables[1]["cursor"] == "CURSOR-1"
+
+
+def test_fetch_open_pr_heads_walks_two_real_pages_C4(monkeypatch):
+    """C4, the other paginating reader: same two-page walk, asserting the union of head SHAs and
+    the second call's cursor variable."""
+    pages = [
+        {"data": {"repository": {"pullRequests": {
+            "pageInfo": {"hasNextPage": True, "endCursor": "CURSOR-H1"},
+            "nodes": [{"headRefOid": "aaa"}, {"headRefOid": "bbb"}],
+        }}}},
+        {"data": {"repository": {"pullRequests": {
+            "pageInfo": {"hasNextPage": False, "endCursor": None},
+            "nodes": [{"headRefOid": "ccc"}, {"headRefOid": None}],  # a null head is skipped
+        }}}},
+    ]
+    seen_variables = []
+
+    def fake_gh_graphql(query, variables, timeout=45):
+        seen_variables.append(dict(variables))
+        return pages[len(seen_variables) - 1]
+
+    monkeypatch.setattr(qs, "_gh_graphql", fake_gh_graphql)
+    heads = qs.fetch_open_pr_heads("Bali-Zero/Teman2")
+
+    assert heads == {"aaa", "bbb", "ccc"}
+    assert len(seen_variables) == 2
+    assert "cursor" not in seen_variables[0]
+    assert seen_variables[1]["cursor"] == "CURSOR-H1"
