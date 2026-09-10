@@ -105,9 +105,9 @@ receipts:
       --numstat origin/main...HEAD > /tmp/ns-309.txt && python3
       scripts/evidence_pack_lint.py --print-floor --changed-files-file
       /tmp/cf-309.txt --numstat-file /tmp/ns-309.txt
-    result: "PENDING_FILL"
+    result: "3"
     exit: 0
-    ts: "PENDING_FILL"
+    ts: "2026-09-10T20:13:45Z"
     seat: claude-sonnet-5 (build)
 
   - probe: slot-309-free
