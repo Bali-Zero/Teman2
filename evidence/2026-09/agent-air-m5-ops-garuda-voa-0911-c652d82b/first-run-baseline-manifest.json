@@ -1,0 +1,14 @@
+{
+  "source_branch": "agent/air-m5/db/voa-migrator-role",
+  "source_head": "be45266252f4e1ccbaf19d2b81c73f03af676e05",
+  "files": {
+    "apps/backend-rag/backend/app/core/config.py": "1c526d414b74f1cf1e7428ac78737f69b5573bf8516321282c8e1b499e3a47bc",
+    "apps/backend-rag/backend/db/migrate.py": "591522097cfd96155b0c08bd76de5474781766fe5f9d92a14f4c51a250708b7b",
+    "apps/backend-rag/backend/db/migration_base.py": "3aa18a0739c04bf390d5dc68e7340ac235c4c5699fc051addadbbbee5db5895a",
+    "apps/backend-rag/backend/db/migration_manager.py": "78d18444864ee29f1f164e6239eea5420156d8d2812be287e9aa39be2770030f",
+    "apps/backend-rag/backend/tests/db/test_migration_runner_dedicated_role.py": "e6d8f43acaad01f4d18c427990adebfc3068a28b28f690ae6e4ace06764ae952",
+    "apps/backend-rag/backend/tests/unit/app/test_config.py": "f2a418e57b2b70cac94011d19dcb8a7ceed15c3bf7cacdebc7d0678888fed390",
+    "apps/backend-rag/backend/db/migrations_v2/304_garuda_documents.sql": "7f79a45832c561013ccb2aaff55af3ead8409b8280ca0bda1a6dc32c4e7510b4"
+  },
+  "migration304_source": "6ea6eb9adec597646300fe8d10f8be870dcfb9bd"
+}
