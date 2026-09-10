@@ -1,63 +1,118 @@
-# S5 — A BRAIN THAT CAN FORGET
+---
+title: "S5 — A BRAIN THAT CAN FORGET · battle window (mechanism)"
+date: 2026-09-10
+adversarial_review: codex
+---
 
-**One line:** `ttl_days` and `superseded_by` are set on 0 of ~15,800 memories, so the nightly TTL sweep deletes nothing and reports success, while ~1,450 `osint_sensitive` rows ride every nightly backup in cleartext.
+# S5 — A BRAIN THAT CAN FORGET · battle window (mechanism)
 
-**Wave 3 · Pro only · launch ONLY after Zero answers queue item 1 (retention), and never in parallel with S4.** Built from C3. Operator items: 3.
+| Field | Value |
+|---|---|
+| Mandate id | **S5** |
+| Colour | **BLUE** unless Zero declares ORANGE before the window opens. No fallback between colours. |
+| Dux role | Opus 5 `xhigh` on BLUE (Sol `gpt-5.6-sol` `xhigh` on ORANGE), appointed by the staff room (Fable 5.1 with Zero; Astra reading pending — README). Dux and release owner. |
+| Worktree / branch | `agent/nuzantara/db/s5-memory-lifecycle`, created by the command in §1 |
+| Wave | 3. Never alongside the queued REAPER window: both change closure semantics. |
+| Opening | The opening follows the colour. BLUE: Zero opens a fresh `claude --model claude-opus-5` window at effort `xhigh` and pastes this file. ORANGE: a Codex window on the Sol seat as army-map §1bis names it ("Sol (`gpt-5.6-sol`) `xhigh`"). The first message restates colour, Dux role, mandate id and worktree path, then executes. |
 
-## Mandate prompt — paste everything below this line into a fresh `claude` session
+## 1. Mandate
 
-SEAT AND CONTRACT
-You are a Fable 5.1 session that Zero chose manually, running at max effort on Pro (`nuzantara@Nuzantara`, repo `~/nuzantara`). You own this mandate end to end: review → merge → arm → deploy → prove-live. The codeowner does not merge, review or deploy. Pin every subagent's model in the Agent call: `sonnet` for readers and implementers, `haiku` for grunt work, `opus` only for a final on-disk gate. An unpinned subagent inherits your model. Builder Contract: every PR gets its own worktree from `scripts/agent_start.py`, cut from a fresh origin/main. One PR, one concern, ≤~400 net lines. Every PR body carries a `Bites:` line naming the consumer and the observation that proves the change is live. Arm auto-merge when you open the PR; from then on the branch is frozen. Push, create and merge are three separate commands. Never rerun a red check until you know why it is red. Three reds for the same cause → suspend and write the spec. A fix-of-a-fix stops at depth 1. Reaching a Claude model through a paid per-token Anthropic endpoint is banned as an entity: use the `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN` only, and refuse any tool, MCP server or cron that needs `ANTHROPIC_API_KEY`, `from anthropic import Anthropic`, a renamed variable, a wrapper or a Bedrock/Vertex route. PII is an output boundary: no PR body, log, alert, memory, ledger row or report carries client PII or OSINT in cleartext. Off-limits files: `zantara_core.py`, `fly.toml`, `.env*`, `apps/bali-intel-scraper/backend/db/migrations/env.py`. Never edit Zero's own files: `~/.claude/CLAUDE.md`, branch protection, required-context lists. File operator items as a PENDING-ARMS row with the exact ask, and never wait on them.
+S5 · BLUE · **organ: the MOS memory store** — `~/.claude/memory.db`, its compression worker (repo `scripts/mos-plus-compression-worker.py`, run live by `com.balizero.mos-plus.compression` from the HOME copy `~/scripts/mos-plus-compression-worker.py`), the nightly TTL sweep (cron C2.15) and the `mem` save path. **This window ships the MECHANISM only.** Everything irreversible — backup, pause, `--apply`, VACUUM, the HOME `cp`, ttl on save, the declared-pair PR — belongs to the queued window **S5b — THE CUT** (README), which opens after Zero's retention ruling. **Gear:** 3 by triage (the tool it ships is the instrument of an irreversible cut); CI's floor never lowers it; Evidence Pack required. **Host:** Pro only.
 
-MISSION
-Wire the memory organ's reap path so it can actually forget, under the retention windows Zero has ruled, and stop copying OSINT-flagged rows into every nightly backup. Part of this work has NO pull-request path. Say so plainly rather than pretending it went through review.
+**Objective:** the worker's ttl logic and a retention tool `scripts/memory/mos_retention_purge.py` (to be created) whose dry-run per-class counts, on a verified scratch copy of the live DB, are signed by an independent gate. **What success changes:** S5b can cut the moment Zero rules, on signed numbers rather than on a generator's own SQL. Nothing live changes in S5.
 
-THE RULING (paste Zero's answer here before you start; if it's empty, do the repo half only and stop before any DELETE)
-Default recommended to Zero: processed raw_observations older than 30 days are purgeable; osint_sensitive rows older than 7 days are purgeable; unresolved memories older than 90 days are archived, not deleted.
-Zero's answer: ______
+**The ruling is an input, not a precondition.** The tool reads a ruling file; with none it refuses `--apply`. A ttl backfill on existing rows counts as a DELETE (C2.15 deletes every expired row that same night) and belongs to S5b. Default proposed to Zero: processed raw_observations older than 30 days purgeable; osint_sensitive rows older than 7 days purgeable; unresolved memories older than 90 days archived, not deleted.
 
-GROUND (judge 13:05Z, red-team about an hour later, re-checked by the board editor at ~13:35Z; the tables grow hourly, so re-read every number)
-- `sqlite3 ~/.claude/memory.db` counting memories, ttl-set, superseded, raw_observations, processed and `osint_sensitive=1` → `15842|0|0|313956|306884|1452` at 13:05Z (memories were at 15,846 an hour later).
-- The C2.15 cron (`crontab -l | grep -A1 'C2.15'`) runs `DELETE FROM memories WHERE ttl_days IS NOT NULL AND julianday("now")-julianday(created_at) > ttl_days` daily at 05:00 UTC. It matches zero rows, and its wrapper reports `{"status":"ok","exit_code":0}`: a permanent no-op that reports green.
-- `grep -n 'ttl_days\|INSERT INTO memories' ~/.claude/scripts/mem` → the save path inserts only `(session_id, type, content, importance)`.
-- `MEMORY_INDEX.md` is 444,400 B, 17.8× its 24,985 B cap. Corrections to carry forward: the sessions↔memories key space is 100% disjoint, and backups are ~19–20 rolling under an existing prune cron.
-- Existing guards: `scripts/memory/mos_recall_sessionstart.py` (tracked) prints `⚠️ MEMORY.md {bytes}B > 2560B`. It warns and never blocks, so extend it. `scripts/harness/harness_lifecycle_guard.py` also exists, but it is registered in 0 of 4 settings.json files, watches MEMORY.md instead of MEMORY_INDEX.md, and hardcodes a `-Users-balizero-Desktop-nuzantara` path that doesn't exist on Pro. The machine-local `~/.claude/scripts/alzheimer-hook.sh` alerts at 25,600; 2,560 vs 25,600 is Zero's call.
-- The live writer. `lsof ~/.claude/memory.db` shows it held open by `com.balizero.mos-plus.compression`. `launchctl print gui/501/com.balizero.mos-plus.compression` shows it runs `/Users/nuzantara/scripts/mos-plus-compression-worker.py`, a HOME copy, not the repo file. `infra/home-fork/declared-pairs.json` declares that pair with `machines: []` and a note: widen it to `["pro"]` only once the fixed file has actually been copied onto Pro and re-verified sha256-identical.
-- No PR path: `git -C ~/.claude remote -v` → empty, and `~/.claude/scripts/mem` isn't in the Nuzantara repo.
+**Worktree:** `cd ~/nuzantara && WT=$(python3 scripts/agent_start.py --lane db --task-id s5-memory-lifecycle | awk '/^WORKTREE_READY /{print $2}') && echo "$WT"`. The broker prints one `WORKTREE_READY` line followed by the path and cannot change your cwd (`scripts/agent_start.py:2166-2172`): every later command is `git -C "$WT" …` or `cd "$WT" && …`; `--list` recovers the path. One live worktree at a time, `--release` between PRs. `mos` is not a known lane. **Base sha:** record `git -C "$WT" rev-parse HEAD` at open.
 
-DISEASE
-Superscar #2 on the organism's own memory. MOS was designed to prune itself, the pruning was never wired, and the nightly sweep has deleted nothing since it was created while reporting success each night. Downstream, that becomes an output-boundary exposure under UU PDP and SYMBIOSIS Law 2: every nightly backup copies the osint_sensitive rows in cleartext.
+**Ground** (counts 13:05Z, schema and crontab ~13:35Z, backups ~15:40Z; re-read all of it, never printing row content):
+- **Counts** (memories, ttl set, superseded, raw_observations, processed, osint): `15842|0|0|313956|306884|1452`.
+- **Schema** (`sqlite3 ~/.claude/memory.db ".schema memories" ".schema raw_observations"`): `memories` has `id INTEGER PRIMARY KEY AUTOINCREMENT`, `created_at`, `type` ∈ {decision, discovery, fact, pattern, unresolved}, `ttl_days`, `superseded_by`; `raw_observations` has `captured_at`, `payload_json`, `osint_sensitive`, `compressed_to_memory_id`, `discarded_at`.
+- **C2.15** (daily 05:00 UTC): `DELETE FROM memories WHERE ttl_days IS NOT NULL AND julianday("now") - julianday(created_at) > ttl_days`. It matches zero rows and still reports ok; a bare sqlite3 DELETE prints nothing, so counts need `SELECT changes();`.
+- **C2.13** (daily 04:00 UTC) `cp`s the live DB to `~/.claude/backups/memory_YYYYMMDD.db`. **C2.14** (Sundays 05:00 UTC) runs `find ~/.claude/backups -name "memory_*.db" -mtime +30 -delete`; it does not match the `-shm`/`-wal` sidecars (present for three dates today). `~/.claude/backups` is mode 0755; the backup files are 0600.
+- **The save path has no PR path.** `~/.claude/scripts/mem` inserts only (session_id, type, content, importance) and has no database-path override; `git -C ~/.claude remote -v` is empty.
+- **Live writer.** `lsof ~/.claude/memory.db` shows `com.balizero.mos-plus.compression` executing the HOME copy. Its declared pair has `machines: []`; widen it to `["pro"]` only once the fixed file is copied and sha256-identical (S5b).
 
-SCOPE IN — split by path, and be honest about which is which
-A) REPO-SHIPPABLE (PR → review → arm → merge → prove-live):
-1. Fix the reaper and ttl logic in `scripts/mos-plus-compression-worker.py`. After merge, make the daemon run the merged file: find its path with `launchctl print`, compare the live HOME copy against the merged repo copy with `shasum -a 256`, `cp` over it if they differ, and re-run `python3 scripts/lint_home_fork.py --check`. Only once the hashes match, widen the declared pair to `["pro"]` in a follow-up PR, as its own note says. Merging on its own changes nothing the daemon runs.
-2. A MEMORY_INDEX cap check that can actually fire: extend `mos_recall_sessionstart.py`, or fix and register `harness_lifecycle_guard.py` with a path derived at runtime. The SessionStart wiring lives in the machine-local `~/.claude/settings.json`, so changing it counts as direct administration (Pro only).
-3. Make doc and code agree on the MEMORY.md cap once Zero has ruled which number is authoritative.
-B) DIRECT ADMINISTRATION (no PR path; label it that way in your report):
-4. A dated backup first: `sqlite3 ~/.claude/memory.db ".backup '<dated path outside any repo or synced folder>'"`. Use the online backup API, because a plain `cp` of a database with a live writer can capture a torn copy. Then `PRAGMA integrity_check` must return `ok` and the row counts must match. `chmod 600` the backup, since it holds the same OSINT, and record when it will itself be deleted under the same ruling.
-5. Pause the compression daemon, purge the classes Zero ruled purgeable by PREDICATE, VACUUM, then restart the daemon and prove it runs again.
-6. ttl in two gated halves. 6a is safe and forward-only: the `mem` save path sets ttl_days by type for new rows. 6b is the trap: backfilling ttl_days on existing rows schedules deletes, because C2.15 DELETEs every row whose ttl has expired that same night, with no gate. So no backfill on any class Zero ruled "archive" (unresolved memories) unless the reaper first archives that class instead of deleting it. Before backfilling live, dry-run the cron's exact predicate against the backup and paste the counts it WOULD delete.
-7. The next backup stops carrying osint_sensitive rows older than the ruled window. Existing backups age out under the current prune cron; don't rewrite or delete them.
+## 2. Owned perimeter
 
-SCOPE OUT
-Any DELETE before the ruling block is filled in. M5's and Mini's settings.json (Pro only; file the rest). Dead-hook pruning (S4). PENDING-ARMS, the escalation bus, proprioception, queue_shepherd. Printing payload_json or any row content, ever.
+- **Writable (repo only):** `scripts/mos-plus-compression-worker.py` and `scripts/tests/test_mos_plus_compression_worker.py`; `scripts/memory/mos_retention_purge.py` (to be created) and its tests — dry-run by default, `--db` path flag (to be created), `--apply` refuses without a ruling file.
+- **Read-only on live state:** `sqlite3 ~/.claude/memory.db ".backup …"` into a scratch directory, `.schema`, `count(*)` and `max(id)` queries. No other access to the live DB.
+- **Forbidden:** any write, DELETE, ttl update or VACUUM on `~/.claude/memory.db`; the HOME worker copy; `~/.claude/scripts/mem`; pausing the compression LaunchAgent; `infra/home-fork/declared-pairs.json` (all S5b); existing backups in `~/.claude/backups/`; the recall and lifecycle guards and any `settings.json` (queued MEMORY GUARD); M5 and Mini; PENDING-ARMS structure; printing `payload_json` or any row content, ever.
+- **Shared:** the ledger (§3).
+- `.lane-check.json`'s `scope_globs` only decides whether a check applies (`infra/claude-hooks/lane_check.py`; the spec's `scripts/` path is stale). VERIFY and the gate compare changed paths against this list by hand.
+- **Bans:** no Claude model through a paid per-token Anthropic endpoint (any alias, wrapper, Bedrock or Vertex route; only the `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN`). No client PII or OSINT in cleartext. Off-limits: `zantara_core.py`, `fly.toml`, `.env*`, `apps/bali-intel-scraper/backend/db/migrations/env.py`. Zero's files never edited.
 
-OPERATOR BOUNDARY
-Three items, filed in the first minute; the repo half never waits on them: the retention ruling (it gates B and should already be answered at launch); which MEMORY.md cap is authoritative (gates item 3); whether `~/.claude` gets a git remote so this half can ever go through review.
+## 3. Sibling contract
 
-METHOD
-First hour: run `python3 scripts/agent_start.py --help`, then `python3 scripts/agent_start.py --lane db --task-id memory-lifecycle` (branch `agent/nuzantara/db/memory-lifecycle`; `mos` is not a known lane). Re-run GROUND and identify the live writer. Take and verify the backup BEFORE anything else. Then the repo PRs, then the direct half: every purge runs first as a dry-run count, then as the real predicate. Prove cron behaviour now by invoking the exact C2.15 command by hand, never by waiting for the next nightly run. Expect 2–3 repo PRs plus a labelled direct-administration section in your report.
+Frozen before BUILD. Changes go to the staff room through Zero.
 
-BITES (each with its proving command)
-- Bite 1. Consumer: the C2.15 cron. Its exact command, run by hand after the ruling, reports a NON-ZERO count on a class ruled purgeable, which is impossible today. Paste before and after.
-- Bite 2. Consumer: the save path. Run `mem save fact "probe" 7`, then `sqlite3 ~/.claude/memory.db "select count(*) from memories where ttl_days is not null;"` → non-zero.
-- Bite 3. Consumer: the database. `ls -la ~/.claude/memory.db` after purge + VACUUM, next to the pre-purge size.
-- Bite 4. Consumer: the next backup. `sqlite3 <newest-backup> "select count(*) from raw_observations where osint_sensitive=1;"` counts only rows inside the ruled window, next to the same query on an older backup. Counts only.
-- Bite 5. Consumer: the guard. Overshoot the cap in a scratch copy and the guard fires; under the cap it stays silent.
-- Bite 6. Consumer: the daemon. After the surgery it is running, its log shows a tick newer than your VACUUM, and the file it runs is sha256-identical to the merged repo copy.
+- **Predicates.** The tool's per-class predicates are exactly the ruling file's, recorded by sha256 in the evidence pack. `--dry-run` prints per-class counts; `--apply` prints `changes()` per class and exits non-zero on any mismatch with the gate-signed dry-run.
+- **Archive, not delete.** Rows ruled "archive" move to an archive TABLE inside memory.db — never a dated cleartext file — and never reach a DELETE. The FTS triggers (`memories_ad`) stay consistent; the recall hook and `mem query` keep working.
+- **C2.15 keeps its shape.** A row gets a ttl only if its class was ruled purgeable.
+- **No other window writes memory.db**, and S5 writes it not at all.
+- **The ledger — the one surface all windows share.** `.claude/skills/modus/PENDING-ARMS.md` carries `merge=union`, which GitHub's mergeability ignores (modus SKILL.md:193). Serialize: rows ONLY in one final, separate, ledger-only PR, cut from a fresh origin/main after the code PR merged. Open it only when `gh pr list --state open --limit 200 --json number,files --jq '[.[]|select(any(.files[];.path==".claude/skills/modus/PENDING-ARMS.md"))|.number]'` prints `[]` and `git -C "$WT" diff origin/main -- .claude/skills/modus/PENDING-ARMS.md` is +N/-0.
+- **Freeze.** Once armed, the branch is read-only (Builder Contract rule 1). A **real** DIRTY on an armed PR: close it with a comment naming the successor, cut a fresh branch from origin/main, cherry-pick the same content, then push, create and arm the successor as three separate commands. A **phantom** DIRTY (GitHub reports DIRTY while `gh pr view "$PR" --json autoMergeRequest` still shows it armed): judge the diff, then let the queue cure it. Never `--disable-auto`, merge origin/main, push and re-arm.
 
-RISK CONTROLS
-This is irreversible data surgery with no reviewer, so your own SQL is the only check. Delete by predicate, never by inspection: you never read rows to decide what goes. The PII output boundary is hard: osint_sensitive rows may be counted, hashed, deleted or quarantined, but never printed or pasted into a PR body, log, memory or report, and payload_json is never printed. Never VACUUM against the live writer. Never `git checkout --` over an uncommitted fix; back it up with `cp` first.
+## 4. Acceptance
 
-STOP CONDITIONS
-Stop and escalate if the ruling block is still empty when you reach a DELETE (do the repo half and stop), if the backup fails `integrity_check` or its counts don't match, if the compression daemon can't be paused and restarted safely, if you get three reds for the same cause, or if you find osint_sensitive content already transcribed into a repo file (report where it is, never what it says).
+Every check that inserts, updates or deletes runs on a **scratch copy**, never on the live DB. Make one with `SCR=$(mktemp -d); sqlite3 ~/.claude/memory.db ".backup '$SCR/mem.db'"; chmod 600 "$SCR/mem.db"; sqlite3 "$SCR/mem.db" "PRAGMA integrity_check;"` → ok. The copy is sensitive: `rm -rf "$SCR"` before the session ends, and log the deletion in the pack.
+
+- **Negative:** `--apply` with no ruling file exits non-zero, and `select count(*) from memories` on the scratch copy is the same before and after. If the tool's dry-run and the gate's own counts disagree on any class, `--apply` refuses.
+- **Integration (scratch only):** `cd "$WT" && ~/nuzantara/.venv/bin/python3 -m pytest scripts/tests/test_mos_plus_compression_worker.py -q` plus the tool's tests pass. Then, on `$SCR/mem.db` with a test ruling file: a probe row written through the worker's ttl logic (via `--db`) gets a non-null `ttl_days` for a purgeable class and NULL otherwise; `sqlite3 "$SCR/mem.db" "delete from memories where content='ttl-probe'; select changes();"` → 1 after the probe was inserted there with that content. The live DB gets no DELETE in S5.
+- **Production observation:**
+  1. Content proof after the puller — blobs, not ancestry (superscar #9, `scripts/branch_graveyard_cleanup.sh::content_on_main()`), `$WT` on the PR's final head: `[ "$(git -C ~/nuzantara rev-parse HEAD:scripts/memory/mos_retention_purge.py)" = "$(git -C "$WT" rev-parse HEAD:scripts/memory/mos_retention_purge.py)" ] && echo live`.
+  2. On a fresh scratch copy of the live DB, `python3 ~/nuzantara/scripts/memory/mos_retention_purge.py --db "$SCR/mem.db"` (the deployed tool, dry-run) prints per-class counts, and the gate — independently, with its own SQL on the same copy — reproduces them and signs them.
+  3. Nothing live moved: `shasum -a 256 ~/scripts/mos-plus-compression-worker.py` is unchanged from open, and `lsof ~/.claude/memory.db` still shows only the compression daemon and normal readers.
+
+  Fixture success never stands in for this observation.
+
+## 5. Team
+
+Every seat comes from the colour table (`docs/architecture/dual-consul/army-map.md` §1bis, its only copy).
+
+- **BLUE:** Dux and release owner, this window (Opus 5 `xhigh`). Implementer Sonnet 5, pinned in every Agent call (`model: "sonnet"`); supports on Haiku 4.5 (`model: "haiku"`); an unpinned child inherits the Dux's model. Adversarial reviewer: an independent Codex seat outside the chain (`.claude/scripts/codex-spalla.sh`; `docs/codex/CODEX_SPALLA.md`), reading the frozen diff itself. Final on-disk gate: a FRESH Opus 5 `xhigh` session outside the chain, commissioned by this top-level Dux (modus SKILL, "Gate commission depth").
+- **Independence on the numbers.** The gate re-runs the dry-run itself on the verified scratch copy and signs the per-class counts. The generator's SQL is never its own check, and the gate never runs `--apply`.
+- **Routing floor:** one lane (the purge tool's tests) goes through Kimi or GLM, prepare-only, own worktree — not Codex.
+- **ORANGE**, only if declared before opening: every seat from §1bis. A dead seat suspends the mission.
+- Record effective model, effort and thread ids in `brief.yml` at start.
+
+## 6. Appetite and stop-loss
+
+- **Budget:** 8 h, 2 rounds, 2.5M tokens, declared as `appetite:` in `brief.yml`; `spend:` in `pack.yml` (`scripts/evidence_pack_lint.py` rule 14).
+- **Deadline:** open + 8 h. ONE mission deadline, owned by the root mandate and read through `infra/codex-hooks/mandate_budget.py` (the spec's `scripts/mandate_budget.py` does not exist). The staff room can renew it once; on expiry the mission suspends.
+- **Limits:** three reds on one cause → suspend; fix-of-a-fix depth 1; at most 2 children, depth 1, 1 hop; N = 0 ship reserve — a capped child checkpoints and returns; child active time reported separately.
+- **Checkpoints:** `scripts/fleet_mail.sh local broadcast --key S5-checkpoint --ttl 24 "$STATE"`, where `$STATE` is one line of state with no PII. `local` is Pro; the staff room reads the Pro mailbox.
+- **Backup first — documented here, executed by S5b.** The pack carries this procedure for S5b; S5 runs none of it.
+  1. Destination: the EXISTING `~/.claude/backups/`, never a new directory. Name it `memory_presurgery_$(date -u +%Y%m%dT%H%M%SZ).db` so C2.14's `memory_*.db` prune deletes it: deletion date = its mtime + 30 days, at the next Sunday 05:00 UTC run. Record that date in the pack and in S5b's ledger row.
+  2. `sqlite3 ~/.claude/memory.db ".backup '$BK'"` (the online backup API, never `cp` of a live database), then `chmod 600 "$BK"` explicitly: the directory is 0755 today, and `mkdir -m` would not fix an existing directory.
+  3. `sqlite3 "$BK" "PRAGMA integrity_check;"` → ok; per-table counts match; record `select max(id) from memories` on the backup as the backup's max id.
+  4. The archive is a table inside memory.db (§3), so the cut creates no other copy.
+- **Stop and escalate if:** a change would write the live DB; a scratch copy lands inside a repo or a synced folder; osint content already sits in a repo file (report where, never what); three reds on one cause.
+
+## 7. Evidence and release
+
+- **Evidence:** `cd "$WT" && python3 scripts/ci/evidence_paths.py --ref "$(git rev-parse --abbrev-ref HEAD)"` names the directory for `brief.yml` (gear, appetite, team with thread ids, four timestamped sibling outputs: open PRs' paths, `python3 scripts/agent_start.py --list`, `ListAgents`, `scripts/fleet_mail.sh local --list`) and `pack.yml` (at Gear 3: the signed dry-run counts, the test ruling file's hash, the scratch-copy deletion log, the S5b backup and rollback procedures). Every code PR carries `Bites:`.
+- **Release**, three separate commands: `git -C "$WT" push -u origin HEAD`; `cd "$WT" && gh pr create --title "$TITLE" --body-file "$BODY"`; `gh pr merge "$PR" --auto` at once (`$PR` = the number `gh pr create` printed). Bare `--auto`: the queue rejects every strategy flag (`docs/runbooks/merge-queue-discipline.md:274-278`; `scripts/queue_shepherd.py:819-821`). The `harness/fable-gate` success must sit on the real head sha.
+- **Gate receipt:** a PR comment with mission id, colour, HEAD sha, gate thread id, commands with exit codes, verdict; re-checked against the current HEAD before posting. Publish: `HEAD=$(gh pr view "$PR" --json headRefOid --jq .headRefOid)`, then `python3 scripts/harness_fable_gate.py --verdict PASS --sha "$HEAD" --description "$RECEIPT"` (`$RECEIPT` = the receipt comment's short reference, ≤140 characters).
+- **Merge order:** (1) the mechanism PR (worker ttl logic + dry-run tool); (2) the gate signs the production dry-run (§4); (3) the ledger-only PR: the `~/.claude` remote question. Everything after that is S5b.
+- **Rollback trigger (S5):** the deployed tool's dry-run disagrees with the gate's counts, or any live-DB write is traced to this window → revert PR from a fresh origin/main.
+- **Rollback procedure for S5b (documented here).** Quiescence = compression daemon paused AND no `mem` writes, checked by `select max(id) from memories` before and after the cut. `.restore` from the backup only if the live max id is still the backup's max id. Otherwise export the delta rows (id above the backup's max id) to a scratch directory, restore, re-insert them, and re-run `PRAGMA integrity_check`.
+
+## Adversarial review
+
+**Seat:** Codex `gpt-5.6-sol`, outside the author chain.
+
+**Round 1 — REWORK.** Doctrine conflict with PARABELLUM → Dux, colour, mission id declared. `agent_start.py` cannot change cwd → `$WT` captured. `merge=union` ledger → rows only in a final ledger-only PR. S5 was gated and startable at once, gave up independence on the irreversible step, and had three proofs that did not falsify (a relative placeholder backup path, a DELETE with no `changes()`, a global count) → fixed in v2, then split in v3.
+
+**Round 2 — REWORK.** Findings on this file:
+- **F1 applied:** the Opening row follows the colour.
+- **F2 applied:** the Dux role names the pending Astra reading.
+- **F5 applied:** §3 freeze rule replaces disarm → merge → push → re-arm.
+- **F7 applied:** blob-equality content proof in §4.
+- **F8 rejected:** bare `--auto` stays (`merge-queue-discipline.md:274-278`; `queue_shepherd.py:819-821`); modus SKILL.md:100's `--squash` is stale (README).
+- **F9 applied:** checkpoints use `local broadcast`; the backup path is a real destination.
+- **F12 applied:** tests run with `~/nuzantara/.venv/bin/python3 -m pytest`.
+- **F14 applied:** S5 = worker ttl logic + dry-run tool + tests + gate-signed counts on a scratch copy; backup, pause, `--apply`, VACUUM, HOME `cp`, ttl on save, declared pair and ledger → queued S5b — THE CUT; the "next morning" backup proof moved there.
+- **F15 applied:** the probe insert/delete runs on a `mktemp -d` scratch copy; the live DB gets no DELETE. S5b's gate re-reads the post-apply state (README).
+- **F16 applied:** backup in the existing `~/.claude/backups/` under C2.14's prune (verified in crontab), explicit `chmod 600` (directory is 0755), archive as a table; no `$HOME/memory-surgery`.
+- **F17 applied:** quiescence by `max(id)`; `.restore` only if unchanged, otherwise delta export and re-insert.

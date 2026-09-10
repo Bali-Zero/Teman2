@@ -1,67 +1,114 @@
-# S3 — ARM THE AUDITORS
+---
+title: "S3 — ARM THE AUDITOR · battle window"
+date: 2026-09-10
+adversarial_review: codex
+---
 
-**One line:** proprioception has no schedule, the daily cost guard sits in canon unloaded, and the scar census feeds a runner that no workflow calls, while CI reads a different registry.
+# S3 — ARM THE AUDITOR · battle window
 
-**Wave 2 · Pro · runs in parallel with S4.** Writes no plist until PR #6101 (one tree on Pro) has merged or closed. Built from C5, plus C6 (payload redirected to `verify_the_verifiers_gates.yaml`) and one probe from C7. Operator items: 3. Cap: 5 PRs.
+| Field | Value |
+|---|---|
+| Mandate id | **S3** |
+| Colour | **BLUE** unless Zero declares ORANGE before the window opens. No fallback between colours. |
+| Dux role | Opus 5 `xhigh` on BLUE (Sol `gpt-5.6-sol` `xhigh` on ORANGE), appointed by the staff room (Fable 5.1 with Zero; Astra reading pending — README). Dux and release owner. |
+| Worktree / branch | `agent/nuzantara/ops/s3-arm-the-auditor`, created by the command in §1 |
+| Wave | 2, in parallel with S4. Opens only after S1's shepherd PR is MERGED, pulled on Pro (puller rc=0), the S1 window has reported six clean ticks, and the Astra reading or its waiver is recorded (README). |
+| Opening | The opening follows the colour. BLUE: Zero opens a fresh `claude --model claude-opus-5` window at effort `xhigh` and pastes this file. ORANGE: a Codex window on the Sol seat as army-map §1bis names it ("Sol (`gpt-5.6-sol`) `xhigh`"). The first message restates colour, Dux role, mandate id and worktree path, then executes. |
 
-## Mandate prompt — paste everything below this line into a fresh `claude` session
+## 1. Mandate
 
-SEAT AND CONTRACT
-You are a Fable 5.1 session that Zero chose manually, running at max effort on Pro (`nuzantara@Nuzantara`, repo `~/nuzantara`). You own this mandate end to end: review → merge → arm → deploy → prove-live. The codeowner does not merge, review or deploy. Pin every subagent's model in the Agent call: `sonnet` for readers and implementers, `haiku` for grunt work, `opus` only for a final on-disk gate. An unpinned subagent inherits your model. Builder Contract: every PR gets its own worktree from `scripts/agent_start.py`, cut from a fresh origin/main. One PR, one concern, ≤~400 net lines. Every PR body carries a `Bites:` line naming the consumer and the observation that proves the change is live. Arm auto-merge when you open the PR; from then on the branch is frozen. Push, create and merge are three separate commands. Never rerun a red check until you know why it is red. Three reds for the same cause → suspend and write the spec. A fix-of-a-fix stops at depth 1. Reaching a Claude model through a paid per-token Anthropic endpoint is banned as an entity: use the `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN` only, and refuse any tool, MCP server or cron that needs `ANTHROPIC_API_KEY`, `from anthropic import Anthropic`, a renamed variable, a wrapper or a Bedrock/Vertex route. PII is an output boundary: no PR body, log, alert, memory, ledger row or report carries client PII or OSINT in cleartext. Off-limits files: `zantara_core.py`, `fly.toml`, `.env*`, `apps/bali-intel-scraper/backend/db/migrations/env.py`. Never edit Zero's own files: `~/.claude/CLAUDE.md`, branch protection, required-context lists. File operator items as a PENDING-ARMS row with the exact ask, and never wait on them.
+S3 · BLUE · **organ: proprioception** — script `scripts/proprioception.py`, report `~/.nuzantara-proprioception/last.json`, receptor `scripts/hooks/proprioception_sessionstart.sh`. **Gear:** 2 expected (CI's floor wins). **Host:** Pro. Scar gates, the organ census, the cost guard and the plist linter belong to queued windows (README).
 
-MISSION
-Put the organism's auditor on a schedule, load the cost guard, and add the last ten weeks of scars to the registry CI actually reads. Then add ONE advisory probe that re-derives a countable claim, and produce the decommission manifest for frozen organs. Five PRs at most.
+**Objective:** proprioception runs on a schedule and carries ONE re-derivation probe whose first subject is INDEX.md's core-table list. **What success changes:** a P1 divergence reaches the next session's boot whether or not anyone typed the auditor's name, and one hand-written countable claim is re-derived by a machine.
 
-GROUND (judge 13:04–13:06Z, red-team about an hour later, re-checked by the board editor at ~13:35Z; re-derive everything, because counts moved during the audit day: repo_divergent went 4→11 and live LaunchAgents went 71→76)
-- `ls ~/Library/LaunchAgents | grep -ci propriocep` → 0; `crontab -l | grep -ci propriocep` → 0. The auditor behind the P1 findings in three reports runs only when someone types its name.
-- `launchctl list | grep -c cost-advisor-daily-cap` → 0. Canon has TWO copies of its plist, `infra/launchagents/com.nuzantara.cost-advisor-daily-cap.plist` and `apps/backend-rag/deploy/launchd/com.nuzantara.cost-advisor-daily-cap.plist`. Decide which one is canon before you load anything.
-- `infra/scar-gates/MANIFEST.json` → generated 2026-06-27, total 66, armed 2, prose_only_debt 64. Its highest entry is W87, while the corpus reaches W131 (`grep -ohE 'W[0-9]+' docs/scars/cicatrix-scars.md docs/scars/cicatrix-scars-archive.md | sed 's/W//' | sort -n | tail -1`).
-- THE CORRECTION THAT SHAPES THIS SESSION: `grep -rln run_scar_gates .github/workflows/ | wc -l` → 0, and the same grep over `~/Library/LaunchAgents/` → 0, while `grep -c scar_test scripts/verify_the_verifiers_gates.yaml` → 11. The only consumer of MANIFEST.json is orphaned; CI reads `verify_the_verifiers_gates.yaml`. Don't spend the session regenerating MANIFEST.json.
-- INDEX.md:71 lists fifteen "core tables". Six of them (articles, crm_clients, crm_practices, messages, routing_stats, failed_queries) return exists=false against prod (`./scripts/pg.sh` with a query on `information_schema.tables`).
-- PR #6101 (at 13:35Z: open, DIRTY, armed, 35 files) repoints 18 LaunchAgents from `/Users/nuzantara/nuzantara-deploy` to `/Users/nuzantara/nuzantara`. Its body records the healer's home-fork refresh copying repo canon over a live plist edit within six minutes. The canon is the change; the installers and the healer are what put it into effect.
-- PR #6054 (open) modifies `scripts/proprioception.py` (child calibration receptor).
-- `python3 scripts/lint_plist_keepalive.py` → exit 4 (PARTIAL), from two ExpatError plists: `infra/launchagents/_snapshot-live/com.nuzantara.daily-gsc-indexing-sweep.plist` and `.../com.nuzantara.intake-proposal-health-sentinel.plist`. Neither organ is loaded any more; their live copies sit under `.removed-20260611/` and `.disabled-codex-cleanup-20260708/`. `com.nuzantara.plist-snapshot.daily` (loaded) copies every LOADED live plist over `_snapshot-live/`, one way.
+**Worktree:** `cd ~/nuzantara && WT=$(python3 scripts/agent_start.py --lane ops --task-id s3-arm-the-auditor | awk '/^WORKTREE_READY /{print $2}') && echo "$WT"`. The broker prints one `WORKTREE_READY` line followed by the path and cannot change your cwd (`scripts/agent_start.py:2166-2172`): every later command is `git -C "$WT" …` or `cd "$WT" && …`, and `--list` recovers the path. One live worktree at a time: `--release` after each PR merges, then a fresh origin/main. **Base sha:** record `git -C "$WT" rev-parse HEAD` at open.
 
-DISEASE
-Superscar #2, three organs deep. Building the sensor gets treated as the deliverable and wiring it as someone else's job. So the census never runs, the cost guard never loads, and the scar registry's generator feeds a script nothing calls. Every countable claim in the doors is hand-written for the same reason.
+**Ground** (judge 13:04–13:06Z, red-team ~1 h later, editor ~13:35Z, staff room ~15:40Z; re-derive — counts moved within one day, repo_divergent 4→11, LaunchAgents 71→76):
+- **Not scheduled.** `ls ~/Library/LaunchAgents | grep -ci propriocep` → 0; `crontab -l | grep -ci propriocep` → 0.
+- **The receptor is the mechanical consumer.** It prints a one-line heartbeat for a fresh report and goes LOUD when `last.json` is missing or older than 48 h (test override `PROPRIOCEPTION_REPORT_PATH`).
+- **CLI.** `python3 scripts/proprioception.py --help` → `[--json] [--fleet] [--no-report] [--no-fetch] [--tags TAGS] [--probes PROBES] [--strict] [--selftest]`; the report is written unless `--no-report`.
+- **No invocation field.** `last.json`'s top-level keys are `config_sha, config_source, machine, probes, probes_expected, probes_run, repo_head, runner_blob, runner_version, schema, summary, ts, unwatched_classes`: nothing says who ran it, and its mtime proves nothing about launchd.
+- **Phantom tables.** INDEX.md:71 lists fifteen core tables; six (articles, crm_clients, crm_practices, messages, routing_stats, failed_queries) return exists=false against prod `information_schema.tables` (via `scripts/pg.sh`).
+- **Existing pattern.** `scripts/check_autonomous_ops_staleness.py` already re-derives a claim for one file.
+- **Blocking PRs.** #6101 (launchd canon) merged 2026-09-10T14:24Z. #6054 (edits `scripts/proprioception.py` for the child calibration receptor) was open at 15:40Z.
 
-SCOPE IN (five PRs, in this order; loading the cost guard is an ops step, not a PR)
-1. PR: schedule proprioception with a canon plist under `infra/launchagents/` whose ProgramArguments name `/Users/nuzantara/nuzantara/scripts/proprioception.py` (the #6101 rule). Load it and kickstart it once, so a run started by launchd lands in its log today.
-2. Ops step: load the cost guard from whichever copy is canon, after checking that its exec path names the main checkout, and force one run into its log today. If the canon itself needs a fix, that fix takes item 3's PR slot and the linter fix moves to the grunt lane.
-3. PR: make the plist linter exit 0. First run `launchctl list | grep -i <label>` for each broken plist. These organs are dead, so retire their snapshot copies (or fix the XML). The rule for every future case: if a `_snapshot-live` plist IS loaded, the fix goes into the live canon or its declared pair, never only into the snapshot, or tomorrow's snapshot reverts it.
-4. PR: executable scar gates in `scripts/verify_the_verifiers_gates.yaml` (NOT MANIFEST.json) for recurring scar chains that grep shows have no coverage. At least two, each proven to FAIL when its disease is synthetically re-introduced and to pass once it is removed. Advisory only; no promotion.
-5. PR: ONE advisory re-derivation probe. `scripts/check_autonomous_ops_staleness.py` already proves the pattern for one file; generalize it into a probe that re-derives a countable claim and reports red on drift. Exactly one consumer: INDEX.md's core-table list, diffed against `information_schema.tables`. It reports; it doesn't block. Correct INDEX.md in the same PR, as the proof that the probe bites.
-6. PR: the decommission manifest for frozen organs, meaning the mechanism plus per-organ evidence, generated by a script. Evidence per organ is limited to organ id/label, heartbeat age and log error CLASS (e.g. `ModuleNotFoundError`, `Operation not permitted`). Never log lines, payloads, message bodies or identifiers. Include `com.balizero.intel.nightly` (a ~4-month zombie whose copy step fails with Operation not permitted).
+## 2. Owned perimeter
 
-SCOPE OUT
-- Regenerating MANIFEST.json, building a census generator, and regenerating `scripts/automation_catalog.json`: all cut to the grunt lane.
-- Root-causing individual frozen organs, retiring any organ, promoting anything to REQUIRED.
-- The legacy conversation tables. Conversation data has a five-year never-delete retention (Zero, 2026-08-08), so the manifest may mark a writer as dead but never proposes dropping a conversation table.
-- The 95 zero-row prod tables (Zero's triage), the daemon count in `~/.claude/CLAUDE.md` (report the derivation only), and arsenal seat re-authentication.
-- `queue_shepherd.py` (S1); PENDING-ARMS structure, the escalation bus and `tg_notify.py` (S4); memory.db (S5). Also the internals of `scripts/proprioception.py` while #6054 is open.
+- **Writable:**
+  - one new canon plist `infra/launchagents/com.nuzantara.proprioception.plist` (to be created; label `com.nuzantara.proprioception`), which also sets the env var `PROPRIOCEPTION_INVOKED_BY=launchd` (to be created; not a credential);
+  - `scripts/proprioception.py`, only after #6054 merged, only for the new probe, its registration, and one additive top-level report key `invoked_by` read from that env var (to be created);
+  - the probe's tests under `scripts/tests/`;
+  - INDEX.md, only the table list on line 71, only in its own PR.
+- **Forbidden:** `scripts/verify_the_verifiers_gates.yaml`, `infra/scar-gates/MANIFEST.json`, the decommission manifest, the cost-guard plist, the `_snapshot-live` plists (queued windows or Gear-1 items); `scripts/tg_notify.py` (S4); crontab; changing any existing probe's output; a credential in a plist — if the probe needs a prod DB credential launchd lacks, stop.
+- **Shared:** `infra/launchagents/` (convention owner #6101; S2 adds a different plist); `scripts/proprioception.py` (owned by #6054 until it merges); INDEX.md (the atlas: the named line only); the ledger (§3).
+- `.lane-check.json`'s `scope_globs` only decides whether a check applies (`infra/claude-hooks/lane_check.py`; the spec's `scripts/` path is stale). VERIFY and the gate compare changed paths against this list by hand.
+- **Bans:** no Claude model through a paid per-token Anthropic endpoint (any alias, wrapper, Bedrock or Vertex route; only the `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN`). No client PII or OSINT in cleartext. Off-limits: `zantara_core.py`, `fly.toml`, `.env*`, `apps/bali-intel-scraper/backend/db/migrations/env.py`. Zero's files never edited (`~/.claude/CLAUDE.md` and its daemon count, branch protection, required contexts). Operator items filed, never waited on.
 
-OPERATOR BOUNDARY
-Three items, filed, none blocking: sign-off on organ retirement in the manifest; promotion of the new gates to REQUIRED; the daemon-count correction in Zero's global door.
+## 3. Sibling contract
 
-METHOD
-First hour:
-1. Run `python3 scripts/agent_start.py --help`, then create one worktree per PR, e.g. `--lane ops --task-id auditors-proprioception-plist` (branch `agent/nuzantara/ops/...`).
-2. Run `gh pr view 6101 --json state,mergeStateStatus`. If it's still open, ship items 4, 5 and 6 first and write no plist until it lands; then align every plist with the canon it established.
-3. Re-run every GROUND command, plus `python3 scripts/launchagent_reconcile.py --json`, `python3 scripts/launchd_liveness_detector.py --json`, `python3 scripts/organism_stale_detector.py --dir ~/.organism/last_seen` and `python3 scripts/lint_plist_keepalive.py`. If a flag errors, run `--help` rather than guessing. Write down YOUR numbers.
-4. Run `gh pr list --state open --search 'scar-gates OR proprioception OR launchagent'` and coordinate with every hit rather than racing it.
-Land the gates advisory-only and watch a full day of runs before you propose promotion.
+Frozen before BUILD. Changes go to the staff room through Zero.
 
-BITES (each with its proving command)
-- Bite 1. Consumer: launchd. `launchctl list | grep -i propriocep` shows the loaded label, proprioception's own report shows a run from today started by launchd, and `launchctl print gui/501/<label> | grep -A3 'arguments = {'` names the main checkout.
-- Bite 2. Consumer: the cost guard. `launchctl list | grep -c cost-advisor-daily-cap` → 1, and a forced run appears in its log today.
-- Bite 3. Consumer: the linter. `python3 scripts/lint_plist_keepalive.py; echo $?` → 0 instead of 4.
-- Bite 4. Consumer: CI. `python3 scripts/verify_the_verifiers.py --json --no-signal --scope repo` shows the armed gate count up by the number you added; paste two re-injections failing and then passing.
-- Bite 5. Consumer: INDEX.md's readers. The probe names the six missing tables, corrupting one derived number turns it red, and INDEX.md is corrected.
-- Bite 6. Consumer: the manifest. Running its generator twice leaves `git diff` empty, and every entry carries only the allowed fields.
-- Bite 7. Consumer: canon. `python3 scripts/launchagent_reconcile.py --json` shows no new divergence from your plists.
+- **Plist.** Exec path `/Users/nuzantara/nuzantara/scripts/proprioception.py`. A live-only edit is reverted by the healer's home-fork refresh: the canon is the change.
+- **#6054 and the probe.** The probe PR opens only after #6054 merges and is built from a fresh origin/main. While #6054 is open, comment on it (coordination, not a race) and ship only the schedule.
+- **Report schema.** The probe emits the existing finding shape (id, severity, DIVERGED/OK, fix line), so the receptor needs no change. `invoked_by` is additive at top level; a test proves every existing probe's output is unchanged and the receptor still passes `scripts/tests/test_proprioception_receptor_ranking.sh`.
+- **Neighbours.** S4 changes nothing proprioception reads; S2 shares only the plist directory.
+- **The ledger — the one surface all windows share.** `.claude/skills/modus/PENDING-ARMS.md` carries `merge=union`, which GitHub's mergeability ignores (modus SKILL.md:193); #6080 and #6081 went DIRTY that way. Serialize: rows ONLY in one final, separate, ledger-only PR, cut from a fresh origin/main after the code PRs merged. Open it only when `gh pr list --state open --limit 200 --json number,files --jq '[.[]|select(any(.files[];.path==".claude/skills/modus/PENDING-ARMS.md"))|.number]'` prints `[]` and `git -C "$WT" diff origin/main -- .claude/skills/modus/PENDING-ARMS.md` is +N/-0.
+- **Freeze.** Once armed, the branch is read-only (Builder Contract rule 1). A **real** DIRTY on an armed PR: close it with a comment naming the successor, cut a fresh branch from origin/main, cherry-pick the same content, then push, create and arm the successor as three separate commands. A **phantom** DIRTY (GitHub reports DIRTY while `gh pr view "$PR" --json autoMergeRequest` still shows it armed): judge the diff, then let the queue cure it. Never `--disable-auto`, merge origin/main, push and re-arm.
 
-RISK CONTROLS
-Re-baseline every count within the session. Never `launchctl unload` anything you didn't just load yourself. Never blind-rerun a red check. No client PII or OSINT in any manifest, report or ledger row: organ ids only. Plist exec paths name the main checkout, never a `.worktrees/` path (worktrees are torn down after merge) and never `nuzantara-deploy`. S2 may add a LaunchAgent in the same window, so never edit crontab; one plist file per job. PENDING-ARMS appends: use a branch cut from a fresh origin/main, check for a +N/-0 diff, and never hand-resolve or rebase onto it.
+## 4. Acceptance
 
-STOP CONDITIONS
-Stop and file a row if a gate would touch a REQUIRED context, if retiring an organ starts to look like a business decision (it is one), if you get three reds for the same cause, or if another session has an open PR on `scripts/proprioception.py` or a broad `infra/launchagents/**` repoint that your change would contradict.
+Four PRs in order; each one's observation is made before the next opens. Attribution to launchd always uses `launchctl print gui/$(id -u)/com.nuzantara.proprioception | grep -E '^\s*(runs|last exit code) ='` — `runs` incremented since your previous read, last exit 0 — never the report's mtime. Always this projection: the full print dumps the job's environment.
+
+1. **Schedule PR** (plist only; #6101 is merged).
+   - Production: after the puller, blob proof of the plist (below), install from canon, `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.nuzantara.proprioception.plist`; `launchctl list | grep -c com.nuzantara.proprioception` → 1; `launchctl print gui/$(id -u)/com.nuzantara.proprioception | grep -A3 'arguments = {'` names the main checkout; after the next scheduled run, `runs` went up with exit 0 and `last.json`'s `ts` matches that run; the next session's SessionStart receptor prints a fresh-report line.
+2. **Probe PR** (after #6054), registering the probe (proposed id `index_core_tables`, to be created) and `invoked_by`.
+   - Negative: on a scratch copy of the INDEX.md list with one invented table the probe reports DIVERGED; on the corrected list, OK. A report older than 48 h makes the receptor LOUD (`scripts/tests/test_proprioception_receptor_ranking.sh`).
+   - Integration: `cd "$WT" && ~/nuzantara/.venv/bin/python3 -m pytest scripts/tests -q -k index_core_tables` passes, and `cd "$WT" && python3 scripts/proprioception.py --probes index_core_tables --json` names the six missing tables.
+   - Production: the next scheduled run shows the probe **DIVERGED** with `invoked_by` = `launchd`, and `launchctl print` shows `runs` incremented with exit 0.
+3. **INDEX.md correction PR** (line 71 only), separate. Production: the next scheduled run shows the probe **OK**.
+4. **Ledger-only PR**, only if the window filed anything.
+
+**Content proof** after each merge — blobs, not ancestry (superscar #9, `scripts/branch_graveyard_cleanup.sh::content_on_main()`), `$WT` on that PR's final head: `[ "$(git -C ~/nuzantara rev-parse HEAD:scripts/proprioception.py)" = "$(git -C "$WT" rev-parse HEAD:scripts/proprioception.py)" ] && echo live`, and the same with `infra/launchagents/com.nuzantara.proprioception.plist` and `INDEX.md` for their PRs. Fixture success never stands in for these observations.
+
+## 5. Team
+
+Every seat comes from the colour table (`docs/architecture/dual-consul/army-map.md` §1bis, its only copy).
+
+- **BLUE:** Dux and release owner, this window (Opus 5 `xhigh`). Implementer Sonnet 5, pinned in every Agent call (`model: "sonnet"`); supports on Haiku 4.5 (`model: "haiku"`); an unpinned child inherits the Dux's model. Adversarial reviewer: an independent Codex seat outside the chain (`.claude/scripts/codex-spalla.sh`; `docs/codex/CODEX_SPALLA.md`), reading the frozen diff itself. Final on-disk gate: a FRESH Opus 5 `xhigh` session outside the chain, commissioned by this top-level Dux (modus SKILL, "Gate commission depth"); it only signs.
+- **Routing floor:** three code PRs, so one lane (e.g. the probe's tests) goes through Kimi or GLM, prepare-only, own worktree — not Codex.
+- **ORANGE**, only if declared before opening: every seat from §1bis. A dead seat suspends the mission.
+- Record each seat's effective model, effort and thread id in `brief.yml` at start.
+
+## 6. Appetite and stop-loss
+
+- **Budget:** 5 h, 2 rounds, 1.5M tokens, declared as `appetite:` in `brief.yml`; `spend:` in `pack.yml` (`scripts/evidence_pack_lint.py` rule 14). Steps 2–4 of §4 each wait for a scheduled run: set the plist's interval so they fit, and record the choice.
+- **Deadline:** open + 5 h. ONE mission deadline, owned by the root mandate and read through `infra/codex-hooks/mandate_budget.py` (the spec's `scripts/mandate_budget.py` does not exist). Only the staff room renews it, once; on expiry the mission suspends.
+- **Limits:** three reds for one cause → suspend; fix-of-a-fix depth 1; at most 2 children, depth 1, 1 continuation hop; adapter tool ceiling with no ship reserve (N = 0); child active time reported separately.
+- **Checkpoints:** `scripts/fleet_mail.sh local broadcast --key S3-checkpoint --ttl 24 "$STATE"`, where `$STATE` is one line of state with no PII. `local` is Pro; the staff room reads the Pro mailbox.
+- **Stop and return to the staff room if:** #6054 is still open when the schedule is proven (comment on it, ship nothing more); the probe needs a credential inside launchd; the receptor would have to change; three reds for the same cause.
+
+## 7. Evidence and release
+
+- **Evidence:** `cd "$WT" && python3 scripts/ci/evidence_paths.py --ref "$(git rev-parse --abbrev-ref HEAD)"` prints the directory for `brief.yml` (gear, appetite, team with thread ids, four timestamped sibling outputs: open PRs' paths, `python3 scripts/agent_start.py --list`, `ListAgents`, `scripts/fleet_mail.sh local --list`) and `pack.yml`. Every code PR carries `Bites:`.
+- **Release**, three separate commands: `git -C "$WT" push -u origin HEAD`; `cd "$WT" && gh pr create --title "$TITLE" --body-file "$BODY"`; `gh pr merge "$PR" --auto` at once (`$PR` = the number `gh pr create` printed). Bare `--auto`: the queue rejects every strategy flag (`docs/runbooks/merge-queue-discipline.md:274-278`; `scripts/queue_shepherd.py:819-821`). At Gear 2 and above the PR needs a `harness/fable-gate` success on its real head sha.
+- **Gate receipt:** a PR comment with mission id, colour, HEAD sha, gate thread id, commands with exit codes, verdict; re-checked against the current HEAD before posting. Publish: `HEAD=$(gh pr view "$PR" --json headRefOid --jq .headRefOid)`, then `python3 scripts/harness_fable_gate.py --verdict PASS --sha "$HEAD" --description "$RECEIPT"` (`$RECEIPT` = the receipt comment's short reference, ≤140 characters).
+- **Merge order:** (1) schedule PR; (2) probe PR, after #6054; (3) INDEX.md correction PR, after the DIVERGED observation; (4) ledger-only PR, if anything was filed. No backend path.
+- **Deploy:** the puller, then `launchctl bootstrap` of the canon plist, then one `launchctl kickstart -k gui/$(id -u)/com.nuzantara.proprioception`; later PRs ride the puller.
+- **Rollback trigger:** the scheduled run exits non-zero twice, runs longer than its own interval, or the new probe floods the receptor with P1s → `launchctl bootout gui/$(id -u)/com.nuzantara.proprioception` plus a revert PR from a fresh origin/main.
+
+## Adversarial review
+
+**Seat:** Codex `gpt-5.6-sol`, outside the author chain.
+
+**Round 1 — REWORK.** Doctrine conflict with PARABELLUM → Dux, colour, mission id declared. `agent_start.py` cannot change cwd → `$WT` captured. `merge=union` ledger → rows only in a final ledger-only PR. S3 spanned five PRs and several organs, and its probe had no mechanical consumer → narrowed to proprioception; the scheduled run and receptor are the consumer.
+
+**Round 2 — REWORK.** Findings on this file:
+- **F1 applied:** the Opening row follows the colour.
+- **F2 applied:** Dux role and Wave row name the pending Astra reading.
+- **F4 applied:** the Wave row requires MERGED + pulled + six clean ticks, not "armed".
+- **F5 applied:** §3 freeze rule replaces disarm → merge → push → re-arm.
+- **F7 applied:** blob-equality content proofs in §4.
+- **F8 rejected:** bare `--auto` stays (`merge-queue-discipline.md:274-278`; `queue_shepherd.py:819-821`); modus SKILL.md:100's `--squash` is stale (README).
+- **F9 applied:** checkpoints use `local broadcast`; the label and probe id are real (proposed) values, not placeholders.
+- **F11 applied:** schedule PR → probe PR (DIVERGED, attributed via `launchctl print` and `invoked_by`, not mtime) → separate INDEX.md PR (OK) → ledger-only PR; §4 and merge order agree. The report had no invocation field (verified), so the probe PR adds `invoked_by`.
+- **F12 applied:** tests run with `~/nuzantara/.venv/bin/python3 -m pytest`.

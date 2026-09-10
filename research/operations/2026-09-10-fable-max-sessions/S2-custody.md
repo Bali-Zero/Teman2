@@ -1,58 +1,109 @@
-# S2 — CUSTODY
+---
+title: "S2 — CUSTODY · battle window"
+date: 2026-09-10
+adversarial_review: codex
+---
 
-**One line:** The secrets audit never looks inside `~/nuzantara/.secrets` and has never run on a schedule. The restore drill has been red since 2026-09-01 because the workflow never creates the database role the dump needs, and its next automatic run is 2026-10-01.
+# S2 — CUSTODY · battle window
 
-**Wave 1 · Pro · runs in parallel with S1** (disjoint files). Built from two late reads: secrets-security and the restore drill from tests-deps-backup. Operator items: 4.
+| Field | Value |
+|---|---|
+| Mandate id | **S2** |
+| Colour | **BLUE** (the default). Chosen before the window opens; no fallback between colours. |
+| Dux role | Opus 5 `xhigh` on BLUE (Sol `gpt-5.6-sol` `xhigh` on ORANGE), appointed by the staff room (Fable 5.1 with Zero; Astra reading pending — README). Dux and release owner. |
+| Worktree / branch | `agent/nuzantara/infra/s2-custody`, created by the command in §1 |
+| Wave | 1, in parallel with S1 |
+| Opening | The opening follows the colour. BLUE: Zero opens a fresh `claude --model claude-opus-5` window at effort `xhigh` and pastes this file. ORANGE: a Codex window on the Sol seat as army-map §1bis names it ("Sol (`gpt-5.6-sol`) `xhigh`"). The first message restates colour, Dux role, mandate id and worktree path, then executes. |
 
-## Mandate prompt — paste everything below this line into a fresh `claude` session
+Opened 2026-09-10 ~22:55 WITA on the v2 text; the v3 corrections below were sent to the running window by the staff room.
 
-SEAT AND CONTRACT
-You are a Fable 5.1 session that Zero chose manually, running at max effort on Pro (`nuzantara@Nuzantara`, repo `~/nuzantara`). You own this mandate end to end: review → merge → arm → deploy → prove-live. The codeowner does not merge, review or deploy. Pin every subagent's model in the Agent call: `sonnet` for readers and implementers, `haiku` for grunt work, `opus` only for a final on-disk gate. An unpinned subagent inherits your model. Builder Contract: every PR gets its own worktree from `scripts/agent_start.py`, cut from a fresh origin/main. One PR, one concern, ≤~400 net lines. Every PR body carries a `Bites:` line naming the consumer and the observation that proves the change is live. Arm auto-merge when you open the PR; from then on the branch is frozen. Push, create and merge are three separate commands. Never rerun a red check until you know why it is red. Three reds for the same cause → suspend and write the spec. A fix-of-a-fix stops at depth 1. Reaching a Claude model through a paid per-token Anthropic endpoint is banned as an entity: use the `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN` only, and refuse any tool, MCP server or cron that needs `ANTHROPIC_API_KEY`, `from anthropic import Anthropic`, a renamed variable, a wrapper or a Bedrock/Vertex route. PII is an output boundary: no PR body, log, alert, memory, ledger row or report carries client PII or OSINT in cleartext. Off-limits files: `zantara_core.py`, `fly.toml`, `.env*`, `apps/bali-intel-scraper/backend/db/migrations/env.py`. Never edit Zero's own files: `~/.claude/CLAUDE.md`, branch protection, required-context lists. File operator items as a PENDING-ARMS row with the exact ask, and never wait on them.
+## 1. Mandate
 
-MISSION
-Make the two custody guards actually guard. The detector for scar family #4 must look where the secrets are and must run on a schedule. The backup restore drill must pass this week, not on 2026-10-01. Credentials and backups are the two things that can't be recovered if they go wrong.
+S2 · BLUE · **organ: the credential-custody detector** — `scripts/secrets_permissions_audit.py` and the schedule this window gives it. **Gear:** 2 expected (CI's floor wins). **Host:** Pro. The restore drill is another organ: a queued window (README).
 
-GROUND (judge 13:03–13:06Z, red-team about an hour later, re-checked by the board editor at ~13:35Z; re-run all of it first)
-- `stat -f '%Sp %N' ~/nuzantara/.secrets/*` → six files `-rw-------` and one `-r--------`; `stat -f '%Sp' ~/nuzantara/.secrets` → `drwx------`. The modes are correct right now because a late reader found them loosened and the orchestrator session that gated this program then ran chmod 600/400 (files) and 700 (directory) by hand at ~21:05 WITA on 2026-09-10. That is why 4 of the 7 inodes show `ctime` 2026-09-10T21:05:04 (`stat -f 'ctime=%Sc %N' -t '%Y-%m-%dT%H:%M:%S' ...`) while the other 3 show March/April ctimes. A manual, unarmed fix drifts again. Your job is the detector, its schedule and the drill, not the chmod.
-- `dseditgroup -o checkmember -m zantara-codex staff` → `yes`. There is a second local account on this machine.
-- `grep -n -A13 '_DEFAULT_ROOT_RELATIVE_PATHS' scripts/secrets_permissions_audit.py` → eleven roots (`~/.ssh`, `~/.claude`, `~/.claude-acct2`, `~/.kimi-code`, `~/.qwen`, `~/.openclaw`, `~/.config`, `~/.fly`, `~/scripts`, `~/Library/LaunchAgents`, `~/.nuzantara-cron`) plus a `~/.env*` glob. `~/nuzantara` is not among them, so the audit is blind to a directory literally named `.secrets`.
-- Don't scan the whole tree: `python3 scripts/secrets_permissions_audit.py --no-default-roots --root ~/nuzantara --json` returned ~108.6 KB of hits across every `.worktrees/*` copy of `.env.example`, `.secrets.baseline`, and workflow files with "secret" or "token" in their names. Those are false positives, and a daily schedule over that root would cry wolf from day one.
-- `crontab -l | grep -c secrets_permissions_audit` → 0; `grep -rl secrets_permissions_audit ~/Library/LaunchAgents/ | wc -l` → 0. It has never been scheduled.
-- `gh run list -R Bali-Zero/Teman2 --workflow restore-drill.yml --limit 4 --json conclusion,createdAt,event,databaseId` → 2026-09-01 failure (run 33489946782, still the latest at 13:35Z), 2026-08-01 success, 2026-07-13 failure, 2026-07-01 success. The cron is monthly, so the next automatic attempt is 2026-10-01.
-- The cause: `grep -c 'backend_rag_v2\|CREATE ROLE\|--no-owner' .github/workflows/restore-drill.yml` → 0. The service container provisions only `POSTGRES_USER: drill`, so the dump's `ALTER ... OWNER TO backend_rag_v2` aborts with `role "backend_rag_v2" does not exist`. psql exits 3 before the Level-5 verifier (`scripts/ci/restore_drill_verify.py`) runs. `git log -1 --format='%h %cd' --date=short -- .github/workflows/restore-drill.yml` → `55a05e9401 2026-08-29`.
-- Secret scanning: alert #7 (`telegram_bot_token`, open since 2026-01-19) and alert #1 (`google_gcp_api_key_bound_service_account`, open since 2026-01-07). Query them only through a projection, `gh api "repos/Bali-Zero/Teman2/secret-scanning/alerts?state=open" --jq 'map({n:.number,t:.secret_type,c:.created_at})'`, because the raw API response contains the secret itself.
-- The launchd canon is moving. PR #6101 ("one tree on Pro", still open at 13:35Z) repoints plists from `nuzantara-deploy` to `/Users/nuzantara/nuzantara`, and the healer's home-fork refresh copies repo canon over live edits. A new plist must be a canon file.
-- Provenance: this evidence came from late reads done outside the wf1 sweep. wf1.json has no `secrets-security` modality, so don't go looking for one.
+**Objective:** the detector looks inside `~/nuzantara/.secrets` and runs every 3600 s. **What success changes:** the next loosened credential file is caught by a machine within one audit interval — at most 60 minutes plus one run's duration — not by a late reader.
 
-DISEASE
-Scar family #4, with its own detector unarmed twice over: wrong scan roots and no schedule. On top of that, superscar #2 on the recovery guarantee: the one automated proof that backups can be restored has been red for over a week, and its alert landed in a channel already flooded with chronic HIGHs.
+**Worktree:** `cd ~/nuzantara && WT=$(python3 scripts/agent_start.py --lane infra --task-id s2-custody | awk '/^WORKTREE_READY /{print $2}') && echo "$WT"`. The broker prints one `WORKTREE_READY` line followed by the path and cannot change your cwd (`scripts/agent_start.py:2166-2172`), so every later command is `git -C "$WT" …` or `cd "$WT" && …`; `--list` recovers the path. One live worktree at a time: `--release s2-custody` after a PR merges, then a fresh origin/main. `sec` is not a known lane. **Base sha:** record `git -C "$WT" rev-parse HEAD` at open.
 
-SCOPE IN
-1. Add `~/nuzantara/.secrets` (the directory, NOT the whole `~/nuzantara` tree) to the default roots. Add a test that fails without it. Guilty case: a deliberately loosened file inside a scratch directory shaped like `.secrets` gets caught. Innocent cases: a 0600 file there is clean, and `.env.example` elsewhere in the tree is never flagged. Any wider root later needs an exclude list for `.worktrees/**`, `*.env.example` and `.secrets.baseline` first; that isn't part of this PR.
-2. Schedule the audit as a LaunchAgent: a canon plist under `infra/launchagents/` whose ProgramArguments name `/Users/nuzantara/nuzantara/scripts/...`, never a `.worktrees/` path and never `nuzantara-deploy`. Use a plist rather than crontab: `crontab -l | crontab -` is a non-atomic read-modify-write on a 275-line table that other sessions also edit. Findings alert through the existing gateway (`scripts/tg_notify.py`) and never name a credential file, only the directory and a count. Kickstart it once and prove a real run today.
-3. Fix `restore-drill.yml`: either create the `backend_rag_v2` role in the service container before the restore, or restore with `--no-owner` / strip the ALTER OWNER statements, whichever matches the file's own precedent. Then run it via `workflow_dispatch` in this session.
-4. Prove the drill reaches and passes the Level-5 verifier. psql exiting 0 is not enough.
-5. Make the drill's failures loud through the existing channel: a red drill appends one row to `shared/escalations_pro.jsonl` (the §14 bus). S4 builds the digest reader for that bus; don't create a second channel.
+**Ground** (judge 13:03–13:06Z, red-team ~1 h later, editor re-check ~13:35Z, staff room ~15:40Z; re-run all of it):
+- **File modes.** `stat -f '%Sp' ~/nuzantara/.secrets ~/nuzantara/.secrets/*` → directory `drwx------`, six files `-rw-------`, one `-r--------`. They are correct only because the orchestrator applied chmod 600/400 and 700 by hand at ~21:05 WITA after a late reader found them loosened (4 of 7 inodes carry that ctime). `find ~/nuzantara/.secrets -type f | wc -l` → 7; `find ~/nuzantara/.secrets -type f -perm +077 | wc -l` → 0.
+- **Default roots.** `scripts/secrets_permissions_audit.py:71` `_DEFAULT_ROOT_RELATIVE_PATHS` → eleven roots plus a `~/.env*` glob; `~/nuzantara` is not among them.
+- **The guilt fixture is absolved today.** On origin/main, a 0644 file in a fresh `mktemp -d` `.secrets` directory reports 0 findings: the reachability test (`scripts/secrets_permissions_audit.py:369-376`) absolves a file whose parent chain is closed. The JSON carries `files_traversed` as ONE total across roots, not per root (scratch run, 2026-09-10).
+- **No schedule.** `crontab -l | grep -c secrets_permissions_audit` → 0; no LaunchAgent.
+- **Whole-tree noise.** `--no-default-roots --root ~/nuzantara --json` → ~108.6 KB of false hits from `.worktrees/*` templates, `.secrets.baseline` and workflow names.
+- **Second account.** `dseditgroup -o checkmember -m zantara-codex staff` → `yes`.
+- **Secret scanning.** Alerts #7 (Telegram bot token) and #1 (GCP service-account key), queried only through a projection: `gh api "repos/Bali-Zero/Teman2/secret-scanning/alerts?state=open" --jq 'map({n:.number,t:.secret_type,c:.created_at})'`. The raw response contains the secret.
+- **#6101** (launchd canon) merged 2026-09-10T14:24Z, so the schedule PR is unblocked.
 
-SCOPE OUT
-Don't rotate any credential. Don't resolve the two secret-scanning alerts before Zero rotates the underlying tokens; resolving them first would hide a live key. Don't touch the `zantara-codex` account or its groups. Don't touch the duplicate Postgres backup crons (the 03:00 and 03:20 jobs write the same filename pattern into the same folder); file them instead. Don't touch memory.db or its backups (S5) or the internals of `scripts/tg_notify.py` (S4).
+## 2. Owned perimeter
 
-OPERATOR BOUNDARY
-Four items, all filed, none blocking: rotating the Google service-account/combined-env credentials, the Telegram bot token and the GCP API key; retiring the second local account; ruling on whether that account ever read the `.secrets` credentials (that needs audit-log access, which only Zero has); the duplicate backup crons.
+- **Writable:** `scripts/secrets_permissions_audit.py`; `scripts/tests/test_secrets_permissions_audit.py`; one new canon plist `infra/launchagents/com.nuzantara.secrets-permissions-audit.plist` (to be created: `StartInterval` 3600 unless the window records a reason to differ, no `KeepAlive`, clean under `scripts/lint_plist_keepalive.py`).
+- **chmod** only under `~/nuzantara/.secrets` (correct today) and on the audit's own log and state files. Never `--fix` anywhere else.
+- **`.env*` — explicit read-only exception.** The detector `stat`s `.env*` files for their MODE only. It never opens them, never chmods them, never fixes them; the off-limits rule still holds for their content. Their modes are REPORTED and escalated to Zero as a ledger row (directory and mode class only).
+- **Forbidden:** the restore-drill workflow (queued); memory.db and its backups (S5/S5b); `scripts/tg_notify.py` (S4); the `zantara-codex` account and its groups; crontab (plist only).
+- **Shared:** `infra/launchagents/` (convention owner #6101, merged; S3 adds a different plist); the ledger (§3).
+- `.lane-check.json`'s `scope_globs` only decides whether a check applies (`infra/claude-hooks/lane_check.py`; the spec's `scripts/` path is stale). VERIFY and the gate compare changed paths against this list by hand.
+- **Bans:** no Claude model through a paid per-token Anthropic endpoint (any alias, wrapper, Bedrock or Vertex route; only the `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN`). No client PII or OSINT in cleartext. Off-limits: `zantara_core.py`, `fly.toml`, `.env*` (content), `apps/bali-intel-scraper/backend/db/migrations/env.py`. Zero's files never edited. Operator items filed, never waited on.
 
-METHOD
-First hour: run `python3 scripts/agent_start.py --help`, then create one worktree per PR, e.g. `python3 scripts/agent_start.py --lane infra --task-id custody-audit-roots` (branch `agent/nuzantara/infra/custody-audit-roots`; `sec` is not a known lane). Re-run every GROUND command. Read `scripts/secrets_permissions_audit.py` in full, especially `reachable_by` and the `--fix` path, and read `restore-drill.yml` in full. Find the abort line with `gh run view 33489946782 --log | grep -n -m5 'backend_rag_v2\|ERROR'`, and never paste restored rows. Check `gh pr view 6101 --json state` before writing the plist. Only then write.
-Expect 3 PRs: audit roots + tests; audit schedule; drill role fix + escalation row.
+## 3. Sibling contract
 
-BITES (each with its proving command)
-- Bite 1. Consumer: the audit tool. `python3 scripts/secrets_permissions_audit.py --json` reports a finding inside the `.secrets` root while a scratch file is loosened, and comes back clean once it isn't. Paste both runs, redacted to directory and count.
-- Bite 2. Consumer: launchd. `launchctl list | grep -i secrets` shows the loaded label, and the job's own log shows one completed run today started by launchd (`launchctl kickstart`), not by your shell.
-- Bite 3. Consumer: GitHub Actions. `gh run list -R Bali-Zero/Teman2 --workflow restore-drill.yml --limit 2 --json conclusion,createdAt,event` shows a `workflow_dispatch` SUCCESS created today.
-- Bite 4. Consumer: the Level-5 verifier. That run's log contains `restore_drill_verify.py`'s own pass output.
-- Bite 5. Consumer: the escalation bus. A test proves a red drill appends exactly one row, with no data content.
+Frozen before BUILD. Changes go to the staff room through Zero.
 
-RISK CONTROLS
-Never `cat` a secret. Probe presence with `${VAR:+SET}` only, and never `printenv`. No credential filename goes into an alert, log or PR body; name the directory at most. Never commit anything from `.secrets/`. If the first scheduled run flags a loosened file or a `.bak` sibling, fix the live file AND the `.bak`, because a backup inherits the exposure. If you find evidence that another account actually read a credential, stop and escalate. PENDING-ARMS appends: use a branch cut from a fresh origin/main, check that `git diff origin/main -- .claude/skills/modus/PENDING-ARMS.md` is +N/-0, and never hand-resolve or rebase onto it.
+- **Launchd canon.** ProgramArguments name `/Users/nuzantara/nuzantara/scripts/secrets_permissions_audit.py`; the healer's home-fork refresh reverts live-only edits, so the canon is the change. S3 adds a different plist in the same directory: no shared lines, both bootstrapped from canon, neither touches crontab.
+- **The gateway (S2 consumes S4).** Findings go through `tg_notify.py`'s frozen surface: `--tier p0 --source secrets-audit --dedup-key secrets-audit:secrets-dir` for `.secrets`; `--tier digest --source secrets-audit --dedup-key secrets-audit:env-modes` for `.env*` mode reports. Alert text carries directory, count and mode class only — never a filename's contents.
+- **The ledger — the one surface all windows share.** `.claude/skills/modus/PENDING-ARMS.md` carries `merge=union`, which GitHub's mergeability ignores (modus SKILL.md:193); #6080 and #6081 went DIRTY that way today. Serialize: rows ONLY in one final, separate, ledger-only PR, cut from a fresh origin/main after this window's code PRs merged. Open it only when `gh pr list --state open --limit 200 --json number,files --jq '[.[]|select(any(.files[];.path==".claude/skills/modus/PENDING-ARMS.md"))|.number]'` prints `[]` and `git -C "$WT" diff origin/main -- .claude/skills/modus/PENDING-ARMS.md` is +N/-0.
+- **Freeze.** Once armed, the branch is read-only (Builder Contract rule 1). A **real** DIRTY on an armed PR: close it with a comment naming the successor, cut a fresh branch from origin/main, cherry-pick the same content, then push, create and arm the successor as three separate commands. A **phantom** DIRTY (GitHub reports DIRTY while `gh pr view "$PR" --json autoMergeRequest` still shows it armed): judge the diff, then let the queue cure it. Never `--disable-auto`, merge origin/main, push and re-arm.
 
-STOP CONDITIONS
-Stop and file a row if the drill fix needs new prod-adjacent secrets, if you get three reds for the same cause, if the drill passes psql but fails Level-5 for a DATA reason (that is a backup-integrity finding: escalate it, never paper over it), or if removing a backup cron starts to look necessary.
+## 4. Acceptance
+
+- **Negative (innocence):** a 0600 file and a 0400 file in a scratch `.secrets`-shaped directory are clean; a `.env.example` elsewhere is never flagged; a `.env*` finding produces one report line and zero chmod calls (a test asserts no mode change).
+- **Integration (guilt, on a fixture, never on the live directory):** `SCR="$(mktemp -d)/.secrets"; mkdir -p "$SCR"; : > "$SCR/probe.json"; chmod 644 "$SCR/probe.json"; python3 scripts/secrets_permissions_audit.py --no-default-roots --root "$SCR" --json`. On origin/main it reports 0 findings (Ground); on the branch exactly one. After `chmod 600 "$SCR/probe.json"` the same command is clean. Tests: `cd "$WT" && ~/nuzantara/.venv/bin/python3 -m pytest scripts/tests/test_secrets_permissions_audit.py -q`, including one proving the default roots contain `~/nuzantara/.secrets` that fails without the change.
+- **Production observation** (label `com.nuzantara.secrets-permissions-audit`, to be created):
+  1. Content proof after the puller — blobs, not ancestry (superscar #9, `scripts/branch_graveyard_cleanup.sh::content_on_main()`), with `$WT` on the PR's final head: `[ "$(git -C ~/nuzantara rev-parse HEAD:scripts/secrets_permissions_audit.py)" = "$(git -C "$WT" rev-parse HEAD:scripts/secrets_permissions_audit.py)" ] && echo live`.
+  2. `launchctl list | grep -c com.nuzantara.secrets-permissions-audit` → 1. `launchctl print gui/$(id -u)/com.nuzantara.secrets-permissions-audit | grep -E '^\s*(runs|last exit code) ='` shows runs ≥ 1 and exit 0. Always this projection: the full print dumps the job's environment.
+  3. **Agreement in the same minute.** The run's file count for the `~/nuzantara/.secrets` root (a per-root field the roots PR adds) equals `find ~/nuzantara/.secrets -type f | wc -l`, and its findings under that root equal `find ~/nuzantara/.secrets -type f -perm +077 | wc -l` (group or other bits set; the legitimate 0400 file is not one). A true finding on the live directory is the detector PASSING, not the window failing: file it, don't hide it.
+  4. The next scheduled run, at most 60 minutes plus run time later, agrees again.
+
+  Fixture success never stands in for this observation.
+
+## 5. Team
+
+Every seat comes from the colour table (`docs/architecture/dual-consul/army-map.md` §1bis, its only copy).
+
+- **BLUE:** Dux and release owner, this window (Opus 5 `xhigh`). Implementer Sonnet 5, pinned in every Agent call (`model: "sonnet"`); supports on Haiku 4.5 (`model: "haiku"`); an unpinned child inherits the Dux's model. Adversarial reviewer: an independent Codex seat outside the chain (`.claude/scripts/codex-spalla.sh`; `docs/codex/CODEX_SPALLA.md`), reading the frozen diff itself. Final on-disk gate: a FRESH Opus 5 `xhigh` session outside the chain, commissioned by this top-level Dux (modus SKILL, "Gate commission depth"); it only signs.
+- **Routing floor:** two code PRs, so one lane (e.g. roots and tests) goes through Kimi or GLM, prepare-only, own worktree — not Codex, so the reviewer stays cross-family.
+- **ORANGE**, only if declared before opening: every seat from §1bis. A dead seat suspends the mission.
+- Record each seat's effective model, effort and thread id in `brief.yml` at start.
+
+## 6. Appetite and stop-loss
+
+- **Budget:** 5 h, 2 adversarial rounds, 1.5M tokens, declared as `appetite:` in `brief.yml`; `spend:` in `pack.yml` (`scripts/evidence_pack_lint.py` rule 14).
+- **Deadline:** open + 5 h. ONE mission deadline, owned by the root mandate and read through `infra/codex-hooks/mandate_budget.py` (the spec's `scripts/mandate_budget.py` does not exist). The staff room may renew it once; on expiry the mission suspends.
+- **Limits:** three reds for one cause → suspend; fix-of-a-fix depth 1; at most 2 children, depth 1, 1 continuation hop; adapter tool ceiling with no ship reserve (N = 0) — a capped child checkpoints and returns, shipping is the Dux's; child active time reported separately.
+- **Checkpoints:** `scripts/fleet_mail.sh local broadcast --key S2-checkpoint --ttl 24 "$STATE"`, where `$STATE` is one line of state with no PII. `local` is Pro; the staff room reads the Pro mailbox.
+- **Stop and escalate if:** evidence that another account read a credential; any fix would touch `.env*`; a useful alert would need a filename; three reds for the same cause.
+
+## 7. Evidence and release
+
+- **Evidence:** `cd "$WT" && python3 scripts/ci/evidence_paths.py --ref "$(git rev-parse --abbrev-ref HEAD)"` names the directory. `brief.yml`: gear, appetite, team with thread ids, four timestamped sibling outputs (open PRs' paths, `python3 scripts/agent_start.py --list`, `ListAgents`, `scripts/fleet_mail.sh local --list`). `pack.yml` alongside. Every code PR carries `Bites:`.
+- **Release**, three separate commands: `git -C "$WT" push -u origin HEAD`; `cd "$WT" && gh pr create --title "$TITLE" --body-file "$BODY"`; `gh pr merge "$PR" --auto` at once (`$PR` = the number `gh pr create` printed). Bare `--auto`: the queue rejects every strategy flag (`docs/runbooks/merge-queue-discipline.md:274-278`; `scripts/queue_shepherd.py:819-821`). At Gear 2 or above, the `harness/fable-gate` success must sit on the real head sha.
+- **Gate receipt:** a PR comment with mission id, colour, HEAD sha, gate thread id, commands with exit codes, verdict; re-checked against the current HEAD before posting. Publish: `HEAD=$(gh pr view "$PR" --json headRefOid --jq .headRefOid)`, then `python3 scripts/harness_fable_gate.py --verdict PASS --sha "$HEAD" --description "$RECEIPT"` (`$RECEIPT` = the receipt comment's short reference, ≤140 characters). PASS-WITH-CONDITIONS needs `--conditions-ref`.
+- **Merge order:** (1) roots PR; (2) schedule PR; (3) the ledger-only PR: rotation of the Google service-account and combined-env credentials, the Telegram bot token and the GCP key; the second local account; whether it read the credentials; the `.env*` mode findings. No backend path.
+- **Deploy:** puller, then install the canon plist per #6101's convention and `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.nuzantara.secrets-permissions-audit.plist`, then `launchctl kickstart -k gui/$(id -u)/com.nuzantara.secrets-permissions-audit` once.
+- **Rollback trigger:** scheduled runs raise findings outside `.secrets` that are not real exposures, or send more than one alert per interval → `launchctl bootout gui/$(id -u)/com.nuzantara.secrets-permissions-audit`, then a revert PR from a fresh origin/main.
+
+## Adversarial review
+
+**Seat:** Codex `gpt-5.6-sol`, outside the author chain.
+
+**Round 1 — REWORK.** Doctrine conflict with PARABELLUM → Dux, colour, mission id declared. `agent_start.py` cannot change cwd → `$WT` captured. `merge=union` ledger → rows only in a final ledger-only PR. S2 mixed two organs → the restore drill is queued. `.env*` could be chmod'ed → report-only. The guilt fixture used the default roots → `--no-default-roots --root "$SCR"`.
+
+**Round 2 — REWORK.** Findings on this file:
+- **F1 applied:** the Opening row follows the colour.
+- **F2 applied:** the Dux role names the pending Astra reading.
+- **F5 applied:** §3 freeze rule replaces disarm → merge → push → re-arm.
+- **F7 applied:** blob-equality content proof in §4.
+- **F8 rejected:** bare `--auto` stays (`merge-queue-discipline.md:274-278`; `queue_shepherd.py:819-821`); modus SKILL.md:100's `--squash` is stale (README).
+- **F9 applied:** checkpoints use `local broadcast`; labels and PR numbers are real values or named shell variables.
+- **F10 applied:** `StartInterval` 3600, so one interval is ≤ 60 min + run time; the hardcoded "7 files, 0 findings" became same-minute agreement with `find`; the `.env*` read-only exception is explicit. The ruling's "mode not 600" oracle would count the legitimate 0400 file, so the oracle counts group/other bits (`-perm +077`), the same correction the staff room sent the running window.
+- **F12 applied:** tests run with `~/nuzantara/.venv/bin/python3 -m pytest`.

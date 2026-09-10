@@ -1,69 +1,124 @@
-# S1 — ARM THE ARMER
+---
+title: "S1 — ARM THE ARMER · battle window"
+date: 2026-09-10
+adversarial_review: codex
+---
 
-**One line:** `queue_shepherd` logged `rearmed=0 cancelled=0` on 1879 of 1880 ticks because its rearm-candidate GraphQL query exceeds GitHub's resource limit, and it exits 0 anyway.
+# S1 — ARM THE ARMER · battle window
 
-**Wave 1 · Pro · runs in parallel with S2** (disjoint files, separate worktrees). Built from C1, plus the pre-push floor gate from C9. Operator items: 2.
+| Field | Value |
+|---|---|
+| Mandate id | **S1** |
+| Colour | **BLUE** (the default). Chosen before the window opens; no fallback between colours. |
+| Dux role | Opus 5 `xhigh` on BLUE (Sol `gpt-5.6-sol` `xhigh` on ORANGE), appointed by the staff room (Fable 5.1 with Zero; Astra reading pending — README). Dux and release owner. |
+| Worktree / branch | `agent/nuzantara/ops/s1-arm-the-armer`, created by the command in §1 |
+| Wave | 1, in parallel with S2 |
+| Opening | The opening follows the colour. BLUE: Zero opens a fresh `claude --model claude-opus-5` window at effort `xhigh` and pastes this file. ORANGE: a Codex window on the Sol seat as army-map §1bis names it ("Sol (`gpt-5.6-sol`) `xhigh`"). The first message restates colour, Dux role, mandate id and worktree path, then executes. |
 
-## Mandate prompt — paste everything below this line into a fresh `claude` session
+Opened 2026-09-10 ~22:55 WITA on the v2 text; the v3 corrections below were sent to the running window by the staff room.
 
-SEAT AND CONTRACT
-You are a Fable 5.1 session that Zero chose manually, running at max effort on Pro (`nuzantara@Nuzantara`, repo `~/nuzantara`). You own this mandate end to end: review → merge → arm → deploy → prove-live. The codeowner does not merge, review or deploy. Pin every subagent's model in the Agent call: `sonnet` for readers and implementers, `haiku` for grunt work, `opus` only for a final on-disk gate. An unpinned subagent inherits your model. Builder Contract: every PR gets its own worktree from `scripts/agent_start.py`, cut from a fresh origin/main. One PR, one concern, ≤~400 net lines. Every PR body carries a `Bites:` line naming the consumer and the observation that proves the change is live. Arm auto-merge when you open the PR; from then on the branch is frozen. Push, create and merge are three separate commands. Never rerun a red check until you know why it is red. Three reds for the same cause → suspend and write the spec. A fix-of-a-fix stops at depth 1. Reaching a Claude model through a paid per-token Anthropic endpoint is banned as an entity: use the `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN` only, and refuse any tool, MCP server or cron that needs `ANTHROPIC_API_KEY`, `from anthropic import Anthropic`, a renamed variable, a wrapper or a Bedrock/Vertex route. PII is an output boundary: no PR body, log, alert, memory, ledger row or report carries client PII or OSINT in cleartext. Off-limits files: `zantara_core.py`, `fly.toml`, `.env*`, `apps/bali-intel-scraper/backend/db/migrations/env.py`. Never edit Zero's own files: `~/.claude/CLAUDE.md`, branch protection, required-context lists. File operator items as a PENDING-ARMS row with the exact ask, and never wait on them.
+## 1. Mandate
 
-MISSION
-Repair the merge queue's re-armer so it can actually re-arm. Make its failures honest, make the three-reds suspension mechanical, and add the pre-push floor gate. Prove it with consecutive live ticks, not with a diff.
+S1 · BLUE · **organ: `scripts/queue_shepherd.py` on Pro only** (LaunchAgent `com.nuzantara.queue-shepherd`, every 10 minutes). **Gear:** 2 expected; CI recomputes the floor and the floor wins. **Host:** Pro. The Mini siblings (`scripts/queue_unstick.py`, `scripts/queue_stall_classifier.py` with its notifier `scripts/queue_stall_notify.py`) belong to the queued QUEUE SIBLINGS (Mini) window; this window only NOTES in its pack what they would need.
 
-GROUND (judge 2026-09-10T13:02–13:09Z, red-team re-run about an hour later; re-derive ALL of it in your first hour)
-- `grep -c 'rearmed=0 cancelled=0' ~/logs/queue-shepherd.err.log` against `grep -c '^tick complete' ~/logs/queue-shepherd.err.log` → 1879/1880 at the judge's read, 1880/1881 at the red-team's. The pair grows every 10 minutes, so re-measure and quote your own.
-- `tail -6 ~/logs/queue-shepherd.err.log` → `CANNOT-VERIFY rearm candidates: gh api graphql failed rc=1: gh: HTTP 502`, then `tick complete: rearmed=0 cancelled=0 dry_run=False`.
-- Flags: `python3 scripts/queue_shepherd.py --help` → `[-h] [--tick] [--report] [--dry-run]`. There is no `--json`. `--dry-run` on its own prints usage and exits 1. `--tick --dry-run` reproduces the 502, but that dry-run tick reported `cancelled=6` for runs the live janitor skips as known-uncancellable. A dry-run tick is not a stand-in for a live one.
-- The cause is query complexity, not the rate limit. A reader saw 4741/5000 remaining while the same query 502'd, with `Resource limits for this query exceeded`.
-- The heavy query fails on its own. At the red-team's read, `gh pr list -R Bali-Zero/Teman2 --state open --limit 200 --json number,mergeStateStatus,isDraft,autoMergeRequest` returned 46 open, 0 UNKNOWN, 10 armed. An hour earlier the judge had seen 45 UNKNOWN and 11 armed. Open, armed and CLEAN counts drift hourly: re-measure at start, and never paste a sweep count into a PR body.
-- PR #6100 merged at 2026-09-10T12:55Z. At floor 2, a missing `harness/fable-gate` verdict now fails `Harness floor recompute`. Mini's fleet-watch is posting `gate-verdict-missing` stalls on several PRs. That is how the queue behaves after #6100; it is not a shepherd bug.
-- Required contexts: `gh api repos/Bali-Zero/Teman2/branches/main/protection/required_status_checks --jq '.contexts|length'` → 13, matching `infra/required.d/contexts.json`. The "27" is a stale sentence of prose.
-- Deploy path: the LaunchAgent `com.nuzantara.queue-shepherd` (10-minute interval) runs the script from `~/nuzantara`, which `com.nuzantara.git-pull-main.15min` keeps at origin/main. A merged fix goes live only after that puller has run.
+**Objective:** the re-armer reads its candidates, reports CANNOT-VERIFY with a non-ok heartbeat when it can't, and stops re-arming a PR that went red three times for the same cause. **What success changes:** a GitHub degradation no longer looks like "nothing to do".
 
-DISEASE
-Superscar #2 on the ship lifecycle itself. The re-armer exists, is scheduled and contains `gh pr merge --auto`. But it swallows its own GraphQL failure and exits 0, so its monitor stays green while the organ does nothing. "Could not read" must never look like "found nothing".
+**Worktree:** `cd ~/nuzantara && WT=$(python3 scripts/agent_start.py --lane ops --task-id s1-arm-the-armer | awk '/^WORKTREE_READY /{print $2}') && echo "$WT"`. The broker prints one `WORKTREE_READY` line followed by the path and cannot change your cwd (`scripts/agent_start.py:2166-2172`), so every later command is `git -C "$WT" …` or `cd "$WT" && …`; `python3 scripts/agent_start.py --list` recovers the path. One live worktree at a time: a second PR starts after the first merged (`python3 scripts/agent_start.py --release s1-arm-the-armer`, then a fresh origin/main). **Base sha:** record `git -C "$WT" rev-parse HEAD` at open (origin/main was `9b2af5160c` when this was written).
 
-SCOPE IN
-1. Fix the shape of the rearm-candidate query in `scripts/queue_shepherd.py` (paginate, cut node depth, or split the fetch) until it stays inside the resource limit. This is the core.
-2. Honest failure: a tick that could not verify its candidates reports CANNOT-VERIFY as its own outcome, writes a non-ok heartbeat through `_write_heartbeat` and exits non-zero. It never prints `rearmed=0` as though it had looked.
-3. Enforce Builder Contract rule 1 in code: three reds for the SAME cause suspends the PR instead of starting a fourth round. Separate PR, with a test.
-4. From C9, one deliverable only: a local pre-push check that refuses to push a change whose evidence floor is ≥2 when no brief is attached. That defect produced #6066, #6065 and #6061. Re-baseline it against the post-#6100 rules. Separate PR. If it gets a CI twin, the twin lands advisory-only.
-5. Arm and merge the PRs that are genuinely CLEAN when YOU re-derive the list. Some CLEAN PRs were ejected from the queue for a non-INFRA reason: #6099's last `RemovedFromMergeQueueEvent` reads `reason=merged`. By the shepherd's own rule only INFRA ejects auto-rearm, so arm those by hand, and don't read their `rearmed=0` as a failed fix. File a PENDING-ARMS row (owner + cause) for every PR you leave unresolved.
-6. Mini's sibling scripts: `queue_unstick` reports `updated=0` with `rewarm_reason='below_floor(0<5)'`, and `queue_stall_notify` suppresses most stalled PRs on each tick. Read both before you declare the family cured. If their floor logic needs a fix, it gets its own PR.
+**Ground** (judge 13:02–13:09Z, red-team ~1 h later; re-derive in the first hour and quote your own numbers):
+- Dead ticks: `grep -c 'rearmed=0 cancelled=0' ~/logs/queue-shepherd.err.log` against `grep -c '^tick complete' ~/logs/queue-shepherd.err.log` → 1879/1880, then 1880/1881; both grow every 10 minutes.
+- `tail -6` of that log → `CANNOT-VERIFY rearm candidates: gh api graphql failed rc=1: gh: HTTP 502`, then `tick complete: rearmed=0 cancelled=0 dry_run=False`.
+- Cause: query complexity, not the rate limit. 4741/5000 points remained during a 502, and the error read `Resource limits for this query exceeded`. Plain `gh pr list` stayed healthy (46 open, 0 UNKNOWN).
+- Flags: `python3 scripts/queue_shepherd.py --help` → `[--tick] [--report] [--dry-run]`, no `--json`. `--dry-run` alone prints usage and exits 1. `--tick --dry-run` reproduces the 502 but reported `cancelled=6` for runs the live janitor skips: a dry-run tick is not a live tick.
+- Deploy path: the LaunchAgent runs from `~/nuzantara`, which `com.nuzantara.git-pull-main.15min` keeps at origin/main.
+- #6100 (merged 12:55Z) requires the fable-gate verdict from Gear 2 up; Mini's `gate-verdict-missing` stalls are that rule at work, not a shepherd bug.
 
-SCOPE OUT
-- #5037: its `harness/fable-gate` verdict is a correct depth-4 suspension ("split recommended"). It needs a spec, not a re-trigger.
-- #5528/#5529 (dependabot): resolving them means touching the auto-merge author allowlist, which is Zero's call.
-- The overall open-PR count as a target, fixing individual PRs' tests (that belongs to a sonnet grunt lane), and the 27-vs-13 item.
-- PENDING-ARMS.md structure, the escalation bus and `scripts/tg_notify.py` belong to S4. `queue_shepherd.py` is one of the 29 top-level scripts that call tg_notify; don't change the gateway from here.
-- The author allowlist in `.github/workflows/auto-merge-whitelist.yml`.
+## 2. Owned perimeter
 
-OPERATOR BOUNDARY
-Two items, both filed, neither blocking: the dependabot ruling, and any promotion of a new check to REQUIRED.
+- **Writable:** `scripts/queue_shepherd.py` and `scripts/tests/test_queue_shepherd.py`.
+- **Forbidden:**
+  - the Mini siblings and their `*_cron.sh` wrappers (queued QUEUE SIBLINGS window);
+  - `scripts/tg_notify.py` (S4); `.husky/pre-push` (queued PRE-PUSH FLOOR GATE);
+  - `.github/workflows/**`, including the auto-merge author allowlist;
+  - any PR of another window or author: arming or merging those is outside this perimeter.
+- **Shared:** `.claude/skills/modus/PENDING-ARMS.md`, a lockfile (§3).
+- `.lane-check.json`'s `scope_globs` only decides whether a check applies (`infra/claude-hooks/lane_check.py`; the spec's `scripts/` path is stale). VERIFY and the gate compare changed paths against this list by hand.
+- **Bans:**
+  - Never reach a Claude model through a paid per-token Anthropic endpoint (any alias, wrapper, Bedrock or Vertex route). Only the `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN`.
+  - No client PII or OSINT in cleartext in any PR body, log, alert, memory, ledger row or report.
+  - Off-limits: `zantara_core.py`, `fly.toml`, `.env*`, `apps/bali-intel-scraper/backend/db/migrations/env.py`.
+  - Zero's files are never edited: `~/.claude/CLAUDE.md`, branch protection, required contexts. Operator items are filed, never waited on.
 
-METHOD
-First hour, in order:
-1. Run `python3 scripts/agent_start.py --help`, then `python3 scripts/agent_start.py --lane ops --task-id arm-the-armer`. The branch comes out as `agent/nuzantara/ops/arm-the-armer`: the host segment is the OS short hostname, and `ci` is not a known lane.
-2. Before you trust the 60-minute clock for Bite 1, confirm the sync organ is healthy. `tail -5 ~/logs/pro-git_pull_main/run.log` and `cat ~/.organism/last_seen/pro.git_pull_main.json` should show a recent rc=0 and status ok. If they don't, your merged fix never reaches the LaunchAgent, and Bite 1 will look like a fix that failed.
-3. Run `python3 scripts/queue_shepherd.py --tick --dry-run` (capture the 502).
-4. Re-derive the open, armed and CLEAN lists live.
-5. Read the rearm-candidate query, the eject classifier and `_write_heartbeat`. Only then write.
-Expect 4 PRs (query shape, honest failure, suspend enforcer, pre-push gate), plus one for Mini's siblings if needed. Serialize any two PRs that share a lockfile.
+## 3. Sibling contract
 
-BITES (each with its proving command)
-- Bite 1. Consumer: the scheduled shepherd. After merge, prove the live checkout contains your commit (`git -C ~/nuzantara merge-base --is-ancestor <sha> HEAD && echo live`). Then paste six consecutive `tick complete` lines (~60 minutes) that each log how many candidates the tick examined and contain no CANNOT-VERIFY. `rearmed=0` is only legitimate when an examined count sits next to it.
-- Bite 2. Consumer: the same log and the heartbeat. Force one read failure, in a test or a controlled run, and show the tick reports CANNOT-VERIFY, writes a non-ok heartbeat and exits non-zero.
-- Bite 3. Consumer: named PRs. List every PR your runs armed or merged, with timestamps. Never claim the overall count.
-- Bite 4. Consumer: the pre-push hook. Push a synthetic floor-2 change with no brief, show it blocked, then revert the synthetic change.
-- Bite 5. Consumer: the suspend enforcer. A test with three reds from one cause shows the PR suspended; a test with three reds from different causes shows it isn't.
+Frozen before BUILD. Changes go to the staff room through Zero, never window-to-window.
 
-RISK CONTROLS
-- Re-derive every count live. Each number in a PR body carries the command that produced it.
-- PENDING-ARMS.md uses `merge=union`, and the conflict is live now: #6080 and #6081 are DIRTY on it, and #6101 is DIRTY and touches it too. Append on a branch cut from a fresh origin/main, then check that `git diff origin/main -- .claude/skills/modus/PENDING-ARMS.md` is +N/-0. Never hand-resolve the file and never rebase onto it.
-- Never blind-rerun a red check: a blind rerun replays a stale merge ref.
-- Never `--dangerously-bypass` a sandbox. Never echo a credential.
+- **The gateway (S1 consumes S4).** The shepherd keeps calling `tg_notify.py` through `--tier`, `--source`, `--dedup-key`; S4 freezes that surface. CANNOT-VERIFY uses one stable key (`queue-shepherd:cannot-verify`): one alert per outage, not per tick.
+- **The heartbeat (S1 produces it).** New status strings (e.g. `error` on CANNOT-VERIFY) go through `scripts/lib/heartbeat.py`, which accepts any string. No schema change.
+- **Mini.** Nothing here changes what Mini runs. The pack records what the siblings would need (for example the classifier's own checkSuites × checkRuns query) as input for the queued window.
+- **The ledger — the one surface all windows share.** `.claude/skills/modus/PENDING-ARMS.md` carries `merge=union`, which GitHub's mergeability ignores (modus SKILL.md:193); #6080 and #6081 went DIRTY that way today. Serialize: rows ONLY in one final, separate, ledger-only PR (one row per operator item), cut from a fresh origin/main after this window's code PR merged. Open it only when `gh pr list --state open --limit 200 --json number,files --jq '[.[]|select(any(.files[];.path==".claude/skills/modus/PENDING-ARMS.md"))|.number]'` prints `[]` and `git -C "$WT" diff origin/main -- .claude/skills/modus/PENDING-ARMS.md` is +N/-0.
+- **Freeze.** Once armed, the branch is read-only (Builder Contract rule 1).
+  - A **real** DIRTY on an armed PR: close it with a comment naming the successor, cut a fresh branch from origin/main, cherry-pick the same content, then push, create and arm the successor as three separate commands.
+  - A **phantom** DIRTY (GitHub reports DIRTY while `gh pr view "$PR" --json autoMergeRequest` still shows it armed): judge the diff, then let the queue cure it by merging.
+  - Never `--disable-auto`, merge origin/main, push and re-arm.
 
-STOP CONDITIONS
-Stop and file a row if the query fix needs a change on GitHub's side that you can't make, if you get three reds for the same cause, if you catch yourself wanting to widen the auto-merge allowlist, or if the fix would change what a REQUIRED context means.
+## 4. Acceptance
+
+- **Negative:** a unit test injects a failing `gh api graphql` and asserts CANNOT-VERIFY, a non-ok heartbeat and a non-zero exit. A second test gives a PR three reds from ONE cause: it is not re-armed and is marked suspended; three reds from three different causes leave it eligible.
+- **Integration:** `cd "$WT" && ~/nuzantara/.venv/bin/python3 -m pytest scripts/tests/test_queue_shepherd.py -q` passes, and `cd "$WT" && python3 scripts/queue_shepherd.py --tick --dry-run` completes the candidate read with no 502 and logs how many candidates it examined.
+- **Production observation:**
+  1. Puller: `tail -5 ~/logs/pro-git_pull_main/run.log` and `cat ~/.organism/last_seen/pro.git_pull_main.json` show a recent rc=0 and status ok.
+  2. Content proof — a squash merge leaves no ancestor to test, so compare blobs (superscar #9, `scripts/branch_graveyard_cleanup.sh::content_on_main()`), with `$WT` still on the PR's final head: `[ "$(git -C ~/nuzantara rev-parse HEAD:scripts/queue_shepherd.py)" = "$(git -C "$WT" rev-parse HEAD:scripts/queue_shepherd.py)" ] && echo live`.
+  3. Six consecutive scheduled `tick complete` lines (~60 minutes), each with an examined count and none saying CANNOT-VERIFY. Report them to the staff room as a checkpoint: that report is one of wave 2's triggers.
+
+  `rearmed=0` is legitimate only next to an examined count. A PR ejected for a non-INFRA reason is never auto-rearmed by design (#6099 was ejected with `reason=merged`). Fixture success never stands in for this observation.
+
+## 5. Team
+
+Every seat comes from the colour table (`docs/architecture/dual-consul/army-map.md` §1bis, its only copy).
+
+- **BLUE:**
+  - **Dux and release owner:** this window, Opus 5 `xhigh`.
+  - **Implementer:** Sonnet 5, pinned in every Agent call (`model: "sonnet"`); supports on Haiku 4.5 (`model: "haiku"`). An unpinned child inherits the Dux's model.
+  - **Adversarial reviewer:** an independent Codex seat outside the contribution chain (`.claude/scripts/codex-spalla.sh`; `docs/codex/CODEX_SPALLA.md`), reading the frozen diff itself, never a summary.
+  - **Final on-disk gate:** a FRESH Opus 5 `xhigh` session outside the chain, commissioned by this top-level Dux (modus SKILL, "Gate commission depth"). It only signs.
+- **Routing floor:** S1 ships one code PR plus the ledger-only PR. If the Dux splits the code into two PRs, army-map §3 step 5 routes one lane through Kimi or GLM (prepare-only, own worktree), not Codex, so the reviewer stays cross-family.
+- **ORANGE**, only if declared before opening: every seat from §1bis. A dead seat suspends the mission.
+- Record each seat's effective model, effort and thread id in `brief.yml` at start.
+
+## 6. Appetite and stop-loss
+
+- **Budget:** 6 h, 2 adversarial rounds, 2.5M tokens. Declare `appetite: {wall_clock_hours: 6, adversarial_rounds: 2, tokens: 2500000}` in `brief.yml`; report `spend:` in `pack.yml` (rule 14 of `scripts/evidence_pack_lint.py` fails an unacknowledged overrun).
+- **Deadline:** open + 6 h. ONE mission deadline, owned by the root mandate and read through `infra/codex-hooks/mandate_budget.py` (the spec's `scripts/mandate_budget.py` does not exist). Continuations inherit it; the staff room may renew it once, explicitly. On expiry the mission suspends.
+- **Limits:** three reds for one cause → suspend and write the spec; fix-of-a-fix depth 1; at most 2 children, depth 1; at most 1 continuation hop.
+- **Adapter tool ceiling, no ship reserve (N = 0):** a child at its cap checkpoints and returns the remaining work; shipping is the Dux's and comes out of this budget. Child active time is reported apart from wall clock.
+- **Checkpoints:** `scripts/fleet_mail.sh local broadcast --key S1-checkpoint --ttl 24 "$STATE"`, where `$STATE` is one line of state with no PII. `local` is Pro; the staff room reads the Pro mailbox.
+- **Stop and file a row if:** the query fix needs a change on GitHub's side; three reds for the same cause; you want to widen the allowlist or arm someone else's PR; a change would alter what a required context means.
+
+## 7. Evidence and release
+
+- **Evidence:** `cd "$WT" && python3 scripts/ci/evidence_paths.py --ref "$(git rev-parse --abbrev-ref HEAD)"` names the directory for `pack.yml` and `brief.yml`. `brief.yml` holds gear, appetite, team with thread ids, and four timestamped sibling outputs: open PRs' changed paths, `python3 scripts/agent_start.py --list`, `ListAgents`, `scripts/fleet_mail.sh local --list`. The pack also carries the Mini-sibling notes (§3).
+- Every code PR body carries a `Bites:` line naming the consumer and the observation.
+- **Release**, three separate commands: `git -C "$WT" push -u origin HEAD`; `cd "$WT" && gh pr create --title "$TITLE" --body-file "$BODY"`; `gh pr merge "$PR" --auto` at once. `$TITLE` and `$BODY` are the Dux's title and body file; `$PR` is the number `gh pr create` printed. Bare `--auto`: the queue rejects every strategy flag, `--squash` included (`docs/runbooks/merge-queue-discipline.md:274-278`; `scripts/queue_shepherd.py:819-821`). Confirm with `gh pr view "$PR" --json autoMergeRequest,mergeStateStatus`. At Gear 2 and above, `Harness floor recompute` stays red until a `harness/fable-gate` success sits on the real head sha.
+- **Gate receipt:** a PR comment with mission id, colour, HEAD sha, gate thread id, commands with exit codes, and verdict, re-checked against the current PR HEAD before posting (a changed head voids it). Publish: `HEAD=$(gh pr view "$PR" --json headRefOid --jq .headRefOid)`, then `python3 scripts/harness_fable_gate.py --verdict PASS --sha "$HEAD" --description "$RECEIPT"`, with `$RECEIPT` the receipt comment's short reference (≤140 characters). PASS-WITH-CONDITIONS requires `--conditions-ref`.
+- **Merge order:** (1) the shepherd PR; (2) the ledger-only PR, carrying the Dependabot ruling for #5528/#5529 and any promotion request. No backend paths.
+- **Deploy path:** puller (≤15 minutes), then the next tick (≤10 minutes).
+- **Rollback trigger:** a tick re-arms a PR the classifier marks CODE, CONFLICT or MANUAL, or two consecutive ticks error after the merge. Revert through a PR cut from a fresh origin/main.
+- **Wave note:** wave 2 opens only after this PR is MERGED, pulled on Pro (puller rc=0) and this window has reported the six clean ticks (§4). "Armed" is not enough: an armed PR still runs the old re-armer.
+
+## Adversarial review
+
+**Seat:** Codex `gpt-5.6-sol`, outside the author chain.
+
+**Round 1 — REWORK.** Doctrine conflict with PARABELLUM (Fable implementing; no Dux, colour or mission id) → declared. `agent_start.py` cannot change the caller's cwd → `$WT` captured and used everywhere. The `merge=union` ledger made "disjoint files" false → rows only in a final ledger-only PR. S1 carried 4–5 PRs and other authors' PRs → narrowed.
+
+**Round 2 — REWORK.** Findings on this file:
+- **F1 applied:** the Opening row follows the colour.
+- **F2 applied:** the Dux role names the pending Astra reading.
+- **F4 applied:** wave note and §4 step 3 — merged + pulled + six clean ticks.
+- **F5 applied:** §3 freeze rule replaces disarm → merge → push → re-arm.
+- **F6 applied:** perimeter = `scripts/queue_shepherd.py` and its test; the Mini siblings are the queued QUEUE SIBLINGS (Mini) window, noted in the pack only.
+- **F7 applied:** blob-equality content proof replaces `merge-base --is-ancestor`.
+- **F8 rejected:** bare `gh pr merge "$PR" --auto` stays. The queue rejects every strategy flag (`merge-queue-discipline.md:274-278`, measured on PR #3347; `queue_shepherd.py:819-821`). modus SKILL.md:100 does say `--auto --squash`, but that line predates the queue (README, Doctrine gaps).
+- **F9 applied:** checkpoints use `local broadcast`; no placeholder remains in any command.
+- **F12 applied:** tests run with `~/nuzantara/.venv/bin/python3 -m pytest`.

@@ -1,90 +1,171 @@
 ---
+title: "Program board — 2026-09-10 · PARABELLUM battle windows"
 date: 2026-09-10
-domain: operations
-client_case: none
-sources:
-  - workflow wf_08272c52-202 — 12-modality read-only sweep, 14 agents, 82 findings
-  - workflow wf_842ff2d4-0ad — 27 adversarial verdicts, 6 late-modality readers, 1 judge, 5 red-team attacks
-  - scripts/pg.sh read-only checks on prod Postgres, 2026-09-10
-  - orchestrator gate (Fable 5.1, Pro session, 2026-09-10)
+adversarial_review: codex
 ---
 
-# Program board — 2026-09-10 (Pro)
+# Program board — 2026-09-10 · PARABELLUM battle windows
 
-Five Fable 5.1 sessions, three waves, one queue for Zero. The mandate files next to this README are ready to paste into a fresh `claude` session. Each carries its own ground truth, and each tells the session to re-derive that ground truth before acting.
+This board was produced by the **Fable 5.1 imperator window with Zero**. It decides the windows, the teams and the specs and appoints a Dux for each window; it never fans out and never implements.
+
+**Recorded deviation (Codex round 2, F2).** Doctrine seats the staff room as Fable 5.1 **and Astra** with Zero (`docs/architecture/dual-consul/army-map.md` §1bis; `docs/rules/RULINGS.md`, PARABELLUM). Astra's co-signature was **not** obtained on this board. Wave 1 opened on Zero's decision on 2026-09-10 (~22:55 WITA). Before wave 2 opens, Zero either runs an Astra reading of this board (a Codex `gpt-6-astra` window at effort `xhigh`, with its objections recorded in this README) or records the waiver in the ledger row.
+
+Each S-file is one battle window written against the seven-section spec (`.claude/skills/modus/battle-window-spec.md`): one mandate, one organ, one worktree, at most two or three windows at once.
+
+**Colour is chosen BEFORE the window opens, and the opening command follows the colour.** BLUE unless Zero says ORANGE.
+- **BLUE:** Zero opens a fresh `claude --model claude-opus-5` window at effort `xhigh` and pastes the file. Dux Opus 5 `xhigh`, implementer Sonnet 5, reviewer an independent Codex seat, gate a fresh Opus 5 `xhigh` session outside the chain, release by the Dux.
+- **ORANGE:** Zero opens a Codex window on the Sol seat — army-map §1bis names it "Sol (`gpt-5.6-sol`) `xhigh`"; the map names the seat, not a command line — and pastes the file. Every other seat is re-resolved from §1bis, the table's only copy.
+- **No colour fallback.** A dead seat suspends the mission; it never changes colour. Before executing, the window states colour, Dux role, mandate id and worktree path.
 
 ## How this board was produced
 
-Two workflows and a final gate ran on Pro on 2026-09-10. **Workflow 1 (sweep)** sent 12 modality readers through the organism: ci-hook-churn, daemon-fleet, doc-canon-drift, escalations-dlq, harness-gate, memory-mos, merge-queue, pending-arms, prod-surface, program-state, proprioception and scars. They produced 82 findings, which a synthesizer distilled into five diseases and nine candidate sessions (C1–C9), and a critic listed the gaps. **Workflow 2 (verify + judge)** ran every candidate through three lenses (evidence-real, leverage-overstated, feasibility-one-session), for 27 verdicts. It added 6 late readers for ground the sweep had missed (data-plane, fly-cost, wa-bot-runtime, mini-fleet, secrets-security, tests-deps-backup), then handed everything to one judge, which re-verified the load-bearing numbers on Pro and proposed six sessions. A red-team attacked each of the six mandates by re-running their commands. Last, the orchestrator (Fable) gated the result: it checked the WhatsApp question against prod and overrode the judge wherever the two disagreed. Token cost: ~1.59M for the sweep, ~0.7M+ for verify + judge. Precedence where sources disagree: the gate beats the red-team, and the red-team's live re-run beats the judge's snapshot. Every number carries the time it was measured; numbers that drift hourly say "re-measure at start".
+- **Sweep** (Pro, 2026-09-10): 12 modality readers, 82 findings, distilled into five diseases and nine candidates (C1–C9); a critic listed the gaps. ~1.59M tokens.
+- **Verify + judge:** 27 verdicts (9 candidates × 3 lenses), 6 late readers, one judge re-verifying the load-bearing numbers on Pro. ~0.7M+ tokens.
+- **After the judge:** a red-team re-ran every mandate's commands; the orchestrator gated the result and checked the WhatsApp question against prod; an independent Codex seat (`gpt-5.6-sol`) graded two rounds, REWORK both times (§ Adversarial review).
+- **Precedence:** the gate beats the red-team; the red-team's live re-run beats the judge's snapshot.
 
 ## The five diseases
 
-1. **Sensors get built but never armed, and now the armed ones get silenced.** The auditor has no schedule, the scar census feeds a runner nothing calls, the TTL cron deletes nothing, and the re-armer did nothing on 1879 of 1880 ticks. A persisting P0 was muted for a week while its organ reported `ok`.
-2. **Append-only stores have no way to close.** The ledger went from 401 to 802 rows in 29 days, the escalation bus has 190 of 218 rows pending, and 306,884 processed memory rows are never deleted.
-3. **Guards judge a proxy instead of the entity**, so each fix creates the opposite defect: 9+ scars on one guard file. It is contained for now; the guard's fuzz harness passes 445/445.
-4. **The doors lie, because every countable claim is hand-written.** "176 daemons", 115 MCP tools documented against 162 actual, and six INDEX.md "core tables" that don't exist in prod.
-5. **Alert channels are undifferentiated.** One chronic job produced 20 of the 21 HIGH escalations, one broken probe accounts for half the bus, and Zero's real queue is short but buried.
+1. **Sensors built but never armed, and armed ones silenced.** The auditor has no schedule; the TTL cron deletes nothing; the re-armer did nothing on 1879 of 1880 ticks; a persisting P0 was muted for a week while its organ reported `ok`.
+2. **Append-only stores cannot close.** Ledger 401 → 802 rows in 29 days; escalation bus 190 of 218 rows pending; 306,884 processed memory rows never deleted.
+3. **Guards judge a proxy, not the entity.** Contained for now: the guard fuzz harness passes 445/445.
+4. **The doors lie, because countable claims are hand-written:** "176 daemons", 115 MCP tools documented vs 162 actual, six INDEX.md "core tables" absent from prod.
+5. **Alert channels are undifferentiated.** One chronic job produced 20 of 21 HIGH escalations; Zero's real queue is short but buried.
 
-## The sessions
+## The windows
 
-| ID | Session | Wave | Machine | One line | Operator items |
-|---|---|---|---|---|---|
-| [S1](S1-arm-the-armer.md) | ARM THE ARMER (C1 + C9's pre-push gate) | 1 | Pro | The merge-queue re-armer did nothing on 1879 of 1880 ticks: its GraphQL query exceeds GitHub's resource limit and it exits 0 anyway | 2 |
-| [S2](S2-custody.md) | CUSTODY (late reads: secrets + restore drill) | 1, parallel with S1 | Pro | The secrets audit never looks in `~/nuzantara/.secrets` and never runs; the restore drill has been red since 09-01 because the workflow never creates a role the dump needs | 4 |
-| [S3](S3-arm-the-auditors.md) | ARM THE AUDITORS (C5 + C6 + one C7 probe) | 2, parallel with S4; plists wait for #6101 | Pro | proprioception is unscheduled, the cost guard unloaded, and the scar census feeds an orphan while CI reads a different registry | 3 |
-| [S4](S4-reaper-and-signal.md) | THE REAPER AND THE SIGNAL (C2 + C8 + L1 residue) | 2, parallel with S3 | Pro (+ one hand edit on Mini) | The ledger doubled with no way to close rows, 20 of 21 HIGH come from one job, and a persisting P0 was muted for a week while its sentinel said ok | 5 |
-| [S5](S5-brain-that-can-forget.md) | A BRAIN THAT CAN FORGET (C3) | 3, after Zero's retention ruling | Pro | TTL is set on 0 of ~15,800 memories, so the nightly sweep deletes nothing; ~1,450 OSINT rows ride every backup | 3 |
+| ID | Window · organ | Wave | Host | Colour | Dux | One line | Operator items |
+|---|---|---|---|---|---|---|---|
+| [S1](S1-arm-the-armer.md) | ARM THE ARMER · `scripts/queue_shepherd.py` | 1 (opened ~22:55 WITA) | Pro | BLUE | Opus 5 `xhigh` | The re-armer's candidate query exceeds GitHub's resource limit and it exits 0 | 1 |
+| [S2](S2-custody.md) | CUSTODY · the credential-custody detector | 1 (opened ~22:55 WITA) | Pro | BLUE | Opus 5 `xhigh` | The secrets audit never looks in `~/nuzantara/.secrets` and has no schedule | 4 |
+| [S3](S3-arm-the-auditors.md) | ARM THE AUDITOR · proprioception | 2 | Pro | BLUE (default) | Opus 5 `xhigh` | The auditor runs only when typed, and INDEX.md's core tables go unchecked | 0 |
+| [S4](S4-reaper-and-signal.md) | THE SIGNAL · alert gateway + weekly digest | 2 | Pro | BLUE (default) | Opus 5 `xhigh` | A persisting P0 went silent for a week, and the digest is built but unarmed | 3 |
+| [S5](S5-brain-that-can-forget.md) | A BRAIN THAT CAN FORGET · MOS store, mechanism only | 3 | Pro | BLUE (default) | Opus 5 `xhigh` | TTL is set on 0 of ~15,800 memories; this window ships the dry-run tool, S5b cuts | 1 |
 
-## Sequencing rules
+## Sequencing
 
-- **Every session** runs on a Fable 5.1 seat that Zero picks manually, at max effort, on Pro, with one worktree per PR. Subagents are pinned: sonnet reads and implements, haiku does grunt work, opus is used only for a final gate.
-- **Wave 1: S1 and S2 in parallel, now.** Their files don't overlap. S1 is not a hard prerequisite for anyone (auto-merge is on and sessions arm at PR open), but it makes every later PR cheaper.
-- **Wave 2: S3 and S4 in parallel, once S1's query fix is live** (six clean ticks). S3 writes no plist until #6101 (one tree on Pro; open, DIRTY and armed at 13:35Z) has merged or closed. Until then it ships its non-plist PRs.
-- **Wave 3: S5, only after Zero answers queue item 1**, and never alongside S4. Both change closure semantics, so a number moved by one would be blamed on the other.
-- **Shared surfaces, one rule each:**
-  - `PENDING-ARMS.md` (`merge=union`): append on a branch cut from a fresh origin/main, check the diff is +N/-0, and never hand-resolve the file or rebase onto it.
-  - launchd: a new job is a canon plist under `infra/launchagents/` whose paths name `/Users/nuzantara/nuzantara/...`. Live-only edits get reverted by the healer's home-fork refresh, and nobody edits crontab when a plist will do.
-  - `scripts/tg_notify.py` belongs to S4 alone (29 top-level callers).
-  - `scripts/proprioception.py` is off-limits while #6054 is open.
-- **Operator items get filed and never waited on.** S5 is the only session gated on Zero.
+- **Concurrency:** two or three windows at a time, each in its own worktree; never two on the same path.
+- **Wave 1: S1 and S2** (opened ~22:55 WITA). An optional third is the queued RESTORE DRILL (red since 09-01, next cron 10-01) once its own file exists.
+- **Wave 2: S3 and S4** open only when (a) S1's shepherd PR is **MERGED**, (b) Pro has pulled it (puller rc=0), (c) the S1 window has reported its six clean ticks, and (d) the Astra reading or its waiver is recorded. An armed PR still runs the old re-armer, so "armed" is not the trigger. Inside wave 2, S3's probe waits for #6054 (open at 15:40Z); #6101 merged 2026-09-10T14:24Z.
+- **Wave 3: S5**, mechanism only (dry-run tool, no write to the live DB), before or after Zero's retention ruling. **S5b — THE CUT** opens only after the ruling and after S5's PR is merged. Neither runs alongside the queued REAPER window.
+
+## Sibling contract — summary
+
+| Shared surface | Owner | Touched by | Rule |
+|---|---|---|---|
+| `.claude/skills/modus/PENDING-ARMS.md` (`merge=union`, ignored by GitHub's mergeability — modus SKILL.md:193) | Shared lockfile; structure owner: the queued REAPER window | All windows | Rows only in each window's final, separate, ledger-only PR, cut from a fresh origin/main after its code PRs merge. Open it only when no other open PR touches the file; diff +N/-0. DIRTY → the freeze rule below |
+| `scripts/tg_notify.py` | S4 | S1, S2 (callers) | CLI, API and state format frozen; the p0 change is tier-scoped |
+| `infra/launchagents/` canon | #6101 (merged) | S2, S3 (one new plist each) | Exec paths name `/Users/nuzantara/nuzantara`; bootstrap from canon; no crontab |
+| `scripts/proprioception.py` | #6054, then S3 | S3 | The probe PR waits until #6054 has merged |
+| `infra/home-fork/declared-pairs.json` | S5b, one entry | S5b | Edited only after the sha256 proof of the HOME worker copy |
+
+Apart from the ledger the windows share no writable file: S1 the shepherd, S2 the audit script, S3 proprioception plus INDEX.md:71, S4 the gateway plus the digest, S5 the worker plus the purge tool.
+
+**The freeze rule (every window).** Once auto-merge is armed the branch is read-only (Builder Contract rule 1).
+- **Real DIRTY** on an armed PR: close it with a comment naming the successor, cut a fresh branch from origin/main carrying the same content (cherry-pick), then push, create and arm the successor as three separate commands.
+- **Phantom DIRTY** (GitHub reports DIRTY and the queue still accepts it — `autoMergeRequest` still set): the queue cures it by merging. Judge the diff first; never disarm.
+- **Never** `--disable-auto` → merge origin/main → push → re-arm.
+
+## Queued windows
+
+The staff room opens each one; each needs its own seven-section file first, and the staff room opens a ledger row when it schedules it.
+
+1. **QUEUE SIBLINGS (Mini)** (split from S1). `scripts/queue_unstick.py` and `scripts/queue_stall_classifier.py` (notifier `scripts/queue_stall_notify.py`) on Mini. Input: what S1's pack notes they need.
+2. **S5b — THE CUT** (split from S5). Opens after Zero's retention ruling and S5's merge. Owns everything irreversible: backup, pause, `--apply`, VACUUM, the HOME worker `cp` with sha256 proof, ttl on save in `~/.claude/scripts/mem`, the declared-pair follow-up PR, the ledger. **Gate coverage:** the gate signs the dry-run before `--apply` AND re-reads the post-apply state (per-class counts == predicted, `PRAGMA integrity_check` ok) before success is reported. **Backup:** into the existing `~/.claude/backups/` under a `memory_*.db` name, so the existing C2.14 prune removes it after 30 days; `chmod 600` explicitly (the directory is 0755 today); the archive is a table inside memory.db, never a dated cleartext file. **Rollback:** quiescence = compression daemon paused AND no `mem` writes (`select max(id) from memories` equal before and after); `.restore` only if max(id) is unchanged since the backup, otherwise export the delta rows (id above the backup's max) to the scratch dir, restore, re-insert them. The "next morning" backup proof belongs here.
+3. **RESTORE DRILL** (split from S2). Red since 2026-09-01: the service container never creates `backend_rag_v2`, so psql exits 3 before the Level-5 verifier runs. Fix: create the role or restore with `--no-owner`, `workflow_dispatch`, prove a Level-5 pass; a red drill alerts through a transport that exists inside Actions.
+4. **IMMUNE REGISTRY** (C6, split from S3). Executable scar gates in `scripts/verify_the_verifiers_gates.yaml`, each proven to fail on synthetic re-injection. MANIFEST.json is not regenerated: its only consumer is orphaned.
+5. **ORGAN CENSUS** (split from S3). A provably-dead manifest (organ id, heartbeat age, log error class only); conversation tables never proposed for a drop (five-year retention); the "176 daemon" derivation.
+6. **THE REAPER** (C2, split from S4). Owns the ledger's structure: a growth gate distinct from `--ratchet`, a sidecar proof-of-armed keyed by row hash, auto-close and a reconciler.
+7. **SIGNAL TRIAGE** (C8's bus half, split from S4). The bus's terminal state, fingerprint extraction and fingerprint-scoped downgrade, the `login_healthcheck` diagnosis, the seven leaked fixture rows.
+8. **SENTINEL HONESTY** (L1 residue). The throughput sentinel stops hardcoding `status="ok"`. Waits on THE REAPER.
+9. **PRE-PUSH FLOOR GATE** (C9, split from S1). `.husky/pre-push` refuses a floor-2 push without a brief, re-baselined after #6100. Fleet-wide hook.
+10. **MEMORY GUARD** (split from S5). A MEMORY_INDEX cap check that can fire: extend `scripts/memory/mos_recall_sessionstart.py` or fix and register `scripts/harness/harness_lifecycle_guard.py`. Waits on IMMUNE REGISTRY.
+
+## Gear-1 one-liners (the former grunt lane)
+
+No sixth program and no shared lane (Codex round 2, F3). Each item is ONE Gear-1 PR cut from a fresh origin/main by the Dux that owns the nearest organ, after that window's own PRs; an item with no live owner is queued.
+
+| Item | Owner |
+|---|---|
+| `headless_zombies` exact-set membership (a probe in `scripts/proprioception.py`) | S3's Dux, after its probe PR and #6054 |
+| Load the cost guard (two canon plist copies: pick one first) | queued → ORGAN CENSUS |
+| Plist linter's two ExpatError snapshots (dead organs) | queued → ORGAN CENSUS |
+| docs_sync app count (lever: `git ls-files apps/`); MANIFEST/census generator; `automation_catalog.json` regeneration | queued → ORGAN CENSUS |
+| Door self-dates, the MCP count, the superscar path lint | queued → ORGAN CENSUS |
+| The C9 label lint and its stale sentence | queued → PRE-PUSH FLOOR GATE |
+| Dead SessionStart hooks on Pro and Mini (machine-local, back up first) | queued → MEMORY GUARD |
+| post_publish_queue's retry path (63 failed, 3 dead) | queued (no owning window yet) |
+| #5601–5604 | queued (no owning window yet) |
+| Dependency rot: 10 Dependabot alerts (5 high), 33 outdated npm packages in apps/mouth, three py/log-injection findings | queued; **not a one-liner** — needs its own window file |
+| Wave-2 issues #5316–5321 and #5323 (#5322 is a merged PR): `gh issue close` citing the probe | S3's Dux, after its probe lands |
+| Per-PR test failures on required-check-red PRs; arming CLEAN PRs | each PR's own release owner, never another window |
+
+## Doctrine gaps found while writing
+
+- **Stale paths in the spec.** It names `scripts/mandate_budget.py` and `scripts/lane_check.py`; the live files are `infra/codex-hooks/mandate_budget.py` and `infra/claude-hooks/lane_check.py`. The windows cite the real paths.
+- **Ledger DIRTY cure vs. freeze.** modus SKILL.md:193 cures a union DIRTY with a local `git merge origin/main`; Builder Contract rule 1 freezes an armed branch. The windows apply the freeze rule above: the local-merge cure only ever touches a branch that was never armed.
+- **`--squash` drift.** modus SKILL.md:100 still prescribes `gh pr merge --auto --squash` (standing rule 2026-06-25). `docs/runbooks/merge-queue-discipline.md:274-278` (measured on PR #3347) and `scripts/queue_shepherd.py:819-821` record that the queue rejects every strategy flag and `--squash` arms nothing. The windows use bare `--auto`; modus line 100 needs its own fix PR.
 
 ## Folded, dropped, and why
 
-- **L1, "the channel is dark", is not a session.** The judge ranked it first on a real reading: zero WhatsApp inbound webhooks since 2026-09-03, and a sentinel reporting `ok`. The orchestrator then checked prod. PRs #5486 (merged 2026-09-01T08:02Z) and #5494 (12:43Z) carried out Zero's ruling to put the human line on every surface: every client-facing invitation moved from the bot's Meta line (`SUPPORT_WHATSAPP`) to the human line (`CLIENT_CONTACT_WHATSAPP`). Inbound dropped from 2–30 a day to 2 on 09-02 and zero from 09-03, which is exactly what the ruling should do. The Fly endpoint answers correctly (403 on a wrong verify token, 401 "Invalid signature" on an unsigned POST) and logged zero processing errors through 09-02. The red-team also showed that the judge's "business=False predicate" doesn't exist: the sentinel classifies correctly, and the real silencer is the shared alert gateway's mute ladder. The surviving part moved into S4 as a hard deliverable: a persisting P0 re-raises on a schedule or lands in the digest, and a sentinel never reports `ok` while its condition is dead. Instagram (dark 35 days) and "what is the bot line for now" go to Zero's queue. L1's post_publish_queue finding (63 failed, 3 dead) goes to the grunt lane.
-- **C4, PARSE DON'T MATCH, was killed on evidence.** `infra/claude-hooks/guard_fuzz_harness.py` reports ALL 445 PASS with 0 unexplained mismatches. The repo and installed copies of the guard are byte-identical, every scar in its chain is fixed with a test, and bashlex isn't installed. Swapping 29 regexes in a 1549-line fleet-wide PreToolUse gate for a hand-rolled parser would open a bigger hole than it closes. Revisit only if a new over/under-match scar lands, and then as a shadow parser behind the 445-case parity harness, never as a hot cutover.
-- **C9, CI TOPOLOGY, was folded.** Three of its seven fixes had already merged (#6029, #5676). The 27-vs-13 required-context discrepancy doesn't exist: there are 13 live and 13 in `contexts.json`, and the "27" is a stale sentence. Its pre-push floor gate went to S1; the advisory-label lint and the stale sentence went to the grunt lane.
-- **C7, THE DOORS STOP LYING, was mostly folded.** One advisory re-derivation probe went to S3; its first consumer is INDEX.md's six phantom tables. Door self-dates, the MCP tool count and the superscar path lint went to the grunt lane. The wave-2 issues (#5316–5321 and #5323; #5322 is a merged PR, not an issue) become a `gh issue close` chore. VADEMECUM's dead pointers go to Zero.
-- **C6 was folded into S3, with its payload redirected.** MANIFEST.json is stale (66 entries, 2 armed, top entry W87 against a corpus reaching W131), but its only consumer is orphaned. New gates go into `verify_the_verifiers_gates.yaml`, which is what CI reads.
-- **C8 was folded into S4.** It is the same disease as C2. One correction: the weekly digest is built but not armed. Installing it is a re-arm, but reading the escalation bus needs new code.
-- **Cut from S3 so it fits in five PRs:** the MANIFEST/census generator and the `automation_catalog.json` regeneration.
-- **Grunt lane (sonnet implements, haiku does the mechanical edits):** headless_zombies' exact-set membership check; docs_sync's app count (the lever is `git ls-files apps/`, not README presence); dependency rot (10 open Dependabot alerts, 5 of them high; 33 outdated npm packages in apps/mouth; three duplicate py/log-injection CodeQL findings, probably from one sink); #5601–5604; the per-PR test failures on required-check-red PRs; post_publish_queue's retry path; the two items cut from S3.
-- **Not now:**
-  - The Fly drive process group is scaled to 2 with only 1 started. The judge's one-line fly.toml comment is out, because fly.toml is off-limits; high availability is Zero's cost/risk call.
-  - The nuzantara-postgres v0.2.0 → v0.2.1 image update is a scheduled ops action, not a session.
-  - The 11 dead arsenal seats: run the arsenal probe first, since one probe bug is likelier than ten outages.
+The gate's decisions, unchanged; rework destinations in *italics*.
+- **L1, "the channel is dark", is not a session.** Zero WhatsApp inbound since 2026-09-03 is what Zero's ruling produces: PRs #5486 (2026-09-01T08:02Z) and #5494 (12:43Z) moved every client invitation from the bot's Meta line (`SUPPORT_WHATSAPP`) to the human line (`CLIENT_CONTACT_WHATSAPP`). The Fly endpoint answers correctly (403 on a wrong verify token, 401 on an unsigned POST). The real silencer is the gateway's mute ladder. *Gateway half → S4; sentinel half → SENTINEL HONESTY.* Instagram and the bot line → Zero's queue.
+- **C4, PARSE DON'T MATCH, killed on evidence:** `infra/claude-hooks/guard_fuzz_harness.py` ALL 445 PASS, repo and installed guard byte-identical, bashlex not installed. Revisit only on a new over/under-match scar, as a shadow parser behind the 445-case harness.
+- **C9, CI TOPOLOGY, folded:** three of seven fixes already merged (#6029, #5676); 13 contexts are live. *Pre-push gate → PRE-PUSH FLOOR GATE.*
+- **C7, THE DOORS STOP LYING, mostly folded:** *one re-derivation probe → S3, inside proprioception, consumed by the scheduled run.* The rest → the Gear-1 table; VADEMECUM's dead pointers → Zero.
+- **C6 → IMMUNE REGISTRY. C8 → digest in S4, bus half in SIGNAL TRIAGE.**
+- **Not now:** the Fly drive group (fly.toml off-limits; HA is Zero's cost call); the nuzantara-postgres image update (scheduled ops); the 11 dead arsenal seats (run the arsenal probe first).
 
 ## Zero's queue
 
-PII-free. Each item says which session it gates or which session files it.
+PII-free. Each item names the window it gates or the window that files it.
 
-1. **RETENTION WINDOWS (gates S5; launch S5 only after you answer).** Recommended default: (a) processed `raw_observations` older than 30 days are purgeable; (b) `osint_sensitive` rows older than 7 days are purgeable, so a nightly backup carries at most a week of them, while existing backups age out under the current prune cron; (c) unresolved memories older than 90 days are archived, not deleted. Reply "default" or give your own numbers.
-2. **MEMORY.md CAP (S5).** The documented 2,560 B nucleus and the coded 25,600 B alert limit differ by 10×. Which one is authoritative?
-3. **`~/.claude` DOTFILES REPO (S5).** It has no remote, yet it holds the memory save path and the SessionStart wiring for three machines, with no review and no CI. Does it get a remote?
-4. **THE WHATSAPP BOT LINE AFTER #5494 (S4).** Every client-facing surface now names the human line, and the bot's Meta line has had zero inbound since 09-03, as expected. What is the bot line for now: retire it, keep it as a quiet fallback, or advertise it again? Your answer decides how the throughput sentinel gets re-baselined; S4 makes the sentinel honest but won't re-baseline it. Optional one-minute proof: send one message to the bot line from your own phone. If it lands, the Meta → Fly path works end to end.
-5. **INSTAGRAM.** Dark for 35 days on the same receiver. Was it retired on purpose, or should it be restored?
-6. **`.secrets` CREDENTIALS (S2 files it).** The modes had been loosened; the orchestrator session corrected them by hand at ~21:05 WITA on 2026-09-10 (4 of 7 files). Whether to rotate depends on whether the second local account ever read them, and checking that needs audit-log access that only you have.
-7. **SECOND LOCAL ACCOUNT (S2 files it).** `zantara-codex` is a member of `staff` on Pro. Keep it or retire it? That account, not the file modes, is the real blast radius.
-8. **GITHUB SECRET SCANNING (S2 files it).** Alert #7 (Telegram bot token, open since 2026-01-19) and alert #1 (GCP service-account key, open since 2026-01-07). Rotate them at BotFather and in the GCP Console; a session resolves the alerts only after the rotation.
-9. **GOOGLE MAPS KEY.** The /prime 3D map has been dead for every visitor since 2026-08-29 because the key expired. Rotation happens in the GCP Console, GUI only.
-10. **NOTEBOOKLM.** Auth has been dead since 2026-08-14. Run `nlm login --clear` on the single NotebookLM account (profile `default`); interactive, GUI only.
-11. **DEVELOPER_EMAILS, PR #6081.** The PR moves the developer grant off the gate that runs SQL. It needs your UU PDP boundary call, not more code.
-12. **ADMIN_EMAILS.** One flat allowlist stands in for five authorization decisions (CRM, HR, portal, accounting, staff_auth). Split it or not? The sweep also claimed a pilot grant opened four unrelated systems to a staff member, but its own source doesn't back that up; treat it as unestablished.
-13. **DEPENDABOT #5528/#5529 (S1 files it).** Merge them, or widen the auto-merge author allowlist. S1 won't touch the allowlist.
-14. **REQUIRED-CONTEXT PROMOTIONS (S1, S3).** Anything they add lands advisory-only; promoting it is your call, since branch protection is your file. The live count is 13 contexts.
-15. **THE 221 OPERATOR-GATED LEDGER ROWS (S4).** S4's digest sorts them by class, so rule on classes rather than rows. Also decide how long resolved ledger and bus rows are kept before archival.
-16. **ORGAN RETIREMENT (S3).** S3 produces a provably-dead manifest for the frozen organs (WR2, mata_garuda, wr2control, SOTA m13). You sign off; no session retires anything on its own.
-17. **95 ZERO-ROW PRODUCTION TABLES.** Each one is either pre-launch by design (GARUDA is flag-gated), a silently broken writer, or dead schema superseded by another table. Only you can classify them; after that, a sonnet lane drops the dead ones or files the broken writers.
-18. **DUPLICATE BACKUP CRONS (S2 files it).** The 03:00 and 03:20 jobs write the same filename pattern to the same Postgres backup folder, doubling the dump load and the storage. Removing a backup cron is your call.
-19. **"176 DAEMON" in `~/.claude/CLAUDE.md` (S3 reports).** That figure is true only under the broadest of three greps. S3 will report the correct derivation; only you edit that file.
-20. **VADEMECUM.md:413-414.** It cites `PRICING_REFERENCE.md` and `VISA_TYPES_REFERENCE.md`, and neither exists. The pricing SSOT is `MEMORY_PRICING_CORPUS.md`. Confirm the replacements so the pointers get fixed rather than invented.
-21. **M5 SessionStart hooks (S4 files it).** S4 prunes the four dead hooks on Pro and Mini by hand. M5 is your machine: do it yourself, or say "do it".
+0. **ASTRA READING OR WAIVER (gates wave 2).** See the recorded deviation at the top.
+1. **COLOUR PER MISSION.** BLUE by default; say ORANGE before a window opens. Fixed at mission start.
+2. **RETENTION WINDOWS (gates S5b).** Default: (a) processed `raw_observations` older than 30 days purgeable; (b) `osint_sensitive` rows older than 7 days purgeable, existing backups age out under the 30-day prune; (c) unresolved memories older than 90 days archived, not deleted. Reply "default" or give numbers.
+3. **MEMORY.md CAP (MEMORY GUARD).** Documented 2,560 B vs coded 25,600 B: which is authoritative?
+4. **`~/.claude` DOTFILES REPO (S5 files it).** No remote, yet it holds the memory save path and the SessionStart wiring for three machines. Give it a remote?
+5. **THE WHATSAPP BOT LINE AFTER #5494 (SENTINEL HONESTY).** Retire, quiet fallback, or advertise again?
+6. **INSTAGRAM.** Dark for 35 days: retired on purpose, or restore?
+7. **`.secrets` CREDENTIALS (S2 files it).** Modes were loosened; the orchestrator corrected 4 of 7 by hand at ~21:05 WITA. Rotation depends on whether the second local account read them; only you have the audit-log access.
+8. **SECOND LOCAL ACCOUNT (S2 files it).** `zantara-codex` is in `staff` on Pro. Keep or retire?
+9. **GITHUB SECRET SCANNING (S2 files it).** Alerts #7 (Telegram bot token) and #1 (GCP service-account key): rotate first, resolve after.
+10. **GOOGLE MAPS KEY.** The /prime 3D map is dead since 2026-08-29 (key expired); rotation is in the GCP Console.
+11. **NOTEBOOKLM.** Auth dead since 2026-08-14: `nlm login --clear` on the single account (profile `default`).
+12. **DEVELOPER_EMAILS, PR #6081.** The UU PDP boundary call; the PR needs your decision, not code.
+13. **ADMIN_EMAILS.** One flat allowlist for five authorization decisions: split it?
+14. **DEPENDABOT #5528/#5529 (S1 files it).** Merge them, or widen the auto-merge author allowlist.
+15. **REQUIRED-CONTEXT PROMOTIONS (IMMUNE REGISTRY, PRE-PUSH FLOOR GATE).** Their checks land advisory; promotion is yours. 13 live contexts today.
+16. **THE 221 OPERATOR-GATED LEDGER ROWS (S4's digest sorts them).** Rule by class; decide how long resolved rows are kept.
+17. **ORGAN RETIREMENT (ORGAN CENSUS).** You sign; no window retires an organ.
+18. **95 ZERO-ROW PRODUCTION TABLES.** Pre-launch, broken writer, or dead schema: only you can classify.
+19. **DUPLICATE BACKUP CRONS (RESTORE DRILL files it).** The 03:00 and 03:20 jobs write the same pattern.
+20. **"176 DAEMON" in `~/.claude/CLAUDE.md` (ORGAN CENSUS reports the derivation).** Only you edit that file.
+21. **VADEMECUM.md:413-414.** Two cited docs don't exist; the pricing SSOT is `MEMORY_PRICING_CORPUS.md`. Confirm the replacements.
+22. **M5 SessionStart hooks.** Pro and Mini are pruned by hand; M5 is yours: do it, or say "do it".
+
+## Adversarial review
+
+**Seat:** Codex `gpt-5.6-sol`, independent of the author chain. **Round 1 — REWORK (all six):** role and authority conflicted with PARABELLUM (Fable as implementer, no Dux/colour); `agent_start.py` prints `WORKTREE_READY` and cannot change the caller's cwd; the "disjoint files" claim was false because every window appends to the `merge=union` ledger; S1–S5 were program-sized; S2 could touch `.env*`; S5's proofs did not falsify. Applied in v2 (Dux/colour/mission id declared, captured `$WT`, ledger rows only in a final ledger-only PR, programs split into queued windows).
+
+**Round 2 — REWORK (all six), 17 findings, staff-room dispositions:**
+
+| # | Finding | Disposition | Where |
+|---|---|---|---|
+| F1 | ORANGE opened `claude-opus-5` | Applied: the colour is chosen before opening; BLUE → `claude --model claude-opus-5` `xhigh`, ORANGE → a Codex window on the Sol seat as §1bis names it | README, all S-files |
+| F2 | Dux appointed without Astra | Applied as a recorded deviation; Astra reading or waiver gates wave 2 | README, all S-files |
+| F3 | Grunt lane bypasses the format | Applied: grunt lane removed; Gear-1 one-liner table with owners or queued | README |
+| F4 | Wave 2 opened on "armed" | Applied: MERGED + pulled (rc=0) + six clean ticks reported | README, S1, S3, S4 |
+| F5 | DIRTY recipe violated the freeze | Applied: real DIRTY → close + successor from fresh origin/main; phantom DIRTY → the queue cures it; never disarm-merge-push-rearm | README, all S-files |
+| F6 | S1 was not one organ | Applied: S1 = `queue_shepherd.py` on Pro only; QUEUE SIBLINGS (Mini) queued | README, S1 |
+| F7 | Ancestor proof fails on squash | Applied: blob-equality content proof (superscar #9, `content_on_main()`) | S1–S5 |
+| F8 | `--auto` without `--squash` | **Rejected:** the queue rejects every strategy flag (`merge-queue-discipline.md:274-278`, PR #3347; `queue_shepherd.py:819-821`). Codex's citation is accurate about modus SKILL.md:100, which does say `--auto --squash`; that line is stale (Doctrine gaps) | all |
+| F9 | Checkpoint commands did not run | Applied: `scripts/fleet_mail.sh local broadcast --key S1-checkpoint --ttl 24 "$STATE"` (S2–S5 likewise); no placeholder left in any command | all S-files |
+| F10 | S2 interval undefined, hardcoded counts | Applied: `StartInterval` 3600; same-minute agreement with `find` | S2 |
+| F11 | S3 sequence impossible in one PR | Applied: schedule → probe → separate INDEX.md PR → ledger | S3 |
+| F12 | S4 pytest path did not exist | Applied: `~/nuzantara/.venv/bin/python3 -m pytest` (pytest 9.0.3, verified on Pro) | S1–S5 |
+| F13 | Mute ceiling unnumbered; zero-baseline rollback | Applied: at most once per 6 h, at least once per 24 h; rollback on >4 re-raises/24 h per key | S4 |
+| F14 | S5 did not fit 8 h | Applied: S5 = mechanism; S5b — THE CUT queued | README, S5 |
+| F15 | S5 contradicted its DELETE ban | Applied: probe insert/delete only on a scratch copy; S5b gate re-reads the post-apply state | README, S5 |
+| F16 | Sensitive copies without lifecycle | Applied: `~/.claude/backups/` under C2.14's prune, explicit `chmod 600`, archive table not a file | README, S5 |
+| F17 | Rollback could lose valid rows | Applied: quiescence by max(id); delta export before `.restore` | README, S5 |
