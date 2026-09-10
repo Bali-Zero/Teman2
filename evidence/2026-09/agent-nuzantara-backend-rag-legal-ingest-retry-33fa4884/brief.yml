@@ -1,0 +1,61 @@
+task: >-
+  Fix POST /api/legal/ingest-full: a job that failed on its first attempt could never be
+  retried. The idempotency check only treated status == "complete" as already_exists, so any
+  later POST for the same (tipo, nomor, anno) returned HTTP 202 "Job gia in corso." forever —
+  the worker's claim query excludes status = 'failed' by design (idx_legal_ingest_jobs_queue),
+  so a failed row is invisible to it without a manual DB edit. Also names the failing exception
+  class in the job's error column (some httpx timeout exceptions have an empty str(), which left
+  job 88a120aa's failure as error="pending: "), and hardens _download_pdf with a browser-like
+  User-Agent, a wider timeout (60s -> connect 30s / read 180s), and RuntimeError wrapping that
+  never logs the full URL query string.
+lane: backend-rag/legal-ingest-retry
+machine: Pro
+date: 2026-09-11
+
+gear: 1
+gear_reason: >-
+  Deterministic floor 1, source `size`: `git diff --numstat` against main is 335 added lines
+  (35+40+139+121), below SIZE_GEAR2_THRESHOLD (400). No off-limits or hot-zone path touched
+  (router + worker + their unit tests only). `scripts/evidence_pack_lint.py --print-floor`
+  confirms 1 on the committed diff (origin/main...HEAD).
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    A failed (or error-status) existing job for the same idempotency key is reset to pending
+    (error cleared, source_url/titolo/nb_target refreshed) and returned as 202 "Job precedente
+    fallito: riavviato.", keeping the same job id. Genuinely in-flight statuses (pending,
+    qdrant_done, drive_done, nlm_done) still return "Job gia in corso." with no UPDATE issued;
+    complete still returns already_exists.
+    probe: >-
+      PYTHONPATH=.:../crm-cell pytest
+      backend/tests/unit/app/routers/test_legal_ingest_full_router.py -v
+  A2: >-
+    The job error column names the exception class even when str(exc) is empty (the live
+    failure mode: job 88a120aa recorded error="pending: "), and _download_pdf sends a
+    browser-like User-Agent + a 30s-connect/180s-read timeout, wrapping HTTPStatusError/
+    TimeoutException/TransportError into a RuntimeError that names the host and exception
+    class but never the query string.
+    probe: >-
+      PYTHONPATH=.:../crm-cell pytest
+      backend/tests/unit/services/ingestion/test_legal_full_ingestion_worker.py -v
+  A3: >-
+    No regression on the pre-existing legal-ingest router and worker unit test suites.
+    probe: >-
+      PYTHONPATH=.:../crm-cell pytest
+      backend/tests/unit/app/routers/test_legal_ingest.py
+      backend/tests/services/ingestion/test_legal_full_worker.py -v
+
+out_of_scope: >-
+  Resuming a retried job from its failed step (this always restarts at status='pending', i.e.
+  step 1 Qdrant+KG onward — Drive/NLM/Sheets idempotency checks inside the worker already
+  no-op on re-upload). Atomic claim-and-reset (a worker claiming the row concurrently with the
+  reset loses the race harmlessly: the UPDATE's WHERE status IN ('failed','error') matches zero
+  rows, and the caller falls through — this doesn't return the up-to-date status in that narrow
+  window, tracked as a known gap, not a defect requiring a fix here). Streaming the PDF download
+  to disk instead of buffering resp.content (documents observed so far are sub-1MB; not worth
+  the complexity per lane scope). A `sheets_row`/`nlm_source_id` reset on retry (left as-is from
+  the prior attempt if the job never reached that step, which is the common case here).
