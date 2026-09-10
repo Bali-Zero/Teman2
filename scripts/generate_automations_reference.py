@@ -27,15 +27,20 @@ from pathlib import Path
 NUZANTARA_ROOT = Path(__file__).parent.parent
 OUTPUT_FILE = NUZANTARA_ROOT / "docs" / "AUTOMATIONS_REFERENCE.md"
 REPO_LAUNCHAGENTS_DIR = NUZANTARA_ROOT / "infra" / "launchagents"
+WORKFLOWS_DIR = NUZANTARA_ROOT / ".github" / "workflows"
+DECLARED_PAIRS_PATH = NUZANTARA_ROOT / "infra" / "home-fork" / "declared-pairs.json"
 
 WRITE_BLOCKLIST = {"CLAUDE.md", "zantara_core.py", "fly.toml", ".env", ".env.production", ".env.local"}
 
 # Shared with _parse_launchagents below — a repo-canon plist is only "ours" (and
 # therefore eligible for the pending-live-snapshot section) if it matches one of
-# these label prefixes, same as a live-installed one would be.
+# these label prefixes, same as a live-installed one would be. com.matagaruda.
+# added 2026-09-11: 23 repo-canon plists were invisible to both the live tables
+# and the pending table (coverage 112/135 of docs_sync.py::automation_coverage).
 OUR_LAUNCHAGENT_PREFIXES = (
     "ai.openclaw.", "com.balizero.", "com.nuzantara.", "com.cell.",
     "com.claude-max-api", "com.openclaw.", "com.user.", "homebrew.mxcl.",
+    "com.matagaruda.",
 )
 
 REGISTRY_PATH = Path.home() / ".agent" / "decisions" / "job_registry.json"
@@ -501,6 +506,23 @@ def _humanize_plist_schedule(parsed: dict) -> str:
     return "—"
 
 
+def _first_sentence(text: str, max_len: int = 160) -> str:
+    """First sentence of `text`, collapsed to a single line and bounded to
+    `max_len` chars — shared trimming rule for every purpose string this
+    generator derives (plist comment, script header, workflow comment)."""
+    first_sentence = re.split(r"(?<=[.!?])\s", text, maxsplit=1)[0]
+    if len(first_sentence) > max_len:
+        first_sentence = first_sentence[: max_len - 3].rstrip() + "..."
+    return first_sentence
+
+
+def _escape_table_cell(text: str) -> str:
+    """Escape a literal `|` so a derived value (purpose text, a workflow's own
+    `name:`, a plist label cell, a humanized schedule) can never break a
+    markdown table row it's interpolated into."""
+    return text.replace("|", "\\|")
+
+
 def _extract_plist_purpose(raw_text: str) -> str:
     """Best-effort purpose string from a plist's leading XML comment, if any.
     Most repo-canon plists document their intent in a `<!-- ... -->` header
@@ -516,21 +538,217 @@ def _extract_plist_purpose(raw_text: str) -> str:
             break
     # Some plist header comments are multi-paragraph runbooks, not a single markdown
     # table cell — keep only the first sentence, bounded, so the table stays readable.
-    first_sentence = re.split(r"(?<=[.!?])\s", text, maxsplit=1)[0]
-    if len(first_sentence) > 160:
-        first_sentence = first_sentence[:157].rstrip() + "..."
-    return first_sentence
+    return _first_sentence(text)
+
+
+_SCRIPT_EXTENSIONS = (".sh", ".py", ".mjs", ".js")
+
+
+def _find_program_script_arg(parsed: dict) -> str:
+    """First `ProgramArguments` entry (else `Program`) that looks like a path to
+    a .sh/.py/.mjs/.js file — the actual payload, as opposed to an interpreter
+    like `/bin/bash` that may precede it in the argv list. Whitespace in the
+    argument disqualifies it: a real path never contains a space, so a
+    `-lc "shell command ending in foo.py"` payload is not mistaken for one
+    (that's `_runs_basename`'s job, via `_basename_via_interpreter`)."""
+    args = parsed.get("ProgramArguments") or []
+    for arg in args:
+        if isinstance(arg, str) and " " not in arg and arg.endswith(_SCRIPT_EXTENSIONS):
+            return arg
+    program = parsed.get("Program")
+    if isinstance(program, str) and " " not in program and program.endswith(_SCRIPT_EXTENSIONS):
+        return program
+    return ""
+
+
+def _resolve_repo_script_path(script_arg: str) -> Path | None:
+    """Map a HOME-absolute script path (as seen in a plist's ProgramArguments)
+    to its repo-tracked twin, so the generator can read the twin's own header
+    instead of duplicating free text. Two routes:
+      1. `/Users/<user>/nuzantara/<rel>` — the script already lives in the
+         repo at NUZANTARA_ROOT/<rel>. The old TCC-exposed sibling checkout
+         under the user's Desktop folder (superscar #1, W84) is a symlink to
+         this same path on every fleet machine post-migration and is never a
+         second route here — see `scripts/lint_tcc_desktop_paths.py`.
+      2. Any other `/Users/<user>/...` HOME path — looked up as a `live` entry
+         in infra/home-fork/declared-pairs.json, resolved to its `repo` twin.
+    Returns None if the path can't be mapped or the mapped file doesn't exist."""
+    m = re.match(r"^/Users/[^/]+/nuzantara/(.+)$", script_arg)
+    if m:
+        candidate = NUZANTARA_ROOT / m.group(1)
+        return candidate if candidate.is_file() else None
+    m = re.match(r"^/Users/[^/]+/(.+)$", script_arg)
+    if not m:
+        return None
+    home_relative = "~/" + m.group(1)
+    try:
+        data = json.loads(DECLARED_PAIRS_PATH.read_text())
+    except (FileNotFoundError, json.JSONDecodeError, Exception):
+        return None
+    for pair in data.get("pairs", []):
+        if pair.get("live") == home_relative:
+            candidate = NUZANTARA_ROOT / pair["repo"]
+            return candidate if candidate.is_file() else None
+    return None
+
+
+def _extract_script_header_purpose(text: str, suffix: str) -> str:
+    """Best-effort purpose string from a target script's own header: the module
+    docstring for Python, else the leading `#`/`//` comment block after the
+    shebang (skipping `# shellcheck` / `# -*-` marker lines)."""
+    lines = text.splitlines()
+    idx = 1 if lines and lines[0].startswith("#!") else 0
+    if suffix == ".py":
+        rest = "\n".join(lines[idx:]).lstrip()
+        for q in ('"""', "'''"):
+            if rest.startswith(q):
+                end = rest.find(q, len(q))
+                doc = rest[len(q):end] if end != -1 else rest[len(q):]
+                doc = " ".join(doc.split())
+                if doc:
+                    return _first_sentence(doc)
+                break
+    comment_marker = "//" if suffix in (".js", ".mjs") else "#"
+    comment_lines: list[str] = []
+    for line in lines[idx:]:
+        s = line.strip()
+        if s.startswith(comment_marker):
+            content = s[len(comment_marker):].strip()
+            if content.startswith("shellcheck") or content.startswith("-*-"):
+                continue
+            comment_lines.append(content)
+        elif s == "":
+            if comment_lines:
+                break
+            continue
+        else:
+            break
+    text_block = " ".join(c for c in comment_lines if c)
+    return _first_sentence(text_block) if text_block else ""
+
+
+_INTERPRETER_BASENAMES = {"python", "python3", "bash", "zsh", "sh", "node", "npx"}
+_RUNS_EXTENSIONS = (".py", ".sh", ".mjs", ".js", ".ts")
+
+
+def _basename_via_interpreter(args: list, label: str) -> str:
+    """When the first ProgramArguments entry is a bare interpreter, its own
+    basename ("python3") is not a useful `runs` fallback — scan the rest of
+    argv (splitting each remaining entry on whitespace, so a `-lc "shell
+    command"` string is searched too) for a `-m <module>` flag or a token
+    ending in a script extension. Falls back to the plist's own label, never
+    a bare interpreter name."""
+    words: list[str] = []
+    for arg in args[1:]:
+        if isinstance(arg, str):
+            words.extend(arg.split())
+    for i, word in enumerate(words):
+        if word == "-m" and i + 1 < len(words):
+            return words[i + 1]
+        if word.endswith(_RUNS_EXTENSIONS):
+            return Path(word).name
+    return label
+
+
+def _runs_basename(args: list, label: str) -> str:
+    """basename for the `runs \\`<x>\\`` fallback: the first argv entry's own
+    basename, unless it's a bare interpreter — then `_basename_via_interpreter`."""
+    first_name = Path(args[0]).name
+    if first_name in _INTERPRETER_BASENAMES:
+        return _basename_via_interpreter(args, label)
+    return first_name
+
+
+def _resolve_plist_purpose(plist_path: Path, raw_text: str, parsed: dict) -> str:
+    """Purpose chain for a repo-canon plist, never the empty string:
+      (a) the plist's own `<!-- ... -->` header comment;
+      (b) else the header of the target script named in ProgramArguments,
+          resolved via `_resolve_repo_script_path`;
+      (c) else `runs \\`<basename>\\`` of the resolved script arg, or of the
+          plist's Program/ProgramArguments[0] if no script arg was found —
+          never a bare interpreter name (`_runs_basename`)."""
+    purpose = _extract_plist_purpose(raw_text)
+    if purpose:
+        return purpose
+    label = parsed.get("Label", plist_path.stem)
+    script_arg = _find_program_script_arg(parsed)
+    if script_arg:
+        script_path = _resolve_repo_script_path(script_arg)
+        if script_path is not None:
+            try:
+                text = script_path.read_text(errors="replace")
+            except Exception:
+                text = ""
+            if text:
+                header_purpose = _extract_script_header_purpose(text, script_path.suffix)
+                if header_purpose:
+                    return header_purpose
+        return f"runs `{Path(script_arg).name}`"
+    args = parsed.get("ProgramArguments") or []
+    if args and isinstance(args[0], str):
+        return f"runs `{_runs_basename(args, label)}`"
+    program = parsed.get("Program")
+    if isinstance(program, str) and program:
+        return f"runs `{_runs_basename([program], label)}`"
+    return f"runs `{plist_path.name}`"
+
+
+# `mini` as a whole `.`/`-`/`_`/`/`/whitespace-delimited segment — never a bare
+# substring, so `com.balizero.gemini-relay` (the "mini" is embedded inside
+# "gemini", bounded by 'e' on the left) does not false-positive. Applied to
+# both the label and the full lowercased plist text, this single pattern also
+# covers every spelling seen in the wild ("mini-only", "Mini-Pro2", "mini
+# pro2", "mini_pro2") and a `mini-`-prefixed script path inside
+# ProgramArguments (e.g. `/Users/nuzantara/scripts/mini-fleet-watch.sh`).
+_MINI_SEGMENT_RE = re.compile(r"(?:^|[./_\-\s])mini(?:[./_\-\s]|$)")
+
+
+def _infer_plist_host(raw_text: str, label: str, parsed: dict, plist_path: Path | None = None) -> str:
+    """Host hint for a repo-canon plist not yet on a live snapshot: M5 if any
+    ProgramArguments/EnvironmentVariables string is balizero-absolute, Mini if
+    the plist text or label says so (via `_MINI_SEGMENT_RE`) OR the plist lives
+    under an `infra/launchagents/mini/` directory (rglob picks those up too),
+    else Pro (the default machine). NOTE: this only reads the plist's OWN text —
+    a `mini`-only marker that lives solely in a resolved target script's header
+    (not in the plist itself, e.g. an interpreter-script pair) is invisible
+    here; that would require plumbing the resolved script text in too."""
+    strings_to_check: list[str] = [a for a in (parsed.get("ProgramArguments") or []) if isinstance(a, str)]
+    env = parsed.get("EnvironmentVariables") or {}
+    if isinstance(env, dict):
+        strings_to_check.extend(v for v in env.values() if isinstance(v, str))
+    if any(s.startswith("/Users/balizero/") for s in strings_to_check):
+        return "M5"
+    if (
+        _MINI_SEGMENT_RE.search(raw_text.lower())
+        or _MINI_SEGMENT_RE.search(label.lower())
+        or (plist_path is not None and plist_path.parent.name == "mini")
+    ):
+        return "Mini"
+    return "Pro"
+
+
+def _format_pending_label_cell(label: str, plist_path: Path) -> str:
+    """Label cell for the pending-snapshot table. `docs_sync.py::automation_coverage()`
+    counts a plist as documented by matching its FILE STEM (not its Label) against
+    this doc's text — when the two differ (e.g. `com.matagaruda.kita-feed.daily.plist`
+    whose Label is `com.matagaruda.kita-feed`), render both so the file-stem match
+    still lands even though the table's identity column is the Label."""
+    if plist_path.stem == label:
+        return f"`{label}`"
+    return f"`{label}` (`{plist_path.stem}.plist`)"
 
 
 def _find_pending_live_snapshot(installed_labels: set[str]) -> list[dict]:
-    """LaunchAgents committed as repo-canon (infra/launchagents/*.plist) that are
-    NOT yet counted in the live totals above (i.e. not present in pro_la/mini_la).
-    Derived from repo state so this section survives a regen instead of depending
-    on a human remembering to re-add it by hand (task #10, 2026-07-26)."""
+    """LaunchAgents committed as repo-canon (infra/launchagents/**/*.plist) that
+    are NOT yet counted in the live totals above (i.e. not present in
+    pro_la/mini_la). Derived from repo state so this section survives a regen
+    instead of depending on a human remembering to re-add it by hand (task #10,
+    2026-07-26). Recursive rglob (not glob): infra/launchagents/mini/*.plist is
+    repo-canon too and `_git_ls_files` in docs_sync.py already counts it."""
     if not REPO_LAUNCHAGENTS_DIR.is_dir():
         return []
     rows: list[dict] = []
-    for plist_path in sorted(REPO_LAUNCHAGENTS_DIR.glob("*.plist")):
+    for plist_path in sorted(REPO_LAUNCHAGENTS_DIR.rglob("*.plist")):
         label = plist_path.stem
         if not any(label.startswith(p) for p in OUR_LAUNCHAGENT_PREFIXES):
             continue
@@ -543,11 +761,11 @@ def _find_pending_live_snapshot(installed_labels: set[str]) -> list[dict]:
         label = parsed.get("Label", label)
         if label in installed_labels:
             continue
-        low = raw_text.lower()
-        host = "Mini" if ("mini-only" in low or "mini pro2" in low) else "Pro"
-        purpose = _extract_plist_purpose(raw_text) or f"(see `infra/launchagents/{plist_path.name}`)"
+        host = _infer_plist_host(raw_text, label, parsed, plist_path)
+        purpose = _resolve_plist_purpose(plist_path, raw_text, parsed)
         rows.append({
             "label": label,
+            "label_cell": _format_pending_label_cell(label, plist_path),
             "host": host,
             "schedule": _humanize_plist_schedule(parsed),
             "purpose": purpose,
@@ -563,14 +781,133 @@ def _render_pending_snapshot_section(rows: list[dict]) -> list[str]:
         "",
         "These entries are committed as repo-canon LaunchAgents but are not counted in",
         "the generated live totals above until installed on the target host and included",
-        "in the next automation snapshot. Derived from `infra/launchagents/*.plist` on",
-        "every run — never hand-edit this table, edit the plist instead.",
+        "in the next automation snapshot. Derived from `infra/launchagents/**/*.plist`",
+        "headers, the target script's own header and `infra/home-fork/declared-pairs.json`",
+        "on every run — never hand-edit this table, edit the plist (or its target",
+        "script) instead.",
         "",
         "| Label | Host | Schedule | Purpose |",
         "| --- | --- | --- | --- |",
     ]
     for row in rows:
-        lines.append(f"| `{row['label']}` | {row['host']} | {row['schedule']} | {row['purpose']} |")
+        label_cell = _escape_table_cell(row.get("label_cell") or f"`{row['label']}`")
+        schedule = _escape_table_cell(row["schedule"])
+        purpose = _escape_table_cell(row["purpose"])
+        lines.append(f"| {label_cell} | {row['host']} | {schedule} | {purpose} |")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+    return lines
+
+
+def _parse_workflow_name(lines: list[str]) -> str:
+    """Top-level `name:` value of a GitHub Actions workflow (col-0, never the
+    `- name:` of a job step)."""
+    for line in lines:
+        m = re.match(r"^name:\s*(.+)$", line)
+        if m:
+            return m.group(1).strip().strip("'\"")
+    return ""
+
+
+def _parse_workflow_schedule(lines: list[str]) -> list[str]:
+    """Every `- cron: "…"` entry under the workflow's `schedule:` list, without
+    PyYAML (it may be absent on the Pro launchd Python) — a line-based scan
+    that stops at the first sibling key (indent <= the `schedule:` line's)."""
+    crons: list[str] = []
+    in_schedule = False
+    schedule_indent = 0
+    for line in lines:
+        stripped = line.strip()
+        if not in_schedule:
+            if stripped == "schedule:":
+                in_schedule = True
+                schedule_indent = len(line) - len(line.lstrip())
+            continue
+        if stripped == "":
+            continue
+        indent = len(line) - len(line.lstrip())
+        if indent <= schedule_indent:
+            break
+        m = re.match(r"-\s*cron:\s*(.+)", stripped)
+        if m:
+            value = m.group(1).split("#", 1)[0].strip().strip("'\"")
+            if value:
+                crons.append(value)
+    return crons
+
+
+def _extract_workflow_purpose(text: str, filename: str) -> str:
+    """First `#` comment block before the `jobs:` line, first sentence — skips
+    a leading line that just echoes the workflow's own filename (`# foo.yml`
+    or `# foo.yml — <text>`, keeping <text> when present)."""
+    lines = text.splitlines()
+    jobs_idx = next((i for i, ln in enumerate(lines) if re.match(r"^jobs:\s*$", ln)), len(lines))
+    comment_lines: list[str] = []
+    collecting = False
+    for line in lines[:jobs_idx]:
+        s = line.strip()
+        if s.startswith("#"):
+            collecting = True
+            comment_lines.append(s.lstrip("#").strip())
+        elif collecting:
+            break
+    if not comment_lines:
+        return ""
+    stem = filename.rsplit(".", 1)[0]
+    echo_re = re.compile(r"^(?:" + re.escape(filename) + "|" + re.escape(stem) + r")\s*(?:[—-]\s*(.*))?$")
+    m = echo_re.match(comment_lines[0])
+    if m:
+        remainder = (m.group(1) or "").strip()
+        comment_lines = ([remainder] if remainder else []) + comment_lines[1:]
+    text_block = " ".join(c for c in comment_lines if c)
+    return _first_sentence(text_block) if text_block else ""
+
+
+def _find_scheduled_workflows(workflows_dir: Path) -> list[dict]:
+    """Every `.github/workflows/*.yml` whose `on:` block has a `schedule:` list.
+    Purpose falls back to the workflow's own `name:` when no usable leading
+    comment exists — never the empty string."""
+    if not workflows_dir.is_dir():
+        return []
+    rows: list[dict] = []
+    for wf_path in sorted(workflows_dir.glob("*.yml")):
+        try:
+            text = wf_path.read_text(errors="replace")
+        except Exception:
+            continue
+        lines = text.splitlines()
+        crons = _parse_workflow_schedule(lines)
+        if not crons:
+            continue
+        name = _parse_workflow_name(lines) or wf_path.stem
+        purpose = _extract_workflow_purpose(text, wf_path.name) or name
+        rows.append({
+            "workflow": wf_path.name,
+            "name": name,
+            "cron": ";".join(crons),
+            "purpose": purpose,
+        })
+    return rows
+
+
+def _render_scheduled_workflows_section(rows: list[dict]) -> list[str]:
+    if not rows:
+        return []
+    lines = [
+        "### GitHub Actions scheduled workflows (repo-canon)",
+        "",
+        "The workflows below carry a `schedule:` trigger in `.github/workflows/`;",
+        "cron times are UTC (WITA = UTC+8). Derived from `.github/workflows/*.yml`",
+        "on every run — never hand-edit this table, edit the workflow instead.",
+        "",
+        "| Workflow | Name | Cron (UTC) | Purpose |",
+        "| --- | --- | --- | --- |",
+    ]
+    for row in rows:
+        name = _escape_table_cell(row["name"])
+        purpose = _escape_table_cell(row["purpose"])
+        lines.append(f"| `{row['workflow']}` | {name} | {row['cron']} | {purpose} |")
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -592,6 +929,7 @@ def generate(dry_run: bool = False) -> str:
     mini_la = _parse_launchagents("Mini")
     installed_launchagent_labels = {j.plist_label for j in pro_la + mini_la if j.plist_label}
     pending_snapshot = _find_pending_live_snapshot(installed_launchagent_labels)
+    scheduled_workflows = _find_scheduled_workflows(WORKFLOWS_DIR)
 
     all_jobs = pro_cron + mini_cron + pro_la + mini_la
     _check_log_health_pro(all_jobs)
@@ -627,6 +965,7 @@ def generate(dry_run: bool = False) -> str:
         "---",
         "",
         *_render_pending_snapshot_section(pending_snapshot),
+        *_render_scheduled_workflows_section(scheduled_workflows),
         "## System Health Summary",
         "",
         "| Metric | Value |",

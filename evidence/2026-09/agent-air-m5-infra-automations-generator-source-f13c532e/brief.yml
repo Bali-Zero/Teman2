@@ -1,0 +1,75 @@
+task_id: automations-generator-source
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Make `scripts/generate_automations_reference.py` the single source of
+  truth for `docs/AUTOMATIONS_REFERENCE.md`, ahead of the companion nightly
+  cron in PR #6169 that will run it unattended.
+
+  GROUND: the generator previously under-rendered the repo-canon surface it
+  claims to cover. Fixed here: a `com.matagaruda.` label prefix; a purpose
+  chain that follows plist header -> target script header via
+  `infra/home-fork/declared-pairs.json` rather than stopping at the plist's
+  own comment; a new "GitHub Actions scheduled workflows" table sourced
+  from every `.github/workflows/*.yml` carrying a `schedule:` trigger; an
+  interpreter-aware "runs <script>" purpose fallback (bare `python`/`sh -c`
+  no longer renders as the whole purpose); a host hint that reads the
+  RESOLVED target script, not just the plist's own text; a recursive glob
+  over `infra/launchagents/**/*.plist` with file-stem rendering, so the
+  table's row count actually matches `scripts/docs_sync.py::automation_coverage()`'s
+  count instead of silently under-covering it; and `|` escaping in every
+  rendered cell, since a real workflow comment or script header can contain
+  a literal pipe that would otherwise break the markdown table.
+
+  Because this generator becomes the nightly, unattended, single writer of
+  a repo-canon doc (PR #6169), an independent gate reviewed the frozen diff
+  before this pack was written — see `dissent:` in the pack for its six
+  findings, four already cured in this diff (75b6438142, 60a8787971).
+
+  Gear 3 declared above the deterministic floor: this diff's floor is 2
+  (SIZE term alone — 629 net lines across 2 files, no hot-zone path hit;
+  measured in this pack's receipts and independently by `Harness floor
+  recompute`, source "size"). The model may always raise gear above the
+  floor (harness-v2 §1); Gear 3 reflects the actual review that happened
+  — a cross-diff independent adjudication with confirmed findings — not
+  the diff's raw shape.
+constraints:
+  - "The generator only READS `.github/workflows/*.yml`, `infra/launchagents/**/*.plist`
+    and `infra/home-fork/declared-pairs.json` — it writes nothing outside
+    `docs/AUTOMATIONS_REFERENCE.md` (or stdout, under `--dry-run`)."
+  - "Every rendered table cell is `|`-escaped — a workflow comment or a
+    script header containing a literal pipe must not corrupt the
+    surrounding markdown table (dissent-1, cured)."
+  - "Host-hint substring matching is exact-token, not naive substring — a
+    'mini-' fragment inside 'gemini-' must not misclassify a Gemini relay
+    plist as hosted on Mini (dissent-2, cured)."
+  - "No hardcoded credential — the generator reads only repo-tracked files
+    and the local filesystem; no token or API key literal appears in
+    either changed file."
+acceptance:
+  - text: "WHEN the generator runs against this repo's live tree, THE
+      rendered plist coverage SHALL match `scripts/docs_sync.py::automation_coverage()`'s
+      own count exactly (136/136)."
+    probe: "python3 scripts/generate_automations_reference.py --dry-run, cross-checked against automation_coverage()'s labels-in-haystack logic"
+  - text: "WHEN a workflow purpose or plist comment contains a literal `|`,
+      THE rendered table cell SHALL escape it so the markdown table
+      structure is not broken."
+    probe: "test_pipe_in_purpose_is_escaped"
+  - text: "WHEN a plist name or purpose together contain a `|`, THE
+      rendered row SHALL still parse as one table row."
+    probe: "test_pipe_in_name_and_purpose_is_escaped"
+  - text: "WHERE a label contains the substring 'mini' only as part of a
+      longer word (e.g. a Gemini relay), THE host hint SHALL NOT
+      misclassify it as Mini-hosted."
+    probe: "test_gemini_relay_label_is_not_mini"
+  - text: "WHEN a plist header spells the host as 'Mini-Pro2', THE host
+      hint SHALL still resolve it to Mini."
+    probe: "test_mini_pro2_header_spelling_is_mini"
+  - text: "WHEN the interpreter line carries only a bare interpreter (e.g.
+      `python`) with nothing else, THE purpose SHALL fall back to the
+      plist's own label rather than rendering a bare interpreter name."
+    probe: "test_bare_interpreter_with_nothing_else_falls_back_to_label"
+  - text: "WHERE a guarantee above is removed by mutation, a named test
+      SHALL turn RED — replayed against the shipped code."
+    probe: "python3 -m pytest tests/scripts/test_generate_automations_reference.py -q"
