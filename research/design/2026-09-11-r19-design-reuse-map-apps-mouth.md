@@ -89,8 +89,12 @@ link in `content/team.ts`; Subhi's Zantara role has none).
     contest 2026-08-30): same paper and ink, red family `#C8102E / #D01033 / #c40020`
     as structure/action, navy retired; applied on `/visa/second-home` and the Studio.
     Its contrast table is guarded by `.github/workflows/merah-putih-day-contrast.yml`,
-    which is a **required, path-filtered context** (`infra/required.d/contexts.json`);
-    the file's own header still calls it advisory — that comment is stale.
+    which is a **required, always-triggering context** (`infra/required.d/contexts.json`,
+    job `contrast-guard`): its `on: pull_request` carries no `paths:` on purpose and an
+    in-job sentinel gates the work, because a path-filtered required check never starts on
+    the PRs it does not match and the queue then waits for a context that never reports
+    (`test_the_workflow_has_the_shape_a_required_context_must_have`). The header's
+    "advisory" passage is fenced HISTORICAL (2026-08-31) and points to the PROMOTION block.
 - Route-local systems: `(visa-oracle)/visa-oracle/oracle.css` (1,642 lines, scoped
   under `.oracle-root`, light default `#f7f5ef` / canopy `#1f4d3d` / gold `#a8791f`
   and a dark theme, own toggle with `localStorage['visa-oracle-theme']` and a pre-paint
@@ -293,9 +297,12 @@ work is the most complete piece of the branch.
   (copper-dominant).
 - Bring: nothing by default. If Q1 selects R19: swap `MERAH_PUTIH_DAY_VARS` for the
   R19 set and the heading font; never import the R19 engine copy.
-- Frozen: every invariant above. Retiring Merah Putih here also means editing the
-  required-context snapshot (`infra/required.d/contexts.json`) and the contrast
-  workflow in a coordinated PR, or the merge queue waits on a check that never reports.
+- Frozen: every invariant above. Retiring Merah Putih here also means retiring its
+  required context, and the lever is branch protection (the ruleset), not the snapshot:
+  `infra/required.d/contexts.json` is a generated mirror ("never hand-edit — see
+  regen_command"), regenerated with `snapshot_required_contexts.py` AFTER the ruleset
+  change, in the same coordinated PR as the workflow — otherwise the merge queue waits on
+  a check that never reports.
 - Guards: `StudioApp.test.tsx` + 12 component tests, `page.test.tsx` ×2, the contrast
   workflow.
 - Coordination: topic 4's worktree touches `scripts/ci/npm_audit_gate*` only. No overlap.
@@ -358,8 +365,9 @@ Order = visibility × visual distance ÷ ruling dependency ÷ regression exposur
 
 Mechanism for every wave: one var set `apps/mouth/src/lib/theme/r19Vars.ts` (working
 name) with the same scoping contract as `rumahVars.ts`, a computed contrast table in
-its header and a required path-filtered CI guard modelled on
-`merah-putih-day-contrast.yml`; two fonts via `next/font/local` in
+its header and a required CI guard modelled on `merah-putih-day-contrast.yml` —
+always-triggering on `pull_request` (no `paths:`) with an in-job path sentinel, the only
+shape a required context may have here, never a path-filtered required check; two fonts via `next/font/local` in
 `packages/core/fonts`, subset to latin woff2 (target ≤ 60 KB each, from 360 / 165 KB
 TTF) and loaded by the converted route-group layouts, not the root — which means a
 converted route carries Inter + Cormorant (root) **plus** Fraunces + Manrope until the
