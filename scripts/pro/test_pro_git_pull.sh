@@ -72,6 +72,14 @@ write_allowlist() {
     printf ']}\n'; } > "$out"
 }
 
+# Backdate a file by 2h, portably. The obvious spellings are each half-portable — BSD touch
+# wants an absolute stamp its own date builds, GNU touch takes a relative phrase and rejects
+# the BSD date flag outright — and this suite runs on BOTH (ubuntu-latest in the antidotes
+# job, macOS on Pro and M5). python3 sidesteps the split; it is already a hard dep here.
+backdate_2h() {
+  python3 -c 'import os,sys,time; t=time.time()-7200; os.utime(sys.argv[1],(t,t))' "$1"
+}
+
 echo "=== pro-git-pull adversarial suite ==="
 
 # ── A: clean behind → ff, no backup ──
@@ -291,7 +299,7 @@ rm -rf "$SANDBOX"
 echo "[J1] stale unheld index.lock → stolen, ff succeeds"
 setup_case J1; advance_origin "docs/j1.md" "hello"; git -C "$LOCAL" fetch -q origin main
 : > "$LOCAL/.git/index.lock" || fatal "J1 lock create"
-touch -t "$(date -v-2H '+%Y%m%d%H%M')" "$LOCAL/.git/index.lock" || fatal "J1 backdate"
+backdate_2h "$LOCAL/.git/index.lock" || fatal "J1 backdate"
 RC=$(run_puller); eq_ne "$RC" "0" "J1 rc=0"
 eq_ne "$(head_of)" "$(remote_head)" "J1 HEAD advanced past the stale lock"
 [ ! -e "$LOCAL/.git/index.lock" ] && ok "J1 stale lock removed" || bad "J1 stale lock survived"
@@ -314,17 +322,27 @@ rm -rf "$SANDBOX"
 echo "[J3] old-but-held index.lock → not stolen (holder test is load-bearing)"
 setup_case J3; advance_origin "docs/j3.md" "hello"; git -C "$LOCAL" fetch -q origin main
 : > "$LOCAL/.git/index.lock" || fatal "J3 lock create"
-touch -t "$(date -v-2H '+%Y%m%d%H%M')" "$LOCAL/.git/index.lock" || fatal "J3 backdate"
-sleep 30 9>"$LOCAL/.git/index.lock" & HOLDER=$!
-sleep 1
-if lsof -t "$LOCAL/.git/index.lock" >/dev/null 2>&1; then
-  RC=$(run_puller); eq_ne "$RC" "0" "J3 rc=0"
-  ne_ne "$(head_of)" "$(remote_head)" "J3 HEAD did NOT move"
-  [ -e "$LOCAL/.git/index.lock" ] && ok "J3 held lock preserved" || bad "J3 stole a lock a live process held!"
+backdate_2h "$LOCAL/.git/index.lock" || fatal "J3 backdate"
+if command -v lsof >/dev/null 2>&1; then
+  sleep 30 9>"$LOCAL/.git/index.lock" & HOLDER=$!
+  sleep 1
+  if lsof -t "$LOCAL/.git/index.lock" >/dev/null 2>&1; then
+    RC=$(run_puller); eq_ne "$RC" "0" "J3 rc=0"
+    ne_ne "$(head_of)" "$(remote_head)" "J3 HEAD did NOT move"
+    [ -e "$LOCAL/.git/index.lock" ] && ok "J3 held lock preserved" || bad "J3 stole a lock a live process held!"
+  else
+    bad "J3 fixture: holder process did not register with lsof (case did not run)"
+  fi
+  kill "$HOLDER" 2>/dev/null; wait "$HOLDER" 2>/dev/null
 else
-  bad "J3 fixture: holder process did not register with lsof (case did not run)"
+  # No lsof on this host (some CI images ship without it). The holder test cannot be
+  # ISOLATED here, so asserting "lock preserved" would pass for the wrong reason. Assert the
+  # function's no-lsof REFUSAL path instead: same observable outcome, but a claim this
+  # environment can actually earn.
+  RC=$(run_puller); eq_ne "$RC" "0" "J3 rc=0 (no lsof on this host, refusal path)"
+  ne_ne "$(head_of)" "$(remote_head)" "J3 HEAD did NOT move (no-lsof refusal)"
+  [ -e "$LOCAL/.git/index.lock" ] && ok "J3 lock preserved without a holder test" || bad "J3 stole a lock with no way to check for a holder!"
 fi
-kill "$HOLDER" 2>/dev/null; wait "$HOLDER" 2>/dev/null
 rm -rf "$SANDBOX"
 
 echo "=== $PASS passed, $FAIL failed ==="

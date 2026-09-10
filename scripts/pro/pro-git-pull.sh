@@ -135,6 +135,20 @@ for e in d.get("entries", []):
 PY
 }
 
+# File mtime in epoch seconds, portable across the two stats this repo's CI and its target
+# host actually run: GNU (`stat -c %Y`, ubuntu-latest, where the antidotes job executes the
+# suite) and BSD (`stat -f %m`, Pro/M5), with python3 — already a hard dep via tg_notify.py —
+# as the last resort. Prints NOTHING on total failure, deliberately: the caller must treat an
+# unknown mtime as "do not touch". A `|| echo $(date +%s)` fallback would be WORSE than an
+# error, because every lock would then measure 0s old and the steal would never fire — the
+# failure would be silent and indistinguishable from a healthy repo, which is exactly the
+# invisible-stall class this whole function exists to end.
+file_mtime() {
+  stat -c %Y "$1" 2>/dev/null \
+    || stat -f %m "$1" 2>/dev/null \
+    || python3 -c 'import os,sys;print(int(os.stat(sys.argv[1]).st_mtime))' "$1" 2>/dev/null
+}
+
 # A git process that crashes or is SIGKILLed mid-index-write leaves `.git/index.lock`
 # behind. Every later tick then dies inside an index-touching command — resolve_collisions'
 # `git checkout HEAD --`, or the ff itself — and git's generic "Another git process seems to
@@ -161,7 +175,11 @@ clear_stale_git_index_lock() {
   [ -e "$lock" ] || return 0
 
   now=$(date +%s)
-  mtime=$(stat -f %m "$lock" 2>/dev/null || echo "$now")
+  mtime="$(file_mtime "$lock")"
+  if [ -z "$mtime" ]; then
+    log "  ERROR: cannot read index.lock mtime (no usable stat/python3) — skip tick (fail-safe)"
+    return 1
+  fi
   age=$(( now - mtime ))
   if [ "$age" -le "$INDEX_LOCK_STALE_SECONDS" ]; then
     log "index.lock present, only ${age}s old — a live git may hold it; skip tick"
