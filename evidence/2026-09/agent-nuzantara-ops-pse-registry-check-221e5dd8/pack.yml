@@ -17,8 +17,8 @@ outcome: >-
   registry and writes located / not_located / error rows. Live, Tokopedia is located and
   Bali Zero is not located; a forced HTTP 500 or 503 exits 2.
 diff:
-  files: 7
-  net_lines: "about 680 code and tests, plus this evidence pack"
+  files: 6
+  net_lines: "838 insertions, 0 deletions: the script 418, the test module 257, the conftest 2, evidence 161"
   shape:
     "One new script, one new test module, one marker-registration conftest, and this pack
     with its brief and the live CSV. No hot-zone path. Gear 2 comes from the SIZE term
