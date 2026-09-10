@@ -140,6 +140,26 @@ def test_pse_registration_needs_online_and_unregistered(catalog):
     assert not applies(catalog["pse_registration"], PMA)
 
 
+# C4 (#6122): a FOREIGN_PLATFORM client must never get these six domestic-employer/VAT rules,
+# even with has_employees/pkp set true — the catalog's company_type list excludes it on purpose.
+@pytest.mark.parametrize(
+    "rule_id",
+    [
+        "pph21_payment",
+        "spt_masa_pph21",
+        "spt_masa_ppn",
+        "bpjs_kesehatan_monthly",
+        "bpjs_ketenagakerjaan_monthly",
+        "wajib_lapor_ketenagakerjaan",
+    ],
+)
+def test_foreign_platform_excluded_from_employer_and_vat_rules(catalog, rule_id):
+    platform = ClientProfile(company_type="FOREIGN_PLATFORM", has_employees=True, pkp=True)
+    pma = ClientProfile(company_type="PT_PMA", has_employees=True, pkp=True)
+    assert not applies(catalog[rule_id], platform)
+    assert applies(catalog[rule_id], pma)
+
+
 # -- due dates -------------------------------------------------------------------------------
 
 
