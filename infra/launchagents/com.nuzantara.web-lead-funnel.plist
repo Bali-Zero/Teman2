@@ -21,7 +21,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/nuzantara/nuzantara-deploy/scripts/web_lead_funnel_report_run.sh</string>
+        <string>/Users/nuzantara/nuzantara/scripts/web_lead_funnel_report_run.sh</string>
     </array>
 
     <!-- Monday 09:00 WITA, after the team is in. -->
@@ -41,7 +41,7 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>REPO_ROOT</key>
-        <string>/Users/nuzantara/nuzantara-deploy</string>
+        <string>/Users/nuzantara/nuzantara</string>
         <key>PATH</key>
         <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
     </dict>

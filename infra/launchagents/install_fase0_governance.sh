@@ -21,12 +21,12 @@
 #       Auto-merge is a separate deferred phase (GitHub App check-run).
 #
 # Signal-writers are installed BEFORE the deadman so their signals exist when it
-# first runs. RUNTIME HOME = the deploy worktree (~/nuzantara-deploy),
-# the deploy-puller-refreshed checkout that carries the FASE-0 scripts (the main
+# first runs. RUNTIME HOME = the main checkout (~/nuzantara),
+# kept at origin/main by the 15-min puller and carrying the FASE-0 scripts (the main
 # checkout was on an older branch missing them — see W69).
 #
 # GRACEFUL: a label whose runtime script is not yet present (e.g. mcp-integrity
-# before this PR has merged + the deploy worktree has synced) is SKIPPED with a
+# before this PR has merged + the main checkout has pulled) is SKIPPED with a
 # warning, not a hard failure — re-run post-merge to arm it (W64: never ship a
 # cron that no-ops; refuse to install one whose script is absent).
 #
@@ -45,7 +45,7 @@ STATE_DIR="$HOME/.agent/decisions/state"
 UID_VAL="$(id -u)"
 
 # The runtime checkout the plists point at. Must carry the FASE-0 scripts.
-RUNTIME_ROOT="$HOME/nuzantara-deploy"
+RUNTIME_ROOT="$HOME/nuzantara"
 
 # Install order: signal-writers first, the deadman (watcher) last.
 LABELS=(
@@ -140,7 +140,7 @@ case "$MODE" in
             fi
             if [[ ! -f "$runtime" ]]; then
                 echo "[install] SKIP $label — runtime script absent: $runtime"
-                echo "[install]   (re-run after this PR merges + the deploy worktree syncs)"
+                echo "[install]   (re-run after this PR merges + the main checkout pulls)"
                 continue
             fi
             if [[ -f "$dest" ]]; then
@@ -165,7 +165,7 @@ case "$MODE" in
         done
         # The seam-verify Stop-hook is orthogonal to the LaunchAgents (it lives in
         # ~/.claude/hooks, not launchd) — install it regardless of how many agents
-        # were installed, so it arms even where the deploy worktree isn't present.
+        # were installed, so it arms even where the main checkout isn't present.
         install_seam_verify_hook
         if [[ "$installed" == "0" ]]; then
             echo "[install] WARN: no LaunchAgent installed — no runtime script at $RUNTIME_ROOT/scripts" >&2
