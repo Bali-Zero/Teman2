@@ -43,6 +43,7 @@ def _isolate_state_files(monkeypatch, tmp_path):
     monkeypatch.setattr(qs, "ALERTED_FILE", tmp_path / "alerted-unknown.json")
     monkeypatch.setattr(qs, "UNCANCELLABLE_FILE", tmp_path / "uncancellable.json")
     monkeypatch.setattr(qs, "RED_FILE", tmp_path / "red-causes.json")
+    monkeypatch.setattr(qs, "REARM_FAIL_FILE", tmp_path / "rearm-write-failures.json")
     monkeypatch.setattr(qs, "LOG_FILE", tmp_path / "queue-shepherd.log")
 
 
@@ -2963,3 +2964,196 @@ def test_rearm_pass_failing_snyk_docker_job_is_never_rearmed_K5(monkeypatch, tmp
     result = qs.run_rearm_pass(dry_run=False, now=NOW)
     assert result["rearmed"] == 0
     assert result["unverified"] == 0
+
+
+# ── K-3 (Kimi council finding, S1 2026-09-11): consecutive re-arm WRITE failures ────────────
+# a persistently failing `gh pr merge --auto` re-arm WRITE must not read as tick-ok forever.
+
+
+def _k3_setup_infra_candidate(monkeypatch, number, head_sha, rearm_pr_fn):
+    """Shared plumbing for the K-3 tests: one candidate PR whose ejection classifies INFRA
+    (allowed=True, so the loop actually reaches the `rearm_pr` call), fingerprint None (never
+    contributes to the unrelated RED_SAME_CAUSE_LIMIT suspension)."""
+    monkeypatch.setattr(
+        qs, "fetch_open_prs",
+        lambda repo=qs.REPO: [_pr(number=number, head_sha=head_sha, head_ref_name="agent/x/y")],
+    )
+    monkeypatch.setattr(
+        qs, "fetch_last_ejection",
+        lambda repo, num: {
+            "reason": "failed_checks", "removed_at": _iso(NOW), "before_commit": head_sha
+        },
+    )
+    monkeypatch.setattr(
+        qs, "fetch_infra_hint_and_fingerprint", lambda repo, num, removed_at: (True, None)
+    )
+    monkeypatch.setattr(qs, "rearm_pr", rearm_pr_fn)
+
+
+def test_rearm_pass_three_consecutive_rearm_write_failures_alert_once_and_tick_not_ok_K3(
+    monkeypatch, tmp_path
+):
+    _k3_setup_infra_candidate(monkeypatch, 901, "shaW", lambda repo, number: False)
+
+    sends = []
+
+    def fake_send_telegram(message, dedup_key=""):
+        sends.append(dedup_key)
+        return True
+
+    monkeypatch.setattr(qs, "send_telegram", fake_send_telegram)
+
+    r1 = qs.run_rearm_pass(dry_run=False, now=NOW)
+    assert sends == []
+    assert r1["rearm_write_failed"] == 0
+
+    r2 = qs.run_rearm_pass(dry_run=False, now=NOW + _dt.timedelta(minutes=10))
+    assert sends == []
+    assert r2["rearm_write_failed"] == 0
+
+    r3 = qs.run_rearm_pass(dry_run=False, now=NOW + _dt.timedelta(minutes=20))
+    assert len(sends) == 1  # ONE alert, raised on the THIRD consecutive failing write
+    assert r3["rearm_write_failed"] == 1
+
+    saved = qs._load_json(qs.REARM_FAIL_FILE)
+    assert saved["901:shaW"]["consecutive_failures"] == 3
+
+    # the SAME tick outcome surfaces at tick() level as non-ok, without a SECOND Telegram send —
+    # the alert already fired inside run_rearm_pass above (reused, not duplicated). tick() calls
+    # the real qs._now() internally (real wall clock) — pinned here to stay within
+    # BUDGET_GC_DAYS of the fixed test NOW above, or gc_rearm_fail_state would prune the
+    # freshly-recorded 901:shaW entry as if it were weeks stale.
+    _no_op_janitor(monkeypatch)
+    monkeypatch.setattr(qs, "_now", lambda: NOW + _dt.timedelta(minutes=30))
+    rc = qs.tick(dry_run=False)
+    assert rc == 3
+    assert len(sends) == 1  # still exactly one — tick() must not send a second alert
+    hb = json.loads((tmp_path / "organism" / f"{qs.ORGAN_ID}.json").read_text())
+    assert hb["status"] == "error"
+    assert hb["metadata"]["rearm_write_failed"] == 1
+
+
+def test_rearm_pass_single_transient_rearm_write_failure_never_alerts_K3_innocence(
+    monkeypatch, tmp_path
+):
+    _k3_setup_infra_candidate(monkeypatch, 902, "shaT", lambda repo, number: False)
+
+    def never_called(*_a, **_k):
+        raise AssertionError("a single transient write failure must never alert")
+
+    monkeypatch.setattr(qs, "send_telegram", never_called)
+
+    result = qs.run_rearm_pass(dry_run=False, now=NOW)
+
+    assert result["rearm_write_failed"] == 0
+    saved = qs._load_json(qs.REARM_FAIL_FILE)
+    assert saved["902:shaT"]["consecutive_failures"] == 1
+
+
+def test_rearm_pass_successful_rearm_resets_write_failure_counter_to_zero_K3_innocence(
+    monkeypatch, tmp_path
+):
+    outcomes = iter([False, False, True, False, False])  # fail, fail, SUCCEED, fail, fail
+    _k3_setup_infra_candidate(monkeypatch, 903, "shaR2", lambda repo, number: next(outcomes))
+
+    sends = []
+    monkeypatch.setattr(
+        qs, "send_telegram", lambda message, dedup_key="": (sends.append(dedup_key), True)[1]
+    )
+
+    times = [NOW + _dt.timedelta(minutes=i * 10) for i in range(5)]
+    results = [qs.run_rearm_pass(dry_run=False, now=t) for t in times]
+
+    # the success on tick 3 resets the counter to zero — the two MORE failures on ticks 4-5 never
+    # reach REARM_WRITE_FAIL_LIMIT again on their own, so no alert fires across all five ticks.
+    assert [r["rearm_write_failed"] for r in results] == [0, 0, 0, 0, 0]
+    assert sends == []
+    saved = qs._load_json(qs.REARM_FAIL_FILE)
+    assert saved["903:shaR2"]["consecutive_failures"] == 2  # reset, then two MORE fails only
+
+
+# ── K-7 (Kimi council finding, S1 2026-09-11): malformed-but-JSON data raises RuntimeError,
+# never a raw KeyError/ValueError that escapes CANNOT-VERIFY (loud, no Telegram) ──────────────
+
+
+def test_normalize_rearm_pr_missing_number_raises_runtimeerror_not_keyerror_K7():
+    node = _rearm_node(42)
+    del node["number"]
+    with pytest.raises(RuntimeError):
+        qs._normalize_rearm_pr(node)
+
+
+def test_normalize_rearm_pr_innocence_well_formed_node_still_normalizes_K7():
+    node = _rearm_node(42)
+    normalized = qs._normalize_rearm_pr(node)
+    assert normalized["number"] == 42
+
+
+def test_run_rearm_pass_malformed_pr_node_missing_number_is_cannot_verify_K7(monkeypatch, tmp_path):
+    node = _rearm_node(43)
+    del node["number"]
+    payload = {
+        "data": {"repository": {"pullRequests": {
+            "pageInfo": {"hasNextPage": False, "endCursor": None},
+            "nodes": [node],
+        }}}
+    }
+    monkeypatch.setattr(qs, "_gh_graphql", lambda query, variables, timeout=45: payload)
+
+    result = qs.run_rearm_pass(dry_run=False, now=NOW)
+
+    assert result["cannot_verify"] == "rearm_candidates"
+    assert result["rearmed"] == 0
+
+
+def test_gc_red_state_hand_edited_garbage_key_raises_runtimeerror_not_valueerror_K7():
+    red_state = {"not-a-number": {"reds": []}}
+    with pytest.raises(RuntimeError):
+        qs.gc_red_state(red_state, {1, 2, 3})
+
+
+def test_gc_red_state_innocence_well_formed_key_still_gcs_K7():
+    red_state = {"5": {"reds": []}, "6": {"reds": []}}
+    gced = qs.gc_red_state(red_state, {5})
+    assert gced == {"5": {"reds": []}}
+
+
+def test_run_rearm_pass_hand_edited_red_file_key_is_cannot_verify_K7(monkeypatch, tmp_path):
+    red_path = tmp_path / "red.json"
+    qs._save_json(red_path, {"garbage-key": {"reds": []}})
+    monkeypatch.setattr(qs, "RED_FILE", red_path)
+    monkeypatch.setattr(
+        qs, "fetch_open_prs",
+        lambda repo=qs.REPO: [_pr(number=44, head_sha="s", head_ref_name="agent/x/y")],
+    )
+
+    result = qs.run_rearm_pass(dry_run=False, now=NOW)
+
+    assert result["cannot_verify"] == "red_state_gc"
+    assert result["rearmed"] == 0
+
+
+# ── K-8 (Kimi council finding, S1 2026-09-11): alerted_state GC'd like red_state ────────────
+
+
+def test_gc_alerted_state_guilt_drops_entry_once_its_pr_is_no_longer_open_K8():
+    alerted_state = {"701:shaOld": "2026-09-01T00:00:00Z"}
+    gced = qs.gc_alerted_state(alerted_state, set())  # PR 701 no longer open
+    assert gced == {}
+
+
+def test_gc_alerted_state_innocence_keeps_entry_while_its_pr_stays_open_K8():
+    alerted_state = {"701:shaOld": "2026-09-01T00:00:00Z"}
+    gced = qs.gc_alerted_state(alerted_state, {701})
+    assert gced == alerted_state
+
+
+def test_run_rearm_pass_gcs_alerted_state_after_a_pr_closes_K8(monkeypatch, tmp_path):
+    alerted_path = tmp_path / "alerted.json"
+    qs._save_json(alerted_path, {"999:shaClosed": "2026-09-01T00:00:00Z"})
+    monkeypatch.setattr(qs, "ALERTED_FILE", alerted_path)
+    monkeypatch.setattr(qs, "fetch_open_prs", lambda repo=qs.REPO: [])  # PR 999 no longer open
+
+    qs.run_rearm_pass(dry_run=False, now=NOW)
+
+    assert qs._load_json(alerted_path) == {}
