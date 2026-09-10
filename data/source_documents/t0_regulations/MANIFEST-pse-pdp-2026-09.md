@@ -56,8 +56,8 @@ To restore either binary: download from the source URL below and check it with `
   (Pasal 49: in force on the date of promulgation).
 - Status per peraturan.bpk.go.id: Berlaku (amended by Permenkominfo 10/2021).
 - Byte-identical copy: https://peraturan.bpk.go.id/Download/197017/Nomor%205%20Tahun%202020.pdf
-- Issuing-ministry page: https://jdih.komdigi.go.id/produk_hukum/view/id/759 (a different rendition
-  of the same text, 41 pages).
+- Issuing-ministry copy: https://jdih.komdigi.go.id/produk_hukum/pratinjau/id/759 (a different
+  rendition of the same text, 479,074 bytes, 41 pages).
 
 ### Permenkominfo 10/2021: Perubahan atas Permenkominfo 5/2020
 
@@ -65,8 +65,8 @@ To restore either binary: download from the source URL below and check it with `
 - Landing page: https://peraturan.bpk.go.id/Details/203121/permenkominfo-no-10-tahun-2021
 - Ditetapkan and diundangkan 21 May 2021. **Effective: 21 May 2021.**
 - Status per peraturan.bpk.go.id: Berlaku.
-- Issuing-ministry page: https://jdih.komdigi.go.id/produk_hukum/view/id/774 (a different rendition
-  of the same text, 4 pages).
+- Issuing-ministry copy: https://jdih.komdigi.go.id/produk_hukum/pratinjau/id/774 (a different
+  rendition of the same text, 359,952 bytes, 4 pages).
 
 ### UU 27/2022: Pelindungan Data Pribadi (binary not committed)
 
