@@ -17,7 +17,7 @@ not itself become a way to exfiltrate them (via stdout, logs, or a
 transcript).
 
 Usage:
-    secrets_permissions_audit.py [--json] [--fix] [--root PATH ...]
+    secrets_permissions_audit.py [--json] [--fix] [--notify] [--root PATH ...]
                                   [--max-depth N]
 
 Custody roots (2026-09-10 incident): a directory named like
@@ -30,15 +30,30 @@ for a human, never chmod'ed — `--fix` refuses, by name, any file under a
 human (Builder Contract rule 5); automated edits of `.env*` are
 off-limits in this repo.
 
+`--notify` (the LaunchAgent mode) hands findings to the Telegram gateway
+(`tg_notify.py`) instead of printing them for a human, and wraps the normal
+report in a run record. Never chmods anything; mutually exclusive with
+`--fix` (argparse error, exit 2 for the pair). Every `--notify` run writes
+its heartbeat to ~/.organism/last_seen/pro.secrets_permissions_audit.json
+(counts only, never a path), and SECRETS_PERMISSIONS_AUDIT_ENABLED=false
+turns the scheduled run into a no-op that says so (heartbeat `disabled`).
+Report mode and `--fix` ignore both: the kill switch belongs to the
+schedule, not to the tool.
+
 Exit codes:
     Report mode (default): 0 if no findings, 1 if any findings.
     --fix mode:             0 only if nothing failed AND no report-only
                              finding remains, else 1.
+    --notify mode:          1 if any alert could not be handed to the
+                             gateway, else 0 — findings themselves leave
+                             through the gateway, so this code is reserved
+                             for "could not speak", not "found something".
     Either mode:            2 if the scan was BLIND (roots exist but zero
                              files traversed — TCC/sandbox denial, or a
                              custody directory that cannot be listed): a
                              blind audit never certifies "clean" (W84
-                             discipline).
+                             discipline); with --notify the alert is still
+                             sent.
 """
 
 from __future__ import annotations
@@ -50,8 +65,11 @@ import os
 import re
 import socket
 import stat
+import subprocess
+import sys
 from dataclasses import dataclass
-from pathlib import Path
+from datetime import datetime, timezone
+from pathlib import Path, PurePath
 from typing import Iterable, Iterator, List, Optional, Sequence, Tuple
 
 # --------------------------------------------------------------------------
@@ -676,6 +694,252 @@ def machine_label(hostname: Optional[str] = None) -> str:
 
 
 # --------------------------------------------------------------------------
+# --notify: findings -> Telegram alerts. Text carries ONLY machine label,
+# directory (HOME shown as ~), count and mode class — never a file name,
+# never contents (Builder Contract rule 4).
+# --------------------------------------------------------------------------
+
+
+#: (class name, permission bit), in the fixed order every alert text uses.
+_MODE_CLASS_BITS: Tuple[Tuple[str, int], ...] = (
+    ("group-read", 0o040),
+    ("group-write", 0o020),
+    ("group-exec", 0o010),
+    ("other-read", 0o004),
+    ("other-write", 0o002),
+    ("other-exec", 0o001),
+)
+
+
+def mode_classes(mode: int) -> List[str]:
+    """Permission bits -> class names, in the fixed `_MODE_CLASS_BITS`
+    order. Pure: no filesystem I/O, no knowledge of a Finding."""
+    return [name for name, bit in _MODE_CLASS_BITS if mode & bit]
+
+
+def _home_relative(path: object) -> str:
+    """Render a path with HOME collapsed to `~` — same convention the text
+    report already uses for CUSTODY lines, reused here so an alert never
+    spells out the home directory's real name. HOME's realpath is collapsed
+    too: the scanner reports resolved paths, so a symlinked HOME would
+    otherwise print the directory it points at.
+
+    A path OUTSIDE home is not printable either: it would put an absolute
+    path (a mount point, another user's home) into a Telegram message. It
+    is rendered as `<outside-home>/<basename>` — enough for a human to go
+    look, never the whole location (Kimi council seat, finding M1: today
+    every default root is under HOME, so the fallback was reachable only
+    through `--root` or a root symlinked onto another volume — "holds by
+    accident" is not an invariant)."""
+    shown = str(path)
+    home = Path.home()
+    for prefix in dict.fromkeys((str(home), os.path.realpath(home))):
+        if shown == prefix:
+            return "~"
+        if shown.startswith(prefix + os.sep):
+            return "~" + shown[len(prefix):]
+    return f"<outside-home>/{PurePath(shown).name}"
+
+
+def _union_classes(findings: Sequence[Finding]) -> List[str]:
+    """Union of mode_classes() across `findings`, in the fixed class order
+    — not the order the findings happen to be listed in."""
+    present = set()
+    for finding in findings:
+        present.update(mode_classes(finding.mode))
+    return [name for name, _bit in _MODE_CLASS_BITS if name in present]
+
+
+@dataclass(frozen=True)
+class Alert:
+    """One outbound Telegram alert, ready for send_alerts()."""
+
+    tier: str
+    dedup_key: str
+    text: str
+
+
+def build_alerts(result: AuditResult, machine: str) -> List[Alert]:
+    """Findings -> at most two alerts: one CUSTODY p0 (every custody
+    finding plus every blind custody root) and one `.env*`-modes digest
+    (every other report-only finding, grouped by parent directory). An
+    ordinary finding (neither custody nor report-only) raises no alert —
+    it is still printed in the run's report lines. Pure: takes an
+    already-computed AuditResult, does no I/O of its own.
+    """
+    alerts: List[Alert] = []
+
+    # Grouped by the finding's own directory, not by the named root: a
+    # custody root reached through a symlink, or a .secrets directory met
+    # during a walk, yields findings under no CustodyRootReport root.
+    groups: dict = {}  # parent dir (home-relative) -> [Finding, ...]
+    for finding in result.findings:  # path-sorted already
+        if finding.custody:
+            groups.setdefault(_home_relative(finding.path.parent), []).append(finding)
+    clauses = [
+        f"{parent} — {len(group)} credential file(s) open beyond the "
+        f"owner ({', '.join(_union_classes(group))})"
+        for parent, group in groups.items()
+    ]
+    clauses += [
+        f"{_home_relative(r.root)} — directory cannot be listed: custody NOT verified"
+        for r in result.custody
+        if r.blind
+    ]
+    if result.blind and not any(r.blind for r in result.custody):
+        # Blind without a blind custody root: zero files seen, or a custody
+        # file met during a walk could not be lstat'ed. Still "could not see".
+        clauses.append(
+            f"audit BLIND ({result.files_traversed} file(s) seen under "
+            f"{result.roots_existing} root(s)): custody NOT verified"
+        )
+
+    if clauses:
+        body = "; ".join(clauses)
+        body += "; custody expects dir 0700, files 0600/0400." if groups else "."
+        alerts.append(
+            Alert(
+                tier="p0",
+                dedup_key="secrets-audit:secrets-dir",
+                text=f"secrets-audit [{machine}]: {body}",
+            )
+        )
+
+    env_findings = [f for f in result.findings if f.report_only and not f.custody]
+    if env_findings:
+        groups = {}  # parent dir (home-relative) -> [Finding, ...]
+        for finding in env_findings:  # result.findings is path-sorted already
+            groups.setdefault(_home_relative(finding.path.parent), []).append(finding)
+        parts = [
+            f"{parent} ({len(group)}, {', '.join(_union_classes(group))})"
+            for parent, group in groups.items()
+        ]
+        text = (
+            f"secrets-audit [{machine}]: .env* modes — {len(env_findings)} "
+            f"file(s) readable beyond the owner (report-only: never opened, "
+            f"never chmod'ed): " + ", ".join(parts) + "."
+        )
+        alerts.append(Alert(tier="digest", dedup_key="secrets-audit:env-modes", text=text))
+
+    return alerts
+
+
+#: tg_notify.py statuses that mean the gateway took the alert under its own
+#: policy (sent now, deduped by its repeat ladder, or spooled for a digest
+#: or budget slot). `p0_unsent_spooled` (no token, no relay) is not one.
+_GATEWAY_VERDICT_ACCEPTED = frozenset({"sent", "deduped", "spooled", "p0_overflow_spooled"})
+_GATEWAY_VERDICT_KNOWN = _GATEWAY_VERDICT_ACCEPTED | {"p0_unsent_spooled"}
+
+#: The scheduled organ's registry id (apps/organism/organism/organs_registry.yaml).
+ORGAN_ID = "pro.secrets_permissions_audit"
+KILL_SWITCH_ENV = "SECRETS_PERMISSIONS_AUDIT_ENABLED"
+_KILL_SWITCH_OFF = frozenset({"false", "0", "no", "off"})
+
+
+def kill_switch_off() -> bool:
+    return os.environ.get(KILL_SWITCH_ENV, "").strip().lower() in _KILL_SWITCH_OFF
+
+
+def organism_heartbeat(status: str, note: str = "") -> bool:
+    """Write this organ's heartbeat to ~/.organism/last_seen/<ORGAN_ID>.json
+    (ORGANISM_LAST_SEEN_DIR overrides the directory — tests point it at
+    tmp_path). Same single-line shape as scripts/lib/heartbeat.py, inlined
+    so /usr/bin/python3 runs need no package path. Atomic, never raises.
+    `note` carries counts only — never a path or a file name."""
+    try:
+        directory = Path(
+            os.environ.get("ORGANISM_LAST_SEEN_DIR")
+            or Path.home() / ".organism" / "last_seen"
+        )
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / f"{ORGAN_ID}.json"
+        payload = {"ts": _run_timestamp(), "status": status, "note": note[:500]}
+        tmp = path.with_suffix(path.suffix + f".tmp.{os.getpid()}")
+        tmp.write_text(json.dumps(payload, separators=(",", ":")) + "\n", encoding="utf-8")
+        os.replace(tmp, path)
+        return True
+    except Exception:  # noqa: BLE001 - a heartbeat never fails its run
+        return False
+
+
+def _gateway_verdict(stderr: bytes) -> str:
+    """The gateway's own verdict, from its last `tg_notify: <status>` stderr
+    line. It exits 0 even when it could neither send nor spool (it never
+    fails its caller), so the exit code alone cannot say an alert left.
+    Only a known status token is returned, never free text."""
+    for line in reversed(stderr.decode("utf-8", "replace").splitlines()):
+        if line.startswith("tg_notify: "):
+            status = line[len("tg_notify: "):].strip()
+            if status.startswith("internal error"):
+                return "internal-error"
+            return status if status in _GATEWAY_VERDICT_KNOWN else "unknown-status"
+    return "no-status"
+
+
+def send_alerts(alerts: Sequence[Alert]) -> Tuple[int, List[str]]:
+    """Hand each alert to tg_notify.py's frozen CLI:
+    `tg_notify.py --tier <t> --source secrets-audit --dedup-key <k> "<text>"`.
+    Never shell=True. Returns (handed_over, failures); a failure is recorded
+    as "<tier>: <exception class name, rc=N or gateway status>" — never the
+    alert text. An alert counts as handed over only when the gateway exits 0
+    AND reports an accepted VERDICT (see _GATEWAY_VERDICT_ACCEPTED); a handed alert
+    is recorded in the module's last-run outcomes as "<tier>:<status>".
+
+    `<gateway>` = env SECRETS_AUDIT_TG_NOTIFY when set (tests point it at a
+    fake script — the real tg_notify.py sends real Telegram messages and
+    must never run under test), else the real tg_notify.py next to this
+    file.
+    """
+    gateway = os.environ.get("SECRETS_AUDIT_TG_NOTIFY") or str(
+        Path(__file__).resolve().parent / "tg_notify.py"
+    )
+    handed = 0
+    failures: List[str] = []
+    for alert in alerts:
+        cmd = [
+            sys.executable,
+            gateway,
+            "--tier", alert.tier,
+            "--source", "secrets-audit",
+            "--dedup-key", alert.dedup_key,
+            alert.text,
+        ]
+        try:
+            proc = subprocess.run(cmd, capture_output=True, timeout=60)
+        except subprocess.TimeoutExpired:
+            failures.append(f"{alert.tier}: TimeoutExpired")
+            continue
+        except OSError as exc:
+            failures.append(f"{alert.tier}: {type(exc).__name__}")
+            continue
+        if proc.returncode != 0:
+            failures.append(f"{alert.tier}: rc={proc.returncode}")
+            continue
+        verdict = _gateway_verdict(proc.stderr or b"")
+        if verdict not in _GATEWAY_VERDICT_ACCEPTED:
+            failures.append(f"{alert.tier}: {verdict}")
+            continue
+        handed += 1
+        LAST_OUTCOMES.append(f"{alert.tier}:{verdict}")
+    return handed, failures
+
+
+#: "<tier>:<status>" for every alert the last send_alerts() handed over —
+#: `deduped` is handed but NOT delivered now, so the run record says which.
+LAST_OUTCOMES: List[str] = []
+
+
+def _run_timestamp() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _run_launcher() -> str:
+    """launchd when launchd is our direct parent (ppid 1); shell otherwise
+    — a plain interactive or CI invocation."""
+    return "launchd" if os.getppid() == 1 else "shell"
+
+
+# --------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------
 
@@ -718,6 +982,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
     parser.add_argument("--fix", action="store_true", help="chmod 0600 every ordinary finding (custody and .env* stay report-only).")
     parser.add_argument(
+        "--notify",
+        action="store_true",
+        help="Hand findings to the Telegram gateway and print a run record — the LaunchAgent mode.",
+    )
+    parser.add_argument(
         "--no-default-roots",
         action="store_true",
         help="Scan ONLY the --root paths (drop the default fleet root set).",
@@ -743,6 +1012,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
 
+    if args.notify and args.fix:
+        parser.error("--notify and --fix are mutually exclusive")
+
+    if args.notify and kill_switch_off():
+        spelling = os.environ.get(KILL_SWITCH_ENV, "").strip()
+        organism_heartbeat("disabled", note=f"{KILL_SWITCH_ENV}={spelling}")
+        if args.json:
+            print(json.dumps({"schema": 1, "disabled": True}))
+        else:
+            print(
+                f"DISABLED {_run_timestamp()} {KILL_SWITCH_ENV}={spelling}: "
+                "no scan, no alert"
+            )
+        return 0
+
     roots = resolve_roots(args.roots, no_defaults=args.no_default_roots)
     result = audit(roots, max_depth=args.max_depth)
 
@@ -759,6 +1043,46 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     failures: List[str] = []
     if args.fix and not blind:
         fixed, failed, failures = fix_findings(findings)
+
+    # --notify: build + send alerts regardless of `blind` (a blind custody
+    # root is itself alert-worthy — "the alert is still sent").
+    alerts: List[Alert] = []
+    handed = 0
+    notify_failures: List[str] = []
+    run_ts = run_machine = run_launcher = run_service = None
+    run_ppid: Optional[int] = None
+    if args.notify:
+        run_ts = _run_timestamp()
+        run_machine = machine_label()
+        run_launcher = _run_launcher()
+        run_ppid = os.getppid()
+        run_service = os.environ.get("XPC_SERVICE_NAME", "-")
+        alerts = build_alerts(result, run_machine)
+        LAST_OUTCOMES.clear()
+        if alerts:
+            handed, notify_failures = send_alerts(alerts)
+
+    if blind:
+        rc = 2
+    elif args.notify:
+        rc = 0 if not notify_failures else 1
+    elif args.fix:
+        # 0 only when nothing failed AND no report-only finding remains
+        # (custody and .env* are never chmod'ed, so one keeps rc 1).
+        rc = 0 if failed == 0 and report_only == 0 else 1
+    else:
+        rc = 0 if not findings else 1
+
+    if args.notify:
+        organism_heartbeat(
+            "ok" if rc == 0 else "error",
+            note=(
+                f"rc={rc} blind={blind} findings={len(findings)} "
+                f"p0={sum(1 for a in alerts if a.tier == 'p0')} "
+                f"digest={sum(1 for a in alerts if a.tier == 'digest')} "
+                f"handed={handed} failed={len(notify_failures)}"
+            ),
+        )
 
     if args.json:
         payload = {
@@ -782,8 +1106,28 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             ],
             "report_only": report_only,
         }
+        if args.notify:
+            payload["run"] = {
+                "ts": run_ts,
+                "machine": run_machine,
+                "launcher": run_launcher,
+                "ppid": run_ppid,
+                "service": run_service,
+            }
+            payload["notify"] = {
+                "p0": sum(1 for a in alerts if a.tier == "p0"),
+                "digest": sum(1 for a in alerts if a.tier == "digest"),
+                "handed": handed,
+                "outcomes": list(LAST_OUTCOMES),
+                "failed": notify_failures,
+            }
         print(json.dumps(payload))
     else:
+        if args.notify:
+            print(
+                f"RUN {run_ts} machine={run_machine} launcher={run_launcher} "
+                f"ppid={run_ppid} service={run_service}"
+            )
         home = str(Path.home())
         for r in result.custody:
             shown = str(r.root)
@@ -818,14 +1162,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(f"FIXED: {fixed}  FAILED: {failed}  REPORT-ONLY: {report_only}")
             for failure in failures:
                 print(f"  ! {failure}")
+        if args.notify:
+            p0_count = sum(1 for a in alerts if a.tier == "p0")
+            digest_count = sum(1 for a in alerts if a.tier == "digest")
+            print(
+                f"NOTIFY p0={p0_count} digest={digest_count} handed={handed} "
+                f"failed={len(notify_failures)} "
+                f"outcomes={','.join(LAST_OUTCOMES) or '-'}"
+            )
+            for failure in notify_failures:
+                print(f"  ! {failure}")
+            print(f"RUN-END rc={rc}")
 
-    if blind:
-        return 2
-    if args.fix:
-        # 0 only when nothing failed AND no report-only finding remains
-        # (custody and .env* are never chmod'ed, so one keeps rc 1).
-        return 0 if failed == 0 and report_only == 0 else 1
-    return 0 if not findings else 1
+    return rc
 
 
 if __name__ == "__main__":
