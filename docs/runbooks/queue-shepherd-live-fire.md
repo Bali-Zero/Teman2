@@ -38,8 +38,23 @@ write path exists for.
    If the branch name carries a PR number that is not yours, **stop and wait** for a batch that
    is yours alone. This is the one step of the drill that can hurt somebody else.
 
-4. **Cancel the run**, not the PR: `gh run cancel <run_id>` for the merge_group run(s) of that
-   branch. GitHub ejects the PR with reason `failed_checks`.
+4. **Cancel the run**, not the PR — and do it FAST. A merge_group batch here finishes in
+   minutes but most of its runs finish in SECONDS (change-map skips), so a poll loop that
+   sleeps 12 s arrives after the fact. Poll every few seconds and cancel the moment the batch
+   is confirmed yours.
+
+   ```
+   gh run cancel <run_id>                                    # plain endpoint
+   gh api -X POST repos/<owner>/<repo>/actions/runs/<id>/force-cancel   # when it 409s
+   ```
+
+   **Never discard the cancel's output.** `gh run cancel` on an already-finished run answers
+   `Cannot cancel a workflow run that is completed` and exits non-zero; a `>/dev/null` on that
+   line turns a failed drill into one that looks successful. `queue_shepherd.py::cancel_run`
+   documents the same 409 family and its force-cancel fallback — read it before improvising.
+
+   When it lands, GitHub ejects the PR with reason `failed_checks`.
+
 5. **Watch the next tick** (they are ten minutes apart) in `~/logs/queue-shepherd.log`:
 
    ```
@@ -72,6 +87,7 @@ After any change to the classification or re-arm path, and otherwise whenever th
 One line per execution. A drill that was aborted is worth recording too: the abort condition
 (a batch carrying someone else's PR) is the part of this procedure people get wrong.
 
-| Date       | Subject PR | Outcome |
-| ---------- | ---------- | ------- |
-| 2026-09-11 | this PR    | pending |
+| Date       | Subject PR | Outcome                                                                                                                                                                                                                                                                                                                  |
+| ---------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-09-11 | #6160      | MISSED — the cancel came 28 s after the group was created and 11 of the 13 runs had already completed; `gh run cancel` answered `Cannot cancel a workflow run that is completed` and the PR merged normally. Two lessons, both in the procedure below: cancel within seconds, and never discard the cancel's own output. |
+| 2026-09-11 | this PR    | pending                                                                                                                                                                                                                                                                                                                  |
