@@ -9,12 +9,13 @@ lane: backend-rag/obligations-register
 machine: Pro
 date: 2026-09-11
 
-gear: 1
+gear: 2
 gear_reason: >-
-  The computed floor, measured before writing this line: `evidence_pack_lint.py --print-floor`
-  over the changed files gives 1, source `none` (no hot-zone path once the migration is deferred,
-  1257 lines is under the size term). With migration 309 in the diff the floor would be 3; the PR
-  that lands 309 must carry a Gear-3 brief and pack of its own.
+  Deterministic floor 2, source `size`: `git diff --numstat` against main is 1274 added lines,
+  above SIZE_GEAR2_THRESHOLD (400) and below SIZE_GEAR3_THRESHOLD (1828). No hot-zone path once
+  migration 309 is deferred, so the path term is 1. An earlier revision of this brief declared 1
+  because the local `--print-floor` call omitted the numstat input and skipped the size term; CI
+  run 34512217162 corrected it. The PR that lands 309 must carry a Gear-3 brief and pack of its own.
 
 appetite:
   wall_clock_hours: 3
