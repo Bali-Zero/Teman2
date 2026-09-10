@@ -42,6 +42,7 @@ import argparse
 import csv
 import datetime as dt
 import hashlib
+import http.client
 import io
 import json
 import os
@@ -247,12 +248,15 @@ class RegistryClient:
         path = self._cache_path(keyword)
         if path is None:
             return
-        path.parent.mkdir(parents=True, exist_ok=True)
         blob = {"keyword": keyword, "fetched_at": result.fetched_at, "total_rows": result.total_rows, "rows": result.rows}
-        fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            json.dump(blob, handle, ensure_ascii=False)
-        os.replace(tmp, path)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                json.dump(blob, handle, ensure_ascii=False)
+            os.replace(tmp, path)
+        except OSError:
+            pass
 
     def search(self, keyword: str) -> SearchResult:
         cached = self._cache_get(keyword)
@@ -266,8 +270,8 @@ class RegistryClient:
             retryable = True
             try:
                 status, raw = self._transport(ENDPOINT, body, dict(REQUEST_HEADERS), REQUEST_TIMEOUT_S)
-            except OSError as exc:
-                error = f"network error: {exc}"
+            except (OSError, http.client.HTTPException) as exc:
+                error = f"network error: {exc!r}"
             else:
                 if status == 200:
                     try:

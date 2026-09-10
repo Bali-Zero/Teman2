@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import http.client
 import importlib.util
 import io
 import json
@@ -176,6 +177,24 @@ def test_429_backs_off_then_succeeds(tmp_path: Path) -> None:
     assert len(transport.calls) == 2
     assert clock.sleeps[0] == pse.BACKOFF_BASE_S
     assert {r["result"] for r in rows} == {"located"}
+
+
+def test_protocol_error_is_retried_and_unwritable_cache_does_not_crash(tmp_path: Path) -> None:
+    clock = FakeClock()
+    calls = {"n": 0}
+
+    def flaky(url, body, headers, timeout):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise http.client.IncompleteRead(b"")
+        return 200, ok_body(TOKOPEDIA_ROWS)
+
+    blocker = tmp_path / "not-a-dir"
+    blocker.write_text("x")
+    client = pse.RegistryClient(transport=flaky, clock=clock.monotonic, sleep=clock.sleep, now=clock.wall,
+                                cache_dir=blocker / "cache")
+    assert client.search("Tokopedia").total_rows == 2
+    assert calls["n"] == 2 and client.consecutive_failures == 0
 
 
 @pytest.mark.parametrize(
