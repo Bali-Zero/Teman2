@@ -17,10 +17,14 @@ lanes:
   - lane: portal-url-build
     role: build
     seat: >-
-      claude-opus-5 (conducting session, M5). Changed the default, extracted the service's
-      path into INVITE_PATH_TEMPLATE, added the rstrip at the composition point, wrote 6
-      cases. Guilt+innocence proven per case: reverting the default fails 3, removing the
-      rstrip fails 1, and the whole set passes on the cure.
+      claude-opus-5 (conducting session, M5). Three rounds. Round 1 changed the default and
+      pinned it with 4 cases. Round 2, on the cross-family findings, extracted the service's
+      path into INVITE_PATH_TEMPLATE and added a consumer-level case that runs the real router
+      with the real default. Round 3, on the gate's findings, moved the trailing-slash
+      normalisation off the router and onto the setting as a field_validator, deleted the
+      router's local rstrip and the duplicate fake it had needed, and aligned the shared
+      fixture with the service's own path template. Guilt re-measured after each round; see
+      receipts for the commands and their exact counts.
   - lane: portal-url-refute-crossfamily-1
     role: review
     seat: >-
@@ -108,7 +112,11 @@ receipts:
     ts: "2026-09-10T02:12Z"
     seat: session (M5)
   - claim: "The mouth Vercel project carries no nuzantara-mouth alias"
-    cmd: "Vercel API get_project for mouth under team nuzantara-2026"
+    cmd: >-
+      vercel inspect https://mouth-nuzantara-2026.vercel.app --json | python3 -c
+      "import json,sys; print(json.load(sys.stdin).get('alias'))"  (equivalently, the Vercel
+      API's get_project for project `mouth` under team `nuzantara-2026`, which is how it was
+      read)
     result: "domains: [mouth-nuzantara-2026.vercel.app, mouth-git-main-nuzantara-2026.vercel.app]"
     exit: 0
     ts: "2026-09-10T02:20Z"
@@ -119,28 +127,67 @@ receipts:
     exit: 0
     ts: "2026-09-10T02:35Z"
     seat: session (M5)
-  - claim: "Guilt and innocence, per case"
-    cmd: >-
-      pytest backend/tests/unit/app/test_config.py::TestPortalInviteUrl
+  - claim: >-
+      Innocence: the whole portal + GARUDA set is green, including every declared acceptance
+      probe — backend/tests/unit/app/test_config.py::TestPortalInviteUrl,
+      backend/tests/unit/app/test_config.py::TestPortalUrlTrailingSlash and
       backend/tests/unit/routers/test_portal_invite.py::test_mailed_link_uses_the_live_portal_default_and_the_real_path
-      backend/tests/unit/routers/test_portal_invite.py::test_a_trailing_slash_on_the_base_url_does_not_double_the_separator
-      (and the two files whole) ; then sed the default back to the vercel alias and re-run ;
-      then remove the rstrip and re-run
-    result: >-
-      18 passed on the cure. Vercel default -> 3 failed (live-domain, no-vercel-alias, composed-URL).
-      rstrip removed -> 1 failed (trailing-slash). Both reverted, tree clean.
-    exit: 0
-    ts: "2026-09-10T04:05Z"
-    seat: session (M5)
-  - claim: "Nothing else in the portal/GARUDA suites regressed"
     cmd: >-
-      pytest backend/tests/unit/routers/test_portal_invite.py backend/tests/unit/app/test_config.py
+      cd apps/backend-rag && /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/unit/app/test_config.py backend/tests/unit/routers/test_portal_invite.py
       backend/tests/unit/routers/test_portal_invite_p0_capability.py
       backend/tests/services/garuda_orders/test_portal_invite_handler.py
       backend/tests/unit/app/routers/test_crm_portal_status_placeholder.py
-    result: "48 passed"
+    result: "52 passed in 0.78s (21 passed over the two files this diff edits; 8 over the two new classes)"
     exit: 0
-    ts: "2026-09-10T03:30Z"
+    ts: "2026-09-10T10:29Z"
+    seat: session (M5)
+  - claim: "Guilt A — restoring the dead default fails 4 cases, not 3"
+    cmd: >-
+      cd apps/backend-rag && cp backend/app/core/config.py /tmp/g_cfg.py &&
+      sed -i '' 's|default="https://my.balizero.com",|default="https://nuzantara-mouth.vercel.app",|'
+      backend/app/core/config.py &&
+      /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/unit/app/test_config.py backend/tests/unit/routers/test_portal_invite.py ;
+      cp /tmp/g_cfg.py backend/app/core/config.py
+    result: >-
+      "4 failed, 17 passed" — the 3 TestPortalInviteUrl cases plus the consumer-level
+      test_mailed_link_uses_the_live_portal_default_and_the_real_path. The PR body said 3; the
+      count moved when the consumer-level case was added and the body was not re-measured
+      (independent Gear-3 gate, round 2).
+    exit: 1
+    ts: "2026-09-10T10:30Z"
+    seat: session (M5)
+  - claim: "Guilt B — neutralising the validator fails 3 cases"
+    cmd: >-
+      cd apps/backend-rag && cp backend/app/core/config.py /tmp/g_cfg.py &&
+      sed -i '' 's|        return v.rstrip("/")|        return v|' backend/app/core/config.py &&
+      /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/unit/app/test_config.py backend/tests/unit/routers/test_portal_invite.py ;
+      cp /tmp/g_cfg.py backend/app/core/config.py
+    result: >-
+      "3 failed, 18 passed" — the 3 TestPortalUrlTrailingSlash cases that carry a slash
+      (test_a_clean_base_is_left_alone stays green, which is the innocence half of the same probe).
+    exit: 1
+    ts: "2026-09-10T10:30Z"
+    seat: session (M5)
+  - claim: "The code tree is byte-clean after both guilt probes"
+    cmd: "git status --porcelain -- apps/"
+    result: >-
+      empty. Scoped to apps/ on purpose: an unscoped `git status --porcelain` run while this
+      pack is itself being edited also lists the evidence files, which would make the receipt
+      read as dirty for a reason that has nothing to do with the probes.
+    exit: 0
+    ts: "2026-09-10T10:30Z"
+    seat: session (M5)
+  - claim: "No assertion in the test file still expects the stale /portal/invite path"
+    cmd: >-
+      grep -n 'portal/invite?token=' apps/backend-rag/backend/tests/unit/routers/test_portal_invite.py
+    result: >-
+      one hit, on line 302, inside a docstring that records the drift as history — zero
+      assertions.
+    exit: 0
+    ts: "2026-09-10T10:31Z"
     seat: session (M5)
 
 dissent:

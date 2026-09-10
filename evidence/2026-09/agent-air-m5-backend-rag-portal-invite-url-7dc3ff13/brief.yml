@@ -11,8 +11,10 @@ objective: >-
 constraints:
   - >-
     Scope is the base URL and the two halves that compose the link: the setting's
-    default, the router's concatenation, and the service's path template. No
-    change to invitation minting, to RBAC, or to the portal app.
+    default and its normalisation, the router's concatenation, and the service's
+    path template. Normalisation belongs to the VALUE, never to a call site —
+    the setting has two consumers and a rule each must repeat is one the next
+    consumer forgets. No change to invitation minting, to RBAC, or to the portal app.
   - >-
     The test pins the KIND of host, not one spelling — any `*.vercel.app` default
     fails, because a deployment alias lives for a deploy and the product's domain
@@ -30,10 +32,11 @@ acceptance:
     probe: >-
       backend/tests/unit/routers/test_portal_invite.py::test_mailed_link_uses_the_live_portal_default_and_the_real_path
   - text: >-
-      WHEN the configured base carries a trailing slash, the mailed link SHALL
-      NOT contain a doubled separator.
+      WHEN the configured base carries a trailing slash, the SETTING SHALL strip
+      it, so that every consumer of the value — the invite router and the GARUDA
+      outbox handler alike — composes a link with a single separator.
     probe: >-
-      backend/tests/unit/routers/test_portal_invite.py::test_a_trailing_slash_on_the_base_url_does_not_double_the_separator
+      backend/tests/unit/app/test_config.py::TestPortalUrlTrailingSlash
 consumer_map:
   - >-
     POST /api/portal/invite/send — the endpoint the workspace's "Client Portal
