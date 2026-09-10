@@ -694,14 +694,14 @@ class PortalDocumentsMixin:
                         INSERT INTO documents (
                             client_id, practice_id, document_type, document_category, file_name,
                             status, uploaded_by, uploaded_source, file_size_kb, mime_type,
-                            storage_type, storage_path, file_id, file_url,
-                            extracted_text, expiry_date, document_purpose,
+                            storage_type, file_id, file_url,
+                            expiry_date, document_purpose,
                             client_visible, created_at
                         )
                         VALUES (
-                            $1, $2, $3, $13, $4, 'received', $5, 'client', $6, $7,
-                            $15, $8, $9, $10,
-                            $11, $12, $14,
+                            $1, $2, $3, $11, $4, 'received', $5, 'client', $6, $7,
+                            $13, $8, $9,
+                            $10, $12,
                             true, NOW()
                         )
                         RETURNING id, document_type, file_name, status, created_at, expiry_date
@@ -713,12 +713,8 @@ class PortalDocumentsMixin:
                         client["email"],
                         file_size_kb,
                         mime_type,
-                        drive_result.get("folder_path"),
                         drive_result.get("file_id"),
                         drive_result.get("file_url"),
-                        ocr_result.get("text")[:10000]
-                        if ocr_result.get("text")
-                        else None,  # Limit text size
                         expiry_result.get("expiry_date"),
                         doc_category,
                         document_purpose,

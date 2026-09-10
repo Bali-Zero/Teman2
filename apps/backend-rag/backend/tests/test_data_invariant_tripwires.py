@@ -1327,3 +1327,83 @@ def test_portal_profile_read_and_update_paths_agree_on_team_members_columns() ->
         "an alias's source column legitimately moved, update BOTH files in "
         "the same commit — not just one."
     )
+
+
+# ---------------------------------------------------------------------------
+# Invariant 7 — the documents upload INSERT projects only columns that
+# actually exist on the live `documents` table
+# ---------------------------------------------------------------------------
+#
+# Born 2026-09-11. `POST /api/portal/documents/upload` was 500ing for every
+# file, every client, since 2026-05-10 — a stack of defects that had never
+# executed until a real upload finally reached each one in turn. The last of
+# the stack: the primary `INSERT INTO documents (...)` in
+# `_mixins/documents.py` named `storage_path` (Postgres's own
+# `UndefinedColumnError`) AND `extracted_text` — a SECOND column that has
+# never existed on this table, which would only have surfaced as its own 500
+# one deploy later, after `storage_path` was fixed in isolation. Both were
+# removed rather than added as migrations: the Drive folder path is
+# derivable from `file_id` via the Drive API, and `documents` already has a
+# `notes`/`ocr_extracted_data` (jsonb) home if OCR text genuinely needs
+# persisting — that is a follow-up, not smuggled into this fix.
+#
+# `documents`'s real columns, verified live 2026-09-11 via
+# `information_schema.columns` against the production `nuzantara_rag` DB
+# (`scripts/pg.sh`). This does not pin call-sites to a subset — new columns
+# added by a migration are fine — it only pins that nothing selected here is
+# fictional.
+_DOCUMENTS_LIVE_COLUMNS = {
+    "id", "client_id", "practice_id", "document_type", "file_name",
+    "storage_type", "file_id", "file_url", "file_size_kb", "mime_type",
+    "status", "uploaded_by", "verified_by", "verified_at", "expiry_date",
+    "notes", "rejection_reason", "created_at", "updated_at", "user_profile_id",
+    "client_visible", "document_category", "family_member_id",
+    "google_drive_file_url", "is_archived", "uploaded_source", "ocr_status",
+    "ocr_completed_at", "ocr_extracted_data", "issue_date", "drive_verified_at",
+    "subfolder", "content_hash", "intake_idempotency_key", "intake_proposal_id",
+    "document_purpose", "deleted_at", "deleted_by",
+}
+
+_INSERT_DOCUMENTS_COLUMNS = re.compile(
+    r"INSERT INTO documents\s*\(\s*(.*?)\)\s*VALUES", re.DOTALL | re.IGNORECASE,
+)
+
+
+def _documents_insert_column_lists(path: Path) -> list[list[str]]:
+    """Every column list out of an `INSERT INTO documents (...) VALUES` in
+    `path`, one list per statement found (this mixin has two: the primary
+    insert and its "backward compatibility" fallback)."""
+    src = path.read_text(encoding="utf-8")
+    return [
+        [c.strip() for c in block.split(",") if c.strip()]
+        for block in _INSERT_DOCUMENTS_COLUMNS.findall(src)
+    ]
+
+
+def test_documents_upload_insert_only_projects_columns_that_exist() -> None:
+    """See the "Invariant 7" block comment above for the incident this pins."""
+    documents_path = (
+        _repo_root() / "apps/backend-rag/backend/services/portal/_mixins/documents.py"
+    )
+    assert documents_path.exists(), f"documents.py mixin missing at {documents_path}"
+
+    column_lists = _documents_insert_column_lists(documents_path)
+    assert column_lists, (
+        "No `INSERT INTO documents (...) VALUES` found in documents.py — the "
+        "upload path stopped writing to this table, or the statement's shape "
+        "changed. Update this test's regex if the query moved rather than "
+        "deleting the check."
+    )
+
+    for columns in column_lists:
+        bad = set(columns) - _DOCUMENTS_LIVE_COLUMNS
+        assert not bad, (
+            f"An `INSERT INTO documents` in documents.py names column(s) "
+            f"{sorted(bad)} that do not exist on the live `documents` table "
+            "(verified via information_schema.columns, 2026-09-11). This is "
+            "exactly how `storage_path` and `extracted_text` shipped: the "
+            "INSERT was never exercised end to end until a real portal "
+            "upload hit it in production. If a column here is genuinely new, "
+            "add the migration AND update `_DOCUMENTS_LIVE_COLUMNS` in the "
+            "same commit; otherwise drop it from the INSERT."
+        )
