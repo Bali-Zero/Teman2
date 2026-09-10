@@ -76,6 +76,23 @@ class TestIngestFullRetry:
         assert "error = NULL" in query
         assert params[0] == "j1"
 
+    def test_reset_query_guards_status_and_sets_immediate_visibility(self, client):
+        """C1/C2 guilt test: the status guard stops a worker's concurrent claim
+        from being clobbered by this UPDATE; visibility_at=NOW() is what makes
+        the retry immediate instead of sleeping up to VISIBILITY_TIMEOUT (10 min).
+        Removing either clause from the source must turn this red."""
+        conn = _mock_conn({"id": "j6", "status": "failed"})
+
+        with patch(
+            "backend.app.routers.legal_ingest.asyncpg.connect",
+            AsyncMock(return_value=conn),
+        ):
+            client.post("/api/legal/ingest-full", json=_payload())
+
+        normalized = " ".join(conn.execute.call_args[0][0].split())
+        assert "WHERE id = $1 AND status IN ('failed', 'error')" in normalized
+        assert "visibility_at = NOW()" in normalized
+
     def test_error_status_job_is_also_reset(self, client):
         """The 'error' status alias is treated the same as 'failed'."""
         conn = _mock_conn({"id": "j2", "status": "error"})

@@ -55,8 +55,11 @@ out_of_scope: >-
   step 1 Qdrant+KG onward — Drive/NLM/Sheets idempotency checks inside the worker already
   no-op on re-upload). Atomic claim-and-reset (a worker claiming the row concurrently with the
   reset loses the race harmlessly: the UPDATE's WHERE status IN ('failed','error') matches zero
-  rows, and the caller falls through — this doesn't return the up-to-date status in that narrow
-  window, tracked as a known gap, not a defect requiring a fix here). Streaming the PDF download
+  rows, but conn.execute()'s rowcount is never read, so the handler still unconditionally returns
+  202 pending "Job precedente fallito: riavviato." — the response can claim a reset that did not
+  happen in that narrow window; the eventual outcome is unchanged (the worker still owns the row
+  from its own claim), so this is an accepted residual, not a defect requiring a fix here).
+  Streaming the PDF download
   to disk instead of buffering resp.content (documents observed so far are sub-1MB; not worth
   the complexity per lane scope). A `sheets_row`/`nlm_source_id` reset on retry (left as-is from
   the prior attempt if the job never reached that step, which is the common case here).
