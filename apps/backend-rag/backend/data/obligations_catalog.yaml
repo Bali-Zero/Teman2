@@ -25,13 +25,13 @@ rules:
     notes: "Due 10 Apr, 10 Jul, 10 Oct, 10 Jan on calendar quarters, whatever the fiscal year. Sanctions: written warning x3, suspension, NIB revocation; PP 28/2025 adds fines (verify)."
 
   - id: pph21_payment
-    name: PPh 21/26 on salaries, payment (by the 10th of the following month)
+    name: PPh 21/26 on salaries, payment (by the 15th of the following month)
     authority: DJP via Coretax
-    legal_source: "UU PPh art. 21 and 26; PMK 168/2023 on PPh 21 TER (verify current, including the payment day)"
+    legal_source: "UU PPh art. 21 and 26; PMK 168/2023 on PPh 21 TER (verify current); payment day PMK 81/2024 art. 94 (verify)"
     verified: false
     applies_if:
       - {attr: has_employees, op: is_true}
-    due: {frequency: monthly, day: 10, month: null, months_after_period_end: 1, roll: next_business_day}
+    due: {frequency: monthly, day: 15, month: null, months_after_period_end: 1, roll: next_business_day}
 
   - id: spt_masa_pph21
     name: SPT Masa PPh 21/26 on salaries, return (report by the 20th of the following month)
@@ -43,14 +43,14 @@ rules:
     due: {frequency: monthly, day: 20, month: null, months_after_period_end: 1, roll: next_business_day}
 
   - id: pph23_26_payment
-    name: PPh 23 and 26 withholding, payment (by the 10th of the following month)
+    name: PPh 23 and 26 withholding, payment (by the 15th of the following month)
     authority: DJP via Coretax
-    legal_source: "UU PPh art. 23, 26; PER-24/PJ/2021 unified return (verify, including the payment day)"
+    legal_source: "UU PPh art. 23, 26; PER-24/PJ/2021 unified return (verify); payment day PMK 81/2024 art. 94 (verify)"
     verified: false
     applies_if:
       - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, KP3A, KPPA, OTHER]}
     needs_review_reason: "payments to third parties (services, rent, royalties, dividends, interest) are not modelled: reject when none were made in the period"
-    due: {frequency: monthly, day: 10, month: null, months_after_period_end: 1, roll: next_business_day}
+    due: {frequency: monthly, day: 15, month: null, months_after_period_end: 1, roll: next_business_day}
 
   - id: spt_masa_pph23_26
     name: SPT Masa PPh Unifikasi, PPh 23 and 26, return (report by the 20th of the following month)
@@ -100,13 +100,13 @@ rules:
     due: {frequency: monthly, day: 10, month: null, months_after_period_end: 0, roll: none}
 
   - id: bpjs_ketenagakerjaan_monthly
-    name: BPJS Ketenagakerjaan contributions, including foreign workers employed 6 months or more (payment by the 15th of the month)
+    name: BPJS Ketenagakerjaan contributions, including foreign workers employed 6 months or more (payment by the 15th of the following month)
     authority: BPJS Ketenagakerjaan
-    legal_source: "UU 24/2011; PP 44/2015, PP 45/2015, PP 46/2015; foreign worker rule Permenaker (verify)"
+    legal_source: "UU 24/2011; PP 44/2015, PP 45/2015, PP 46/2015; foreign worker rule Permenaker (verify); contribution for month M paid by the 15th of M+1 (verify)"
     verified: false
     applies_if:
       - {attr: has_employees, op: is_true}
-    due: {frequency: monthly, day: 15, month: null, months_after_period_end: 0, roll: none}
+    due: {frequency: monthly, day: 15, month: null, months_after_period_end: 1, roll: none}
     notes: "Expat layer: foreign workers employed 6+ months must be enrolled; payroll SaaS may disable BPJS fields for 'ekspatriat' tax status. Check the enrolment anniversary per expat."
 
   - id: expat_tax_residency_review
@@ -224,5 +224,5 @@ rules:
     applies_if:
       - {attr: company_type, op: in, value: [PT_PMA, PT_PMDN, CV, OTHER]}
     needs_review_reason: "selling on marketplaces is not a profile attribute, and enforcement starts 1 November 2026 (verify): reject for non-sellers and for periods before November 2026"
-    due: {frequency: monthly, day: 31, month: null, months_after_period_end: 1, roll: none}
+    due: {frequency: monthly, day: 31, month: null, months_after_period_end: 1, roll: next_business_day}
     notes: "Reconcile withheld amounts against bukti potong from the marketplace."

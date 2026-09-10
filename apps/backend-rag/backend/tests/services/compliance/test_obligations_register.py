@@ -143,9 +143,18 @@ def test_pse_registration_needs_online_and_unregistered(catalog):
 # -- due dates -------------------------------------------------------------------------------
 
 
-def test_monthly_day_10_rolls_over_weekend(catalog):
+def test_monthly_payment_day_15_rolls_over_weekend(catalog):
     assert due_dates(catalog["pph21_payment"], PMA, date(2026, 10, 1), 30) == [
-        ("2026-09", date(2026, 10, 12))
+        ("2026-09", date(2026, 10, 15))
+    ]
+    assert due_dates(catalog["pph23_26_payment"], PMA, date(2026, 11, 1), 30) == [
+        ("2026-10", date(2026, 11, 16))
+    ]
+
+
+def test_bpjs_ketenagakerjaan_period_is_the_contribution_month(catalog):
+    assert due_dates(catalog["bpjs_ketenagakerjaan_monthly"], PMA, date(2026, 10, 1), 31) == [
+        ("2026-09", date(2026, 10, 15))
     ]
 
 
@@ -219,11 +228,11 @@ def test_annual_fixed_month_is_the_first_after_fiscal_year_end():
 
 def test_horizon_start_is_inclusive_and_end_exclusive(catalog):
     rule = catalog["pph21_payment"]
-    assert due_dates(rule, PMA, date(2026, 11, 10), 1) == [("2026-10", date(2026, 11, 10))]
-    assert due_dates(rule, PMA, date(2026, 10, 13), 28) == []
-    assert due_dates(rule, PMA, date(2026, 11, 10), 0) == []
+    assert due_dates(rule, PMA, date(2026, 11, 16), 1) == [("2026-10", date(2026, 11, 16))]
+    assert due_dates(rule, PMA, date(2026, 10, 19), 28) == []
+    assert due_dates(rule, PMA, date(2026, 11, 16), 0) == []
     with pytest.raises(ValueError):
-        due_dates(rule, PMA, date(2026, 11, 10), -1)
+        due_dates(rule, PMA, date(2026, 11, 16), -1)
 
 
 def test_one_time_and_event_rules_produce_nothing(catalog):
