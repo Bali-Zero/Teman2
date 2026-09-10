@@ -13,9 +13,11 @@ from fastapi import HTTPException, Request
 
 from backend.app.routers import lkpm as lkpm_router
 from backend.app.routers import portal as portal_router
-from backend.services.compliance import lkpm_service as service_module
 from backend.services.compliance.lkpm_service import LKPMService
 from backend.services.integrations import google_drive_service
+from backend.services.integrations import (
+    service_account_drive_service as sa_drive_module,
+)
 
 
 class _AcquireContext:
@@ -332,8 +334,26 @@ async def test_service_proxy_fetches_tenant_owned_drive_file_server_side(
     }
     service = object.__new__(LKPMService)
     service.db_pool = pool
-    monkeypatch.setattr(google_drive_service, "GoogleDriveService", _FakeDriveService)
-    monkeypatch.setattr(service_module.httpx, "AsyncClient", _FakeHTTPClient)
+
+    # Service Account, not the SYSTEM OAuth token: `_refresh_token` returns
+    # None for SYSTEM by design since 2026-05-10, so the old credential path
+    # could only 500 in production (portal audit F-01). Guilt-proof: put
+    # GoogleDriveService back and `get_valid_token` gets awaited, which the
+    # assertion below refuses.
+    sa = MagicMock()
+    sa.get_file_metadata = AsyncMock(
+        return_value={"name": "receipt.pdf", "mimeType": "application/pdf"}
+    )
+    sa.download_file_content = AsyncMock(return_value=b"synthetic-pdf")
+    oauth_cls = MagicMock()
+    oauth_cls.SYSTEM_USER_ID = "SYSTEM"
+    oauth_cls.return_value.get_valid_token = AsyncMock(return_value=None)
+    monkeypatch.setattr(google_drive_service, "GoogleDriveService", oauth_cls)
+    monkeypatch.setattr(
+        sa_drive_module,
+        "ServiceAccountDriveService",
+        MagicMock(return_value=sa),
+    )
 
     result = await service.download_receipt_for_portal_client(101, 81)
 
@@ -342,12 +362,9 @@ async def test_service_proxy_fetches_tenant_owned_drive_file_server_side(
         "file_name": "receipt.pdf",
         "mime_type": "application/pdf",
     }
-    assert len(_FakeHTTPClient.calls) == 2
-    assert all(raw_file_id in str(call["url"]) for call in _FakeHTTPClient.calls)
-    assert all(
-        call["headers"] == {"Authorization": "Bearer synthetic-access-token"}
-        for call in _FakeHTTPClient.calls
-    )
+    sa.get_file_metadata.assert_awaited_once_with(raw_file_id)
+    sa.download_file_content.assert_awaited_once_with(raw_file_id)
+    oauth_cls.return_value.get_valid_token.assert_not_awaited()
 
 
 @pytest.mark.parametrize(

@@ -785,63 +785,94 @@ async def test_download_document_returns_none_without_drive_file_id() -> None:
     assert result is None
 
 
+# =============================================================================
+# F-01 (2026-09-11 portal live audit) — every portal download proxy asked
+# GoogleDriveService for the SYSTEM OAuth token, which `_refresh_token`
+# returns None for BY DESIGN since 2026-05-10 ("OAuth SYSTEM disabled — Drive
+# operations use ServiceAccountDriveService"). So the vault DOWNLOAD button
+# 500'd on every click, for every document, since that date.
+#
+# The tests that guarded this path passed by mocking `get_valid_token` to
+# return "access-token" — a value production could not obtain. That is
+# superscar #2 (esiste≠armato) inside the test suite: green, and guarding
+# nothing. They are replaced, not extended.
+# =============================================================================
+
+
+class _DriveHttpError(Exception):
+    """The shape of googleapiclient.errors.HttpError that matters here."""
+
+    def __init__(self, status: int) -> None:
+        super().__init__(f"drive returned {status}")
+        self.resp = MagicMock(status=status)
+
+
+def _sa_drive_mock(
+    *,
+    metadata: Any,
+    content: Any = b"PDF_BYTES",
+) -> MagicMock:
+    def _mock(value: Any) -> AsyncMock:
+        if isinstance(value, Exception):
+            return AsyncMock(side_effect=value)
+        return AsyncMock(return_value=value)
+
+    sa = MagicMock()
+    sa.get_file_metadata = _mock(metadata)
+    sa.download_file_content = _mock(content)
+    return sa
+
+
+def _download_row() -> dict[str, Any]:
+    return {
+        "id": 10,
+        "file_name": "passport.pdf",
+        "file_id": "drive_file_10",
+        "file_url": None,
+        "mime_type": "application/pdf",
+        "status": "received",
+    }
+
+
 @pytest.mark.asyncio
-async def test_download_document_raises_when_drive_not_connected() -> None:
-    service, _mock_conn = _make_service_with_fetchrow(
-        {
-            "id": 10,
-            "file_name": "passport.pdf",
-            "file_id": "drive_file_10",
-            "file_url": None,
-            "mime_type": "application/pdf",
-            "status": "received",
-        }
-    )
+async def test_download_document_never_consults_the_dead_oauth_token() -> None:
+    """Guilt-proof: restore `get_valid_token(SYSTEM)` as the credential and
+    this fails — production always gets None there, which is the 500."""
+    service, _mock_conn = _make_service_with_fetchrow(_download_row())
+    sa = _sa_drive_mock(metadata={"name": "passport.pdf", "mimeType": "application/pdf"})
 
-    with patch(
-        "backend.services.integrations.google_drive_service.GoogleDriveService"
-    ) as drive_cls:
-        drive_cls.SYSTEM_USER_ID = "SYSTEM"
-        drive_cls.return_value.get_valid_token = AsyncMock(return_value=None)
+    with (
+        patch(
+            "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+            return_value=sa,
+        ),
+        patch("backend.services.integrations.google_drive_service.GoogleDriveService") as oauth_cls,
+    ):
+        oauth_cls.SYSTEM_USER_ID = "SYSTEM"
+        oauth_cls.return_value.get_valid_token = AsyncMock(return_value=None)
 
-        with pytest.raises(RuntimeError, match="Google Drive is not connected"):
-            await service.download_document(
-                client_id=1,
-                document_id=10,
-                current_user={"client_id": 1, "email": "client@example.com"},
-            )
+        result = await service.download_document(
+            client_id=1,
+            document_id=10,
+            current_user={"client_id": 1, "email": "client@example.com"},
+        )
+
+    assert result is not None
+    oauth_cls.return_value.get_valid_token.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_download_document_streams_drive_file() -> None:
-    service, mock_conn = _make_service_with_fetchrow(
-        {
-            "id": 10,
-            "file_name": "passport.pdf",
-            "file_id": "drive_file_10",
-            "file_url": None,
-            "mime_type": "application/pdf",
-            "status": "received",
-        }
+    service, mock_conn = _make_service_with_fetchrow(_download_row())
+    sa = _sa_drive_mock(
+        metadata={"name": "passport-renamed.pdf", "mimeType": "application/pdf"},
+        content=b"PDF_BYTES",
     )
-    meta_response = MagicMock(status_code=200)
-    meta_response.json.return_value = {
-        "name": "passport-renamed.pdf",
-        "mimeType": "application/pdf",
-    }
-    download_response = MagicMock(status_code=200, content=b"PDF_BYTES")
-    async_http = MagicMock()
-    async_http.get = AsyncMock(side_effect=[meta_response, download_response])
 
-    with (
-        patch("backend.services.integrations.google_drive_service.GoogleDriveService") as drive_cls,
-        patch("httpx.AsyncClient") as client_cls,
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=sa,
     ):
-        drive_cls.SYSTEM_USER_ID = "SYSTEM"
-        drive_cls.return_value.get_valid_token = AsyncMock(return_value="access-token")
-        client_cls.return_value.__aenter__ = AsyncMock(return_value=async_http)
-        client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-
         result = await service.download_document(
             client_id=1,
             document_id=10,
@@ -853,53 +884,70 @@ async def test_download_document_streams_drive_file() -> None:
         "file_name": "passport-renamed.pdf",
         "mime_type": "application/pdf",
     }
+    sa.download_file_content.assert_awaited_once_with("drive_file_10")
     fetch_sql = mock_conn.fetchrow.call_args.args[0]
     assert "deleted_at IS NULL" in fetch_sql
     assert "COALESCE(is_archived, FALSE) = FALSE" in fetch_sql
 
 
 @pytest.mark.asyncio
+async def test_download_document_falls_back_to_stored_name_and_mime() -> None:
+    service, _mock_conn = _make_service_with_fetchrow(_download_row())
+    sa = _sa_drive_mock(metadata={}, content=b"BYTES")
+
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=sa,
+    ):
+        result = await service.download_document(
+            client_id=1,
+            document_id=10,
+            current_user={"client_id": 1, "email": "client@example.com"},
+        )
+
+    assert result == {
+        "content": b"BYTES",
+        "file_name": "passport.pdf",
+        "mime_type": "application/pdf",
+    }
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("meta_status", "download_status", "expected_error"),
+    ("metadata", "content", "expected_error"),
     [
-        (404, None, None),
-        (503, None, "Failed to fetch document metadata"),
-        (200, 404, None),
-        (200, 500, "Failed to download document"),
+        ("__404_META__", b"", None),
+        ("__503_META__", b"", "Failed to fetch document metadata"),
+        ("__OK_META__", "__404_MEDIA__", None),
+        ("__OK_META__", "__500_MEDIA__", "Failed to download document"),
     ],
 )
 async def test_download_document_handles_drive_failures(
-    meta_status: int,
-    download_status: int | None,
+    metadata: str,
+    content: Any,
     expected_error: str | None,
 ) -> None:
-    service, _mock_conn = _make_service_with_fetchrow(
-        {
-            "id": 10,
-            "file_name": "passport.pdf",
-            "file_id": "drive_file_10",
-            "file_url": None,
-            "mime_type": "application/pdf",
-            "status": "received",
-        }
-    )
-    meta_response = MagicMock(status_code=meta_status)
-    meta_response.json.return_value = {"name": "passport.pdf", "mimeType": "application/pdf"}
-    responses = [meta_response]
-    if download_status is not None:
-        responses.append(MagicMock(status_code=download_status, content=b""))
-    async_http = MagicMock()
-    async_http.get = AsyncMock(side_effect=responses)
+    """A missing file is a 404 for the client; anything else must stay a
+    failure — never a silent "your document does not exist"."""
+    resolved_meta: Any = {"name": "p.pdf", "mimeType": "application/pdf"}
+    if metadata == "__404_META__":
+        resolved_meta = _DriveHttpError(404)
+    elif metadata == "__503_META__":
+        resolved_meta = _DriveHttpError(503)
 
-    with (
-        patch("backend.services.integrations.google_drive_service.GoogleDriveService") as drive_cls,
-        patch("httpx.AsyncClient") as client_cls,
+    resolved_content: Any = content
+    if content == "__404_MEDIA__":
+        resolved_content = _DriveHttpError(404)
+    elif content == "__500_MEDIA__":
+        resolved_content = _DriveHttpError(500)
+
+    service, _mock_conn = _make_service_with_fetchrow(_download_row())
+    sa = _sa_drive_mock(metadata=resolved_meta, content=resolved_content)
+
+    with patch(
+        "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+        return_value=sa,
     ):
-        drive_cls.SYSTEM_USER_ID = "SYSTEM"
-        drive_cls.return_value.get_valid_token = AsyncMock(return_value="access-token")
-        client_cls.return_value.__aenter__ = AsyncMock(return_value=async_http)
-        client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-
         if expected_error:
             with pytest.raises(RuntimeError, match=expected_error):
                 await service.download_document(
