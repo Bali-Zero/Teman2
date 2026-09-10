@@ -23,10 +23,15 @@ seat_diversity_note: >-
   Author Claude, reviewer Codex (cross-family); the reviewed artifact IS the spec's §3/§6.
 diff:
   net_lines: >-
-    14 files in the diff: the spec, the LANE-A pointer, Astra's pack (README.md, OPERATOR-D.md,
-    2 patches, 3 .py, 5 .json) and this evidence pair; 963 added lines, 0 deleted before the pair.
+    17 files, +1293/-0: the spec, the LANE-A pointer, Astra's pack (README.md, OPERATOR-D.md,
+    2 patches, 3 .py, 5 .json), this evidence pair, and .secrets.baseline (+194 lines: the 22
+    findings in the pack plus the one Secret Keyword hit on this pack's own receipt command,
+    all audited is_secret=false, inserted as text so the diff stays purely additive).
   behaviour_change: >-
-    None. No file under apps/, scripts/, infra/ or .github/ changes; nothing imports evidence/.
+    None at runtime. No file under apps/, scripts/, infra/ or .github/ changes; nothing imports
+    evidence/. The one non-doc mutation is .secrets.baseline: 23 audit decisions added, none
+    removed or altered — a reviewer should read those 23 entries (sha256 digests and synthetic
+    test values) and nothing else in the diff needs a security eye.
 receipts:
   - claim: The pack is byte-identical to Astra's worktree copy
     cmd: diff -r /Users/balizero/nuzantara/.worktrees/ops-garuda-voa-0911/evidence/2026-09/agent-air-m5-ops-garuda-voa-0911-c652d82b evidence/2026-09/agent-air-m5-ops-garuda-voa-0911-c652d82b
@@ -42,17 +47,24 @@ receipts:
     seat: ship-spec (sonnet builder)
   - claim: The floor is 2 by SIZE only, not by path
     cmd: git diff --numstat origin/main...HEAD | awk '{a+=$1;d+=$2} END{print a-d}'
-    result: "963 (> SIZE_GEAR2_THRESHOLD 400, < SIZE_GEAR3_THRESHOLD 1828); no hot-zone path in the diff"
+    result: "1293 (> SIZE_GEAR2_THRESHOLD 400, < SIZE_GEAR3_THRESHOLD 1828); no hot-zone path in the diff"
     exit: 0
-    ts: 2026-09-11T19:40Z
-    seat: session (M5)
+    ts: 2026-09-11T20:40Z
+    seat: session (M5, window 2 — re-measured after the gate's round-1 finding)
+  - claim: The .secrets.baseline change is purely additive
+    cmd: git diff --numstat origin/main...HEAD -- .secrets.baseline
+    result: "194\t0\t.secrets.baseline"
+    exit: 0
+    ts: 2026-09-11T20:40Z
+    seat: session (M5, window 2)
   - claim: >-
-      The 22 detect-secrets findings in the pack (sha256 manifest digests and the disposable
-      cluster's synthetic env values) are audited is_secret=false in .secrets.baseline
+      The 23 detect-secrets findings in this diff (22 in the pack: sha256 manifest digests and
+      the disposable cluster's synthetic env values; 1 on this pack's receipt grep pattern) are
+      audited is_secret=false in .secrets.baseline
     cmd: python3 scripts/detect_secrets_check_unaudited.py
-    result: "All findings audited (8121 total)"
+    result: "All findings audited (8122 total)"
     exit: 0
-    ts: 2026-09-11T20:05Z
+    ts: 2026-09-11T20:40Z
     seat: session (M5, window 2)
 pii_scan: clean
 pii_scan_note: >-
@@ -67,6 +79,14 @@ dissent:
     resolution: >-
       W1R is its own PR before W1S; the bracket is specified with to_regrole, nested IF and a
       version-gated SET/MEMBER check (spec §3 and §6).
+  - seat: gate-6130 (claude-opus-5, fresh verifier, round 1 on 5a8cd39c)
+    objection: >-
+      The pack narrated 14 files / 963 lines while the diff measured 17 / 1271, and it did not
+      name the .secrets.baseline mutation; the commissioned sha was also superseded mid-gate.
+    status: CONFIRMED
+    resolution: >-
+      Counts re-measured from the live diff (this version), the baseline mutation named in
+      behaviour_change with its own additive receipt; the gate re-signs on the final head.
 bites:
   consumer: >-
     The next GARUDA VOA session opening W1R / W3C / W3A: its launch prompt names this spec by
