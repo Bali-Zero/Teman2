@@ -667,6 +667,19 @@ def _expect_list(obj: Any, key: str, where: str) -> list:
     return value
 
 
+def _expect_total_count(obj: dict[str, Any], items: list, where: str) -> None:
+    """J (S1 spec R3): completeness guard for a read that is small BY CONSTRUCTION (a per-sha or
+    per-run page, never a `created<=` sweep over the repo's whole history — that total_count can
+    never serve as a completeness check, see fetch_infra_hint_and_fingerprint's docstring).
+    Raises RuntimeError unless `total_count` is an int with total_count <= len(items): a larger
+    total means THIS read is incomplete, never that the attempt/job set is legitimately big."""
+    total_count = obj.get("total_count")
+    if not isinstance(total_count, int) or isinstance(total_count, bool) or total_count > len(items):
+        raise RuntimeError(
+            f"{where}: total_count guard failed: total_count={total_count!r} len={len(items)}"
+        )
+
+
 def _expect_pull_requests_page(data: Any, where: str) -> dict[str, Any]:
     """H3/H4 (S1 spec R2): the GraphQL pullRequests connection shape shared by fetch_open_prs
     (via _fetch_candidates_page, with a retry) and fetch_open_pr_heads (no retry). Raises
@@ -859,10 +872,12 @@ def fetch_last_ejection(repo: str, number: int) -> dict[str, Any] | None | str:
 
 
 def _fetch_run_jobs(owner: str, name: str, run_id: int) -> list[dict[str, Any]]:
-    """H2 (S1 spec R2): one run's jobs list. Raises RuntimeError on a failed fetch or a
-    malformed body (`jobs` missing or not a list); `{"jobs": []}` is legitimate."""
+    """H2 (S1 spec R2) + J2 (S1 spec R3): one run's jobs list, `per_page=100`. Raises RuntimeError
+    on a failed fetch, a malformed body (`jobs` missing or not a list), or a `total_count` larger
+    than the page returned (J2 — the read is incomplete, never guess); `{"jobs": [],
+    "total_count": 0}` is legitimate."""
     rc, jobs_out, jobs_err = _run(
-        ["gh", "api", f"repos/{owner}/{name}/actions/runs/{run_id}/jobs?per_page=50"],
+        ["gh", "api", f"repos/{owner}/{name}/actions/runs/{run_id}/jobs?per_page=100"],
         timeout=30,
     )
     if rc != 0:
@@ -873,7 +888,54 @@ def _fetch_run_jobs(owner: str, name: str, run_id: int) -> list[dict[str, Any]]:
         raise RuntimeError(
             f"fetch_infra_hint: unparseable jobs response: {exc!s}: {jobs_out[:300]}"
         ) from exc
-    return _expect_list(parsed, "jobs", "fetch_infra_hint jobs")
+    jobs = _expect_list(parsed, "jobs", "fetch_infra_hint jobs")
+    _expect_total_count(parsed, jobs, "fetch_infra_hint jobs")
+    return jobs
+
+
+def _fetch_attempt_runs_by_head_sha(
+    owner: str, name: str, number: int, head_sha: str, removed_dt: _dt.datetime | None
+) -> list[dict[str, Any]]:
+    """J1 (S1 spec R3, Kimi F1 BLOCKER, dispositioned by the Dux 2026-09-10): re-read the queue
+    attempt by its OWN head_sha rather than trusting the first read's page. Measured live:
+    `actions/runs?event=merge_group&head_sha=<sha>&per_page=100` returns exactly one attempt (13
+    runs, total_count 13, one head_sha) — a read that is small BY CONSTRUCTION, so `total_count`
+    can validly guard its own completeness here (unlike the first read's `created<=` sweep, where
+    total_count is the repository's whole history and total_count<=len would CANNOT-VERIFY every
+    tick — Kimi's originally suggested fix). Raises RuntimeError on a failed fetch, a malformed
+    body, a total_count exceeding the runs returned, or (the latest candidate itself must be in
+    its own attempt) an empty match."""
+    url = f"repos/{owner}/{name}/actions/runs?event=merge_group&head_sha={head_sha}&per_page=100"
+    rc, out, err = _run(["gh", "api", url], timeout=30)
+    if rc != 0:
+        raise RuntimeError(f"fetch_infra_hint: gh api per-sha runs failed rc={rc}: {err.strip()[:300]}")
+    try:
+        parsed = json.loads(out)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            f"fetch_infra_hint: unparseable per-sha runs response: {exc!s}: {out[:300]}"
+        ) from exc
+    runs = _expect_list(parsed, "workflow_runs", "fetch_infra_hint per-sha runs")
+    _expect_total_count(parsed, runs, "fetch_infra_hint per-sha runs")
+    attempt_runs = []
+    for r in runs:
+        match = PR_SHA_RE.search(str(r.get("head_branch") or ""))
+        if (
+            match
+            and int(match.group(1)) == number
+            and r.get("conclusion") in ("failure", "cancelled", "timed_out")
+        ):
+            attempt_runs.append(r)
+    if removed_dt is not None:
+        attempt_runs = [
+            r for r in attempt_runs
+            if (_parse_iso(r.get("created_at")) or removed_dt) <= removed_dt
+        ]
+    if not attempt_runs:
+        raise RuntimeError(
+            f"fetch_infra_hint: per-sha re-read for {head_sha} matched no attempt runs for PR #{number}"
+        )
+    return attempt_runs
 
 
 def fetch_infra_hint_and_fingerprint(
@@ -911,6 +973,16 @@ def fetch_infra_hint_and_fingerprint(
     DELIBERATE divergence from queue_ejection_attribution.py's ANY rule (that module is
     retrospective; this one makes a re-arm decision and fails closed). `fingerprint` is the
     sorted, deduped, "||"-joined union of each run's own fingerprint — independent of API order.
+
+    RE-READ BY HEAD_SHA (J1, S1 spec R3): this first read's `per_page=100` page can still cut the
+    ejecting attempt's ~13-run cluster at the page boundary -- the real `failure` run falls off
+    while a `cancelled` sibling stays, and `all()` over that surviving subset alone would read
+    INFRA (a CODE failure re-armed on a read that reports itself successful). So once the latest
+    failing candidate is picked above and it carries a head_sha, the attempt's OWN runs are not
+    taken from this first read's `candidates` -- they are RE-FETCHED, scoped server-side by that
+    head_sha (`_fetch_attempt_runs_by_head_sha`), which is what lets `total_count` legitimately
+    guard completeness on that second, small-by-construction read. A candidate missing head_sha
+    still stays alone (no second read to scope by).
     """
     owner, name = repo.split("/", 1)
     removed_dt = _parse_iso(removed_at)
@@ -953,7 +1025,9 @@ def fetch_infra_hint_and_fingerprint(
     latest = max(candidates, key=lambda r: (r.get("created_at") or "", r.get("id") or 0))
     attempt_head_sha = latest.get("head_sha")
     if attempt_head_sha:
-        attempt_runs = [r for r in candidates if r.get("head_sha") == attempt_head_sha]
+        # J1 (S1 spec R3): re-read the attempt by its own head_sha rather than trusting this
+        # first read's page — see _fetch_attempt_runs_by_head_sha's docstring for why.
+        attempt_runs = _fetch_attempt_runs_by_head_sha(owner, name, number, attempt_head_sha, removed_dt)
     else:
         attempt_runs = [latest]
     attempt_runs.sort(key=lambda r: r.get("id") or 0)

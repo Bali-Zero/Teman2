@@ -990,7 +990,7 @@ def test_fetch_infra_hint_and_fingerprint_jobs_empty_list_is_legitimate_H2(monke
 
     def fake_run(cmd, timeout=30):
         if "jobs" in cmd[-1]:
-            return 0, '{"jobs": []}', ""
+            return 0, '{"jobs": [], "total_count": 0}', ""
         return 0, json.dumps(runs_payload), ""
 
     monkeypatch.setattr(qs, "_run", fake_run)
@@ -1022,7 +1022,7 @@ def test_fetch_infra_hint_matches_full_gh_readonly_queue_branch_name(monkeypatch
 
     def fake_run(cmd, timeout=30):
         if "jobs" in cmd[-1]:
-            return 0, '{"jobs": [{"name": "Backend Shard 1", "conclusion": "failure"}]}', ""
+            return 0, '{"jobs": [{"name": "Backend Shard 1", "conclusion": "failure"}], "total_count": 1}', ""
         return 0, __import__("json").dumps(runs_payload), ""
 
     monkeypatch.setattr(qs, "_run", fake_run)
@@ -1198,14 +1198,14 @@ def test_fetch_infra_hint_and_fingerprint_finds_correlated_run_behind_25_other_p
         "created_at": _iso(NOW),
         "head_sha": sha,
     }
-    runs_payload = {"workflow_runs": other_runs + [correlated]}
+    runs_payload = {"workflow_runs": other_runs + [correlated], "total_count": len(other_runs) + 1}
 
     urls = []
 
     def fake_run(cmd, timeout=30):
         urls.append(cmd[-1])
         if "jobs" in cmd[-1]:
-            return 0, '{"jobs": [{"name": "pytest", "conclusion": "failure"}]}', ""
+            return 0, '{"jobs": [{"name": "pytest", "conclusion": "failure"}], "total_count": 1}', ""
         return 0, json.dumps(runs_payload), ""
 
     monkeypatch.setattr(qs, "_run", fake_run)
@@ -1229,13 +1229,13 @@ def test_fetch_infra_hint_and_fingerprint_attempt_two_runs_code_wins_both_orders
     }
 
     def make_fake_run(order):
-        runs_payload = {"workflow_runs": order}
+        runs_payload = {"workflow_runs": order, "total_count": len(order)}
 
         def fake_run(cmd, timeout=30):
             if "runs/111/jobs" in cmd[-1]:
-                return 0, '{"jobs": [{"name": "pytest", "conclusion": "failure"}]}', ""
+                return 0, '{"jobs": [{"name": "pytest", "conclusion": "failure"}], "total_count": 1}', ""
             if "runs/112/jobs" in cmd[-1]:
-                return 0, '{"jobs": []}', ""
+                return 0, '{"jobs": [], "total_count": 0}', ""
             return 0, json.dumps(runs_payload), ""
 
         return fake_run
@@ -1261,11 +1261,11 @@ def test_fetch_infra_hint_and_fingerprint_attempt_all_cancelled_is_infra_true_Ic
         "id": 202, "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
         "conclusion": "cancelled", "created_at": _iso(NOW), "head_sha": sha,
     }
-    runs_payload = {"workflow_runs": [run_a, run_b]}
+    runs_payload = {"workflow_runs": [run_a, run_b], "total_count": 2}
 
     def fake_run(cmd, timeout=30):
         if "jobs" in cmd[-1]:
-            return 0, '{"jobs": []}', ""
+            return 0, '{"jobs": [], "total_count": 0}', ""
         return 0, json.dumps(runs_payload), ""
 
     monkeypatch.setattr(qs, "_run", fake_run)
@@ -1283,11 +1283,11 @@ def test_fetch_infra_hint_and_fingerprint_second_run_jobs_failure_raises_Id(monk
         "id": 302, "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
         "conclusion": "cancelled", "created_at": _iso(NOW), "head_sha": sha,
     }
-    runs_payload = {"workflow_runs": [run_a, run_b]}
+    runs_payload = {"workflow_runs": [run_a, run_b], "total_count": 2}
 
     def fake_run(cmd, timeout=30):
         if "runs/301/jobs" in cmd[-1]:
-            return 0, '{"jobs": []}', ""
+            return 0, '{"jobs": [], "total_count": 0}', ""
         if "runs/302/jobs" in cmd[-1]:
             return 1, "", "gh: HTTP 500"
         return 0, json.dumps(runs_payload), ""
@@ -1303,28 +1303,230 @@ def test_fetch_infra_hint_and_fingerprint_older_attempt_not_mixed_in_Ie(monkeypa
     newer = {
         "id": 401, "head_branch": f"gh-readonly-queue/main/pr-501-{sha_new}",
         "conclusion": "cancelled", "created_at": _iso(NOW), "head_sha": sha_new,
+        "name": "attempt-newer",
     }
-    older = {
+    older_failure = {
         "id": 400, "head_branch": f"gh-readonly-queue/main/pr-501-{sha_old}",
         "conclusion": "failure", "created_at": _iso(NOW - _dt.timedelta(minutes=30)),
-        "head_sha": sha_old,
+        "head_sha": sha_old, "name": "attempt-older",
     }
-    runs_payload = {"workflow_runs": [older, newer]}
+    older_cancelled = {  # J3 (S1 spec R3, Kimi finding 6): a second older-attempt run
+        "id": 402, "head_branch": f"gh-readonly-queue/main/pr-501-{sha_old}",
+        "conclusion": "cancelled", "created_at": _iso(NOW - _dt.timedelta(minutes=30)),
+        "head_sha": sha_old, "name": "attempt-older",
+    }
+    all_runs = (older_failure, older_cancelled, newer)
+    first_read_payload = {"workflow_runs": list(all_runs)}
 
     fetched_jobs_urls = []
 
     def fake_run(cmd, timeout=30):
-        if "jobs" in cmd[-1]:
-            fetched_jobs_urls.append(cmd[-1])
-            return 0, '{"jobs": []}', ""
-        return 0, json.dumps(runs_payload), ""
+        url = cmd[-1]
+        if "jobs" in url:
+            fetched_jobs_urls.append(url)
+            return 0, '{"jobs": [], "total_count": 0}', ""
+        if "head_sha=" in url:
+            # J1 per-sha re-read: the real endpoint scopes server-side by head_sha.
+            sha = url.split("head_sha=")[1].split("&")[0]
+            matched = [r for r in all_runs if r["head_sha"] == sha]
+            return 0, json.dumps({"workflow_runs": matched, "total_count": len(matched)}), ""
+        return 0, json.dumps(first_read_payload), ""
 
     monkeypatch.setattr(qs, "_run", fake_run)
     infra, fp = qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, _iso(NOW))
 
     assert infra is True  # only the newer attempt (cancelled, empty jobs) counts
     assert len(fetched_jobs_urls) == 1
-    assert "runs/401/jobs" in fetched_jobs_urls[0]  # the older attempt's run (400) never fetched
+    assert "runs/401/jobs" in fetched_jobs_urls[0]  # the older attempt's runs never fetched
+    assert "attempt-newer" in fp
+    assert "attempt-older" not in fp  # J3: the fingerprint names only the newer attempt's runs
+
+
+# ── J (S1 spec R3): re-read the attempt by head_sha (J1) + jobs read-completeness (J2) ──────────
+
+
+def test_fetch_infra_hint_and_fingerprint_first_read_page_cut_per_sha_finds_failure_J1a(monkeypatch):
+    sha = "6" * 40
+    cancelled_sibling = {
+        "id": 601, "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
+        "conclusion": "cancelled", "created_at": _iso(NOW), "head_sha": sha,
+    }
+    failure_run = {
+        "id": 600, "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
+        "conclusion": "failure", "created_at": _iso(NOW), "head_sha": sha,
+    }
+    # first read: page cut -> only the cancelled sibling survives, the real failure run is
+    # "beyond the page" (Kimi F1 BLOCKER, measured live 2026-09-10).
+    first_read_payload = {"workflow_runs": [cancelled_sibling]}
+    # per-sha re-read: the real attempt, complete.
+    per_sha_payload = {"workflow_runs": [cancelled_sibling, failure_run], "total_count": 2}
+
+    def fake_run(cmd, timeout=30):
+        url = cmd[-1]
+        if "runs/600/jobs" in url:
+            return 0, '{"jobs": [{"name": "pytest", "conclusion": "failure"}], "total_count": 1}', ""
+        if "runs/601/jobs" in url:
+            return 0, '{"jobs": [], "total_count": 0}', ""
+        if f"head_sha={sha}" in url:
+            return 0, json.dumps(per_sha_payload), ""
+        return 0, json.dumps(first_read_payload), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    infra, fp = qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, _iso(NOW))
+
+    assert infra is False  # the real pytest failure surfaces once the per-sha re-read finds it
+    assert fp is not None and "pytest" in fp
+
+
+def test_fetch_infra_hint_and_fingerprint_per_sha_total_count_exceeds_len_raises_J1b(monkeypatch):
+    sha = "7" * 40
+    run = {
+        "id": 700, "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
+        "conclusion": "cancelled", "created_at": _iso(NOW), "head_sha": sha,
+    }
+    first_read_payload = {"workflow_runs": [run]}
+    per_sha_payload = {"workflow_runs": [run], "total_count": 5}  # more than the 1 run returned
+
+    def fake_run(cmd, timeout=30):
+        url = cmd[-1]
+        if "jobs" in url:  # a legit answer here, so a pre-fix "no raise" is a genuine red
+            return 0, '{"jobs": [], "total_count": 0}', ""
+        if f"head_sha={sha}" in url:
+            return 0, json.dumps(per_sha_payload), ""
+        return 0, json.dumps(first_read_payload), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    with pytest.raises(RuntimeError):
+        qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, _iso(NOW))
+
+
+def test_fetch_infra_hint_and_fingerprint_per_sha_read_failure_raises_J1c(monkeypatch):
+    sha = "8" * 40
+    run = {
+        "id": 800, "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
+        "conclusion": "cancelled", "created_at": _iso(NOW), "head_sha": sha,
+    }
+    first_read_payload = {"workflow_runs": [run]}
+
+    def fake_run(cmd, timeout=30):
+        url = cmd[-1]
+        if "jobs" in url:  # a legit answer here, so a pre-fix "no raise" is a genuine red
+            return 0, '{"jobs": [], "total_count": 0}', ""
+        if f"head_sha={sha}" in url:
+            return 1, "", "gh: HTTP 502"
+        return 0, json.dumps(first_read_payload), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    with pytest.raises(RuntimeError):
+        qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, _iso(NOW))
+
+
+def test_fetch_infra_hint_and_fingerprint_per_sha_url_shape_J1e(monkeypatch):
+    sha = "9" * 40
+    run = {
+        "id": 900, "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
+        "conclusion": "cancelled", "created_at": _iso(NOW), "head_sha": sha,
+    }
+    first_read_payload = {"workflow_runs": [run]}
+    per_sha_payload = {"workflow_runs": [run], "total_count": 1}
+    urls = []
+
+    def fake_run(cmd, timeout=30):
+        url = cmd[-1]
+        urls.append(url)
+        if "jobs" in url:
+            return 0, '{"jobs": [], "total_count": 0}', ""
+        if "head_sha=" in url:
+            return 0, json.dumps(per_sha_payload), ""
+        return 0, json.dumps(first_read_payload), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    qs.fetch_infra_hint_and_fingerprint("Bali-Zero/Teman2", 501, _iso(NOW))
+
+    per_sha_url = urls[1]  # urls[0] is the first (unscoped) read
+    assert "event=merge_group" in per_sha_url
+    assert f"head_sha={sha}" in per_sha_url
+    assert "per_page=100" in per_sha_url
+
+
+def test_tick_scenario_a_classifies_code_rearmed_zero_no_cannot_verify_J1d(monkeypatch, tmp_path):
+    """J1(d): tick level, scenario (a) — the page-cut first read would have misread this PR's
+    ejection as INFRA (a re-arm on a fabricated verdict); the per-sha re-read must classify it
+    CODE instead, so run_rearm_pass never re-arms it and never CANNOT-VERIFYs the tick."""
+    sha = "b" * 40
+    cancelled_sibling = {
+        "id": 1001, "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
+        "conclusion": "cancelled", "created_at": _iso(NOW), "head_sha": sha,
+    }
+    failure_run = {
+        "id": 1000, "head_branch": f"gh-readonly-queue/main/pr-501-{sha}",
+        "conclusion": "failure", "created_at": _iso(NOW), "head_sha": sha,
+    }
+    first_read_payload = {"workflow_runs": [cancelled_sibling]}
+    per_sha_payload = {"workflow_runs": [cancelled_sibling, failure_run], "total_count": 2}
+
+    def fake_run(cmd, timeout=30):
+        url = cmd[-1]
+        if "runs/1000/jobs" in url:
+            return 0, '{"jobs": [{"name": "pytest", "conclusion": "failure"}], "total_count": 1}', ""
+        if "runs/1001/jobs" in url:
+            return 0, '{"jobs": [], "total_count": 0}', ""
+        if f"head_sha={sha}" in url:
+            return 0, json.dumps(per_sha_payload), ""
+        return 0, json.dumps(first_read_payload), ""
+
+    monkeypatch.setattr(
+        qs, "fetch_open_prs",
+        lambda repo=qs.REPO: [_pr(number=501, head_sha=sha, head_ref_name="agent/x/y")],
+    )
+    monkeypatch.setattr(
+        qs, "fetch_last_ejection",
+        lambda repo, number: {
+            "reason": "failed_checks", "removed_at": _iso(NOW), "before_commit": sha
+        },
+    )
+    monkeypatch.setattr(qs, "_run", fake_run)
+    alerts = []
+    monkeypatch.setattr(qs, "send_telegram", lambda message, dedup_key="": alerts.append(dedup_key) or True)
+
+    result = qs.run_rearm_pass(dry_run=False, now=NOW)
+
+    assert result["cannot_verify"] is None
+    assert result["rearmed"] == 0
+    assert alerts == []
+
+
+def test_fetch_run_jobs_total_count_exceeds_len_raises_J2a(monkeypatch):
+    def fake_run(cmd, timeout=30):
+        jobs = [{"name": f"job{i}", "conclusion": "success"} for i in range(50)]
+        return 0, json.dumps({"jobs": jobs, "total_count": 60}), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    with pytest.raises(RuntimeError):
+        qs._fetch_run_jobs("Bali-Zero", "Teman2", 123)
+
+
+def test_fetch_run_jobs_total_count_missing_raises_J2b(monkeypatch):
+    def fake_run(cmd, timeout=30):
+        return 0, '{"jobs": []}', ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    with pytest.raises(RuntimeError):
+        qs._fetch_run_jobs("Bali-Zero", "Teman2", 123)
+
+
+def test_fetch_run_jobs_total_count_equals_len_is_fine_J2c(monkeypatch):
+    urls = []
+
+    def fake_run(cmd, timeout=30):
+        urls.append(cmd[-1])
+        jobs = [{"name": f"job{i}", "conclusion": "success"} for i in range(60)]
+        return 0, json.dumps({"jobs": jobs, "total_count": 60}), ""
+
+    monkeypatch.setattr(qs, "_run", fake_run)
+    result = qs._fetch_run_jobs("Bali-Zero", "Teman2", 123)
+    assert len(result) == 60
+    assert "per_page=100" in urls[0]
 
 
 # 3. _save_json atomic write + _load_json fail-closed on a corrupt (not merely absent) file.
