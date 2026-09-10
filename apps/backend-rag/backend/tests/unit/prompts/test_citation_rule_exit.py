@@ -1,4 +1,5 @@
-"""The citation rule gets an exit (RULED Zero 2026-09-11: ZERO-DECISIONS §Item 3 ratified).
+"""The citation rule gets an exit (RULED Zero 2026-09-11: ZERO-DECISIONS §Item 3 ratified,
+amended per README §0 ruling 4 to drop " from a client" from case (a)).
 
 `CITATION_RULES` in `backend/prompts/zantara_core.py` used to say the model MUST cite the
 source law at the end of every regulatory answer, with no licit way to cite nothing.
@@ -11,8 +12,12 @@ Text-level only: no LLM is called. Whether a live model obeys the new bullet is 
 by the cycle-360 battery, not by this file.
 
 `RATIFIED_BULLET` below is an independent copy of the fenced paragraph under "Item 3" in
-docs/plans/2026-09-03-relaunch-lanes/ZERO-DECISIONS.md, not derived from the constant
+docs/plans/2026-09-03-relaunch-lanes/ZERO-DECISIONS.md, AS AMENDED (README §0 ruling 4 drops
+" from a client" from case (a) for v5 client-audience purity), not derived from the constant
 under test: any drift of the bullet's wording, in either place, fails here.
+`TestFenceParity` below re-derives the fence from the doc file at runtime and asserts it
+matches this constant byte-for-byte, so the two copies can never silently drift again; it
+skips if the doc file is not present in the checkout (e.g. a sparse CI clone).
 
 Guilt: the old mandatory bullet is gone from the SSOT and from every built prompt.
 Innocence: every consumer that carries CITATION_RULES (the v1-v4 master templates, the
@@ -25,7 +30,9 @@ citations.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 
@@ -51,7 +58,7 @@ RATIFIED_BULLET = (
     '    "📜 Sumber: PP 48/2021 tentang Keimigrasian".\n'
     "    **Cite NOTHING — and add no source line at all — when:**\n"
     "    (a) the question is operational or commercial rather than legal: our prices, our payment\n"
-    "        methods and bank details, our timelines, which documents WE need from a client, how to\n"
+    "        methods and bank details, our timelines, which documents WE need, how to\n"
     "        send them, appointment or office logistics, the status of a file;\n"
     "    (b) the answer is a courtesy, a greeting, a clarifying question, or a hand-off to a\n"
     "        colleague;\n"
@@ -73,6 +80,28 @@ LEGAL_MONEY_BULLET = (
 CHAT_BULLET = '  - **CHAT:** Use natural attribution, e.g., "As your founder mentions..."'
 OLD_LABEL = "MANDATORY LAW CITATION"
 OLD_OBLIGATION = "you MUST cite the source law"
+
+# Repo root: .../apps/backend-rag/backend/tests/unit/prompts/<this file> -> 6 parents up.
+ZERO_DECISIONS_PATH = (
+    Path(__file__).resolve().parents[6]
+    / "docs"
+    / "plans"
+    / "2026-09-03-relaunch-lanes"
+    / "ZERO-DECISIONS.md"
+)
+_FENCE_PATTERN = re.compile(r"```\n(  - \*\*LAW CITATION.*?)\n```", re.DOTALL)
+
+
+def _fence_from_zero_decisions() -> str | None:
+    """The ratified paragraph as it sits in the ZERO-DECISIONS.md fence, or None if the
+    doc is not present in this checkout (e.g. a sparse CI clone that ships apps/ only)."""
+    if not ZERO_DECISIONS_PATH.is_file():
+        return None
+    text = ZERO_DECISIONS_PATH.read_text(encoding="utf-8")
+    match = _FENCE_PATTERN.search(text)
+    if match is None:
+        return None
+    return match.group(1) + "\n"
 
 
 def _ssot_bullet() -> str:
@@ -158,3 +187,16 @@ class TestTemplateFillSafety:
         assert RATIFIED_BULLET in filled
         assert LEGAL_MONEY_BULLET in filled
         assert OLD_LABEL not in filled
+
+
+class TestFenceParity:
+    """`RATIFIED_BULLET` is a hand-typed copy of ZERO-DECISIONS.md's fence; this class
+    re-derives the fence at test time so the two can never silently drift again."""
+
+    def test_ratified_bullet_matches_zero_decisions_fence(self) -> None:
+        fence = _fence_from_zero_decisions()
+        if fence is None:
+            pytest.skip(
+                f"{ZERO_DECISIONS_PATH} not present in this checkout (sparse clone?)"
+            )
+        assert RATIFIED_BULLET == fence
