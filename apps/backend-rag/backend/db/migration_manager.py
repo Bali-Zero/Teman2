@@ -119,40 +119,46 @@ class MigrationManager:
         Should be called before using the manager.
         """
         if self.pool is None:
-            try:
-                self.pool = await asyncpg.create_pool(
-                    self.database_url,
-                    min_size=1,
-                    max_size=5,
-                    command_timeout=60,
-                    # Every ACQUIRE assumes the runtime role (not just connection
-                    # creation): the ledger tables (`_ensure_migration_log`) and the
-                    # advisory lock go through this pool, a `CREATE TABLE IF NOT
-                    # EXISTS` here must not mint a migrator-owned table, and
-                    # asyncpg's release-time `RESET ALL` undoes `SET ROLE` -- so an
-                    # `init`-only hook would hold for the first acquire and silently
-                    # lapse on the second (kimi, 2026-09-11). The hook is idempotent.
-                    setup=assume_runtime_role,
-                )
-            except Exception as e:
-                # 2026-09-10 incident: four consecutive Fly release_command
-                # failures surfaced only a bare `ConnectionResetError` from
-                # inside asyncpg's TLS handshake, with no hint which DSN was
-                # even in play. Name the source (already known, not
-                # re-derived from env) and the exception, so the next
-                # operator does not lose an hour reading a stack trace.
-                source = "MIGRATION_DATABASE_URL" if migration_dsn_is_dedicated() else "DATABASE_URL"
-                safe_url = self._sanitize_db_url(self.database_url)
-                message = f"Migration runner cannot connect via {source} ({safe_url}): {type(e).__name__}: {e}"
-                if isinstance(e, (ConnectionResetError, OSError, ssl.SSLError)) and not _dsn_has_sslmode(
-                    self.database_url
-                ):
-                    message += (
-                        "\nhint: DATABASE_URL uses sslmode=disable; add "
-                        "?sslmode=disable to this DSN if the server does not speak TLS"
-                    )
-                raise MigrationError(message) from e
+            self.pool = await self._create_pool()
             logger.info("Migration manager connection pool created")
+
+    async def _create_pool(self) -> asyncpg.Pool:
+        """Create the asyncpg pool, or raise a `MigrationError` that names
+        which DSN source was used and hints at `sslmode` when relevant.
+
+        2026-09-10 incident: four consecutive Fly release_command failures
+        surfaced only a bare `ConnectionResetError` from inside asyncpg's TLS
+        handshake, with no hint which DSN was even in play. Name the source
+        (already known, not re-derived from env) and the exception, so the
+        next operator does not lose an hour reading a stack trace.
+        """
+        try:
+            return await asyncpg.create_pool(
+                self.database_url,
+                min_size=1,
+                max_size=5,
+                command_timeout=60,
+                # Every ACQUIRE assumes the runtime role (not just connection
+                # creation): the ledger tables (`_ensure_migration_log`) and the
+                # advisory lock go through this pool, a `CREATE TABLE IF NOT
+                # EXISTS` here must not mint a migrator-owned table, and
+                # asyncpg's release-time `RESET ALL` undoes `SET ROLE` -- so an
+                # `init`-only hook would hold for the first acquire and silently
+                # lapse on the second (kimi, 2026-09-11). The hook is idempotent.
+                setup=assume_runtime_role,
+            )
+        except Exception as e:
+            source = "MIGRATION_DATABASE_URL" if migration_dsn_is_dedicated() else "DATABASE_URL"
+            safe_url = self._sanitize_db_url(self.database_url)
+            message = f"Migration runner cannot connect via {source} ({safe_url}): {type(e).__name__}: {e}"
+            if isinstance(e, (ConnectionResetError, OSError, ssl.SSLError)) and not _dsn_has_sslmode(
+                self.database_url
+            ):
+                message += (
+                    "\nhint: DATABASE_URL uses sslmode=disable; add "
+                    "?sslmode=disable to this DSN if the server does not speak TLS"
+                )
+            raise MigrationError(message) from e
 
     async def close(self) -> None:
         """Close connection pool"""
