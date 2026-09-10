@@ -38,7 +38,7 @@ adversarial_rounds: 2
 council_run: council-journal.jsonl
 diff:
   net_lines: >-
-    35 files, +601/-191 measured by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
+    35 files, +602/-191 measured by `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
     16 plists, 4 installers, 2 wrappers, 4 runtime scripts, 1 declared-pairs note, 1 plist
     deleted, 2 ledger rows, and the evidence directory (brief, pack, council journal and the
     two council seats' verdicts).
