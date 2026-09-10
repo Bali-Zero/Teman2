@@ -204,7 +204,7 @@ export function KBLISearch({
 
       {quickFilters && quickFilters.length > 0 && (
         <div className="mt-4 flex flex-wrap items-center gap-2 justify-center lg:justify-start">
-          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-2">
+          <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mr-2">
             Quick:
           </span>
           {quickFilters.map((filter) => (

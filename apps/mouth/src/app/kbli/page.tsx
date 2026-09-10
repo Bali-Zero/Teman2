@@ -122,7 +122,7 @@ export default async function KBLIHomePage({
               </p>
 
               {/* Inline stats */}
-              <p className="mt-3 text-sm text-zinc-500 tracking-wide">
+              <p className="mt-3 text-sm text-zinc-400 tracking-wide">
                 {codeCount} codes&ensp;&middot;&ensp;22
                 sectors&ensp;&middot;&ensp;PMA rules
               </p>
@@ -220,7 +220,7 @@ export default async function KBLIHomePage({
               <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                 {t.num}
               </div>
-              <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+              <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-400">
                 {t.label}
               </div>
             </div>
