@@ -10,12 +10,17 @@ cases where no source line is the correct answer.
 Text-level only: no LLM is called. Whether a live model obeys the new bullet is measured
 by the cycle-360 battery, not by this file.
 
+`RATIFIED_BULLET` below is an independent copy of the fenced paragraph under "Item 3" in
+docs/plans/2026-09-03-relaunch-lanes/ZERO-DECISIONS.md, not derived from the constant
+under test: any drift of the bullet's wording, in either place, fails here.
+
 Guilt: the old mandatory bullet is gone from the SSOT and from every built prompt.
-Innocence: every consumer that interpolates CITATION_RULES (the v1-v4 master templates,
-the three v5 audience builds and the WhatsApp codex-leg persona digest) carries the new
-bullet AND the untouched LEGAL/MONEY and CHAT bullets, and the citation format is still
-there for answers that do rest on a law: the cure is a replacement, not a silent removal
-of citations.
+Innocence: every consumer that carries CITATION_RULES (the v1-v4 master templates, the
+versioned door in prompt_manager, the three v5 audience builds, the WhatsApp persona, the
+Zantara persona and the WhatsApp codex-leg persona digest) carries the ratified bullet
+AND the untouched LEGAL/MONEY and CHAT bullets, and the citation format is still there
+for answers that do rest on a law: the cure is a replacement, not a silent removal of
+citations.
 """
 
 from __future__ import annotations
@@ -24,6 +29,8 @@ from collections.abc import Callable
 
 import pytest
 
+from backend.llm import prompt_manager
+from backend.prompts import whatsapp_persona, zantara_persona
 from backend.prompts import zantara_core as v1
 from backend.prompts import zantara_core_v2 as v2
 from backend.prompts import zantara_core_v3 as v3
@@ -32,19 +39,33 @@ from backend.prompts import zantara_core_v5 as v5
 from backend.services.rag.agentic.prompt_builder import _safe_template_fill
 from backend.services.rag.agentic.wa_package_builder import _build_persona_digest
 
+RATIFIED_BULLET = (
+    "  - **LAW CITATION — required when a law is the basis, forbidden when it is not.**\n"
+    "    Cite a source law at the END of a response ONLY when the answer's substance rests on a\n"
+    "    statute, regulation or official tariff that is present in the KB context you were given.\n"
+    '    Format: "📜 Sumber: [Nama Peraturan], Pasal [X]" or "📜 Source: [Law Name], Article [X]".\n'
+    "    Examples:\n"
+    '    - "📜 Sumber: PP 48/2021 tentang Keimigrasian, Pasal 123"\n'
+    '    - "📜 Sumber: UU PPh No. 36/2008, Pasal 26"\n'
+    "    If the regulation is in the KB but the exact pasal is not, cite the regulation name alone:\n"
+    '    "📜 Sumber: PP 48/2021 tentang Keimigrasian".\n'
+    "    **Cite NOTHING — and add no source line at all — when:**\n"
+    "    (a) the question is operational or commercial rather than legal: our prices, our payment\n"
+    "        methods and bank details, our timelines, which documents WE need from a client, how to\n"
+    "        send them, appointment or office logistics, the status of a file;\n"
+    "    (b) the answer is a courtesy, a greeting, a clarifying question, or a hand-off to a\n"
+    "        colleague;\n"
+    "    (c) the KB context you were given contains no regulation that actually governs the answer.\n"
+    "    In case (c) you may still answer from the context you have — you simply do not attach a\n"
+    "    citation, and you never name a law you were not given.\n"
+    "    **A citation is a claim about the source of the answer. Naming a statute that does not govern\n"
+    "    the question is a fabrication, and it is worse than no citation** — an operational answer with\n"
+    "    no source line is correct and complete.\n"
+)
 NEW_BULLET_HEAD = (
     "  - **LAW CITATION — required when a law is the basis, forbidden when it is not.**"
 )
 KEY_SENTENCE = "required when a law is the basis, forbidden when it is not"
-NO_CITATION_CLAUSE = "**Cite NOTHING — and add no source line at all — when:**"
-NO_CITATION_CASES = (
-    "(a) the question is operational or commercial rather than legal: our prices, our payment",
-    "(b) the answer is a courtesy, a greeting, a clarifying question, or a hand-off to a",
-    "(c) the KB context you were given contains no regulation that actually governs the answer.",
-)
-FORMAT_LINE = (
-    'Format: "📜 Sumber: [Nama Peraturan], Pasal [X]" or "📜 Source: [Law Name], Article [X]".'
-)
 LEGAL_MONEY_BULLET = (
     "  - **LEGAL/MONEY:** Use formal markers with exact values from KB, "
     'e.g., "The price is [AMOUNT FROM KB] [1]."'
@@ -54,8 +75,8 @@ OLD_LABEL = "MANDATORY LAW CITATION"
 OLD_OBLIGATION = "you MUST cite the source law"
 
 
-def _new_bullet() -> str:
-    """The ratified bullet as it sits in CITATION_RULES, from its head to the closing tag."""
+def _ssot_bullet() -> str:
+    """The bullet as it sits in CITATION_RULES, from its head to the closing tag."""
     rules = v1.CITATION_RULES
     start = rules.index(NEW_BULLET_HEAD)
     end = rules.index("</citation_rules>", start)
@@ -71,7 +92,10 @@ _BUILT_PROMPTS: dict[str, Callable[[], str]] = {
     "v2_master_template": lambda: v2.ZANTARA_MASTER_TEMPLATE,
     "v3_master_template": lambda: v3.ZANTARA_MASTER_TEMPLATE,
     "v4_master_template": lambda: v4.ZANTARA_MASTER_TEMPLATE,
+    "prompt_manager_versioned_door": lambda: prompt_manager.ZANTARA_MASTER_TEMPLATE,
     **{f"v5_build_{audience}": _v5_build(audience) for audience in v5.VALID_AUDIENCES},
+    "whatsapp_persona_system_prompt": whatsapp_persona.build_system_prompt,
+    "zantara_persona_system_instruction": lambda: zantara_persona.SYSTEM_INSTRUCTION,
     "wa_codex_persona_digest": _build_persona_digest,
 }
 
@@ -89,13 +113,8 @@ class TestGuilt:
 
 
 class TestInnocence:
-    def test_ssot_carries_the_ratified_bullet(self) -> None:
-        bullet = _new_bullet()
-        assert KEY_SENTENCE in bullet
-        assert NO_CITATION_CLAUSE in bullet
-        for case in NO_CITATION_CASES:
-            assert case in bullet
-        assert FORMAT_LINE in bullet
+    def test_ssot_bullet_is_exactly_the_ratified_text(self) -> None:
+        assert _ssot_bullet() == RATIFIED_BULLET
 
     def test_legal_money_and_chat_bullets_are_untouched_and_first(self) -> None:
         assert v1.CITATION_RULES.splitlines()[:3] == [
@@ -108,9 +127,12 @@ class TestInnocence:
         assert set(v5.VALID_AUDIENCES) == {"client", "team", "creator"}
 
     @pytest.mark.parametrize("name", sorted(_BUILT_PROMPTS))
-    def test_every_consumer_carries_the_new_bullet_and_the_untouched_ones(self, name: str) -> None:
+    def test_every_consumer_carries_the_ratified_bullet_and_the_untouched_ones(
+        self, name: str
+    ) -> None:
         built = _BUILT_PROMPTS[name]()
-        assert _new_bullet() in built
+        assert KEY_SENTENCE in built
+        assert RATIFIED_BULLET in built
         assert LEGAL_MONEY_BULLET in built
         assert CHAT_BULLET in built
 
@@ -118,10 +140,9 @@ class TestInnocence:
 class TestTemplateFillSafety:
     """The prompt goes through `.format()` (v1) and `_safe_template_fill()` (v2-v5)."""
 
-    def test_new_bullet_has_no_braces(self) -> None:
-        bullet = _new_bullet()
-        assert "{" not in bullet
-        assert "}" not in bullet
+    def test_ratified_bullet_has_no_braces(self) -> None:
+        assert "{" not in RATIFIED_BULLET
+        assert "}" not in RATIFIED_BULLET
 
     def test_citation_rules_survive_str_format_unchanged(self) -> None:
         assert v1.CITATION_RULES.format() == v1.CITATION_RULES
@@ -134,6 +155,6 @@ class TestTemplateFillSafety:
             rag_results="",
             query="posso pagare con bonifico?",
         )
-        assert _new_bullet() in filled
+        assert RATIFIED_BULLET in filled
         assert LEGAL_MONEY_BULLET in filled
         assert OLD_LABEL not in filled
