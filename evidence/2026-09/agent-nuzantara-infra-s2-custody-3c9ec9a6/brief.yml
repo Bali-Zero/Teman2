@@ -1,0 +1,111 @@
+gear: 2
+task_id: s2-custody-roots
+mission: S2
+colour: BLUE
+l_level: L1
+deadline: 2026-09-10T19:59:24Z # opened in ~/.claude/state/child-mandates (mandate_budget.py) at 15:1xZ
+base_sha: af8f2da124fe6ae3003fb615170af45216298f2b
+objective: >-
+  The credential-custody detector (scripts/secrets_permissions_audit.py) looks inside
+  ~/nuzantara/.secrets and judges it as custody: a loosened credential file there is a finding
+  whatever the directory chain says. .env* findings become report-only (never chmod'ed), and the
+  three false-positive classes measured on Pro's live default-roots scan stop being findings, so
+  the schedule that follows (PR2) raises only real exposures.
+scope:
+  - scripts/secrets_permissions_audit.py
+  - scripts/tests/test_secrets_permissions_audit.py
+  - evidence/2026-09/agent-nuzantara-infra-s2-custody-3c9ec9a6/
+constraints:
+  - >-
+    The auditor never opens a file it audits (os.lstat/os.stat/os.listdir and path strings only).
+    .env* files carry an explicit READ-ONLY exception to the off-limits rule: their mode is
+    stat'ed and reported, they are never opened and never chmod'ed.
+  - >-
+    No chmod under ~/nuzantara/.secrets or anywhere else, by this window or by the detector
+    (staff-room correction round 3): custody and .env* findings are detected and REPORTED only;
+    the chmod is Zero's gesture. The mktemp guilt fixture is not a credential and may be chmod'ed.
+  - >-
+    Existing consumer (staff-room C1): Mini's com.nuzantara.secrets-perms-sweep runs
+    /usr/bin/python3 (3.9.6) ~/nuzantara/scripts/secrets_permissions_audit.py --fix every 6h on the
+    default roots, from a checkout Mini's puller keeps on main. This change only makes it chmod
+    LESS: --fix refuses by name any path under a .secrets directory and any .env* file; ordinary
+    findings are untouched (test_t13). Baseline before merge: last run 2026-09-10T16:00:20Z
+    rc=0, FINDINGS 0, FIXED 0 FAILED 0, 6821 files under 10 roots; Mini has no ~/nuzantara/.secrets.
+  - >-
+    No paid per-token Anthropic endpoint, no secret printed, no client PII or filename of a
+    credential file in any alert, ledger row or artifact.
+acceptance:
+  - text: >-
+      WHEN a 0644 probe.json sits in "$(mktemp -d)/.secrets" the auditor SHALL report exactly one
+      finding with --no-default-roots --root <that dir> --json, and none after chmod 600
+      (verified pre-change: count 0 — the closed mktemp chain absolved it).
+    probe: mandate-guilt-fixture
+  - text: >-
+      The default roots SHALL include ~/nuzantara/.secrets, proven by a test that fails without
+      the change.
+    probe: pytest test_t1_default_roots_include_main_checkout_secrets
+  - text: >-
+      IF a 0600 file is in a scratch .secrets directory THEN it SHALL be clean, and a .env.example
+      elsewhere in the tree SHALL never be flagged.
+    probe: pytest test_t3_custody_innocence_locked_files_and_dir_mode_not_a_finding + test_t5_env_templates_never_flagged_and_custody_report_counts
+  - text: >-
+      WHEN --fix meets a .env* finding it SHALL print one report line for it and make zero chmod
+      calls on it (mode unchanged).
+    probe: pytest test_t6_fix_never_chmods_env_shaped + test_t8_fix_findings_ignores_credentials_even_when_hand_built + test_t12_fix_never_chmods_a_custody_file + test_t13_fix_touches_exactly_what_it_touched_before
+  - text: >-
+      WHEN run from the main checkout on Pro against ~/nuzantara/.secrets the CUSTODY line SHALL
+      show a file count equal to `find ~/nuzantara/.secrets -type f | wc -l` and a finding count
+      equal to `find ~/nuzantara/.secrets -type f -perm +077 | wc -l`, taken in the same minute.
+    probe: live-custody-oracle
+assumptions:
+  - text: The live .secrets directory holds only regular files (no symlinks, no subdirectories).
+    status: verified
+    probe: python os.listdir classification 15:1xZ — 7 total, 7 regular, 0 symlinks, 0 subdirs, 0 env-shaped
+  - text: Every live default-roots finding on Pro before the change is a false positive.
+    status: verified
+    probe: >-
+      scan of default roots 15:1xZ — 53,680 files, 1.82 s, 4 findings, all group-reachable only:
+      a plugin .env.example template, a 22-byte .npmrc in a plugin marketplace checkout, two
+      ~/.qwen token-usage logs. None is a credential.
+  - text: The scheduled run (PR2) will not raise any finding on Pro's current state.
+    status: unverified
+    probe: post-merge default-roots run from the main checkout shows 0 findings
+appetite:
+  wall_clock_hours: 5
+  adversarial_rounds: 2
+  tokens: 1500000
+team:
+  dux:
+    seat: claude-opus-5[1m]
+    effort: max # observed from the harness; the board names xhigh — recorded, not hidden
+    thread: e5578f19-643a-4789-bb51-d384bef4443a
+    role: plan, integration, evidence, ledger, release (release owner)
+  builder_pr1:
+    seat: kimi-code/kimi-for-coding (scripts/seat_build.sh --seat kimi --tier coding, prepare-only)
+    worktree: .worktrees/infra-s2-roots-kimi
+    thread: .worktrees/seat-build-kimi-20260910T152253Z-3166.log
+  implementer_pr2:
+    seat: claude-sonnet-5 (Agent, model pinned sonnet)
+    worktree: .worktrees/infra-s2-schedule-sonnet
+    thread: recorded in PR2's own brief
+  reviewer:
+    seat: codex (account default model, model_reasoning_effort=xhigh, .claude/scripts/codex-spalla.sh)
+    liveness: self-test LGTM rc=0 at 15:20Z (~/logs/codex-spalla/20260910T152015Z-12209-self-test-self-test.md)
+    thread: ~/logs/codex-spalla/ (report path quoted in the PR body)
+  final_gate:
+    seat: claude-opus-5 --effort xhigh, fresh `claude -p` session outside the chain, commissioned by this Dux
+    thread: pending
+siblings:
+  open_prs_touching_perimeter_or_ledger:
+    ts: 2026-09-10T15:20:19Z
+    result: "#6081, #6080, #5072 touch .claude/skills/modus/PENDING-ARMS.md; none touches scripts/secrets_permissions_audit.py, infra/launchagents/ or scripts/tg_notify.py"
+  agent_start_list:
+    ts: 2026-09-10T15:20:20Z
+    result: "live lanes near this one: s2-custody (infra), s2-roots-kimi (infra, this mission's builder), s1-arm-the-armer (ops, S1), fable-max-sessions-0910 (docs, staff room board #6104); 6 orphans unrelated"
+  list_agents:
+    ts: 2026-09-10T15:20Z
+    result: "peers website-03 (staff room, busy) and website-77 (busy); this session website-30"
+  fleet_mail_list:
+    ts: 2026-09-10T15:20:22Z
+    cmd: scripts/fleet_mail.sh local --list # the board's `pro` has no ssh route from Pro itself
+    result: "12 live sessions; staff room = e8a86e26 (claude-fable-5-1), S1 window running"
