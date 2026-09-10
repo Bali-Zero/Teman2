@@ -8,9 +8,10 @@ base_sha: af8f2da124fe6ae3003fb615170af45216298f2b
 objective: >-
   The credential-custody detector (scripts/secrets_permissions_audit.py) looks inside
   ~/nuzantara/.secrets and judges it as custody: a loosened credential file there is a finding
-  whatever the directory chain says. .env* findings become report-only (never chmod'ed), and the
-  three false-positive classes measured on Pro's live default-roots scan stop being findings, so
-  the schedule that follows (PR2) raises only real exposures.
+  whatever the directory chain says, including through a symlinked root or a .secrets directory met
+  during a walk. Custody and .env* findings are report-only (never chmod'ed). The two measured
+  false-positive classes that would reach an alert (.env templates, token-usage jsonl logs) stop
+  being findings, excluded no wider than measured (Codex R1).
 scope:
   - scripts/secrets_permissions_audit.py
   - scripts/tests/test_secrets_permissions_audit.py
@@ -51,7 +52,12 @@ acceptance:
   - text: >-
       WHEN --fix meets a .env* finding it SHALL print one report line for it and make zero chmod
       calls on it (mode unchanged).
-    probe: pytest test_t6_fix_never_chmods_env_shaped + test_t8_fix_findings_ignores_credentials_even_when_hand_built + test_t12_fix_never_chmods_a_custody_file + test_t13_fix_touches_exactly_what_it_touched_before
+    probe: pytest test_t6_fix_never_chmods_env_shaped + test_t8_fix_findings_ignores_credentials_even_when_hand_built + test_t12_fix_never_chmods_a_custody_file + test_t13_fix_touches_exactly_what_it_touched_before + test_t14_symlinked_custody_root_is_judged_and_never_chmoded + test_t17_fix_findings_refuses_symlinks_and_custody_flags
+  - text: >-
+      IF a custody root is reached through a symlink, met during a walk (any case), or cannot be
+      stat'ed or traversed THEN its loosened file SHALL still be a custody finding, or the audit
+      SHALL be BLIND (rc 2) — never clean (Codex R1 BLOCKERs + MEDIUMs).
+    probe: pytest test_t14 + test_t15_custody_met_during_the_walk_any_case_is_strict + test_t16_custody_access_errors_are_blind_never_clean
   - text: >-
       WHEN run from the main checkout on Pro against ~/nuzantara/.secrets the CUSTODY line SHALL
       show a file count equal to `find ~/nuzantara/.secrets -type f | wc -l` and a finding count
@@ -67,9 +73,14 @@ assumptions:
       scan of default roots 15:1xZ — 53,680 files, 1.82 s, 4 findings, all group-reachable only:
       a plugin .env.example template, a 22-byte .npmrc in a plugin marketplace checkout, two
       ~/.qwen token-usage logs. None is a credential.
-  - text: The scheduled run (PR2) will not raise any finding on Pro's current state.
-    status: unverified
-    probe: post-merge default-roots run from the main checkout shows 0 findings
+  - text: >-
+      The scheduled run (PR2) will not raise any ALERT on Pro's current state. It will list one
+      ordinary finding in its log: a 0644 .npmrc inside a plugin marketplace checkout under
+      ~/.claude, group-reachable through the staff-traversable home. The marketplace prune was
+      dropped (Codex R1: a directory name does not prove its contents public), so this finding is
+      exactly what origin/main already reports. Ordinary findings raise no alert.
+    status: verified
+    probe: default-roots scan with this code 17:26Z — 54,079 files, 12 roots, count 1 (that file), report_only 0, custody 7 files / 0 findings / dir 0700
 appetite:
   wall_clock_hours: 5
   adversarial_rounds: 2

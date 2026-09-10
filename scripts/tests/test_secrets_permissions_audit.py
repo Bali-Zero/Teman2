@@ -624,18 +624,24 @@ def test_t4_same_file_behind_closed_chain_outside_custody_is_absolved(
     tmp_path: Path, capsys: pytest.CaptureFixture
 ) -> None:
     """Paired with T2: only the directory NAME turns custody semantics on;
-    reachability outside custody roots is untouched."""
+    reachability outside custody roots is untouched. A candidate NAME, so
+    the innocence comes from the closed chain, not from the name filter —
+    the open-chain control below proves it is the chain that absolves."""
     module = _load_module(open_chain=False)
     outer = tmp_path / "outer"
     outer.mkdir()
     outer.chmod(0o700)
-    _touch(outer / "vault" / "probe.json", 0o644, "{}\n")
+    _touch(outer / "vault" / "credentials.json", 0o644, "{}\n")
+    args = ["--no-default-roots", "--root", str(outer), "--json"]
 
-    rc, payload = _json_main(
-        module, ["--no-default-roots", "--root", str(outer), "--json"], capsys
-    )
+    rc, payload = _json_main(module, args, capsys)
     assert rc == 0
     assert payload["count"] == 0
+
+    rc, payload = _json_main(audit, args, capsys)  # chain declared open
+    assert rc == 1
+    assert payload["count"] == 1
+    assert payload["findings"][0]["custody"] is False
 
 
 def test_t5_env_templates_never_flagged_and_custody_report_counts(
@@ -700,33 +706,42 @@ def test_t8_fix_findings_ignores_credentials_even_when_hand_built(
     assert _mode_of(target) == 0o644
 
 
-def test_t9_live_false_positives_are_excluded(tmp_path: Path) -> None:
-    """2026-09-10 Pro scan: usage-accounting logs (token-usage jsonl, same
-    family as *token_count*) and credential templates are not findings;
-    a real service.token in the same directory still is."""
+def test_t9_live_false_positives_are_excluded_and_no_wider(tmp_path: Path) -> None:
+    """2026-09-10 Pro scan: usage-accounting jsonl logs (same family as
+    *token_count*) and `.env` templates are not findings. The exclusion is
+    exactly that narrow: key/credential names that merely CONTAIN the
+    excluded words, and non-.env templates, are still findings."""
     _touch(tmp_path / "token-usage-2026-09.jsonl", 0o644, "{}\n")
-    _touch(tmp_path / "token_usage.log", 0o644)
-    _touch(tmp_path / "creds.json.template", 0o644, "{}\n")
+    _touch(tmp_path / "token_usage-2026-09.jsonl", 0o644, "{}\n")
     _touch(tmp_path / ".env.sample", 0o644, "# t\n")
-    real = _touch(tmp_path / "service.token", 0o644, "tok\n")
+    _touch(tmp_path / ".env.local.template", 0o644, "# t\n")
+    real = {
+        _touch(tmp_path / name, 0o644, "x\n")
+        for name in (
+            "service.token",
+            "token-usage.pem",
+            "token_usage.key",
+            "id_rsa.example",
+            "credentials.json.template",
+            "credentials.json.template.bak",
+        )
+    }
 
     findings = audit.scan([tmp_path], max_depth=4)
 
-    assert _paths(findings) == {real}
+    assert _paths(findings) == real
 
 
-def test_t10_plugin_marketplace_checkouts_are_pruned(tmp_path: Path) -> None:
-    """Public third-party plugin checkouts are not descended (live case: a
-    22-byte .npmrc in one); marketplaces under any OTHER parent is walked."""
+def test_t10_plugin_marketplace_checkouts_are_walked(tmp_path: Path) -> None:
+    """A directory's name does not prove its contents public: a credential
+    inside a plugin marketplace checkout is found like any other."""
     vendored = _touch(
-        tmp_path / "plugins" / "marketplaces" / "vendor" / ".npmrc", 0o644, "//\n"
+        tmp_path / "plugins" / "marketplaces" / "vendor" / "id_rsa", 0o644, "k\n"
     )
-    other = _touch(tmp_path / "other" / "marketplaces" / ".npmrc", 0o644, "//\n")
 
     findings = audit.scan([tmp_path], max_depth=4)
 
-    assert vendored not in _paths(findings)
-    assert other in _paths(findings)
+    assert vendored in _paths(findings)
 
 
 @pytest.mark.skipif(os.geteuid() == 0, reason="root ignores permission bits")
@@ -809,3 +824,134 @@ def test_t13_fix_touches_exactly_what_it_touched_before(
     assert {_mode_of(p) for p in (env, walked, named)} == {0o644}
     assert "FIXED: 1  FAILED: 0  REPORT-ONLY: 3" in out
     assert rc == 1
+
+
+def _spy_chmod(monkeypatch: pytest.MonkeyPatch) -> list:
+    calls: list = []
+    real_chmod = os.chmod
+
+    def spy_chmod(path, mode, *args, **kwargs):
+        calls.append(Path(path))
+        return real_chmod(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr(os, "chmod", spy_chmod)
+    return calls
+
+
+def test_t14_symlinked_custody_root_is_judged_and_never_chmoded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """Codex R1 BLOCKERs: `.secrets -> vault` resolves before the walk, so
+    the path loses the name. Every file there is still a custody finding —
+    no name filter, no exclusion — and --fix still leaves it alone."""
+    module = _load_module(open_chain=False)
+    vault = tmp_path / "vault"
+    probe = _touch(vault / "probe.json", 0o644, "{}\n")
+    pub = _touch(vault / "id_rsa.pub", 0o644, "k\n")
+    link = tmp_path / ".secrets"
+    link.symlink_to(vault)
+    args = ["--no-default-roots", "--root", str(link)]
+
+    rc, payload = _json_main(module, args + ["--json"], capsys)
+    assert rc == 1
+    assert {f["path"] for f in payload["findings"]} == {str(probe), str(pub)}
+    assert all(f["custody"] and f["report_only"] for f in payload["findings"])
+
+    calls = _spy_chmod(monkeypatch)
+    rc = module.main(args + ["--fix"])
+    out = capsys.readouterr().out
+    assert calls == []
+    assert {_mode_of(probe), _mode_of(pub)} == {0o644}
+    assert "FIXED: 0  FAILED: 0  REPORT-ONLY: 2" in out
+    assert rc == 1
+
+    for path in (probe, pub):  # innocence on the same fixture
+        path.chmod(0o600)
+    rc, payload = _json_main(module, args + ["--json"], capsys)
+    assert rc == 0
+    assert payload["count"] == 0
+
+
+def test_t15_custody_met_during_the_walk_any_case_is_strict(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    """Naming the PARENT of a `.Secrets` directory behind a closed chain
+    still reports its loosened file as custody, and --fix leaves it."""
+    module = _load_module(open_chain=False)
+    outer = tmp_path / "outer"
+    outer.mkdir()
+    outer.chmod(0o700)
+    probe = _touch(outer / ".Secrets" / "probe.json", 0o644, "{}\n")
+    args = ["--no-default-roots", "--root", str(outer)]
+
+    rc, payload = _json_main(module, args + ["--json"], capsys)
+    assert rc == 1
+    assert payload["count"] == 1
+    assert payload["findings"][0]["custody"] is True
+
+    calls = _spy_chmod(monkeypatch)
+    module.main(args + ["--fix"])
+    capsys.readouterr()
+    assert calls == []
+    assert _mode_of(probe) == 0o644
+
+    probe.chmod(0o600)
+    rc, payload = _json_main(module, args + ["--json"], capsys)
+    assert rc == 0
+    assert payload["count"] == 0
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root ignores permission bits")
+@pytest.mark.parametrize("case", ["parent-closed", "dir-0400"])
+def test_t16_custody_access_errors_are_blind_never_clean(
+    tmp_path: Path, capsys: pytest.CaptureFixture, case: str
+) -> None:
+    """A custody root that cannot be stat'ed (EACCES on its chain), or one
+    that lists but cannot be traversed (0400), is BLIND — never 'clean'."""
+    module = _load_module(open_chain=False)
+    parent = tmp_path / "p"
+    scr = parent / ".secrets"
+    _touch(scr / "probe.json", 0o644, "{}\n")
+    locked = parent if case == "parent-closed" else scr
+    locked.chmod(0o000 if case == "parent-closed" else 0o400)
+    try:
+        rc, payload = _json_main(
+            module, ["--no-default-roots", "--root", str(scr), "--json"], capsys
+        )
+    finally:
+        locked.chmod(0o700)
+
+    assert rc == 2
+    assert payload["blind"] is True
+    assert payload["custody"][0]["blind"] is True
+
+    rc, payload = _json_main(  # innocence: same fixture, access restored
+        module, ["--no-default-roots", "--root", str(scr), "--json"], capsys
+    )
+    assert rc == 1
+    assert payload["blind"] is False
+
+
+def test_t17_fix_findings_refuses_symlinks_and_custody_flags(tmp_path: Path) -> None:
+    """A hand-built Finding on a symlink would hand the chmod to its target
+    (here an .env file); a Finding flagged custody is skipped even when its
+    path lost the name. An ordinary regular file is still fixed."""
+    target = _touch(tmp_path / ".env.real", 0o644, "SECRET=1\n")
+    link = tmp_path / "credentials.json"
+    link.symlink_to(target)
+    flagged = _touch(tmp_path / "vault" / "probe.json", 0o644, "{}\n")
+    ordinary = _touch(tmp_path / "service.token", 0o644, "tok\n")
+
+    fixed, failed, failures = audit.fix_findings(
+        [
+            audit.Finding(path=link, mode=0o644),
+            audit.Finding(path=flagged, mode=0o644, custody=True, report_only=True),
+            audit.Finding(path=ordinary, mode=0o644),
+        ]
+    )
+
+    assert (fixed, failed) == (1, 1)
+    assert failures == [f"{link}: NotARegularFile"]
+    assert _mode_of(target) == 0o644
+    assert _mode_of(flagged) == 0o644
+    assert _mode_of(ordinary) == 0o600
