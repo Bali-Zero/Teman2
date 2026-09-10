@@ -31,13 +31,16 @@ seat_override: >-
   on a journal that would be a receipt for a review that did not happen.
 diff:
   net_lines: >-
-    2 files, +645/-16 (net +629), measured by `git diff --numstat` against
-    the merge-base in this pack's receipts. This is why the deterministic
-    floor for this diff is 2 via the SIZE term alone (no hot-zone path is
-    touched) rather than 1 — declared as such rather than hidden; the
-    ceiling check does not apply (629 net lines is far past the <=60-line
-    small-diff shape, so a Gear-3 declaration is not over-provisioned by
-    that signal).
+    4 files, +892/-16, measured by `git diff --numstat` against the merge-base
+    with origin/main. CI's countable-claims check reads this against the
+    WHOLE PR diff (code plus this evidence pair itself), so a single
+    measured total is kept here rather than a secondary per-file gloss
+    that would go stale on the next edit to this same file — same lesson
+    as the xendit-quarantine-alarm pack's `diff.net_lines` field. The code
+    itself is two files, well past the small-diff ceiling shape, which is
+    why the deterministic floor for the CODE alone is two via the SIZE
+    term (no hot-zone path is touched) rather than one — declared as such
+    rather than hidden, and measured in this pack's receipts.
   behaviour_change: >-
     `scripts/generate_automations_reference.py` renders more of the
     repo-canon surface than before (matagaruda prefix, scheduled-workflows
