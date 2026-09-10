@@ -1407,3 +1407,177 @@ def test_documents_upload_insert_only_projects_columns_that_exist() -> None:
             "add the migration AND update `_DOCUMENTS_LIVE_COLUMNS` in the "
             "same commit; otherwise drop it from the INSERT."
         )
+
+
+# ---------------------------------------------------------------------------
+# Invariant 7 (extended) — no `documents` query anywhere in the portal
+# service layer names a column that does not exist, not just its INSERTs
+# ---------------------------------------------------------------------------
+#
+# Born 2026-09-11, same incident as the INSERT check above. `get_upload_metrics`
+# in `portal_service.py` ran `COUNT(*) FILTER (WHERE extracted_text IS NOT
+# NULL AND extracted_text != '') as with_ocr` — the SAME phantom column as
+# the INSERT bug, in a SELECT/FILTER instead of an INSERT, with no test at
+# all covering it (the INSERT check above only parses `INSERT INTO
+# documents`). It stayed silent because Postgres never ran it: the method
+# is not wired to any router yet.
+#
+# The `documents` writers set `ocr_status` ('pending'/'processing'/
+# 'completed') and `ocr_extracted_data` (jsonb) — see
+# `crm_drive_backfill_service.py`'s `d.ocr_status = 'completed' AND
+# d.ocr_extracted_data IS NOT NULL`, the existing "has real OCR data" check
+# elsewhere in this codebase — so `get_upload_metrics` was fixed to the same
+# predicate rather than inventing a new one.
+#
+# Scope, deliberately: this checks `FROM`/`JOIN`/`UPDATE documents` blocks in
+# TRIPLE-QUOTED sql strings only, across the three files in
+# `backend/services/portal/` that actually query this table
+# (`portal_service.py`, `_mixins/documents.py`, `_mixins/dashboard.py`).
+# `INSERT INTO documents` statements are skipped here — the check above
+# already owns those. Two things are intentionally OUT of reach, because
+# resolving them needs a real SQL parser and a regex faking it is a
+# liability, not a safety net:
+#   1. A single-line (non-triple-quoted) SQL string, e.g. this file's own
+#      `"DELETE FROM documents WHERE id = $1"` — trivial (`id` only), and
+#      out of scope for the same reason a Python-side full parser is.
+#   2. Bare, UNQUALIFIED identifiers inside a JOINed/aliased query. When
+#      `documents` is aliased (`FROM documents d`), only `d.<col>`-qualified
+#      references are checked, and only against `documents`'s own columns —
+#      e.g. `dashboard.py`'s `WHERE p.client_id = $1 AND pt.category =
+#      'company'` (practices/practice_types columns, reached through a JOIN)
+#      is correctly never checked against `documents` here. A version of
+#      this test that resolved bare identifiers in a JOIN by guessing which
+#      table they belonged to would have flagged `pt.category` as a phantom
+#      `documents.category` — a false positive, and exactly the kind of
+#      wrong-guardian failure (superscar #3) this narrower scope avoids.
+
+
+def _top_level_split(text: str, sep: str = ",") -> list[str]:
+    """Split `text` on `sep`, but only at paren/bracket depth 0 — so
+    `COUNT(*) FILTER (WHERE a = 1, b = 2)` (hypothetical) is not sliced
+    inside the FILTER's own parens."""
+    parts: list[str] = []
+    depth = 0
+    current: list[str] = []
+    for ch in text:
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth -= 1
+        if ch == sep and depth == 0:
+            parts.append("".join(current))
+            current = []
+        else:
+            current.append(ch)
+    parts.append("".join(current))
+    return parts
+
+
+_PORTAL_DOCUMENTS_SQL_FILES = (
+    "apps/backend-rag/backend/services/portal/portal_service.py",
+    "apps/backend-rag/backend/services/portal/_mixins/documents.py",
+    "apps/backend-rag/backend/services/portal/_mixins/dashboard.py",
+)
+
+_TRIPLE_QUOTED_SQL = re.compile(r'(?:f)?"""(.*?)"""', re.DOTALL)
+_SQL_CLAUSE_KEYWORDS = {
+    "where", "on", "set", "order", "group", "limit", "having", "union",
+    "join", "left", "right", "inner", "full", "cross", "returning", "as",
+}
+_TABLE_ALIAS = re.compile(
+    r"\b(?:FROM|JOIN|UPDATE)\s+([a-zA-Z_]\w*)(?:\s+(?:AS\s+)?([a-zA-Z_]\w*))?",
+    re.I,
+)
+_COMPARISON = re.compile(r"\b([a-zA-Z_][\w.]*)\s*(?:=|!=|<>|<=|>=|<|>|\bIS\b)", re.I)
+
+
+def _documents_reference_mode(blob: str) -> tuple[bool, set[str]]:
+    """`(references_documents, aliases_bound_to_documents)` for one SQL
+    blob. Empty `aliases` with `references_documents` True means `documents`
+    appears with no alias at all (a bare single-table statement) — every
+    unqualified identifier in the blob may be safely checked. A non-empty
+    alias set means `documents` was aliased/joined; only identifiers
+    qualified with one of THOSE aliases are ever checked (see the "Scope"
+    note above for why an other-table alias is never resolved to
+    `documents`)."""
+    references = False
+    aliases: set[str] = set()
+    for table, alias in _TABLE_ALIAS.findall(blob):
+        if table.lower() != "documents":
+            continue
+        references = True
+        if alias and alias.lower() not in _SQL_CLAUSE_KEYWORDS:
+            aliases.add(alias.lower())
+    return references, aliases
+
+
+def _documents_column_refs(blob: str, aliases: set[str]) -> set[str]:
+    """Bare (if `aliases` is empty) or alias-qualified (for `aliases`)
+    column-shaped identifiers referenced in `blob`'s SELECT list and
+    comparison/`IS` predicates."""
+    candidates: set[str] = set()
+
+    def _take(token: str) -> None:
+        token = token.strip()
+        if not token:
+            return
+        if "." in token:
+            qualifier, _, col = token.rpartition(".")
+            if aliases and qualifier.lower() in aliases:
+                candidates.add(col)
+        elif not aliases:
+            candidates.add(token)
+
+    select_match = re.search(r"\bSELECT\b(.*?)\bFROM\b", blob, re.I | re.DOTALL)
+    if select_match:
+        for item in _top_level_split(select_match.group(1)):
+            item = re.split(r"\s+AS\s+", item.strip(), maxsplit=1, flags=re.I)[0].strip()
+            if re.fullmatch(r"[a-zA-Z_][\w.]*", item):
+                _take(item)
+
+    for token in _COMPARISON.findall(blob):
+        _take(token)
+
+    return candidates
+
+
+def test_portal_documents_queries_only_reference_columns_that_exist() -> None:
+    """See the "Invariant 7 (extended)" block comment above."""
+    checked_any = False
+    for rel in _PORTAL_DOCUMENTS_SQL_FILES:
+        path = _repo_root() / rel
+        assert path.exists(), f"{rel} missing — update this test's file list"
+        src = path.read_text(encoding="utf-8")
+
+        for blob in _TRIPLE_QUOTED_SQL.findall(src):
+            if "documents" not in blob.lower():
+                continue
+            if re.search(r"INSERT\s+INTO\s+documents\b", blob, re.I):
+                continue  # owned by test_documents_upload_insert_only_projects_columns_that_exist
+
+            references, aliases = _documents_reference_mode(blob)
+            if not references:
+                continue
+            checked_any = True
+
+            refs = _documents_column_refs(blob, aliases)
+            bad = refs - _DOCUMENTS_LIVE_COLUMNS
+            assert not bad, (
+                f"{rel} references `documents` column(s) {sorted(bad)} that "
+                "do not exist on the live table (verified via "
+                "information_schema.columns, 2026-09-11). Same class as "
+                "`storage_path`/`extracted_text` in the upload INSERT, just "
+                "reached through a SELECT/WHERE/FILTER/UPDATE instead — "
+                "exactly how `get_upload_metrics`'s `extracted_text IS NOT "
+                "NULL` FILTER shipped with no test at all. If the column is "
+                "genuinely new, add the migration AND update "
+                "`_DOCUMENTS_LIVE_COLUMNS` in the same commit; otherwise fix "
+                "the query."
+            )
+
+    assert checked_any, (
+        "No non-INSERT `documents` query matched across "
+        f"{_PORTAL_DOCUMENTS_SQL_FILES} — either every query moved/changed "
+        "shape, or this test's regex stopped matching. Update the file list "
+        "or the regex rather than deleting the check."
+    )
