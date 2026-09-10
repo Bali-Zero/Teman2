@@ -31,10 +31,15 @@ seat_override: >-
   happen.
 diff:
   net_lines: >-
-    5 files, +529/-4, measured by `git diff --numstat origin/main...HEAD`
-    in this pack's receipts. Mostly the wrapper script and its 7-scenario/
-    32-assert test file; the plist, the declared-pairs entry and the
-    organism repoint are each small.
+    7 files, +757/-4, measured by `git diff --numstat` against the merge-base
+    with origin/main. CI's countable-claims check reads this against the
+    WHOLE PR diff (code plus this evidence pair itself), so a single
+    measured total is kept here rather than a secondary per-file gloss
+    that would go stale on the next edit to this same file — same lesson
+    as the xendit-quarantine-alarm pack's `diff.net_lines` field. The code
+    itself is five files: the wrapper script, its 7-scenario/32-assert
+    test file, the plist, the declared-pairs entry and the organism
+    repoint.
   behaviour_change: >-
     Adds a new nightly cron surface (wrapper + plist) and repoints the
     organism registry's automations-reference organ at it. No existing
