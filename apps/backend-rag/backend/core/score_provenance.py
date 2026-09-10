@@ -56,8 +56,10 @@ HYBRID_RRF_FORMATTED: Final = "hybrid_rrf_formatted"
 DENSE_FORMATTED: Final = "dense_formatted"
 
 #: A reranker overwrote `score` with its own relevance score (`core/reranker.py:169-180`,
-#: `services/rag/reranker.py:345-352`). `score_raw` is the value it replaced, which those
-#: writers also keep under `vector_score`.
+#: `services/rag/reranker.py:345-352`). `score_raw` is the value that reranking pass
+#: replaced — on a FIRST rerank that is the retrieval score those writers also keep under
+#: `vector_score`, but a result reranked twice carries the previous rerank's output, so
+#: `score_raw` and `vector_score` are not interchangeable in general.
 RERANKED: Final = "reranked"
 
 #: The curated-QA block minted at a literal 1.0 by `wa_package_builder.py:529`. Nothing was

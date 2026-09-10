@@ -602,7 +602,11 @@ async def build_context_package(
     abstain_policy = build_abstain_policy(query)
     evidence_score = calculate_evidence_score(
         sources=[
-            {"score": chunk["score"], "score_kind": score_provenance.kind_of(chunk)}
+            {
+                "score": chunk["score"],
+                "score_kind": score_provenance.kind_of(chunk),
+                "score_raw": score_provenance.raw_of(chunk),
+            }
             for chunk in chunks
         ],
         context_gathered=[chunk["text"] for chunk in chunks],

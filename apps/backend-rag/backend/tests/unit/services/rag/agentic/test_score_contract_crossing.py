@@ -413,6 +413,18 @@ async def test_10_scorer_projection_carries_score_kind_on_every_element(
         "every source reached the scorer as UNKNOWN — the projection kept the key "
         "but the chain lost the provenance somewhere upstream"
     )
+    # The kind is half the promise; `score_raw` is the other half, and it used
+    # to die at this exact hop — the projection carried {score, score_kind}
+    # only (Codex round 1, finding 10). Asserted by EXACT value, not presence:
+    # these are the two fusion outputs `_formatter_backed_retriever` fed in,
+    # so a projection that re-derived the number instead of carrying the
+    # writer's own would not match.
+    for source in captured["sources"]:
+        assert score_provenance.SCORE_RAW_KEY in source
+    assert {source[score_provenance.SCORE_RAW_KEY] for source in captured["sources"]} == {
+        0.5,
+        1.0 / 3.0,
+    }
 
 
 # ============================================================================
@@ -457,52 +469,164 @@ async def test_11_real_package_prints_every_source_with_its_kind() -> None:
 # ============================================================================
 
 
+# Frozen 2026-09-11 by RUNNING the base sha 1d726045c9's own
+# `_canonical_wire`/`_package_hash` in a throwaway checkout, on the inputs
+# below, and pasting the results here as literals. They are the pre-PR
+# oracle. Computing them with the CURRENT code instead would make the test
+# tautological: a coherent change to BOTH the serializer and the digest
+# would break every stored package while keeping the assertion green
+# (Codex round 1, finding 8 — that is exactly what the first version did).
+_BASE_SEALED_WIRE = (
+    '{"chunks":[{"collection":"visa_oracle","score":0.7,'
+    '"text":"legacy chunk, no score_kind"}],'
+    '"evidence_inputs":{"abstain":false,"context_length":1,"dlp":false,'
+    '"domain":"visa","evidence_score":0.5,"label_threshold":0.12},'
+    '"history":[{"content":"hi","role":"user"}],"persona_digest":"pd",'
+    '"pricing_block":null,"thread_epoch":1}'
+)
+_BASE_SEALED_DIGEST = "466643afc3c393d49fcaddd4a92f5f8be63d64e88dc351c6c90921edc84a4454"
+
+_BASE_SEALED_HISTORY = [{"role": "user", "content": "hi"}]
+_BASE_SEALED_CHUNKS = [
+    {"collection": "visa_oracle", "text": "legacy chunk, no score_kind", "score": 0.7}
+]
+_BASE_SEALED_EVIDENCE_INPUTS = {
+    "evidence_score": 0.5,
+    "context_length": 1,
+    "domain": "visa",
+    "label_threshold": 0.12,
+    "abstain": False,
+    "dlp": False,
+}
+
+
 def test_a_package_sealed_before_score_kind_existed_still_verifies() -> None:
-    """A pre-PR sealed package — chunks with NO score_kind/score_raw key at
-    all — must still verify under the NEW code.
+    """A package sealed by the BASE code — chunks with no score_kind/score_raw
+    key at all — must still verify, and emit the same bytes, under this PR.
 
-    The proof is `ContextPackage.__post_init__` (wa_package_builder.py
-    :153-170) itself NOT raising on construction: it recomputes
-    `_canonical_wire` over the given fields and raises ValueError if the
-    digest doesn't match `package_hash`. That IS the real verification the
-    deploy boundary relies on when it reloads a stored package — this test
-    exercises that exact path rather than re-implementing the hash check.
+    `ContextPackage.__post_init__` (wa_package_builder.py :153-172) recomputes
+    the wire and raises ValueError unless the digest matches, so constructing
+    against the FROZEN base digest without raising is the verification the
+    deploy boundary performs when it reloads a stored package.
     """
-    history = [{"role": "user", "content": "hi"}]
-    chunks = [{"collection": "visa_oracle", "text": "legacy chunk, no score_kind", "score": 0.7}]
-    assert score_provenance.SCORE_KIND_KEY not in chunks[0]  # the pre-PR shape, made explicit
-    pricing_block = None
-    persona_digest = "pd"
-    evidence_inputs = {
-        "evidence_score": 0.5,
-        "context_length": 1,
-        "domain": "visa",
-        "label_threshold": 0.12,
-        "abstain": False,
-        "dlp": False,
-    }
-    thread_epoch = 1
+    assert score_provenance.SCORE_KIND_KEY not in _BASE_SEALED_CHUNKS[0]
+    assert score_provenance.SCORE_RAW_KEY not in _BASE_SEALED_CHUNKS[0]
 
-    # The digest a pre-PR build would have sealed — computed once, exactly
-    # as the original build did, never recomputed again below.
-    package_hash = wpb_module._package_hash(
-        history=history,
-        chunks=chunks,
-        pricing_block=pricing_block,
-        persona_digest=persona_digest,
-        evidence_inputs=evidence_inputs,
-        thread_epoch=thread_epoch,
-    )
-
-    # __post_init__ re-verifies digest == wire; constructing without a
-    # raised ValueError IS the proof that the pre-PR digest still holds.
     package = ContextPackage(
-        history=history,
-        chunks=chunks,
-        pricing_block=pricing_block,
-        persona_digest=persona_digest,
-        evidence_inputs=evidence_inputs,
-        thread_epoch=thread_epoch,
-        package_hash=package_hash,
+        history=_BASE_SEALED_HISTORY,
+        chunks=_BASE_SEALED_CHUNKS,
+        pricing_block=None,
+        persona_digest="pd",
+        evidence_inputs=_BASE_SEALED_EVIDENCE_INPUTS,
+        thread_epoch=1,
+        package_hash=_BASE_SEALED_DIGEST,
     )
-    assert package.package_hash == package_hash
+    assert package.package_hash == _BASE_SEALED_DIGEST
+    # Not just "it verifies": the bytes this PR puts on the wire for a
+    # pre-PR package are byte-identical to the ones the base emitted.
+    assert package.wire_text() == _BASE_SEALED_WIRE
+
+
+def test_the_frozen_base_digest_rejects_altered_bytes() -> None:
+    """The companion to the test above, and the reason it means anything: the
+    frozen digest must FAIL on content it does not cover. Without this, a
+    __post_init__ that verified nothing would pass the compatibility test.
+    """
+    altered_chunks = [dict(_BASE_SEALED_CHUNKS[0], score=0.71)]
+    with pytest.raises(ValueError, match="package_hash does not cover"):
+        ContextPackage(
+            history=_BASE_SEALED_HISTORY,
+            chunks=altered_chunks,
+            pricing_block=None,
+            persona_digest="pd",
+            evidence_inputs=_BASE_SEALED_EVIDENCE_INPUTS,
+            thread_epoch=1,
+            package_hash=_BASE_SEALED_DIGEST,
+        )
+
+
+# ============================================================================
+# Case 13 (Codex round 1, finding 9 — BLOCKER): the ORDINARY search paths.
+# `format_search_results` has five call sites in search_service.py and for
+# the first version of this PR only ONE of them declared a kind, so
+# `search()` and `_single_query_search()` — the reranker-skipped routes that
+# reach the scorer through VectorSearchTool — shipped results of KNOWN dense
+# origin stamped UNKNOWN. Case 13c is the counterweight: `search()`'s single
+# formatter call is fed by THREE branches, and the fix must not sweep the
+# hybrid one into "dense" while curing the two that are.
+# ============================================================================
+
+
+def _dense_raw() -> dict:
+    return {
+        "ids": ["1"],
+        "documents": ["doc"],
+        "metadatas": [{}],
+        "distances": [0.1],
+        "scores": [0.9],
+        "total_found": 1,
+    }
+
+
+@pytest.mark.asyncio
+async def test_13a_ordinary_search_dense_branch_declares_dense_formatted(
+    search_service: SearchService,
+) -> None:
+    mock_client = MagicMock()
+    mock_client.search = AsyncMock(return_value=_dense_raw())
+    search_service.collection_manager.get_collection.return_value = mock_client
+    search_service._bm25_enabled = False  # the plain dense-only branch
+    search_service._bm25_vectorizer = None
+
+    result = await search_service.search(
+        query="test", user_level=1, limit=5, collection_override="visa_oracle"
+    )
+
+    assert result["results"][0]["score_kind"] == score_provenance.DENSE_FORMATTED
+    assert result["results"][0]["score_raw"] == 0.9
+
+
+@pytest.mark.asyncio
+async def test_13b_single_query_search_declares_dense_formatted(
+    search_service: SearchService,
+) -> None:
+    mock_client = MagicMock()
+    mock_client.search = AsyncMock(return_value=_dense_raw())
+    search_service.collection_manager.get_collection.return_value = mock_client
+
+    result = await search_service._single_query_search(
+        query="test", user_level=1, limit=5, tier_filter=None, apply_filters=None
+    )
+
+    assert result["results"][0]["score_kind"] == score_provenance.DENSE_FORMATTED
+    assert result["results"][0]["score_raw"] == 0.9
+
+
+@pytest.mark.asyncio
+async def test_13c_ordinary_search_hybrid_branch_is_not_mislabelled_dense(
+    search_service: SearchService,
+) -> None:
+    """The regression guard for the cure itself.
+
+    `search()`'s ONE formatter call serves the hybrid success branch as well
+    as the two dense ones. Declaring DENSE_FORMATTED at the call site would
+    have cured finding 9 by introducing a fresh lie — a genuinely hybrid
+    result served as dense. The kind must be decided per BRANCH, and on the
+    hybrid branch by the PRESENCE of the "search_type" key (ruling R1).
+    """
+    hybrid_raw = dict(_dense_raw(), search_type="hybrid_rrf")
+    mock_client = MagicMock()
+    mock_client.hybrid_search = AsyncMock(return_value=hybrid_raw)
+    mock_client.search = AsyncMock(return_value=_dense_raw())
+    search_service.collection_manager.get_collection.return_value = mock_client
+
+    mock_bm25 = MagicMock()
+    mock_bm25.generate_query_sparse_vector.return_value = {"indices": [1], "values": [0.5]}
+    search_service._bm25_vectorizer = mock_bm25
+    search_service._bm25_enabled = True
+
+    result = await search_service.search(
+        query="test", user_level=1, limit=5, collection_override="visa_oracle"
+    )
+
+    assert result["results"][0]["score_kind"] == score_provenance.HYBRID_RRF_FORMATTED
