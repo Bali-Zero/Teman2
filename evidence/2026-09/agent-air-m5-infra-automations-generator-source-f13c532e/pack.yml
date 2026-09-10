@@ -31,8 +31,10 @@ seat_override: >-
   on a journal that would be a receipt for a review that did not happen.
 diff:
   net_lines: >-
-    4 files, +892/-16, measured by `git diff --numstat` against the merge-base
-    with origin/main. CI's countable-claims check reads this against the
+    4 files, +897/-16, measured by `git diff --numstat` against the merge-base
+    with origin/main (re-measured after the fourth commit, which dropped the
+    Desktop/nuzantara path form for the TCC lint — scripts/lint_tcc_desktop_paths.py
+    / superscar #1 W84). CI's countable-claims check reads this against the
     WHOLE PR diff (code plus this evidence pair itself), so a single
     measured total is kept here rather than a secondary per-file gloss
     that would go stale on the next edit to this same file — same lesson

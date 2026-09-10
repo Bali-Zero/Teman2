@@ -565,12 +565,15 @@ def _resolve_repo_script_path(script_arg: str) -> Path | None:
     """Map a HOME-absolute script path (as seen in a plist's ProgramArguments)
     to its repo-tracked twin, so the generator can read the twin's own header
     instead of duplicating free text. Two routes:
-      1. `/Users/<user>/nuzantara/<rel>` or `/Users/<user>/Desktop/nuzantara/<rel>`
-         — the script already lives in the repo at NUZANTARA_ROOT/<rel>.
+      1. `/Users/<user>/nuzantara/<rel>` — the script already lives in the
+         repo at NUZANTARA_ROOT/<rel>. The old TCC-exposed sibling checkout
+         under the user's Desktop folder (superscar #1, W84) is a symlink to
+         this same path on every fleet machine post-migration and is never a
+         second route here — see `scripts/lint_tcc_desktop_paths.py`.
       2. Any other `/Users/<user>/...` HOME path — looked up as a `live` entry
          in infra/home-fork/declared-pairs.json, resolved to its `repo` twin.
     Returns None if the path can't be mapped or the mapped file doesn't exist."""
-    m = re.match(r"^/Users/[^/]+/(?:Desktop/)?nuzantara/(.+)$", script_arg)
+    m = re.match(r"^/Users/[^/]+/nuzantara/(.+)$", script_arg)
     if m:
         candidate = NUZANTARA_ROOT / m.group(1)
         return candidate if candidate.is_file() else None
