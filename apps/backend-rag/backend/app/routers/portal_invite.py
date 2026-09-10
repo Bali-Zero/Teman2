@@ -218,7 +218,12 @@ async def send_invitation(
         )
 
         # Build full invite URL
-        base_url = settings.frontend_portal_url
+        # rstrip: the two halves are concatenated raw, and `invite_url` already
+        # starts with "/". A base carrying a trailing slash (a natural thing to
+        # type into an env var) would mail "//portal/register?token=..." — a
+        # protocol-relative-looking path no test with a clean value can catch
+        # (cross-family review, 2026-09-10).
+        base_url = settings.frontend_portal_url.rstrip("/")
         full_invite_url = f"{base_url}{result['invite_url']}"
 
         # Try to send email via the canonical Brevo adapter.

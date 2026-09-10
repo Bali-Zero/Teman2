@@ -14,6 +14,7 @@ from backend.app.routers.portal_invite import (
     send_invitation,
     send_portal_invite_email,
 )
+from backend.services.portal.invite_service import INVITE_PATH_TEMPLATE
 
 
 class FakeInviteService:
@@ -285,3 +286,93 @@ async def test_resend_invitation_allows_a_realistic_free_text_role(
     )
 
     assert response["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_mailed_link_uses_the_live_portal_default_and_the_real_path(
+    mock_db_pool: MagicMock,
+) -> None:
+    """The link the client clicks, composed by the two halves that really build it.
+
+    Deliberately does NOT monkeypatch `frontend_portal_url`: the production
+    machine has FRONTEND_PORTAL_URL unset (measured 2026-09-10), so the FIELD
+    DEFAULT is what ships in the mail, and a test that patches the value can
+    stay green while the default rots. The path half comes from the service's
+    own `INVITE_PATH_TEMPLATE`, not from a hand-written string — the sibling
+    tests above hard-code `/portal/invite?token=`, a path
+    `InviteService.create_invitation` has not produced for a long time, which
+    is exactly the drift this case exists to catch (cross-family review
+    finding, 2026-09-10).
+    """
+    db_pool = mock_db_pool
+    db_pool._mock_conn.fetchrow.return_value = {
+        "id": 11898,
+        "assigned_to": None,
+        "created_by": None,
+    }
+
+    class RealPathInviteService:
+        async def create_invitation(self, **kwargs: object) -> dict[str, object]:
+            return {
+                "invitation_id": 1,
+                "client_id": 11898,
+                "client_name": "Test Client",
+                "email": "client@example.com",
+                "token": "tok-123",
+                "expires_at": "2026-09-13T00:00:00+00:00",
+                "invite_url": INVITE_PATH_TEMPLATE.format(token="tok-123"),
+            }
+
+    with patch(
+        "backend.app.routers.portal_invite.send_portal_invite_email",
+        new=AsyncMock(),
+    ) as mock_sender:
+        await send_invitation(
+            SendInviteRequest(client_id=11898, email="client@example.com"),
+            current_user={"email": "zero@balizero.com", "role": "Founder"},
+            invite_service=RealPathInviteService(),  # type: ignore[arg-type]
+            db_pool=db_pool,
+        )
+
+    assert (
+        mock_sender.await_args.kwargs["invite_url"]
+        == "https://my.balizero.com/portal/register?token=tok-123"
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_trailing_slash_on_the_base_url_does_not_double_the_separator(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_db_pool: MagicMock,
+) -> None:
+    """`FRONTEND_PORTAL_URL=https://my.balizero.com/` must not mail `//portal/...`.
+
+    The router concatenates the base and the service's path raw, and the path
+    already starts with "/". Every other case here uses a clean base, so the
+    doubled separator was invisible to the suite (cross-family review, 2026-09-10).
+    """
+    db_pool = mock_db_pool
+    db_pool._mock_conn.fetchrow.return_value = {
+        "id": 11898,
+        "assigned_to": None,
+        "created_by": None,
+    }
+    monkeypatch.setattr(
+        "backend.app.routers.portal_invite.settings.frontend_portal_url",
+        "https://my.balizero.com/",
+    )
+
+    with patch(
+        "backend.app.routers.portal_invite.send_portal_invite_email",
+        new=AsyncMock(),
+    ) as mock_sender:
+        await send_invitation(
+            SendInviteRequest(client_id=11898, email="client@example.com"),
+            current_user={"email": "zero@balizero.com", "role": "Founder"},
+            invite_service=FakeInviteService(),  # type: ignore[arg-type]
+            db_pool=db_pool,
+        )
+
+    mailed = mock_sender.await_args.kwargs["invite_url"]
+    assert "//portal" not in mailed
+    assert mailed.startswith("https://my.balizero.com/portal")

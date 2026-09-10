@@ -1,0 +1,182 @@
+brief_ref: evidence/brief.yml
+council_run: journal.jsonl
+plan_ref: >-
+  No ledger row: this diff was opened from a live measurement taken while preparing the
+  Subhi/Krisna/Ari portal pilot — the invitation link's base URL named a host that answers
+  404. One concern, one setting and the two halves that compose the link.
+
+lanes:
+  - lane: portal-url-ground
+    role: read
+    seat: >-
+      claude-opus-5 (conducting session, M5). Read FRONTEND_PORTAL_URL on the live machine
+      (fly ssh, os.environ.get -> UNSET), confirmed fly.toml and fly secrets carry no such
+      name, measured both hosts with curl on the FULL registration path, read the mouth
+      project's domain list, and counted the invitation table in production (242 minted,
+      7 used, none since 2026-07-10).
+  - lane: portal-url-build
+    role: build
+    seat: >-
+      claude-opus-5 (conducting session, M5). Changed the default, extracted the service's
+      path into INVITE_PATH_TEMPLATE, added the rstrip at the composition point, wrote 6
+      cases. Guilt+innocence proven per case: reverting the default fails 3, removing the
+      rstrip fails 1, and the whole set passes on the cure.
+  - lane: portal-url-refute-crossfamily-1
+    role: review
+    seat: >-
+      codex-gpt-5.6-sol, sandbox read-only, foreground. Read the diff and the repository.
+      4 findings, no blocker; 2 cured in this PR, 1 declared, 1 named out of scope.
+      Verdict in journal.jsonl.
+  - lane: portal-url-refute-crossfamily-2
+    role: review
+    seat: >-
+      kimi-code/k3, single-shot prompt, read the repo itself rather than the diff text.
+      6 findings, no blocker; 1 cured (trailing slash), 3 declared, 1 out of scope, 1
+      refuted with the measurement it doubted. Verdict in journal.jsonl.
+  - lane: portal-url-gate-independent
+    role: review
+    seat: >-
+      claude-opus-5, independent Gear-3 gate, fresh dispatch in its own worktree, never
+      reads the build lane's reasoning — re-measures the two hosts, re-runs guilt+innocence
+      from scratch and posts gear3_final_gate on this PR's head SHA.
+
+seat_diversity: satisfied
+seat_diversity_note: >-
+  One build lane, so D3's non-Anthropic BUILD-seat requirement does not bind by its own
+  terms (">= 2 build lanes"). Both named non-Anthropic review seats delivered substantive,
+  non-overlapping judgements this session: codex found the test-design gap (the suite could
+  stay green while the real composition rotted) and kimi found the trailing-slash defect
+  neither the author nor codex saw. Two of their findings were cured in the diff rather than
+  argued with, and one of kimi's was refuted with the measurement it questioned.
+
+diff:
+  files: 8
+  net_lines: 421
+  measured_at: >-
+    counted with `git diff --numstat $(git merge-base origin/main HEAD)...HEAD` (three-dot,
+    W102-safe) immediately before the final commit that lands this pack.
+
+residual_risks:
+  - >-
+    The production hostname is now the default in EVERY environment — named independently by
+    both review seats. NOT cured here: an environment-aware default would have to read
+    `settings.environment` from inside a field default, which pydantic does not do without a
+    validator, and adding one widens a one-setting diff into a config-machinery change. The
+    exposure is bounded: production sets FRONTEND_PORTAL_URL explicitly as of 2026-09-10, and
+    a dev machine that mails a production link is a dev machine whose mail endpoint is
+    deliberately dead. Declared, not inherited silently.
+  - >-
+    Two sibling endpoints still report success without mailing anything:
+    `portal_invite.resend_invitation` returns "Invitation resent successfully" after minting a
+    NEW token (which expires the previous one) and never calls the mailer, and
+    `crm_portal_integration.send_portal_invite` returns "Invitation sent to <email>" while only
+    minting. Found by codex, verified on disk. Out of scope for a base-URL change, and neither
+    is reachable from the workspace panel — its "Send again" button calls
+    /api/portal/invite/send, which does mail. Recorded so the next reader does not discover it
+    the way this session did.
+  - >-
+    The tests assert a string, not liveness: if my.balizero.com itself ever stops serving
+    /portal/register, this suite stays green. A composed-link liveness probe belongs in the
+    deploy QA, not in a unit test, and is a separate change.
+  - >-
+    The dead `nuzantara-mouth.vercel.app` alias still appears in cors_config.py,
+    hybrid_auth.py and apps/mouth/src/lib/api/openapi.yaml. Harmless — an allowed origin that
+    resolves nowhere grants nothing — and removing it is a different concern.
+  - >-
+    The GARUDA outbox consumer reads the same setting and gets the same correction, but has no
+    consumer-level test of its own here. Named by kimi; declared.
+
+pii_scan: clean
+
+receipts:
+  - claim: "FRONTEND_PORTAL_URL is unset on the machine that serves the invite endpoint"
+    cmd: >-
+      fly ssh console -a nuzantara-rag -C 'python -c "os.environ.get(\"FRONTEND_PORTAL_URL\",\"UNSET\")"'
+    result: "FRONTEND_PORTAL_URL=UNSET (and ADMIN_EMAILS=UNSET, measured in the same call)"
+    exit: 0
+    ts: "2026-09-10T02:05Z"
+    seat: session (M5)
+  - claim: "The old default is dead on every path; the new one serves the registration route"
+    cmd: >-
+      curl -o /dev/null -w '%{http_code}' on https://nuzantara-mouth.vercel.app/ ,
+      https://nuzantara-mouth.vercel.app/portal/register and
+      'https://my.balizero.com/portal/register?token=x'
+    result: "404, 404, 200"
+    exit: 0
+    ts: "2026-09-10T02:12Z"
+    seat: session (M5)
+  - claim: "The mouth Vercel project carries no nuzantara-mouth alias"
+    cmd: "Vercel API get_project for mouth under team nuzantara-2026"
+    result: "domains: [mouth-nuzantara-2026.vercel.app, mouth-git-main-nuzantara-2026.vercel.app]"
+    exit: 0
+    ts: "2026-09-10T02:20Z"
+    seat: session (M5)
+  - claim: "Production agrees that no invitation has been usable for two months"
+    cmd: "SELECT count(*), count(*) FILTER (WHERE used_at IS NOT NULL), max(created_at) FROM client_invitations"
+    result: "242 minted, 7 used, last minted 2026-07-10"
+    exit: 0
+    ts: "2026-09-10T02:35Z"
+    seat: session (M5)
+  - claim: "Guilt and innocence, per case"
+    cmd: >-
+      pytest backend/tests/unit/app/test_config.py::TestPortalInviteUrl
+      backend/tests/unit/routers/test_portal_invite.py::test_mailed_link_uses_the_live_portal_default_and_the_real_path
+      backend/tests/unit/routers/test_portal_invite.py::test_a_trailing_slash_on_the_base_url_does_not_double_the_separator
+      (and the two files whole) ; then sed the default back to the vercel alias and re-run ;
+      then remove the rstrip and re-run
+    result: >-
+      18 passed on the cure. Vercel default -> 3 failed (live-domain, no-vercel-alias, composed-URL).
+      rstrip removed -> 1 failed (trailing-slash). Both reverted, tree clean.
+    exit: 0
+    ts: "2026-09-10T04:05Z"
+    seat: session (M5)
+  - claim: "Nothing else in the portal/GARUDA suites regressed"
+    cmd: >-
+      pytest backend/tests/unit/routers/test_portal_invite.py backend/tests/unit/app/test_config.py
+      backend/tests/unit/routers/test_portal_invite_p0_capability.py
+      backend/tests/services/garuda_orders/test_portal_invite_handler.py
+      backend/tests/unit/app/routers/test_crm_portal_status_placeholder.py
+    result: "48 passed"
+    exit: 0
+    ts: "2026-09-10T03:30Z"
+    seat: session (M5)
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      The config cases reconstruct the expected URL by hand instead of invoking a consumer, and
+      the existing router tests assert a `/portal/invite?token=` link the service has not
+      produced for a long time — so the whole suite could pass while the real composition was
+      broken. CURED: the path is now a constant on the service (INVITE_PATH_TEMPLATE), and a
+      consumer-level case runs the real router with the real default, no monkeypatch.
+  - seat: codex-gpt-5.6-sol
+    status: CONFIRMED
+    objection: >-
+      The Pydantic field description embedded dated production observations and incident
+      history, which will go stale in place. CURED: the description is contractual now and the
+      evidence lives in this pack.
+  - seat: codex-gpt-5.6-sol
+    status: RETRACTED
+    objection: >-
+      Sibling endpoints (resend_invitation, crm_portal_integration.send_portal_invite) claim
+      success without mailing. Verified true on disk, but a different defect from a base-URL
+      change and unreachable from the panel. Recorded in residual_risks.
+  - seat: kimi-code/k3
+    status: CONFIRMED
+    objection: >-
+      No trailing-slash normalisation: the router concatenates base and path raw, so a base
+      ending in "/" would mail `//portal/register?token=...`, and every existing case used a
+      clean base. CURED at the composition point with a dedicated, guilt-proven case.
+  - seat: kimi-code/k3
+    status: RETRACTED
+    objection: >-
+      "200 on the root proves nothing about /portal/register?token=". The measurement was taken
+      on the full path, not the root: `curl 'https://my.balizero.com/portal/register?token=x'`
+      -> 200, and the same call against the old default's full path -> 404. Recorded in the
+      ground journal line and in the receipts above.
+  - seat: kimi-code/k3
+    status: RETRACTED
+    objection: >-
+      The dead alias lingers in cors_config.py, hybrid_auth.py and openapi.yaml. True and
+      harmless — an allowed origin that resolves nowhere grants nothing. Different concern.

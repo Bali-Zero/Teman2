@@ -1243,15 +1243,13 @@ class Settings(BaseSettings):
     frontend_portal_url: str = Field(
         default="https://my.balizero.com",
         description=(
-            "Frontend portal base URL for client invitations. Set via FRONTEND_PORTAL_URL "
-            "env var. The default is the LIVE portal domain, not a Vercel deployment URL: "
-            "FRONTEND_PORTAL_URL is unset on nuzantara-rag (measured on the running machine "
-            "2026-09-10), so the default is what every invite email actually embeds, and the "
-            "previous default `https://nuzantara-mouth.vercel.app` answers 404 on every path "
-            "- the project carries no such alias (measured the same day). Every portal "
-            "invitation minted since that alias died linked a client to a dead host. "
-            "`https://my.balizero.com/portal/register?token=...` - the path "
-            "`InviteService.create_invitation` builds - answers 200."
+            "Base URL of the CLIENT PORTAL, prefixed to InviteService's "
+            "`/portal/register?token=...` to build the link mailed in every portal "
+            "invitation. Set via FRONTEND_PORTAL_URL env var. This default is load-"
+            "bearing, not a local-dev fallback: when the env var is unset in "
+            "production it IS the link the client clicks, so it must name the live "
+            "portal domain and never a Vercel deployment alias (whose lifetime is a "
+            "deploy's, not the product's) — see the PR that set it."
         ),
     )
     balizero_website_url: str = Field(
