@@ -20,13 +20,25 @@ Usage:
     secrets_permissions_audit.py [--json] [--fix] [--root PATH ...]
                                   [--max-depth N]
 
+Custody roots (2026-09-10 incident): a directory named like
+~/nuzantara/.secrets is judged by the FILE's own mode — any group/other
+bit is a finding whatever the directory chain says; the chain is one
+chmod away from opening, the file modes are the invariant the owner
+restored by hand. Custody and `.env*` findings are REPORT-ONLY: printed
+for a human, never chmod'ed — `--fix` refuses, by name, any file under a
+`.secrets` directory and any `.env*` file. Credentials stay with the
+human (Builder Contract rule 5); automated edits of `.env*` are
+off-limits in this repo.
+
 Exit codes:
     Report mode (default): 0 if no findings, 1 if any findings.
-    --fix mode:             0 if every finding was fixed (or none existed),
-                             1 if any chmod failed.
+    --fix mode:             0 only if nothing failed AND no report-only
+                             finding remains, else 1.
     Either mode:            2 if the scan was BLIND (roots exist but zero
-                             files traversed — TCC/sandbox denial): a blind
-                             audit never certifies "clean" (W84 discipline).
+                             files traversed — TCC/sandbox denial, or a
+                             custody directory that cannot be listed): a
+                             blind audit never certifies "clean" (W84
+                             discipline).
 """
 
 from __future__ import annotations
@@ -80,6 +92,10 @@ _DEFAULT_ROOT_RELATIVE_PATHS: Tuple[str, ...] = (
     "~/scripts",
     "~/Library/LaunchAgents",
     "~/.nuzantara-cron",
+    # Main checkout's credential directory (2026-09-10: found loosened,
+    # restored by hand — the auditor never looked here: root was missing).
+    # Relative to HOME so it is the same on every node; skipped if absent.
+    "~/nuzantara/.secrets",
 )
 
 #: Name globs (case-insensitive) that mark a file as credential-like.
@@ -110,12 +126,30 @@ SECRET_NAME_GLOBS: Tuple[str, ...] = (
 
 #: Name globs (case-insensitive) that are false positives and must never
 #: be reported, even if they also match a SECRET_NAME_GLOBS pattern.
+#: The last five are the measured 2026-09-10 Pro false positives and no
+#: wider: `.env` TEMPLATES (a plugin's .env.example) and usage-accounting
+#: jsonl logs (token-usage-2026-09.jsonl, same family as *token_count*).
+#: Kept this narrow on purpose — `id_rsa.example`, `token-usage.pem` or
+#: `credentials.json.template` are still candidates. Never applied inside custody.
 EXCLUDE_NAME_GLOBS: Tuple[str, ...] = (
     "*.pub",
     "known_hosts*",
     "*token_count*",
     "*tokenizer*",
+    "*token-usage*.jsonl",
+    "*token_usage*.jsonl",
+    ".env*.example",
+    ".env*.sample",
+    ".env*.template",
 )
+
+#: Directory basenames (compared lower-case) that mark a credential CUSTODY
+#: directory: inside one EVERY file is a credential and its own mode is the
+#: invariant — no name filter, no exclusion, no chain (see scan strict).
+CUSTODY_DIR_NAMES = frozenset({".secrets"})
+
+#: `.env*` files are report-only: shown for a human, never chmod'ed.
+ENV_NAME_GLOBS: Tuple[str, ...] = (".env*", "*.env*")
 
 #: Trailing backup-suffix pattern: ".bak", ".bak-<anything without / or .>",
 #: ".orig", or a lone trailing "~". A backup inherits the sensitivity of
@@ -133,6 +167,34 @@ class Finding:
 
     path: Path
     mode: int  # permission bits only, e.g. 0o644 (see stat.S_IMODE)
+    # Custody: judged by the file's own mode alone — the directory chain
+    # is one chmod away from opening (2026-09-10).
+    custody: bool = False
+    # Custody or `.env*`: reported for a human, never chmod'ed.
+    # fix_findings honours this flag AND re-checks the name.
+    report_only: bool = False
+
+
+@dataclass(frozen=True)
+class CustodyRootReport:
+    """Per-custody-root summary for main() (text line and JSON entry)."""
+
+    root: Path
+    files_traversed: int
+    findings: int
+    dir_mode: Optional[str]  # octal string, e.g. "0700"; None if unstatable
+    blind: bool  # dir exists but os.listdir raised — the walk saw nothing
+
+
+@dataclass(frozen=True)
+class AuditResult:
+    """Merged custody (strict) + plain (reachability) scan result."""
+
+    findings: List[Finding]
+    custody: List[CustodyRootReport]
+    roots_existing: int
+    files_traversed: int
+    blind: bool
 
 
 # --------------------------------------------------------------------------
@@ -186,19 +248,59 @@ def is_candidate_path(path: Path) -> bool:
     return _fnmatch_any(str(path), SECRET_NAME_GLOBS)
 
 
+def is_custody_root(root: Path) -> bool:
+    """True when the NAMED root's basename (after expanduser, BEFORE any
+    symlink resolution) marks a credential custody directory.
+
+    WHY custody: the file's own mode decides inside one, not the directory
+    chain — the chain is one chmod away from opening, so an audit that
+    waits for it reports the exposure one mistake late (2026-09-10: a
+    0644 probe inside a still-closed .secrets read count: 0).
+    """
+    return Path(root).expanduser().name.lower() in CUSTODY_DIR_NAMES
+
+
+def is_env_shaped(path: Path) -> bool:
+    """True when the basename — or its backup-stripped form — matches an
+    `.env*` glob. Same helpers as is_candidate_path, case-insensitive.
+
+    `.env*` files are off-limits to automated edits in this repo: their
+    modes are reported for a human, never fixed.
+    """
+    name = path.name
+    stripped = strip_backup_suffix(name)
+    variants = {name} if stripped == name else {name, stripped}
+    return any(_fnmatch_any(variant, ENV_NAME_GLOBS) for variant in variants)
+
+
+def is_under_custody(path: Path) -> bool:
+    """True when any directory above `path` is named like a custody root —
+    whether the caller NAMED that root or the walk merely met it.
+
+    Credentials stay with the human (Builder Contract rule 5): a file under
+    a `.secrets` directory is reported, never chmod'ed. Checked by name so
+    fix_findings needs nothing but the path.
+    """
+    return any(part.lower() in CUSTODY_DIR_NAMES for part in Path(path).parent.parts)
+
+
 # --------------------------------------------------------------------------
 # Filesystem walk (depth-capped, symlink-safe)
 # --------------------------------------------------------------------------
 
 
 def _iter_candidate_paths_under_dir(
-    root: Path, max_depth: int, stats: Optional[dict] = None
+    root: Path, max_depth: int, stats: Optional[dict] = None, all_files: bool = False
 ) -> Iterator[Path]:
     """Yield candidate-named file paths under a directory `root`.
 
     Depth 0 = files directly in `root`. Descent stops once a directory's
     depth reaches `max_depth` (files at that depth are still yielded; its
     subdirectories are not visited). Never follows symlinked directories.
+
+    `all_files` (a custody root, possibly reached through a symlink that
+    dropped the `.secrets` name) yields every file and prunes nothing; a
+    `.secrets` directory met during an ordinary walk gets the same.
     """
     for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
         rel = Path(dirpath).relative_to(root)
@@ -206,19 +308,22 @@ def _iter_candidate_paths_under_dir(
 
         if depth >= max_depth:
             dirnames[:] = []
-        else:
+        elif not all_files:
             dirnames[:] = [d for d in dirnames if d not in PRUNE_DIR_NAMES]
 
         if stats is not None:
             stats["files_traversed"] = stats.get("files_traversed", 0) + len(filenames)
         for filename in filenames:
             candidate = Path(dirpath) / filename
-            if is_candidate_path(candidate):
+            if all_files or is_under_custody(candidate) or is_candidate_path(candidate):
                 yield candidate
 
 
 def _iter_candidate_paths(
-    roots: Iterable[Path], max_depth: int, stats: Optional[dict] = None
+    roots: Iterable[Path],
+    max_depth: int,
+    stats: Optional[dict] = None,
+    all_files: bool = False,
 ) -> Iterator[Path]:
     """Yield candidate-named file paths across all `roots`.
 
@@ -259,11 +364,13 @@ def _iter_candidate_paths(
             if key in seen_dirs:
                 continue
             seen_dirs.add(key)
-            yield from _iter_candidate_paths_under_dir(root, max_depth, stats)
+            yield from _iter_candidate_paths_under_dir(
+                root, max_depth, stats, all_files
+            )
         elif stat.S_ISREG(root_lstat.st_mode):
             if stats is not None:
                 stats["files_traversed"] = stats.get("files_traversed", 0) + 1
-            if is_candidate_path(root):
+            if all_files or is_candidate_path(root):
                 yield root
         # sockets/fifos/char-devices as roots: nothing sensible to scan
 
@@ -337,6 +444,7 @@ def scan(
     roots: Iterable[Path],
     max_depth: int = DEFAULT_MAX_DEPTH,
     stats: Optional[dict] = None,
+    strict: bool = False,
 ) -> List[Finding]:
     """Scan `roots` for credential-like files with group/other permission
     bits set. Returns findings sorted by path. Never opens file contents —
@@ -346,20 +454,31 @@ def scan(
     `files_traversed` so the caller can detect a BLIND scan (roots exist
     but zero files were walked — TCC/sandbox denial): a scan that cannot
     see must never certify "clean" (W84 dead-green discipline).
+
+    `strict` (custody semantics, used by audit() for custody roots):
+    every file under the root is a candidate, reachability is skipped —
+    any group/other bit on the file is a finding whatever the chain says —
+    and findings are `custody=True`. A file under a `.secrets` directory
+    met during an ordinary walk is judged the same way. A custody file
+    that cannot be lstat'ed is counted in stats["unreadable"]: audit()
+    turns that into BLIND, never "clean".
     """
     findings: List[Finding] = []
     seen_files: set = set()
     traversal_cache: dict = {}  # one scan's worth — see _dir_traversal
 
-    for candidate in _iter_candidate_paths(roots, max_depth, stats):
+    for candidate in _iter_candidate_paths(roots, max_depth, stats, strict):
         key = os.path.abspath(candidate)
         if key in seen_files:
             continue
         seen_files.add(key)
 
+        custody = strict or is_under_custody(candidate)
         try:
             lst = os.lstat(candidate)
         except OSError:
+            if custody and stats is not None:
+                stats["unreadable"] = stats.get("unreadable", 0) + 1
             continue
 
         if not stat.S_ISREG(lst.st_mode):
@@ -369,14 +488,25 @@ def scan(
         if not mode_bits & 0o077:
             continue
 
-        # The mode says who MAY read; the directory chain says who can get
-        # here at all. Both have to be true for the file to be exposed.
-        can_group, can_other = reachable_by(candidate, traversal_cache)
-        exposed = (bool(mode_bits & 0o070) and can_group) or (
-            bool(mode_bits & 0o007) and can_other
-        )
+        if custody:
+            # Custody semantics: the file's own mode is the invariant.
+            exposed = True
+        else:
+            # The mode says who MAY read; the directory chain says who can
+            # get here at all. Both have to be true for exposure.
+            can_group, can_other = reachable_by(candidate, traversal_cache)
+            exposed = (bool(mode_bits & 0o070) and can_group) or (
+                bool(mode_bits & 0o007) and can_other
+            )
         if exposed:
-            findings.append(Finding(path=candidate, mode=mode_bits))
+            findings.append(
+                Finding(
+                    path=candidate,
+                    mode=mode_bits,
+                    custody=custody,
+                    report_only=custody or is_env_shaped(candidate),
+                )
+            )
 
     findings.sort(key=lambda f: str(f.path))
     return findings
@@ -391,12 +521,100 @@ def default_roots() -> List[Path]:
 
 
 # --------------------------------------------------------------------------
+# audit — custody roots one-by-one in strict mode, everything else together
+# --------------------------------------------------------------------------
+
+
+def audit(
+    roots: Sequence[Path], max_depth: int = DEFAULT_MAX_DEPTH
+) -> AuditResult:
+    """Scan `roots` with custody semantics: custody roots one-by-one in
+    strict mode (the file's own mode decides, whatever the chain), all
+    other roots together with reachability. Findings merge, deduped by
+    os.path.abspath with the custody finding winning. `blind` is True
+    when roots exist but zero files were traversed, or any custody
+    directory cannot be listed (W84: a blind audit never certifies clean).
+    """
+    merged: dict = {}
+    reports: List[CustodyRootReport] = []
+    total_roots_existing = 0
+    total_files = 0
+    unreadable = 0
+
+    custody_roots = [r for r in roots if is_custody_root(r)]
+    plain_roots = [r for r in roots if not is_custody_root(r)]
+
+    seen_custody: set = set()
+    for raw_root in custody_roots:
+        root = Path(raw_root).expanduser()
+        try:
+            root_stat = os.stat(root)
+        except (FileNotFoundError, NotADirectoryError):
+            continue  # a custody root that does not exist is omitted
+        except OSError:
+            # Exists but cannot be stat'ed (EACCES on the chain): BLIND.
+            reports.append(CustodyRootReport(root, 0, 0, None, True))
+            continue
+        if not stat.S_ISDIR(root_stat.st_mode):
+            continue
+        key = os.path.realpath(root)
+        if key in seen_custody:
+            continue  # named twice (default + --root): one report, not two
+        seen_custody.add(key)
+        stats: dict = {}
+        findings = scan([root], max_depth=max_depth, stats=stats, strict=True)
+        for finding in findings:
+            merged[os.path.abspath(finding.path)] = finding  # custody wins
+        try:
+            os.listdir(root)
+            blind_dir = stats.get("unreadable", 0) > 0
+        except OSError:
+            blind_dir = True
+        dir_mode: Optional[str] = _mode_octal(stat.S_IMODE(root_stat.st_mode))
+        reports.append(
+            CustodyRootReport(
+                root=root,
+                files_traversed=stats.get("files_traversed", 0),
+                findings=len(findings),
+                dir_mode=dir_mode,
+                blind=blind_dir,
+            )
+        )
+        total_roots_existing += stats.get("roots_existing", 0)
+        total_files += stats.get("files_traversed", 0)
+
+    if plain_roots:
+        stats = {}
+        findings = scan(plain_roots, max_depth=max_depth, stats=stats)
+        for finding in findings:
+            merged.setdefault(os.path.abspath(finding.path), finding)
+        total_roots_existing += stats.get("roots_existing", 0)
+        total_files += stats.get("files_traversed", 0)
+        unreadable += stats.get("unreadable", 0)
+
+    blind = (
+        (total_roots_existing > 0 and total_files == 0)
+        or unreadable > 0
+        or any(r.blind for r in reports)
+    )
+    return AuditResult(
+        findings=sorted(merged.values(), key=lambda f: str(f.path)),
+        custody=reports,
+        roots_existing=total_roots_existing,
+        files_traversed=total_files,
+        blind=blind,
+    )
+
+
+# --------------------------------------------------------------------------
 # --fix
 # --------------------------------------------------------------------------
 
 
 def fix_findings(findings: Sequence[Finding]) -> Tuple[int, int, List[str]]:
-    """chmod every finding to 0o600 and verify via a fresh lstat.
+    """chmod every finding to 0o600 — except custody and `.env*` files,
+    which are never touched, and anything that is not a regular file (a
+    symlink would hand the chmod to its target) — and verify via lstat.
 
     Returns (fixed_count, failed_count, failure_messages). Failure
     messages carry only the path and the exception CLASS NAME — never
@@ -407,7 +625,22 @@ def fix_findings(findings: Sequence[Finding]) -> Tuple[int, int, List[str]]:
     failures: List[str] = []
 
     for finding in findings:
+        if (
+            finding.custody
+            or finding.report_only
+            or is_env_shaped(finding.path)
+            or is_under_custody(finding.path)
+        ):
+            # Custody and `.env*` are report-only: never chmod'ed, counted
+            # by main(). The flag covers a custody root reached through a
+            # symlink (its path lost the name); the NAME covers a hand-built
+            # Finding — either one is enough to skip.
+            continue
         try:
+            if not stat.S_ISREG(os.lstat(finding.path).st_mode):
+                failed += 1
+                failures.append(f"{finding.path}: NotARegularFile")
+                continue
             os.chmod(finding.path, 0o600)
             verify = os.lstat(finding.path)
         except OSError as exc:
@@ -452,7 +685,12 @@ def _mode_octal(mode: int) -> str:
 
 
 def _finding_to_dict(finding: Finding) -> dict:
-    return {"path": str(finding.path), "mode": _mode_octal(finding.mode)}
+    return {
+        "path": str(finding.path),
+        "mode": _mode_octal(finding.mode),
+        "custody": finding.custody,
+        "report_only": finding.report_only,
+    }
 
 
 def resolve_roots(
@@ -478,7 +716,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
-    parser.add_argument("--fix", action="store_true", help="chmod 0600 every finding.")
+    parser.add_argument("--fix", action="store_true", help="chmod 0600 every ordinary finding (custody and .env* stay report-only).")
     parser.add_argument(
         "--no-default-roots",
         action="store_true",
@@ -506,15 +744,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser.parse_args(argv)
 
     roots = resolve_roots(args.roots, no_defaults=args.no_default_roots)
-    stats: dict = {}
-    findings = scan(roots, max_depth=args.max_depth, stats=stats)
+    result = audit(roots, max_depth=args.max_depth)
 
-    roots_existing = stats.get("roots_existing", 0)
-    files_traversed = stats.get("files_traversed", 0)
+    findings = result.findings
+    roots_existing = result.roots_existing
+    files_traversed = result.files_traversed
     # BLIND-scan guard (W84 dead-green): roots exist but the walk saw ZERO
-    # files → TCC/sandbox/permission denial is hiding the world. A blind
-    # audit must never certify "clean".
-    blind = roots_existing > 0 and files_traversed == 0
+    # files, or a custody directory cannot be listed. Never certify "clean".
+    blind = result.blind
+    report_only = sum(1 for f in findings if f.report_only)
 
     fixed: Optional[int] = None
     failed = 0
@@ -532,11 +770,39 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "roots_existing": roots_existing,
             "files_traversed": files_traversed,
             "blind": blind,
+            "custody": [
+                {
+                    "root": str(r.root),
+                    "files_traversed": r.files_traversed,
+                    "findings": r.findings,
+                    "dir_mode": r.dir_mode,
+                    "blind": r.blind,
+                }
+                for r in result.custody
+            ],
+            "report_only": report_only,
         }
         print(json.dumps(payload))
     else:
+        home = str(Path.home())
+        for r in result.custody:
+            shown = str(r.root)
+            if shown.startswith(home):
+                shown = "~" + shown[len(home):]
+            line = (
+                f"CUSTODY {shown}: {r.files_traversed} file(s) checked, "
+                f"{r.findings} finding(s), dir {r.dir_mode or '????'}"
+            )
+            if r.blind:
+                line += " — BLIND: directory cannot be listed"
+            print(line)
         for finding in findings:
-            print(f"{_mode_octal(finding.mode)} {finding.path}")
+            line = f"{_mode_octal(finding.mode)} {finding.path}"
+            if finding.custody:
+                line += "  CUSTODY"
+            if finding.report_only:
+                line += "  REPORT-ONLY (never chmod'ed)"
+            print(line)
         print(
             f"FINDINGS: {len(findings)} file(s) with group/other permissions "
             f"matching credential name patterns "
@@ -549,14 +815,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "filesystem. Result is NOT trustworthy; do not read as clean."
             )
         if args.fix and not blind:
-            print(f"FIXED: {fixed}  FAILED: {failed}")
+            print(f"FIXED: {fixed}  FAILED: {failed}  REPORT-ONLY: {report_only}")
             for failure in failures:
                 print(f"  ! {failure}")
 
     if blind:
         return 2
     if args.fix:
-        return 0 if failed == 0 else 1
+        # 0 only when nothing failed AND no report-only finding remains
+        # (custody and .env* are never chmod'ed, so one keeps rc 1).
+        return 0 if failed == 0 and report_only == 0 else 1
     return 0 if not findings else 1
 
 
