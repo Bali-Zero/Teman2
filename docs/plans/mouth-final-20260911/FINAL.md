@@ -107,13 +107,17 @@ compilato da topic 3 (sessione `nuzantara-c8`, Fable 5.1: l'intestazione del fil
 - **D1, D2, D3, D5** riguardano solo la finestra Oracle e sono registrate: D1 sì (copy in
   finestra, refuter Codex + gate Opus giudicano); D2 hold invariate (stringerle è un nuovo
   mandato); D3 non ora (numero e consenso sono di Zero, fallback neutro in PR-O4); D5
-  denominatore 67 walk + estensioni dichiarate; target (a) decisivi (SUPPORTED +
-  NO_SUPPORTED_PATH) con flag ≥ 38/67 = nessuna regressione dal baseline 31+7; senza flag il
-  baseline è già 65/67 (55+10) e la riga D5 scrive «≥ 57/67 dopo Δ1», che nella notazione
-  della spec (PR-O3: 2/10/55 → 0/10/57) conta i soli SUPPORTED — il panel lo segnala come
-  ambiguo (§8) e la correzione della riga spetta a topic 3; (b) NEEDS_INPUT senza domanda
-  raggiungibile = 0, da leggere DOPO Δ1 e sul baseline con flag (senza flag il baseline ne
-  ha 2: è ciò che Δ1 cura); (c) 100 % delle review residue con causa specifica EN/ID.
+  (riga corretta da topic 3 il 2026-09-11 dopo il panel): denominatore 67 walk + estensioni
+  dichiarate; target (a) decisivi (SUPPORTED + NO_SUPPORTED_PATH) con flag ≥ 38/67 = nessuna
+  regressione dal baseline 31+7, senza flag ≥ 65/67 (baseline 55+10) e attesi 67 dopo Δ1
+  (SUPPORTED 55 → 57), da MISURARE — se la misura contraddice, STOP e riporta; (b) NEEDS_INPUT
+  senza domanda raggiungibile = 0 DOPO Δ1, senza flag e sul baseline con flag (i 2 del baseline
+  senza flag sono il difetto che Δ1 cura, non un criterio da passare); (c) 100 % delle review
+  residue con causa specifica EN/ID. D6 porta inoltre la clausola «la lista read-only del prompt
+  §6 vale SALVO i perimetri Δ1/Δ2 qui nominati» e l'accettazione di PR-O3 con casi yes E no.
+
+**Precedenza:** il file vivo `02-DECISIONI-ZERO.md` sul Mini prevale su questo paragrafo; le
+finestre lo rileggono prima di ogni PR, questo documento ne è la fotografia del 2026-09-11.
 
 **Rollback comune (spec v6.2 §4, vale per entrambi gli slot):** revert in NUOVA PR armata; per
 `apps/mouth` `vercel promote` della Production precedente PRIMA che il revert atterri; per
@@ -127,8 +131,8 @@ lecito solo se non annulla una PR dell'altra finestra già provata — altriment
 è la PR di revert. Il promote si fa per ID di deployment (l'ultima Production che precede la PR
 della finestra e segue ogni PR già provata dell'altra), dopo aver confrontato l'ascendenza del
 candidato con lo SHA servito. Attenzione all'autopromote del Mini
-(`infra/launchagents/wrappers/mini-vercel-autopromote.sh`, ogni ~12 min, promozione ON di
-default): finché il revert non è su main può ri-promuovere l'ultima build di main e disfare il
+(`infra/launchagents/wrappers/mini-vercel-autopromote.sh`, `StartInterval` 120 s nel plist, caso
+peggiore 2 min dopo READY, promozione ON di default): finché il revert non è su main può ri-promuovere l'ultima build di main e disfare il
 promote; il rollback durevole è quindi il merge del revert, e il promote copre solo quella
 finestra — chi fa rollback lo dichiara nel report, e se serve una sospensione dell'autopromote
 (kill switch `MINI_VERCEL_AUTOPROMOTE_ENABLED=false` nel suo ambiente launchd) la chiede a Zero.
@@ -227,7 +231,7 @@ blocco W7 «Scelgo D-A»). Ownership: NewsHero/LatestNews sono di W4 (W5 eredita
 R19 si legge solo con git show 6603d2913e:<path>: mai la patch di quarantena, mai il branch
 riaperto, mai apps/website attivo. Rollback: revert in NUOVA PR armata e, per apps/mouth,
 vercel promote per ID della Production che precede la tua PR e segue ogni PR provata dell'altra
-finestra, PRIMA che il revert atterri; l'autopromote del Mini può ri-promuovere main entro ~12 min,
+finestra, PRIMA che il revert atterri; l'autopromote del Mini (StartInterval 120 s) può ri-promuovere main entro ~2 min,
 quindi il rollback durevole è il merge del revert. File condiviso inatteso
 con la finestra Oracle: vince la PR già armata, l'altra rebasa, collisione riportata a Zero.
 Builder Contract 5: questa finestra Claude shippa da sola (review → merge → arm → deploy →
@@ -255,7 +259,8 @@ salta W7. La remediation npm dell'intero workspace resta una finestra distinta.
 
 ## 7. Stato
 
-- PR #6124 (mappa design): OPEN, auto-merge armato. Gate fresco Opus 5 = PASS-WITH-CONDITIONS
+- PR #6124 (mappa design): FUSA su main il 2026-09-10T21:39Z; il ledger #6168 registra le
+  condizioni scaricate dentro la PR. Gate fresco Opus 5 = PASS-WITH-CONDITIONS
   su `cdfe4a3d26` (13/14 spot-check verificati); le condizioni C1–C4 (tre clausole sul
   meccanismo di contrasto Merah Putih: il contesto required è always-triggering con sentinella
   in-job, mai path-filtered; la leva per ritirarlo è la branch protection, `contexts.json` è
@@ -269,8 +274,11 @@ salta W7. La remediation npm dell'intero workspace resta una finestra distinta.
   §7 e `gear_reason` inesatti. Rework: tre file di evidenza non portanti tolti e registrati con
   hash in `EXCLUDED-FILES.sha256`, seat rinominato `panel-gemini-default-agy.md`, un filtro
   regex nel `.secrets.baseline` per i due manifest JSON (digest di file, non credenziali),
-  churn misurato sotto soglia e brief riscritto. La spec v6.2 di topic 3 entra su main con la
-  PR-O0 della finestra Oracle, non con questa.
+  churn misurato sotto soglia e brief riscritto. Secondo gate fresco su `9dd29eb9db` =
+  PASS-WITH-CONDITIONS (riga ledger via #6172): C1 cadenza dell'autopromote (2 min, non 12),
+  C2 allineamento di §4 e delle disposizioni 2/4/16/29/30 alle righe D5/D6 correnti — entrambe
+  applicate da questa PR di follow-up. La spec v6.2 di topic 3 entra su main con la PR-O0
+  della finestra Oracle, non con questa.
 - Nessuna finestra è aperta da questo documento. Zero apre i due slot dal kit Desktop del Mini:
   W-ORACLE subito (D1, D5, D6, M già registrate), W2 subito (nessuna ruling necessaria); W7 solo
   dopo D4 = D-A.
@@ -300,14 +308,14 @@ file; R = respinta con evidenza):
 2. P — il prompt W-ORACLE congela questions/consents e poi ordina Δ1/Δ2 (Kimi HIGH, Gemini
    HIGH): il prompt è la spec v6.2 §6 pinnata da topic 3; la lettura vincolante è scritta in §5
    e la riga D6 di `02-DECISIONI-ZERO.md`, riletta prima di ogni PR, apre i file per nome.
-   Chiesta a topic 3 una clausola esplicita «read-only salvo Δ1/Δ2» nella riga D6.
+   Fatto da topic 3 (2026-09-11): la riga D6 scrive «la lista read-only del prompt §6 vale
+   SALVO questi perimetri qui nominati».
 3. A — `globals.css` (Gemini HIGH, Kimi MED): l'addendum concedeva un blocco `.r19-*` (riga
    della spec Oracle §2) contro W2 §2 e W7 §2 che lo vietano; vince il perimetro più stretto.
-4. P — D5 (a) «≥ 57/67 senza flag» (Gemini HIGH, Kimi MED) e (b) «= 0 prima e dopo» con 2
-   NEEDS_INPUT nel baseline senza flag (Kimi MED): riga di topic 3; §4 riporta la lettura
-   coerente con la spec (57 = SUPPORTED nella notazione di PR-O3; decisivi già 65/67; (b) dopo
-   Δ1 e sul baseline con flag); correzione chiesta a topic 3. Nessuna PR dipende da D5 prima di
-   PR-O3.
+4. A — D5 (a) «≥ 57/67 senza flag» (Gemini HIGH, Kimi MED) e (b) «= 0 prima e dopo» con 2
+   NEEDS_INPUT nel baseline senza flag (Kimi MED): riga corretta da topic 3 (2026-09-11): (a)
+   senza flag ≥ 65/67, attesi 67 dopo Δ1 (SUPPORTED 55 → 57); (b) = 0 DOPO Δ1, senza flag e con
+   flag; §4 la riporta. Nessuna PR dipende da D5 prima di PR-O3.
 5. A — «25 codici» → 29 (Gemini MED).
 6. A — attribuzione «Fable 5.1» vs «topic 3» (Kimi MED): riconciliata in §1/§4.
 7. A — «home» ambigua (Kimi MED): §2 dice home = `/`, `/v2` invariata.
@@ -323,9 +331,10 @@ file; R = respinta con evidenza):
 15. P — `origin/main` non contiene ancora pacchetto e mappa (Gemini MED): per disegno i prompt
     pinnano path assoluti + sha; questa PR li rende durevoli. Raccomandazione: lanciare W2 dopo
     il merge di questa PR e di #6124; W-ORACLE parte dal kit.
-16. P — runner e2e fullstack a DB usa-e-getta su Mini senza Keychain (Gemini MED): la Keychain
-    serve alla sonda readonly su Pro, non al runner; verifica del runner su Mini chiesta a
-    topic 3 prima di PR-O3/O4 (PR-O0…O2 non lo richiedono).
+16. A — runner e2e fullstack a DB usa-e-getta su Mini senza Keychain (Gemini MED): la Keychain
+    serve alla sonda readonly su Pro, non al runner; nota di topic 3 in `02`: prima di PR-O3/O4
+    provare il runner (`VISA_ORACLE_FULLSTACK=1`) su Mini con il Postgres@17 locale, altrimenti
+    su Pro con evidenza, mai saltarlo (PR-O0…O2 non lo richiedono).
 17. R — Δ1 su `tree.ts` sarebbe «cambio backend» (Gemini MED): `flow.ts`/`tree.ts` stanno in
     `apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/` (frontend); W0 §2 non è violato.
 18. R — il fallback neutro di PR-O4 regredirebbe la lead generation (Gemini MED): la spec §1
@@ -358,16 +367,17 @@ file; R = respinta con evidenza):
 28. A — «verificato su disco e in prod» (Astra MED): il census dei 67 walk è un replay offline
     (audit README); §1 lo dice e separa la sonda live sintetica.
 29. P — gate screenshot «identici, cambiati solo da PR-O4» mentre O2/O3 cambiano copy e domande
-    (Astra MED): spec di topic 3 (§4 riga 100); chiesto a topic 3 di definire le differenze visive
-    ammesse per PR (landing vs OutcomeSheet) e di confrontare i controlli del website sulla stessa
-    revisione Oracle.
-30. P — il corpus di PR-O3 esercita solo «yes» (Astra MED): verificato
-    (`generate-walk-corpus.ts:135` → `options[0]`, `tree.ts:868` = yes); nota in §5 e richiesta a
-    topic 3 di esigere casi yes/no sui due rami con e senza flag nell'accettazione di PR-O3.
+    (Astra MED): spec di topic 3 (§4 riga 100); nota di topic 3 in `02`: la coppia di controllo
+    è la landing di `/visa-oracle` a intervista vuota + lo studio, invariata da ogni PR Oracle;
+    le schermate di esito sono prove PER PR, con le differenze attese dichiarate nel body.
+30. A — il corpus di PR-O3 esercita solo «yes» (Astra MED): verificato
+    (`generate-walk-corpus.ts:135` → `options[0]`, `tree.ts:868` = yes); nota in §5 e, da topic 3,
+    accettazione di PR-O3 nella riga D6: casi yes E no sui due rami retirement, con e senza flag,
+    oltre ai 67 walk baseline invariati.
 31. A — D6 letta come booleano unico (Gemini Pro LOW): §5 esplicita Δ1 per PR-O3 e Δ2 per PR-O4.
-32. P — STOP se D5 fallisce non è nel prompt (Gemini Pro MED): la riga D5 di
+32. R — STOP se D5 fallisce non è nel prompt (Gemini Pro MED): la riga D5 di
     `02-DECISIONI-ZERO.md` scrive già «se la misura contraddice, STOP e riporta» e la finestra la
-    rilegge prima di ogni PR; segnalato a topic 3 come clausola opzionale nel prompt.
+    rilegge prima di ogni PR; il prompt è la spec v6.2 §6 pinnata e non si tocca.
 33. R — nome dello script inventario assente dal prompt (Gemini Pro MED): W0 §2 lo vuole
     «fissato nel brief» della finestra, non nel prompt di lancio; PR-O1 ne fissa path e nome.
 34. R — PR-O0 non committerebbe il live-state (Gemini Pro LOW): spec §3 PR-O0 elenca le voci di
@@ -375,6 +385,8 @@ file; R = respinta con evidenza):
 
 Esito complessivo: nessun seat ha trovato un difetto che richieda di riaprire le decisioni di
 Zero; i due HIGH condivisi (autorità di ship di W2, lettura del read-only con Δ1/Δ2) sono chiusi
-in testo; i tre HIGH di Astra sul book, sull'autopromote e sul corpus sono chiusi (book,
-autopromote) o rinviati a topic 3 con evidenza (corpus). Le richieste a topic 3 (2, 4, 16, 29,
-30, 32) sono state inviate via mailbox alla sessione `nuzantara-c8`; nessuna blocca PR-O0…O2.
+in testo; i tre HIGH di Astra (book, sovrascrittura fra le release delle due finestre,
+autopromote che disfa il rollback) sono chiusi in testo (disposizioni 8, 23, 24) e il MED sul
+corpus è ripiegato da topic 3 nella riga D6. Le richieste a topic 3 (2, 4, 16, 29, 30) sono state
+inviate via mailbox alla sessione `nuzantara-c8` e ripiegate nel file decisioni lo stesso giorno;
+nessuna bloccava PR-O0…O2.

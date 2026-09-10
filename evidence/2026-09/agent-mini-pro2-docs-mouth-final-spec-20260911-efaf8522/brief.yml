@@ -4,16 +4,15 @@ mandate: >
   requested by Zero from the Fable topic-5 session and the Astra Website session. This PR carries
   Astra's consolidated package (README, LAUNCH, W0-W7 battle windows, discussion record and
   manifests, prepared in the untracked worktree docs-mouth-final-windows-20260911 and copied here
-  with hashes) plus FINAL.md: the converged decisions, the two rulings Zero must record at launch
-  (M engines, D identity) and the verbatim prompts of the two windows to open now. Documents only.
+  with hashes) plus FINAL.md: the converged decisions, the rulings (M engines is registered: Oracle only; D identity, D4, is still Zero's) and the verbatim prompts of the two windows to open now. Documents only.
 gear: 2
 gear_reason: >
   Deterministic floor 2 via the SIZE term: measured churn (added+deleted against the merge-base
-  with origin/main) of about 1624 lines after the rework asked by the first gate, below the
+  with origin/main) of about 1615 lines after the rework asked by the first gate, below the
   1,828-line gear-3 threshold; three non-load-bearing Astra evidence files were removed and are
   recorded by sha256 in evidence/EXCLUDED-FILES.sha256. New markdown/json under docs/plans/ and
   evidence/, one narrow file-exclusion regex in .secrets.baseline for two pinned JSON manifests,
-  four lines in .prettierignore. No workflow, guard, schema, lockfile, product code or
+  four patterns in .prettierignore. No workflow, guard, schema, lockfile, product code or
   CODEOWNERS-tier path is touched.
 origin: >
   Zero's instruction of 2026-09-11 to the two sessions: "discutete e portami la spec finale con il
