@@ -62,6 +62,23 @@ session and every subagent, 45 of them repeat `queue_unstick` DIRTY-PR
 pages (one PR paged 12 times) — see fleet retro
 research/operations/2026-08-26-retro-fleet-sessions-25-26.md item S3.
 
+CHAINED-STOP GUARD (2026-09-10): the harness sets `stop_hook_active: true`
+on a Stop (or SubagentStop) that fired only because a previous Stop-hook
+wake-up kept the turn alive. On such a chained Stop this hook delivers
+DIRECT mail only — each direct file is delivered at most once, so a chain
+can only continue while new targeted mail keeps arriving — and leaves
+broadcasts untouched (not marked seen) for the next natural event, where
+they drain at MAX_MESSAGES_PER_FIRE per fire. A natural Stop still wakes
+the session once for them; the chain is bounded to one wake-up per natural
+stop instead of one per 3 backlog files. Before the guard, every new
+session drained the whole live broadcast set (50 files on 2026-09-10) at
+3 per Stop; the harness's consecutive-continuation cap (default 8,
+CLAUDE_CODE_STOP_HOOK_BLOCK_CAP) is what finally ended one such chain in
+the session that shipped this — a backstop of 8 forced turns per natural
+stop, with the backlog resuming at the next one, not a cure. Only the
+harness-set boolean on a stop event counts: a `PostToolUse` payload or a
+string value never suppresses anything.
+
 Kill switch: NUZ_MAILBOX_OFF=1. Root override: NUZ_MAILBOX_DIR.
 """
 from __future__ import annotations
@@ -374,6 +391,9 @@ def main() -> None:
     session_id = payload.get("session_id") or ""
     if not hook_event_name or not _valid_session_id(session_id):
         sys.exit(0)
+    chained_stop = (  # see CHAINED-STOP GUARD: only the harness-set boolean, only on stop events
+        hook_event_name in ("Stop", "SubagentStop") and payload.get("stop_hook_active") is True
+    )
 
     root = _mailbox_root()
     try:
@@ -382,7 +402,8 @@ def main() -> None:
         session_dir = root / session_id
         now = time.time()
         messages = _collect_direct(session_dir, MAX_MESSAGES_PER_FIRE, now=now)
-        messages += _collect_broadcast(root, session_dir, MAX_MESSAGES_PER_FIRE - len(messages), now=now)
+        if not chained_stop:
+            messages += _collect_broadcast(root, session_dir, MAX_MESSAGES_PER_FIRE - len(messages), now=now)
     except SystemExit:
         raise
     except Exception:
