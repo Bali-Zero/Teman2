@@ -1,0 +1,52 @@
+task_id: pse-registry-check
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  A read-only checker that tells the founder, for each company name or domain on a manual
+  outbound list, whether a TD-PSE record is LOCATED in the Komdigi registry
+  (POST https://pse.komdigi.go.id/api/v1/tdpse/tdpse-list), implementing
+  pse-scanner.spec.md from the compliance-stack build (Lane B). The answer is located,
+  not_located or error, never "unregistered": a keyword search that finds nothing is not
+  proof that a company is unregistered.
+
+  Gear 2 by SIZE: --print-floor returns 2 and --print-floor-source returns "size" on this
+  changed-file list with the merge-base numstat supplied. No hot-zone path is touched. The
+  design for this build asks for gear 2 or 3 as computed; 2 is the computed floor.
+constraints:
+  - >-
+    A malformed response or {"status": "error"} is an ERROR row and exit 2, never a
+    not_located row. A silent API change must not read as "nobody is registered", and
+    --probe fails (exit 1) when the Tokopedia control keyword returns zero rows.
+  - >-
+    At most one request per second, exponential backoff on 429, 5xx and network errors,
+    and a hard stop after three consecutive failed requests. Clock, sleep and transport
+    are injected so the limit is asserted with a fake clock, not by waiting.
+  - >-
+    Standard library only (urllib), like the other urllib-based scripts under scripts/.
+    No new dependency, no lockfile touched.
+  - >-
+    Company names and domains only. The live registry returns sole-proprietor registrants
+    whose PSE name is a person's name as fuzzy hits; the CSV attached to this pack keeps
+    only rows whose pse_name contains the input, so no personal name is committed.
+  - >-
+    No outreach, no email generation, no schedule. Manual use until a human has worked
+    the list for two weeks (roundtable decision).
+acceptance:
+  - >-
+    WHEN the suite runs with the HTTP layer mocked, THEN it passes with at least 8 tests.
+    probe: pytest tests/scripts/test_pse_registry_check.py -q
+  - >-
+    WHEN --probe runs live, THEN Tokopedia returns rows and the exit code is 0.
+    probe: python3 scripts/pse_registry_check.py --probe
+  - >-
+    WHEN a CSV holds "Tokopedia" and "Bali Zero", THEN they come back located and
+    not_located. probe: test_tokopedia_located_and_bali_zero_not_located, and live-probe.csv
+  - >-
+    WHEN the endpoint answers HTTP 500 or 503, THEN every input is an error row and the
+    exit code is 2. probe: test_forced_http_error_exits_2_with_backoff_and_hard_stop,
+    test_http_error_through_urllib_transport_exits_2
+  - >-
+    WHEN several inputs are checked, THEN no two requests are less than one second apart
+    on a fake clock. probe: test_no_request_faster_than_one_per_second
+pii_scan: clean

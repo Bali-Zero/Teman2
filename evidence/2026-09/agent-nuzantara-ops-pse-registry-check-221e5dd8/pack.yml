@@ -1,0 +1,89 @@
+task_id: pse-registry-check
+gear: 2
+gate_class: opus
+brief_ref: evidence/brief.yml
+date: 2026-09-11
+machine: Pro
+lanes:
+  - lane: PSE registry checker
+    role: build
+    seat: claude-opus-5 (Lane B Dux, Pro)
+    note:
+      scripts/pse_registry_check.py, tests/scripts/test_pse_registry_check.py, and a
+      two-line tests/scripts/conftest.py that registers the `network` marker so the live
+      test is marked without an unknown-marker warning
+outcome: >-
+  A stdlib-only CLI that checks company names or domains against the Komdigi TD-PSE
+  registry and writes located / not_located / error rows. Live, Tokopedia is located and
+  Bali Zero is not located; a forced HTTP 500 or 503 exits 2.
+diff:
+  files: 7
+  net_lines: "about 680 code and tests, plus this evidence pack"
+  shape:
+    "One new script, one new test module, one marker-registration conftest, and this pack
+    with its brief and the live CSV. No hot-zone path. Gear 2 comes from the SIZE term
+    alone."
+pii_scan: clean
+attachments:
+  - path: live-probe.csv
+    what: >-
+      Output of the live run on the input "Tokopedia" and "Bali Zero", filtered to company
+      names. The raw output had 21 rows (20 located for Tokopedia, 1 not_located for Bali
+      Zero). 8 located rows were withheld because their pse_name does not contain the input
+      keyword; some of those are sole-proprietor registrants whose PSE name is a person's
+      name. Rule applied: keep a row if result is not "located" or if the input appears in
+      pse_name, case-insensitive. 13 rows kept.
+receipts:
+  - claim: the mocked suite passes with at least 8 tests
+    cmd: pytest tests/scripts/test_pse_registry_check.py -q
+    result: "16 passed, 1 skipped (the network test)"
+    ts: "2026-09-10T17:32:30+00:00"
+    seat: claude-opus-5 (Lane B Dux, Pro)
+    exit: 0
+  - claim: the network test passes when enabled
+    cmd: PSE_REGISTRY_LIVE=1 pytest tests/scripts/test_pse_registry_check.py -q -k live
+    result: "1 passed, 15 deselected"
+    ts: "2026-09-10T17:31:00+00:00"
+    seat: claude-opus-5 (Lane B Dux, Pro)
+    exit: 0
+  - claim: the live probe finds Tokopedia on the final code
+    cmd: python3 scripts/pse_registry_check.py --probe
+    result: "checked 1 input(s): 1 located, 0 errored, 1 request(s)"
+    ts: "2026-09-10T17:33:04+00:00"
+    seat: claude-opus-5 (Lane B Dux, Pro)
+    exit: 0
+  - claim: a CSV with Tokopedia and Bali Zero gives located and not_located, live
+    cmd: python3 scripts/pse_registry_check.py live-input.csv -o live-probe.csv --no-cache
+    result: "checked 2 input(s): 1 located, 0 errored, 2 request(s); Tokopedia located, Bali Zero not_located"
+    ts: "2026-09-10T17:31:04+00:00"
+    seat: claude-opus-5 (Lane B Dux, Pro)
+    exit: 0
+  - claim: a forced HTTP error exits 2, with backoff 1 s then 2 s and a hard stop after 3 failures
+    cmd: pytest tests/scripts/test_pse_registry_check.py -q -k "forced_http_error or urllib_transport"
+    result: "both tests assert main() returns 2, and no error is reported as not_located"
+    ts: "2026-09-10T17:32:30+00:00"
+    seat: claude-opus-5 (Lane B Dux, Pro)
+    exit: 0
+  - claim: the deterministic floor is 2 and its source is size
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file cf.txt --numstat-file ns.txt
+    result: "2, and --print-floor-source returns size (merge-base numstat, before this pack file was added)"
+    ts: "2026-09-10T17:34:00+00:00"
+    seat: claude-opus-5 (Lane B Dux, Pro)
+    exit: 0
+dissent:
+  - seat: claude-opus-5 (Lane B Dux, Pro)
+    objection: >-
+      The registry search is fuzzy. "located" means a keyword hit, and for Tokopedia 8 of
+      20 hits named other registrants. The tool reports every hit as the spec says; a human
+      still has to read pse_name and domain before treating a row as the company's own
+      record. A relevance filter would be a spec change and is left out.
+    status: CONFIRMED
+  - seat: claude-opus-5 (Lane B Dux, Pro)
+    objection: >-
+      tests/scripts has 5 failing tests in test_ai_pr_review_workflow.py. They fail the same
+      way with --noconftest and with this module excluded, so they are pre-existing and not
+      caused by the new conftest.
+    status: CONFIRMED
+appetite_exceeded: >-
+  The PR contract asks for about 400 net lines; code plus tests is about 680 (script 418,
+  tests 257). The script is one module and the tests cover each acceptance item. Not split.
