@@ -7,6 +7,8 @@ Calendar facts used below: 2026-01-31, 2026-02-28, 2026-10-10 and 2027-07-31 are
 
 from __future__ import annotations
 
+import re
+from dataclasses import fields as dataclass_fields
 from datetime import date
 from pathlib import Path
 
@@ -24,7 +26,11 @@ from backend.services.compliance.obligations_register import (
     profile_from_rows,
     propose,
 )
-from backend.services.compliance.obligations_repository import MAX_PAGE, ObligationsRepository
+from backend.services.compliance.obligations_repository import (
+    MAX_PAGE,
+    ObligationRow,
+    ObligationsRepository,
+)
 
 MIGRATION = (
     Path(__file__).resolve().parents[3] / "db" / "migrations_v2" / "309_client_obligations.sql"
@@ -404,15 +410,41 @@ async def test_list_by_status_validates_and_clamps(mock_db_pool):
 # -- migration -------------------------------------------------------------------------------
 
 
-@pytest.mark.skipif(
-    not MIGRATION.exists(),
-    reason="migration 309 deferred: the client guardrail blocks the DROP TABLE rollback lines "
-    "until the owner's two-key bypass; the SQL ships in the PR body. Arms itself when the file lands.",
-)
+@pytest.mark.skipif(not MIGRATION.exists(), reason="migration 309 not present yet")
 def test_migration_309_shape_and_rollback():
     forward, rollback = split_migration_sql(MIGRATION.read_text())
     assert "REFERENCES clients(id) ON DELETE CASCADE" in forward
     assert "UNIQUE (client_id, rule_id, period_key)" in forward
     assert "'proposed','approved','rejected','alerted','done'" in forward
     assert "alert_id            TEXT" in forward
-    assert rollback is not None and "DROP TABLE IF EXISTS client_obligations" in rollback
+    # Not just presence: pin the two types upsert_proposals()/set_status() rely
+    # on structurally. Council finding (kimi-code/k3): a name-only check would
+    # pass a `status TEXT NOT NULL` with no default (breaks the upsert, which
+    # never writes status) or a `due_date TEXT` (breaks the `$4::date[]` unnest).
+    assert "status              TEXT NOT NULL DEFAULT 'proposed'" in forward
+    assert "due_date            DATE NOT NULL" in forward
+    # Rollback is prose, not literal DDL: the client guardrail blocks writing
+    # DROP TABLE/DELETE FROM/etc. into any .sql file, even inside a comment
+    # (same convention as 270_wa_broker_jobs.sql) -- it states the inverse in
+    # words instead of shipping an unexecutable/blocked statement.
+    assert rollback is not None
+    assert "client_obligations" in rollback
+    assert "guardrail" in rollback.lower()
+
+
+@pytest.mark.skipif(not MIGRATION.exists(), reason="migration 309 not present yet")
+def test_migration_309_covers_every_repository_column():
+    """Every ObligationRow field (every column the repository SELECTs, INSERTs or
+    UPDATEs) must be declared in the migration DDL -- parsed from the SQL text,
+    no database required."""
+    forward, _ = split_migration_sql(MIGRATION.read_text())
+    start = forward.index("CREATE TABLE IF NOT EXISTS client_obligations")
+    create_stmt = forward[start : forward.index(");", start) + 1]
+    # Strip /* ... */ block comments first (council finding, codex-gpt-5.6-sol):
+    # without this, a column commented out of the real DDL inside a block
+    # comment would still count as "declared" by the bare regex below.
+    create_stmt = re.sub(r"/\*.*?\*/", "", create_stmt, flags=re.DOTALL)
+    declared = set(re.findall(r"^ {4}(?!CONSTRAINT\b)(\w+) +\S", create_stmt, re.MULTILINE))
+    expected = {f.name for f in dataclass_fields(ObligationRow)}
+    missing = expected - declared
+    assert not missing, f"migration is missing columns ObligationRow reads: {sorted(missing)}"
