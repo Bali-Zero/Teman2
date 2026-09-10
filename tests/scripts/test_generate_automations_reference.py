@@ -321,6 +321,51 @@ class TestFindPendingLiveSnapshot(unittest.TestCase):
         finally:
             gen.REPO_LAUNCHAGENTS_DIR = original
 
+    def test_label_stem_mismatch_renders_both_for_docs_sync(self):
+        """docs_sync.py::automation_coverage() matches the plist FILE STEM, not the
+        Label, against this doc's text — com.matagaruda.kita-feed.daily.plist's
+        Label is com.matagaruda.kita-feed, so without both strings present the
+        consumer counts a gap even though the row exists (2026-09-11 follow-up)."""
+        installed = self._all_repo_labels() - {"com.matagaruda.kita-feed"}
+        rows = {r["label"]: r for r in gen._find_pending_live_snapshot(installed)}
+        row = rows["com.matagaruda.kita-feed"]
+        self.assertEqual(
+            row["label_cell"],
+            "`com.matagaruda.kita-feed` (`com.matagaruda.kita-feed.daily.plist`)",
+        )
+
+
+class TestFormatPendingLabelCell(unittest.TestCase):
+    def test_matching_stem_renders_plain_label(self):
+        cell = gen._format_pending_label_cell("com.example.foo", Path("com.example.foo.plist"))
+        self.assertEqual(cell, "`com.example.foo`")
+
+    def test_differing_stem_renders_both(self):
+        cell = gen._format_pending_label_cell(
+            "com.matagaruda.kita-feed", Path("com.matagaruda.kita-feed.daily.plist")
+        )
+        self.assertEqual(cell, "`com.matagaruda.kita-feed` (`com.matagaruda.kita-feed.daily.plist`)")
+
+
+class TestRecursivePendingSnapshot(unittest.TestCase):
+    """2026-09-11 follow-up: infra/launchagents/mini/*.plist plists (e.g.
+    com.nuzantara.fw-guard.plist) were invisible to _find_pending_live_snapshot's
+    non-recursive glob, even though docs_sync.py's `_git_ls_files` walks the
+    whole infra/launchagents/ tree including subdirectories."""
+
+    def test_mini_subdirectory_plist_is_found_and_hosted_mini(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mini_dir = root / "mini"
+            mini_dir.mkdir()
+            plist_path = mini_dir / "com.nuzantara.subdir-test.plist"
+            with plist_path.open("wb") as f:
+                plistlib.dump({"Label": "com.nuzantara.subdir-test", "ProgramArguments": ["/bin/true"]}, f)
+            with unittest.mock.patch.object(gen, "REPO_LAUNCHAGENTS_DIR", root):
+                rows = {r["label"]: r for r in gen._find_pending_live_snapshot(set())}
+            self.assertIn("com.nuzantara.subdir-test", rows)
+            self.assertEqual(rows["com.nuzantara.subdir-test"]["host"], "Mini")
+
 
 class TestRenderPendingSnapshotSection(unittest.TestCase):
     def test_empty_rows_render_nothing(self):
@@ -333,6 +378,16 @@ class TestRenderPendingSnapshotSection(unittest.TestCase):
         self.assertIn("## Repo-canon additions pending live snapshot", joined)
         self.assertIn("`com.example.foo`", joined)
         self.assertIn("does foo", joined)
+
+    def test_label_cell_used_when_present(self):
+        rows = [{
+            "label": "com.example.bar",
+            "label_cell": "`com.example.bar` (`com.example.bar.legacy.plist`)",
+            "host": "Pro", "schedule": "daily 08:00 WITA", "purpose": "does bar",
+        }]
+        lines = gen._render_pending_snapshot_section(rows)
+        joined = "\n".join(lines)
+        self.assertIn("`com.example.bar` (`com.example.bar.legacy.plist`)", joined)
 
 
 class TestGenerateSurvivesRegen(unittest.TestCase):
@@ -428,6 +483,10 @@ class TestInferPlistHost(unittest.TestCase):
 
     def test_default_is_pro(self):
         self.assertEqual(gen._infer_plist_host("", "com.nuzantara.z", {}), "Pro")
+
+    def test_mini_subdirectory_path_is_mini(self):
+        path = Path("infra/launchagents/mini/com.example.z.plist")
+        self.assertEqual(gen._infer_plist_host("", "com.example.z", {}, path), "Mini")
 
 
 class TestFindScheduledWorkflows(unittest.TestCase):

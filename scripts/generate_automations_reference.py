@@ -646,10 +646,11 @@ def _resolve_plist_purpose(plist_path: Path, raw_text: str, parsed: dict) -> str
     return f"runs `{plist_path.name}`"
 
 
-def _infer_plist_host(raw_text: str, label: str, parsed: dict) -> str:
+def _infer_plist_host(raw_text: str, label: str, parsed: dict, plist_path: Path | None = None) -> str:
     """Host hint for a repo-canon plist not yet on a live snapshot: M5 if any
     ProgramArguments/EnvironmentVariables string is balizero-absolute, Mini if
-    the plist text or label says so, else Pro (the default machine)."""
+    the plist text/label says so OR the plist lives under an `infra/launchagents/
+    mini/` directory (rglob picks those up too), else Pro (the default machine)."""
     strings_to_check: list[str] = [a for a in (parsed.get("ProgramArguments") or []) if isinstance(a, str)]
     env = parsed.get("EnvironmentVariables") or {}
     if isinstance(env, dict):
@@ -657,20 +658,36 @@ def _infer_plist_host(raw_text: str, label: str, parsed: dict) -> str:
     if any(s.startswith("/Users/balizero/") for s in strings_to_check):
         return "M5"
     low = raw_text.lower()
-    if "mini-only" in low or "mini pro2" in low or ".mini." in label or "mini-" in label:
+    if (
+        "mini-only" in low or "mini pro2" in low or ".mini." in label or "mini-" in label
+        or (plist_path is not None and plist_path.parent.name == "mini")
+    ):
         return "Mini"
     return "Pro"
 
 
+def _format_pending_label_cell(label: str, plist_path: Path) -> str:
+    """Label cell for the pending-snapshot table. `docs_sync.py::automation_coverage()`
+    counts a plist as documented by matching its FILE STEM (not its Label) against
+    this doc's text — when the two differ (e.g. `com.matagaruda.kita-feed.daily.plist`
+    whose Label is `com.matagaruda.kita-feed`), render both so the file-stem match
+    still lands even though the table's identity column is the Label."""
+    if plist_path.stem == label:
+        return f"`{label}`"
+    return f"`{label}` (`{plist_path.stem}.plist`)"
+
+
 def _find_pending_live_snapshot(installed_labels: set[str]) -> list[dict]:
-    """LaunchAgents committed as repo-canon (infra/launchagents/*.plist) that are
-    NOT yet counted in the live totals above (i.e. not present in pro_la/mini_la).
-    Derived from repo state so this section survives a regen instead of depending
-    on a human remembering to re-add it by hand (task #10, 2026-07-26)."""
+    """LaunchAgents committed as repo-canon (infra/launchagents/**/*.plist) that
+    are NOT yet counted in the live totals above (i.e. not present in
+    pro_la/mini_la). Derived from repo state so this section survives a regen
+    instead of depending on a human remembering to re-add it by hand (task #10,
+    2026-07-26). Recursive rglob (not glob): infra/launchagents/mini/*.plist is
+    repo-canon too and `_git_ls_files` in docs_sync.py already counts it."""
     if not REPO_LAUNCHAGENTS_DIR.is_dir():
         return []
     rows: list[dict] = []
-    for plist_path in sorted(REPO_LAUNCHAGENTS_DIR.glob("*.plist")):
+    for plist_path in sorted(REPO_LAUNCHAGENTS_DIR.rglob("*.plist")):
         label = plist_path.stem
         if not any(label.startswith(p) for p in OUR_LAUNCHAGENT_PREFIXES):
             continue
@@ -683,10 +700,11 @@ def _find_pending_live_snapshot(installed_labels: set[str]) -> list[dict]:
         label = parsed.get("Label", label)
         if label in installed_labels:
             continue
-        host = _infer_plist_host(raw_text, label, parsed)
+        host = _infer_plist_host(raw_text, label, parsed, plist_path)
         purpose = _resolve_plist_purpose(plist_path, raw_text, parsed)
         rows.append({
             "label": label,
+            "label_cell": _format_pending_label_cell(label, plist_path),
             "host": host,
             "schedule": _humanize_plist_schedule(parsed),
             "purpose": purpose,
@@ -702,7 +720,7 @@ def _render_pending_snapshot_section(rows: list[dict]) -> list[str]:
         "",
         "These entries are committed as repo-canon LaunchAgents but are not counted in",
         "the generated live totals above until installed on the target host and included",
-        "in the next automation snapshot. Derived from `infra/launchagents/*.plist`",
+        "in the next automation snapshot. Derived from `infra/launchagents/**/*.plist`",
         "headers, the target script's own header and `infra/home-fork/declared-pairs.json`",
         "on every run — never hand-edit this table, edit the plist (or its target",
         "script) instead.",
@@ -711,7 +729,8 @@ def _render_pending_snapshot_section(rows: list[dict]) -> list[str]:
         "| --- | --- | --- | --- |",
     ]
     for row in rows:
-        lines.append(f"| `{row['label']}` | {row['host']} | {row['schedule']} | {row['purpose']} |")
+        label_cell = row.get("label_cell") or f"`{row['label']}`"
+        lines.append(f"| {label_cell} | {row['host']} | {row['schedule']} | {row['purpose']} |")
     lines.append("")
     lines.append("---")
     lines.append("")
