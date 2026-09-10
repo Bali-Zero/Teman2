@@ -36,6 +36,7 @@ class Store:
         self.companies: dict[int, dict[str, Any]] = {}
         self.obligations: list[dict[str, Any]] = []
         self.alerts: list[dict[str, Any]] = []
+        self.op_log: list[tuple[str, Any, bool]] = []
         self._next_id = 1
 
     def acquire(self) -> _AcquireCtx:
@@ -58,11 +59,20 @@ class _AcquireCtx:
         return False
 
 
-class _NoopTxn:
+class _CountingTxn:
+    """Records enter/exit on the owning FakeConn so tests can pin the boundary."""
+
+    def __init__(self, conn: FakeConn) -> None:
+        self.conn = conn
+
     async def __aenter__(self) -> None:
+        self.conn.txn_enter_count += 1
+        self.conn.in_txn = True
         return None
 
     async def __aexit__(self, *exc: object) -> bool:
+        self.conn.in_txn = False
+        self.conn.txn_exit_count += 1
         return False
 
 
@@ -71,9 +81,12 @@ class FakeConn:
 
     def __init__(self, store: Store) -> None:
         self.store = store
+        self.txn_enter_count = 0
+        self.txn_exit_count = 0
+        self.in_txn = False
 
-    def transaction(self) -> _NoopTxn:
-        return _NoopTxn()
+    def transaction(self) -> _CountingTxn:
+        return _CountingTxn(self)
 
     async def fetchrow(self, query: str, *args: Any) -> dict[str, Any] | None:
         flat = " ".join(query.split())
@@ -106,6 +119,7 @@ class FakeObligationsRepository:
     def with_connection(cls, conn: FakeConn) -> FakeObligationsRepository:
         inst = cls.__new__(cls)
         inst.store = conn.store
+        inst.conn = conn
         return inst
 
     async def list_filtered(
@@ -177,6 +191,7 @@ class FakeObligationsRepository:
     async def set_status(
         self, obligation_id: int, status: str, reviewer_email: str, note: str | None = None
     ) -> ObligationRow | None:
+        self.store.op_log.append(("set_status", self.conn, self.conn.in_txn))
         for row in self.store.obligations:
             if row["id"] == obligation_id:
                 if row["status"] != "proposed":
@@ -190,6 +205,7 @@ class FakeObligationsRepository:
         return None
 
     async def mark_alerted(self, obligation_id: int, alert_id: str) -> ObligationRow | None:
+        self.store.op_log.append(("mark_alerted", self.conn, self.conn.in_txn))
         for row in self.store.obligations:
             if row["id"] == obligation_id:
                 if row["status"] != "approved":
@@ -206,6 +222,7 @@ class FakeAlertRepository:
     def with_connection(cls, conn: FakeConn) -> FakeAlertRepository:
         inst = cls.__new__(cls)
         inst.store = conn.store
+        inst.conn = conn
         return inst
 
     async def find_active_by_dedup_key(self, dedup_key: str) -> AlertRow | None:
@@ -219,6 +236,7 @@ class FakeAlertRepository:
         return None
 
     async def insert(self, row: AlertRow) -> AlertRow:
+        self.store.op_log.append(("alert_insert", self.conn, self.conn.in_txn))
         as_dict = row.__dict__.copy()
         as_dict["created_at"] = datetime.now(timezone.utc)
         self.store.alerts.append(as_dict)
@@ -428,6 +446,26 @@ def test_approve_writes_exactly_one_alert_and_transitions_to_alerted(store: Stor
     assert alert["category"] == "obligation"
     assert alert["client_id"] == 7
     assert alert["dedup_key"] == "obligation:7:pph21_payment:2026-09"
+
+
+def test_approve_runs_writes_inside_one_shared_transaction(store: Store) -> None:
+    _seed_proposed(store, id=1, client_id=7, rule_id="pph21_payment", period_key="2026-09")
+    client = TestClient(_app(store, ADMIN_USER))
+
+    resp = client.post("/api/compliance/obligations/1/approve", json={})
+
+    assert resp.status_code == 200
+    assert [name for name, _conn, _in_txn in store.op_log] == [
+        "set_status",
+        "alert_insert",
+        "mark_alerted",
+    ]
+    assert all(in_txn for _name, _conn, in_txn in store.op_log)
+    conns = {conn for _name, conn, _in_txn in store.op_log}
+    assert len(conns) == 1, "both repositories must be bound to the same connection"
+    conn = conns.pop()
+    assert conn.txn_enter_count == 1
+    assert conn.txn_exit_count == 1
 
 
 def test_approve_twice_is_409(store: Store) -> None:
