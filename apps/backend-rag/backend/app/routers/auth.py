@@ -213,8 +213,22 @@ async def get_current_user(
     # Get user from database using connection pool
     async with db_pool.acquire() as conn:
         logger.debug("Validating user: %s", user_id)
+        # COALESCE, not `full_name as name`: `full_name` is NULLABLE while
+        # `name` is NOT NULL, and the two portal write paths only ever fill
+        # ONE of them — `ensure_portal_profile` inserts `name` and never
+        # `full_name`, and `complete_registration`'s existing-user branch
+        # updates neither. Measured on production 2026-09-11: 455 of 540
+        # `role='client'` rows carry `full_name IS NULL`, so `name` arrived
+        # as None and `UserProfile(**current_user)` — where `name: str` is
+        # required — raised a ValidationError that GET /api/auth/profile
+        # turned into a bare HTTP 500. The portal's Settings → Account tab
+        # rendered "Unable to load profile." for 84% of clients (portal audit
+        # finding F-03).
         query = """
-            SELECT id::text, email, full_name as name, role, 'active' as status, NULL::jsonb as metadata, language as language_preference, avatar
+            SELECT id::text, email,
+                   COALESCE(full_name, name, email) as name,
+                   role, 'active' as status, NULL::jsonb as metadata,
+                   language as language_preference, avatar
             FROM team_members
             WHERE id::text = $1 AND email = $2 AND active = true
         """
