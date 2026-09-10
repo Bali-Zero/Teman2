@@ -76,6 +76,48 @@ cancel on that retry (or any retry) clears the run's entry outright via `clear_c
 `quarantined_at` to the new attempt, restarting the cooldown, so a permanently-broken run is
 retried at most once per cooldown window forever, never hammered every tick again.
 
+S1 "ARM THE ARMER" (2026-09-10): the organ's candidate read had been CANNOT-VERIFY on every real
+tick since 2026-08-28 (1892 `CANNOT-VERIFY rearm candidates` lines in queue-shepherd.err.log,
+zero PRs ever classified). Error mix of those reads: 1143 "Resource limits for this query
+exceeded", 474 HTTP 502, 266 HTTP 504 "couldn't respond in time" (plus a handful of truncated-
+JSON/timeout/connect-error outliers). Live probe: `REARM_CANDIDATES_QUERY` verbatim fails (504 at
+`first:100`, "Resource limits" at `first:25`); the SAME query without the
+`checkSuites(first:20){checkRuns(first:20){...}}` line succeeds (4.3s, cost 1, at `first:100`).
+That branch was dead weight anyway (harness/fable-gate is a commit STATUS context, never a
+check-run). Dropped it,
+page size to `first:50`, and added one retry (RETRY_BACKOFF_SECONDS, via the `_sleep` seam) per
+candidate page. `run_rearm_pass`/`run_janitor_pass` now return a documented result dict, never a
+bare int — `examined`/`candidates`/`unknown` come from a NEW `fetch_open_prs` (every open PR,
+unfiltered; `fetch_rearm_candidate_prs` is now a filtering wrapper over it, no double fetch).
+CANNOT-VERIFY is a tick OUTCOME: `tick()` logs it at ERROR, heartbeats `error`, sends ONE
+`send_telegram(..., dedup_key="queue-shepherd:cannot-verify")` (unless dry-run), and returns 2 —
+never folded into a silent "rearmed=0, nothing to do".
+
+SAME-CAUSE SUSPENSION (Builder Contract §1: "three reds for the SAME cause and the PR suspends
+instead of taking a fourth round"). A red = an observed `RemovedFromMergeQueueEvent` with reason
+`failed_checks`; its cause is `red_cause_fingerprint(run, jobs)` on the SAME correlated
+merge_group run `fetch_infra_hint_and_fingerprint` (one fetch, both signals) already locates —
+`fetch_infra_hint` is now a thin wrapper over it. Durable, PR-level (not head-level — a new head
+SHA does NOT reset this) state in `QUEUE_SHEPHERD_RED_FILE` (default
+`~/logs/queue-shepherd/red-causes.json`). RED_SAME_CAUSE_LIMIT=3 non-None-cause reds sets
+`suspended` (sticky, no time-based unsuspend — GC only drops an entry once its PR is no longer
+open) and overrides `allowed` regardless of class or budget; no Telegram (Mini's stall notifier
+already reports the disarmed PR). A None cause (no correlated run found) never counts.
+
+NEVER-QUEUED IS NOT AN EJECTION: `fetch_last_ejection` returns the literal string "NEVER_QUEUED"
+(never plain None, which stays reserved for "last item is Added" / genuinely UNKNOWN) when a PR's
+timeline carries no Added/Removed-from-merge-queue event at all — that PR simply never went
+through the queue, so it is not an ejection this organ caused, is not alerted on, and
+`decide_rearm` refuses it as `never_queued_not_ours`. Before this, the first live tick would have
+sent a false P0 "no readable ejection reason" for exactly this shape (measured live on #5838 and
+#6054), duplicating Mini's own not-armed signal.
+
+DRY-RUN FIDELITY: dry-run now READS every state file (budget/alerted/uncancellable/red) exactly
+as a live tick would — only the WRITE at the end of each pass is skipped. Before this, dry-run
+substituted `{}` for all of them, so a dry-run preview's numbers (would-rearm, would-cancel)
+disagreed with what the SAME tick would actually do live — e.g. reporting `cancelled=6` for runs
+the live janitor would in fact skip as already-quarantined.
+
 Kill switch: QUEUE_SHEPHERD_ENABLED=false makes every invocation a no-op that still prints a
 receipt line (superscar #2: a mute cron reads as a dead cron with nothing to report — never
 let silence be the only signal).
@@ -120,6 +162,11 @@ BUDGET_FILE = Path(
         "QUEUE_SHEPHERD_BUDGET_FILE", os.path.expanduser("~/logs/queue-shepherd/rearm-budget.json")
     )
 )
+RED_FILE = Path(
+    os.environ.get(
+        "QUEUE_SHEPHERD_RED_FILE", os.path.expanduser("~/logs/queue-shepherd/red-causes.json")
+    )
+)
 ALERTED_FILE = Path(
     os.environ.get(
         "QUEUE_SHEPHERD_ALERTED_FILE",
@@ -147,9 +194,22 @@ INFRA_BUDGET_MAX = 3
 BUDGET_WINDOW_HOURS = 24
 BUDGET_GC_DAYS = 7  # prune (pr,sha) entries older than this so the file never grows unbounded
 
+# One retry per candidate-read page (S1, 2026-09-10) — see the module docstring's S1 section for
+# the measured error mix. A single transient blip must not CANNOT-VERIFY an entire tick.
+# `_sleep` is a module-level seam (monkeypatchable in tests), never a bare time.sleep() call.
+RETRY_BACKOFF_SECONDS = 5
+_sleep = time.sleep
+
 # Quarantine (2026-08-31, squad-S / issue #5316) — see module docstring QUARANTINE section.
 UNCANCELLABLE_FAILURE_THRESHOLD = 3  # consecutive non-"cancelled" outcomes before quarantine
 UNCANCELLABLE_RETRY_COOLDOWN_HOURS = 24  # past this since quarantined_at, allow ONE retry
+
+# Same-cause suspension (letter E, S1 2026-09-10 — Builder Contract §1: "three reds for the SAME
+# cause and the PR suspends instead of taking a fourth round"). PR-level, not head-level: a new
+# head SHA does NOT reset this (unlike the INFRA budget) — the cause, not the commit, is what
+# repeats.
+RED_SAME_CAUSE_LIMIT = 3
+RED_HISTORY_MAX = 10  # keep at most the last 10 reds per PR in the red-causes file
 
 _UNCANCELLABLE_ERROR_LABELS = {
     "uncancellable_409": "both cancel and force-cancel endpoints answered HTTP 409 (not queued yet)",
@@ -158,7 +218,7 @@ _UNCANCELLABLE_ERROR_LABELS = {
 
 FABLE_GATE_CONTEXT_NAMES = ("harness/fable-gate", "harness-floor")
 
-EJECTION_CLASSES = ("CODE", "INFRA", "CONFLICT", "MANUAL", "UNKNOWN")
+EJECTION_CLASSES = ("CODE", "INFRA", "CONFLICT", "MANUAL", "NEVER_QUEUED", "UNKNOWN")
 
 # Same tiny heuristic queue_ejection_attribution.py::INFRA_JOB_NAME_SIGNATURES declares and
 # duplicates rather than imports (see module docstring STANDALONE note above).
@@ -253,6 +313,30 @@ def _run_has_infra_signature(run: dict[str, Any], jobs: list[dict[str, Any]]) ->
     return False
 
 
+def red_cause_fingerprint(run: dict[str, Any] | None, jobs: list[dict[str, Any]]) -> str | None:
+    """Pure: a stable fingerprint for WHY a merge_group run failed, used to detect the Builder
+    Contract §1 condition ("three reds for the SAME cause and the PR suspends instead of taking a
+    fourth round"). `run`/`jobs` are the SAME correlated-run + jobs pair _run_has_infra_signature
+    already receives (see fetch_infra_hint_and_fingerprint, the single fetch both now share).
+
+    None means "no correlated run" (or nothing failed on it) and must NEVER itself count as a
+    repeated cause — the caller (run_rearm_pass) never lets a None fingerprint contribute toward
+    RED_SAME_CAUSE_LIMIT, however many pile up."""
+    if run is None:
+        return None
+    name = str(run.get("name") or "")
+    failed_job_names = sorted(
+        str(job.get("name") or "")
+        for job in jobs
+        if job.get("conclusion") in ("failure", "timed_out")
+    )
+    if failed_job_names:
+        return f"{name}::{'|'.join(failed_job_names)}"
+    if run.get("conclusion") in ("cancelled", "timed_out"):
+        return f"{name}::run:{run.get('conclusion')}"
+    return None  # no job-level detail and the run's own conclusion doesn't say infra either
+
+
 def is_rearm_candidate(pr: dict[str, Any]) -> bool:
     """Pure gate: is this open PR a re-arm candidate this tick?
 
@@ -344,6 +428,48 @@ def gc_budget_state(budget_state: dict[str, Any], now: _dt.datetime) -> dict[str
         if parsed and max(parsed) >= cutoff:
             kept[key] = entry
     return kept
+
+
+def record_red(
+    red_state: dict[str, Any], pr_number: int, removed_at: str, cause: str | None, head_sha: str
+) -> dict[str, Any]:
+    """Pure: returns a NEW red_state (never mutates the input) with one more red recorded for
+    pr_number — PR-level, not head-level (unlike the INFRA budget, a new head SHA does NOT reset
+    this; the recurring CAUSE is what matters, not the commit). Deduped by removed_at: the SAME
+    RemovedFromMergeQueueEvent read again on a later tick (the timeline query re-reads the last
+    10 items every time) must never double-count toward RED_SAME_CAUSE_LIMIT. Capped at the
+    RED_HISTORY_MAX most-recent entries so the file never grows unbounded. A None cause is still
+    recorded (for --report visibility) — count_same_cause_reds below is what refuses to ever
+    count it."""
+    new_state = json.loads(json.dumps(red_state))  # cheap deep copy, JSON-safe by contract
+    key = str(pr_number)
+    entry = new_state.setdefault(key, {"reds": []})
+    reds = entry.get("reds") or []
+    if any(r.get("removed_at") == removed_at for r in reds):
+        return new_state  # already recorded this exact event this tick or a past one — dedup
+    reds = reds + [{"removed_at": removed_at, "cause": cause, "head_sha": head_sha}]
+    reds.sort(key=lambda r: r.get("removed_at") or "")
+    entry["reds"] = reds[-RED_HISTORY_MAX:]
+    return new_state
+
+
+def count_same_cause_reds(reds: list[dict[str, Any]], cause: str | None) -> int:
+    """Pure: how many reds in this PR's recorded history share EXACTLY `cause`. A None cause
+    ALWAYS returns 0 — "no correlated run found" must never itself count as a repeated cause,
+    however many pile up (Builder Contract §1's "same cause" only ever means a real, resolved
+    fingerprint)."""
+    if cause is None:
+        return 0
+    return sum(1 for r in reds if r.get("cause") == cause)
+
+
+def gc_red_state(red_state: dict[str, Any], open_pr_numbers: set[int]) -> dict[str, Any]:
+    """Pure: drop red-file entries whose PR number is no longer in THIS TICK's examined open-PR
+    set. Suspension is sticky until the PR is no longer open — no time-based unsuspend — so the
+    ONLY thing that ever clears an entry is the PR itself closing/merging. Caller must only call
+    this after a SUCCESSFUL fetch_open_prs read (a partial/failed set would wrongly GC every
+    entry as "not open")."""
+    return {key: entry for key, entry in red_state.items() if int(key) in open_pr_numbers}
 
 
 def gc_uncancellable_state(
@@ -443,6 +569,12 @@ def decide_rearm(
         return False, "code_never_rearm"
     if klass in ("CONFLICT", "MANUAL"):
         return False, f"{klass.lower()}_no_auto_rearm"
+    if klass == "NEVER_QUEUED":
+        # letter F, S1 2026-09-10: a PR that never went through the merge queue at all is not an
+        # ejection this organ caused or should act on — never the same bucket as a genuinely
+        # unreadable ejection reason (UNKNOWN), and never alerted on (Mini's stall notifier
+        # already reports the disarmed PR).
+        return False, "never_queued_not_ours"
     return False, "unknown_fail_closed"  # UNKNOWN, or any class this module has never seen
 
 
@@ -506,7 +638,7 @@ def _gh_graphql(query: str, variables: dict[str, Any], timeout: int = 45) -> dic
 REARM_CANDIDATES_QUERY = """
 query($owner:String!, $repo:String!, $cursor:String) {
   repository(owner:$owner, name:$repo) {
-    pullRequests(states:OPEN, first:100, after:$cursor) {
+    pullRequests(states:OPEN, first:50, after:$cursor) {
       pageInfo { hasNextPage endCursor }
       nodes {
         number
@@ -521,7 +653,6 @@ query($owner:String!, $repo:String!, $cursor:String) {
             commit {
               statusCheckRollup { state }
               status { contexts { context } }
-              checkSuites(first:20) { nodes { checkRuns(first:20) { nodes { name } } } }
             }
           }
         }
@@ -533,18 +664,17 @@ query($owner:String!, $repo:String!, $cursor:String) {
 
 
 def _pr_has_fable_gate_status(node: dict[str, Any]) -> bool:
+    # checkRuns branch removed 2026-09-10 (S1 disposition): no workflow job / check-run is ever
+    # named harness-floor / harness/fable-gate (the floor check-run is "Harness floor recompute");
+    # harness/fable-gate is a commit STATUS context posted by scripts/harness_fable_gate.py. The
+    # dropped checkSuites(first:20){checkRuns(first:20){...}} line was also dead weight against
+    # GitHub's query-cost limit — see the module docstring's S1 section for the measured numbers.
     commits = (node.get("commits") or {}).get("nodes") or []
     if not commits:
         return False
     commit = commits[0].get("commit") or {}
     contexts = [c.get("context") for c in ((commit.get("status") or {}).get("contexts") or [])]
-    if any(ctx in FABLE_GATE_CONTEXT_NAMES for ctx in contexts if ctx):
-        return True
-    for suite in (commit.get("checkSuites") or {}).get("nodes") or []:
-        for run in (suite.get("checkRuns") or {}).get("nodes") or []:
-            if run.get("name") in FABLE_GATE_CONTEXT_NAMES:
-                return True
-    return False
+    return any(ctx in FABLE_GATE_CONTEXT_NAMES for ctx in contexts if ctx)
 
 
 def _normalize_rearm_pr(node: dict[str, Any]) -> dict[str, Any]:
@@ -567,9 +697,27 @@ def _normalize_rearm_pr(node: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def fetch_rearm_candidate_prs(repo: str = REPO) -> list[dict[str, Any]]:
-    """Every open PR, normalized + filtered through is_rearm_candidate. Raises on fetch
-    failure (see _gh_graphql) — CANNOT-VERIFY must never be read as an empty candidate list."""
+def _fetch_candidates_page(variables: dict[str, Any]) -> dict[str, Any]:
+    """One retry, after RETRY_BACKOFF_SECONDS, for a single REARM_CANDIDATES_QUERY page. A
+    second consecutive failure propagates RuntimeError unchanged (see _gh_graphql) — CANNOT-
+    VERIFY must never be swallowed by a retry that also failed."""
+    try:
+        return _gh_graphql(REARM_CANDIDATES_QUERY, variables)
+    except RuntimeError as exc:
+        logger.warning(
+            "candidate page fetch failed, retrying once after %ss: %s", RETRY_BACKOFF_SECONDS, exc
+        )
+        _sleep(RETRY_BACKOFF_SECONDS)
+        return _gh_graphql(REARM_CANDIDATES_QUERY, variables)
+
+
+def fetch_open_prs(repo: str = REPO) -> list[dict[str, Any]]:
+    """Every open PR, normalized (via _normalize_rearm_pr) but NOT filtered through
+    is_rearm_candidate — the caller learns how many PRs were examined, how many carry
+    mergeStateStatus UNKNOWN, and the full open-PR number set (for GC) before any candidate
+    filtering happens. One retry per page (_fetch_candidates_page); a second failure raises —
+    CANNOT-VERIFY must never be read as an empty list. `fetch_rearm_candidate_prs` below is a
+    filtering wrapper over this — no double fetch."""
     owner, name = repo.split("/", 1)
     out: list[dict[str, Any]] = []
     cursor: str | None = None
@@ -577,20 +725,24 @@ def fetch_rearm_candidate_prs(repo: str = REPO) -> list[dict[str, Any]]:
         variables: dict[str, Any] = {"owner": owner, "repo": name}
         if cursor:
             variables["cursor"] = cursor
-        data = _gh_graphql(REARM_CANDIDATES_QUERY, variables)
+        data = _fetch_candidates_page(variables)
         try:
             page = data["data"]["repository"]["pullRequests"]
         except (KeyError, TypeError) as exc:
             raise RuntimeError(f"unexpected graphql shape: {exc}: {json.dumps(data)[:300]}") from exc
         for node in page["nodes"]:
-            pr = _normalize_rearm_pr(node)
-            if is_rearm_candidate(pr):
-                out.append(pr)
+            out.append(_normalize_rearm_pr(node))
         if page["pageInfo"]["hasNextPage"]:
             cursor = page["pageInfo"]["endCursor"]
         else:
             break
     return out
+
+
+def fetch_rearm_candidate_prs(repo: str = REPO) -> list[dict[str, Any]]:
+    """Every open PR, normalized + filtered through is_rearm_candidate. Raises on fetch
+    failure (see fetch_open_prs) — CANNOT-VERIFY must never be read as an empty candidate list."""
+    return [pr for pr in fetch_open_prs(repo) if is_rearm_candidate(pr)]
 
 
 TIMELINE_QUERY = """
@@ -610,11 +762,20 @@ query($owner:String!, $repo:String!, $number:Int!) {
 """
 
 
-def fetch_last_ejection(repo: str, number: int) -> dict[str, Any] | None:
-    """The PR's most recent timeline item among Added/Removed-from-merge-queue events, IF it is
-    a Removed event (i.e. the PR is not simply sitting freshly-added / never-queued). Returns
-    None when the last item is an Added event or there is no such item at all — both cases mean
-    "no ejection reason is known", which the caller must treat as UNKNOWN, never as CODE.
+def fetch_last_ejection(repo: str, number: int) -> dict[str, Any] | None | str:
+    """The PR's most recent timeline item among Added/Removed-from-merge-queue events. Returns:
+      - a dict (reason/removed_at/before_commit) when the last item is a Removed event.
+      - None when the last item is an Added event — queued, then vanished with no Removed event
+        on record. The caller must treat this as UNKNOWN, never as CODE (unchanged from before
+        letter F).
+      - the literal string "NEVER_QUEUED" when there is NO Added/Removed timeline item at all —
+        the PR was simply never through the merge queue, ever (letter F, S1 2026-09-10). This is
+        NOT the same "unknown" as the Added-last case: a PR that never queued is not an ejection
+        this organ caused or should alert on, so it must never collapse into the same None the
+        Added-last case returns — the two need different tick outcomes (silent no-op vs a P0
+        alert). Never a plain None: that would make NEVER_QUEUED indistinguishable from
+        Added-last at the call site.
+
     Raises on fetch failure (see _gh_graphql)."""
     owner, name = repo.split("/", 1)
     data = _gh_graphql(TIMELINE_QUERY, {"owner": owner, "repo": name, "number": number})
@@ -623,7 +784,7 @@ def fetch_last_ejection(repo: str, number: int) -> dict[str, Any] | None:
     except (KeyError, TypeError) as exc:
         raise RuntimeError(f"unexpected graphql shape: {exc}: {json.dumps(data)[:300]}") from exc
     if not nodes:
-        return None
+        return "NEVER_QUEUED"
     last = nodes[-1]
     if last.get("__typename") != "RemovedFromMergeQueueEvent":
         return None
@@ -634,15 +795,22 @@ def fetch_last_ejection(repo: str, number: int) -> dict[str, Any] | None:
     }
 
 
-def fetch_infra_hint(repo: str, number: int, removed_at: str | None) -> bool | None:
-    """Best-effort correlation of a failed_checks removal to an INFRA-flavoured job, honest
-    about its own gap: this looks at the PR's most recent merge_group runs by branch-name
-    prefix (`pr-<number>-`), NOT an exhaustive day-window reconstruction like
+def fetch_infra_hint_and_fingerprint(
+    repo: str, number: int, removed_at: str | None
+) -> tuple[bool | None, str | None]:
+    """ONE fetch (merge_group runs + jobs) yielding BOTH the existing best-effort INFRA
+    correlation (see fetch_infra_hint, now a thin wrapper over this — letter E, S1 2026-09-10)
+    AND a same-cause fingerprint (red_cause_fingerprint) for the Builder Contract §1 suspension.
+    A second independent fetch for the fingerprint would double this organ's `gh api` calls per
+    candidate for no reason — both signals come from the IDENTICAL correlated run + its jobs.
+
+    Best-effort, honest about its own gap: this looks at the PR's most recent merge_group runs by
+    branch-name prefix (`pr-<number>-`), NOT an exhaustive day-window reconstruction like
     queue_ejection_attribution.py's audit-grade version — that module exists for retrospective
     accuracy across a whole day; this one exists to make ONE re-arm decision right now, and a
-    None (unresolved) answer here falls through to the conservative CODE default in
-    classify_ejection_reason, never to a guessed INFRA. Returns None on any fetch/parse failure
-    or when no correlated run is found — never silently invents True or False."""
+    None (unresolved) hint here falls through to the conservative CODE default in
+    classify_ejection_reason, never to a guessed INFRA. Returns (None, None) on any fetch/parse
+    failure or when no correlated run is found — never silently invents a hint OR a fingerprint."""
     owner, name = repo.split("/", 1)
     rc, out, err = _run(
         [
@@ -653,11 +821,11 @@ def fetch_infra_hint(repo: str, number: int, removed_at: str | None) -> bool | N
     )
     if rc != 0:
         logger.warning("fetch_infra_hint: gh api runs failed rc=%s err=%s", rc, err.strip()[:200])
-        return None
+        return None, None
     try:
         runs = json.loads(out).get("workflow_runs") or []
     except json.JSONDecodeError:
-        return None
+        return None, None
     removed_dt = _parse_iso(removed_at)
     # W111-adjacent fix (refuter round, agy pass, 2026-08-27): a merge_group run's real
     # head_branch is the full `gh-readonly-queue/main/pr-<n>-<sha>` ref, never a bare
@@ -680,7 +848,7 @@ def fetch_infra_hint(repo: str, number: int, removed_at: str | None) -> bool | N
             r for r in candidates if (_parse_iso(r.get("created_at")) or removed_dt) <= removed_dt
         ]
     if not candidates:
-        return None
+        return None, None
     candidates.sort(key=lambda r: r.get("created_at") or "", reverse=True)
     run = candidates[0]
     rc, jobs_out, _err = _run(
@@ -693,7 +861,13 @@ def fetch_infra_hint(repo: str, number: int, removed_at: str | None) -> bool | N
             jobs = json.loads(jobs_out).get("jobs") or []
         except json.JSONDecodeError:
             jobs = []
-    return _run_has_infra_signature(run, jobs)
+    return _run_has_infra_signature(run, jobs), red_cause_fingerprint(run, jobs)
+
+
+def fetch_infra_hint(repo: str, number: int, removed_at: str | None) -> bool | None:
+    """Thin wrapper over fetch_infra_hint_and_fingerprint, kept for callers that only want the
+    INFRA correlation (see that function's docstring for the shared single fetch)."""
+    return fetch_infra_hint_and_fingerprint(repo, number, removed_at)[0]
 
 
 def fetch_open_pr_heads(repo: str = REPO) -> set[str]:
@@ -963,29 +1137,66 @@ def _enabled() -> bool:
     )
 
 
-def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> int:
-    """Returns count of PRs re-armed. Loads/saves budget+alerted state unless dry_run.
+def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> dict[str, Any]:
+    """Returns {rearmed, examined, candidates, unknown, suspended, unverified, cannot_verify,
+    detail}. CANNOT-VERIFY is a tick OUTCOME the caller must surface, never silently folded into
+    a zero (S1, 2026-09-10 — see the module docstring's S1 section for the measured incident this
+    responds to). `cannot_verify` is None on a clean
+    read, else "rearm_state" (budget/alerted state file corrupt) or "rearm_candidates" (the gh
+    candidate-PR fetch failed after its one retry). `detail` carries the first 300 chars of the
+    triggering exception, for tick()'s heartbeat/alert — not part of the spec-named fields, purely
+    a passthrough. `unverified` counts candidates whose OWN per-PR timeline read failed (skipped
+    that PR, not the whole tick).
 
     Fail-closed on state corruption (refuter round, agy pass, 2026-08-27): a torn/corrupt budget
     file must NEVER be read as "no re-arms recorded yet" — that silently grants a fresh
     INFRA_BUDGET_MAX allowance, exactly the bypass the council barred. `_load_json` now raises on
     a parse failure (vs. a simply-missing file, which is normal and returns {}); this pass treats
     that as CANNOT-VERIFY and re-arms NOTHING this tick, same posture as a `gh` fetch failure."""
+    result: dict[str, Any] = {
+        "rearmed": 0,
+        "examined": 0,
+        "candidates": 0,
+        "unknown": 0,
+        "suspended": 0,
+        "unverified": 0,
+        "cannot_verify": None,
+        "detail": None,
+    }
     try:
-        budget_state = {} if dry_run else _load_json(BUDGET_FILE)
-        alerted_state = {} if dry_run else _load_json(ALERTED_FILE)
+        # Letter G (S1, 2026-09-10): dry-run READS every state file — budget/alerted/red — same
+        # as a live tick; only the WRITE at the end of this pass is skipped for dry_run. Before
+        # this fix, dry-run substituted {} here, so a dry-run tick's rearm decisions (INFRA
+        # budget, alerted-dedup, same-cause suspension) never matched what the SAME tick would
+        # decide live — a dry-run's whole purpose is to preview the live decision.
+        budget_state = _load_json(BUDGET_FILE)
+        alerted_state = _load_json(ALERTED_FILE)
+        red_state = _load_json(RED_FILE)
     except RuntimeError as exc:
-        logger.error("CANNOT-VERIFY rearm/alert state: %s", exc)
-        return 0
+        logger.error("CANNOT-VERIFY rearm/alert/red state: %s", exc)
+        result["cannot_verify"] = "rearm_state"
+        result["detail"] = str(exc)[:300]
+        return result
     budget_state = gc_budget_state(budget_state, now)
 
     try:
-        candidates = fetch_rearm_candidate_prs(REPO)
+        all_prs = fetch_open_prs(REPO)
     except RuntimeError as exc:
         logger.error("CANNOT-VERIFY rearm candidates: %s", exc)
-        return 0
+        result["cannot_verify"] = "rearm_candidates"
+        result["detail"] = str(exc)[:300]
+        return result
+    examined = len(all_prs)
+    unknown = sum(1 for pr in all_prs if pr.get("merge_state_status") == "UNKNOWN")
+    open_pr_numbers = {pr["number"] for pr in all_prs}
+    red_state = gc_red_state(red_state, open_pr_numbers)  # only after a successful read
+    candidates = [pr for pr in all_prs if is_rearm_candidate(pr)]
+    result["examined"] = examined
+    result["unknown"] = unknown
+    result["candidates"] = len(candidates)
 
     rearmed = 0
+    unverified = 0
     for pr in candidates:
         number = pr["number"]
         head_sha = pr["head_sha"]
@@ -993,18 +1204,49 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> int:
             ejection = fetch_last_ejection(REPO, number)
         except RuntimeError as exc:
             logger.error("PR #%s: CANNOT-VERIFY ejection timeline: %s", number, exc)
+            unverified += 1
+            continue
+        if ejection == "NEVER_QUEUED":
+            # letter F, S1 2026-09-10: no Added/Removed timeline event at all — this PR never
+            # went through the merge queue, so this is NOT an ejection this organ caused or
+            # should act on. Never the same UNKNOWN bucket fetch_last_ejection's OTHER "no
+            # signal" case (last item Added) uses — that one still fails closed AND alerts.
+            klass = "NEVER_QUEUED"
+            allowed, why = decide_rearm(klass, budget_state, number, head_sha, now)
+            logger.info(
+                "PR #%s head=%s class=%s allowed=%s (%s)", number, head_sha[:8], klass, allowed, why
+            )
             continue
         reason_raw = ejection["reason"] if ejection else None
         infra_hint: bool | None = None
+        fingerprint: str | None = None
+        removed_at = ejection.get("removed_at") if ejection else None
         if reason_raw == "failed_checks":
             try:
-                infra_hint = fetch_infra_hint(
-                    REPO, number, ejection.get("removed_at") if ejection else None
-                )
+                infra_hint, fingerprint = fetch_infra_hint_and_fingerprint(REPO, number, removed_at)
             except RuntimeError as exc:
                 logger.warning("PR #%s: infra_hint fetch failed: %s", number, exc)
+            if removed_at:  # a red = an observed failed_checks removal (Builder Contract §1)
+                red_state = record_red(red_state, number, removed_at, fingerprint, head_sha)
         klass = classify_ejection_reason(reason_raw, infra_hint)
         allowed, why = decide_rearm(klass, budget_state, number, head_sha, now)
+
+        pr_key = str(number)
+        existing_suspended = (red_state.get(pr_key) or {}).get("suspended")
+        if existing_suspended:
+            allowed, why = False, f"suspended_same_cause({existing_suspended.get('cause')})"
+            result["suspended"] += 1
+        elif fingerprint is not None:
+            reds = (red_state.get(pr_key) or {}).get("reds") or []
+            if count_same_cause_reds(reds, fingerprint) >= RED_SAME_CAUSE_LIMIT:
+                red_state.setdefault(pr_key, {"reds": reds})["suspended"] = {
+                    "at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "cause": fingerprint,
+                }
+                allowed, why = False, f"suspended_same_cause({fingerprint})"
+                result["suspended"] += 1
+                logger.warning("PR #%s suspended: 3 reds, same cause %s", number, fingerprint)
+
         logger.info(
             "PR #%s head=%s class=%s allowed=%s (%s)", number, head_sha[:8], klass, allowed, why
         )
@@ -1028,33 +1270,46 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> int:
             alerted_state.pop(alert_key, None)  # a live re-arm supersedes any stale alert
             rearmed += 1
 
+    result["rearmed"] = rearmed
+    result["unverified"] = unverified
     if not dry_run:
         _save_json(BUDGET_FILE, budget_state)
         _save_json(ALERTED_FILE, alerted_state)
-    return rearmed
+        _save_json(RED_FILE, red_state)
+    return result
 
 
-def run_janitor_pass(dry_run: bool) -> int:
-    """Returns count of runs cancelled. Skips any run currently is_quarantined() (module
-    docstring QUARANTINE section) — a quarantined id is never passed to cancel_run() at all,
-    which is what actually stops the repeated-failure log line (see this module's test suite for
-    the exact live incident this responds to)."""
+def run_janitor_pass(dry_run: bool) -> dict[str, Any]:
+    """Returns {cancelled, cannot_verify, detail} — same CANNOT-VERIFY-is-an-outcome contract as
+    run_rearm_pass (see its docstring). `cannot_verify` is None on a clean read, else one of
+    "queued_runs" / "open_pr_heads" / "live_queue_branches" / "uncancellable_state" naming which
+    fetch/state-load failed. Skips any run currently is_quarantined() (module docstring
+    QUARANTINE section) — a quarantined id is never passed to cancel_run() at all, which is what
+    actually stops the repeated-failure log line (see this module's test suite for the exact live
+    incident this responds to)."""
+    result: dict[str, Any] = {"cancelled": 0, "cannot_verify": None, "detail": None}
     try:
         queued_runs = fetch_queued_runs(REPO)
     except RuntimeError as exc:
         logger.error("CANNOT-VERIFY queued runs: %s", exc)
-        return 0
+        result["cannot_verify"] = "queued_runs"
+        result["detail"] = str(exc)[:300]
+        return result
 
     try:
         live_heads = fetch_open_pr_heads(REPO)
     except RuntimeError as exc:
         logger.error("CANNOT-VERIFY open PR heads: %s", exc)
-        return 0
+        result["cannot_verify"] = "open_pr_heads"
+        result["detail"] = str(exc)[:300]
+        return result
     try:
         live_branches = fetch_live_queue_branches(REPO)
     except RuntimeError as exc:
         logger.error("CANNOT-VERIFY live queue branches: %s", exc)
-        return 0
+        result["cannot_verify"] = "live_queue_branches"
+        result["detail"] = str(exc)[:300]
+        return result
 
     stale = select_stale_pull_request_runs(queued_runs, live_heads) + select_stale_merge_group_runs(
         queued_runs, live_branches
@@ -1068,10 +1323,17 @@ def run_janitor_pass(dry_run: bool) -> int:
     # this tick — placed AFTER the discovery fetches above so a corrupt skip-list never masks a
     # genuine "CANNOT-VERIFY queued runs" fetch failure as the same zero-action outcome.
     try:
-        uncancellable_state = {} if dry_run else _load_json(UNCANCELLABLE_FILE)
+        # Letter G (S1, 2026-09-10): dry-run READS the skip-list too — a quarantined run id must
+        # be skipped in dry-run exactly as it would be live, or a dry-run tick over-reports
+        # "would cancel" for runs the live janitor actually skips (measured live: reported
+        # cancelled=6 for runs the live janitor skips). Only the WRITE below stays gated on
+        # dry_run.
+        uncancellable_state = _load_json(UNCANCELLABLE_FILE)
     except RuntimeError as exc:
         logger.error("CANNOT-VERIFY uncancellable skip-list: %s", exc)
-        return 0
+        result["cannot_verify"] = "uncancellable_state"
+        result["detail"] = str(exc)[:300]
+        return result
 
     now = _now()
     skip_ids = {
@@ -1121,7 +1383,8 @@ def run_janitor_pass(dry_run: bool) -> int:
         candidate_ids = {str(run["id"]) for run in stale}
         uncancellable_state = gc_uncancellable_state(uncancellable_state, candidate_ids)
         _save_json(UNCANCELLABLE_FILE, uncancellable_state)
-    return cancelled
+    result["cancelled"] = cancelled
+    return result
 
 
 def _write_heartbeat(status: str, metadata: dict[str, Any]) -> None:
@@ -1157,15 +1420,72 @@ def tick(dry_run: bool) -> int:
         return 0
     now = _now()
     try:
-        rearmed = run_rearm_pass(dry_run, now)
-        cancelled = run_janitor_pass(dry_run)
+        rearm_result = run_rearm_pass(dry_run, now)
+        janitor_result = run_janitor_pass(dry_run)
     except Exception as exc:  # noqa: BLE001 — G2: heartbeat the failure path too, then re-raise
         _write_heartbeat("error", {"error": str(exc), "dry_run": dry_run})
         raise
+
+    rearmed = rearm_result["rearmed"]
+    cancelled = janitor_result["cancelled"]
+    # The two passes stay independent — each already fails closed on its OWN cannot_verify
+    # without raising, so both always ran this tick regardless of the other's outcome.
+    cannot_verify_labels = [
+        label for label in (rearm_result["cannot_verify"], janitor_result["cannot_verify"]) if label
+    ]
+
+    if cannot_verify_labels:
+        # CANNOT-VERIFY is a tick OUTCOME, never a zero (S1, 2026-09-10 — see the module
+        # docstring's S1 section for the measured incident this branch responds to).
+        # examined/candidates are only meaningful when the REARM read itself succeeded; a "-"
+        # makes that explicit rather than a misleading 0.
+        labels_str = ",".join(cannot_verify_labels)
+        examined_str = "-" if rearm_result["cannot_verify"] else str(rearm_result["examined"])
+        candidates_str = "-" if rearm_result["cannot_verify"] else str(rearm_result["candidates"])
+        logger.error(
+            "tick complete: CANNOT-VERIFY=%s examined=%s candidates=%s rearmed=%s cancelled=%s "
+            "dry_run=%s",
+            labels_str, examined_str, candidates_str, rearmed, cancelled, dry_run,
+        )
+        details = [d for d in (rearm_result["detail"], janitor_result["detail"]) if d]
+        _write_heartbeat(
+            "error",
+            {
+                "cannot_verify": cannot_verify_labels,
+                "error": "; ".join(details)[:300],
+                "dry_run": dry_run,
+            },
+        )
+        if not dry_run:
+            # ONE dedup_key for every CANNOT-VERIFY label, so the gateway's dedup ladder turns
+            # a whole outage into one alert, never one per tick per label.
+            send_telegram(
+                f"CANNOT-VERIFY ({labels_str}) this tick — it could not read, so nothing was "
+                're-armed or cancelled on the unreadable side. This is NOT "nothing to do": '
+                "needs a human look.",
+                dedup_key="queue-shepherd:cannot-verify",
+            )
+        return 2
+
     logger.info(
-        "tick complete: rearmed=%s cancelled=%s dry_run=%s", rearmed, cancelled, dry_run
+        "tick complete: examined=%s candidates=%s unknown=%s rearmed=%s suspended=%s "
+        "unverified=%s cancelled=%s dry_run=%s",
+        rearm_result["examined"], rearm_result["candidates"], rearm_result["unknown"],
+        rearmed, rearm_result["suspended"], rearm_result["unverified"], cancelled, dry_run,
     )
-    _write_heartbeat("ok", {"rearmed": rearmed, "cancelled": cancelled, "dry_run": dry_run})
+    _write_heartbeat(
+        "ok",
+        {
+            "examined": rearm_result["examined"],
+            "candidates": rearm_result["candidates"],
+            "unknown": rearm_result["unknown"],
+            "rearmed": rearmed,
+            "suspended": rearm_result["suspended"],
+            "unverified": rearm_result["unverified"],
+            "cancelled": cancelled,
+            "dry_run": dry_run,
+        },
+    )
     return 0
 
 
@@ -1194,6 +1514,19 @@ def report() -> int:
     print(f"alerted (UNKNOWN, undelivered-until-resolved) keys: {len(alerted_state)}")
     for key, ts in sorted(alerted_state.items()):
         print(f"    {key}: alerted at {ts}")
+    try:
+        red_state = _load_json(RED_FILE)
+    except RuntimeError as exc:
+        logger.error("%s", exc)
+        print(f"red-causes file: {RED_FILE} — CORRUPT, cannot parse ({exc})")
+        red_state = {}
+    suspended = {k: v for k, v in red_state.items() if v.get("suspended")}
+    print(f"red-causes file: {RED_FILE} ({'exists' if RED_FILE.exists() else 'missing'})")
+    print(f"  PRs with tracked reds: {len(red_state)}, suspended: {len(suspended)}")
+    for key, entry in sorted(red_state.items()):
+        susp = entry.get("suspended")
+        susp_note = f" SUSPENDED at {susp.get('at')} (cause={susp.get('cause')})" if susp else ""
+        print(f"    PR #{key}: {len(entry.get('reds') or [])} reds{susp_note}")
     if LOG_FILE.exists():
         lines = LOG_FILE.read_text(encoding="utf-8", errors="replace").splitlines()
         print(f"last log lines ({LOG_FILE}):")
