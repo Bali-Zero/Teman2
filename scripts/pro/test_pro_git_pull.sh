@@ -285,5 +285,47 @@ eq_ne "$(head_of)" "$(remote_head)" "I5 HEAD advanced"
 [ "$(cat "$LOCAL/escalations.jsonl")" = 'e-local' ] && ok "I5 file#2 kept local" || bad "I5 file#2 reset (multi-file restore missed one!)"
 rm -rf "$SANDBOX"
 
+# ── J1: STALE unheld .git/index.lock → stolen (backed up), ff succeeds ──
+# The 2026-09-10 outage in one case: an orphaned lock blocked 77 consecutive ticks because
+# nothing reaps a lock whose owner died. Backdated 2h so it is past INDEX_LOCK_STALE_SECONDS.
+echo "[J1] stale unheld index.lock → stolen, ff succeeds"
+setup_case J1; advance_origin "docs/j1.md" "hello"; git -C "$LOCAL" fetch -q origin main
+: > "$LOCAL/.git/index.lock" || fatal "J1 lock create"
+touch -t "$(date -v-2H '+%Y%m%d%H%M')" "$LOCAL/.git/index.lock" || fatal "J1 backdate"
+RC=$(run_puller); eq_ne "$RC" "0" "J1 rc=0"
+eq_ne "$(head_of)" "$(remote_head)" "J1 HEAD advanced past the stale lock"
+[ ! -e "$LOCAL/.git/index.lock" ] && ok "J1 stale lock removed" || bad "J1 stale lock survived"
+ls "$SANDBOX"/backup/stale-index-lock-* >/dev/null 2>&1 && ok "J1 lock backed up (recoverable)" || bad "J1 no lock backup"
+rm -rf "$SANDBOX"
+
+# ── J2: FRESH index.lock → tick skipped, lock untouched, HEAD unmoved ──
+# A young lock is presumed to belong to a live git; stealing it would corrupt that write.
+echo "[J2] fresh index.lock → skip tick, lock preserved"
+setup_case J2; advance_origin "docs/j2.md" "hello"; git -C "$LOCAL" fetch -q origin main
+: > "$LOCAL/.git/index.lock" || fatal "J2 lock create"
+RC=$(run_puller); eq_ne "$RC" "0" "J2 rc=0 (transient skip, not an error)"
+ne_ne "$(head_of)" "$(remote_head)" "J2 HEAD did NOT move"
+[ -e "$LOCAL/.git/index.lock" ] && ok "J2 fresh lock preserved" || bad "J2 fresh lock stolen (would corrupt a live git!)"
+rm -rf "$SANDBOX"
+
+# ── J3: OLD lock but a LIVE process holds it → NOT stolen ──
+# The sharp one: age alone must never authorise the steal. Only the holder test separates
+# this case from J1, so a regression that drops lsof fails here and nowhere else.
+echo "[J3] old-but-held index.lock → not stolen (holder test is load-bearing)"
+setup_case J3; advance_origin "docs/j3.md" "hello"; git -C "$LOCAL" fetch -q origin main
+: > "$LOCAL/.git/index.lock" || fatal "J3 lock create"
+touch -t "$(date -v-2H '+%Y%m%d%H%M')" "$LOCAL/.git/index.lock" || fatal "J3 backdate"
+sleep 30 9>"$LOCAL/.git/index.lock" & HOLDER=$!
+sleep 1
+if lsof -t "$LOCAL/.git/index.lock" >/dev/null 2>&1; then
+  RC=$(run_puller); eq_ne "$RC" "0" "J3 rc=0"
+  ne_ne "$(head_of)" "$(remote_head)" "J3 HEAD did NOT move"
+  [ -e "$LOCAL/.git/index.lock" ] && ok "J3 held lock preserved" || bad "J3 stole a lock a live process held!"
+else
+  bad "J3 fixture: holder process did not register with lsof (case did not run)"
+fi
+kill "$HOLDER" 2>/dev/null; wait "$HOLDER" 2>/dev/null
+rm -rf "$SANDBOX"
+
 echo "=== $PASS passed, $FAIL failed ==="
 [ "$FAIL" -eq 0 ]
