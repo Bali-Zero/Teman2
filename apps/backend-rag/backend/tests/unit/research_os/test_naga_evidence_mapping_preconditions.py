@@ -15,13 +15,23 @@ THREE CORRECTIONS ARE BAKED IN, each from an adversarial round on this file. The
 recorded rather than smoothed away, because each one describes a way this module was
 already wrong once:
 
-1. THE CORRECTION IS ITSELF INCOMPLETE. The bundle names four fields. Derived here from
-   the schema and the document -- not hand-copied -- the real count is larger: §2 never
-   names FIFTEEN of the schema's thirty-two required paths. The first version of this
-   module hardcoded the bundle's four and called them "the four fields the bundle omits",
-   which restated the document's own undercount as a measurement. The four are now
-   asserted to be a strict SUBSET of a derived set, so the gap is measured and the
-   undercount is itself pinned.
+1. THE CORRECTION WAS ITSELF INCOMPLETE, AND THE GAP IS NOW CLOSED. The bundle named four
+   fields. Derived from the schema and the document -- not hand-copied -- the real count
+   was larger: §2 never named FIFTEEN of the schema's thirty-two required paths. The first
+   version of this module hardcoded the bundle's four and called them "the four fields the
+   bundle omits", which restated the document's own undercount as a measurement; the
+   second version asserted the four were a strict SUBSET of a derived set of fifteen, so
+   the gap was measured instead of quoted.
+
+   R1 (mission R1, 2026-09-11, base `9304392d1a`) then CLOSED the gap: §2 documents all
+   thirty-two required paths, each with a real mapping or a named exclusion reason. The
+   fifteen is therefore gone, and it is gone because the document changed -- not because
+   anyone edited a number. This module does not pretend the gap never existed. It stops
+   pinning the WIDTH of a gap that no longer exists and starts pinning two things that
+   only became assertable once it closed: that §2 names every required path, and that the
+   mapping §2 documents, when EXECUTED, produces a schema-valid `Evidence`. Flipping the
+   `15` to a `0` would have been renumbering; deleting the width assertion and replacing
+   it with an executed mapping is the cure the width assertion was standing in for.
 
 2. THE OBJECT_HASH CONTROL WAS TAUTOLOGICAL. The positive control asserted
    `evidence.object_hash == payload["object_hash"]`, which only proves the value was
@@ -56,7 +66,11 @@ from typing import Any
 import jsonschema
 import pytest
 from pydantic import ValidationError
+from research_os.hashing import object_hash
 from research_os.models.evidence import Evidence
+
+from .naga_evidence_mapping_reference import UnmappableRecord, map_to_evidence
+from .research_os_admission_reference import Excluded, admit
 
 _REPO_ROOT = next(
     p for p in Path(__file__).resolve().parents if (p / "packages" / "research-os-core").is_dir()
@@ -90,8 +104,63 @@ _DISCUSSED_IN_SECTION_TWO: tuple[str, ...] = (
 )
 
 
+_SEED_COHORT = _BUNDLE.parent / "fixtures" / "seed_public_regulatory"
+
+#: Passed in rather than read from a clock, so the mapping's output -- and therefore its
+#: `object_hash` -- is deterministic across runs. §2's `times.recorded_at` row is explicit
+#: that this instant belongs to the ADAPTER, never to the legacy row.
+_SEED_RECORDED_AT = "2026-09-11T00:00:00Z"
+
+
 def _load() -> dict[str, Any]:
     return json.loads(_FIXTURE.read_text(encoding="utf-8"))
+
+
+def _seed_pairs() -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """Every `(record, source)` pair in the seed cohort, found by SHAPE, not by container.
+
+    The pair is the legacy shape `research_os_admission_reference.admit` already consumes,
+    so this module and that one cannot drift into two different notions of "a NAGA row".
+    Discovery walks the JSON rather than assuming one container layout: a fixture bundle
+    that reorganises its wrapper should not redden a mapping test.
+    """
+
+    pairs: list[tuple[dict[str, Any], dict[str, Any]]] = []
+
+    def walk(node: Any) -> None:
+        if isinstance(node, dict):
+            record = node.get("record")
+            source = node.get("source")
+            if isinstance(record, dict) and isinstance(source, dict):
+                pairs.append((record, source))
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    for path in sorted(_SEED_COHORT.glob("*.json")):
+        walk(json.loads(path.read_text(encoding="utf-8")))
+    return pairs
+
+
+def _first_seed_pair() -> tuple[dict[str, Any], dict[str, Any]]:
+    pairs = _seed_pairs()
+    assert pairs, (
+        f"no (record, source) pair found under {_SEED_COHORT}. The seed cohort is R1's "
+        "own synthetic fixture set; without it §2's mapping cannot be executed over "
+        "anything, and a mapping nobody runs is the defect this module exists to close."
+    )
+    return pairs[0]
+
+
+def _has_path(payload: dict[str, Any], path: tuple[str, ...]) -> bool:
+    cursor: Any = payload
+    for key in path:
+        if not isinstance(cursor, dict) or key not in cursor:
+            return False
+        cursor = cursor[key]
+    return cursor is not None
 
 
 def _schema() -> dict[str, Any]:
@@ -262,36 +331,110 @@ def test_the_published_schema_agrees_with_the_model(path: tuple[str, ...]) -> No
         jsonschema.validate(_without(_load(), path), _schema())
 
 
-def test_the_bundles_own_correction_undercounts_the_gap() -> None:
-    """The finding the first version of this module missed by trusting the document.
+def test_section_two_documents_every_required_path() -> None:
+    """The successor of the gap-width assertion: coverage, not the width of a hole.
 
-    §2 omits far more than the four its correction names. Both numbers are DERIVED here --
-    from the schema's recursive required set and from the section's own text -- so if
-    anyone closes part of the gap, this fails and forces a re-read instead of quietly
-    agreeing with a stale sentence.
+    Both sides are DERIVED -- the schema's recursive required set, and the section's own
+    text -- so this cannot agree with a stale sentence. If §2 is restructured and a path
+    stops being named, this reddens and names the missing paths instead of silently
+    reporting a smaller gap.
     """
 
     absent = _never_named_in_section_two()
-    named = set(_NAMED_BY_THE_CORRECTION)
+    required = _required_paths(_schema())
 
-    assert named < absent, (
-        "the bundle's four should be a strict subset of the fields §2 never names; got "
-        f"named={sorted(named)} absent={sorted(absent)}"
+    assert len(required) == 32, (
+        "the schema's required set changed size. That is a contract change, not a "
+        f"bookkeeping one: re-read evidence.schema.json; got {len(required)}"
     )
-    assert len(_required_paths(_schema())) == 32
-    assert len(absent) == 15, (
-        "the measured gap in §2 changed. Re-read the bundle and this module's docstring "
-        f"before touching this number; absent={sorted(absent)}"
+    assert absent == set(), (
+        "§2 must document all 32 required Evidence paths; missing: "
+        f"{sorted('.'.join(path) for path in absent)}"
     )
 
 
-def test_the_bundle_mapping_as_written_produces_an_invalid_evidence() -> None:
-    """The bundle's prose claim, executed for the four fields it names.
+def test_the_documented_mapping_produces_a_schema_valid_evidence() -> None:
+    """The test this module never had: §2's mapping EXECUTED, not merely mentioned.
 
-    Scope, stated because an earlier docstring here over-claimed: this removes the four
-    fields the correction names from the canonical fixture. It does not replay §2's
-    mapping -- nothing in this repository executes that document -- so it proves those
-    four are load-bearing, not that §2 as a whole was faithfully reproduced.
+    Everything else here pins requiredness on a model and a schema, or pins that a
+    document mentions a name. None of that catches the failure that actually matters --
+    a document that names all 32 paths and still describes a mapping whose output is
+    schema-invalid. `naga_evidence_mapping_reference.map_to_evidence` is §2 written out as
+    code; this runs it over a canonical, synthetic, NAGA-shaped seed record from the P06
+    bundle and requires the result to survive both the pydantic model and the published
+    JSON Schema, with a self-consistent `object_hash`.
+    """
+
+    record, source = _first_seed_pair()
+    payload = map_to_evidence(record, source, recorded_at=_SEED_RECORDED_AT)
+
+    Evidence.model_validate(payload)
+    jsonschema.validate(payload, _schema())
+
+    recomputed = object_hash({k: v for k, v in payload.items() if k != "object_hash"})
+    assert payload["object_hash"] == recomputed, (
+        "the mapping must COMPUTE object_hash over its own payload, never carry one "
+        "through from the legacy row"
+    )
+
+
+def test_the_executed_mapping_covers_every_required_path() -> None:
+    """Coverage measured on the OUTPUT, with the path list derived from the schema.
+
+    `test_section_two_documents_every_required_path` measures the document; this measures
+    what the document, executed, actually produces. The two can disagree -- a row can name
+    a path and describe a mapping that never populates it -- and when they do, this is the
+    one that is right.
+    """
+
+    record, source = _first_seed_pair()
+    payload = map_to_evidence(record, source, recorded_at=_SEED_RECORDED_AT)
+
+    missing = [path for path in _required_paths(_schema()) if not _has_path(payload, path)]
+    assert missing == [], (
+        "the executed mapping left required paths unpopulated: "
+        f"{sorted('.'.join(path) for path in missing)}"
+    )
+
+
+def test_a_record_admission_excludes_is_never_mapped() -> None:
+    """The contract between the two reference modules, asserted in the direction that bites.
+
+    `map_to_evidence` refuses instead of defaulting, so a legacy-shaped record -- URL hash,
+    hint span, no IntelEvent identity -- must RAISE rather than emit a half-invented
+    Evidence. This is the guilt control for the mapping: without it, a mapping that quietly
+    filled the holes would keep every assertion above green.
+    """
+
+    record, source = _first_seed_pair()
+    legacy_shaped = copy.deepcopy(dict(record))
+    # Cripple ONLY the span's exactness, keeping `quoted_text` so the statement is still
+    # derivable from the source. Dropping the whole span instead would trip rule 1
+    # (`statement_not_from_source`) first and this test would pass for the wrong reason --
+    # measured: it did, on the first version of this test. The ordered vocabulary is part of
+    # the contract, so a test about rule 4 must isolate rule 4.
+    legacy_shaped["source_span"] = {"hint": "somewhere in article 4", "quoted_text": (record["source_span"] or {}).get("quoted_text")}
+
+    decision = admit(legacy_shaped, source)
+    assert isinstance(decision, Excluded), "the crippled record must not be admissible"
+    assert decision.reason == "exact_span_missing"
+
+    with pytest.raises(UnmappableRecord):
+        map_to_evidence(legacy_shaped, source, recorded_at=_SEED_RECORDED_AT)
+
+
+def test_the_four_the_correction_named_are_load_bearing_on_the_model() -> None:
+    """The four, pinned on the pydantic model rather than on the document.
+
+    Renamed by R1 from `test_the_bundle_mapping_as_written_produces_an_invalid_evidence`.
+    The old name asserted a claim about the BUNDLE -- that §2 as written yields an invalid
+    Evidence -- and §2 no longer omits these four, so the name had become false while the
+    body stayed true. The body is unchanged and still worth keeping: it proves the four are
+    required by the model, which is a different mechanism from
+    `test_each_field_named_by_the_correction_is_independently_required`'s schema-level
+    check. Scope, stated because an earlier docstring here over-claimed: this removes the
+    four fields from the canonical fixture; it does not replay §2's mapping --
+    `test_the_documented_mapping_produces_a_schema_valid_evidence` is what does that now.
     """
 
     crippled = _load()

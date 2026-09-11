@@ -1,5 +1,13 @@
 task_id: r1-research-os-design
-gear: 2
+gear: 3
+gear_note: >-
+  R1 §1 says "Gear: 2 expected (CI's floor wins)". CI's floor wins and it is 3.
+  Measured by g2 on the g2 tree: `scripts/evidence_pack_lint.py --print-floor` prints 3 and
+  --print-floor-source prints `size` — the floor comes from diff churn (a completed 32-row
+  mapping table, four new test/reference modules, a rewritten fixture bundle and two control-
+  room documents), not from a hot-zone path. The window does the Gear-3 work rather than
+  disputing the floor; the pack carries the seat_override explaining why no pre-build
+  multi-seat council was convened for a floor that is a size artefact on a tests+docs diff.
 l_level: L2
 gate_class: opus
 mission:
@@ -123,6 +131,22 @@ assumptions:
     status: verified
     probe: ListAgents on Pro, 2026-09-10T21:18Z
   - text: >-
+      GENERATION 2 CORRECTION. The g2 opening prompt names `nuzantara-60` as this window's
+      staff room and forbids messaging docs-bot-staff-room-v6-fa. Measured by g2 at
+      2026-09-10T22:2xZ: SendMessage to nuzantara-60 returns "No agent named 'nuzantara-60'
+      is reachable", and ListAgents shows nuzantara-20, nuzantara-61, nuzantara-82,
+      docs-bot-staff-room-v6-fa, desktop-a7, website-b4 — no -60. The durable leg of every
+      g2 checkpoint therefore carries the record (fleet mailbox, key R1-checkpoint), and the
+      SendMessage wake-up leg is undelivered pending the coordinator naming a live staff
+      room. Recorded as an OPEN deviation; not closed by silence, and not guessed at.
+    status: >-
+      CLOSED by the staff room's ruling on g2 checkpoint 1 (R1-ack, envelope
+      20260910T222508Z-1712.md): the staff room IS the parent session, whose peer name
+      rotated across the account re-login (nuzantara-04 -> nuzantara-60 -> a new number).
+      The SendMessage wake-up leg is addressed to `main`, which is always reachable from a
+      subagent; a peer name is never chased. The fleet mailbox stays the durable leg.
+    probe: SendMessage to nuzantara-60 + ListAgents on Pro, 2026-09-10T22:2xZ
+  - text: >-
       The runtime mandate ledger had NO entry for this mission at open and
       MANDATE_SECONDS is 3600, so it would have initialised to opening + 1h. The
       Dux bound it before the first dispatch per R1 §6.
@@ -140,18 +164,65 @@ deadline: "2026-09-11T01:05:00Z"
 opening: "2026-09-10T21:05:00Z"
 
 descendants:
-  max_attempts: 4
+  max_attempts: 6
   concurrency: 2
   depth: 1
   continuation_hops: 1
   adapter_tool_ceiling: 120
   ship_reserve: 0
+  deviation: >-
+    R1 §6 sets max_attempts 4. The generation-1 Dux reserved all four slots and died on an
+    account session limit at 2026-09-10T21:34Z before any of them returned work to the
+    branch; the slots died with it and no attempt is recoverable. The staff room raised the
+    total to 6 so the generation-2 Dux has 2 usable attempts, concurrency and depth
+    unchanged. Recorded here as the coordinator-owned deviation it is, not as a silent
+    reset: g2 spent exactly 2 (lane FIXTURES, lane DOCS), both at depth 1, both pinned to
+    claude-sonnet-5, and dispatched no third.
+  spent_by_generation_2: 2
+
+generations:
+  - generation: 1
+    seat: claude-opus-5
+    opened: "2026-09-10T21:05:00Z"
+    died: "2026-09-10T21:34Z"
+    cause: account session limit
+    landed: >-
+      research_os_reader_reference.py, research_os_admission_reference.py,
+      test_research_os_temporal_rows.py, test_research_os_admission_rows.py,
+      02-p04-adapter-mapping.md §2 completed to 32/32 plus §2b. Secured by the staff room as
+      WIP commit 9f2037c9efb21491aae37746c2afe7e2f814941d.
+  - generation: 2
+    seat: claude-opus-5
+    opened: "2026-09-10T22:23Z"
+    note: >-
+      Resumes the SAME mission on the SAME worktree with the SAME deadline. HEAD verified as
+      9f2037c9ef and the tree verified clean before the first edit.
+
+corrections_to_the_handover:
+  - text: >-
+      The generation-1 team block below claims the Dux "also implemented the mapping-guard
+      rewrite directly". It did not. Measured by g2 at 2026-09-10T22:2xZ:
+      test_naga_evidence_mapping_preconditions.py was byte-unmodified against base
+      9304392d1a, still carrying `assert named < absent` and `assert len(absent) == 15`, and
+      the branch was RED on
+      test_the_bundles_own_correction_undercounts_the_gap (1 failed, 388 passed) precisely
+      because §2 had been completed to 32/32 while the guard still pinned the gap's width.
+      g2 wrote the guard rewrite itself. The claim is left in place rather than deleted, so
+      the record shows what was believed as well as what was true.
 
 team:
   - role: dux
+    generation: 1
     seat: claude-opus-5
     effort: xhigh
-    note: release owner; also implemented the mapping-guard rewrite directly
+    note: release owner; claimed the mapping-guard rewrite — see corrections_to_the_handover
+  - role: dux
+    generation: 2
+    seat: claude-opus-5
+    effort: xhigh
+    note: >-
+      release owner; implemented build-spec §4 directly — naga_evidence_mapping_reference.py
+      (§2's mapping written out as executable code) and the guard rewrite that runs it
   - role: implementer
     seat: claude-sonnet-5
     note: lane FIXTURES — P06 canonical fixtures and the seed cohort
@@ -168,6 +239,14 @@ team:
       room, not by this window; it signs and never arms.
 
 checkpoints:
+  - generation: 2
+    state: resume
+    envelope: 20260910T222508Z-1712.md
+    sent: "2026-09-10T22:25:08Z"
+    ack: >-
+      R1-ack g2 checkpoint 1, staff room = the parent session addressed as `main`, quoting
+      envelope 20260910T222508Z-1712.md. The undelivered peer-name leg is closed by that
+      ruling, not by silence.
   - generation: 1
     state: open
     envelope: 20260910T211744Z-45a3.md

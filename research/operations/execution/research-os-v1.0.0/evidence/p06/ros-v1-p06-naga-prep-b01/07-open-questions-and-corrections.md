@@ -195,6 +195,21 @@ only when a cited source states it, which reintroduces a predecessor write and t
 immutability argument redone. This bundle takes (a) by default because it is the one B1's wording
 supports; whoever builds P06 should raise (b) as a real question rather than inherit the default.
 
+**DISPOSED 2026-09-11 (R1 DESIGN).** Promoted from "default" to **DECIDED for this tranche: (a),
+never write it.** Authority: RULING B1's derivation rule (predecessor state is derived at read
+from the successor edge and never stored) plus `CONTRACTS.md:267` ("appending the successor claim
+and its supersession edge is one transaction, and the predecessor is never updated") — together
+they leave no room for (b): writing the predecessor's `valid_to` from an independently sourced
+cessation-date fact is still a write to the predecessor, and B1 and `:267` forbid that regardless
+of the write's own justification. The cessation date lives on the SUCCESSOR claim; the reader
+derives the predecessor's effective end from the successor edge, per `CONTRACTS.md:88` ("its
+effective interval is derived as `[recorded_at, successor.recorded_at)` without mutating the
+predecessor"). Recorded here as a DECISION with its authority, not as an inherited default — the
+D3 reader specification (`research/operations/2026-09-10-fable-max-sessions/R-research-os.md` §0
+D3; reference implementation
+`apps/backend-rag/backend/tests/unit/research_os/research_os_reader_reference.py`) encodes
+exactly this rule and (b) is closed, not merely deferred again.
+
 ### B3. `bitemporal/03` conflates correction with calendared succession
 
 Fixture 03 models a rate change (IDR 2.0M valid Jan–Jul, IDR 2.5M valid from Jul) using
@@ -204,6 +219,25 @@ current queries") would either suppress the correct March answer or mark a still
 `superseded`. The bundle never distinguishes "supersede = correction" from "supersede = next
 scheduled interval", and the edge-reconstruction rule would mechanically mint successor edges for
 mere calendar sequences, poisoning the transition graph the invalidation logic consumes.
+
+**CLOSED 2026-09-11 (R1 DESIGN)** by the `bitemporal/03` rewrite: calendared/scheduled succession
+is NOT supersession. `bitemporal/03` becomes **two families sharing one `subject_key`**
+(jurisdiction + instrument + provision, carried in the Claim's namespaced extension
+`com.balizero.research-os.naga`), each with a unique current member and NO successor edge between
+them. Authority: `CONTRACTS.md:141` ("the current object is the unique valid family member with
+no outgoing successor edge") requires a unique terminal member per family, and `graph.py`
+quarantines two edge-less members as `non_unique_current_member` without ever looking at valid
+intervals — so two scheduled intervals cannot live in one family; they are two families joined by
+the explicit key instead. The bundle now states which mechanism applies when:
+- a **correction** (the earlier claim was WRONG) → a successor claim plus its
+  `ObjectSuccessorEdge`, committed in ONE transaction (`CONTRACTS.md:142`), same family —
+  `supersession/01`'s shape;
+- a **scheduled change** (the earlier claim was RIGHT for its own interval, e.g. a rate change
+  known in advance) → a **second family** under the same `subject_key`, no edge, no supersession
+  semantics — `bitemporal/03`'s rewritten shape. The two `queries` keep their original answers
+  (2026-03-15 → the first interval, 2026-08-15 → the second) and the system-time query keeps its
+  abstention.
+Source: `research/operations/2026-09-10-fable-max-sessions/R-research-os.md` §0 D3.
 
 ### B4. The "100% invented" purity claim is overstated — CORRECTED 2026-08-26 in `04`
 
@@ -216,6 +250,20 @@ file stamped "SYNTHETIC — do not treat as regulatory fact" now carries a real 
 that this session did NOT re-verify. Whoever builds the golden set must either strip these to
 invented numbers or re-ground them against the live corpus. Do not cite them as validated.
 
+**CLOSED 2026-09-11 (R1 DESIGN)** by stripping the real IDR figures (and every other real
+regulatory figure) out of the fixtures: **the rule this tranche adopts** is that every number in
+every fixture is INVENTED, and the `"synthetic": true` stamp becomes true instead of aspirational
+— no figure is copied from a real instrument unless a public citation is carried beside it, and in
+this slice the choice made is to invent instead. This is recorded as the DECISION and its
+authority, not as a fact this session measured in the fixture files: fixture rewriting for this
+bundle is being carried out concurrently, in this same worktree, by another lane
+(`ros-v1-p06-naga-prep-b01/fixtures/**`), so this disposition states the rule the rewrite must
+satisfy rather than asserting the figures are already gone — that observation belongs to whoever
+finishes and validates the fixture rewrite. Authority:
+`research/operations/2026-09-10-fable-max-sessions/R-research-os.md` §0 D1 (this tranche, P06
+slice 2) and the R1 build spec §5c ("Every figure INVENTED and stamped `"synthetic": true` ... If
+a fixture would need a figure that cannot be sourced from a public document, STOP and escalate —
+do not invent a figure and present it as sourced").
 
 ## Adversarial review
 
