@@ -9,14 +9,28 @@ INNOCENCE half: `listStaffPractices` and `transitionPractice` — a
 credential-less caller reaches `main_api.app` (the REAL mounted
 application, middleware included) and must be rejected by
 `HybridAuthMiddleware` ITSELF, never merely by this router's own
-`require_garuda_staff` returning 401 further downstream. The
-discriminator is the middleware's own failure shape (`X-Auth-Type` never
-`"public"`, and the JSON body is the middleware's generic
+`require_garuda_staff` returning 401 further downstream.
+
+The discriminator USED to be the body: the middleware's generic
 `{"detail": "Authentication required"}`, never this router's own
-`{"code": "SESSION_REQUIRED", ...}` contract envelope) — a body shaped
-like the router's own error would mean the request reached the handler,
-i.e. a future `public_endpoints.py` edit already widened a prefix over
-`/staff/` without this test catching it structurally.
+`{"code": "SESSION_REQUIRED", ...}` contract envelope. That is retired as
+of the W3C contract-closure PR — the middleware now serves exactly the
+frozen contract's SESSION_REQUIRED envelope AND its three privacy headers
+on `/api/visa/voa/staff/**` (`hybrid_auth.contract_401_envelope`, a
+response-SHAPE change only: still 401, still refused before the handler,
+still not public), because the kita client reads `code` and was seeing
+`undefined`. What replaces it here:
+
+  - `WWW-Authenticate: Bearer` — set ONLY by the middleware's own 401
+    branch. No GARUDA router sets it, so its presence is the live proof
+    that the refusal came from the gate and not from a handler that was
+    allowed to run.
+  - the GUILT half below, which was always the structural statement and is
+    untouched by any of this.
+
+`X-Auth-Type != "public"` is kept as a weaker third signal: the public
+branch sets it on `call_next`'s response, so an `HTTPException` raised
+inside a wrongly-public handler would skip it.
 
 GUILT half (the registry itself, not a live request): no
 `PublicEndpoint` entry anywhere in `public_endpoints.py` may use
@@ -39,6 +53,20 @@ from backend.app import main_api as _main_api_module
 from backend.app.auth.public_endpoints import PUBLIC_ENDPOINTS
 
 _APP = _main_api_module.app
+
+#: `products/garuda-voa/contracts/openapi.yaml` — the 401 body every staff
+#: operation declares, plus the three headers its
+#: `x-public-privacy-response-headers` anchor attaches to that response.
+_STAFF_401_BODY = {
+    "code": "SESSION_REQUIRED",
+    "retryable": False,
+    "message_key": "garuda_voa.error.session_required",
+}
+_STAFF_401_PRIVACY_HEADERS = {
+    "Cache-Control": "no-store, private",
+    "Referrer-Policy": "no-referrer",
+    "X-Robots-Tag": "noindex, nofollow, noarchive",
+}
 
 _STAFF_REQUESTS: list[tuple[str, str, str, dict]] = [
     ("list_staff_practices", "GET", "/api/visa/voa/staff/practices", {}),
@@ -86,12 +114,24 @@ async def test_staff_route_without_credential_is_rejected_by_middleware(
         f"{case_id} ({method} {path}) took HybridAuthMiddleware's public-endpoint branch -- "
         f"a public_endpoints.py entry now covers a GARUDA VOA staff path."
     )
-    assert response.json() == {"detail": "Authentication required"}, (
-        f"{case_id} ({method} {path}) was rejected with a body shaped like this router's OWN "
-        f"SESSION_REQUIRED contract envelope, not the middleware's generic failure -- that "
-        f"means the request reached the handler, i.e. the request WAS authenticated (or the "
-        f"middleware let it through some other way) before this router's own check ran."
+    assert response.headers.get("WWW-Authenticate") == "Bearer", (
+        f"{case_id} ({method} {path}) carries WWW-Authenticate "
+        f"{response.headers.get('WWW-Authenticate')!r}, not 'Bearer' -- that header is set "
+        f"ONLY by HybridAuthMiddleware's own 401 branch, so anything else means the request "
+        f"reached the handler, i.e. the request WAS authenticated (or the middleware let it "
+        f"through some other way) before this router's own check ran."
     )
+    assert response.json() == _STAFF_401_BODY, (
+        f"{case_id} ({method} {path}) was refused with {response.json()!r}, not the frozen "
+        f"contract's 401 envelope."
+    )
+    for name, value in _STAFF_401_PRIVACY_HEADERS.items():
+        assert response.headers.get(name) == value, (
+            f"{case_id} ({method} {path}): {name} is {response.headers.get(name)!r}, not the "
+            f"{value!r} the contract attaches to this response -- serving the contract's body "
+            f"without its Cache-Control would let a shared cache store a refusal for an "
+            f"authenticated surface."
+        )
 
 
 @pytest.mark.asyncio

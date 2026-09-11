@@ -31,7 +31,7 @@ generic `{"detail": "Authentication required"}` vs the handler's
 W3C contract-closure PR, on purpose -- the frozen contract
 (`products/garuda-voa/contracts/openapi.yaml`) declares `401 ->
 SESSION_REQUIRED` for all five staff operations, and the middleware now
-serves exactly that envelope via `hybrid_auth.contract_401_body()` (a BODY
+serves exactly that envelope via `hybrid_auth.contract_401_envelope()` (a BODY
 change only: still 401, still refused before the handler, still not public).
 Two discriminators replace it, and neither can go blind the way a body
 string can:
@@ -77,11 +77,21 @@ _APP = _main_api_module.app
 
 #: The frozen contract's 401 envelope for every staff operation --
 #: `products/garuda-voa/contracts/openapi.yaml` (`SESSION_REQUIRED`), served
-#: by `hybrid_auth.contract_401_body()` before the handler runs.
+#: by `hybrid_auth.contract_401_envelope()` before the handler runs.
 _STAFF_401_ENVELOPE = {
     "code": "SESSION_REQUIRED",
     "retryable": False,
     "message_key": "garuda_voa.error.session_required",
+}
+
+#: The contract attaches these to that same 401 via its
+#: `x-public-privacy-response-headers` anchor. Serving the body without them
+#: would leave a shared cache eligible to store a refusal for an
+#: authenticated surface.
+_STAFF_401_PRIVACY_HEADERS = {
+    "Cache-Control": "no-store, private",
+    "Referrer-Policy": "no-referrer",
+    "X-Robots-Tag": "noindex, nofollow, noarchive",
 }
 
 # (case id, method, path, kwargs) -- every staff route on the shared
@@ -170,8 +180,9 @@ async def test_staff_route_is_never_public(case_id, method, path, kwargs):
         f"staff route must be refused by the auth gate"
     )
     assert response.headers.get("X-Auth-Type") != "public"
-    assert "WWW-Authenticate" in response.headers, (
-        f"{case_id}: no WWW-Authenticate header -- that header is set ONLY by "
+    assert response.headers.get("WWW-Authenticate") == "Bearer", (
+        f"{case_id}: WWW-Authenticate is {response.headers.get('WWW-Authenticate')!r}, not "
+        f"'Bearer' -- that header is set ONLY by "
         f"HybridAuthMiddleware's own 401 branch, so its absence means an "
         f"unauthenticated request reached the handler, i.e. a future edit "
         f"widened a public_endpoints.py entry into a prefix covering this "
@@ -181,6 +192,11 @@ async def test_staff_route_is_never_public(case_id, method, path, kwargs):
         f"{case_id}: the refusal must carry the frozen contract's 401 "
         f"envelope, got {response.json()!r}"
     )
+    for name, value in _STAFF_401_PRIVACY_HEADERS.items():
+        assert response.headers.get(name) == value, (
+            f"{case_id}: {name} is {response.headers.get(name)!r}, not the {value!r} "
+            f"the contract attaches to this response"
+        )
 
 
 @pytest.mark.parametrize(

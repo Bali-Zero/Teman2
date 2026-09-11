@@ -1,0 +1,86 @@
+gear: 3
+task_id: voa-contract-closure
+lane: backend-rag
+host: air-m5 (M5)
+branch: agent/air-m5/backend-rag/voa-contract-closure
+pr: 6235
+gate_class: opus
+l_level: L2
+objective: >-
+  GARUDA VOA W3C contract closure, residual 1 of 4 (the 401 envelope). Window colour
+  BLUE, Dux = Claude Opus 5 xhigh. An unauthenticated call to any GARUDA VOA staff
+  route answered `{"detail":"Authentication required"}` (HybridAuthMiddleware's
+  generic body) because the middleware refuses before `garuda_staff_router` runs.
+  The frozen contract `products/garuda-voa/contracts/openapi.yaml` declares
+  `401 -> {"code":"SESSION_REQUIRED","retryable":false,"message_key":
+  "garuda_voa.error.session_required"}` plus three privacy headers for all five
+  staff operations. Cured on ONE side only: the code moves to the contract;
+  openapi.yaml is NOT touched by this PR.
+scope:
+  - apps/backend-rag/backend/middleware/hybrid_auth.py
+  - >-
+    apps/backend-rag/backend/app/auth/public_endpoints.py (comment block only —
+    this is the `app/auth/**` HOT ZONE touch that raises the deterministic floor
+    to 3; the route chosen is (b) KEEP the file and declare gear 3, because the
+    comment documents why the canary's discriminator changed and deleting it to
+    lower a gate would be gaming the gate)
+  - apps/backend-rag/backend/tests/app/routers/test_garuda_voa_public_root_allowlist.py
+  - apps/backend-rag/backend/tests/app/routers/test_garuda_staff_public_prefix_guard.py
+  - apps/backend-rag/backend/tests/unit/middleware/test_hybrid_auth_contract_401_envelope.py (new)
+constraints:
+  - products/garuda-voa/contracts/openapi.yaml is NOT modified (one side, never both).
+  - No fly.toml, no .env*, no zantara_core.py.
+  - No PII anywhere in code, tests, or this pack.
+  - No seed in prod.
+acceptance:
+  - text: >-
+      WHEN an unauthenticated request reaches any path under
+      `/api/visa/voa/staff/`, THE SYSTEM SHALL answer 401 with the frozen
+      contract's SESSION_REQUIRED body.
+    status: pending
+    probe: >-
+      (post-deploy, on the promoted commit)
+      curl -s https://nuzantara-rag.fly.dev/api/visa/voa/staff/practices |
+      grep -c SESSION_REQUIRED == 1 (today: 0)
+  - text: >-
+      WHEN that same refusal is served, THE SYSTEM SHALL attach the contract's
+      three privacy headers.
+    status: pending
+    probe: >-
+      curl -sI https://nuzantara-rag.fly.dev/api/visa/voa/staff/practices |
+      grep -ci 'cache-control: no-store, private' == 1
+  - text: >-
+      WHILE a path merely shares the prefix STRING but is not a staff path,
+      THE SYSTEM SHALL keep the generic body.
+    status: verified
+    probe: >-
+      PYTHONPATH=. pytest
+      backend/tests/unit/middleware/test_hybrid_auth_contract_401_envelope.py
+      — the `_NON_STAFF_PATHS` cases include `/api/visa/voa/staffroom`,
+      `/api/visa/voa/staff-directory` and the bare `/api/visa/voa/staff`.
+  - text: >-
+      IF a public_endpoints.py entry is ever widened to cover a staff path,
+      THEN the suite SHALL go red.
+    status: verified
+    probe: >-
+      find_entry(<staff path>) is None per path + the pre-existing match-mode
+      census test_no_garuda_voa_public_endpoint_uses_a_prefix_match_covering_staff
+risks:
+  - >-
+    (a) The change retires the body-equality discriminator that TWO canary files
+    used to distinguish "middleware refused" from "handler wrongly allowed to
+    run" — both files were updated in this PR and given two replacements that
+    cannot go blind the way a body string can (`find_entry` reads the registry
+    directly; `WWW-Authenticate` is set only by the middleware's 401 branch).
+  - >-
+    (b) `request.url.path` carries any ASGI mount prefix; this is NOT a
+    regression — `is_public_endpoint` reads the same attribute, so the whole
+    public registry already resolves against the externally-visible path, and
+    `main_api:app` is served at the root by uvicorn in production. Documented in
+    `contract_401_envelope`'s docstring rather than "fixed" on one side only.
+pii: none
+local_evidence: >-
+  217 passed across `backend/tests/unit/middleware/` + the two mounted canary
+  suites + `test_garuda_voa_flag_ordering.py` + `test_garuda_staff_actor_async_verifier.py`.
+  Mutation-verified in round 1: with the cure disabled at the call site, 5 of 5
+  new parametrized cases FAILED.
