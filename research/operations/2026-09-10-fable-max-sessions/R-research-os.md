@@ -51,8 +51,8 @@ adversarial_review: codex
 
 - **Z1 — RULED 2026-09-11 ~04:45 WITA: YES.** One tranche (P04-surface decisions → P06 NAGA claim ledger, slice 2); the 23 packets stay a roadmap.
 - **Z2a — RULED 2026-09-11 ~04:45 WITA: YES, with expiry.** R2's merge — deploy plus the additive DDL of `research_os_naga_claims` exactly as D5 describes it, nothing else — is authorized until **2026-09-25T00:00Z**. Zero accepted "with expiry" without naming a date; the staff room set this one, and a date from Zero replaces it. Recorded here because at ruling time the ledger barrier of R1 §3 was held by three open PRs touching the ledger (#6081, #6080, #5072); the tranche ledger PR appends the row when the barrier clears. R2 copies this grant, scope and expiry into its `brief.yml` `authority:` block before opening its PR.
-- **Z2b — open.** Until ruled (cohort, maximum count, kinds and tables, write identity), R2 ends at the admission dry-run and writes nothing to production.
-- **Z3 — open → BLUE by default** for R1 and R2 (§0, Z3).
+- **Z2b — RULED 2026-09-11 ~15:00 WITA: YES, as recommended in §0.** (a) Cohort: the seed of at most 20 public regulatory claims prepared by R1 as fully sourced canonical fixtures, plus whatever the legacy admission dry-run admits (expected 0). (b) Maximum: 20 seed rows plus the admitted legacy rows, 40 in total. (c) Kinds and tables: `Claim`, `Evidence`, `ObjectSuccessorEdge`, `IntelEvent` in `research_os_objects` and rows in `research_os_naga_admission`, nothing else. (d) Execution identity: a write-capable PostgreSQL role for the backfill whose credential Zero hands over at `--apply` time; until then R2 stays at the dry-run. Expiry: the same as Z2a, **2026-09-25T00:00Z**. Recorded by the Fable staff-room session on M5 from Zero's words («confermo Z2b e Z3»); the Desk copy is `~/Desktop/BATTAGLIA-20260911/5-RESEARCH-OS/DECISIONI-ZERO-R.md`.
+- **Z3 — RULED 2026-09-11 ~15:00 WITA: BLUE** for R1 and R2 (confirmed, not defaulted).
 - **Z4 — no veto received.** The window closes when R1 opens. R1 may open now.
 
 ---
