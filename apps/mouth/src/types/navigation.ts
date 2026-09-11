@@ -49,6 +49,7 @@ export const navigation: NavSection[] = [
       { title: "Process", href: "/process", icon: "FolderKanban" },
       { title: "Second Home", href: "/second-home", icon: "Home" },
       { title: "Review", href: "/review", icon: "ClipboardCheck" },
+      { title: "Obligations", href: "/obligations", icon: "Receipt" },
       { title: "HR / Payroll", href: "/hr", icon: "Banknote" },
     ],
   },
