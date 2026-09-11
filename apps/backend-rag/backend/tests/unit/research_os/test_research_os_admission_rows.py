@@ -295,22 +295,29 @@ def test_an_unrelated_valid_intel_event_is_not_provenance_for_this_record() -> N
     """
 
     other_uri = "https://example.invalid/synthetic-instrument-02"
-    other_body = "SYNTHETIC INSTRUMENT 02. An unrelated document."
+    other_hash = _sha256("SYNTHETIC INSTRUMENT 02. An unrelated document.")
     other_id = "11111111-0000-4000-8000-0000000000e2"
-    node = _intel_event(other_id)
-    node["source"]["uri"] = other_uri
-    node["identity"]["content_hash"] = _sha256(other_body)
-    node["payload_ref"] = {"ref_type": "reference", "uri": other_uri, "content_hash": _sha256(other_body)}
-    node["object_hash"] = object_hash(node)
-    source = _source()
-    source["intel_events"][other_id] = node
 
-    borrowed = _admissible_record()
-    borrowed["source_event_ref"] = {"event_id": other_id}
-    decision = admit(borrowed, source)
-    assert isinstance(decision, Excluded)
-    assert decision.reason == "intel_event_identity_missing"
-    assert isinstance(admit(_admissible_record(), source), Admitted)
+    def borrow(**changes: Any) -> Excluded | Admitted:
+        # ONE binding gate broken per case, every other field left bound, so each gate is
+        # proven on its own (a single borrowed event breaking all three at once let any one
+        # gate be deleted unnoticed — measured by mutation on the first version of this row).
+        node = _intel_event(other_id)
+        node["source"]["uri"] = changes.get("uri", _URL)
+        node["identity"]["content_hash"] = changes.get("identity_hash", _sha256(_BODY))
+        node["payload_ref"]["content_hash"] = changes.get("payload_hash", _sha256(_BODY))
+        node["object_hash"] = object_hash(node)
+        source = _source()
+        source["intel_events"][other_id] = node
+        record = _admissible_record()
+        record["source_event_ref"] = {"event_id": other_id}
+        return admit(record, source)
+
+    for case in ({"uri": other_uri}, {"identity_hash": other_hash}, {"payload_hash": other_hash}):
+        decision = borrow(**case)
+        assert isinstance(decision, Excluded), case
+        assert decision.reason == "intel_event_identity_missing", case
+    assert isinstance(borrow(), Admitted)
 
 
 def test_a_stated_event_hash_that_disagrees_is_a_rejection() -> None:
