@@ -103,6 +103,12 @@ team:
   dux: "Opus 5 xhigh, Claude session 49aaaada-dcb1-4b4b-92d2-33af01e2f4f8 (nuzantara-8a), M5; also release owner (FINAL §2.9)"
   implementer: "none — the Dux applies the frozen patch once; no child"
   imperator: "Fable 5.1, M5, session 116b2671-9748-485b-ade4-db76a770af08 (checkpoints via fleet mailbox)"
+size_exception: >-
+  The PR exceeds the ~400 net-line contract by construction, and every block is named: product +
+  research +426/-56 (the adopted patch's 10 files +384/-56 and D1/D3 +42), evidence +608 (brief,
+  contract-lock, PRE-review record, local proof logs, the v5 FINAL spec pinned byte-identical) and
+  .secrets.baseline +306 (D4 audit entries, is_secret false). One concern, one adoption; splitting
+  the evidence or the baseline audit into another PR would leave this PR's own checks red.
 appetite:
   wall_clock_hours: 3
   adversarial_rounds: 2
