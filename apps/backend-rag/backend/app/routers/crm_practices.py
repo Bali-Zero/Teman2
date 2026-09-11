@@ -1231,7 +1231,7 @@ async def update_practice(
                     old_row = await conn.fetchrow(
                         """
                         SELECT p.status, p.client_id, p.created_by, p.assigned_to,
-                               p.start_date, p.completion_date,
+                               p.start_date, p.completion_date, p.quoted_price,
                                c.assigned_to AS client_lead,
                                pt.code AS practice_type_code
                         FROM practices p
@@ -1250,6 +1250,7 @@ async def update_practice(
                         practice_client_lead = old_row.get("client_lead", "")
                         old_start_date = old_row.get("start_date")
                         old_completion_date = old_row.get("completion_date")
+                        old_quoted_price = old_row.get("quoted_price")
                         old_practice_type_code = old_row.get("practice_type_code")
                 else:
                     raise

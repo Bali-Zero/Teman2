@@ -118,6 +118,7 @@ def validate_service_selected(to_state: str, practice_type_code: str | None) -> 
     Raises:
         InvalidTransitionError: target state needs a service and none is chosen
     """
+    to_state = normalize_state(to_state)
     if to_state in STATES_WITHOUT_SERVICE:
         return True
     # Only the explicit placeholder is blocked: legacy rows with a NULL /
