@@ -13,6 +13,7 @@ This creates the "intradinamici" connection between Team and Portal.
 Created: 2025-12-30
 """
 
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 import asyncpg
@@ -32,6 +33,24 @@ if TYPE_CHECKING:
 else:
     InviteService = Any
     PortalService = Any
+
+
+def _utc_iso(value: datetime | None) -> str | None:
+    """ISO-8601 with an explicit UTC offset, even for a naive datetime.
+
+    `team_members.last_login` is `timestamp WITHOUT time zone` and is written
+    by `NOW()` on a database whose session timezone is UTC — so the value IS
+    UTC, but `.isoformat()` emitted it bare ("2026-09-10T21:54:37"), and
+    `new Date(...)` in the browser reads a bare timestamp as LOCAL time. On a
+    WITA screen that shifted a login made at 05:54 today to "Sep 10" —
+    yesterday (portal audit finding F-07). Attaching the offset the value
+    already has costs nothing and lets every reader localise it correctly.
+    """
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.isoformat()
 
 
 def _team_impersonation_ctx(client_id: int, current_user: dict) -> ClientContext:
@@ -219,9 +238,7 @@ async def get_portal_status(
                     "has_portal_access": True,
                     "portal_user_id": portal_user["id"],
                     "portal_email": portal_user["email"],
-                    "last_login": portal_user["last_login"].isoformat()
-                    if portal_user["last_login"]
-                    else None,
+                    "last_login": _utc_iso(portal_user["last_login"]),
                     "pending_invite": False,
                     "invite_expires_at": None,
                 },

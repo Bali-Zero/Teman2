@@ -109,6 +109,22 @@ export function PortalAccess({
         })
       : null;
 
+  /* A sign-in is a moment, not a day: the date alone read "Sep 10" in Bali
+     for a login made at 05:54 on Sep 11 (portal audit F-07 — the backend
+     sent a bare UTC timestamp, now offset-carrying). Showing the time and
+     naming the zone is what makes the answer checkable. */
+  const formatMoment = (value: string | null) =>
+    value
+      ? new Date(value).toLocaleString(undefined, {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZoneName: "short",
+        })
+      : null;
+
   return (
     <div className="bz-product-panel overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--bz-border)]">
@@ -160,7 +176,7 @@ export function PortalAccess({
               </p>
               <p className="text-xs text-[var(--bz-text-2)] mt-1">
                 {status.last_login
-                  ? `Last signed in ${formatDate(status.last_login)}`
+                  ? `Last signed in ${formatMoment(status.last_login)}`
                   : "Registered, but has never signed in yet"}
               </p>
               {/* The login identity is team_members.email, which a CRM email
