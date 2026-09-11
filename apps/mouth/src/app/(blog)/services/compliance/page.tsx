@@ -55,7 +55,7 @@ const HOW_IT_WORKS = [
 const WHY_NOW = [
   "Komdigi blocked eBay and KLM in Indonesia in June 2025 for missing PSE registration, and in June 2026 warned 25 operators including airlines and hotel groups.",
   "Coretax made 2026 corporate filing harder, not easier: the deadline was extended after thousands of complaints.",
-  "PP 28/2025 introduced fines tied to LKPM non-compliance.",
+  "Quarterly LKPM deadlines moved to the 15th under BKPM Regulation 5/2025; a compliance calendar built last year is already out of date.",
 ];
 
 const FAQS = [
