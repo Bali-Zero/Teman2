@@ -102,18 +102,20 @@ def test_a_genuinely_clean_report_passes():
 
 # --- scar pin: the live shape this gate was written for ---------------------
 
-def test_the_real_gray_matter_finding_passes_with_the_shipped_waiver():
-    """Uses the SHIPPED WAIVE, not the fixture — pins the actual production set."""
-    payload = {
-        "vulnerabilities": {
-            "js-yaml": {
-                "severity": "high",
-                "via": [{"url": "https://github.com/advisories/GHSA-5p4m-2wfm-xmqj"}],
-                "nodes": [GRAY_MATTER],
+def test_retired_advisories_block_if_reintroduced() -> None:
+    """Exercise the shipped defaults: patched advisories get no standing pardon."""
+    for package, advisory, node in (
+        ("@hono/node-server", "GHSA-frvp-7c67-39w9", "node_modules/@hono/node-server"),
+        ("@hono/node-server", "GHSA-9mqv-5hh9-4cgg", "node_modules/@hono/node-server"),
+        ("find-my-way", "GHSA-c96f-x56v-gq3h", "node_modules/find-my-way"),
+        ("js-yaml", "GHSA-5p4m-2wfm-xmqj", GRAY_MATTER),
+    ):
+        payload = {
+            "vulnerabilities": {
+                package: vuln(ids=(advisory,), nodes=(node,)),
             }
         }
-    }
-    assert run_cli(payload) == 0
+        assert run_cli(payload) == 1, advisory
 
 
 def test_the_same_advisory_on_a_production_path_we_never_vetted_blocks():

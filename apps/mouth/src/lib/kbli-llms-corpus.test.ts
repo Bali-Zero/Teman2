@@ -2,8 +2,8 @@
  * The corpus written for machines, and the pin that stops it going stale.
  *
  * `public/llms-kbli.txt` is a COMMITTED artifact: `package.json` runs the
- * generator as `LLMS_GENERATE_FULL_ONLY=1`, and that flag returns before the
- * KBLI section, so no build regenerates it. It was last written on 2026-07-07
+ * generator as `LLMS_GENERATE_ARTICLES_ONLY=1`, which skips the KBLI section,
+ * so no build regenerates it. It was last written on 2026-07-07
  * and had drifted through every dataset correction since. The last test in this
  * file is what makes that impossible to repeat quietly — a compiler that writes
  * the canonical and leaves its derivatives stale is a half-cure.
@@ -181,7 +181,7 @@ describe("the committed artifact", () => {
     // balizero.com/llms-kbli.txt and no build regenerates it, so without this
     // pin it silently drifts from the canonical — as it did, for four weeks.
     // REMEDIATION when this fails: `npx tsx scripts/generate-llms-full.ts`
-    // (without LLMS_GENERATE_FULL_ONLY=1, which returns before this section),
+    // (without the FULL_ONLY or ARTICLES_ONLY flags, which skip this section),
     // then commit the regenerated file.
     expect(readFileSync(COMMITTED, "utf8")).toBe(buildKbliCorpus(RECORDS));
   });
