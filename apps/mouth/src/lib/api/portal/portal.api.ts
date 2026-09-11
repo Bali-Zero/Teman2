@@ -307,7 +307,7 @@ export class PortalApi {
         status:
           pick<TaxOverview["summary"]["status"]>(summary, ["status"]) ??
           "none",
-        totalDue: pick<number>(summary, ["totalDue", "total_due"]) ?? 0,
+        totalDue: pick<number>(summary, ["totalDue", "total_due"]) ?? null,
         nextDeadline:
           pick<string>(summary, ["nextDeadline", "next_deadline"]) ?? null,
         daysToDeadline:
