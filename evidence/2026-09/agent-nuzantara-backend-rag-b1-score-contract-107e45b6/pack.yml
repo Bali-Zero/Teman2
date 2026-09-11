@@ -3,6 +3,10 @@ mandate: B1
 colour: BLUE
 pr: B1.1
 head_sha: f56d3e5dc1b2c2213537b7ad3b45d2fe88bb5b3a # pragma: allowlist secret
+# NOTICE 3 from the fresh gate: `head_sha` above is the CODE commit, not the
+# branch tip — defensible but the field name misleads, so both are named here.
+code_sha: f56d3e5dc1b2c2213537b7ad3b45d2fe88bb5b3a # pragma: allowlist secret — last commit touching apps/
+gated_sha: fbcb10fd3cce67c9f247254a51eabdb8574e638b # pragma: allowlist secret — what the fresh Opus 5 gate signed
 reviewed_sha: 4675f04bca2925e4502286dc5949857bdb5ff032 # pragma: allowlist secret — what round 1 read
 base_sha: 1d726045c9ca75ab64a75e92b062e52b0b763a98 # pragma: allowlist secret
 brief_ref: evidence/brief.yml
@@ -155,8 +159,10 @@ adversarial:
     seat: "codex CLI, ChatGPT subscription, default account model, --sandbox read-only, effort high"
     outside_chain: true
     reviewed_sha: 4675f04bca2925e4502286dc5949857bdb5ff032 # pragma: allowlist secret
-    artifact: codex-round-1-verdict.txt
-    artifact_sha256: 2823537a3f9cbf4203493daf6c5324d9cc6b1e7132c2518f0bb8fe5abe8b980d # pragma: allowlist secret
+    artifact: codex-round-1-verdict.txt # mechanical extract, 44 lines
+    artifact_sha256: 4c962e0ee5a216f4736d1f4adbf256b50d2a122510a328bee2e0470a535af2be # pragma: allowlist secret
+    full_trace_path: ~/.claude/state/b1-evidence/4675f04bca-codex-round-1.txt # 441268 B, outside every worktree
+    full_trace_sha256: 2823537a3f9cbf4203493daf6c5324d9cc6b1e7132c2518f0bb8fe5abe8b980d # pragma: allowlist secret
     verdict: REWORK
     cleared: >-
       7 of 10 surfaces NOT-A-DEFECT, two of them by executed probe rather than
@@ -204,8 +210,10 @@ adversarial:
     seat: "codex CLI, ChatGPT subscription, default account model, --sandbox read-only, effort high"
     outside_chain: true
     reviewed_sha: f56d3e5dc1b2c2213537b7ad3b45d2fe88bb5b3a # pragma: allowlist secret
-    artifact: codex-round-2-verdict.txt
-    artifact_sha256: 0a7b6a2cb8f8407cc9aafc0c690d7fe98b91ea43b639cc02a98215a30bfe100b # pragma: allowlist secret
+    artifact: codex-round-2-verdict.txt # mechanical extract, 61 lines
+    artifact_sha256: edd49edbf8c7e2fa01b066ebc152b3586293fdd8e920618c8bcd4a344675d017 # pragma: allowlist secret
+    full_trace_path: ~/.claude/state/b1-evidence/f56d3e5dc1-codex-round-2.txt # 846309 B, outside every worktree
+    full_trace_sha256: 0a7b6a2cb8f8407cc9aafc0c690d7fe98b91ea43b639cc02a98215a30bfe100b # pragma: allowlist secret
     verdict: SHIP
     surfaces: "7 of 7 NOT-A-DEFECT"
     cleared_by_execution_not_argument:
@@ -350,12 +358,63 @@ bites:
     `hybrid_rrf_formatted` where the hybrid branch served it). Labels only: the
     observation is a set of vocabulary constants and carries no client data.
   why_not_an_http_probe: >-
-    Deliberately not a curl assertion. `score_kind` appears in NO router and NO
-    response schema — grepped app/routers/ and app/schemas/ this turn, zero hits
-    — because the PR is additive and changes no served byte. Claiming an HTTP
-    observation would be claiming a surface that does not exist.
+    Deliberately not a curl assertion, and NOT because the field is absent from
+    the schema — `AgenticQueryResponse.sources` is `list[Any]`
+    (app/routers/agentic_rag.py:475), a passthrough that would serve any key it
+    is handed. The reason no served byte changes is a key ALLOWLIST downstream:
+    `_normalize_citations` (services/rag/agentic/pipeline.py:274-282) rebuilds
+    every citation on a fixed set — title/url/collection/score/snippet/metadata —
+    so score_kind/score_raw are dropped there, and reasoning.py:1114-1115 /
+    :1707-1708 replace state.sources with that projection BEFORE the response
+    (agentic_rag.py:712) and before the SSE `sources` event (reasoning.py:1724).
+    The grep over app/routers/ and app/schemas/ returns zero hits and is true,
+    but it is NOT the load-bearing fact; the allowlist is. This correction is the
+    fresh gate's (NOTICE 2) — the Dux's original wording gave a true conclusion
+    for a false reason, which is the kind of evidence that teaches the next reader
+    the wrong lesson.
+  degraded_path_residual: >-
+    DECLARED, not assumed. The allowlist is bypassed where `self.response_pipeline`
+    is falsy or the pipeline raises (reasoning.py:1697 guard, :1709 except
+    ValueError/RuntimeError/KeyError): there state.sources stays the raw tool
+    projection from tools.py:280-291 and the two keys DO reach the wire,
+    additively. Payload is BOUNDED: score_kind is one of the 7 closed-vocabulary
+    literals (stamp raises ValueError on anything else,
+    core/score_provenance.py:133-136) and score_raw is a float or null
+    (raw_of, :118-122), sitting beside the `score` that path already served
+    pre-PR, alongside title/url/doc_id/collection/snippet (tools.py:293). Knowledge
+    corpus — visa/legal/KBLI — not client records: no PII and no new information
+    class crosses the output boundary. UNVERIFIABLE and not guessed: how often
+    response_pipeline is absent or raises in production was NOT measured (the gate
+    is read-only and read no logs).
   second_observation_deferred: >-
     The sealed-package half cannot be observed without real traffic: wa_outbox
     holds only terminal rows, newest 2026-09-01, pending 0. When the next real
     package is built, its stored bytes contain score_kind. Declared as deferred
     rather than asserted now.
+
+evidence_extraction:
+  why: >-
+    The committed artifacts were the RAW CLI traces — 1.28 MB of 1.29 MB, ~20161
+    of the PR's 21860 insertions, mostly exec echoes and repeated
+    "git: warning: confstr() failed" noise around ~200 lines of actual judgement.
+    The Dux raised this against its own commit before pushing; the staff room
+    ruled that "preserve it" meant durability, not a megabyte of CLI noise in git
+    history forever. The fresh gate independently measured the same thing
+    (NOTICE 1) and made the replacement a pre-push condition.
+  command: >-
+    awk '/^Riferimenti relativi a|^Revisione dei due diff/{s=NR} {l[NR]=$0}
+    END{for(i=s;i<=NR;i++) print l[i]}' <full-trace> > <extract>
+  mechanical_not_editorial: >-
+    Marker-anchored, last-occurrence to EOF. Nothing is hand-picked and nothing
+    the reviewer said is dropped from the report body — including the 12 lines
+    where round 2 re-checks `git status` to show it changed nothing, which stay
+    because removing them would be curation.
+  reproducible: >-
+    Re-run the command on the full trace at full_trace_path and the result must
+    hash to artifact_sha256. Both digests are recorded above, so the extract can
+    be checked against the trace and the trace against what the reviewer emitted.
+  kg_entity_note: >-
+    NOTICE 4 from the gate: core/score_provenance.py:70's KG_ENTITY is vocabulary
+    with no writer yet. That is deliberate scoping, not an oversight — the
+    inventory declares the KG fast path as `unknown` rather than claiming it is
+    covered, and the constant is reserved for B2.
