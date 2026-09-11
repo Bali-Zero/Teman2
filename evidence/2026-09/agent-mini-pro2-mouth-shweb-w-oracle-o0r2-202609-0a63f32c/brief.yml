@@ -54,14 +54,15 @@ constraints:
   - >-
     SIZE EXCEPTION, declared not silent: this diff is ~2400 lines, over the
     repo's ~400-net-line PR contract (CLAUDE.md Builder Contract §1). The
-    excess is evidence copies required by the audit spec's §3 (byte-identical
+    excess is evidence copies required by the audit spec's §3 (pinned
     capture) — census.json alone is 1568 generated lines. This is an explicit
     exception, not a scope violation: 9 of the 13 changed files are pinned
-    byte-identical copies verified by sha256 (acceptance probe below), not
-    new authored content.
-  - The 9 copied files (spec + 8 audit files) must be byte-identical to their
-    source, verified by sha256; __pycache__ and the stale decisions-zero copy
-    were NOT copied.
+    copies verified by sha256 — 7 byte-identical, 2 body-segment-identical
+    (acceptance probes below), not new authored content.
+  - The 9 copied files (spec + 8 audit files) must match their source,
+    verified by sha256 — 7 byte-identical, the 2 research .md files
+    (spec, README) body-segment-identical only; __pycache__ and the stale
+    decisions-zero copy were NOT copied.
   - >-
     The two research/**/*.md files additionally carry a frontmatter block +
     appended "## Adversarial review" section (R1 gate) around the pinned
@@ -74,10 +75,21 @@ constraints:
   - No client PII/OSINT in any file added or edited.
 acceptance:
   - text: >-
-      WHEN the 9 copied files are hashed in this repo, THEN every sha256 SHALL
-      match the pinned source hash exactly.
+      WHEN the 7 byte-identical copied files (non-.md) are hashed in this
+      repo, THEN every sha256 SHALL match the pinned sha256_source exactly
+      (the two research .md files are body-segment-identical, not
+      full-file-identical — see the next probe's strip-and-hash proof).
     status: verified
-    probe: "shasum -a 256 research/visa/2026-09-11-oracle-final-window-spec.md research/visa/2026-09-11-review-reason-audit/*.md research/visa/2026-09-11-review-reason-audit/*.json research/visa/2026-09-11-review-reason-audit/*.mts research/visa/2026-09-11-review-reason-audit/*.py research/visa/2026-09-11-review-reason-audit/*.tsx research/visa/2026-09-11-review-reason-audit/*.png"
+    probe: |
+      shasum -a 256 -c <<'SUMS'
+      11fe7c1886cf2559493811f8cbdbb883b274f797eaaae3f2e6bb90261f12e704  research/visa/2026-09-11-review-reason-audit/census.json
+      73969f9cee2bd549f39b7f56bd621fde8f387267971fdd0fac30dd1d40ada251  research/visa/2026-09-11-review-reason-audit/inputs.mts
+      ba3ee261fe43b0e6413c1aff6b8c86b3f16035aad22d7751c2ec8ef861df84d6  research/visa/2026-09-11-review-reason-audit/test_census.py
+      bb5939cad97fe9857d8fea8cacef0aef41285eeace4b56333a004ce4a890890e  research/visa/2026-09-11-review-reason-audit/render.test.tsx
+      e056d690aa5b38318d0a09099ac9bb404ebcb170423c9bb7874498c565c99960  research/visa/2026-09-11-review-reason-audit/browser.mts
+      c29c51a01b3f9a4b5fa34d7011f21c496a0b2157cbccfc6fa02feab36de40360  research/visa/2026-09-11-review-reason-audit/live-browser.json
+      14427e15b2a380375732e0502105ce9d0152a2f91f11cef4b3d8bd6a5827c41f  research/visa/2026-09-11-review-reason-audit/live-uncertainty.png
+      SUMS
   - text: >-
       WHEN the frontmatter block and the appended "## Adversarial review"
       section are stripped from each of the two research .md files, THEN the
@@ -207,6 +219,41 @@ adversarial_review:
           directly verifiable without running.
         disposition: OPEN — verbatim capture, not corrected in the pinned body
   - round: 4
+    refuter: "codex exec --sandbox read-only"
+    model: "gpt-6-astra (account default)"
+    reasoning: xhigh
+    duration_s: 390
+    head_sha: 9a85b97b84
+    verdict: REWORK
+    findings:
+      - id: M1
+        severity: MAJOR
+        summary: >-
+          pack.yml/brief.yml claimed the FULL-FILE sha256 of all 9 copied
+          files equals contract-lock.json's sha256_source pin. False for
+          the two research .md files (spec, README) by design — their
+          full-file hashes (31a638ad..., 59ad1e7b...) differ because of the
+          added frontmatter + appended review section; only their BODY
+          segment (frontmatter/review stripped) matches the pin. A pack.yml
+          receipt also listed 8 files in its cmd while certifying 9
+          (omitted README).
+        disposition: fixed in the follow-up commit
+      - id: M2
+        severity: MAJOR
+        summary: >-
+          pack.yml's diff block stated "files: 13", "net_lines: 2423" and
+          "single commit" — stale the moment any cure commit lands (now 15
+          files, ~2.8k churn, multiple commits).
+        disposition: fixed in the follow-up commit
+    note: >-
+      Everything else the refuter checked was clean: scope perimeter,
+      same-content (9 pins — 7 full-file + 2 body-segment strip), the DS
+      cure (both audited hashed_secret values are the SHA-1 of the two
+      flagged plain-text tokens; the #6166-precedent regexes match only
+      their intended digest-shaped paths; .secrets.baseline diff is 21
+      insertions/1 deletion), R1, and PII. M1/M2 above were the only
+      findings.
+  - round: 5
     refuter: opus
     model: "claude-opus-5 (fresh session, final on-disk gate)"
     verdict: pending

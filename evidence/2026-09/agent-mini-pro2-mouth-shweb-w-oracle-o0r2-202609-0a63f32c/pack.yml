@@ -18,7 +18,7 @@ plan_ref: >-
 lanes:
   - lane: o0r2-build
     role: build
-    seat: "claude-sonnet-5 (implementer session — this PR — branch, checkout reviewed content, evidence-dir move, gear-3 pack, R1 frontmatter, Detect Secrets cure, single commit)"
+    seat: "claude-sonnet-5 (implementer session — this PR — branch, checkout reviewed content, evidence-dir move, gear-3 pack, R1 frontmatter, Detect Secrets cure, evidence-pack self-consistency fixes)"
   - lane: o0r2-review-codex
     role: review
     seat: "gpt-6-astra (codex exec --sandbox read-only, xhigh — round 1 REWORK 3 MAJOR on 8b947103b5, round 2 PASS-WITH-FINDINGS on 82d08445b3, 1 MINOR operational; this is #6240's already-completed review, carried forward unchanged since the tree content is byte-identical)"
@@ -27,41 +27,52 @@ lanes:
     seat: "kimi-k3 (kimi -r session_dbb009de-85fd-4d72-952c-7d21df829beb — independent cross-family review of research/visa/2026-09-11-review-reason-audit/README.md; PASS-WITH-FINDINGS, 3 MINOR evidentiary nits, recorded OPEN in the README's appended review section)"
 
 diff:
-  files: 13
-  net_lines: 2423
+  files: 15
+  churn: >-
+    ~2.8k (well above the 1828 SIZE threshold for floor 3), measured with
+    `git diff --numstat origin/main...HEAD` — not pinned to an exact figure
+    here since it grows with every follow-up commit on this branch.
   measured_at: >-
-    working tree vs origin/main 4cc1b03edc0d806366fbc24d358dfdb562b8fa0a
-    (pre-commit measurement; this branch carries a single commit, so the
-    committed diff equals this measurement)
+    git diff --numstat origin/main...HEAD, the committed diff at HEAD (not
+    a pre-commit working-tree snapshot).
   note: >-
     Churn dominated by research/visa/2026-09-11-review-reason-audit/
     census.json alone (1568 added lines, generated evidence, correctly not
     excluded from the SIZE term — not a lockfile/vendor/fixtures path). Per
-    file (added/deleted): SKILL.md 23/3, live-state-log.md 68/0, brief.yml
-    99/0, contract-lock.json 89/0, oracle-final-window-spec.md 178/0,
-    README.md 160/0, browser.mts 41/0, census.json 1568/0, inputs.mts 23/0,
-    live-browser.json 27/0, live-uncertainty.png (binary — no line count),
-    render.test.tsx 71/0, test_census.py 79/0. Local
-    --print-floor/--print-floor-source (numstat-only, reproducing
-    harness-floor.yml Step 2c/Step 6) both print 3 / size, matching this
-    pack's declared gear.
+    file (added/deleted) at 3b2f5e09e9, the original r2 content before the
+    evidence-pack cure commits: SKILL.md 23/3, live-state-log.md 68/0,
+    brief.yml 99/0, contract-lock.json 89/0, oracle-final-window-spec.md
+    178/0, README.md 160/0, browser.mts 41/0, census.json 1568/0,
+    inputs.mts 23/0, live-browser.json 27/0, live-uncertainty.png (binary —
+    no line count), render.test.tsx 71/0, test_census.py 79/0; the cure
+    commits add .secrets.baseline and further brief.yml/pack.yml edits, not
+    restated here as exact per-file figures since they drift with each
+    follow-up. Local --print-floor/--print-floor-source (numstat-only,
+    reproducing harness-floor.yml Step 2c/Step 6) both print 3 / size,
+    matching this pack's declared gear.
 
 pii_scan: clean
 
 receipts:
   - claim: >-
-      Every one of the 9 copied files (spec + 8 audit files) is byte-
-      identical to contract-lock.json's pinned sha256_source.
-    cmd: >-
-      shasum -a 256 research/visa/2026-09-11-oracle-final-window-spec.md
-      research/visa/2026-09-11-review-reason-audit/census.json
-      research/visa/2026-09-11-review-reason-audit/inputs.mts
-      research/visa/2026-09-11-review-reason-audit/test_census.py
-      research/visa/2026-09-11-review-reason-audit/render.test.tsx
-      research/visa/2026-09-11-review-reason-audit/browser.mts
-      research/visa/2026-09-11-review-reason-audit/live-browser.json
-      research/visa/2026-09-11-review-reason-audit/live-uncertainty.png
-    result: "every hash matches the corresponding sha256_source pin in contract-lock.json."
+      7 of the 9 copied files (census.json, inputs.mts, test_census.py,
+      render.test.tsx, browser.mts, live-browser.json,
+      live-uncertainty.png) are byte-identical to contract-lock.json's
+      pinned sha256_source (full-file hash). The other 2 (the research .md
+      files, spec + README) are body-segment-identical only — their
+      full-file hashes differ by design (added frontmatter + appended
+      review section); see the strip-and-hash receipt below.
+    cmd: |
+      shasum -a 256 -c <<'SUMS'
+      11fe7c1886cf2559493811f8cbdbb883b274f797eaaae3f2e6bb90261f12e704  research/visa/2026-09-11-review-reason-audit/census.json
+      73969f9cee2bd549f39b7f56bd621fde8f387267971fdd0fac30dd1d40ada251  research/visa/2026-09-11-review-reason-audit/inputs.mts
+      ba3ee261fe43b0e6413c1aff6b8c86b3f16035aad22d7751c2ec8ef861df84d6  research/visa/2026-09-11-review-reason-audit/test_census.py
+      bb5939cad97fe9857d8fea8cacef0aef41285eeace4b56333a004ce4a890890e  research/visa/2026-09-11-review-reason-audit/render.test.tsx
+      e056d690aa5b38318d0a09099ac9bb404ebcb170423c9bb7874498c565c99960  research/visa/2026-09-11-review-reason-audit/browser.mts
+      c29c51a01b3f9a4b5fa34d7011f21c496a0b2157cbccfc6fa02feab36de40360  research/visa/2026-09-11-review-reason-audit/live-browser.json
+      14427e15b2a380375732e0502105ce9d0152a2f91f11cef4b3d8bd6a5827c41f  research/visa/2026-09-11-review-reason-audit/live-uncertainty.png
+      SUMS
+    result: "7/7 OK — every hash matches the corresponding sha256_source pin in contract-lock.json."
     exit: 0
     ts: "2026-09-11T12:00Z"
     seat: session (o0r2-build lane)
@@ -144,7 +155,7 @@ tests:
 
 static:
   - "python3 scripts/evidence_pack_lint.py --print-floor/--print-floor-source — 3 / size, matching declared gear."
-  - "shasum -a 256 on all 9 pinned-copy files — every hash matches contract-lock.json's sha256_source."
+  - "shasum -a 256 -c on the 7 byte-identical pinned-copy files — every hash matches contract-lock.json's sha256_source; the 2 research .md files are verified by the body-segment strip-and-hash probe instead (brief.yml acceptance #2)."
 
 notes:
   - >-
@@ -156,7 +167,7 @@ notes:
     scripts/ci/evidence_paths.py slug changed too).
   - >-
     The final on-disk gate is a FRESH Opus 5 session commissioned by the
-    imperator, recorded pending in brief.yml's adversarial_review round 4 —
+    imperator, recorded pending in brief.yml's adversarial_review round 5 —
     never claimed as done by this builder session.
   - >-
     Detect Secrets: cured per finding for all 3 flagged files.
