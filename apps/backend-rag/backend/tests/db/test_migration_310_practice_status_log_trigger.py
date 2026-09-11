@@ -270,8 +270,9 @@ class TestTheTriggerRecordsExactlyTheStatusTransitions:
         real transition of a practice created without a status vanishes. Hence
         `IS DISTINCT FROM`.
 
-        MEASURED DIVERGENCE, 2026-08-27 — and it is why this test branches
-        instead of asserting one shape. On PROD `practices.status` is NULLABLE
+        MEASURED DIVERGENCE, 2026-08-27, re-measured 2026-09-11 and unchanged
+        — and it is why this test makes the shape explicit rather than assuming
+        one. On PROD `practices.status` is NULLABLE
         (default `'inquiry'`), so the NULL case is live there. On the migrated
         test database the same column is NOT NULL, and `client_id` and
         `practice_type` differ too. A first draft of this test "proved" the NULL
@@ -279,10 +280,13 @@ class TestTheTriggerRecordsExactlyTheStatusTransitions:
         constraint — a probe demonstrating a difference the schema under test
         could not produce.
 
-        So: where the column admits NULL, drive the transition and assert it is
-        recorded. Where it does not, assert THAT — the constraint is the reason
-        the case is unreachable, and naming it keeps this test from being
-        quietly vacuous on exactly the databases where it cannot run.
+        That branching is what this test USED to do, and the paragraph above
+        described it — accurately, for a version that no longer exists. It was
+        replaced: the test now drops the constraint inside its own transaction,
+        so the NULL transition is driven on EVERY database and the trigger is
+        never left unexercised. The comment inside the body narrates the same
+        thing; this docstring had kept describing the abandoned design, which a
+        council seat flagged as a stale docstring rather than a stale test.
         """
         tx = conn.transaction()
         await tx.start()

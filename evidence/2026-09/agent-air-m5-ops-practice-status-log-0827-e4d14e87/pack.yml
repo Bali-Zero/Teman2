@@ -1,3 +1,15 @@
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ SNAPSHOT 2026-08-27 — read every present-tense sentence below as the state   │
+# │ of THAT DAY, not of today. This PR was drafted on 2026-08-27 and resumed on  │
+# │ 2026-09-11; facts moved in between (production counts, the migration runner, │
+# │ what a merge does). Where a statement went false it is corrected IN PLACE    │
+# │ and dated, so the record shows the claim was made and withdrawn. Where it is │
+# │ merely a measurement, it keeps its original figure AND its date.             │
+# │ The one that matters most, because four gate rounds tripped on it: MERGING   │
+# │ THIS PR APPLIES MIGRATION 310 TO PRODUCTION — fly.toml:15 runs               │
+# │ 'migrate apply-all' as the release_command. Any sentence here suggesting an  │
+# │ operator step stands between the merge and the table is stale, not a plan.   │
+# └─────────────────────────────────────────────────────────────────────────────┘
 brief_ref: evidence/brief.yml # staging-layout literal, NOT the per-PR path (harness-floor.yml:989)
 plan_ref: "the portal tracker reads a table no migration ever created (2026-08-27)"
 council_run: council.jsonl
@@ -72,7 +84,7 @@ receipts:
     exit: 0
     ts: "2026-08-27T04:0x"
     seat: "session (m5)"
-  - claim: "This diff cannot be taken live from this session: prod mutation is refused here"
+  - claim: "STALE 2026-09-11, kept as the dated receipt it is: on 2026-08-27 this diff could not be taken live FROM THIS SESSION because flyctl was refused here. That never meant the diff was inert — merging it runs the release_command, which applies 310. The receipt records a session limit, not a property of the change."
     cmd: "flyctl secrets import --stage / flyctl secrets set --stage / flyctl deploy -> all three refused by the auto-mode classifier. Not routed to a subagent (that would be permission laundering); surfaced to the owner instead"
     exit: 1
     ts: "2026-08-26T19:4x"

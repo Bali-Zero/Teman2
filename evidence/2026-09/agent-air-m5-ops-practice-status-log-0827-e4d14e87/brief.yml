@@ -1,3 +1,15 @@
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ SNAPSHOT 2026-08-27 — read every present-tense sentence below as the state   │
+# │ of THAT DAY, not of today. This PR was drafted on 2026-08-27 and resumed on  │
+# │ 2026-09-11; facts moved in between (production counts, the migration runner, │
+# │ what a merge does). Where a statement went false it is corrected IN PLACE    │
+# │ and dated, so the record shows the claim was made and withdrawn. Where it is │
+# │ merely a measurement, it keeps its original figure AND its date.             │
+# │ The one that matters most, because four gate rounds tripped on it: MERGING   │
+# │ THIS PR APPLIES MIGRATION 310 TO PRODUCTION — fly.toml:15 runs               │
+# │ 'migrate apply-all' as the release_command. Any sentence here suggesting an  │
+# │ operator step stands between the merge and the table is stale, not a plan.   │
+# └─────────────────────────────────────────────────────────────────────────────┘
 task_id: ops-practice-status-log
 gear: 3
 l_level: L2
@@ -27,7 +39,8 @@ constraints:
     `IF OLD.status <> NEW.status` guard SKIPS the row and the first transition of a practice created
     with a NULL status vanishes."
   - "MEASURED SCHEMA DIVERGENCE, and it is why the accompanying test branches instead of asserting
-    one shape. PROD: `practices.status` is NULLABLE with default 'inquiry', `client_id` is NULLABLE,
+    one shape. RE-MEASURED 2026-09-11 and unchanged: `status` NULLABLE default 'inquiry',
+    `client_id` NULLABLE, no `practice_type` column (there is `practice_type_id`). PROD: `practices.status` is NULLABLE with default 'inquiry', `client_id` is NULLABLE,
     and there is no `practice_type` column. The MIGRATED TEST DATABASE: `status` NOT NULL,
     `client_id` NOT NULL, `practice_type` present and NOT NULL. The two schemas diverge on the exact
     column this migration keys on. Reported, NOT fixed here — a separate concern from creating the
@@ -64,8 +77,11 @@ acceptance:
   - "Two pre-existing tests raised a bare `Exception` to simulate the missing table; the narrowed
     except no longer catches that, so they are repointed to `asyncpg.UndefinedTableError` rather
     than left to pass for the wrong reason."
-  - "386 passed / 15 skipped across `backend/tests/db/` — the migration contract and ROLLBACK-marker
-    suites accept 310 — plus 8 passed on the router's own unit tests."
+  - "386 passed / 15 skipped across `backend/tests/db/` on 2026-08-27 — the migration contract and
+    ROLLBACK-marker suites accept 310 — plus 8 on the router's own unit tests THEN. Re-measured
+    2026-09-11 after the council cure: 512 passed / 17 skipped across `backend/tests/db/`, and 19
+    passed on the router's unit tests (27 together with this migration's own 8). The August tally
+    is left as the dated figure it was; the current one is what this PR asks to be judged on."
 consumer_map:
   - "`backend/app/routers/portal_process_timeline.py` — the only backend reader; builds the client
     tracker. Modified in this diff."

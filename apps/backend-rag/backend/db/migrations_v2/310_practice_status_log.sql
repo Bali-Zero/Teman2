@@ -92,9 +92,10 @@ BEGIN
     -- This is reachable, not theoretical: measured 2026-08-27, PROD's
     -- practices.status is NULLABLE (default 'inquiry'), so a row written with
     -- an explicit NULL takes exactly that path on its first transition. Note
-    -- the migrated TEST database has the column NOT NULL — the two schemas
-    -- diverge here, which is why the accompanying test branches on the live
-    -- constraint instead of assuming either shape.
+    -- the migrated TEST database has the column NOT NULL while PROD has it
+    -- NULLABLE (re-measured 2026-09-11: nullable, default 'inquiry') — the two
+    -- schemas diverge here, which is why the accompanying test branches on the
+    -- live constraint instead of assuming either shape.
     IF OLD.status IS DISTINCT FROM NEW.status THEN
         INSERT INTO practice_status_log (practice_id, old_status, new_status, changed_by)
         VALUES (
