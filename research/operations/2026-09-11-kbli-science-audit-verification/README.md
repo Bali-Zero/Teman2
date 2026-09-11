@@ -144,13 +144,26 @@ censuses and static code traces.
 - `verification_ledger.csv` — 342 rows: `finding_id, lane, family, code, file_line,
   science_confidence, runtime_dependent, verdict, method, evidence`.
 - `science-out/` — the Science deliverable: three CSVs, `SUMMARY.md`, `RUN_MANIFEST.md`
-  (input/output sha256), `B_METHOD.md`, `C_METHOD.md`, six stdlib-only scripts, four small
-  JSON summaries. Excluded for size: `lane_a_per_code.json` (1.1 MB) and the two render maps
-  (regenerable by running the scripts from a checkout root with a `science-out/` folder).
+  (input/output sha256), `B_METHOD.md`, `C_METHOD.md` and `data/chain_alignment.json` (the
+  excluded-code list). The six scripts and the per-lane JSON summaries are NOT in the repo: the size floor
+  of the harness (`SIZE_GEAR3_THRESHOLD` 1828 churn lines) would have demanded a Gear-3
+  evidence pack for a research bundle. They remain in the Science artifact
+  (`science-out-64df83d10b.zip`, and the Desktop copy on M5); their sha256, so a copy can be
+  trusted before it is run:
 
-Reproduce: from a checkout root containing `science-out/`,
+  | script | sha256 |
+  |---|---|
+  | `chain_alignment.py` | `0d4e5d3a8b610a0ece0bb25d89710c24b7814c6bba6bf2008e1776e8411b742d` |
+  | `validate_outputs.py` | `81fe1901c784939efb756c4a294ac4c8db68f8901f9a6235dfc37bcb98301b0d` |
+  | `lane_a_corpus_vs_oss.py` | `59e9d7091d65143e7bc060269938f35734c457a8c51e6af99ed6fadbfae5f096` |
+  | `lane_b_trace.py` | `57aa1f457fb311a702e70b875249b102518b4ce8f350ff1f4cbfc57e3d2b6a34` |
+  | `lane_c_trace.py` | `441e735b67a007c46aa5209232746745c61fc733092d02ee938924a0839020cc` |
+  | `write_reports.py` | `609b0f68ca14fcf5b68f043bf7084879bab00f13ded461ca04e53c359e42b1ea` |
+
+Reproduce: from a checkout root containing the full `science-out/` (scripts restored),
 `python3 science-out/scripts/lane_a_corpus_vs_oss.py .` then `lane_b_trace.py`, `lane_c_trace.py`,
-`chain_alignment.py .`, `validate_outputs.py .` (needs a `SNAPSHOT_SHA.txt` only for `write_reports.py`).
+`chain_alignment.py .`, `validate_outputs.py .` (`write_reports.py` needs a `SNAPSHOT_SHA.txt`).
+Re-run on `origin/main` 0b56e22f56 reproduced every CSV byte-identical except the B-LEDG-002 row.
 
 ## Adversarial review
 
