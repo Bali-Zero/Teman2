@@ -346,4 +346,24 @@ export const servicePriceIdentities: Readonly<
     key: "Urgent 3 Hari",
     category: "urgent_processing",
   },
+  "Compliance Takeover": {
+    key: "compliance_takeover",
+    category: "compliance_retainers",
+  },
+  "Core Compliance Retainer (Monthly)": {
+    key: "compliance_core_retainer_monthly",
+    category: "compliance_retainers",
+  },
+  "Employer Compliance Retainer (Monthly)": {
+    key: "compliance_employer_retainer_monthly",
+    category: "compliance_retainers",
+  },
+  "PSE Registration": {
+    key: "pse_registration_fixed",
+    category: "compliance_retainers",
+  },
+  "PMSE VAT Assessment": {
+    key: "pmse_vat_assessment",
+    category: "compliance_retainers",
+  },
 };

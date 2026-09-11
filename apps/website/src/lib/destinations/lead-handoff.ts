@@ -6,6 +6,7 @@ export const contactTopics = {
   company: "company setup and business licensing",
   tax: "tax and accounting",
   property: "property due diligence",
+  compliance: "compliance retainers and regulatory obligations",
   evoa: "an E-VOA arrival plan",
   "second-home": "a Second Home plan",
   portal: "access to my client portal",
@@ -25,6 +26,7 @@ export const contactSourcePages = [
   "/services/company-setup",
   "/services/tax",
   "/services/property",
+  "/services/compliance",
   "/visa/voa",
   "/visa/clock",
   "/visa/match",
@@ -123,6 +125,7 @@ export function inferContactTopic(pathname: string): ContactTopic {
     source === "/zoning"
   )
     return "property";
+  if (source === "/services/compliance") return "compliance";
   const category = articleCategory(pathname);
   if (category === "visas") return "immigration";
   if (category === "business") return "company";

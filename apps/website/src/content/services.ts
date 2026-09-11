@@ -1,5 +1,18 @@
 import { destinations, destinationIntents } from "./destinations";
 
+export type HomeServiceEntry = {
+  id: string;
+  route: string;
+  title: string;
+  description: string;
+  image: string;
+  // A pillar without an independent public tool (e.g. compliance) omits these.
+  tool?: string;
+  detail?: string;
+  href?: string;
+  action?: string;
+};
+
 export const services = [
   {
     id: "visa",
@@ -49,7 +62,20 @@ export const services = [
     href: destinations.propertyEligibility.href,
     action: "Explore Property Check",
   },
-] as const;
+  {
+    id: "compliance",
+    route: "/services/compliance",
+    title: "Compliance and obligations",
+    description:
+      "Talk through Coretax filings, quarterly LKPM, payroll, BPJS and PSE registration with our team.",
+    tool: "Compliance corner",
+    detail:
+      "Explore the obligations register, retainer options and PSE/PMSE registration support.",
+    image: "tool-tax-illustration.png",
+    href: undefined,
+    action: undefined,
+  },
+] as const satisfies readonly HomeServiceEntry[];
 export function contactHref(topic: string) {
   return destinationIntents.whatsapp({ topic });
 }

@@ -1,7 +1,7 @@
 import type { DestinationId } from "./destinations";
 
 export type ServicePage = {
-  slug: "immigration" | "company-setup" | "tax" | "property";
+  slug: "immigration" | "company-setup" | "tax" | "property" | "compliance";
   title: string;
   cardTitle: string;
   eyebrow: string;
@@ -11,7 +11,8 @@ export type ServicePage = {
   whoItHelps: string;
   questions: readonly string[];
   contactTopic: string;
-  toolDestinationId: Extract<
+  // Absent when the pillar has no independent public tool of its own (e.g. compliance).
+  toolDestinationId?: Extract<
     DestinationId,
     "visaOracle" | "kbliNavigator" | "taxIntelligence" | "propertyEligibility"
   >;
@@ -109,6 +110,30 @@ export const servicePages = [
     ],
     contactTopic: "property and due diligence questions in Indonesia",
     toolDestinationId: "propertyEligibility",
+  },
+  {
+    slug: "compliance",
+    title: "Compliance and obligations",
+    cardTitle: "Compliance",
+    eyebrow: "Ongoing regulatory obligations",
+    summary:
+      "Coretax filings, quarterly LKPM, payroll and BPJS, PSE registration. One accountable team, an obligations register for your entity, and a receipt for every submission.",
+    metaDescription:
+      "Discuss Indonesia compliance retainers, PSE registration and PMSE VAT obligations with the Bali Zero team.",
+    image: {
+      src: "/assets/tool-tax-illustration.png",
+      alt: "Illustration representing recurring compliance filings and reporting",
+    },
+    whoItHelps:
+      "Foreign-owned companies (PT PMA) with 5 to 50 staff and no in-house Indonesian finance lead, foreign platforms and apps reaching Indonesian users, and hotel or villa operators with booking systems and foreign staff.",
+    questions: [
+      "How many local and foreign staff does the company employ, and are expats past six months enrolled in BPJS?",
+      "Which websites, apps or platforms does the company operate that people in Indonesia can access?",
+      "What is the entity's current filing record: monthly tax, quarterly LKPM, annual return?",
+    ],
+    contactTopic:
+      "Indonesia compliance retainers, PSE registration and PMSE VAT obligations",
+    toolDestinationId: undefined,
   },
 ] as const satisfies readonly ServicePage[];
 

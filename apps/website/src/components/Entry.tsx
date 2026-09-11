@@ -92,6 +92,7 @@ const categories = [
   { label: "Business & company", href: "/services/company-setup" },
   { label: "Tax", href: "/services/tax" },
   { label: "Property", href: "/services/property" },
+  { label: "Compliance", href: "/services/compliance" },
 ];
 
 export function Hero() {

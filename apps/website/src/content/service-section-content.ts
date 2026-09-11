@@ -13,6 +13,9 @@ type ServiceSectionsContent = {
   documents: readonly string[];
   review: readonly string[];
   faqs: readonly { question: string; answer: string }[];
+  // Present only where a pillar has a small set of dated, sourced facts worth
+  // surfacing as their own section (currently compliance only).
+  whyNow?: readonly string[];
 };
 
 // Migrated from apps/mouth/src/data/services_data.ts. These are service scopes
@@ -258,6 +261,65 @@ export const serviceSectionContent: Record<
         answer:
           "No. The company’s activities and ownership structure must be considered alongside the exact land right, intended use, building approvals and transaction. Formation is one component. The review should also cover governance, tax implications and the intended exit or succession arrangements.",
       },
+    ],
+  },
+  compliance: {
+    catalog: [
+      {
+        title: "Retainers",
+        description: "Ongoing filing and payroll compliance for your entity.",
+        services: [
+          "Compliance Takeover",
+          "Core Compliance Retainer (Monthly)",
+          "Employer Compliance Retainer (Monthly)",
+        ],
+      },
+      {
+        title: "Registrations & assessments",
+        description:
+          "One-off reviews for platform and VAT-collector obligations.",
+        services: ["PSE Registration", "PMSE VAT Assessment"],
+      },
+    ],
+    included: [
+      "An obligations register for your entity: every filing, its legal basis, deadline, owner and status",
+      "Filings prepared by our team, approved by your director, submitted, receipt archived",
+      "Payroll compliance checks for local and foreign staff, including BPJS enrolment for expats employed six months or more",
+      "Quarterly LKPM prepared from your figures and submitted on OSS-RBA",
+      "A compliance report: what was due, what was filed, evidence attached",
+    ],
+    documents: [
+      "Company deed, NIB and current tax registrations",
+      "Existing filing history, payroll and BPJS records",
+      "List of systems, domains and apps reachable from Indonesia, if registering as a PSE",
+    ],
+    review: [
+      "How many local and foreign staff the company employs",
+      "Which systems, apps or platforms the company operates and who can reach them",
+      "The entity's current filing cadence and any missed deadlines",
+    ],
+    faqs: [
+      {
+        question: "Do you sign filings for us?",
+        answer:
+          "No. Your director approves and signs with the company's own digital certificate; we prepare, check and submit under your authorisation.",
+      },
+      {
+        question:
+          "Do foreign operators without an Indonesian office need to register as a PSE?",
+        answer:
+          "Yes, if the website, app or platform is used by people in Indonesia. Permenkominfo 5/2020 reaches a foreign operator on that basis alone; having no local entity does not place it outside scope.",
+      },
+      {
+        question: "Can you get us appointed as a PMSE VAT collector?",
+        answer:
+          "No one can. DJP appoints collectors under PMK 60/2022. We assess the threshold and prepare readiness; appointment itself is DJP's decision.",
+      },
+    ],
+    whyNow: [
+      "Komdigi blocked eBay and KLM on 28 June 2025 and sent notification letters to 25 operators on 26 June 2026 (Komdigi press releases 9446 and 10354).",
+      "Coretax: the 2026 corporate filing deadline was extended to 31 May after around 4,000 complaints.",
+      "Quarterly LKPM deadlines moved to the 15th under BKPM Regulation 5/2025.",
     ],
   },
 };

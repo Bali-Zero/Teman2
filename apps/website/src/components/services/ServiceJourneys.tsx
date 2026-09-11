@@ -58,7 +58,7 @@ export function ServicesOverview() {
             className={styles.familyIndex}
             aria-label="Choose a service family"
           >
-            <span className={styles.eyebrow}>Four areas of practice</span>
+            <span className={styles.eyebrow}>Five areas of practice</span>
             {servicePages.map((service, index) => (
               <Link key={service.slug} href={`/services/${service.slug}`}>
                 <span className={styles.index}>0{index + 1}</span>
@@ -139,7 +139,9 @@ export function ServicesOverview() {
 
 export function ServiceDetail({ service }: { service: ServicePage }) {
   const contact = destinationIntents.whatsapp({ topic: service.contactTopic });
-  const tool = getDestination(service.toolDestinationId);
+  const tool = service.toolDestinationId
+    ? getDestination(service.toolDestinationId)
+    : undefined;
   return (
     <ServiceFrame>
       <Container
@@ -198,19 +200,21 @@ export function ServiceDetail({ service }: { service: ServicePage }) {
             </nav>
           </aside>
         </header>
-        <ServiceSectionNav />
+        <ServiceSectionNav service={service} />
         <ServiceSections service={service} />
-        <aside className={styles.toolAction}>
-          <div>
-            <span className={styles.eyebrow}>
-              Optional independent starting point
-            </span>
-            <h2>{tool.label}</h2>
-          </div>
-          <TextLink href={tool.href}>
-            Open {tool.label} <span aria-hidden="true">↗</span>
-          </TextLink>
-        </aside>
+        {tool && (
+          <aside className={styles.toolAction}>
+            <div>
+              <span className={styles.eyebrow}>
+                Optional independent starting point
+              </span>
+              <h2>{tool.label}</h2>
+            </div>
+            <TextLink href={tool.href}>
+              Open {tool.label} <span aria-hidden="true">↗</span>
+            </TextLink>
+          </aside>
+        )}
         <section id="next-steps" className={styles.nextSteps}>
           <span className={styles.eyebrow}>How the next step works</span>
           <h2>A conversation before a commitment.</h2>

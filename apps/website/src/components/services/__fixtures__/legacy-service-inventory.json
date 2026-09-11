@@ -1407,5 +1407,90 @@
         "sha256": "fe3e8f634e20b964d6e493f288a5e0739a24d22699c95b972e4d6c0714f28c14"
       }
     ]
+  },
+  {
+    "id": "svc-compliance-001",
+    "legacyName": "Compliance Takeover",
+    "currentName": "Compliance Takeover",
+    "domain": "compliance",
+    "descriptionSha256": "448a854876c50e240b5c7b1ac09233eb01eb6fbd546dfcdf2df34a0cc230d226",
+    "features": [
+      {
+        "id": "svc-compliance-001.feature.01",
+        "sha256": "fc15e8365d3c1636314604172170c906019eedbc8feed04054d752a653308e7f"
+      },
+      {
+        "id": "svc-compliance-001.feature.02",
+        "sha256": "4dcd014b15f7c0816b2401f44f09aa5a25125e4a2c20d3d745bddcdb14f9143f"
+      }
+    ]
+  },
+  {
+    "id": "svc-compliance-002",
+    "legacyName": "Core Compliance Retainer (Monthly)",
+    "currentName": "Core Compliance Retainer (Monthly)",
+    "domain": "compliance",
+    "descriptionSha256": "8b2f541c59cbd0e7e91da51d4403c723cd0fc0c5163980ab59f968ef86c80764",
+    "features": [
+      {
+        "id": "svc-compliance-002.feature.01",
+        "sha256": "76450eafe0775a32b5f206d665c5fd0cf9d6b7f9cc5593217b9a024a0cf89187"
+      },
+      {
+        "id": "svc-compliance-002.feature.02",
+        "sha256": "e64006e06a2439d2aeea06acd3654ae56c3c4a7904a2779fce8a9607332d48da"
+      }
+    ]
+  },
+  {
+    "id": "svc-compliance-003",
+    "legacyName": "Employer Compliance Retainer (Monthly)",
+    "currentName": "Employer Compliance Retainer (Monthly)",
+    "domain": "compliance",
+    "descriptionSha256": "dbe33649c659425278843c4301541df25edae657d5358f116b925b5a26579ccf",
+    "features": [
+      {
+        "id": "svc-compliance-003.feature.01",
+        "sha256": "95b8e4d4f197204887af8f6cbb215037816c016eda20269674de51133e2f5181"
+      },
+      {
+        "id": "svc-compliance-003.feature.02",
+        "sha256": "da5f8e976e7488155834fe5d52995bc4a4899ffe5817934d67a022258466b3ab"
+      }
+    ]
+  },
+  {
+    "id": "svc-compliance-004",
+    "legacyName": "PSE Registration",
+    "currentName": "PSE Registration",
+    "domain": "compliance",
+    "descriptionSha256": "8a9da80ed03f229b69eb5a423867cf542d31620b7d4333bf160352a82670bbbb",
+    "features": [
+      {
+        "id": "svc-compliance-004.feature.01",
+        "sha256": "272e241034ef9918a7c331c2aaf0a8b44af156e97b2a5f08705ad5a6273c2afa"
+      },
+      {
+        "id": "svc-compliance-004.feature.02",
+        "sha256": "12dcd0f98e85879dd053392dc13d12e3f70dcb84f9d6038b5b7e54982d41e4b4"
+      }
+    ]
+  },
+  {
+    "id": "svc-compliance-005",
+    "legacyName": "PMSE VAT Assessment",
+    "currentName": "PMSE VAT Assessment",
+    "domain": "compliance",
+    "descriptionSha256": "b088dbd171c6f842cb1260b3486bc68a9a1b25d02316f66567da7ca6bfd60d38",
+    "features": [
+      {
+        "id": "svc-compliance-005.feature.01",
+        "sha256": "6306d15825c7ada1d965642ecd924a2c5586f922ad394b9f960f7a11d146c558"
+      },
+      {
+        "id": "svc-compliance-005.feature.02",
+        "sha256": "0c791d288623e1a124f1815547cb6b19746dbb000f88364bd01a3354f3abfe9e"
+      }
+    ]
   }
 ]

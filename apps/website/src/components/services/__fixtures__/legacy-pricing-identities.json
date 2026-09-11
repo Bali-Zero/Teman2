@@ -428,5 +428,30 @@
     "name": "Urgent 3 Hari",
     "key": "Urgent 3 Hari",
     "category": "urgent_processing"
+  },
+  {
+    "name": "Compliance Takeover",
+    "key": "compliance_takeover",
+    "category": "compliance_retainers"
+  },
+  {
+    "name": "Core Compliance Retainer (Monthly)",
+    "key": "compliance_core_retainer_monthly",
+    "category": "compliance_retainers"
+  },
+  {
+    "name": "Employer Compliance Retainer (Monthly)",
+    "key": "compliance_employer_retainer_monthly",
+    "category": "compliance_retainers"
+  },
+  {
+    "name": "PSE Registration",
+    "key": "pse_registration_fixed",
+    "category": "compliance_retainers"
+  },
+  {
+    "name": "PMSE VAT Assessment",
+    "key": "pmse_vat_assessment",
+    "category": "compliance_retainers"
   }
 ]

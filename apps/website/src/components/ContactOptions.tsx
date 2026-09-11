@@ -18,6 +18,7 @@ const labels: Record<ContactTopic, string> = {
   company: "Company setup & licensing",
   tax: "Tax & accounting",
   property: "Property due diligence",
+  compliance: "Compliance & obligations",
   evoa: "E-VOA arrival planning",
   "second-home": "Second Home planning",
   portal: "Client portal access",
