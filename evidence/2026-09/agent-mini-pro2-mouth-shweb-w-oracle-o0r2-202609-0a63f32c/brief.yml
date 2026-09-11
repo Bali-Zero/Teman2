@@ -4,7 +4,9 @@ gear_override: >-
   file touched, no rulepack, no migration, no deploy. The size term is driven
   by research/visa/2026-09-11-review-reason-audit/census.json (1568 generated
   lines, correctly not excluded — it is not a lockfile/vendor/fixtures path)
-  plus the other 8 byte-identical audit-evidence copies and the spec. This is
+  plus the other 6 byte-identical audit files, the audit README and the
+  spec (those two body-segment-identical: frontmatter + appended review
+  section around the pinned bytes). This is
   PR-O0 r2 of #6240 (closed for 3 CI reds): the SAME reviewed content, same
   three real grader dispatches (Codex round 1 + round 2, Kimi K3 on the
   README) — this override exists to state WHY a docs-only diff floors at
@@ -18,8 +20,12 @@ objective: >-
   PR-O0 r2 of mandate SHWEB-20260911 / W-ORACLE, replacing the closed PR
   #6240 (3 CI reds: harness floor mis-declared at gear 1, R1 adversarial-
   review frontmatter missing on the two research .md files, Detect Secrets
-  unaudited findings). Same reviewed tree content as #6240's head 82d08445b3
-  for all 13 paths, cured for the three causes: (1) gear declared 3 with this
+  unaudited findings). #6240's reviewed content is carried forward
+  unchanged on 9 paths (the 7 byte-identical research copies, SKILL.md,
+  live-state-log.md) and inside the R1 wrapper on the 2 research .md files
+  (body segment = pin); #6240's two evidence files (brief.yml,
+  contract-lock.json) were re-authored as this PR's own gear-3 evidence;
+  .secrets.baseline is new. Cured for the three causes: (1) gear declared 3 with this
   Gear-3 evidence pack; (2) frontmatter + appended "## Adversarial review"
   section added to the two research .md files, pinned-byte-preserving; (3)
   Detect Secrets baseline cured per finding for all 3 flagged files:
@@ -56,9 +62,9 @@ constraints:
     repo's ~400-net-line PR contract (CLAUDE.md Builder Contract §1). The
     excess is evidence copies required by the audit spec's §3 (pinned
     capture) — census.json alone is 1568 generated lines. This is an explicit
-    exception, not a scope violation: 9 of the 13 changed files are pinned
-    copies verified by sha256 — 7 byte-identical, 2 body-segment-identical
-    (acceptance probes below), not new authored content.
+    exception, not a scope violation: 9 of the 15 changed files are pinned
+    copies (7 byte-identical, 2 body-segment-identical), verified by
+    sha256 (acceptance probes below), not new authored content.
   - The 9 copied files (spec + 8 audit files) must match their source,
     verified by sha256 — 7 byte-identical, the 2 research .md files
     (spec, README) body-segment-identical only; __pycache__ and the stale
@@ -122,18 +128,32 @@ acceptance:
     status: verified
     probe: "grep -c '67' .agents/skills/visaoracle/SKILL.md"
   - text: >-
-      WHEN live-state-log.md is grepped for the 2026-09-11 entries, THEN
-      Astra's audit entry and the three retroactive PR entries
-      (#6051/#5918/#5855) SHALL all be present.
+      WHEN live-state-log.md is checked for the 2026-09-11 audit entry
+      marker, the three retroactive PR markers (#6051/#5918/#5855), and
+      the retroactive-disclaimer sentence occurring at least 3 times, THEN
+      each SHALL be present — the probe fails closed, naming the first
+      missing item, rather than passing on any single date match.
     status: verified
-    probe: "grep -c '2026-09-11\\|2026-09-09\\|2026-09-08\\|2026-09-07' .agents/skills/visaoracle/references/live-state-log.md"
+    probe: |
+      F=".agents/skills/visaoracle/references/live-state-log.md"
+      grep -qF '2026-09-11 (Mini, Codex verification' "$F" || { echo "MISSING: 2026-09-11 audit entry marker"; exit 1; }
+      grep -qF '#5855' "$F" || { echo "MISSING: #5855 entry"; exit 1; }
+      grep -qF '#5918' "$F" || { echo "MISSING: #5918 entry"; exit 1; }
+      grep -qF '#6051' "$F" || { echo "MISSING: #6051 entry"; exit 1; }
+      n=$(grep -cF 'not re-measured here.' "$F")
+      if [ "$n" -lt 3 ]; then echo "MISSING: retroactive disclaimer occurs $n times, need >= 3"; exit 1; fi
+      echo "OK: all entries present, disclaimer x$n"
   - text: >-
       WHEN the full diff against origin/main is grepped for PII shapes
       (emails, +62 phone numbers, passport/KTP/NPWP-like tokens), THEN no
       match SHALL be found — the probe exits 0 only when grep itself finds
-      nothing (grep's own exit 1-on-no-match is inverted with `!`).
+      nothing (grep's own exit 1-on-no-match is inverted with `!`), and
+      exits non-zero (fails closed) if `git diff` itself fails rather than
+      silently passing on an empty diff.
     status: verified
-    probe: "! git diff origin/main...HEAD | grep -inE '[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}|\\+62[0-9]{8,13}|\\b[0-9]{16}\\b|\\b[a-zA-Z][0-9]{7}\\b'"
+    probe: |
+      d="$(git diff origin/main...HEAD)" || exit 2
+      ! printf '%s\n' "$d" | grep -inE '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}|\+62[0-9]{8,13}|\b[0-9]{16}\b|\b[a-zA-Z][0-9]{7}\b'
   - text: >-
       WHEN scripts/check_adversarial_review.py is run against the two
       research .md files, THEN it SHALL exit 0.
@@ -237,14 +257,15 @@ adversarial_review:
           segment (frontmatter/review stripped) matches the pin. A pack.yml
           receipt also listed 8 files in its cmd while certifying 9
           (omitted README).
-        disposition: fixed in the follow-up commit
+        disposition: fixed in 8b63ec5326; residue caught by the next round and fixed in the follow-up commit
       - id: M2
         severity: MAJOR
         summary: >-
-          pack.yml's diff block stated "files: 13", "net_lines: 2423" and
-          "single commit" — stale the moment any cure commit lands (now 15
-          files, ~2.8k churn, multiple commits).
-        disposition: fixed in the follow-up commit
+          pack.yml's diff block echoed stale exact figures for the file
+          count, the added-line total and the commit count — each drifts
+          the moment any cure commit lands (now 15 files, ~2.8k churn,
+          multiple commits).
+        disposition: fixed in 8b63ec5326; residue caught by the next round and fixed in the follow-up commit
     note: >-
       Everything else the refuter checked was clean: scope perimeter,
       same-content (9 pins — 7 full-file + 2 body-segment strip), the DS
@@ -254,6 +275,48 @@ adversarial_review:
       insertions/1 deletion), R1, and PII. M1/M2 above were the only
       findings.
   - round: 5
+    refuter: "codex exec --sandbox read-only"
+    model: "gpt-6-astra (account default)"
+    reasoning: xhigh
+    duration_s: 271
+    head_sha: 8b63ec5326
+    verdict: REWORK
+    findings:
+      - id: N1
+        severity: MAJOR
+        summary: >-
+          brief.yml's gear_override still miscounted the "other" audit
+          copies as uniformly byte-identical after the round-4 cure — the
+          audit README among them is body-segment-identical, not
+          byte-identical, so the count of fully byte-identical copies in
+          that clause was off by one.
+        disposition: fixed in the follow-up commit
+      - id: N2
+        severity: MAJOR
+        summary: >-
+          brief.yml's objective and constraints, and pack.yml's plan_ref
+          and its receipt describing the git-checkout carry-forward, still
+          claimed the ORIGINAL 13-path scope as uniformly "same reviewed
+          content" / byte-identical; and pack.yml's diff.note carried a
+          per-file added/deleted breakdown with wrong historical counts
+          (e.g. brief.yml's own line count vs its real committed size).
+        disposition: fixed in the follow-up commit
+      - id: N3
+        severity: MAJOR
+        summary: >-
+          brief.yml's live-state-log acceptance probe passed on a match
+          against ANY one of several dates rather than checking each
+          promised entry; its PII-diff probe returned success even when
+          the underlying `git diff` command itself failed (fault-injected
+          with a null SHA, "fatal: bad object", still exit 0).
+        disposition: fixed in the follow-up commit
+    note: >-
+      Clean per this refuter: the pack.yml brief_ref staging literal, no
+      secret-keyword shapes and the census label never quoted, no
+      regression outside the brief/pack evidence files, and the
+      adversarial_review record itself. N1/N2/N3 above were the only
+      findings.
+  - round: 6
     refuter: opus
     model: "claude-opus-5 (fresh session, final on-disk gate)"
     verdict: pending

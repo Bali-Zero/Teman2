@@ -9,11 +9,14 @@ seat_override: >-
   not add signal. Truthful spend: no new grader dispatch was made for r2.
 plan_ref: >-
   PR-O0 r2 of mandate SHWEB-20260911 / W-ORACLE, replacing the closed PR
-  #6240 (3 CI reds). Docs/research capture only: bring the reviewed tree
-  content of #6240's head 82d08445b3 forward unchanged for all 13 paths, cure
-  the harness-floor gear declaration, the R1 adversarial-review frontmatter,
-  and the Detect Secrets baseline. Single-lane implementer task under a
-  50-tool-call / 45-minute cap.
+  #6240 (3 CI reds). Docs/research capture only: bring #6240's head
+  82d08445b3 content forward — unchanged on 9 paths (7 byte-identical
+  research copies, SKILL.md, live-state-log.md), inside the R1 wrapper on
+  the 2 research .md files, and re-authored as this PR's own gear-3
+  evidence for its 2 evidence files (brief.yml, contract-lock.json);
+  .secrets.baseline is new — cure the harness-floor gear declaration, the
+  R1 adversarial-review frontmatter, and the Detect Secrets baseline.
+  Single-lane implementer task under a 50-tool-call / 45-minute cap.
 
 lanes:
   - lane: o0r2-build
@@ -38,18 +41,10 @@ diff:
   note: >-
     Churn dominated by research/visa/2026-09-11-review-reason-audit/
     census.json alone (1568 added lines, generated evidence, correctly not
-    excluded from the SIZE term — not a lockfile/vendor/fixtures path). Per
-    file (added/deleted) at 3b2f5e09e9, the original r2 content before the
-    evidence-pack cure commits: SKILL.md 23/3, live-state-log.md 68/0,
-    brief.yml 99/0, contract-lock.json 89/0, oracle-final-window-spec.md
-    178/0, README.md 160/0, browser.mts 41/0, census.json 1568/0,
-    inputs.mts 23/0, live-browser.json 27/0, live-uncertainty.png (binary —
-    no line count), render.test.tsx 71/0, test_census.py 79/0; the cure
-    commits add .secrets.baseline and further brief.yml/pack.yml edits, not
-    restated here as exact per-file figures since they drift with each
-    follow-up. Local --print-floor/--print-floor-source (numstat-only,
-    reproducing harness-floor.yml Step 2c/Step 6) both print 3 / size,
-    matching this pack's declared gear.
+    excluded from the SIZE term — not a lockfile/vendor/fixtures path).
+    Local --print-floor/--print-floor-source (numstat-only, reproducing
+    harness-floor.yml Step 2c/Step 6) both print 3 / size, matching this
+    pack's declared gear.
 
 pii_scan: clean
 
@@ -159,15 +154,19 @@ static:
 
 notes:
   - >-
-    This PR-O0 r2 supersedes the closed #6240 with IDENTICAL tree content
-    for the same 13 paths (git checkout 82d08445b3 -- <path> per path) — no
-    new authoring, only the three CI-red cures (gear declaration, R1
-    frontmatter wrapper, Detect Secrets baseline) plus this evidence pack
-    itself and its own evidence-dir slug (branch name changed, so the
+    This PR-O0 r2 supersedes the closed #6240: `git checkout 82d08445b3 --
+    <path>` was run for the 11 carried paths (9 unchanged + the 2 research
+    .md files, which additionally get the R1 wrapper around the pinned
+    body). #6240's own two evidence files (brief.yml, contract-lock.json)
+    were re-authored as this PR's own gear-3 evidence pack, and
+    .secrets.baseline is new — no new authoring beyond that, only the
+    three CI-red cures (gear declaration, R1 frontmatter wrapper, Detect
+    Secrets baseline) plus this evidence pack itself and its own
+    evidence-dir slug (branch name changed, so the
     scripts/ci/evidence_paths.py slug changed too).
   - >-
     The final on-disk gate is a FRESH Opus 5 session commissioned by the
-    imperator, recorded pending in brief.yml's adversarial_review round 5 —
+    imperator, recorded pending in brief.yml's adversarial_review round 6 —
     never claimed as done by this builder session.
   - >-
     Detect Secrets: cured per finding for all 3 flagged files.
