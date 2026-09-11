@@ -278,6 +278,20 @@ async def test_304_applies_through_the_dedicated_migrator(
         await _drop_database(disposable_cluster, dsn)
 
 
+async def test_304_fails_atomically_when_the_runtime_role_applies_it_on_the_single_dsn(
+    disposable_cluster: str,
+) -> None:
+    dsn = await _build_substrate(disposable_cluster, split_owners=True, scopes=WIDENED_SCOPES)
+    try:
+        with pytest.raises(MigrationError, match="still owned by"):
+            await _migration().apply(database_url=_dsn_as(dsn, RUNTIME), dedicated=False)
+        catalogue = await _catalogue(dsn)
+        assert catalogue["tables"] == {}
+        assert catalogue["ledgers"] == {"schema_migrations": 0, "_schema_versions": 0}
+    finally:
+        await _drop_database(disposable_cluster, dsn)
+
+
 async def test_304_rollback_without_its_role_bracket_fails_atomically_through_the_migrator(
     disposable_cluster: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
