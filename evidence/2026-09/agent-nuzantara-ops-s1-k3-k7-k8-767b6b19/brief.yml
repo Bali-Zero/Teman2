@@ -32,7 +32,8 @@ acceptance:
       queue_shepherd.py turns EXACTLY its own test(s) red and nothing else.
     probe: guilt-mutation-in-throwaway-copy
   - text: >-
-      The suite SHALL pass at 184 (169 before), and /usr/bin/python3 -m py_compile
+      The suite SHALL pass at 192 (169 before; 184 after round two, 192 after round three
+      added the four tests the third gate round demanded), and /usr/bin/python3 -m py_compile
       (3.9.6) SHALL exit 0.
     probe: pytest-and-py-compile
   - text: >-
