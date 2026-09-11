@@ -1,8 +1,8 @@
 {
   "batch": "A",
   "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
-  "canonical_revision": "6728eeb22a1ff9c0b157a5179f9966fa7962514d",
-  "canonical_sha256": "3dafab17f6c48477c34ae562d74d5015faeba74a44fee125ee9267c6c45da2e8",
+  "canonical_revision": "b6e252f7a2eec045094d399d3e0372262c5fa98a",
+  "canonical_sha256": "cfe9583b77f9b5783c3b9b1bea6630f59c77444fb82c0ae7908954df3dc73df0",
   "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
   "predicate_doc": {
     "A-serving/pp28": "per_skala non-empty AND pp28_sources non-empty AND no _l2_source",
@@ -11,9 +11,9 @@
   },
   "census": {
     "A-empty/gap": 216,
-    "A-serving/pp28": 5,
-    "_in_scope_total": 5,
-    "_total": 221
+    "A-serving/pp28": 2,
+    "_in_scope_total": 2,
+    "_total": 218
   },
   "members": [
     {
@@ -1727,26 +1727,6 @@
       "pp28_sources": []
     },
     {
-      "kode_kbli_2025": "93111",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
-      "sektor_id": "I.J-P",
-      "judul": "Fasilitas Stadion",
-      "pp28_sources": [
-        "93111"
-      ]
-    },
-    {
-      "kode_kbli_2025": "93112",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
-      "sektor_id": "I.J-P",
-      "judul": "Fasilitas Sirkuit",
-      "pp28_sources": [
-        "93112"
-      ]
-    },
-    {
       "kode_kbli_2025": "93113",
       "reason_code": "A-empty/gap",
       "in_scope": false,
@@ -1774,16 +1754,6 @@
       "judul": "Fasilitas Olahraga Beladiri",
       "pp28_sources": [
         "93115"
-      ]
-    },
-    {
-      "kode_kbli_2025": "93119",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
-      "sektor_id": "I.J-P",
-      "judul": "Pengelolaan Fasilitas Olahraga Lainnya",
-      "pp28_sources": [
-        "93119"
       ]
     },
     {

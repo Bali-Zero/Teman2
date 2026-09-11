@@ -10,9 +10,9 @@
 
 | Artifact | Pin |
 | --- | --- |
-| canonical (`data/source_documents/KBLI_2025_FINAL_CLEAN.json`) | git revision `45bbc1f42a0c74d12c3021f56a54565a747a01c7` |
+| canonical (`data/source_documents/KBLI_2025_FINAL_CLEAN.json`) | git revision `b6e252f7a2eec045094d399d3e0372262c5fa98a` |
 | vault manifest (`data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json`) | sha256 `e7d25a377b717ed76efd1c7c806fe74b45067321629c5ed77655aeea9375db9d` |
-| membership (`data/kbli-filiera/membership/batch-a-members.json`) | sha256 `aa0a0a6980117d57321e625fdad4e1a89f19f5b34125614d8d9921fb50f60497` |
+| membership (`data/kbli-filiera/membership/batch-a-members.json`) | sha256 `522d9d77ba9b69d10971b73e61a2ef24f2ea41e1bb6e123378ac84df6301a0a7` |
 
 ## Pilot A1 measurements (conductor-set baseline)
 
@@ -57,7 +57,7 @@ Eligibility: the 8 cured codes from the pilot/audit runs (honest-gap must surviv
 - `d279d2b5cf9396272bced8d09a19aa3005150155240433a32a6751b89973ce92`
 - `fb5df44ffe81b6af8ac36fb6a666243f815c84e8a02c8d0de223223e77aa4a1e`
 
-### POSITIVE controls (8 of 1336 eligible)
+### POSITIVE controls (8 of 1340 eligible)
 
 Eligibility predicate: canonical record has kode_kbli_2025 set AND _l2_source is non-null AND per_skala is non-empty (the OSS-native Batch-C class).
 

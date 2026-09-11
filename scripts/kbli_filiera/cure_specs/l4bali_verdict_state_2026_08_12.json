@@ -1,9 +1,9 @@
 {
   "_meta": {
     "purpose": "Add l4_bali.verdict_state without changing the meaning or type of l4_bali.blocked. Selection and targets are derived from live record state.",
-    "created": "2026-08-12",
+    "created": "2026-09-12",
     "emitted_by": "scripts/kbli_filiera/emit_l4bali_verdict_state_spec.py",
-    "canonical_source": "/Users/nuzantara/nuzantara/.worktrees/mouth-bali-tristate-data/data/source_documents/KBLI_2025_FINAL_CLEAN.json",
+    "canonical_source": "/Users/balizero/nuzantara/.worktrees/kbli-l2-pr-b-policy/data/source_documents/KBLI_2025_FINAL_CLEAN.json",
     "selection": "every live canonical record carrying a valid l4_bali Boolean verdict",
     "derivation_order": [
       "NON_CLASSIFICABILE -> unknown",
@@ -20,15 +20,15 @@
       "open_supporting_tier_absent:APERTO_BALI_RISCHIO_ALTO": 11,
       "open_supporting_tier_absent:OK_or_HIGHER_RISK": 90,
       "status:APERTO_BALI_RISCHIO_ALTO": 11,
-      "status:BLOCCATO_CLASSE_RISCHIO": 372,
-      "status:BLOCCATO_DIPENDE_SCOPE": 72,
+      "status:BLOCCATO_CLASSE_RISCHIO": 375,
+      "status:BLOCCATO_DIPENDE_SCOPE": 67,
       "status:CHIUSO_BALI": 1,
       "status:CHIUSO_BALI_PROPOSTO": 5,
-      "status:CHIUSO_MORATORIA_BALI": 48,
+      "status:CHIUSO_MORATORIA_BALI": 46,
       "status:CHIUSO_PMA_NO_BESAR": 7,
       "status:CHIUSO_REGOLATORE_SETTORIALE": 2,
       "status:NON_CLASSIFICABILE": 25,
-      "status:OK_or_HIGHER_RISK": 943,
+      "status:OK_or_HIGHER_RISK": 947,
       "status:TERBATAS": 5,
       "status:TERTUTUP": 68,
       "unknown_blocked_true_preserved": 17,
@@ -2713,11 +2713,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Menengah Tinggi"
-        ]
+        "supporting_besar_tiers": ["Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -2743,7 +2739,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Tinggi"]
+        "supporting_besar_tiers": ["Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -2912,7 +2908,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Tinggi"]
+        "supporting_besar_tiers": ["Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -3068,7 +3064,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Tinggi"]
+        "supporting_besar_tiers": ["Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -3094,7 +3090,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Tinggi"]
+        "supporting_besar_tiers": ["Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -3133,7 +3129,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Tinggi"]
+        "supporting_besar_tiers": ["Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -3276,7 +3272,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Tinggi"]
+        "supporting_besar_tiers": ["Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -3302,7 +3298,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Tinggi"]
+        "supporting_besar_tiers": ["Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -3848,7 +3844,15 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Tinggi", "Tinggi"]
+        "supporting_besar_tiers": [
+          "Menengah Tinggi",
+          "Tinggi",
+          "Tinggi",
+          "Tinggi",
+          "Tinggi",
+          "Tinggi",
+          "Tinggi"
+        ]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -4056,7 +4060,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Tinggi"]
+        "supporting_besar_tiers": ["Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -4232,7 +4236,6 @@
         "supporting_besar_tiers": [
           "Menengah Tinggi",
           "Menengah Tinggi",
-          "Menengah Tinggi",
           "Menengah Tinggi"
         ]
       },
@@ -4247,11 +4250,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Menengah Tinggi"
-        ]
+        "supporting_besar_tiers": ["Menengah Tinggi", "Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -4290,7 +4289,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -4474,12 +4473,12 @@
     },
     "14131": {
       "facts_basis": {
-        "status": "OK_or_HIGHER_RISK",
+        "status": "BLOCCATO_DIPENDE_SCOPE",
         "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Tinggi", "Rendah", "Rendah"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -4518,7 +4517,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -4791,7 +4790,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Rendah"]
+        "supporting_besar_tiers": ["Menengah Rendah", "Menengah Rendah"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -4973,7 +4972,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Tinggi"]
+        "supporting_besar_tiers": ["Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -4986,7 +4985,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Tinggi"]
+        "supporting_besar_tiers": ["Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -5207,7 +5206,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Tinggi"]
+        "supporting_besar_tiers": ["Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -5233,7 +5232,11 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Menengah Tinggi"]
+        "supporting_besar_tiers": [
+          "Menengah Tinggi",
+          "Menengah Tinggi",
+          "Menengah Tinggi"
+        ]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -5263,15 +5266,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Tinggi", "Tinggi", "Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -5285,6 +5280,7 @@
         "needs_review": false,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": [
+          "Menengah Tinggi",
           "Menengah Tinggi",
           "Menengah Tinggi",
           "Tinggi",
@@ -5320,7 +5316,11 @@
         "confidence": "HIGH",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Menengah Tinggi"]
+        "supporting_besar_tiers": [
+          "Menengah Tinggi",
+          "Menengah Tinggi",
+          "Menengah Tinggi"
+        ]
       },
       "patch": {
         "verdict_state": "blocked"
@@ -5334,7 +5334,6 @@
         "needs_review": false,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": [
-          "Menengah Tinggi",
           "Menengah Tinggi",
           "Menengah Tinggi",
           "Menengah Tinggi",
@@ -5414,7 +5413,6 @@
         "needs_review": false,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": [
-          "Menengah Tinggi",
           "Menengah Tinggi",
           "Menengah Tinggi",
           "Menengah Tinggi"
@@ -5517,12 +5515,12 @@
     },
     "20229": {
       "facts_basis": {
-        "status": "OK_or_HIGHER_RISK",
+        "status": "BLOCCATO_DIPENDE_SCOPE",
         "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Rendah", "Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -5681,7 +5679,6 @@
         "supporting_besar_tiers": [
           "Menengah Tinggi",
           "Menengah Tinggi",
-          "Menengah Tinggi",
           "Tinggi"
         ]
       },
@@ -5696,7 +5693,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Tinggi"]
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -6804,7 +6801,11 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Rendah", "Rendah"]
+        "supporting_besar_tiers": [
+          "Menengah Rendah",
+          "Menengah Rendah",
+          "Rendah"
+        ]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -6972,12 +6973,12 @@
     },
     "26110": {
       "facts_basis": {
-        "status": "OK_or_HIGHER_RISK",
+        "status": "BLOCCATO_DIPENDE_SCOPE",
         "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Rendah", "Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -7011,12 +7012,12 @@
     },
     "26210": {
       "facts_basis": {
-        "status": "OK_or_HIGHER_RISK",
+        "status": "BLOCCATO_DIPENDE_SCOPE",
         "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Rendah", "Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -7055,7 +7056,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Tinggi", "Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -7159,7 +7160,11 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Rendah", "Menengah Tinggi"]
+        "supporting_besar_tiers": [
+          "Menengah Rendah",
+          "Menengah Tinggi",
+          "Menengah Tinggi"
+        ]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -7275,7 +7280,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Tinggi", "Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -7314,7 +7319,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Rendah"]
+        "supporting_besar_tiers": ["Menengah Rendah", "Menengah Rendah"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -7353,7 +7358,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Rendah"]
+        "supporting_besar_tiers": ["Menengah Rendah", "Menengah Rendah"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -7361,12 +7366,16 @@
     },
     "27201": {
       "facts_basis": {
-        "status": "OK_or_HIGHER_RISK",
+        "status": "BLOCCATO_DIPENDE_SCOPE",
         "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi"]
+        "supporting_besar_tiers": [
+          "Menengah Rendah",
+          "Menengah Tinggi",
+          "Menengah Tinggi"
+        ]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -7522,7 +7531,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Tinggi", "Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -7556,12 +7565,12 @@
     },
     "28111": {
       "facts_basis": {
-        "status": "BLOCCATO_DIPENDE_SCOPE",
-        "blocked": false,
+        "status": "BLOCCATO_CLASSE_RISCHIO",
+        "blocked": true,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Rendah", "Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Rendah"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -7569,12 +7578,12 @@
     },
     "28112": {
       "facts_basis": {
-        "status": "BLOCCATO_DIPENDE_SCOPE",
-        "blocked": false,
+        "status": "BLOCCATO_CLASSE_RISCHIO",
+        "blocked": true,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Rendah", "Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Rendah"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -7587,7 +7596,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -7665,7 +7674,11 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi"]
+        "supporting_besar_tiers": [
+          "Menengah Tinggi",
+          "Menengah Tinggi",
+          "Menengah Tinggi"
+        ]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -7756,7 +7769,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Rendah"]
+        "supporting_besar_tiers": ["Menengah Rendah", "Menengah Rendah"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -7764,12 +7777,12 @@
     },
     "28193": {
       "facts_basis": {
-        "status": "OK_or_HIGHER_RISK",
+        "status": "BLOCCATO_DIPENDE_SCOPE",
         "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Rendah", "Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -7865,7 +7878,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Rendah"]
+        "supporting_besar_tiers": ["Menengah Rendah", "Menengah Rendah"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -8120,12 +8133,12 @@
     },
     "30921": {
       "facts_basis": {
-        "status": "BLOCCATO_CLASSE_RISCHIO",
-        "blocked": true,
+        "status": "BLOCCATO_DIPENDE_SCOPE",
+        "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Rendah"]
+        "supporting_besar_tiers": ["Menengah Rendah", "Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -8185,12 +8198,12 @@
     },
     "31021": {
       "facts_basis": {
-        "status": "BLOCCATO_DIPENDE_SCOPE",
+        "status": "OK_or_HIGHER_RISK",
         "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Rendah"]
+        "supporting_besar_tiers": ["Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -8221,7 +8234,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Rendah", "Rendah"]
+        "supporting_besar_tiers": ["Menengah Rendah"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -8338,7 +8351,11 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Rendah"]
+        "supporting_besar_tiers": [
+          "Menengah Rendah",
+          "Menengah Rendah",
+          "Menengah Rendah"
+        ]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -8351,7 +8368,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Rendah"]
+        "supporting_besar_tiers": ["Menengah Rendah", "Menengah Rendah"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -8377,7 +8394,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Tinggi", "Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -8619,12 +8636,12 @@
     },
     "33132": {
       "facts_basis": {
-        "status": "BLOCCATO_DIPENDE_SCOPE",
-        "blocked": false,
+        "status": "BLOCCATO_CLASSE_RISCHIO",
+        "blocked": true,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Rendah", "Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Rendah"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -8715,7 +8732,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -8853,12 +8870,12 @@
     },
     "35133": {
       "facts_basis": {
-        "status": "OK_or_HIGHER_RISK",
-        "blocked": false,
+        "status": "BLOCCATO_CLASSE_RISCHIO",
+        "blocked": true,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Tinggi", "Tinggi"]
+        "supporting_besar_tiers": ["Menengah Rendah"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -8983,7 +9000,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Tinggi"]
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -8996,7 +9013,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Tinggi"]
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -10013,23 +10030,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -10130,12 +10131,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Tinggi",
-          "Rendah",
-          "Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Rendah", "Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -11491,19 +11487,12 @@
     },
     "47221": {
       "facts_basis": {
-        "status": "BLOCCATO_DIPENDE_SCOPE",
+        "status": "OK_or_HIGHER_RISK",
         "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Rendah",
-          "Rendah",
-          "Rendah",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Tinggi", "Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -12382,7 +12371,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Rendah", "Rendah"]
+        "supporting_besar_tiers": ["Rendah"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -12637,12 +12626,12 @@
     },
     "47799": {
       "facts_basis": {
-        "status": "BLOCCATO_CLASSE_RISCHIO",
-        "blocked": true,
+        "status": "BLOCCATO_DIPENDE_SCOPE",
+        "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Rendah"]
+        "supporting_besar_tiers": ["Rendah", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -12733,7 +12722,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Rendah", "Tinggi"]
+        "supporting_besar_tiers": ["Rendah", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -12746,7 +12735,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Rendah", "Tinggi"]
+        "supporting_besar_tiers": ["Rendah", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -12854,7 +12843,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -12911,7 +12900,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -13167,11 +13156,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Menengah Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -13816,11 +13801,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Menengah Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -13980,11 +13961,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Menengah Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -13997,11 +13974,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Menengah Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14014,11 +13987,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Rendah",
-          "Menengah Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Menengah Rendah", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14026,24 +13995,12 @@
     },
     "52319": {
       "facts_basis": {
-        "status": "BLOCCATO_DIPENDE_SCOPE",
+        "status": "OK_or_HIGHER_RISK",
         "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Rendah",
-          "Menengah Rendah",
-          "Menengah Rendah",
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14056,7 +14013,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Tinggi"]
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14069,11 +14026,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Rendah",
-          "Menengah Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Menengah Rendah", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14086,11 +14039,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Rendah",
-          "Menengah Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Menengah Rendah", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14103,7 +14052,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Tinggi"]
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14137,16 +14086,12 @@
     },
     "53301": {
       "facts_basis": {
-        "status": "BLOCCATO_DIPENDE_SCOPE",
+        "status": "OK_or_HIGHER_RISK",
         "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Rendah",
-          "Menengah Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14154,16 +14099,12 @@
     },
     "53309": {
       "facts_basis": {
-        "status": "BLOCCATO_DIPENDE_SCOPE",
+        "status": "OK_or_HIGHER_RISK",
         "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Rendah",
-          "Menengah Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14332,7 +14273,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Tinggi"]
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14509,12 +14450,12 @@
     },
     "58110": {
       "facts_basis": {
-        "status": "BLOCCATO_CLASSE_RISCHIO",
-        "blocked": true,
+        "status": "BLOCCATO_DIPENDE_SCOPE",
+        "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Rendah"]
+        "supporting_besar_tiers": ["Menengah Rendah", "Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14553,7 +14494,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi"]
+        "supporting_besar_tiers": ["Menengah Tinggi", "Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14561,17 +14502,12 @@
     },
     "58211": {
       "facts_basis": {
-        "status": "BLOCCATO_DIPENDE_SCOPE",
+        "status": "OK_or_HIGHER_RISK",
         "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Rendah",
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14579,17 +14515,12 @@
     },
     "58219": {
       "facts_basis": {
-        "status": "BLOCCATO_DIPENDE_SCOPE",
+        "status": "OK_or_HIGHER_RISK",
         "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Rendah",
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14597,17 +14528,12 @@
     },
     "58290": {
       "facts_basis": {
-        "status": "BLOCCATO_DIPENDE_SCOPE",
+        "status": "OK_or_HIGHER_RISK",
         "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Rendah",
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Menengah Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14633,7 +14559,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Rendah", "Rendah"]
+        "supporting_besar_tiers": ["Menengah Tinggi", "Rendah"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14855,9 +14781,6 @@
         "needs_review": false,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": [
-          "Menengah Tinggi",
-          "Tinggi",
-          "Tinggi",
           "Tinggi",
           "Tinggi",
           "Tinggi",
@@ -14877,15 +14800,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Tinggi", "Tinggi", "Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14898,14 +14813,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Tinggi", "Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14970,24 +14878,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -14995,16 +14886,12 @@
     },
     "61201": {
       "facts_basis": {
-        "status": "BLOCCATO_DIPENDE_SCOPE",
+        "status": "OK_or_HIGHER_RISK",
         "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Rendah",
-          "Menengah Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -15017,12 +14904,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Rendah",
-          "Menengah Tinggi",
-          "Rendah",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Rendah", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -15290,12 +15172,12 @@
     },
     "63900": {
       "facts_basis": {
-        "status": "BLOCCATO_DIPENDE_SCOPE",
+        "status": "OK_or_HIGHER_RISK",
         "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Rendah"]
+        "supporting_besar_tiers": ["Menengah Tinggi", "Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -16789,11 +16671,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Menengah Tinggi", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -17008,14 +16886,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Menengah Tinggi",
-          "Menengah Tinggi"
-        ]
+        "supporting_besar_tiers": ["Menengah Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -17095,7 +16966,7 @@
           "Menengah Tinggi",
           "Menengah Tinggi",
           "Menengah Tinggi",
-          "Menengah Tinggi",
+          "Tinggi",
           "Tinggi"
         ]
       },
@@ -17136,6 +17007,7 @@
           "Menengah Tinggi",
           "Menengah Tinggi",
           "Menengah Tinggi",
+          "Tinggi",
           "Tinggi",
           "Tinggi"
         ]
@@ -17359,7 +17231,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Rendah", "Rendah"]
+        "supporting_besar_tiers": ["Menengah Rendah"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -17879,7 +17751,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Rendah", "Tinggi"]
+        "supporting_besar_tiers": ["Rendah", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -17893,7 +17765,6 @@
         "needs_review": false,
         "supporting_tier_absent": false,
         "supporting_besar_tiers": [
-          "Menengah Tinggi",
           "Rendah",
           "Rendah",
           "Rendah",
@@ -18234,7 +18105,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Tinggi"]
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -18268,17 +18139,12 @@
     },
     "82921": {
       "facts_basis": {
-        "status": "BLOCCATO_DIPENDE_SCOPE",
+        "status": "OK_or_HIGHER_RISK",
         "blocked": false,
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Rendah",
-          "Menengah Rendah",
-          "Menengah Rendah",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -19566,7 +19432,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Tinggi"]
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -19769,7 +19635,6 @@
           "Menengah Tinggi",
           "Menengah Tinggi",
           "Menengah Tinggi",
-          "Menengah Tinggi",
           "Tinggi",
           "Tinggi",
           "Tinggi",
@@ -19954,7 +19819,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": ["Menengah Tinggi", "Tinggi"]
+        "supporting_besar_tiers": ["Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
@@ -20469,7 +20334,7 @@
     },
     "93111": {
       "facts_basis": {
-        "status": "CHIUSO_MORATORIA_BALI",
+        "status": "BLOCCATO_CLASSE_RISCHIO",
         "blocked": true,
         "confidence": "HIGH",
         "needs_review": false,
@@ -20547,12 +20412,12 @@
     },
     "93119": {
       "facts_basis": {
-        "status": "CHIUSO_MORATORIA_BALI",
+        "status": "BLOCCATO_CLASSE_RISCHIO",
         "blocked": true,
         "confidence": "HIGH",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": []
+        "supporting_besar_tiers": ["Rendah"]
       },
       "patch": {
         "verdict_state": "blocked"
@@ -21236,12 +21101,7 @@
         "confidence": "MEDIUM",
         "needs_review": false,
         "supporting_tier_absent": false,
-        "supporting_besar_tiers": [
-          "Menengah Tinggi",
-          "Rendah",
-          "Rendah",
-          "Tinggi"
-        ]
+        "supporting_besar_tiers": ["Rendah", "Rendah", "Tinggi"]
       },
       "patch": {
         "verdict_state": "provisional"
