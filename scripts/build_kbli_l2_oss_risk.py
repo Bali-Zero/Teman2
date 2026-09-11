@@ -133,7 +133,7 @@ def besar_block_verdict(per_skala):
     return "OPEN"
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--root", type=Path, default=ROOT,
@@ -143,7 +143,7 @@ def main():
     ap.add_argument("--raw", type=Path, default=RAW,
                      help="jsonl of {kode,uuid,status,data} records, e.g. produced by "
                           "vault_to_risk_jsonl.py (default: today's literal)")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     root = args.root
     raw_path = args.raw

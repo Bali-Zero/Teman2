@@ -29,9 +29,9 @@ def _write_data(vault_root, code, payload):
     (d / "ruang_lingkup.json").write_text(json.dumps(payload), encoding="utf-8")
 
 
-def _write_absence(vault_root, code, endpoint="ruang_lingkup"):
+def _write_absence(vault_root, code, endpoint="ruang_lingkup", status=404, recorded_as="absent"):
     common.append_jsonl(vault_root / "oss" / "absences.jsonl", {
-        "code": code, "endpoint": endpoint, "status": 404, "recorded_as": "absent",
+        "code": code, "endpoint": endpoint, "status": status, "recorded_as": recorded_as,
     })
 
 
@@ -40,6 +40,19 @@ class TestLoadFiveDigitCodes:
         gt = _make_ground_truth(tmp_path, ["68112", "47111"])
         pairs = adapter.load_five_digit_codes(gt)
         assert pairs == [("47111", "u-47111"), ("68112", "u-68112")]
+
+    def test_non_5digit_kode_raises_invalid_code(self, tmp_path):
+        """codex round 1, F5: a kode like "../escape" that carries digits==5
+        in its metadata but is NOT actually a 5-digit string must be
+        rejected before it is ever used to build a filesystem path."""
+        gt = tmp_path / "gt.json"
+        gt.write_text(json.dumps({
+            "_meta": {},
+            "data": [{"kode": "../escape", "uuid": "u-evil", "digits": 5}],
+        }), encoding="utf-8")
+        with pytest.raises(adapter.InvalidCode) as exc_info:
+            adapter.load_five_digit_codes(gt)
+        assert "../escape" in str(exc_info.value)
 
 
 class TestBuildRecord:
@@ -61,14 +74,23 @@ class TestBuildRecord:
         rec = adapter.build_record(tmp_path, "99999", "u-99999")
         assert rec["status"] == 200
 
-    def test_neither_data_nor_absence_raises_lookup_error(self, tmp_path):
-        with pytest.raises(LookupError):
+    def test_neither_data_nor_absence_raises_missing_evidence(self, tmp_path):
+        with pytest.raises(adapter.MissingEvidence):
             adapter.build_record(tmp_path, "00001", "u-00001")
 
     def test_absence_for_a_different_endpoint_does_not_count(self, tmp_path):
         _write_absence(tmp_path, "55555", endpoint="umku")
-        with pytest.raises(LookupError):
+        with pytest.raises(adapter.MissingEvidence):
             adapter.build_record(tmp_path, "55555", "u-55555")
+
+    def test_status_500_record_is_not_an_absence(self, tmp_path):
+        """codex round 1, F4: has_absence must require status == 404 (and
+        recorded_as == "absent") — a transient-error probe is not a
+        confirmed no-scope signal."""
+        _write_absence(tmp_path, "77777", status=500, recorded_as="error")
+        with pytest.raises(adapter.MissingEvidence):
+            adapter.build_record(tmp_path, "77777", "u-77777")
+        assert adapter.has_absence(tmp_path, "77777") is False
 
 
 class TestMain:
@@ -105,4 +127,18 @@ class TestMain:
         rc = adapter.main(["--vault-root", str(vault_root), "--ground-truth", str(gt), "--out", str(out)])
         assert rc == 2
         assert "00001" in capsys.readouterr().err
+        assert not out.exists()
+
+    def test_invalid_kode_exits_2_and_names_the_value(self, tmp_path, capsys):
+        """codex round 1, F5."""
+        vault_root = tmp_path / "vault"
+        vault_root.mkdir()
+        gt = tmp_path / "gt.json"
+        gt.write_text(json.dumps({
+            "_meta": {}, "data": [{"kode": "../escape", "uuid": "u-evil", "digits": 5}],
+        }), encoding="utf-8")
+        out = tmp_path / "out.jsonl"
+        rc = adapter.main(["--vault-root", str(vault_root), "--ground-truth", str(gt), "--out", str(out)])
+        assert rc == 2
+        assert "../escape" in capsys.readouterr().err
         assert not out.exists()

@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -42,41 +43,74 @@ except ImportError:  # pragma: no cover
 
 DEFAULT_GROUND_TRUTH = Path("data/source_documents/KBLI_2025_OSS_GROUND_TRUTH.json")
 ENDPOINT = "ruang_lingkup"
+_FIVE_DIGIT_RE = re.compile(r"\d{5}")
+
+
+class MissingEvidence(Exception):
+    """Raised when the vault has neither a data file nor an absence record
+    for a code — dedicated so callers never accidentally treat an unrelated
+    KeyError (a malformed ground-truth/vault record) as "missing evidence"
+    (codex round 1, F6)."""
+
+
+class InvalidCode(Exception):
+    """Raised when a ground-truth `kode` is not a bare 5-digit string —
+    dedicated so a value like "../escape" is rejected before it is ever used
+    to build a filesystem path (codex round 1, F5)."""
 
 
 def load_five_digit_codes(ground_truth_path: Path) -> list[tuple[str, str]]:
     """Returns (kode, uuid) pairs for every 5-digit code, sorted ascending by
     `kode` — the ground truth's own array order is not sorted, and
     determinism requires a fixed order (spec rule 2: "ascending kode
-    order")."""
+    order"). Every `kode` is validated against `\\d{5}` regardless of the
+    ground truth's own `digits` field — that field is untrusted metadata,
+    not a guarantee, and this adapter turns `kode` directly into a
+    filesystem path component."""
     data = json.loads(ground_truth_path.read_text(encoding="utf-8"))
-    pairs = [(str(x["kode"]), x["uuid"]) for x in data["data"] if x.get("digits") == 5]
+    pairs = []
+    for x in data["data"]:
+        if x.get("digits") != 5:
+            continue
+        kode = str(x["kode"])
+        if not _FIVE_DIGIT_RE.fullmatch(kode):
+            raise InvalidCode(kode)
+        pairs.append((kode, x["uuid"]))
     pairs.sort(key=lambda p: p[0])
     return pairs
 
 
 def has_absence(vault_root: Path, code: str) -> bool:
-    """True if absences.jsonl records at least one ruang_lingkup 404 for this
-    code. A snapshot reader only cares whether the absence was recorded, not
+    """True if absences.jsonl records at least one CONFIRMED
+    (status == 404, recorded_as == "absent") ruang_lingkup absence for this
+    code — a record with any other status (e.g. a transient 500, or a probe
+    still awaiting corroboration) is not an absence (codex round 1, F4). A
+    snapshot reader only cares whether a confirmed absence was recorded, not
     P3's corroboration-over-time policy (that governs the FETCHER, not this
     adapter)."""
     for rec in common.read_jsonl(vault_root / "oss" / "absences.jsonl"):
-        if rec.get("code") == code and rec.get("endpoint") == ENDPOINT:
+        if (
+            rec.get("code") == code
+            and rec.get("endpoint") == ENDPOINT
+            and rec.get("status") == 404
+            and rec.get("recorded_as") == "absent"
+        ):
             return True
     return False
 
 
 def build_record(vault_root: Path, code: str, uuid: str) -> dict:
     """One {"kode","uuid","status","data"} line for `code`. Raises
-    LookupError(code) when the vault has neither a data file nor an absence
-    record — the caller turns that into exit 2, never a silent skip."""
+    MissingEvidence(code) when the vault has neither a data file nor a
+    confirmed absence record — the caller turns that into exit 2, never a
+    silent skip."""
     data_path = vault_root / "oss" / code / f"{ENDPOINT}.json"
     if data_path.exists():
         raw = json.loads(data_path.read_text(encoding="utf-8"))
         return {"kode": code, "uuid": uuid, "status": 200, "data": raw}
     if has_absence(vault_root, code):
         return {"kode": code, "uuid": uuid, "status": 404, "data": {"success": False, "code": 404}}
-    raise LookupError(code)
+    raise MissingEvidence(code)
 
 
 def build_records(vault_root: Path, ground_truth_path: Path) -> list[dict]:
@@ -93,10 +127,16 @@ def main(argv: list[str] | None = None) -> int:
     vault_root = args.vault_root.expanduser()
     try:
         records = build_records(vault_root, args.ground_truth)
-    except LookupError as exc:
+    except MissingEvidence as exc:
         print(
-            f"vault_to_risk_jsonl: code {exc} has neither a data file nor an "
-            f"absence record under {vault_root} — refusing to invent evidence",
+            f"vault_to_risk_jsonl: code {exc} has neither a data file nor a "
+            f"confirmed absence record under {vault_root} — refusing to invent evidence",
+            file=sys.stderr,
+        )
+        return 2
+    except InvalidCode as exc:
+        print(
+            f"vault_to_risk_jsonl: ground truth kode {exc!r} is not a 5-digit code — refusing to use it as a path",
             file=sys.stderr,
         )
         return 2

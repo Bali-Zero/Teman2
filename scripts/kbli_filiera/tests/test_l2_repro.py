@@ -54,6 +54,18 @@ code scan found a genuine, non-jangka_waktu content drift on
 June raw fetch and the July vault — a real, rare (1/1559) upstream content
 change, unrelated to jangka_waktu, that a 6-code fixture cannot catch by
 construction. Flagged here so the gap is explicit, not implied.
+
+CODEX ROUND 1 (F2): the previous version of this file checked
+`canon_rec.get("_l2_status")`/`_l2_source` on the FIXTURE input against a
+hardcoded string, without ever invoking the transform's write path — a
+broken `main()` (bad CLI wiring, a write that silently no-ops, wrong target
+path, a broken JSON dump) would have stayed green. `TestApplyWritePath`
+below calls `build_kbli_l2_oss_risk.main([..., "--apply"])` for real, reads
+back the file IT wrote, and — to make sure a no-op `--apply` can't pass by
+coincidence (the owned fields already match the canonical seed, so a no-op
+would trivially "reproduce" too) — first CORRUPTS the seed's owned fields
+with an obviously-wrong placeholder, then asserts the written output is
+NEITHER the placeholder NOR anything but the correct recomputed value.
 """
 from __future__ import annotations
 
@@ -76,6 +88,13 @@ L2_OWNED_PER_SKALA_FIELDS = [
     "skala_usaha", "kategori_risiko", "scope_index", "scope_uraian",
     "perizinan", "persyaratan", "kewajiban", "kewenangan",
 ]
+CORRUPT_SENTINEL = "__CORRUPTED_SEED__"
+
+
+def _import_transform():
+    sys.path.insert(0, str(REPO_ROOT))
+    import scripts.build_kbli_l2_oss_risk as transform  # noqa: E402
+    return transform
 
 
 def _run_adapter(tmp_path: Path) -> dict:
@@ -89,7 +108,7 @@ def _run_adapter(tmp_path: Path) -> dict:
     assert rc == 0
     lines = raw_out.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 6
-    return {json.loads(line)["kode"]: json.loads(line) for line in lines}
+    return {json.loads(line)["kode"]: json.loads(line) for line in lines}, raw_out
 
 
 def _project(ps_rows: list[dict]) -> list[dict]:
@@ -99,55 +118,40 @@ def _project(ps_rows: list[dict]) -> list[dict]:
     return sorted(projected, key=lambda r: (r["scope_index"], tuple(r["skala_usaha"] or [])))
 
 
-class TestL2Reproduction:
-    def test_l2_owned_fields_reproduce_exactly(self, tmp_path):
-        """For the 5 data codes: per_skala, projected to the fields this
-        transform actually owns, reproduces byte-for-byte from the July
-        vault slice. For the 1 absent code (85583): _l2_status reproduces.
-        jangka_waktu and l4_bali are deliberately out of scope (see module
-        docstring)."""
-        sys.path.insert(0, str(REPO_ROOT))
-        import scripts.build_kbli_l2_oss_risk as transform  # noqa: E402
+def _load_canon_slice() -> dict:
+    return json.loads((FIXTURES / "canonical_slice.json").read_text(encoding="utf-8"))
 
-        raw_by_code = _run_adapter(tmp_path)
-        canon = json.loads((FIXTURES / "canonical_slice.json").read_text(encoding="utf-8"))
-        canon_by_code = {str(r["kode_kbli_2025"]): r for r in canon["data"]}
+
+class TestL2OwnedFieldsPureFunction:
+    def test_parse_per_skala_reproduces_l2_owned_fields(self, tmp_path):
+        """Pure-function check: parse_per_skala(raw), projected to the
+        L2-owned field subset, matches the canonical corpus for the 5 data
+        codes. Does NOT exercise --apply/main() — see TestApplyWritePath
+        for the write-path check codex round 1 (F2) asked for."""
+        transform = _import_transform()
+        raw_by_code, _ = _run_adapter(tmp_path)
+        canon_by_code = {str(r["kode_kbli_2025"]): r for r in _load_canon_slice()["data"]}
 
         checked_data_codes = 0
-        checked_absent_codes = 0
         for code, canon_rec in canon_by_code.items():
             r = raw_by_code[code]
-
             if r["status"] != 200 or not r["data"].get("success"):
-                # 85583: absent code — the transform's no_oss_risk path sets
-                # _l2_status="no_oss_risk" and leaves per_skala untouched.
-                assert canon_rec.get("_l2_status") == "no_oss_risk", code
-                checked_absent_codes += 1
                 continue
             checked_data_codes += 1
-
             new_ps = transform.parse_per_skala(r["data"])
             old_ps = canon_rec.get("per_skala", []) or []
             assert _project(new_ps) == _project(old_ps), code
-            # the canonical corpus's own _l2_source is what this transform
-            # would (re)write for any code it applies to — confirms that
-            # record-level provenance field is stable across a re-run too.
-            assert canon_rec.get("_l2_source") == "OSS_RBA_resiko_2025", code
 
         assert checked_data_codes == 5  # 56101, 10215, 47111, 50131, 68111
-        assert checked_absent_codes == 1  # 85583
 
     def test_jangka_waktu_is_excluded_not_silently_matching(self, tmp_path):
         """Guards the docstring's claim: jangka_waktu genuinely DOES diverge
         for this fixture set (it is excluded by design, not because it
         happens to match) — if a future vault snapshot ever restores that
         field, this test should be revisited, not silently kept green."""
-        sys.path.insert(0, str(REPO_ROOT))
-        import scripts.build_kbli_l2_oss_risk as transform  # noqa: E402
-
-        raw_by_code = _run_adapter(tmp_path)
-        canon = json.loads((FIXTURES / "canonical_slice.json").read_text(encoding="utf-8"))
-        canon_by_code = {str(r["kode_kbli_2025"]): r for r in canon["data"]}
+        transform = _import_transform()
+        raw_by_code, _ = _run_adapter(tmp_path)
+        canon_by_code = {str(r["kode_kbli_2025"]): r for r in _load_canon_slice()["data"]}
 
         any_jangka_diff = False
         for code, canon_rec in canon_by_code.items():
@@ -168,6 +172,75 @@ class TestL2Reproduction:
 
         assert any_jangka_diff, (
             "jangka_waktu matched everywhere in this fixture set — the exclusion "
-            "in test_l2_owned_fields_reproduce_exactly is no longer masking a real "
-            "diff; re-check whether it should still be excluded"
+            "in test_parse_per_skala_reproduces_l2_owned_fields is no longer masking "
+            "a real diff; re-check whether it should still be excluded"
         )
+
+
+class TestApplyWritePath:
+    """Exercises scripts/build_kbli_l2_oss_risk.py's ACTUAL --apply write
+    path end to end (argparse, --root/--raw resolution, per-code branching,
+    JSON dump, file write) — the thing F2 said must exist: a broken main()
+    must be able to fail this test."""
+
+    def _build_root_with_corrupted_seed(self, tmp_path: Path) -> Path:
+        """Copies the canonical slice to both --root targets, then corrupts
+        every L2-owned per_skala field with an obvious sentinel value. If
+        --apply were a no-op (or wrote the wrong target, or crashed
+        silently), the written file would still carry the sentinel — the
+        only way to see the CORRECT recomputed value is for --apply to have
+        actually run and actually written its result back out."""
+        canon = _load_canon_slice()
+        for rec in canon["data"]:
+            for row in rec.get("per_skala", []) or []:
+                for f in L2_OWNED_PER_SKALA_FIELDS:
+                    if f in row and f not in ("scope_index",):
+                        row[f] = CORRUPT_SENTINEL
+
+        root = tmp_path / "root"
+        for rel in ("data/source_documents/KBLI_2025_FINAL_CLEAN.json",
+                    "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"):
+            dest = root / rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_text(json.dumps(canon, ensure_ascii=False), encoding="utf-8")
+        return root
+
+    def test_apply_writes_correct_l2_owned_fields_not_the_corrupted_seed(self, tmp_path):
+        transform = _import_transform()
+        raw_by_code, raw_out = _run_adapter(tmp_path)
+        root = self._build_root_with_corrupted_seed(tmp_path)
+
+        transform.main(["--root", str(root), "--raw", str(raw_out), "--apply"])
+        # main() has no explicit return contract (prints a report, writes on
+        # --apply) — the write path is what this test verifies, not an exit code.
+
+        written = json.loads((root / "data" / "source_documents" / "KBLI_2025_FINAL_CLEAN.json").read_text(encoding="utf-8"))
+        written_by_code = {str(r["kode_kbli_2025"]): r for r in written["data"]}
+        canon_by_code = {str(r["kode_kbli_2025"]): r for r in _load_canon_slice()["data"]}  # uncorrupted original
+
+        checked_data_codes = 0
+        checked_absent_codes = 0
+        for code, canon_rec in canon_by_code.items():
+            r = raw_by_code[code]
+            wrec = written_by_code[code]
+
+            if r["status"] != 200 or not r["data"].get("success"):
+                # 85583: no_oss_risk path — per_skala untouched (still
+                # carries the corrupted seed, that branch never rewrites
+                # it), but _l2_status IS written fresh by --apply.
+                assert wrec.get("_l2_status") == "no_oss_risk", code
+                checked_absent_codes += 1
+                continue
+            checked_data_codes += 1
+
+            written_projected = _project(wrec.get("per_skala", []) or [])
+            expected_projected = _project(canon_rec.get("per_skala", []) or [])
+            assert written_projected == expected_projected, code
+            assert CORRUPT_SENTINEL not in json.dumps(written_projected), (
+                f"{code}: written per_skala still carries the corrupted seed — "
+                f"--apply did not actually recompute it"
+            )
+            assert wrec.get("_l2_source") == "OSS_RBA_resiko_2025", code
+
+        assert checked_data_codes == 5
+        assert checked_absent_codes == 1
