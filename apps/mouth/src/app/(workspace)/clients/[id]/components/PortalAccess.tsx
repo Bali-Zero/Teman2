@@ -170,7 +170,7 @@ export function PortalAccess({
                   had no way to know the client still signs in with the old
                   one. */}
               {loginEmailDiverged ? (
-                <p className="text-xs text-[var(--bz-warning,#d97706)] mt-1">
+                <p className="text-xs text-[var(--state-warning)] mt-1">
                   Signs in as {status.portal_email} — the CRM now has{" "}
                   {clientEmail}. Changing the email here does not move the
                   portal login; the client must keep using {status.portal_email}
