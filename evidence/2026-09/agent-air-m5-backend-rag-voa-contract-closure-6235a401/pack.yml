@@ -65,17 +65,21 @@ outcome: >-
 diff:
   files: 5
   net_lines: >-
-    +415/-45 across the 5 scoped files, measured merge-base-anchored against
-    origin/main (never a two-dot diff — W102):
-    `git diff $(git merge-base HEAD origin/main) --numstat -- <5 scope
-    files>`. Per-file breakdown (insertions added, deletions removed):
-    public_endpoints.py (10 added, 4 removed), hybrid_auth.py (84 added, 2
-    removed), test_garuda_staff_public_prefix_guard.py (51 added, 12
-    removed — uncommitted at pack-writing time, this is the round-1 cure,
-    not yet folded into a new commit; round 2 runs against whatever head
-    lands it), test_garuda_voa_public_root_allowlist.py (128 added, 27
-    removed), test_hybrid_auth_contract_401_envelope.py (142 added, 0
-    removed — new file).
+    +532/-56 across the 5 scoped code files, measured merge-base-anchored
+    against origin/main (never a two-dot diff — W102):
+    `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`. The
+    earlier figure in this field was the ROUND-1 measurement and went
+    stale the moment the round-2 cures landed; the linter's countable-claims
+    rule caught it, which is the whole point of writing the command next to
+    the number. Per-file (added/removed): public_endpoints.py 40/14,
+    hybrid_auth.py 100/3, test_garuda_staff_public_prefix_guard.py 52/12,
+    test_garuda_voa_public_root_allowlist.py 129/27,
+    test_hybrid_auth_contract_401_envelope.py 211/0 (new file). The three
+    evidence files are excluded from this count and add ~438 more lines to
+    the PR total — declared, not hidden: the PR contract's ~400-line
+    guidance is about the change under review, and 532 added lines of
+    middleware + derived-anchor tests for a diff that took two refuter
+    rounds is the honest cost of this concern, not scope creep.
   behaviour_change: >-
     HybridAuthMiddleware's 401 body and headers change for the five GARUDA
     VOA staff routes only. No router, service, or contract file changes.
