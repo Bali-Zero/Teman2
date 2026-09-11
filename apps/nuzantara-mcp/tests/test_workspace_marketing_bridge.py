@@ -264,7 +264,7 @@ async def test_newsroom_projection_redacts_identifiers_and_raw_enrichment() -> N
 
 @pytest.mark.asyncio
 async def test_workspace_health_requires_live_v2_contract_and_write_arm(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
     monkeypatch.setattr(marketing, "_editorial_auth_health", AsyncMock(return_value={"authentication_ready": False}))
@@ -289,7 +289,9 @@ async def test_workspace_health_requires_live_v2_contract_and_write_arm(
 
 
 @pytest.mark.asyncio
-async def test_workspace_health_fails_closed_on_missing_capability(monkeypatch) -> None:
+async def test_workspace_health_fails_closed_on_missing_capability(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("WORKSPACE_MARKETING_WRITES_ENABLED", "true")
     monkeypatch.setattr(marketing, "_editorial_auth_health", AsyncMock(return_value={"authentication_ready": True}))
     backend_call = AsyncMock(
