@@ -1,0 +1,227 @@
+task_id: db-voa-304
+mandate_id: garuda-voa-w1s
+colour: BLUE
+gear: 3
+l_level: L2
+gate_class: opus
+brief_ref: "evidence/brief.yml"
+council_run: council-journal.jsonl
+plan_ref: >-
+  docs/plans/2026-09-11-garuda-voa-final-spec.md §3 row W1S and §5; STEP5-PRIVILEGE-DECISION.md (RULED D);
+  evidence/2026-09/agent-air-m5-ops-garuda-voa-0911-c652d82b/ (OPERATOR-D.md, migration-304-owner-bracket.patch,
+  test_option_d_304.py). Branch agent/air-m5/db/voa-304, base 0141b8130a; 304 carried from #5526 head 6ea6eb9ade.
+grader: >-
+  pending — the final on-disk gate is a fresh session launched by the Imperatore (nuzantara-41), requested with PR
+  number and head sha. This session does not sign its own gate and does not arm (MIGRATION_DATABASE_URL absent on Fly).
+
+lanes:
+  - lane: w1s-build
+    role: build
+    seat: claude-opus-5 (xhigh, Dux, M5)
+    outcome: >-
+      3 commits: 52f8eb3c5f (304 + bracket + tests), 69a1ee2c15 (O1 cure), 6fddb34538 (single-DSN test).
+  - lane: w1s-static-audit
+    role: read
+    seat: claude-sonnet-5 (Explore subagent)
+    outcome: >-
+      Every static check scanning migrations_v2 passes for 304 (ledger-owned DDL guard, squawk with CI flags,
+      number and rollback-marker lints, checksum and uniqueness tests); no allowlist entry needed; floor 3.
+  - lane: w1s-refute-primary
+    role: review
+    seat: codex-gpt-5.6-sol (read-only, outside the contribution chain; rounds O1 and O2)
+    outcome: "O1 REFUTED (4 findings, all cured); O2 REFUTED on two items outside the cure (see dissent)."
+  - lane: w1s-second-reader
+    role: review
+    seat: gemini-3.1-pro-high (agy, plan mode, long read of 304 entire)
+    outcome: "BLOCK x2: rollback under split ownership (cured), review_fields without guard (not adopted)."
+  - lane: w1s-third-family
+    role: review
+    seat: tp1-glm-5.2
+    outcome: "DEFECT on SET/MEMBER semantics; its three load-bearing claims refuted by measurement."
+  - lane: w1s-council-qwen
+    role: review
+    seat: tp1-qwen3.8-max
+    outcome: "REFUTED; its BLOCK findings contradicted by real PG15/PG17 executions."
+  - lane: w1s-council-kimi
+    role: review
+    seat: kimi-code/k3
+    outcome: "NOT REFUTED; F1 adopted as a test."
+  - lane: w1s-ground-truth
+    role: ground_truth
+    seat: disposable PostgreSQL 15.19 and 17.10 clusters on M5 (initdb, 127.0.0.1, trust auth, stopped after each run)
+    outcome: "every claim about SET ROLE, RESET ROLE, pg_has_role and set_config below was measured here."
+  - lane: probation
+    role: read
+    seat: deepseek-v4-pro
+    outcome: NOT used — probation, never in quorum.
+seat_diversity: satisfied
+seat_diversity_note: >-
+  Builder Anthropic (Opus 5); reviewers OpenAI (gpt-5.6-sol), Google (gemini-3.1-pro), Zhipu (glm-5.2), Alibaba
+  (qwen3.8-max), Moonshot (kimi k3). Generator never grader.
+seat_incidents:
+  - seat: tp1-glm-5.2
+    error: "tp1_call exit 3: reasoning-only response truncated by finish_reason=length"
+    resolution: "REGOLA SEAT step 2, invocation corrected with --max-tokens 48000; answered on retry."
+    ts: 2026-09-11T17:27:35Z
+  - seat: codex-gpt-5.6-sol
+    error: "-o captured only the seat's closing checkpoint line, in both rounds"
+    resolution: "findings extracted from the stream log's final message block ending in VERDICT; no re-dispatch needed."
+    ts: 2026-09-11T17:33:16Z
+
+spend:
+  wall_clock_hours: 1.6
+  adversarial_rounds: 2
+appetite_exceeded: none
+
+diff:
+  net_lines: "NET_LINES_PLACEHOLDER"
+  behaviour_change: >-
+    Adds migration 304. Merging apps/backend-rag is the deploy: release_command applies it. With
+    MIGRATION_DATABASE_URL set (option D) it applies as backend_rag_v2 with session_user backend_rag_migrator.
+    Without it (production today) it fails atomically at the owner transfer — hence arming is blocked on the secret.
+  size_note: >-
+    Above the ~400-line PR bar: the 304 file itself is 324 lines carried from #5526 and the real-PostgreSQL proofs of
+    the shapes named in the spec and by the refuters are 402 lines. No store code is carried (W1W).
+
+receipts:
+  - claim: "CI shape on PostgreSQL 17: superuser, production roles absent, actual 304 applies, replays and rolls back"
+    cmd: "W1S_SHAPE=ci <disposable PG17> pytest backend/tests/db/test_migration_304_owner_bracket.py -rs"
+    result: "1 passed, 8 skipped (the 8 need OPTION_D_DISPOSABLE_PG_URL)"
+    exit: 0
+    ts: 2026-09-11T17:51Z
+    seat: w1s-build (M5)
+  - claim: "CI shape on PostgreSQL 15.19"
+    cmd: "W1S_SHAPE=ci <disposable PG15> pytest backend/tests/db/test_migration_304_owner_bracket.py -rs"
+    result: "1 passed, 8 skipped"
+    exit: 0
+    ts: 2026-09-11T17:51Z
+    seat: w1s-build (M5)
+  - claim: "D shape on PostgreSQL 17.10: migrator apply+rollback (scope prewidened and narrow), bracket-stripped forward guilt, rollback guilt, single-DSN runtime failure, connection-time role guilt then innocence, superuser with ungranted roles present"
+    cmd: "OPTION_D_DISPOSABLE_PG_URL=<disposable PG17> pytest backend/tests/db/test_migration_304_owner_bracket.py"
+    result: "9 passed (8 on the disposable cluster; the CI-shape test ran against M5's local PG 17.10, superuser, roles absent, creating and dropping one m304_* database)"
+    exit: 0
+    ts: 2026-09-11T17:51Z
+    seat: w1s-build (M5)
+  - claim: "D shape on PostgreSQL 15.19, which executes the MEMBER branch"
+    cmd: "OPTION_D_DISPOSABLE_PG_URL=<disposable PG15> pytest backend/tests/db/test_migration_304_owner_bracket.py"
+    result: "9 passed"
+    exit: 0
+    ts: 2026-09-11T17:51Z
+    seat: w1s-build (M5)
+  - claim: "the tests bite: mutations of the cured file"
+    cmd: "python mutation of 304_garuda_documents.sql, both shapes, file restored with cmp"
+    result: >-
+      M3 second RESET ROLE removed: D 6 failed. M4 stored-role condition removed: only the superuser-with-roles test
+      failed, D migrator tests passed. M5 MEMBER replaced by an invalid mode: PG15 D 4 failed, PG17 D 8 passed.
+      M6 rollback bracket removed: D 5 failed. M1 to_regrole check removed: no test failed (the check is implied by the
+      stored-role condition; declared in brief risks). Pre-cure run: to_regrole removal failed the CI shape.
+    exit: 0
+    ts: 2026-09-11T17:38Z
+    seat: w1s-build (M5)
+  - claim: "role semantics the bracket relies on, measured"
+    cmd: "asyncpg scripts on disposable PG 15.19 and 17.10"
+    result: >-
+      pg_has_role(r,r,SET|MEMBER)=t; superuser SET=t; pg_has_role on an absent role raises undefined_object;
+      SET ROLE inside a DO block persists in the transaction and is undone by ROLLBACK; set_config(name,v,true) is
+      visible to a later DO block and reads '' after COMMIT; RESET ROLE under ALTER ROLE ... SET role returns to that
+      role; pg_settings has 0 rows named role (a SAVEPOINT; RESET ROLE; current_user; ROLLBACK TO SAVEPOINT probe does
+      discriminate the connection-time role).
+    exit: 0
+    ts: 2026-09-11T17:32Z
+    seat: w1s-ground-truth
+  - claim: "static gates"
+    cmd: "squawk --pg-version=15.0 <CI excludes> 304_garuda_documents.sql; scripts/lint_migration_numbers.py; scripts/lint_migration_rollback.py"
+    result: "0 issues; 189 files unique prefixes; 184 post-cutoff migrations with ROLLBACK marker"
+    exit: 0
+    ts: 2026-09-11T17:38Z
+    seat: w1s-build (M5)
+  - claim: "related suites"
+    cmd: "pytest test_post_d1_migrations_guard_ledger_owned_ddl.py test_visa_engine_retention_fk_registry.py test_migration_uniqueness.py test_migration_checksum_verification.py test_migration_apply_strips_rollback.py"
+    result: >-
+      99 passed, 1 failed: test_restore_only_reapplies_the_entry_that_was_actually_unwound asserts migration 281 is live
+      in M5's local nuzantara_test; the same test fails identically on an unmodified main checkout (environmental).
+    exit: 1
+    ts: 2026-09-11T17:38Z
+    seat: w1s-build (M5)
+
+pii_scan: clean
+pii_scan_note: >-
+  Schema, synthetic test fixtures and catalogue reads only; no row of client data is read, written or logged.
+  Reviewer prompts carried the SQL, the test file and role names only.
+
+dissent:
+  - seat: codex-gpt-5.6-sol (O1 F1)
+    objection: "The rollback section runs its ledger-owned DROP FUNCTION and ALTER TABLE as backend_rag_v2 under option D and fails 42501."
+    status: CONFIRMED
+    resolution: "CURED in 69a1ee2c15: the rollback carries the same bracket; D-shape rollback test and rollback guilt test added. Also raised by gemini-3.1-pro-high."
+  - seat: codex-gpt-5.6-sol (O1 F2)
+    objection: "The PG15 MEMBER branch has no coverage."
+    status: CONFIRMED
+    resolution: "CURED by evidence: D shape run on PostgreSQL 15.19 (9 passed) and mutation M5 (PG15 D red, PG17 green)."
+  - seat: codex-gpt-5.6-sol (O1 F3)
+    objection: "A superuser with ungranted production roles present is switched to backend_rag_v2 by the closing block and fails 42501 on the next CREATE."
+    status: CONFIRMED
+    resolution: >-
+      CURED in 69a1ee2c15 by the Imperatore's decision #12 (2026-09-12): each bracket stores current_user in the
+      transaction-local GUC garuda.migration_304_resume_role before RESET ROLE and restores backend_rag_v2 only if that
+      stored value is backend_rag_v2. This deviates from the literal shape in the pinned spec (§3 row W1S), which is
+      left untouched here; the spec correction is a docs PR after merge. Under option D the behaviour is identical
+      (mutation M4 keeps every migrator test green and turns only the superuser-with-roles test red).
+  - seat: codex-gpt-5.6-sol (O1 F4)
+    objection: "The disposable fixture grants memberships to and resets config of pre-existing roles."
+    status: CONFIRMED
+    resolution: "CURED: the fixture skips when any of the three role names exists and drops only the roles it created."
+  - seat: codex-gpt-5.6-sol (O2)
+    objection: >-
+      S4: under ALTER ROLE backend_rag_migrator SET role = backend_rag_v2, assume_runtime_role returns at its idempotence
+      branch, so the refusal promised before any statement never runs; the 304 test passes on the late owner-transfer failure.
+    status: CONFIRMED
+    resolution: >-
+      DEFERRED, pre-existing (W1R condition 1, ledger row 2026-09-11), out of this perimeter by the Imperatore's decision #10.
+      304 stays correct in that shape: it fails atomically with no table and no ledger row (test). The discriminator for
+      the runner fix is the SAVEPOINT/RESET ROLE probe measured here; the ledger row's pg_settings.reset_val does not exist.
+  - seat: codex-gpt-5.6-sol (O2)
+    objection: "The PG15 MEMBER proof is local; in CI the disposable-cluster tests skip, so a MEMBER regression can stay green."
+    status: CONFIRMED
+    resolution: >-
+      ACCEPTED AS A LIMIT: creating the literal production role names in the shared CI cluster would change the shape of
+      other tests; CI covers the superuser/roles-absent shape and applies 304 in the apply-all chain. Local PG15 and PG17
+      runs are recorded above.
+  - seat: gemini-3.1-pro-high
+    objection: "garuda_document_review_fields has no mutation guard; an UPDATE or DELETE on unexpired child rows succeeds."
+    status: PLAUSIBLE
+    resolution: "NOT ADOPTED: the absence is the declared design of #5526 (rows cascade with the parent); schema behaviour of the store belongs to W1W."
+  - seat: tp1-glm-5.2
+    objection: "pg_has_role(r, r) is false; ROLLBACK does not undo SET ROLE; RESET ROLE ignores ALTER ROLE ... SET role."
+    status: RETRACTED
+    resolution: "Refuted by measurement on PG 15.19 and 17.10 (receipt 'role semantics'); retracted for this pack."
+  - seat: tp1-qwen3.8-max
+    objection: "Under option D CREATE TABLE, the owner transfer and the rollback DROP FUNCTION all run as backend_rag_v2 and fail; the policy_scope CHECK pattern cannot match."
+    status: RETRACTED
+    resolution: "Contradicted by real executions (D shape 9 passed on PG15 and PG17; CI shape passed); the seat ignored RESET ROLE."
+  - seat: tp1-qwen3.8-max
+    objection: "The owner-transfer block swallows insufficient_privilege and relies on a re-check; the rollback EXISTS check runs at READ COMMITTED."
+    status: PLAUSIBLE
+    resolution: "NOT ADOPTED: both are the unchanged shape of #5526/301; the re-check raises in the same transaction; rollback is not in the release path."
+  - seat: kimi-code/k3
+    objection: "The single-DSN runtime shape (production today) is untested."
+    status: CONFIRMED
+    resolution: "ADOPTED: test added in 6fddb34538 — fails with 'still owned by', no table, no ledger row."
+  - seat: kimi-code/k3
+    objection: "Second forward record is redundant; rollback narrows a pre-widened CHECK when no GARUDA_DOCUMENT row exists; resume blocks are no-ops when the role cannot be assumed; S4 test covers only the pre-widened path."
+    status: PLAUSIBLE
+    resolution: "NOT ADOPTED (notes): no shape produces a wrong owner or a half-applied state; production holds a signed GARUDA_DOCUMENT policy (G0.3), so its rollback leaves the CHECK widened."
+
+bites:
+  consumer: >-
+    Fly release_command of nuzantara-rag (python -m backend.db.migrate apply-all through MigrationManager), running
+    with MIGRATION_DATABASE_URL naming backend_rag_migrator; then W1W's store wiring, which writes garuda_documents.
+  where: "production nuzantara_rag, after the deploy of the merge commit"
+  observe: >-
+    ssh pro scripts/pg.sh, SELECT only, the read-back in OPERATOR-D.md: _schema_versions 304 (applied_as, applied_via),
+    schema_migrations 304 count, pg_class owners of garuda_documents and garuda_document_review_fields, pg_proc owner
+    of bind_garuda_document_retention_policy().
+  expect: >-
+    'backend_rag_v2 (session_user=backend_rag_migrator)' via release_command; count 1; both tables backend_rag_v2;
+    binder visa_ledger_owner. Never "PR merged".
+pii: none
