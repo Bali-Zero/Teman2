@@ -32,8 +32,23 @@ class PortalMessagingMixin:
         *,
         current_user: ClientContext,
     ) -> dict[str, Any]:
-        """Get message threads for client."""
+        """Get message threads for client.
+
+        `send_message` has always refused a soft-deleted client; READING the
+        thread did not, so a deleted client's session could still pull their
+        entire message history (portal audit bridge F4). The router's
+        `ValueError` catch was written for exactly this and documented as
+        unreachable — it is now reachable, and answers 404 like
+        `get_dashboard` does.
+        """
         async with self.pool.acquire() as conn:
+            client = await conn.fetchrow(
+                "SELECT id FROM clients WHERE id = $1 AND deleted_at IS NULL",
+                client_id,
+            )
+            if not client:
+                raise ValueError(f"Client {client_id} not found")
+
             messages = await conn.fetch(
                 """
                 SELECT m.id, m.subject, m.content, m.direction, m.sent_by,
