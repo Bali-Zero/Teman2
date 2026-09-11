@@ -167,7 +167,7 @@ Re-run on `origin/main` 0b56e22f56 reproduced every CSV byte-identical except th
 
 ## Adversarial review
 
-**Seat: codex (`codex exec`, read-only sandbox, no network), 2026-09-11, two rounds.**
+**Seat: codex (`codex exec`, read-only sandbox, no network), 2026-09-11, three rounds.**
 
 Round 1 verdict **BLOCK** with 7 findings, all folded:
 
