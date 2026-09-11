@@ -69,34 +69,25 @@ tags:
 canonicalUrl: "https://balizero.com/it/lifestyle/driving-license-foreigners"
 ogImage: "/static/insights/lifestyle/driving-license.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "46477888f25c2fbb471b0c6cce487183843d1221c15ee3f725e27b08d55b90c2"
+source_sha256: "45cad01b23d1d9d7ae44eabca1d90a8029f151f9363a6176ec51c40b530433c9"
 ---
 
-import {
-  DecisionTree,
-  ComparisonTable,
-  JourneyMap,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Patente per Stranieri in Indonesia 2026
 
-# Patente di Guida per Stranieri in Indonesia 2026
+Guidare in Indonesia richiede una licenza appropriata. Ecco cosa gli stranieri devono sapere per ottenere legalmente la patente.
 
-Guidare in Indonesia richiede una patente adeguata. Ecco cosa devono sapere gli stranieri per mettersi alla guida legalmente.
-
-## Hai Bisogno della Patente?
+## Hai Bisogno di una Licenza?
 
 <DecisionTree
-  title="Di Quale Patente Hai Bisogno?"
-  description="Trova l'opzione giusta per te"
+  title="Che Tipo di Licenza Ti Serve?"
+  description="Trova l'opzione giusta"
   nodes={[
     {
       id: "start",
-      question: "Quanto tempo rimarrai in Indonesia?",
+      question: "Per quanto tempo rimarrai in Indonesia?",
       options: [
-        { label: "Meno di 1 anno (turista/soggiorno breve)", next: "short" },
-        { label: "Oltre 1 anno (titolare di KITAS)", next: "long" },
+        { label: "Meno di 1 anno (turista/sofferenza breve)", next: "short" },
+        { label: "1+ anno (titolare KITAS)", next: "long" },
       ],
     },
     {
@@ -104,7 +95,7 @@ Guidare in Indonesia richiede una patente adeguata. Ecco cosa devono sapere gli 
       question: "Cosa guiderai?",
       options: [
         { label: "Solo auto", next: "idp-car" },
-        { label: "Scooter/moto", next: "idp-scooter" },
+        { label: "Scooter/motocicletta", next: "idp-scooter" },
         { label: "Entrambi", next: "idp-both" },
       ],
     },
@@ -113,15 +104,15 @@ Guidare in Indonesia richiede una patente adeguata. Ecco cosa devono sapere gli 
       result: {
         title: "Ottieni la SIM Indonesiana",
         description:
-          "In quanto titolare di KITAS, puoi e dovresti ottenere una SIM (Surat Izin Mengemudi) indonesiana. Questa è l'opzione legale corretta per i residenti a lungo termine.",
+          "In qualità di titolare KITAS, puoi e dovresti ottenere una SIM indonesiana (Surat Izin Mengemudi). Questa è l'opzione legale appropriata per i residenti a lungo termine.",
       },
     },
     {
       id: "idp-car",
       result: {
-        title: "Patente Internazionale",
+        title: "Permessi di Guida Internazionale",
         description:
-          "Usa la tua Patente Internazionale (IDP) ottenuta nel tuo paese. È valida per la guida di auto, ma verifica che copra l'Indonesia. Considera di prendere una SIM locale per soggiorni più lunghi.",
+          "Utilizza il tuo IDP del tuo paese d'origine. Valido per la guida dell'auto ma verifica che copra l'Indonesia. Considera di ottenere una SIM locale per soggiorni più lunghi.",
       },
     },
     {
@@ -129,15 +120,15 @@ Guidare in Indonesia richiede una patente adeguata. Ecco cosa devono sapere gli 
       result: {
         title: "IDP con Categoria Moto + SIM Locale",
         description:
-          "La tua IDP deve includere specificamente la categoria moto. Molte non la includono! Considera di ottenere la SIM C indonesiana anche per soggiorni brevi.",
+          "Il tuo IDP deve includere specificamente la categoria motocicli. Molti non lo fanno! Considera di ottenere la SIM C indonesiana anche per brevi soggiorni.",
       },
     },
     {
       id: "idp-both",
       result: {
-        title: "IDP + Considera SIM Locale",
+        title: "IDP + Considera una SIM Locale",
         description:
-          "Assicurati che l'IDP copra sia auto che moto. Per soggiorni superiori ai 3 mesi, si consiglia di ottenere la SIM locale.",
+          "Assicurati che l'IDP copra sia auto che motocicli. Per soggiorni superiori a 3 mesi, è consigliata l'ottenimento di una SIM locale.",
       },
     },
   ]}
@@ -145,30 +136,30 @@ Guidare in Indonesia richiede una patente adeguata. Ecco cosa devono sapere gli 
 
 ---
 
-## Tipi di Patente
+## Tipi di Licenza
 
 <ComparisonTable
   title="Patenti di Guida Indonesiane (SIM)"
-  description="Tipologie disponibili per gli stranieri"
+  description="Tipi disponibili per gli stranieri"
   items={[
     {
       name: "SIM A",
       subtitle: "Patente auto",
       values: {
-        Veicolo: "Auto, SUV",
-        Requisiti: "KITAS + 17+ anni",
-        Validità: "5 anni (max)",
-        Costo: "~250k IDR",
+        Vehicle: "Auto, SUV",
+        Requirements: "KITAS + 17+",
+        Validity: "5 anni (max)",
+        Cost: "~IDR 250K",
       },
     },
     {
       name: "SIM C",
-      subtitle: "Patente moto",
+      subtitle: "Patente motocicli",
       values: {
-        Veicolo: "Scooter, moto",
-        Requisiti: "KITAS + 17+ anni",
-        Validità: "5 anni (max)",
-        Costo: "~150k IDR",
+        Vehicle: "Scooter, motocicli",
+        Requirements: "KITAS + 17+",
+        Validity: "5 anni (max)",
+        Cost: "~IDR 150K",
       },
       highlight: true,
     },
@@ -176,20 +167,20 @@ Guidare in Indonesia richiede una patente adeguata. Ecco cosa devono sapere gli 
       name: "SIM B1",
       subtitle: "Camion/bus",
       values: {
-        Veicolo: "Veicoli pesanti",
-        Requisiti: "KITAS + esperienza",
-        Validità: "5 anni",
-        Costo: "~250k IDR",
+        Vehicle: "Veicoli grandi",
+        Requirements: "KITAS + esperienza",
+        Validity: "5 anni",
+        Cost: "~IDR 250K",
       },
     },
     {
       name: "IDP",
-      subtitle: "Patente internazionale",
+      subtitle: "Permesso internazionale",
       values: {
-        Veicolo: "Come patente d'origine",
-        Requisiti: "Patente valida",
-        Validità: "1 anno",
-        Costo: "Varia per paese",
+        Vehicle: "Come licenza locale",
+        Requirements: "Licenza locale valida",
+        Validity: "1 anno",
+        Cost: "Varia per paese",
       },
     },
   ]}
@@ -197,13 +188,13 @@ Guidare in Indonesia richiede una patente adeguata. Ecco cosa devono sapere gli 
 
 ---
 
-## Ottenere la SIM Indonesiana (Titolari di KITAS)
+## Ottenere la SIM Indonesiana (Titolari KITAS)
 
-### Procedura di Richiesta
+### Processo di Richiesta
 
 <JourneyMap
-  title="Ottenere la tua SIM Indonesiana"
-  description="Procedura per stranieri con KITAS"
+  title="Ottenere la Tua SIM Indonesiana"
+  description="Processo per stranieri con KITAS"
   estimatedTotal="1-3 ore"
   steps={[
     {
@@ -211,59 +202,55 @@ Guidare in Indonesia richiede una patente adeguata. Ecco cosa devono sapere gli 
       title: "Prepara i Documenti",
       description: "Raccogli i requisiti",
       duration: "Prima della visita",
-      status: "required",
+      status: "richiesto",
       documents: [
         "Passaporto (originale + copia)",
         "KITAS (originale + copia)",
-        "Patente del paese d'origine (se presente)",
+        "Patente del paese d'origine (se disponibile)",
         "Certificato medico",
-        "Foto tessera (4x6, sfondo rosso)",
+        "Foto passaporto (4x6, sfondo rosso)",
       ],
     },
     {
       id: "medical",
-      title: "Controllo Medico",
-      description: "Presso ospedale della polizia o clinica",
+      title: "Visita Medica",
+      description: "Ospedale o clinica della polizia",
       duration: "30 min",
-      status: "required",
+      status: "richiesto",
       tips: [
         "Controllo sanitario di base",
-        "Test daltonismo",
+        "Test cecità ai colori",
         "Altezza/peso",
-        "Costo: ~150-300k IDR",
+        "Costo: ~IDR 150-300K",
       ],
     },
     {
       id: "samsat",
       title: "Visita SAMSAT/Polizia",
-      description: "Ufficio patenti",
+      description: "Ufficio licenze",
       duration: "1-2 ore",
-      status: "required",
-      tips: ["Vai presto", "Prendi il numero", "Consegna i documenti"],
+      status: "richiesto",
+      tips: ["Arriva presto", "Prendi il numero in coda", "Presenta i documenti"],
     },
     {
       id: "test",
       title: "Test Scritto + Pratico",
       description: "Teoria e guida",
       duration: "1-2 ore",
-      status: "required",
+      status: "richiesto",
       tips: [
-        "Test scritto al computer",
-        "Test pratico in pista",
-        "Potrebbe essere necessario tornare se bocciati",
+        "Test scritto su computer",
+        "Test pratico sul percorso",
+        "Potrebbe essere necessario tornare in caso di fallimento",
       ],
     },
     {
       id: "issue",
       title: "Ricevi la SIM",
-      description: "Patente rilasciata",
+      description: "Licenza emessa",
       duration: "Stesso giorno",
-      status: "final",
-      tips: [
-        "Foto e biometria",
-        "Paga la tassa finale",
-        "SIM rilasciata sul posto",
-      ],
+      status: "finale",
+      tips: ["Foto e biometria", "Paga le spese finali", "SIM emessa sul posto"],
     },
   ]}
 />
@@ -273,51 +260,51 @@ Guidare in Indonesia richiede una patente adeguata. Ecco cosa devono sapere gli 
 ## Checklist Documenti
 
 <Checklist
-  title="Documenti per Richiesta SIM"
+  title="Documenti per la SIM"
   description="Cosa devi portare"
   persistKey="sim-docs-checklist"
   items={[
     {
       id: "passport",
       label: "Passaporto (originale + copia)",
-      description: "Pagina della foto",
+      description: "Pagina foto",
       required: true,
-      category: "identity",
+      category: "identità",
     },
     {
       id: "kitas",
       label: "KITAS (originale + copia)",
       description: "Permesso di soggiorno valido",
       required: true,
-      category: "identity",
+      category: "identità",
     },
     {
       id: "home-license",
       label: "Patente del paese d'origine",
-      description: "Se ne possiedi una",
+      description: "Se ne hai una",
       required: false,
-      category: "identity",
+      category: "identità",
     },
     {
       id: "medical",
       label: "Certificato medico",
-      description: "Da clinica autorizzata",
+      description: "Da clinica approvata",
       required: true,
-      category: "medical",
+      category: "medico",
     },
     {
       id: "photos",
-      label: "Foto tessera",
+      label: "Foto passaporto",
       description: "4x6cm, sfondo rosso",
       required: true,
-      category: "identity",
+      category: "identità",
     },
     {
       id: "cash",
-      label: "Contanti per le tasse",
-      description: "~500k IDR in totale",
+      label: "Contanti per le spese",
+      description: "~IDR 500K totali",
       required: true,
-      category: "payment",
+      category: "pagamento",
     },
   ]}
   categories={[
@@ -330,66 +317,66 @@ Guidare in Indonesia richiede una patente adeguata. Ecco cosa devono sapere gli 
 
 ---
 
-## L'Esame di Guida
+## Il Test di Guida
 
 ### Test Scritto
 
-<InfoCard variant="note" title="Test al Computer">
-Il test scritto consiste in:
-- Circa **30 domande**
-- Risposta multipla
-- Disponibile in **Inglese** (solitamente)
-- Necessario il **70%+** per superarlo
+<InfoCard variant="note" title="Test su Computer">
+Il test scritto è:
+- **30 domande** (circa)
+- A scelta multipla
+- Disponibile in **inglese** (solitamente)
+- Devi superare con **70%+**
 - Copre regole del traffico, segnali, sicurezza
 
-Studia le basi: non è difficile!
+Studiate le basi - non è difficile!
 
 </InfoCard>
 
 ### Test Pratico
 
-| Esame | Veicolo            | Cosa viene testato             |
-| ----- | ------------------ | ------------------------------ |
-| SIM A | Tua auto o fornita | Figura a 8, parcheggio, strada |
-| SIM C | Scooter fornito    | Figura a 8, slalom, equilibrio |
+| Test  | Veicolo              | Cosa viene testato         |
+| ----- | -------------------- | -------------------------- |
+| SIM A | La tua auto o fornita | Figure 8, parcheggio, strada |
+| SIM C | Scooter fornito      | Figure 8, slalom, equilibrio |
 
 ---
 
-## Patente Internazionale (IDP)
+## Permessi di Guida Internazionale (IDP)
 
-### Cos'è una IDP?
+### Cos'è un IDP?
 
-<InfoCard variant="warning" title="La IDP NON è una patente">
-Una IDP è una **traduzione** della patente del tuo paese, non una patente separata.
+<InfoCard variant="warning" title="L'IDP NON È una Licenza">
+Un IDP è una **traduzione** della tua patente del paese d'origine, non una licenza separata.
 
 Devi:
 
-- Avere una patente valida del tuo paese
-- Portare sia la IDP CHE la patente originale
+- Avere una patente valida del paese d'origine
+- Portare sia l'IDP che la patente originale
 - Rispettare le leggi locali
 </InfoCard>
 
-### Ottenere una IDP
+### Ottenere un IDP
 
-Ottieni la tua IDP **prima** di venire in Indonesia:
+Ottieni il tuo IDP **prima** di venire in Indonesia:
 
-| Paese     | Dove ottenerla  |
-| --------- | --------------- |
-| Italia    | Motorizzazione  |
-| USA       | Uffici AAA      |
-| UK        | Ufficio Postale |
-| Australia | AAA, RACV       |
-| Canada    | Uffici CAA      |
+| Paese     | Dove ottenerlo    |
+| --------- | ------------------ |
+| USA       | Uffici AAA         |
+| UK        | Post Office        |
+| Australia | AAA, RACV          |
+| Canada    | Uffici CAA         |
+| EU        | Autorità locale    |
 
-Costo: Solitamente 15-50 USD
+Costo: Solitamente $15-50
 
-### Validità IDP in Indonesia
+### Validità dell'IDP in Indonesia
 
-- **Tecnicamente valida** per soggiorni brevi
-- La polizia potrebbe accettarla o meno
-- L'assicurazione potrebbe fare storie
-- La **categoria moto** deve essere specificata
-- Meglio usarla come backup, non come principale
+- **Tecnicamente valido** per brevi soggiorni
+- La polizia potrebbe o non potrebbe accettarlo
+- L'assicurazione potrebbe avere problemi
+- Deve essere specificata la **categoria motocicli**
+- Meglio usarlo come backup, non primario
 
 ---
 
@@ -398,47 +385,47 @@ Costo: Solitamente 15-50 USD
 <InfoCard variant="warning" title="Considerazioni Pratiche">
 **Cosa succede realmente:**
 
-- Molti turisti guidano scooter senza patente adeguata
-- La polizia a volte ferma gli stranieri
-- Multa: ~250k-500k IDR (trattabile)
-- I rimborsi assicurativi possono essere negati senza patente
-- Gli incidenti possono diventare complicati
+- Molti turisti guidano scooter senza licenza appropriata
+- La polizia ferma talvolta gli stranieri
+- Multa: ~IDR 250K-500K (negoziabile)
+- Le richieste di assicurazione possono essere negate senza licenza
+- Gli incidenti possono complicarsi
 
-**Raccomandazione:** Ottieni una patente regolare per la tua tranquillità.
+**Raccomandazione:** Ottieni una licenza appropriata per la tranquillità.
 
 </InfoCard>
 
-### Se Fermati dalla Polizia
+### Se Fermato dalla Polizia
 
-1. Mantieni la calma e sii educato
+1. Rimani calmo e cortese
 2. Mostra i documenti
-3. Se non hai la patente, è probabile una multa
+3. Senza licenza, è probabile la multa
 4. Non discutere
-5. Chiedi la ricevuta (tilang)
+5. Chiedi il ricevimento (tilang)
 
 ---
 
-## Noleggio Scooter Senza Patente
+## Noleggio Scooter Senza Licenza
 
-La maggior parte dei noleggiatori non controlla la patente. Tuttavia:
+La maggior parte dei negozi di noleggio non controlla le licenze. Tuttavia:
 
 ### Rischi
 
-| Rischio         | Conseguenza                     |
-| --------------- | ------------------------------- |
-| Fermo polizia   | Multa 250-500k IDR              |
-| Incidente       | L'assicurazione può non coprire |
-| Incidente grave | Potenziali problemi legali      |
-| Lesioni a terzi | Responsabilità incerta          |
+| Rischio             | Conseguenza               |
+| ------------------- | -------------------------- |
+| Ferma da polizia    | Multa IDR 250-500K         |
+| Incidente           | L'assicurazione potrebbe non coprire |
+| Grave incidente     | Possibili problemi legali   |
+| Ferita ad altri     | Responsabilità non chiara  |
 
-### Nota sull'Assicurazione
+### Nota Assicurativa
 
-<InfoCard variant="warning" title="Avviso Assicurazione">
+<InfoCard variant="warning" title="Avviso Assicurativo">
 La maggior parte delle polizze di viaggio richiede:
-- Patente valida per il tipo di veicolo
+- Licenza valida per il tipo di veicolo
 - Rispetto delle leggi locali
 
-Senza una patente adeguata, i rimborsi possono essere **negati**.
+Senza licenza appropriata, le richieste potrebbero essere **negate**.
 
 </InfoCard>
 
@@ -446,37 +433,37 @@ Senza una patente adeguata, i rimborsi possono essere **negati**.
 
 ## Riepilogo Costi
 
-| Voce               | Costo        |
-| ------------------ | ------------ |
-| Certificato medico | 150-300k IDR |
-| SIM A (auto)       | 250k IDR     |
-| SIM C (moto)       | 150k IDR     |
-| Rinnovo            | 100-200k IDR |
-| Ripetizione esame  | 50-100k IDR  |
+| Voce                | Costo               |
+| ------------------- | -------------------- |
+| Certificato medico  | IDR 150-300K         |
+| SIM A (auto)        | IDR 250K             |
+| SIM C (motociclo)   | IDR 150K             |
+| Estensione          | IDR 100-200K         |
+| Ripetizione test    | IDR 50-100K          |
 
 ---
 
 ## Consigli per gli Stranieri
 
-1. **Prendi la SIM C se guidi uno scooter** - Ne vale la pena per la tranquillità
-2. **Porta la patente originale** - Può aiutare durante i test
-3. **Vai al SAMSAT di Denpasar** - Il più abituato agli stranieri a Bali
+1. **Ottieni la SIM C se guidi scooter** - Vale la pena per la tranquillità
+2. **Porta la patente del paese d'origine** - Potrebbe aiutare con i test
+3. **Vai a SAMSAT di Denpasar** - Il più友好的 verso gli stranieri a Bali
 4. **Arriva presto** - Le code possono essere lunghe
-5. **Porta qualcuno che parli indonesiano** - Utile ma non obbligatorio
-6. **Esercitati nel percorso d'esame** - Osserva gli altri prima di provare
+5. **Porta un parlante indonesiano** - Utile ma non richiesto
+6. **Pratica il percorso del test** - Osserva prima gli altri
 7. **Sii paziente** - La burocrazia richiede tempo
 
 ---
 
-## Domande Comuni
+## Domande Frequenti
 
 <AskZantara
-  context="Patente di guida Indonesia, SIM, guida stranieri, patente scooter, IDP"
-  placeholder="Chiedi informazioni sulla patente..."
+  context="Patente di guida Indonesia, SIM, guida straniera, patente scooter, IDP"
+  placeholder="Chiedi sulle patenti di guida..."
   suggestedQuestions={[
     "Posso guidare solo con la mia patente estera?",
-    "Quanto è difficile l'esame per la moto?",
-    "Ho bisogno della patente per noleggiare uno scooter?",
+    "Quanto è difficile il test motocicli?",
+    "Devo avere una licenza per noleggiare uno scooter?",
     "Posso convertire la mia patente estera?",
   ]}
 />
@@ -485,6 +472,6 @@ Senza una patente adeguata, i rimborsi possono essere **negati**.
 
 ## Articoli Correlati
 
-- [Costo della Vita a Bali](/it/insights/lifestyle/cost-of-living-bali)
-- [Guida al Permesso di Lavoro KITAS](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained?lang=it)
-- [Assicurazione Sanitaria per Stranieri](/it/insights/lifestyle/health-insurance-foreigners)
+- [Costo della Vita a Bali](/insights/lifestyle/cost-of-living-bali)
+- [Guida Permesso di Lavoro KITAS](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained)
+- [Assicurazione Sanitaria per Stranieri](/insights/lifestyle/health-insurance-foreigners)

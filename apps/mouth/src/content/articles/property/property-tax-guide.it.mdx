@@ -73,66 +73,58 @@ tableOfContents: true
 canonicalUrl: "https://balizero.com/property/property-tax-guide"
 ogImage: "/static/insights/property/property-tax.jpg"
 twitterCard: "summary_large_image"
-source_sha256: "1404b94a17fb8a062d36dce33ddacbbaeef46285386ec366e4b8671c4febdd30"
+source_sha256: "7ef74c7c59d824708f289ff20cfc52fea3f5dff1ab897abff314e4d36bce4e06"
 ---
 
-import {
-  ComparisonTable,
-  Calculator,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Imposte sugli Immobili in Indonesia 2026: Guida Completa
 
-# Tasse sulla Proprietà in Indonesia 2026: Guida Completa
+La proprietà immobiliare in Indonesia comporta obblighi fiscali. Ecco tutto ciò che devi sapere.
 
-La proprietà di un immobile in Indonesia comporta obblighi fiscali. Ecco tutto quello che devi sapere.
-
-## Panoramica delle Tasse sulla Proprietà
+## Panoramica sulle Imposte sugli Immobili
 
 <ComparisonTable
-  title="Tipi di Tasse sulla Proprietà"
-  description="Quando si applica ciascuna"
+  title="Tipi di Imposte sugli Immobili"
+  description="Quando si applicano ciascuna"
   items={[
     {
       name: "PBB",
-      subtitle: "Tassa annuale su terreni/fabbricati",
+      subtitle: "Imposta annuale su terreni/edifici",
       values: {
-        Quando: "Ogni anno",
-        Aliquota: "~0,1-0,5% del NJOP",
-        "Pagata da": "Proprietario",
-        Scadenza: "Fine agosto",
+        When: "Ogni anno",
+        Rate: "~0.1-0.5% del NJOP",
+        "Paid by": "Proprietario",
+        Due: "Fine agosto",
       },
       highlight: true,
     },
     {
       name: "BPHTB",
-      subtitle: "Tassa di trasferimento/acquisizione",
+      subtitle: "Imposta su trasferimento/acquisizione",
       values: {
-        Quando: "All'acquisto",
-        Aliquota: "5% del valore",
-        "Pagata da": "Acquirente",
-        Scadenza: "Prima del trasferimento",
+        When: "Alla compravendita",
+        Rate: "5% del valore",
+        "Paid by": "Acquirente",
+        Due: "Prima del trasferimento",
       },
     },
     {
       name: "PPh Final",
       subtitle: "Imposta sul reddito del venditore",
       values: {
-        Quando: "Alla vendita",
-        Aliquota: "2,5% del valore",
-        "Pagata da": "Venditore",
-        Scadenza: "Prima del trasferimento",
+        When: "Alla vendita",
+        Rate: "2.5% del valore",
+        "Paid by": "Venditore",
+        Due: "Prima del trasferimento",
       },
     },
     {
-      name: "Reddito da Locazione",
-      subtitle: "Tassa sull'affitto ricevuto",
+      name: "Reddito da Affitto",
+      subtitle: "Imposta sul canone ricevuto",
       values: {
-        Quando: "Sul reddito da locazione",
-        Aliquota: "10% finale",
-        "Pagata da": "Proprietario",
-        Scadenza: "Mensile/annuale",
+        When: "Sul reddito da affitto",
+        Rate: "10% finale",
+        "Paid by": "Proprietario",
+        Due: "Mensilmente/annualmente",
       },
     },
   ]}
@@ -140,35 +132,35 @@ La proprietà di un immobile in Indonesia comporta obblighi fiscali. Ecco tutto 
 
 ---
 
-## Tassa Annuale sulla Proprietà (PBB)
+## Imposta Annuale sugli Immobili (PBB)
 
-### Cos'è la PBB?
+### Cos'è il PBB?
 
-<InfoCard variant="note" title="Pajak Bumi dan Bangunan">
-La **PBB** (Tassa su Terreni e Fabbricati) è:
-- Tassa annuale sulla proprietà di immobili
-- Basata sul valore valutato dal governo (NJOP)
+<InfoCard variant="note" title="Imposta su Terreni e Edifici">
+**PBB** (Imposta su Terreni e Edifici) è:
+- Imposta annuale sulla proprietà immobiliare
+- Basata sul valore stimato dal governo (NJOP)
 - Pagata dal proprietario dell'immobile
-- Scadenza entro agosto di ogni anno
+- Dovuta entro agosto ogni anno
 
-Tutti i proprietari di terreni e fabbricati devono pagare la PBB.
+Tutti i proprietari di terreni e edifici devono pagare il PBB.
 
 </InfoCard>
 
-### Calcolo della PBB
+### Calcolo del PBB
 
-| Componente        | Spiegazione                           |
-| ----------------- | ------------------------------------- |
-| NJOP              | Valore valutato dal governo           |
-| NJOPTKP           | Soglia esente (varia per regione)     |
-| Valore imponibile | NJOP meno NJOPTKP                     |
-| Aliquota          | 0,1-0,5% (varia per regione e valore) |
+| Componente     | Spiegazione                           |
+| ------------- | ------------------------------------- |
+| NJOP          | Valore stimato dal governo             |
+| NJOPTKP       | Soglia esente da tasse (varia per regione) |
+| Valore imponibile | NJOP meno NJOPTKP                    |
+| Aliquota fiscale      | 0.1-0.5% (varia per regione e valore) |
 
 ### Calcolatore PBB
 
 <Calculator
   title="Stima PBB"
-  description="Stima la tua tassa annuale sulla proprietà"
+  description="Stima la tua imposta annuale sugli immobili"
   fields={[
     {
       id: "njop",
@@ -182,7 +174,7 @@ Tutti i proprietari di terreni e fabbricati devono pagare la PBB.
       label: "Regione",
       type: "select",
       options: [
-        { value: "jakarta", label: "Giacarta" },
+        { value: "jakarta", label: "Jakarta" },
         { value: "bali", label: "Bali" },
         { value: "other", label: "Altro" }
       ],
@@ -190,7 +182,7 @@ Tutti i proprietari di terreni e fabbricati devono pagare la PBB.
     }
   ]}
   calculateResult={(values) => {
-    // Il NJOPTKP varia in base alla regione
+    // NJOPTKP varia per regione
     const njoptkp = {
       jakarta: 60000000,
       bali: 50000000,
@@ -200,7 +192,7 @@ Tutti i proprietari di terreni e fabbricati devono pagare la PBB.
     const threshold = njoptkp[values.region];
     const taxable = Math.max(0, values.njop - threshold);
 
-    // Aliquota semplificata (quella effettiva varia per scaglioni)
+    // Aliquota semplificata (in realtà varia per scaglione)
     let rate;
     if (values.njop < 1000000000) {
       rate = 0.001; // 0.1%
@@ -222,78 +214,76 @@ Tutti i proprietari di terreni e fabbricati devono pagare la PBB.
         { label: "PBB Annuale", amount: Math.round(tax) }
       ],
       currency: "IDR",
-      note: "La tassa effettiva può variare in base alle normative locali"
+      note: "L'imposta reale può variare in base alle normative locali"
     };
 
 }}
 />
 
-### Pagamento della PBB
+### Pagamento del PBB
 
-| Metodo          | Dettagli                  |
-| --------------- | ------------------------- |
-| Banca           | BCA, Mandiri, BNI, ecc.   |
-| Online          | Varie app di pagamento    |
-| Ufficio Postale | Di persona                |
-| Ufficio di zona | Punto di pagamento locale |
+| Metodo         | Dettagli                 |
+| -------------- | ----------------------- |
+| Banca          | BCA, Mandiri, BNI, ecc. |
+| Online         | Vari app di pagamento   |
+| Ufficio Postale | Di persona               |
+| Ufficio villaggio | Punto di pagamento locale     |
 
-Conserva il tuo SPPT (avviso fiscale) come riferimento per il pagamento.
+Conserva il tuo SPPT (avviso di tassa) come riferimento per il pagamento.
 
 ---
 
-## Tassa di Trasferimento/Acquisizione (BPHTB)
+## Imposta su Trasferimento/Acquisizione (BPHTB)
 
 ### Cosa Pagano gli Acquirenti
 
-<InfoCard variant="warning" title="BPHTB - Tassa di Trasferimento del 5%">
-La **BPHTB** si applica quando si acquisisce una proprietà tramite:
+<InfoCard variant="warning" title="BPHTB - Imposta sul Trasferimento del 5%">
+**BPHTB** si applica quando acquisisci un immobile:
 - Acquisto
 - Donazione
 - Eredità
-- Permuta
+- Scambio
 
-**Aliquota:** 5% del valore di trasferimento meno il NJOPTKP
-**Pagata da:** Acquirente/destinatario
+**Aliquota:** 5% del valore di trasferimento meno NJOPTKP
+**Pagata da:** Acquirente/beneficiario
 **Quando:** Prima del trasferimento del titolo
 
 </InfoCard>
 
-### Calcolo della BPHTB
+### Calcolo del BPHTB
 
-| Elemento           | Calcolo                       |
-| ------------------ | ----------------------------- |
-| Valore transazione | Il maggiore tra prezzo o NJOP |
-| Meno NJOPTKP       | Soglia esente da imposte      |
-| Base imponibile    | Risultato                     |
-| BPHTB              | 5% della base imponibile      |
+| Elemento           | Calcolo             |
+| ----------------- | ----------------------- |
+| Valore dell'operazione | Maggiore tra prezzo o NJOP |
+| Minus NJOPTKP     | Soglia esente da tasse      |
+| Base imponibile          | Risultato                  |
+| BPHTB             | 5% della base imponibile          |
 
 ### Esempio
 
-| Voce              | Importo            |
-| ----------------- | ------------------ |
-| Prezzo d'acquisto | 2.000.000.000 IDR  |
-| NJOP              | 1.500.000.000 IDR  |
-| Valore maggiore   | 2.000.000.000 IDR  |
-| NJOPTKP           | 60.000.000 IDR     |
-| Base imponibile   | 1.940.000.000 IDR  |
-| **BPHTB (5%)**    | **97.000.000 IDR** |
+| Voce             | Importo             |
+| ---------------- | ------------------ |
+| Prezzo di acquisto   | IDR 2.000.000.000  |
+| NJOP             | IDR 1.500.000.000  |
+| Usa il valore maggiore | IDR 2.000.000.000  |
+| NJOPTKP          | IDR 60.000.000     |
+| Base imponibile         | IDR 1.940.000.000  |
+| **BPHTB (5%)**   | **IDR 97.000.000** |
 
 ---
 
-## Tassa del Venditore (PPh Final)
+## Imposta del Venditore (PPh Final)
 
 ### Cosa Pagano i Venditori
 
-| Transazione      | Aliquota Fiscale            |
-| ---------------- | --------------------------- |
-| Vendita immobile | 2,5% del valore transazione |
-| Vendita terreno  | 2,5% del valore transazione |
+| Operazione       | Aliquota Fiscale                  |
+| ------------- | ------------------------- |
+| Vendita immobiliare | 2.5% del valore dell'operazione |
+| Vendita di terreni     | 2.5% del valore dell'operazione |
 
-<InfoCard variant="note" title="Tassa del Venditore">
+<InfoCard variant="note" title="Imposta sul Venditore">
 
-  **La PPh Final del 2,5%** è: - Pagata dal venditore - Basata sul valore della
-  transazione (o NJOP se superiore) - Scade prima del trasferimento del titolo -
-  Finale (nessuna ulteriore imposta sul reddito sulla plusvalenza)
+  **PPh Final 2.5%** è: - Pagata dal venditore - Basata sul valore dell'operazione (o NJOP se più alto) - Dovuta prima del trasferimento del titolo - Finale (nessuna ulteriore imposta sul reddito per la plusvalenza)
 </InfoCard>
 
 ---
@@ -301,176 +291,176 @@ La **BPHTB** si applica quando si acquisisce una proprietà tramite:
 ## Costi Totali di Trasferimento
 
 <Checklist
-  title="Costi di Trasferimento della Proprietà"
-  description="Obblighi dell'acquirente e del venditore"
+  title="Costi di Trasferimento Immobiliare"
+  description="Obblighi di acquirente e venditore"
   persistKey="transfer-costs-checklist"
   items={[
     {
       id: "bphtb",
       label: "BPHTB (5%)",
-      description: "Paga l'acquirente",
+      description: "Pagato dall'acquirente",
       required: true,
       category: "buyer",
     },
     {
       id: "notary-buyer",
-      label: "Commissione notarile (~1%)",
-      description: "In genere paga l'acquirente",
+      label: "Onorario notarile (~1%)",
+      description: "Tipicamente pagato dall'acquirente",
       required: true,
       category: "buyer",
     },
     {
       id: "registration",
       label: "Registrazione BPN",
-      description: "Paga l'acquirente",
+      description: "Pagata dall'acquirente",
       required: true,
       category: "buyer",
     },
     {
       id: "pph-seller",
-      label: "PPh Final (2,5%)",
-      description: "Paga il venditore",
+      label: "PPh Final (2.5%)",
+      description: "Pagato dal venditore",
       required: true,
       category: "seller",
     },
     {
       id: "pbb-clear",
-      label: "Saldare arretrati PBB",
+      label: "Saldo arretrati PBB",
       description: "Il venditore deve saldare",
       required: true,
       category: "seller",
     },
     {
       id: "agent",
-      label: "Commissione agenzia (se presente)",
-      description: "Di solito paga il venditore",
+      label: "Commissione agente (se presente)",
+      description: "Di solito pagata dal venditore",
       required: false,
       category: "seller",
     },
   ]}
   categories={[
-    { id: "buyer", label: "Paga l'Acquirente", color: "blue" },
-    { id: "seller", label: "Paga il Venditore", color: "green" },
+    { id: "buyer", label: "Pagato dall'Acquirente", color: "blue" },
+    { id: "seller", label: "Pagato dal Venditore", color: "green" },
   ]}
   showProgress={false}
 />
 
 ### Riepilogo dei Costi Totali
 
-| Parte      | Costo Approssimativo                          |
-| ---------- | --------------------------------------------- |
-| Acquirente | 6-7% del valore (BPHTB + notaio + tasse)      |
-| Venditore  | 2,5-5% del valore (PPh + agenzia se presente) |
+| Parte  | Costo Approssimativo                      |
+| ------ | ------------------------------------- |
+| Acquirente  | 6-7% del valore (BPHTB + notaio + tasse) |
+| Venditore | 2.5-5% del valore (PPh + agente se presente)  |
 
 ---
 
-## Tassa sul Reddito da Locazione
+## Imposta sul Reddito da Affitto
 
-### Tassa sull'Affitto Ricevuto
+### Imposta sul Canone Ricevuto
 
 <InfoCard variant="note" title="Imposta Finale del 10%">
-Il reddito da locazione di immobili è soggetto a:
+Il reddito da affitto derivante da immobili è soggetto a:
 
-**PPh Finale del 10%** sul reddito lordo da locazione
+**PPh Finale del 10%** sul canone lordo da affitto
 
-- Si applica a terreni e fabbricati
-- Nessuna deduzione per le spese
-- Finale (non aggiunto ad altri redditi)
-- Deve essere trattenuto dagli inquilini aziendali
+- Si applica a terreni e edifici
+- Nessuna deduzione per spese
+- Finale (non aggiunta ad altri redditi)
+- Dovrebbe essere trattenuta dai locatari aziendali
 </InfoCard>
 
 ### Chi Trattiene?
 
-| Tipo di Inquilino   | Trattamento Fiscale      |
-| ------------------- | ------------------------ |
-| Inquilino aziendale | Deve trattenere il 10%   |
-| Inquilino privato   | Il proprietario dichiara |
+| Tipo di Locatario       | Trattamento Fiscale          |
+| ----------------- | ---------------------- |
+| Locatario aziendale  | Deve trattenere il 10%      |
+| Locatario privato | Il locatore si autodeclara |
 
-### Reporting
+### Segnalazione
 
-| Situazione          | Azione                           |
-| ------------------- | -------------------------------- |
-| Inquilino aziendale | Rilasciano la bukti potong       |
-| Inquilino privato   | Tu dichiari e paghi              |
-| Misto               | Dichiarare tutto nel SPT annuale |
+| Situazione         | Azione                    |
+| ----------------- | ------------------------- |
+| Locatario aziendale  | Emittono la prova di ritenuta (bukti potong)   |
+| Locatario privato | Tu devi dichiarare e pagare        |
+| Misto             | Dichiarare tutto nella dichiarazione annuale SPT |
 
 ---
 
-## Spiegazione del NJOP
+## NJOP Spiegato
 
 ### Cos'è il NJOP?
 
-<InfoCard variant="note" title="Valore Valutato dal Governo">
-Il **NJOP** (Nilai Jual Objek Pajak) è:
-- Valore della proprietà valutato dal governo
+<InfoCard variant="note" title="Valore Stimato dal Governo">
+**NJOP** (Nilai Jual Objek Pajak) è:
+- Valore dell'immobile stimato dal governo
 - Utilizzato per i calcoli fiscali
 - Di solito inferiore al valore di mercato
 - Aggiornato periodicamente
 
-Trova il tuo NJOP sul tuo SPPT (avviso fiscale) o verifica presso l'ufficio fiscale locale.
+Trova il tuo NJOP sul tuo SPPT (avviso di tassa) o verifica presso l'ufficio tributi locale.
 
 </InfoCard>
 
 ### NJOP vs Valore di Mercato
 
-| Aspetto             | NJOP               | Valore di Mercato |
-| ------------------- | ------------------ | ----------------- |
-| Stabilito da        | Governo            | Mercato           |
-| Livello tipico      | 50-80% del mercato | 100%              |
-| Freq. aggiornamento | Periodica          | In tempo reale    |
-| Utilizzato per      | Tasse              | Transazioni       |
+| Aspetto           | NJOP             | Valore di Mercato |
+| ---------------- | ---------------- | ------------ |
+| Definito da      | Governo          | Mercato       |
+| Livello tipico    | 50-80% del mercato | 100%         |
+| Frequenza aggiornamento | Periodico         | In tempo reale    |
+| Utilizzato per         | Tasse            | Transazioni |
 
 ---
 
 ## Consigli per la Pianificazione Fiscale
 
-### Modi Legali per Minimizzare
+### Modi Legali per Ridurre
 
-| Strategia             | Come Funziona                                   |
-| --------------------- | ----------------------------------------------- |
-| Tempismo acquisizione | La fine dell'anno può permettere pianificazione |
-| Struttura proprietà   | PT PMA vs personale                             |
-| Utilizzare NJOPTKP    | Assicurarsi che venga applicata la soglia       |
-| Pagare PBB in tempo   | Evitare sanzioni                                |
-| Documentare spese     | Per la base di vendita futura                   |
+| Strategia            | Come Funziona                |
+| ------------------- | --------------------------- |
+| Tempistica dell'acquisizione    | La fine dell'anno può permettere la pianificazione |
+| Struttura della proprietà | PT PMA vs personale          |
+| Usa NJOPTKP         | Assicurati che la soglia venga applicata    |
+| Salda il PBB in tempo   | Evita sanzioni             |
+| Documenta le spese   | Per la base di vendita futura       |
 
 <InfoCard variant="warning" title="Conformità Fiscale">
-**Cosa NON fare:**
-- Sottodichiarare i valori delle transazioni
-- Nascondere la proprietà di immobili
-- Non pagare la PBB
-- Ignorare il reddito da locazione
+**Non:**
+- Sottostimare i valori delle operazioni
+- Nascondere la proprietà immobiliare
+- Non pagare il PBB
+- Ignorare il reddito da affitto
 
-Le autorità fiscali incrociano i dati con i registri del BPN e dei notai. La non conformità crea problemi quando si desidera vendere.
+Le autorità fiscali incrociano i dati con i registri BPN e notarili. La non conformità crea problemi quando vuoi vendere.
 
 </InfoCard>
 
 ---
 
-## Proprietà tramite PT PMA
+## Immobili tramite PT PMA
 
-### Trattamento Differente
+### Trattamento Diverso
 
-| Aspetto           | Personale   | PT PMA                  |
-| ----------------- | ----------- | ----------------------- |
-| PBB               | Uguale      | Uguale                  |
-| BPHTB             | Uguale      | Uguale                  |
-| PPh sulla vendita | 2,5% finale | Imposta reddito società |
-| Reddito locazione | 10% finale  | Imposta reddito società |
-| Ammortamento      | Nessuno     | Sì, per i fabbricati    |
+| Aspetto        | Personale   | PT PMA             |
+| ------------- | ---------- | ------------------ |
+| PBB           | Stesso     | Stesso               |
+| BPHTB         | Stesso     | Stesso               |
+| Vendita PPh    | 2.5% finale | Imposta sul reddito aziendale |
+| Reddito da affitto | 10% finale  | Imposta sul reddito aziendale |
+| Ammortamento  | Nessuno       | Sì, per gli edifici |
 
 ---
 
-## Domande Comuni
+## Domande Frequenti
 
 <AskZantara
-  context="Tasse sulla proprietà Indonesia, PBB, BPHTB, tassa sul reddito da locazione, trasferimento proprietà"
-  placeholder="Chiedi informazioni sulle tasse sulla proprietà..."
+  context="Imposte sugli immobili in Indonesia, PBB, BPHTB, imposta sul reddito da affitto, trasferimento immobiliare"
+  placeholder="Chiedi sulle imposte sugli immobili..."
   suggestedQuestions={[
-    "Quando scade la PBB?",
-    "A quanto ammonta la tassa di trasferimento sulla proprietà?",
-    "Devo pagare le tasse sul reddito da locazione?",
-    "Cosa succede se non pago la PBB?",
+    "Quando è dovuto il PBB?",
+    "Quanto è l'imposta sul trasferimento degli immobili?",
+    "Devo pagare tasse sul reddito da affitto?",
+    "Cosa succede se non pago il PBB?",
   ]}
 />
 
@@ -478,6 +468,6 @@ Le autorità fiscali incrociano i dati con i registri del BPN e dei notai. La no
 
 ## Articoli Correlati
 
-- [Guida all'Investimento Immobiliare](/insights/property/property-investment-guide)
-- [Regole sulla Proprietà Fondiaria](/insights/property/land-ownership-rules)
-- [Guida all'Imposta sul Reddito Personale](/taxes/pph-21-expat-guide?lang=it)
+- [Guida agli Investimenti Immobiliari](/insights/property/property-investment-guide)
+- [Regole sulla Proprietà Terreni](/insights/property/land-ownership-rules)
+- [Guida all'Imposta sul Reddito Personale](/taxes/pph-21-expat-guide)
