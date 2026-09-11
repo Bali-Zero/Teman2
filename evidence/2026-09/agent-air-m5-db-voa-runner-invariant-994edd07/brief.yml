@@ -1,0 +1,53 @@
+gear: 2
+task_id: db-voa-runner-invariant
+mandate_id: garuda-voa-w1r
+colour: BLUE
+l_level: L1
+gate_class: opus
+objective: >-
+  GARUDA VOA W1R. Make dedicated-vs-legacy a property of the URL the migration runner
+  SELECTED rather than of the process environment (an explicit legacy override stays legacy
+  even with the global secret set), freeze URL and mode together in MigrationManager, and
+  correct the two comments that credited asyncpg's release-time RESET ALL with undoing
+  SET ROLE. Re-derived SEMANTICALLY from Astra's runner-selection-followup.patch, which is
+  pinned to the pre-council working tree be45266252 and no longer applies. Runner only.
+scope:
+  - apps/backend-rag/backend/db/migration_base.py
+  - apps/backend-rag/backend/db/migration_manager.py
+  - apps/backend-rag/backend/tests/db/test_migration_runner_dedicated_role.py
+  - apps/backend-rag/backend/tests/db/test_migration_manager_connect_diag.py
+constraints:
+  - No migration file. No openapi.yaml (W3C owns it). No fly.toml, .env*, zantara_core.py.
+  - PR <= 400 net lines; perimeter verified with `gh pr diff 6237 --name-only` before arming.
+  - >-
+    MIGRATION_DATABASE_URL is NOT on Fly today (0/224 names, Zero's to set). The change must be
+    invisible while it is unset, and this window neither waits for it nor touches it.
+  - No PII; no secret value printed (presence only).
+acceptance:
+  - text: >-
+      WHEN settings.migration_database_url is set AND a caller selects the runtime URL explicitly,
+      THEN the runner SHALL classify that connection as legacy and apply no dedicated-role check.
+    status: verified
+    probe: "pytest -k test_an_explicit_legacy_url_stays_legacy_despite_the_global_secret"
+  - text: >-
+      WHEN `settings` is mutated after a MigrationManager is built, THEN neither its URL nor its
+      mode SHALL change, and the pool's setup hook SHALL still carry the frozen mode.
+    status: verified
+    probe: "pytest -k 'a_later_settings_mutation_does_not_change_a_built_manager or pool_setup_hook_carries_the_frozen_mode'"
+  - text: >-
+      WHEN the six runner suites plus backend/tests/db run against a real PostgreSQL,
+      THEN every test SHALL pass.
+    status: verified
+    probe: ".venv/bin/python -m pytest backend/tests/db/ backend/tests/unit/app/test_config.py -p no:randomly"
+  - text: >-
+      WHEN the next apps/backend-rag deploy runs, THEN its Fly release_command SHALL exit 0.
+    status: pending
+    probe: "fly logs / GH deploy run for the promoted commit — recorded on PR #6237 after the deploy"
+risks:
+  - >-
+    Two PRE-EXISTING defects from #6123 were found by Sol and deliberately NOT fixed here
+    (perimeter + size): the connection-time-role guard is inert when current_user is already
+    the runtime role (latent — OPERATOR-D.md's provisioning never issues ALTER ROLE ... SET role),
+    and connect()'s retry budget (~330s) can outlive Fly's 5-minute release_command default.
+    Both are named in the PR body.
+pii: none
