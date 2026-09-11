@@ -4,6 +4,7 @@ import React from "react";
 import { CheckCircle, Circle, Loader } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ProcessTimelineStep } from "@/lib/api/portal/portal.types";
+import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
 
 interface ProcessStepperProps {
   steps: ProcessTimelineStep[];
@@ -11,6 +12,7 @@ interface ProcessStepperProps {
 }
 
 export function ProcessStepper({ steps, className }: ProcessStepperProps) {
+  const { formatDate } = usePortalDateFormat();
   if (steps.length === 0) return null;
 
   return (
@@ -93,7 +95,7 @@ export function ProcessStepper({ steps, className }: ProcessStepperProps) {
                   className="text-xs mt-0.5"
                   style={{ color: "var(--text-tertiary, var(--bz-text-3))" }}
                 >
-                  {new Date(step.changed_at).toLocaleDateString("en-US", {
+                  {formatDate(step.changed_at, {
                     month: "short",
                     day: "numeric",
                     year: "numeric",

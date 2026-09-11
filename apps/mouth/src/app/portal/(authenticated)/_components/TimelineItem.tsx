@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TimelineEntry } from "@/lib/api/types/timeline.types";
+import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
 
 export function TimelineItem({
   entry,
@@ -28,6 +29,7 @@ export function TimelineItem({
   entry: TimelineEntry;
   isLast: boolean;
 }) {
+  const { formatDate } = usePortalDateFormat();
   const isFuture =
     "isFuture" in entry
       ? Boolean((entry as unknown as { isFuture?: boolean }).isFuture)
@@ -128,14 +130,14 @@ export function TimelineItem({
           </div>
           <span
             className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)]"
-            title={new Date(entry.occurredAt).toLocaleDateString("en-US", {
+            title={formatDate(entry.occurredAt, {
               weekday: "long",
               month: "long",
               day: "numeric",
               year: "numeric",
             })}
           >
-            {new Date(entry.occurredAt).toLocaleDateString("en-US", {
+            {formatDate(entry.occurredAt, {
               month: "short",
               day: "numeric",
               year: "numeric",

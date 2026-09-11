@@ -37,6 +37,7 @@ import type {
   MessagesResponse,
 } from "@/lib/api/portal/portal.types";
 import { Button } from "@/components/ui/button";
+import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
 
 const POLL_INTERVAL = 30000; // 30 seconds
 
@@ -45,6 +46,8 @@ const PAGE_SIZE = 100;
 export default function ChatPage() {
   const router = useRouter();
   const { error } = useToast();
+  const { formatDateTime: formatDateTimeLocale, formatDate: formatDateLocale } =
+    usePortalDateFormat();
   const [messages, setMessages] = useState<PortalMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -250,8 +253,7 @@ export default function ChatPage() {
   };
 
   const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString("en-US", {
+    return formatDateTimeLocale(dateString, {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
@@ -269,7 +271,7 @@ export default function ChatPage() {
     } else if (date.toDateString() === yesterday.toDateString()) {
       return "Yesterday";
     } else {
-      return date.toLocaleDateString("en-US", {
+      return formatDateLocale(dateString, {
         month: "short",
         day: "numeric",
         year:

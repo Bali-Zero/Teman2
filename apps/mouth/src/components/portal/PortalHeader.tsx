@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { routeTitles } from "@/types/navigation";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
 
 // Lazy: notifications + impersonation are not first-paint critical.
 // Reduces parallel chunks on /portal/* — ERR_INSUFFICIENT_RESOURCES mitigation.
@@ -54,6 +55,7 @@ export function PortalHeader({
   mobileMenuToggleRef,
 }: PortalHeaderProps) {
   const pathname = usePathname();
+  const { formatDate: formatDateLocale } = usePortalDateFormat();
 
   // Get page title from pathname
   const getPageTitle = () => {
@@ -86,7 +88,7 @@ export function PortalHeader({
       day: "numeric",
       month: "long",
     };
-    return new Date().toLocaleDateString("en-US", options);
+    return formatDateLocale(new Date(), options);
   };
 
   return (

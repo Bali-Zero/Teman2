@@ -30,6 +30,7 @@ import {
 import { trackTaxDashboardViewed } from "@/lib/analytics";
 import { formatIDR } from "@balizero/core/utils";
 import { Button } from "@/components/ui/button";
+import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
 
 // Day card surface (GARUDA Day concept .panel): white card on warm paper,
 // hairline warm border, soft navy shadow (near-invisible on dark).
@@ -83,6 +84,7 @@ function TaxesMasthead() {
 
 export default function TaxesPage() {
   const { error } = useToast();
+  const { formatDate } = usePortalDateFormat();
   const [taxData, setTaxData] = useState<TaxOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [initialLoadFailed, setInitialLoadFailed] = useState(false);
@@ -235,14 +237,11 @@ export default function TaxesPage() {
             {taxData.summary.nextDeadline ? (
               <div className="flex items-baseline gap-2 flex-wrap">
                 <p className="text-lg font-bold">
-                  {new Date(taxData.summary.nextDeadline).toLocaleDateString(
-                    "en-US",
-                    {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    },
-                  )}
+                  {formatDate(taxData.summary.nextDeadline, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
                 </p>
                 <CountdownChip date={taxData.summary.nextDeadline} />
               </div>
@@ -351,6 +350,7 @@ function ObligationCard({
   obligation: TaxObligation;
   formatCurrency: (amount: number) => string;
 }) {
+  const { formatDate } = usePortalDateFormat();
   return (
     <div
       className="rounded-lg border p-4 transition-colors"
@@ -379,7 +379,7 @@ function ObligationCard({
         >
           <Calendar className="w-3.5 h-3.5" />
           Due:{" "}
-          {new Date(obligation.dueDate).toLocaleDateString("en-US", {
+          {formatDate(obligation.dueDate, {
             month: "short",
             day: "numeric",
             year: "numeric",

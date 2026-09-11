@@ -106,6 +106,7 @@ const isBirthdayToday = (dateOfBirth: string | undefined): boolean => {
 };
 
 import { formatDate } from "@/lib/utils/format-date";
+import { usePortalDateFormat } from "@/lib/format/usePortalDateFormat";
 
 // ============================================================================
 // DAY THEME PRIMITIVES (GARUDA Day Edition, WS3)
@@ -182,6 +183,7 @@ function ProfileMasthead() {
 export default function ProfilePage() {
   const router = useRouter();
   const { error } = useToast();
+  const { formatDate: formatDateLocale } = usePortalDateFormat();
   const [profile, setProfile] = useState<PortalProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -398,7 +400,7 @@ export default function ProfilePage() {
             <h2 className="text-xl font-bold">{profile.fullName}</h2>
             <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
               Member since{" "}
-              {new Date(profile.memberSince).toLocaleDateString("en-US", {
+              {formatDateLocale(profile.memberSince, {
                 month: "long",
                 year: "numeric",
               })}
