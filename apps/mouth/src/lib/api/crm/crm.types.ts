@@ -397,6 +397,19 @@ export interface ClientDocument {
   alert_color?: "green" | "yellow" | "red" | "expired";
   created_at?: string;
   updated_at?: string;
+  /**
+   * Set when the CLIENT removed the document from their portal vault
+   * (soft delete, restorable by them for 30 days; the file stays in Drive).
+   *
+   * Distinct from `is_archived`, which is the team-side archive and is
+   * already excluded from this list server-side. Until 2026-09-11 this field
+   * was not returned at all, so a removed document appeared in the team's
+   * list with `status: "received"` and `alert_color: "green"` — identical to
+   * a live one, with no field distinguishing them (portal audit F-02).
+   */
+  deleted_at?: string | null;
+  /** 'client' for a portal upload, 'team' for a CRM one. */
+  uploaded_source?: "client" | "team" | string;
 }
 
 export interface DocumentCreate {
