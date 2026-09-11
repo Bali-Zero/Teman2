@@ -3217,6 +3217,43 @@ def test_gc_alerted_state_keeps_both_key_families_apart(tmp_path):
     assert set(kept) == {"910:shaOpen", "rearm-write-fail:910:shaOpen"}
 
 
+def test_the_two_family_predicates_agree_on_the_degenerate_bare_key_C4():
+    """C4: report() asked `startswith(PREFIX)` and gc_alerted_state asked
+    `split(":",1)[0] == PREFIX.rstrip(":")`, and the two disagreed on the bare `rearm-write-fail`
+    key — one calling it UNKNOWN, the other write-fail. One predicate now answers for both."""
+    assert qs._is_rearm_fail_key("rearm-write-fail") is True
+    assert qs._is_rearm_fail_key("rearm-write-fail:701:sha") is True
+    assert qs._is_rearm_fail_key("rearm-write-fail:") is True
+    assert qs._is_rearm_fail_key("700:shaUnknown") is False
+    assert qs._is_rearm_fail_key("rearm-write-failure:700:sha") is False
+    # The bare key survives gc_alerted_state either way (both spellings end at int("") ->
+    # ValueError -> kept), so the GC side cannot observe the divergence — stated rather than
+    # asserted, because an assertion that passes under both spellings proves nothing. The
+    # divergence is observable in report(), and that is where the next test looks.
+    assert "rearm-write-fail" in qs.gc_alerted_state({"rearm-write-fail": {"at": "x"}}, set())
+
+
+def test_report_counts_the_degenerate_bare_key_as_a_write_failure_C4(monkeypatch, tmp_path, capsys):
+    """C4, the observable half: with two predicates, report() called the bare `rearm-write-fail`
+    key an UNKNOWN alert while gc_alerted_state called it a write-fail one. A write-failure key
+    counted under UNKNOWN is precisely the disease C2 exists to cure, so it must not survive in
+    a second spelling."""
+    monkeypatch.setattr(qs, "BUDGET_FILE", tmp_path / "budget.json")
+    monkeypatch.setattr(qs, "ALERTED_FILE", tmp_path / "alerted.json")
+    monkeypatch.setattr(qs, "RED_FILE", tmp_path / "red.json")
+    monkeypatch.setattr(qs, "REARM_FAIL_FILE", tmp_path / "rearm_fail.json")
+    monkeypatch.setattr(qs, "LOG_FILE", tmp_path / "absent.log")
+    qs._save_json(qs.ALERTED_FILE, {
+        "800:shaUnknown": "2026-09-11T00:00:00Z",
+        "rearm-write-fail": "2026-09-11T00:00:00Z",  # hand-edited, no colon
+    })
+
+    _rc, out = _run_report(capsys)
+
+    assert "alerted (UNKNOWN, undelivered-until-resolved) keys: 1" in out
+    assert "alerted (re-arm WRITE failure, undelivered-until-resolved) keys: 1" in out
+
+
 # ── gate findings on THIS PR: three guards the suite could not see (2026-09-11) ─────────────
 # A fresh Opus 5 gate ran 17 guilt mutations against this branch and three left all 184 GREEN.
 # Each of the three is the SAME shape as the finding that opened K-3/K-7/K-8: the code is right
@@ -3324,15 +3361,22 @@ def test_report_separates_the_two_alert_families_C2(monkeypatch, tmp_path, capsy
     monkeypatch.setattr(qs, "RED_FILE", tmp_path / "red.json")
     monkeypatch.setattr(qs, "REARM_FAIL_FILE", tmp_path / "rearm_fail.json")
     monkeypatch.setattr(qs, "LOG_FILE", tmp_path / "absent.log")
+    # C2b (gate round 3): the counts must be ASYMMETRIC — with one key each, swapping the two
+    # family filters leaves both numbers at 1 and the test cannot see the inversion.
     qs._save_json(qs.ALERTED_FILE, {
         "700:shaUnknown": "2026-09-11T00:00:00Z",
+        "703:shaOther": "2026-09-11T00:00:00Z",
         f"{qs.REARM_FAIL_ALERT_PREFIX}701:shaWrite": "2026-09-11T00:00:00Z",
     })
 
     _rc, out = _run_report(capsys)
 
-    assert "alerted (UNKNOWN, undelivered-until-resolved) keys: 1" in out
+    assert "alerted (UNKNOWN, undelivered-until-resolved) keys: 2" in out
     assert "alerted (re-arm WRITE failure, undelivered-until-resolved) keys: 1" in out
+    # C2d: the count was anchored and the LISTING was not — "keys: 1" while showing nothing is
+    # still a report that hides what the operator came to read.
+    assert "701:shaWrite: write-failure alerted at" in out
+    assert "700:shaUnknown: alerted at" in out
 
 
 def test_report_lists_the_rearm_fail_file_entries_M23(monkeypatch, tmp_path, capsys):
@@ -3367,4 +3411,15 @@ def test_report_says_CORRUPT_when_the_rearm_fail_file_is_unparseable_M27(monkeyp
 
     _rc, out = _run_report(capsys)
 
-    assert "CORRUPT, cannot parse" in out
+    # C2e (gate round 3): asserting the WORD "CORRUPT" without the FILE let the message name
+    # the budget file instead and stay green — a corruption report that fingers the wrong organ.
+    corrupt_lines = [ln for ln in out.splitlines() if "CORRUPT, cannot parse" in ln]
+    assert len(corrupt_lines) == 1, out
+    # The assertion must read the file the LINE names, not the whole line: the exception text is
+    # interpolated into the same line and already carries the right path, so `str(corrupt) in
+    # line` passes even when the code names the WRONG file. That is a test satisfied by a
+    # substring from a different source than the one it means to check — the same conflation
+    # shape as C2, one level up, found by mutating rather than by reading.
+    named = corrupt_lines[0].split(" — CORRUPT")[0]
+    assert str(corrupt) in named, named
+    assert str(tmp_path / "budget.json") not in named, named

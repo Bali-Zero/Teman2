@@ -77,8 +77,16 @@ assumptions:
       unverifiable-by-the-author on principle rather than on a count: "no guard is blind" is
       a claim about the ABSENCE of a blind spot, and an author cannot measure the absence of
       something they failed to imagine. Only an adversary can, and only up to the mutations
-      it happened to run — 21 core mutations are red at this sha, and that is the true
-      statement, not "every".
+      it happened to run. THIRD ROUND: the count was stale the moment it was written, and the
+      third gate found three MORE blind mutations — all three inside the tests the second round
+      had just added, which is the same shape for the third time running: a cure closes a hole
+      and opens an adjacent one. One of them is worth naming, because reading could not have
+      caught it: the M27 test asserted that the CORRUPT line named REARM_FAIL_FILE, and passed
+      even when the code named the WRONG file, because the exception text interpolated into the
+      same line already carried the right path — an assertion satisfied by a substring from a
+      different source than the one it meant to check. At THIS sha: 37 mutations executed, 33
+      red, 0 blind, 1 dead (M25, provably unreachable: the dry-run `continue` precedes
+      rearm_pr). That is the true statement, and it is true of these 37 only.
   - assumption: >-
       K-3's alert path works end to end in production.
     status: unverified

@@ -233,6 +233,16 @@ REARM_WRITE_FAIL_LIMIT = 3
 # as a literal at four sites, which is how report() came to count these keys as UNKNOWN ones.
 REARM_FAIL_ALERT_PREFIX = "rearm-write-fail:"
 
+
+def _is_rearm_fail_key(key: str) -> bool:
+    """The ONE predicate for "is this alerted_state key a write-failure dedup key". C4 (gate on
+    #6175, third round): report() asked it with `startswith(PREFIX)` and gc_alerted_state with
+    `split(":", 1)[0] == PREFIX.rstrip(":")`, and the two DIVERGE on the degenerate bare key
+    `"rearm-write-fail"` (no colon) — one read it as UNKNOWN, the other as write-fail. Only a
+    hand-edited file produces it, but "a write-failure key counted under UNKNOWN" is the exact
+    class C2 exists to close, so it must not survive in a second spelling."""
+    return key == REARM_FAIL_ALERT_PREFIX.rstrip(":") or key.startswith(REARM_FAIL_ALERT_PREFIX)
+
 _UNCANCELLABLE_ERROR_LABELS = {
     "uncancellable_409": "both cancel and force-cancel endpoints answered HTTP 409 (not queued yet)",
     "failed": "cancel_run failed (non-409) repeatedly — see queue-shepherd.log for the gh stderr",
@@ -629,7 +639,7 @@ def gc_alerted_state(alerted_state: dict[str, Any], open_pr_numbers: set[int]) -
     kept: dict[str, Any] = {}
     for key, value in alerted_state.items():
         prefix = key.split(":", 1)[0]
-        if prefix == REARM_FAIL_ALERT_PREFIX.rstrip(":"):
+        if _is_rearm_fail_key(key):  # C4: one predicate, shared with report()
             prefix = key.split(":", 2)[1] if key.count(":") >= 2 else ""
         try:
             pr_number = int(prefix)
@@ -1985,8 +1995,8 @@ def report() -> int:
     # write-failure dedup. Counting them together under the "UNKNOWN" label reported a
     # write-failure alert as an UNKNOWN one: two different diseases in one number, in the
     # one command an operator runs to find out what the organ is doing.
-    unknown_alerts = {k: v for k, v in alerted_state.items() if not k.startswith(REARM_FAIL_ALERT_PREFIX)}
-    write_fail_alerts = {k: v for k, v in alerted_state.items() if k.startswith(REARM_FAIL_ALERT_PREFIX)}
+    unknown_alerts = {k: v for k, v in alerted_state.items() if not _is_rearm_fail_key(k)}
+    write_fail_alerts = {k: v for k, v in alerted_state.items() if _is_rearm_fail_key(k)}
     print(f"alerted (UNKNOWN, undelivered-until-resolved) keys: {len(unknown_alerts)}")
     for key, ts in sorted(unknown_alerts.items()):
         print(f"    {key}: alerted at {ts}")
