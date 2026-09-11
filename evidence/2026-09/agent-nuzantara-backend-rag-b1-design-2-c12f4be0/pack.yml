@@ -133,7 +133,7 @@ lanes:
   - lane: "B1.2 adversarial round 1"
     role: review
     seat: "codex gpt-5.6-sol, effort high, read-only (round 1 account 1 Pro, round 2 account 2 Mini)"
-    state: "round 1 BLOCK -> cured; round 2 BLOCK -> cured (G11); round 3 pending"
+    state: "round 1 BLOCK -> cured; round 2 BLOCK -> cured (G11); round 3 BLOCK -> SUSPENDED (three reds, one cause), ruling requested from the staff room"
 dissent: []
 appetite_exceeded: >-
   adversarial rounds: a third round is needed against a declared appetite of 2.
@@ -177,3 +177,22 @@ adversarial:
       - "R1-F2..F5 CURED (reviewer)"
       - "R2-N1 BLOCKER class-body rebinding `variant = original` keeps G1-G10 green: AGREE — spec B1-2-round-2-cure-spec.md, G11 pins the runtime binding (qualname, co_filename, co_firstlineno) instead of enumerating rebinding syntaxes"
       - "R2-N2 BLOCKER evidence wording: AGREE, cured as R1-F1 above"
+  - round: 3
+    seat: "codex gpt-5.6-sol, effort high, read-only, account 2 (Mini), diffs inlined, scoped to the round-2 cure"
+    reviewed_sha: 775c6f39a0
+    at: "2026-09-11T18:36:12Z/18:41:24Z"
+    verdict: BLOCK
+    record: evidence/2026-09/agent-nuzantara-backend-rag-b1-design-2-c12f4be0/codex-round-3-b1-2.md
+    state: >-
+      SUSPENDED — third red for one cause (the guard cannot prove that the
+      callable pytest runs under a protected name is the parsed def: round 1
+      F3 duplicate def, round 2 N1 class-body rebinding, round 3 forged
+      metadata / collection hook). No fourth round, no push (staff-room ack
+      2026-09-11T18:14:19Z). Dispositions below are the Dux's PROPOSAL, pending
+      the staff room's ruling.
+    dispositions:
+      - "R2-N1 NOT CURED (reviewer): G11 catches alias, lambda, decorator, functools.wraps, ordinary metaclass; NOT a function compiled via exec() under the original co_filename with padded co_firstlineno and a copied __qualname__, nor a pytest_collection_modifyitems hook replacing item._obj"
+      - "R2-N2 CURED (reviewer)"
+      - "R3-1 BLOCKER forged-metadata clone: proposed REJECT as outside the guard's threat model — the bypass needs deliberately written exec/compile with line padding in a test file; no in-process check proves identity against arbitrary code in the same interpreter (the reviewer's own fix 'capture the binding during definition' is again in-process); deliberate sabotage is the review and gate boundary, accidental weakening is what G1-G11 pin"
+      - "R3-2 BLOCKER collection hook replacing item._obj: proposed REJECT on the same ground (a conftest hook is code in the same process, visible in review as a new conftest/plugin file)"
+      - "R3-3 MINOR docstring says pure/static while G11 imports four test modules; module identity via dotted name: proposed AGREE, cure = docstring + module.__file__ vs parsed path — NOT applied while suspended"
