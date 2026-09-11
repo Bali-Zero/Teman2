@@ -172,3 +172,29 @@ async def test_access_check_still_runs_before_any_read(
         db_pool=_Pool(conn),  # type: ignore[arg-type]
     )
     assert calls == [7]
+
+
+@pytest.mark.asyncio
+async def test_last_login_carries_an_explicit_utc_offset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GUILT: a bare timestamp is read as LOCAL time by the browser.
+
+    `team_members.last_login` is `timestamp WITHOUT time zone`, written by
+    `NOW()` on a UTC database — the value is UTC but carries no offset.
+    Emitted bare, `new Date("2026-09-10T21:54:37")` in a WITA browser is
+    2026-09-10 21:54 *local*, so the CRM showed "Sep 10" for a sign-in made
+    at 05:54 on Sep 11 (portal audit finding F-07).
+    """
+    from datetime import datetime, timezone
+
+    from backend.app.routers.crm_portal_integration import _utc_iso
+
+    naive = datetime(2026, 9, 10, 21, 54, 37)
+    assert _utc_iso(naive) == "2026-09-10T21:54:37+00:00"
+
+    # An already-aware value is passed through untouched, not double-shifted.
+    aware = datetime(2026, 9, 10, 21, 54, 37, tzinfo=timezone.utc)
+    assert _utc_iso(aware) == "2026-09-10T21:54:37+00:00"
+
+    assert _utc_iso(None) is None
