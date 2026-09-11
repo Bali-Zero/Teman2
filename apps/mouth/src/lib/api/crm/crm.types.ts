@@ -977,7 +977,7 @@ export interface RenewalAlert {
 
 export interface CreatePracticeParams {
   client_id: number; // Required by backend
-  practice_type_code: string;
+  practice_type_code?: string; // Omit to open an inquiry without a service
   status?: string; // inquiry, quotation_sent, in_progress, completed, etc.
   priority?: string; // normal, high, urgent
   notes?: string; // Maps from frontend "title"

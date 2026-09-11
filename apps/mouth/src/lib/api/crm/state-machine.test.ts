@@ -16,6 +16,8 @@ import {
   VALID_TRANSITIONS,
   getAllowedNextStatuses,
   type PracticeStatus,
+  OPEN_INQUIRY_TYPE_CODE,
+  needsServiceBefore,
 } from "./state-machine";
 
 describe("VALID_TRANSITIONS — backend snapshot", () => {
@@ -135,8 +137,34 @@ describe("getAllowedNextStatuses", () => {
     expect(getAllowedNextStatuses("in_progress" as PracticeStatus)).toEqual([
       "in_progress",
     ]);
-    expect(getAllowedNextStatuses("payment_pending" as PracticeStatus)).toEqual([
-      "payment_pending",
-    ]);
+    expect(getAllowedNextStatuses("payment_pending" as PracticeStatus)).toEqual(
+      ["payment_pending"],
+    );
+  });
+});
+
+describe("needsServiceBefore — open inquiry gate (backend mirror)", () => {
+  it("blocks every state past inquiry while the placeholder is set", () => {
+    for (const target of [
+      "waiting_documents",
+      "sending_invoice",
+      "on_process",
+      "completed",
+    ]) {
+      expect(needsServiceBefore(target, OPEN_INQUIRY_TYPE_CODE)).toBe(true);
+    }
+  });
+
+  it("lets the placeholder stay in inquiry or be cancelled", () => {
+    expect(needsServiceBefore("inquiry", OPEN_INQUIRY_TYPE_CODE)).toBe(false);
+    expect(needsServiceBefore("cancelled", OPEN_INQUIRY_TYPE_CODE)).toBe(false);
+  });
+
+  it("never blocks a real or unknown service", () => {
+    expect(
+      needsServiceBefore("waiting_documents", "kitas_working_onshore"),
+    ).toBe(false);
+    expect(needsServiceBefore("waiting_documents", undefined)).toBe(false);
+    expect(needsServiceBefore("waiting_documents", null)).toBe(false);
   });
 });

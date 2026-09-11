@@ -31,8 +31,10 @@ import { api } from "@/lib/api";
 import { ApiError } from "@/lib/api/error-handler";
 import type { Practice } from "@/lib/api/crm/crm.types";
 import {
+  OPEN_INQUIRY_TYPE_CODE,
   STATUS_LABELS as STATUS_DROPDOWN_LABELS,
   getAllowedNextStatuses,
+  needsServiceBefore,
   type PracticeStatus,
 } from "@/lib/api/crm/state-machine";
 import { casesMetrics } from "@/lib/metrics/cases-metrics";
@@ -44,6 +46,7 @@ import {
   getStatusColumn,
 } from "@/components/process/kanban-colors";
 import { RequiredDocumentsCard } from "./RequiredDocumentsCard";
+import { SelectServiceCard } from "./SelectServiceCard";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 import { useInvalidateClient } from "@/hooks/useClientDetail";
 import { initialsOf } from "@/data/team-roster";
@@ -377,6 +380,16 @@ export default function CaseDetailPage() {
       isJumpingStatus
     )
       return;
+    // Open inquiry: the backend refuses to leave the inquiry stage until a
+    // service is chosen (validate_service_selected). Say so before the
+    // round-trip and point at the picker card.
+    if (needsServiceBefore(newStatus, practice.practice_type_code)) {
+      toast.error(
+        "Select a service first",
+        "This is an open inquiry — pick the service above before moving on.",
+      );
+      return;
+    }
     setIsJumpingStatus(newStatus);
     try {
       const user = await api.getProfile();
@@ -1099,6 +1112,11 @@ export default function CaseDetailPage() {
           </div>
         );
       })()}
+
+      {/* Open inquiry: service still to be chosen (required before Documents) */}
+      {caseId && practice.practice_type_code === OPEN_INQUIRY_TYPE_CODE && (
+        <SelectServiceCard practiceId={caseId} onSaved={applyPracticeUpdate} />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}

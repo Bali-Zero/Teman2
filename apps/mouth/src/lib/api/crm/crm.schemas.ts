@@ -163,7 +163,9 @@ export type CreateClientOutput = z.output<typeof createClientSchema>;
 export const createPracticeSchema = z
   .object({
     client_id: z.number().positive("Invalid client ID"),
-    practice_type_code: practiceTypeCodeEnum,
+    // Optional since 2026-09-11: an inquiry may be opened without a service
+    // (backend stores it against the `open_inquiry` placeholder type).
+    practice_type_code: practiceTypeCodeEnum.optional(),
     status: practiceStatusEnum.default("inquiry"),
     priority: practicePriorityEnum.default("normal"),
     notes: emptyToUndefined,
