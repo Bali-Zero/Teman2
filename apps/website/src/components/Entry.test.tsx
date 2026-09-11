@@ -76,8 +76,16 @@ describe("SiteHeader", () => {
 
 describe("Hero", () => {
   it("retains all four historic Home fragments as unique focusable tool targets", () => {
-    const { container } = render(<><SiteHeader /><Hero /><Services /></>);
-    const ids = [...container.querySelectorAll("[id]")].map((element) => element.id);
+    const { container } = render(
+      <>
+        <SiteHeader />
+        <Hero />
+        <Services />
+      </>,
+    );
+    const ids = [...container.querySelectorAll("[id]")].map(
+      (element) => element.id,
+    );
     expect(new Set(ids).size).toBe(ids.length);
     for (const [fragment, currentId, title] of [
       ["visa", "visa-tool", "Visa Oracle"],

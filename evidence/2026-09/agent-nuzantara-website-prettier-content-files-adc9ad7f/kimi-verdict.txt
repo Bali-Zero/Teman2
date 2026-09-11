@@ -1,0 +1,20 @@
++  },
+ ] as const satisfies readonly DossierRecord[];
+All 103 records verified 1:1 against the removed compact lines (svc-visa-001…086, svc-company-001…004, svc-tax-001…009, svc-property-001…004 — every id/name/domain/family/route/variant matches). The whole diff across all 14 files is: line wrapping, quote-props removal, trailing commas, import expansion, JSX reflow, string-concat wrap. Nothing semantic.
+
+  Also confirm the remaining ServiceJourneys.tsx diff portion between line 90 — I saw most of it. The first sed for ServiceJourneys+ServiceDossiers covered lines 1-450 of combined output; then I ran sed -n '90,560p' on ServiceJourneys+ServiceSections which covered the tail of ServiceJourneys (lines 90-~200) and all of ServiceSections. Combined with the first call which showed ServiceJourneys lines 1-~90. Good coverage.
+
+  Answer: NONE.
+
+• [Pro] Inspected every hunk of the full diff (`origin/codex/website-r19-integrated...HEAD`, all 14 files under `apps/website/src`, 5,074 diff lines) personally. Findings per change class:
+
+  - Import statements split to multi-line — no specifier added/removed/reordered into different bindings.
+  - JSX reflow (attribute-per-line, paren wrapping, tag reindentation) in `ContactOptions.tsx`, `ServiceJourneys.tsx`, `ServiceSections.tsx`, `Services.tsx`, `Entry.tsx` — identical elements, props, strings, expressions.
+  - `quote-props: as-needed` unquoting (`"key":` → `key:`, `"visa":` → `visa:`, `"SKTT":` → `SKTT:`) — string values untouched.
+  - Trailing-comma additions and long-string `key:\n "…"` wraps in the three content files — string contents byte-identical (checked including the long FAQ/answer texts).
+  - `dossierRecords` in `service-dossier-data.ts`: 103 compact one-line objects expanded to multi-line — verified all 103 (svc-visa-001…086, svc-company-001…004, svc-tax-001…009, svc-property-001…004); every `id`/`name`/`domain`/`family`/`route`/`variant` value matches its removed counterpart exactly.
+  - Test files: expect-chain rewrapping only; no assertion, argument, regex, or literal changed.
+
+  NONE
+
+To resume this session: kimi -r session_9c5da740-8b40-439c-9683-dbe555ec0a95

@@ -1,0 +1,25 @@
+All 14 files are semantically identical after canonicalizing (1) formatting trivia, (2) quote-style on keys, (3) JSX text whitespace per the exact Babel/JSX transform rules. That proves rendered output and runtime behavior identical — including the "Continue on WhatsApp " trailing-space case: with the correct algorithm, old and new produce the same cleaned text (Prettier kept the significant space, e.g. via `{" "}` or same-line text).
+
+  Wait — one thing to double check on the "Continue on WhatsApp" case: pass 2 with correct algo says EQUAL, so whatever Prettier did preserves the significant trailing space. Good.
+
+  Remaining specific verifications for the report:
+
+  (a) quote-props → duplicate shadowing: no duplicate keys in any new file (scanner checks all ObjectExpressions). Also AST-equal with key normalization proves no key set changed. Need also to confirm quote-props removal only hit valid identifiers — implied: canon normalized StringLiteral keys to Identifier and matched old, and no NumericLiteral-vs-Identifier ordering issues arose... Actually numeric keys: canon normalized `1:` and `"1":` both to Identifier "1". JS treats them the same. CLEAR.
+
+  Also check: did any quoted key remain quoted in one but not other in a way canon hid a real change? No — StringLiteral vs Identifier key with same name is semantically identical.
+
+  (b) trailing commas: AST-equal proves identical array/arg counts and elements. Trailing commas are pure trivia in JS. But the "different overload" concern: overloads depend on arg count — arg counts identical per AST. CLEAR. Also should confirm no comma was inserted between two elements splitting one into two — impossible without AST change. CLEAR.
+
+  (c) JSX paren wrap/arrow implicit return: differ preserved `body.type` for ArrowFunctionExpression; no diffs on any non-JSXText node, so no expression↔BlockStatement change. CLEAR.
+
+  (d) reordering: canonical AST comparison is order-sensitive for arrays (keys, children, statements); zero non-whitespace diffs → no reordering. CLEAR.
+
+  (e) string content: StringLiteral cooked `value` and template quasi raw+cooked compared exactly; no diffs. Also should confirm no regex changes — regex literals compared via pattern/flags (extra.raw dropped, but pattern/flags kept). CLEAR.
+
+  One more paranoid check for (e): `extra.raw` dropped means a cooked-value-equal string could differ in raw escapes but cook to the same value — semantically identical anyway. Good.
+
+  Also comments: @ts-expect-error / eslint-disable position changes could alter behavior of type-checking/linting but not runtime. Let me quickly grep the diff for moved ts-/eslint directives to be complete. Quick check.
+
+• All 14 files now prove AST-equal. One last paranoid sweep: directive comments (`@ts-expect-error`, `eslint-disable`) whose position could matter, even if not runtime semantics.exit=0
+
+

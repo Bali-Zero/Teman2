@@ -1,7 +1,10 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
-import { ServiceDetail, ServicesOverview } from "../../components/services/ServiceJourneys";
+import {
+  ServiceDetail,
+  ServicesOverview,
+} from "../../components/services/ServiceJourneys";
 import { destinationIntents, getDestination } from "../../content/destinations";
 import { servicePages } from "../../content/service-pages";
 import { generateMetadata, generateStaticParams } from "./[slug]/page";
@@ -15,8 +18,14 @@ afterEach(cleanup);
 
 describe("service journeys", () => {
   it("keeps legacy visa and company links resolvable", () => {
-    for (const [route, target] of [[LegacyVisaRoute, "/services/immigration"], [LegacyCompanyRoute, "/services/company-setup"]] as const) {
-      try { route(); throw new Error("Expected redirect"); } catch (error) {
+    for (const [route, target] of [
+      [LegacyVisaRoute, "/services/immigration"],
+      [LegacyCompanyRoute, "/services/company-setup"],
+    ] as const) {
+      try {
+        route();
+        throw new Error("Expected redirect");
+      } catch (error) {
         expect((error as { digest: string }).digest).toContain(`;${target};`);
       }
     }
@@ -35,16 +44,26 @@ describe("service journeys", () => {
       servicePages.map(({ slug }) => ({ slug })),
     );
     for (const link of links) {
-      const destination = new URL(link.getAttribute("href")!, "https://example.test");
+      const destination = new URL(
+        link.getAttribute("href")!,
+        "https://example.test",
+      );
       expect(localRoutes.has(destination.pathname)).toBe(true);
       if (destination.hash) {
         expect(destination.pathname).toBe("/services/tax");
-        expect(serviceSectionContent.tax.catalog.map((_, index) => "#catalog-" + (index + 1))).toContain(destination.hash);
+        expect(
+          serviceSectionContent.tax.catalog.map(
+            (_, index) => "#catalog-" + (index + 1),
+          ),
+        ).toContain(destination.hash);
       }
     }
     for (const service of servicePages) {
-      expect(within(main).getByRole("link", { name: `Explore this service: ${service.cardTitle}` }))
-        .toHaveAttribute("href", `/services/${service.slug}`);
+      expect(
+        within(main).getByRole("link", {
+          name: `Explore this service: ${service.cardTitle}`,
+        }),
+      ).toHaveAttribute("href", `/services/${service.slug}`);
     }
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     screen.getByRole("main").focus();
@@ -57,9 +76,15 @@ describe("service journeys", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     screen.getByRole("main").focus();
     expect(screen.getByRole("main")).toHaveFocus();
-    expect(screen.getByRole("navigation", { name: "On this service page" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Find the support you need." })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Prepare for a useful review." })).toBeInTheDocument();
+    expect(
+      screen.getByRole("navigation", { name: "On this service page" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Find the support you need." }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Prepare for a useful review." }),
+    ).toBeInTheDocument();
     expect(screen.getByText("How the next step works")).toBeInTheDocument();
     expect(
       screen.getByRole("navigation", { name: "Breadcrumb" }),
@@ -68,18 +93,25 @@ describe("service journeys", () => {
       screen.getByRole("link", { name: "Back to all services" }),
     ).toHaveAttribute("href", "/services");
     const tool = getDestination(service.toolDestinationId);
-    expect(screen.getByRole("link", { name: `Open ${tool.label}` })).toHaveAttribute(
-      "href",
-      tool.href,
-    );
+    expect(
+      screen.getByRole("link", { name: `Open ${tool.label}` }),
+    ).toHaveAttribute("href", tool.href);
     expect(container.querySelector("form")).toBeNull();
     const content = serviceSectionContent[service.slug];
     const expectedServices = content.catalog.flatMap((group) => group.services);
-    const quoteLinks = [...container.querySelectorAll('a[aria-label^="Request a quote for"]')];
+    const quoteLinks = [
+      ...container.querySelectorAll('a[aria-label^="Request a quote for"]'),
+    ];
     expect(quoteLinks).toHaveLength(expectedServices.length);
-    expect(container.querySelectorAll("details")).toHaveLength(content.catalog.length + expectedServices.length + content.faqs.length);
-    for (const anchor of container.querySelectorAll('nav[aria-label="On this service page"] a')) {
-      expect(container.querySelector(anchor.getAttribute("href")!)).not.toBeNull();
+    expect(container.querySelectorAll("details")).toHaveLength(
+      content.catalog.length + expectedServices.length + content.faqs.length,
+    );
+    for (const anchor of container.querySelectorAll(
+      'nav[aria-label="On this service page"] a',
+    )) {
+      expect(
+        container.querySelector(anchor.getAttribute("href")!),
+      ).not.toBeNull();
     }
   });
 
@@ -98,9 +130,16 @@ describe("service journeys", () => {
 
   it("offers reachable home and services recovery from a missing page", () => {
     render(<NotFound />);
-    expect(screen.getByRole("heading", { level: 1, name: "Page not found." })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back to home" })).toHaveAttribute("href", "/");
-    expect(screen.getByRole("link", { name: "Explore services" })).toHaveAttribute("href", "/services");
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Page not found." }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to home" })).toHaveAttribute(
+      "href",
+      "/",
+    );
+    expect(
+      screen.getByRole("link", { name: "Explore services" }),
+    ).toHaveAttribute("href", "/services");
     screen.getByRole("main").focus();
     expect(screen.getByRole("main")).toHaveFocus();
   });
@@ -112,9 +151,13 @@ describe("service journeys", () => {
     expect(screen.getByRole("link", { name: "Skip to content" })).toHaveFocus();
     await user.tab();
     const main = screen.getByRole("main");
-    const siteBanners = screen.getAllByRole("banner").filter((banner) => !main.contains(banner));
+    const siteBanners = screen
+      .getAllByRole("banner")
+      .filter((banner) => !main.contains(banner));
     expect(siteBanners).toHaveLength(1);
-    expect(within(siteBanners[0]).getByRole("link", { name: "Bali Zero home" })).toHaveFocus();
+    expect(
+      within(siteBanners[0]).getByRole("link", { name: "Bali Zero home" }),
+    ).toHaveFocus();
   });
 
   it("provides descriptive metadata for every route", async () => {

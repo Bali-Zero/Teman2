@@ -1,0 +1,17 @@
+codex
+NONE
+hook: Stop
+hook: Stop
+hook: Stop
+hook: Stop
+hook: Stop
+hook: Stop
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Completed
+hook: Stop Failed
+tokens used
+130.421
+NONE

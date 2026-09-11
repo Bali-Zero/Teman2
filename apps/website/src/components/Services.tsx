@@ -22,7 +22,12 @@ export function Services() {
               <span>↗</span>
             </span>
             <span className="eyebrow">{service.title}</span>
-            <h3 id={service.id === "business" ? "kbli" : service.id} tabIndex={-1}>{service.tool}</h3>
+            <h3
+              id={service.id === "business" ? "kbli" : service.id}
+              tabIndex={-1}
+            >
+              {service.tool}
+            </h3>
             <div className="tool-art" aria-hidden="true">
               <img
                 src={"/assets/" + service.image}

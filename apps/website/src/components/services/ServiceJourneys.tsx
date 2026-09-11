@@ -34,41 +34,89 @@ export function ServicesOverview() {
   });
   return (
     <ServiceFrame>
-      <Container as="main" className={`${styles.main} ${styles.overview}`} id="main" tabIndex={-1}>
+      <Container
+        as="main"
+        className={`${styles.main} ${styles.overview}`}
+        id="main"
+        tabIndex={-1}
+      >
         <nav aria-label="Breadcrumb" className={styles.breadcrumb}>
           <Link href="/">Home</Link>
           <span aria-hidden="true">/</span>
           <span aria-current="page">Services</span>
         </nav>
-        <section className={styles.intro}><div className={styles.introVoice}>
-          <span className={styles.eyebrow}>Bali Zero services</span>
-          <h1>Start with the decision in front of you.</h1>
-          <p>
-            Choose an area to see who it helps, which questions to bring and how a
-            conversation with our team can begin.
-          </p>
-        </div><nav className={styles.familyIndex} aria-label="Choose a service family"><span className={styles.eyebrow}>Four areas of practice</span>{servicePages.map((service, index) => <Link key={service.slug} href={`/services/${service.slug}`}><span className={styles.index}>0{index + 1}</span><span>{service.cardTitle}</span><span aria-hidden="true">↗</span></Link>)}</nav></section>
+        <section className={styles.intro}>
+          <div className={styles.introVoice}>
+            <span className={styles.eyebrow}>Bali Zero services</span>
+            <h1>Start with the decision in front of you.</h1>
+            <p>
+              Choose an area to see who it helps, which questions to bring and
+              how a conversation with our team can begin.
+            </p>
+          </div>
+          <nav
+            className={styles.familyIndex}
+            aria-label="Choose a service family"
+          >
+            <span className={styles.eyebrow}>Four areas of practice</span>
+            {servicePages.map((service, index) => (
+              <Link key={service.slug} href={`/services/${service.slug}`}>
+                <span className={styles.index}>0{index + 1}</span>
+                <span>{service.cardTitle}</span>
+                <span aria-hidden="true">↗</span>
+              </Link>
+            ))}
+          </nav>
+        </section>
         <section aria-label="Service areas" className={styles.collection}>
           {servicePages.map((service, index) => (
-            <article className={styles.family} data-family={service.slug} key={service.slug}>
-              <div className={styles.familyImage}><span className={styles.plateLabel}>Bali Zero / 0{index + 1}</span>
-              <img
-                alt={service.image.alt}
-                height="816"
-                src={service.image.src}
-                width="1088"
-              />
-              </div><div className={styles.familyCopy}><span className={styles.eyebrow}>{service.eyebrow}</span>
-              <h2>{service.cardTitle}</h2>
-              <p>{service.summary}</p>
-              {service.slug === "tax" && <nav className={styles.taxChapters} aria-label="Explore tax support">{serviceSectionContent.tax.catalog.map((group, groupIndex) => <Link key={group.title} href={"/services/tax#catalog-" + (groupIndex + 1)}><span>0{groupIndex + 1}</span>{group.title}<span aria-hidden="true">↗</span></Link>)}</nav>}
-              <Link
-                href={`/services/${service.slug}`}
-                aria-label={`Explore this service: ${service.cardTitle}`}
-              >
-                Explore this service <span aria-hidden="true">→</span>
-              </Link>
-            </div></article>
+            <article
+              className={styles.family}
+              data-family={service.slug}
+              key={service.slug}
+            >
+              <div className={styles.familyImage}>
+                <span className={styles.plateLabel}>
+                  Bali Zero / 0{index + 1}
+                </span>
+                <img
+                  alt={service.image.alt}
+                  height="816"
+                  src={service.image.src}
+                  width="1088"
+                />
+              </div>
+              <div className={styles.familyCopy}>
+                <span className={styles.eyebrow}>{service.eyebrow}</span>
+                <h2>{service.cardTitle}</h2>
+                <p>{service.summary}</p>
+                {service.slug === "tax" && (
+                  <nav
+                    className={styles.taxChapters}
+                    aria-label="Explore tax support"
+                  >
+                    {serviceSectionContent.tax.catalog.map(
+                      (group, groupIndex) => (
+                        <Link
+                          key={group.title}
+                          href={"/services/tax#catalog-" + (groupIndex + 1)}
+                        >
+                          <span>0{groupIndex + 1}</span>
+                          {group.title}
+                          <span aria-hidden="true">↗</span>
+                        </Link>
+                      ),
+                    )}
+                  </nav>
+                )}
+                <Link
+                  href={`/services/${service.slug}`}
+                  aria-label={`Explore this service: ${service.cardTitle}`}
+                >
+                  Explore this service <span aria-hidden="true">→</span>
+                </Link>
+              </div>
+            </article>
           ))}
         </section>
         <aside className={styles.conversation}>
@@ -94,7 +142,13 @@ export function ServiceDetail({ service }: { service: ServicePage }) {
   const tool = getDestination(service.toolDestinationId);
   return (
     <ServiceFrame>
-      <Container as="main" className={`${styles.main} ${styles.detail}`} data-family={service.slug} id="main" tabIndex={-1}>
+      <Container
+        as="main"
+        className={`${styles.main} ${styles.detail}`}
+        data-family={service.slug}
+        id="main"
+        tabIndex={-1}
+      >
         <nav aria-label="Breadcrumb" className={styles.breadcrumb}>
           <Link href="/">Home</Link>
           <span aria-hidden="true">/</span>
@@ -107,18 +161,50 @@ export function ServiceDetail({ service }: { service: ServicePage }) {
             <span className={styles.eyebrow}>{service.eyebrow}</span>
             <h1>{service.title}</h1>
             <p className={styles.heroSummary}>{service.summary}</p>
-            <div className={styles.heroActions}><a className={styles.primary} href="#available-services">Explore the services <span aria-hidden="true">↓</span></a><a href={contact}>Discuss this with our team ↗</a></div>
+            <div className={styles.heroActions}>
+              <a className={styles.primary} href="#available-services">
+                Explore the services <span aria-hidden="true">↓</span>
+              </a>
+              <a href={contact}>Discuss this with our team ↗</a>
+            </div>
           </div>
           <aside className={styles.orientation}>
-            <div className={styles.orientationLead}><img alt={service.image.alt} height="816" src={service.image.src} width="1088" /><div><span className={styles.eyebrow}>Who this helps</span><p>{service.whoItHelps}</p></div></div>
-            <nav className={styles.heroIndex} aria-label={"Start exploring " + service.cardTitle}><span className={styles.eyebrow}>Where to start</span>{serviceSectionContent[service.slug].catalog.map((group, index) => <a key={group.title} href={"#catalog-" + (index + 1)}><span className={styles.index}>0{index + 1}</span><span>{group.title}</span><span aria-hidden="true">↓</span></a>)}</nav>
+            <div className={styles.orientationLead}>
+              <img
+                alt={service.image.alt}
+                height="816"
+                src={service.image.src}
+                width="1088"
+              />
+              <div>
+                <span className={styles.eyebrow}>Who this helps</span>
+                <p>{service.whoItHelps}</p>
+              </div>
+            </div>
+            <nav
+              className={styles.heroIndex}
+              aria-label={"Start exploring " + service.cardTitle}
+            >
+              <span className={styles.eyebrow}>Where to start</span>
+              {serviceSectionContent[service.slug].catalog.map(
+                (group, index) => (
+                  <a key={group.title} href={"#catalog-" + (index + 1)}>
+                    <span className={styles.index}>0{index + 1}</span>
+                    <span>{group.title}</span>
+                    <span aria-hidden="true">↓</span>
+                  </a>
+                ),
+              )}
+            </nav>
           </aside>
         </header>
         <ServiceSectionNav />
         <ServiceSections service={service} />
         <aside className={styles.toolAction}>
           <div>
-            <span className={styles.eyebrow}>Optional independent starting point</span>
+            <span className={styles.eyebrow}>
+              Optional independent starting point
+            </span>
             <h2>{tool.label}</h2>
           </div>
           <TextLink href={tool.href}>

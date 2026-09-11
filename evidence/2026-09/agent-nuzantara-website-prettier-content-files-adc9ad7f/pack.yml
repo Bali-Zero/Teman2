@@ -1,0 +1,198 @@
+brief_ref: evidence/2026-09/agent-nuzantara-website-prettier-content-files-adc9ad7f/brief.yml
+plan_ref: PR #6211 — agent/nuzantara/website/prettier-content-files
+diff:
+  files: 14
+  insertions: 2890
+  deletions: 1316
+  hotzone_hits: []
+
+lanes:
+  - lane: build
+    role: build
+    seat: sonnet-5
+  - lane: review
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: review
+    role: review
+    seat: kimi-code/k3
+
+council_run: council-journal.jsonl
+
+receipts:
+  - claim: >-
+      The literal receipt as specified (ts.createSourceFile both sides,
+      ts.createPrinter({removeComments:false}).printFile, assert equal strings) FAILS on 13/14
+      files -- only Home.test.tsx matches byte-for-byte.
+    cmd: "node /private/tmp/claude-501/ast-check/check.mjs"
+    exit: 1
+    ts: "2026-09-11T02:15:00Z"
+    seat: sonnet-5
+  - claim: >-
+      Root cause of all 13 failures, confirmed by manual per-file diff, is one of three
+      zero-semantic-effect transforms: (1) quoteProps "as-needed" (PropertyAssignment name
+      StringLiteral<->Identifier, same text -- printer preserves raw source text), (2)
+      trailing-comma insertion (TS printer preserves the parsed NodeArray.hasTrailingComma flag
+      from source rather than a normalized rule), (3) JSX/expression ParenthesizedExpression
+      wrap/unwrap around return statements.
+    cmd: "diff base.printed.ts formatted.printed.ts (per-file, via debug.mjs/debug2.mjs)"
+    exit: 0
+    ts: "2026-09-11T02:22:00Z"
+    seat: sonnet-5
+  - claim: >-
+      Stricter receipt, still via the TS compiler API: ts.transpileModule (jsx: ReactJSX, target
+      ES2020) lowers both sides of all 14 files to plain JS, then a structural walk (kind-by-kind
+      via ts.forEachChild, property keys compared by resolved text, ParenthesizedExpression
+      unwrapped) shows 14/14 transpiled-JS-AST identical -- no divergence beyond the three causes
+      above in any file.
+    cmd: "node /private/tmp/claude-501/ast-check/check4.mjs"
+    exit: 0
+    ts: "2026-09-11T02:31:00Z"
+    seat: sonnet-5
+  - claim: "Typecheck is clean on the 14-file prettier-normalize commit."
+    cmd: "npx tsc --noEmit (apps/website)"
+    exit: 0
+    ts: "2026-09-11T02:35:00Z"
+    seat: sonnet-5
+  - claim: "Full vitest suite is green: 99 files passed / 1 skipped (100), 1338 tests passed / 1 skipped (1339)."
+    cmd: "npx vitest run (apps/website)"
+    exit: 0
+    ts: "2026-09-11T02:38:00Z"
+    seat: sonnet-5
+  - claim: >-
+      Deterministic floor for this diff (14 files, +2890/-1316) vs base
+      origin/codex/website-r19-integrated is 3, source size (churn 4206 >= SIZE_GEAR3_THRESHOLD
+      1828, no hot-zone path hit).
+    cmd: >-
+      git diff --name-only origin/codex/website-r19-integrated...HEAD > /tmp/cfa.txt; git diff
+      --numstat origin/codex/website-r19-integrated...HEAD > /tmp/nsa.txt; python3
+      scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/cfa.txt
+      --numstat-file /tmp/nsa.txt && python3 scripts/evidence_pack_lint.py --print-floor-source
+      --changed-files-file /tmp/cfa.txt --numstat-file /tmp/nsa.txt
+    exit: 0
+    ts: "2026-09-11T02:44:00Z"
+    seat: sonnet-5
+  - claim: >-
+      Council seat codex-gpt-5.6-sol (codex CLI, account default model, sandbox read-only)
+      inspected the full diff itself (git diff origin/codex/website-r19-integrated...HEAD --
+      apps/website/src) against the question "is any hunk semantic? name file+line or answer
+      none" -- verdict NONE.
+    cmd: >-
+      codex exec -s read-only "<council question, quoted in full in brief/PR body>" (run from the
+      PR-a worktree at frozen HEAD 6f167284ac)
+    exit: 0
+    ts: "2026-09-11T03:17:01Z"
+    seat: codex-gpt-5.6-sol
+  - claim: >-
+      Council seat kimi-code/k3 (kimi CLI, default_model kimi-code/k3, default_effort high, no
+      --auto/--yolo) inspected the full diff itself (5,074 diff lines, 14 files) against the same
+      question -- verdict NONE, all 103 dossierRecords entries in service-dossier-data.ts verified
+      1:1 against their pre-format counterparts (id/name/domain/family/route/variant).
+    cmd: >-
+      kimi -p "<same council question>" (run from the PR-a worktree at frozen HEAD 6f167284ac)
+    exit: 0
+    ts: "2026-09-11T03:21:35Z"
+    seat: kimi-code/k3
+  - claim: >-
+      Adversarial follow-up to kimi-code/k3: hunt for 5 named edge-case ways a purely-syntactic
+      Prettier transform could hide real behavior change (quote-key collision/duplicate-key
+      shadowing, trailing-comma arity/overload change, JSX-paren-unwrap changing arrow implicit
+      return, key/child reordering, escape-sequence reinterpretation on requote). All five
+      reported CLEAR, including a dedicated pass verifying the one non-trivial string
+      ("Continue on WhatsApp " trailing space) round-trips identically. The CLI process was killed
+      by the local 400s timeout during a SIXTH, self-initiated check (moved
+      @ts-expect-error/eslint-disable directive comments) that it had not been asked for and had
+      not yet concluded when killed.
+    cmd: >-
+      kimi -p "<adversarial edge-case prompt, quoted in full in the brief>" (same worktree/HEAD)
+    exit: 124
+    ts: "2026-09-11T03:28:57Z"
+    seat: kimi-code/k3
+  - claim: >-
+      Closed kimi's unfinished sixth check directly: zero @ts-expect-error / @ts-ignore /
+      eslint-disable directive-comment lines appear anywhere in the diff (added or removed).
+    cmd: >-
+      git diff origin/codex/website-r19-integrated...HEAD -- apps/website/src | grep -nE
+      "^[+-].*(ts-expect-error|ts-ignore|eslint-disable)"
+    exit: 1
+    ts: "2026-09-11T03:30:00Z"
+    seat: sonnet-5
+
+tests:
+  cmd: "npx vitest run (apps/website)"
+  passed: 1338
+  failed: 0
+
+static:
+  lint: n/a-not-run-standalone-eslint-this-pr-formatting-only-tsc-and-prettier-are-the-gates
+  typecheck: ok
+  build: n/a-pr-a-is-content-only-full-build-exercised-downstream-in-6210-after-rebase
+
+runtime_proof: []
+
+dissent:
+  - seat: sonnet-5
+    objection: >
+      The literal receipt method specified by the lane's team-lead for proving "no semantic
+      change" (ts.createSourceFile both sides, ts.createPrinter({removeComments:false}).printFile,
+      assert equal strings) is unreliable on this repo's Prettier config: it FAILS on 13 of the 14
+      files even though the transform is formatting-only.
+    status: CONFIRMED
+    repro: >
+      Reproduced deterministically (node check.mjs, receipt above) -- 13/14 mismatches, every one
+      traced by manual per-file diff to one of three specific, individually well-understood,
+      zero-semantic Prettier transforms: quoteProps "as-needed" removing quotes from
+      identifier-safe object keys (the printer emits a PropertyName node's raw source text rather
+      than a normalized form, so a StringLiteral-to-Identifier key-kind change still prints
+      differently even though `{"key":v}` and `{key:v}` are the same property); trailing-comma
+      insertion on multiline literals (the printer preserves the parsed
+      NodeArray.hasTrailingComma flag from the ORIGINAL source rather than applying a fixed rule,
+      so this alone diffs with zero AST content change); and JSX/expression
+      ParenthesizedExpression wrap/unwrap around return statements (parens are transparent to
+      evaluation). Mitigated, not worked around silently: built a stricter receipt still on the TS
+      compiler API (ts.transpileModule to plain JS, then a structural kind-by-kind walk with
+      property keys compared by resolved text and parens unwrapped) that gives 14/14 identical
+      (receipt above) -- accepted by the team-lead (SendMessage ack, 2026-09-11) as the valid
+      proof, with the printer-diff explicitly named as "a known artefact of preserved trivia
+      (quoted keys, trailing-comma flag, parens)".
+  - seat: kimi-code/k3
+    objection: >
+      Even a fully AST-equal diff could hide a behavior change through five specific edge cases a
+      naive AST-equality check would not catch on its own if implemented carelessly: quote-key
+      removal colliding with an existing bare key in the same object (duplicate-key shadowing),
+      trailing-comma insertion changing an array/tuple's element count or call-site arity, JSX
+      paren-unwrap flipping an arrow function's implicit-return semantics, object-key/JSX-child
+      reordering (order can matter for enumeration or last-write-wins duplicate props), and
+      quote-character changes reinterpreting an escape sequence in a string literal.
+    status: RETRACTED
+    repro: >
+      Independently investigated by the seat against the real diff (not asked to trust the
+      receipt above) -- built its own AST-equal + key-normalization + JSX-whitespace-canon
+      comparison across all 14 files and reported all five cases CLEAR: no duplicate keys in any
+      object literal after quote-prop normalization; AST-equal element/argument counts prove no
+      array or call arity changed; no ArrowFunction body.type changed between Expression and
+      BlockStatement anywhere; zero non-whitespace diffs (order-sensitive AST comparison) so no
+      key/child reordering; StringLiteral cooked values and template quasis compared exactly with
+      no diffs, including the one genuinely nontrivial case (the "Continue on WhatsApp " trailing
+      space), verified round-tripping unchanged. The run was killed by a local 400s CLI timeout
+      mid-way through a sixth, self-initiated, unrequested check (moved lint/type-suppression
+      directive comments); that specific residual was closed directly and separately (receipt
+      above, grep for ts-expect-error/ts-ignore/eslint-disable across the diff, 0 hits) rather than
+      left open.
+
+residual_risks:
+  - >-
+    The kimi-code/k3 adversarial follow-up (edge-case hunt) was terminated by a 400s local CLI
+    timeout before it finished a sixth check it initiated on its own (directive-comment
+    positions) -- the five REQUESTED checks (a)-(e) all completed and reported CLEAR before the
+    cutoff, and the unfinished sixth check was closed independently by a direct grep (0 hits,
+    receipt above), so nothing is left unverified, but the seat's own run itself did not reach a
+    natural stop.
+  - >-
+    No runtime/browser proof was taken for PR-a in isolation (formatting-only, no route changes);
+    full build + route-table verification is exercised downstream once #6210 rebases onto this
+    branch (npm run build, receipt in that PR's own evidence).
+
+sources: []
+pii_scan: clean
+size_tokens: 6800
