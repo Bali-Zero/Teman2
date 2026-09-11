@@ -459,6 +459,7 @@ export class CrmApi {
     practiceId: number,
     updates: Partial<{
       status: string;
+      practice_type_code: string; // pick/change the service after creation
       priority: string;
       quoted_price: number;
       actual_price: number;
