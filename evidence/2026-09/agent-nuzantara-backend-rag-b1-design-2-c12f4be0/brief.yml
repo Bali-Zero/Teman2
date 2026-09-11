@@ -63,11 +63,12 @@ acceptance:
       29 (26 + 3 variants); test_wa_package_builder 29; test_wa_greeting 64;
       test_curated_qa_government_fee_gate 21; test_wa_finalize 79
 assumptions:
-  - >-
-    The two TestDetectTeamQuery failures seen when the four tripwire files run
-    together in one process are pre-existing and order-dependent: the same
-    combination on a clean base checkout reports 2 failed / 228 passed, and
-    test_reasoning_utils.py alone passes on both base and head.
+  - status: verified
+    text: >-
+      The two TestDetectTeamQuery failures seen when the four tripwire files run
+      together in one process are pre-existing and order-dependent: the same
+      combination on a clean base checkout reports 2 failed / 228 passed, and
+      test_reasoning_utils.py alone passes on both base and head.
 team:
   dux:
     {

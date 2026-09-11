@@ -1,0 +1,133 @@
+task_id: backend-rag-b1-design-2
+mandate: B1
+colour: BLUE
+pr: B1.2
+code_sha: 4963e47f917af712a6eb1ad1204ba0356765ab32 # pragma: allowlist secret — last commit touching apps/
+base_sha: 0141b8130a192483a67865376281518ce7b69f2f # pragma: allowlist secret
+brief_ref: evidence/brief.yml
+gear: 2
+spend:
+  wall_clock_hours: 0.8
+  adversarial_rounds: 1
+  tokens: 400000
+  children: 1
+  child_depth: 1
+  external_builder_calls: 4
+result: >-
+  Nine dense-path pipeline variants added beside the nine preserved tripwire
+  originals; a measured registry (tests/fixtures/pipeline_score_fixtures.py)
+  supplies their sources with score_kind dense_formatted, score_raw = rc1a's
+  measured cosine and the score the real formatter mints; a guard pins the
+  registry to the live transform and turns red on an unlabelled score
+  literal inside a variant.
+inventory_ref: evidence/2026-09/agent-nuzantara-backend-rag-b1-score-contract-107e45b6/B1-2-inventory.md
+registry:
+  - {
+      row: 1,
+      node: "unit/services/rag/agentic/test_abstain_bypass_policy.py::TestTrustedToolDetection::test_successful_but_irrelevant_vector_hit_stays_below_abstain_gate",
+      original: 0.91,
+      cosine: 0.16,
+      score: 0.5435,
+    }
+  - {
+      row: 2,
+      node: "unit/services/rag/agentic/test_reasoning.py::TestCalculateEvidenceScore::test_no_keyword_overlap",
+      original: 0.9,
+      cosine: 0.04,
+      score: 0.5102,
+    }
+  - {
+      row: 3,
+      node: "services/rag/agentic/test_reasoning_utils.py::TestCalculateEvidenceScore::test_stop_words_only_query_keyword_ratio_zero",
+      original: 0.8,
+      cosine: 0.14,
+      score: 0.5376,
+    }
+  - {
+      row: 4,
+      node: "services/rag/agentic/test_reasoning_utils.py::TestCalculateEvidenceScore::test_short_words_only_yields_near_zero",
+      original: 0.8,
+      cosine: 0.16,
+      score: 0.5435,
+    }
+  - {
+      row: 5,
+      node: "services/rag/agentic/test_reasoning_utils.py::TestCalculateEvidenceScore::test_entity_mismatch_company_vs_visa",
+      original: 0.6,
+      cosine: 0.30,
+      score: 0.5882,
+    }
+  - {
+      row: 6,
+      node: "services/rag/agentic/test_reasoning_utils.py::TestCalculateEvidenceScore::test_semantic_penalty_not_applied_when_final_score_at_or_below_015",
+      original: 0.35,
+      cosine: 0.20,
+      score: 0.5556,
+    }
+  - {
+      row: 7,
+      node: "services/rag/test_evidence_scoring_abstain.py::TestEvidenceScoringFixed::test_kitas_query_with_kbli_results_low_score",
+      original: [0.85, 0.75],
+      cosine: [0.35, 0.51],
+      score: [0.6061, 0.6711],
+    }
+  - {
+      row: 8,
+      node: "services/rag/test_evidence_scoring_abstain.py::TestEvidenceScoringFixed::test_nonsense_query_zero_score",
+      original: 0.8,
+      cosine: 0.22,
+      score: 0.5618,
+    }
+  - {
+      row: 9,
+      node: "services/rag/test_evidence_scoring_abstain.py::TestEvidenceScoringFixed::test_entity_type_mismatch_detection",
+      original: 0.9,
+      cosine: 0.40,
+      score: 0.625,
+    }
+unresolved:
+  - "regression 10: a behaviour gap of the withdrawn design (over-abstain on a perfect lexical match), not a fixture — no file/line in any source"
+  - "regression 11: named by count in three sources, itemised in none"
+  - "withdrawn candidate SHA: not recoverable; immutable receipt = 255 CI runs on the branch, zero failures (B1-2-inventory.md)"
+measured:
+  before_after_per_file:
+    {
+      test_reasoning_utils: "84 -> 88",
+      test_evidence_scoring_abstain: "26 -> 29",
+      test_abstain_bypass_policy: "34 -> 35",
+      test_reasoning: "86 -> 87",
+    }
+  guard: "46 passed"
+  mutation_a: "first registry entry score_kind -> UNKNOWN: 1 failed (G1) / 45 passed"
+  mutation_b: '{"score": 0.9} literal inside test_no_keyword_overlap_pipeline_variant: 1 failed (G4) / 45 passed'
+  assertion_diff: "0 variants whose asserts/prints differ; 0 variants whose body differs beyond the sources literal (AST)"
+  numstat_existing_files_deletions: 0
+  innocence:
+    {
+      test_evidence_cross_language: "122 passed, 2 xfailed",
+      test_evidence_scoring_abstain: 29,
+      test_wa_package_builder: 29,
+      test_wa_greeting: 64,
+      test_curated_qa_government_fee_gate: 21,
+      test_wa_finalize: 79,
+    }
+  pre_existing: "TestDetectTeamQuery x2 fail only when the four tripwire files share one process; identical 2 failed / 228 passed on a clean base"
+pii_scan: clean
+bites:
+  consumer: "CI Backend Tests (Python) shards collecting the four tripwire files and the guard"
+  observation: "before/after counts above, both green; guard red under both mutations"
+lanes:
+  - lane: "B1.2 registry and guard"
+    role: build
+    seat: "claude-sonnet-5 (implementer child)"
+    state: delivered
+  - lane: "B1.2 variant addition (mandatory external builder lane)"
+    role: build
+    seat: "tp1-glm-5.2 (3 failed tries) then tp1-qwen3.8-max (same-role fallback), verified and corrected by claude-opus-5 (Dux)"
+    state: delivered
+  - lane: "B1.2 adversarial round 1"
+    role: review
+    seat: "codex gpt-5.6-sol, effort high, read-only"
+    state: pending
+dissent: []
+adversarial: pending
