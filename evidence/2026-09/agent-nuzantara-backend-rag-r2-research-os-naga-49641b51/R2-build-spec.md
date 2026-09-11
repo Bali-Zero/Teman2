@@ -2,10 +2,10 @@
 
 > Authored by the R2 Dux (BLUE, Opus 5 `xhigh`, Gear 3) on 2026-09-11 from
 > `research/operations/2026-09-10-fable-max-sessions/R-research-os.md` @ origin/main blob
-> `692b70de1e703d8b460f5157dd7969b4e5848717`, read from disk, never from memory.
+> `692b70de1e703d8b460f5157dd7969b4e5848717`, read from disk, never from memory. <!-- pragma: allowlist secret -->
 > Worktree `.worktrees/backend-rag-r2-research-os-naga-engine`, branch
 > `agent/nuzantara/backend-rag/r2-research-os-naga-engine`, base
-> `ea50eb262f9ed96ce070cb407b55202002b0dae8` (== `origin/main` when measured).
+> `ea50eb262f9ed96ce070cb407b55202002b0dae8` (== `origin/main` when measured). <!-- pragma: allowlist secret -->
 >
 > **The implementer builds against THIS FILE, not against the chat.** Every line below that
 > says MUST is an acceptance condition; every line that says FORBIDDEN fails the gate.

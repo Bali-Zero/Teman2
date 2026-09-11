@@ -21,10 +21,10 @@ mission:
   host: Pro
   worktree: .worktrees/backend-rag-r2-research-os-naga-engine
   branch: agent/nuzantara/backend-rag/r2-research-os-naga-engine
-  base: ea50eb262f9ed96ce070cb407b55202002b0dae8
+  base: ea50eb262f9ed96ce070cb407b55202002b0dae8 # pragma: allowlist secret
   base_equals_origin_main_at: "2026-09-11T11:02:00Z"
   mandate_ref: research/operations/2026-09-10-fable-max-sessions/R-research-os.md
-  mandate_blob: 692b70de1e703d8b460f5157dd7969b4e5848717
+  mandate_blob: 692b70de1e703d8b460f5157dd7969b4e5848717 # pragma: allowlist secret
   mandate_blob_note: >-
     Bound by BLOB, not by pointer: the file was read from origin/main and its blob verified
     against the one the opening instruction named. 44336 bytes.
@@ -104,7 +104,7 @@ descendants:
 mandate_ledger:
   root: ~/.claude/state/child-mandates
   key: R2
-  key_sha256: d653b016db1da8f5b36f84a44465e5d6adffeb38ae46cc701e3462343727717b
+  key_sha256: d653b016db1da8f5b36f84a44465e5d6adffeb38ae46cc701e3462343727717b # pragma: allowlist secret
   bound_at: "2026-09-11T11:09:26Z"
   opening: "2026-09-11T09:35:58Z"
   opening_source: >-
@@ -207,7 +207,7 @@ checkpoints:
   received:
     - key: R2-ack
       envelope_acked: 20260911T100629Z-5234.md
-      sha256: 4d689c20ac2fe4fd2f6918cb7844c616c32e3834183f1db3dd39e8d4f57b1525
+      sha256: 4d689c20ac2fe4fd2f6918cb7844c616c32e3834183f1db3dd39e8d4f57b1525 # pragma: allowlist secret
       at: "2026-09-11T10:27Z"
     - key: R2-ack
       at: "2026-09-11T11:00Z"
@@ -246,7 +246,7 @@ generations:
     session_tab: >-
       Ghostty tab titled 'R2 g2 engine' via OSC 2 written to ttys007 (claude pid 76146). Whether it
       sits in a window separate from R1 is a GUI fact this window cannot observe.
-    head_verified: "9f446f25e1dfa70da5306f115e7453dbac4b75e9, tree clean, 1 ahead / 11 behind origin/main at 15:57:14Z"
+    head_verified: "9f446f25e1dfa70da5306f115e7453dbac4b75e9, tree clean, 1 ahead / 11 behind origin/main at 15:57:14Z" # pragma: allowlist secret
     ledger_at_open: >-
       Key sha256("R2") read by name: deadline 2026-09-11T15:35:58.004Z, renewals 1 (g1 opening
       bind, previous_deadline null). EXPIRED 19m21s BEFORE g2 OPENED. mandate_budget.py rule 8: an
