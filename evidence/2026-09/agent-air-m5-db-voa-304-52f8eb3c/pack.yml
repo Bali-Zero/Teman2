@@ -9,7 +9,7 @@ council_run: council-journal.jsonl
 plan_ref: >-
   docs/plans/2026-09-11-garuda-voa-final-spec.md §3 row W1S and §5; STEP5-PRIVILEGE-DECISION.md (RULED D);
   evidence/2026-09/agent-air-m5-ops-garuda-voa-0911-c652d82b/ (OPERATOR-D.md, migration-304-owner-bracket.patch,
-  test_option_d_304.py). Branch agent/air-m5/db/voa-304, base 0141b8130a; 304 carried from #5526 head 6ea6eb9ade.
+  test_option_d_304.py). Branch agent/air-m5/db/voa-304, base 2a4681b0b8 (rebased 2026-09-11T18:44Z); 304 carried from #5526 head 6ea6eb9ade.
 grader: >-
   pending — the final on-disk gate is a fresh session launched by the Imperatore (nuzantara-41), requested with PR
   number and head sha. This session does not sign its own gate and does not arm (MIGRATION_DATABASE_URL absent on Fly).
@@ -74,7 +74,7 @@ spend:
 appetite_exceeded: none
 
 diff:
-  net_lines: "NET_LINES_PLACEHOLDER"
+  net_lines: 1037
   behaviour_change: >-
     Adds migration 304. Merging apps/backend-rag is the deploy: release_command applies it. With
     MIGRATION_DATABASE_URL set (option D) it applies as backend_rag_v2 with session_user backend_rag_migrator.
