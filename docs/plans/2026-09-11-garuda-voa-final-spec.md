@@ -28,6 +28,8 @@ Production: `build_sha` moves to `2a9941ab` with the #6123 deploy (prove: releas
 
 Bar for G0: presence verified without printing a secret (`${VAR:+SET}`), role catalogue as expected, the two decisions written into `ZERO-DECISIONS.md`.
 
+**Status 2026-09-11 (evening):** G0.1 DONE (role live, secret staged) · G0.2 PLACEHOLDERS staged · G0.3 DONE (`garuda-document-privacy-v1`, 30d, CREATED_AT) · G0.4 DECIDED (R19). W1R ∥ W3C ∥ W3A may launch now; W1S may arm once W1R is live; W1W is unblocked on the policy side; W4S is unblocked on the visual side.
+
 ## 3. The windows — BLUE, max three simultaneous
 
 Common rule: Claude Dux (Opus 5 xhigh) ships end-to-end; Sonnet 5 builds; Sol (`codex exec` read-only) refutes; a FRESH Opus 5 session signs the on-disk gate. Astra stays prepare-only. One window = one mandate = one worktree.
