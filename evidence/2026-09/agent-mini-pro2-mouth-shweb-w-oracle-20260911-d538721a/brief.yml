@@ -1,0 +1,68 @@
+gear: 1
+task_id: shweb-w-oracle-20260911
+mandate_id: SHWEB-20260911/W-ORACLE/PR-O0
+colour: BLUE
+l_level: L1
+gate_class: opus
+objective: >-
+  PR-O0 of mandate SHWEB-20260911 / W-ORACLE. Docs/research capture only, no app code and no
+  deploy: (1) byte-identical copy of the 2026-09-11 review-reason audit package and the
+  W-ORACLE final-window spec (v6.2) from the audit worktree into this repo; (2) apply Astra's
+  uncommitted SKILL.md LIVE STATE edit and add a TRACK C claim bullet naming the PR-O0..PR-O4
+  chain; (3) apply Astra's uncommitted live-state-log.md entry and prepend three retroactive
+  log entries (PR #6051, #5918, #5855) sourced only from `gh pr view --json`; (4) this evidence
+  brief + contract-lock.json pinning every input's source hash.
+scope:
+  - research/visa/2026-09-11-oracle-final-window-spec.md
+  - research/visa/2026-09-11-review-reason-audit/README.md
+  - research/visa/2026-09-11-review-reason-audit/census.json
+  - research/visa/2026-09-11-review-reason-audit/inputs.mts
+  - research/visa/2026-09-11-review-reason-audit/test_census.py
+  - research/visa/2026-09-11-review-reason-audit/render.test.tsx
+  - research/visa/2026-09-11-review-reason-audit/browser.mts
+  - research/visa/2026-09-11-review-reason-audit/live-browser.json
+  - research/visa/2026-09-11-review-reason-audit/live-uncertainty.png
+  - .agents/skills/visaoracle/SKILL.md
+  - .agents/skills/visaoracle/references/live-state-log.md
+  - evidence/2026-09/agent-mini-pro2-mouth-shweb-w-oracle-20260911-d538721a/brief.yml
+  - evidence/2026-09/agent-mini-pro2-mouth-shweb-w-oracle-20260911-d538721a/contract-lock.json
+constraints:
+  - Docs/research only — no apps/** file touched, no rulepack, no migration, no deploy.
+  - The 9 copied files (spec + 8 audit files) must be byte-identical to their source, verified
+    by sha256; __pycache__ and the stale decisions-zero copy were NOT copied.
+  - No decisions file authored by this PR-O0 — D1/D5/D6 are referenced, not re-derived.
+  - No client PII/OSINT in any file added or edited.
+acceptance:
+  - text: >-
+      WHEN the 9 copied files are hashed in this repo, THEN every sha256 SHALL match the
+      pinned source hash exactly.
+    status: verified
+    probe: "shasum -a 256 research/visa/2026-09-11-oracle-final-window-spec.md research/visa/2026-09-11-review-reason-audit/*.md research/visa/2026-09-11-review-reason-audit/*.json research/visa/2026-09-11-review-reason-audit/*.mts research/visa/2026-09-11-review-reason-audit/*.py research/visa/2026-09-11-review-reason-audit/*.tsx research/visa/2026-09-11-review-reason-audit/*.png"
+  - text: >-
+      WHEN SKILL.md's LIVE STATE section is grepped for the fresh 67-walk census figure,
+      THEN it SHALL be present at least once.
+    status: verified
+    probe: "grep -c '67' .agents/skills/visaoracle/SKILL.md"
+  - text: >-
+      WHEN live-state-log.md is grepped for the 2026-09-11 entries, THEN Astra's audit entry
+      and the three retroactive PR entries (#6051/#5918/#5855) SHALL all be present.
+    status: verified
+    probe: "grep -c '2026-09-11\\|2026-09-09\\|2026-09-08\\|2026-09-07' .agents/skills/visaoracle/references/live-state-log.md"
+  - text: >-
+      WHEN the full diff against origin/main is grepped for PII shapes (emails, +62 phone
+      numbers, passport/KTP/NPWP-like tokens), THEN no match SHALL be found.
+    status: verified
+    probe: "git diff origin/main...HEAD | grep -inE '[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}|\\+62[0-9]{8,13}|\\b[0-9]{16}\\b|\\b[a-zA-Z][0-9]{7}\\b'"
+risks:
+  - >-
+    The retroactive log entries summarize three prior PRs from their `gh pr view` body text
+    only (not re-measured this session) — each entry carries the mandatory disclaimer sentence
+    so a future reader does not mistake it for a fresh measurement.
+  - >-
+    gear is left at 1 pending the orchestrator's floor computation over the actual diff size;
+    this PR is docs-only so the size term should stay low, but the final gear is not this
+    builder's call.
+pii: none
+adversarial_review:
+  refuter: "codex exec --sandbox read-only (Codex GPT-5.6, account default model)"
+  status: pending

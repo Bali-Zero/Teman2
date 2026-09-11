@@ -1,0 +1,88 @@
+{
+  "mandate": "SHWEB-20260911/W-ORACLE/PR-O0",
+  "base_sha": "ea50eb262f9ed96ce070cb407b55202002b0dae8",
+  "frozen_at": "2026-09-11T11:12:01Z",
+  "inputs": [
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/mouth-visa-review-reason-audit-20260911/research/visa/2026-09-11-oracle-final-window-spec.md",
+      "sha256_source": "2acb148ea72fec9bf34d2022c03e1d9883fa557ba8b1f4ff0ff736f697e7c9d5",
+      "repo_path": "research/visa/2026-09-11-oracle-final-window-spec.md",
+      "sha256_repo": "2acb148ea72fec9bf34d2022c03e1d9883fa557ba8b1f4ff0ff736f697e7c9d5"
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/mouth-visa-review-reason-audit-20260911/research/visa/2026-09-11-review-reason-audit/README.md",
+      "sha256_source": "d8102e736d5602be33c9c8b668a91d6f245adb30454bf754cda8add1e0dd029b",
+      "repo_path": "research/visa/2026-09-11-review-reason-audit/README.md",
+      "sha256_repo": "d8102e736d5602be33c9c8b668a91d6f245adb30454bf754cda8add1e0dd029b"
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/mouth-visa-review-reason-audit-20260911/research/visa/2026-09-11-review-reason-audit/census.json",
+      "sha256_source": "11fe7c1886cf2559493811f8cbdbb883b274f797eaaae3f2e6bb90261f12e704",
+      "repo_path": "research/visa/2026-09-11-review-reason-audit/census.json",
+      "sha256_repo": "11fe7c1886cf2559493811f8cbdbb883b274f797eaaae3f2e6bb90261f12e704"
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/mouth-visa-review-reason-audit-20260911/research/visa/2026-09-11-review-reason-audit/inputs.mts",
+      "sha256_source": "73969f9cee2bd549f39b7f56bd621fde8f387267971fdd0fac30dd1d40ada251",
+      "repo_path": "research/visa/2026-09-11-review-reason-audit/inputs.mts",
+      "sha256_repo": "73969f9cee2bd549f39b7f56bd621fde8f387267971fdd0fac30dd1d40ada251"
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/mouth-visa-review-reason-audit-20260911/research/visa/2026-09-11-review-reason-audit/test_census.py",
+      "sha256_source": "ba3ee261fe43b0e6413c1aff6b8c86b3f16035aad22d7751c2ec8ef861df84d6",
+      "repo_path": "research/visa/2026-09-11-review-reason-audit/test_census.py",
+      "sha256_repo": "ba3ee261fe43b0e6413c1aff6b8c86b3f16035aad22d7751c2ec8ef861df84d6"
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/mouth-visa-review-reason-audit-20260911/research/visa/2026-09-11-review-reason-audit/render.test.tsx",
+      "sha256_source": "bb5939cad97fe9857d8fea8cacef0aef41285eeace4b56333a004ce4a890890e",
+      "repo_path": "research/visa/2026-09-11-review-reason-audit/render.test.tsx",
+      "sha256_repo": "bb5939cad97fe9857d8fea8cacef0aef41285eeace4b56333a004ce4a890890e"
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/mouth-visa-review-reason-audit-20260911/research/visa/2026-09-11-review-reason-audit/browser.mts",
+      "sha256_source": "e056d690aa5b38318d0a09099ac9bb404ebcb170423c9bb7874498c565c99960",
+      "repo_path": "research/visa/2026-09-11-review-reason-audit/browser.mts",
+      "sha256_repo": "e056d690aa5b38318d0a09099ac9bb404ebcb170423c9bb7874498c565c99960"
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/mouth-visa-review-reason-audit-20260911/research/visa/2026-09-11-review-reason-audit/live-browser.json",
+      "sha256_source": "c29c51a01b3f9a4b5fa34d7011f21c496a0b2157cbccfc6fa02feab36de40360",
+      "repo_path": "research/visa/2026-09-11-review-reason-audit/live-browser.json",
+      "sha256_repo": "c29c51a01b3f9a4b5fa34d7011f21c496a0b2157cbccfc6fa02feab36de40360"
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/mouth-visa-review-reason-audit-20260911/research/visa/2026-09-11-review-reason-audit/live-uncertainty.png",
+      "sha256_source": "14427e15b2a380375732e0502105ce9d0152a2f91f11cef4b3d8bd6a5827c41f",
+      "repo_path": "research/visa/2026-09-11-review-reason-audit/live-uncertainty.png",
+      "sha256_repo": "14427e15b2a380375732e0502105ce9d0152a2f91f11cef4b3d8bd6a5827c41f"
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/docs-mouth-final-windows-20260911/docs/plans/mouth-final-20260911/README.md",
+      "sha256_source": "073e57ded13ddbd6e113a338ac95dd8a67f227ef152baa4934ef80db66693c30",
+      "repo_path": null,
+      "sha256_repo": null,
+      "note": "pin only — not copied into this PR"
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/docs-mouth-final-windows-20260911/docs/plans/mouth-final-20260911/W0-oracle-reasons.md",
+      "sha256_source": "ae3f0ae9c664da75336f5e9e31d93960010896de8f21c4b96afae853c0b5b928",
+      "repo_path": null,
+      "sha256_repo": null,
+      "note": "pin only — not copied into this PR"
+    },
+    {
+      "path": "/Users/nuzantara/Desktop/w-oracle-launch-20260911/02-DECISIONI-ZERO.md",
+      "sha256_source": "5e9f325cb435136f699bf3809aa917b0aa11538379bcf1afb9b6166968ab8229",
+      "repo_path": null,
+      "sha256_repo": null,
+      "note": "pin only — not copied into this PR"
+    }
+  ],
+  "active_pack": {
+    "sequence": 20,
+    "version": "2026.9.6",
+    "rule_pack_id": "ac0a792d-a38d-512e-9ead-54a5d008fb68",
+    "activation_id": "e08ebea9-d50f-48a6-989e-b7e4698f96ad"
+  }
+}
