@@ -20,12 +20,15 @@ from backend.db import migration_base
 from backend.db.migration_manager import MigrationManager
 
 
-def _manager(database_url: str) -> MigrationManager:
-    """Build a MigrationManager without going through `resolve_migration_dsn()`."""
-    mgr = MigrationManager.__new__(MigrationManager)
-    mgr.database_url = database_url
-    mgr.pool = None
-    return mgr
+def _manager(database_url: str, *, dedicated: bool | None = None) -> MigrationManager:
+    """Build a MigrationManager on an EXPLICIT url, not via `resolve_migration_dsn()`.
+
+    Built through the real constructor on purpose: since 2026-09-11 the manager
+    freezes URL and mode together, and the diagnostic names the source it
+    actually dialled. A hand-assembled instance would not carry that mode and
+    would test a shape that cannot occur.
+    """
+    return MigrationManager(database_url=database_url, dedicated=dedicated)
 
 
 @pytest.mark.asyncio
@@ -33,14 +36,17 @@ async def test_connect_error_names_migration_database_url_and_hints_sslmode(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """MIGRATION_DATABASE_URL set, no sslmode, create_pool raises ConnectionResetError."""
-    monkeypatch.setattr(migration_base.settings, "migration_database_url", "postgresql://mig@h/db")
+    dsn = "postgresql://migrator:s3cr3t@10.0.0.5:5432/nuzantara"
+    # The runner is ON the migrator DSN -- the production shape, where
+    # `resolve_migration_dsn()` selects exactly this url.
+    monkeypatch.setattr(migration_base.settings, "migration_database_url", dsn)
 
     async def _raise(*_a, **_kw):
         raise ConnectionResetError()
 
     monkeypatch.setattr("backend.db.migration_manager.asyncpg.create_pool", _raise)
 
-    mgr = _manager("postgresql://migrator:s3cr3t@10.0.0.5:5432/nuzantara")
+    mgr = _manager(dsn)
 
     with pytest.raises(migration_base.MigrationError) as exc_info:
         await mgr.connect()
@@ -73,6 +79,36 @@ async def test_connect_error_names_database_url_when_not_dedicated(
     text = str(exc_info.value)
     assert "DATABASE_URL" in text
     assert "MIGRATION_DATABASE_URL" not in text
+    assert "pass" not in text
+
+
+@pytest.mark.asyncio
+async def test_connect_error_names_database_url_for_an_explicit_legacy_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The runner invariant, seen through the diagnostic (2026-09-11).
+
+    `MIGRATION_DATABASE_URL` is configured, but THIS manager was handed the
+    runtime DSN explicitly. It dialled DATABASE_URL, so the message must say
+    DATABASE_URL -- naming the migrator here would send the next operator to
+    debug a secret that was never in play.
+    """
+    monkeypatch.setattr(migration_base.settings, "migration_database_url", "postgresql://mig@h/db")
+
+    async def _raise(*_a, **_kw):
+        raise ConnectionResetError()
+
+    monkeypatch.setattr("backend.db.migration_manager.asyncpg.create_pool", _raise)
+
+    mgr = _manager("postgresql://runtime:pass@10.0.0.5:5432/nuzantara")
+    assert mgr._dedicated is False
+
+    with pytest.raises(migration_base.MigrationError) as exc_info:
+        await mgr.connect()
+
+    text = str(exc_info.value)
+    assert "MIGRATION_DATABASE_URL" not in text
+    assert "DATABASE_URL" in text
     assert "pass" not in text
 
 

@@ -19,6 +19,13 @@ Unit (a fake connection, no database):
   - DSN precedence: `MIGRATION_DATABASE_URL` wins for the runner, and ONLY
     for the runner (`settings.database_url` is untouched); the manager hands
     ITS DSN to every `apply()` so ledger, lock and SQL hit one database.
+  - THE RUNNER INVARIANT (2026-09-11, this file's second half of the story):
+    dedicated-vs-legacy is a property of the URL SELECTED, not of the ambient
+    setting. An EXPLICIT legacy override stays legacy while
+    `MIGRATION_DATABASE_URL` is set -- otherwise a connection that is not the
+    migrator inherits checks it can never satisfy. URL and mode are frozen
+    together in `MigrationManager.__init__`, so mutating `settings` afterwards
+    cannot re-classify a manager that is already built.
   - SINGLE DSN is an unconditional no-op: not even a catalogue read (a
     superuser is a member of every role, so a member-based rule would have
     made CI's `test` superuser SET ROLE -- codex finding 3, 2026-09-11).
@@ -57,6 +64,7 @@ from backend.db.migration_base import (
     RUNTIME_ROLE,
     MigrationError,
     assume_runtime_role,
+    migration_dsn_is_dedicated,
     resolve_applied_as,
     resolve_migration_dsn,
 )
@@ -91,12 +99,190 @@ async def test_manager_hands_its_own_dsn_to_every_apply(monkeypatch):
     seen: dict = {}
 
     class _Mig:
-        async def apply(self, database_url=None):
+        async def apply(self, database_url=None, *, dedicated=None):
             seen["dsn"] = database_url
+            seen["dedicated"] = dedicated
             return True
 
     assert await manager.apply_migration(_Mig()) is True
     assert seen["dsn"] == "postgresql://a@h/db"
+
+
+# ---------------------------------------------------------------------------
+# Unit: the runner invariant -- mode belongs to the SELECTED url
+# ---------------------------------------------------------------------------
+
+
+class _RecordingMigration:
+    """A `BaseMigration` stand-in that records what the manager bound to it."""
+
+    def __init__(self) -> None:
+        self.seen: dict = {}
+
+    async def apply(self, database_url=None, *, dedicated=None):
+        self.seen = {"dsn": database_url, "dedicated": dedicated}
+        return True
+
+
+def test_the_configured_migrator_url_classifies_as_dedicated(monkeypatch):
+    monkeypatch.setattr(migration_base.settings, "database_url", "postgresql://rt@h/db")
+    monkeypatch.setattr(migration_base.settings, "migration_database_url", "postgresql://mig@h/db")
+    # the default path -- whatever `resolve_migration_dsn()` chose
+    assert migration_dsn_is_dedicated() is True
+    # the same url, named explicitly, is still that url
+    assert migration_dsn_is_dedicated("postgresql://mig@h/db") is True
+
+
+def test_an_explicit_legacy_url_stays_legacy_despite_the_global_secret(monkeypatch):
+    """THE REGRESSION (Astra, 2026-09-11).
+
+    A globally configured migrator DSN used to impose dedicated-role checks on
+    an explicitly selected legacy connection -- a session that authenticates as
+    the runtime role, which `assume_runtime_role` refuses by design ("it
+    authenticates AS the runtime role"). Selecting a URL must select its mode.
+    """
+    monkeypatch.setattr(migration_base.settings, "database_url", "postgresql://rt@h/db")
+    monkeypatch.setattr(migration_base.settings, "migration_database_url", "postgresql://mig@h/db")
+    assert migration_dsn_is_dedicated("postgresql://rt@h/db") is False
+    # ... and an unrelated third URL is not the configured migrator either.
+    assert migration_dsn_is_dedicated("postgresql://other@h/db") is False
+
+
+def test_no_secret_means_legacy_for_every_url(monkeypatch):
+    monkeypatch.setattr(migration_base.settings, "database_url", "postgresql://rt@h/db")
+    monkeypatch.setattr(migration_base.settings, "migration_database_url", None)
+    assert migration_dsn_is_dedicated() is False
+    assert migration_dsn_is_dedicated("postgresql://rt@h/db") is False
+    assert migration_dsn_is_dedicated("postgresql://mig@h/db") is False
+
+
+async def test_manager_on_an_explicit_legacy_url_binds_legacy_mode(monkeypatch):
+    """End of the same chain: the mode the manager hands to `apply()`."""
+    monkeypatch.setattr(migration_base.settings, "database_url", "postgresql://rt@h/db")
+    monkeypatch.setattr(migration_base.settings, "migration_database_url", "postgresql://mig@h/db")
+
+    manager = MigrationManager(database_url="postgresql://rt@h/db")
+    assert manager._dedicated is False
+    mig = _RecordingMigration()
+    assert await manager.apply_migration(mig) is True
+    assert mig.seen == {"dsn": "postgresql://rt@h/db", "dedicated": False}
+
+
+async def test_manager_on_the_configured_migrator_url_binds_dedicated_mode(monkeypatch):
+    monkeypatch.setattr(migration_base.settings, "database_url", "postgresql://rt@h/db")
+    monkeypatch.setattr(migration_base.settings, "migration_database_url", "postgresql://mig@h/db")
+
+    manager = MigrationManager()  # resolves to the migrator DSN
+    assert manager.database_url == "postgresql://mig@h/db"
+    assert manager._dedicated is True
+    mig = _RecordingMigration()
+    assert await manager.apply_migration(mig) is True
+    assert mig.seen == {"dsn": "postgresql://mig@h/db", "dedicated": True}
+
+
+async def test_an_alternate_dedicated_url_must_declare_itself(monkeypatch):
+    """A second migrator DSN is not guessable from the string: it says so."""
+    monkeypatch.setattr(migration_base.settings, "database_url", "postgresql://rt@h/db")
+    monkeypatch.setattr(migration_base.settings, "migration_database_url", "postgresql://mig@h/db")
+
+    manager = MigrationManager(database_url="postgresql://mig2@h/db", dedicated=True)
+    assert manager._dedicated is True
+    mig = _RecordingMigration()
+    assert await manager.apply_migration(mig) is True
+    assert mig.seen == {"dsn": "postgresql://mig2@h/db", "dedicated": True}
+
+
+async def test_a_later_settings_mutation_does_not_change_a_built_manager(monkeypatch):
+    """URL and mode are frozen together at construction.
+
+    A manager built before the migrator secret existed keeps BOTH its URL and
+    its legacy mode when the secret appears; and a manager built after it keeps
+    dedicated when the secret is withdrawn. Nothing downstream re-asks
+    `settings`.
+    """
+    monkeypatch.setattr(migration_base.settings, "database_url", "postgresql://rt@h/db")
+    monkeypatch.setattr(migration_base.settings, "migration_database_url", None)
+
+    legacy_manager = MigrationManager()
+    assert (legacy_manager.database_url, legacy_manager._dedicated) == (
+        "postgresql://rt@h/db",
+        False,
+    )
+
+    # the secret lands mid-process
+    monkeypatch.setattr(migration_base.settings, "migration_database_url", "postgresql://mig@h/db")
+    assert (legacy_manager.database_url, legacy_manager._dedicated) == (
+        "postgresql://rt@h/db",
+        False,
+    )
+    mig = _RecordingMigration()
+    assert await legacy_manager.apply_migration(mig) is True
+    assert mig.seen == {"dsn": "postgresql://rt@h/db", "dedicated": False}
+
+    # the mirror case: built dedicated, then the secret is withdrawn
+    dedicated_manager = MigrationManager()
+    monkeypatch.setattr(migration_base.settings, "migration_database_url", None)
+    assert (dedicated_manager.database_url, dedicated_manager._dedicated) == (
+        "postgresql://mig@h/db",
+        True,
+    )
+    mig2 = _RecordingMigration()
+    assert await dedicated_manager.apply_migration(mig2) is True
+    assert mig2.seen == {"dsn": "postgresql://mig@h/db", "dedicated": True}
+
+
+@pytest.mark.parametrize(
+    ("dsn", "override", "expected"),
+    [
+        ("postgresql://rt@h/db", None, False),  # explicit legacy stays legacy
+        ("postgresql://mig@h/db", None, True),  # the configured migrator
+        (None, None, True),  # resolved: the migrator wins for the runner
+        ("postgresql://mig2@h/db", True, True),  # an alternate, declared
+        ("postgresql://mig@h/db", False, False),  # the manager's word is final
+    ],
+)
+async def test_standalone_apply_binds_the_mode_of_the_dsn_it_selected(
+    monkeypatch, tmp_path, dsn, override, expected
+):
+    """`BaseMigration.apply()`: the same invariant, one layer below the manager.
+
+    Mode comes from the DSN selected on THIS call -- or from the mode the
+    manager bound, when it passed one -- never from the ambient setting alone.
+    The connection is never opened: `assume_runtime_role` is intercepted right
+    after connect and records what it was given.
+    """
+    monkeypatch.setattr(migration_base.settings, "database_url", "postgresql://rt@h/db")
+    monkeypatch.setattr(migration_base.settings, "migration_database_url", "postgresql://mig@h/db")
+
+    sql_file = tmp_path / "999_probe.sql"
+    sql_file.write_text("SELECT 1;\n", encoding="utf-8")
+    migration = migration_base.BaseMigration(
+        999, "999_probe.sql", "probe", rollback_sql="SELECT 1;", _sql_dir=tmp_path
+    )
+
+    seen: dict = {}
+
+    class _NoConn:
+        async def close(self):
+            seen["closed"] = True
+
+    async def _fake_connect(url):
+        seen["dsn"] = url
+        return _NoConn()
+
+    async def _fake_assume(conn, **kwargs):
+        seen["dedicated"] = kwargs.get("dedicated")
+        raise MigrationError("stop here -- the invariant is already observable")
+
+    monkeypatch.setattr(migration_base.asyncpg, "connect", _fake_connect)
+    monkeypatch.setattr(migration_base, "assume_runtime_role", _fake_assume)
+
+    with pytest.raises(MigrationError, match="stop here"):
+        await migration.apply(database_url=dsn, dedicated=override)
+
+    assert seen["dsn"] == (dsn or "postgresql://mig@h/db")
+    assert seen["dedicated"] is expected
+    assert seen["closed"] is True  # the connection is not leaked on refusal
 
 
 # ---------------------------------------------------------------------------
@@ -152,13 +338,29 @@ async def test_single_dsn_is_an_unconditional_no_op():
     assert conn.executed == []
 
 
-async def test_dedicated_reads_the_setting_when_not_told(monkeypatch):
-    monkeypatch.setattr(migration_base.settings, "migration_database_url", None)
+async def test_the_mode_must_be_passed_and_is_never_inferred_here(monkeypatch):
+    """`dedicated` has NO default: a connection cannot classify itself.
+
+    Before 2026-09-11 this function fell back to the ambient setting when the
+    caller said nothing -- which is the one classification that cannot be right,
+    since a `Connection` does not carry the URL it was opened with. The caller
+    that CHOSE the url passes the mode down. Here the classifier is applied
+    explicitly, exactly as `MigrationManager.__init__` and `apply()` do.
+    """
     conn = _FakeConn(_row("postgres", "postgres", is_super=True))
-    assert await assume_runtime_role(conn) is None  # unset -> single DSN -> no-op
+
+    with pytest.raises(TypeError, match="dedicated"):
+        await assume_runtime_role(conn)  # type: ignore[call-arg]
+
+    monkeypatch.setattr(migration_base.settings, "migration_database_url", None)
+    assert (
+        await assume_runtime_role(conn, dedicated=migration_dsn_is_dedicated()) is None
+    )  # unset -> single DSN -> no-op, not even a catalogue read
+    assert conn.fetches == 0
+
     monkeypatch.setattr(migration_base.settings, "migration_database_url", "postgresql://m@h/d")
     with pytest.raises(MigrationError, match="SUPERUSER"):
-        await assume_runtime_role(conn)
+        await assume_runtime_role(conn, dedicated=migration_dsn_is_dedicated())
 
 
 @pytest.mark.parametrize(
@@ -415,8 +617,50 @@ async def test_real_pg_option_d_choreography(option_d_sandbox: _Sandbox):
         await conn.close()
 
 
+async def test_real_pg_reset_all_keeps_the_role_and_discard_all_drops_it(
+    option_d_sandbox: _Sandbox,
+):
+    """The measurement the runner's comments now rest on (PG 17.10, 2026-09-11).
+
+    asyncpg >= 0.30 releases a connection with
+    `pg_advisory_unlock_all; CLOSE ALL; UNLISTEN *; RESET ALL`. `RESET ALL`
+    resets GUCs -- and `role` set by `SET ROLE` is NOT among what it clears, so
+    `current_user` survives. `DISCARD ALL` is the statement that does reset it.
+    The per-acquire `setup` hook is therefore not load-bearing against the
+    pool's own release; it is load-bearing against an explicit `RESET ROLE` by
+    a borrower. Pinned here so the comments in `migration_base.py` and
+    `migration_manager.py` are falsifiable rather than remembered.
+    """
+    sb = option_d_sandbox
+    # `statement_cache_size=0`: `DISCARD ALL` also DEALLOCATEs asyncpg's cached
+    # prepared statements, so a cached connection would raise
+    # `InvalidSQLStatementNameError` on the next read instead of answering the
+    # question asked here. (Measured while writing this test -- and one more
+    # reason the pool's release does not use `DISCARD ALL`.)
+    conn = await asyncpg.connect(sb.dsn_for(sb.migrator_role), statement_cache_size=0)
+    try:
+        await assume_runtime_role(
+            conn, runtime_role=sb.runtime_role, ledger_role=sb.ledger_role, dedicated=True
+        )
+        assert await conn.fetchval("SELECT current_user") == sb.runtime_role
+
+        await conn.execute("RESET ALL")
+        assert await conn.fetchval("SELECT current_user") == sb.runtime_role
+
+        await conn.execute("DISCARD ALL")
+        assert await conn.fetchval("SELECT current_user") == sb.migrator_role
+    finally:
+        await conn.close()
+
+
 async def test_real_pg_pool_setup_survives_release_and_reacquire(option_d_sandbox: _Sandbox):
-    """asyncpg resets the session on release; the role must come back on acquire."""
+    """The role is the runtime role on EVERY acquire, reset or not.
+
+    Not because the release drops it -- measured above, `RESET ALL` keeps it --
+    but because the hook must hold in both worlds: a borrower that issued an
+    explicit `RESET ROLE` gets the role back here, and one that did not is
+    unaffected (the idempotent branch in `assume_runtime_role`).
+    """
     import functools
 
     sb = option_d_sandbox
