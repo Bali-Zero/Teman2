@@ -1,58 +1,56 @@
-task_id: kbli-science-audit-verification
+task_id: kbli-l2-pr-a-vault-adapter
 gear: 2
 l_level: L2
 gate_class: opus
-# Floor for this diff: `python3 scripts/evidence_pack_lint.py --print-floor --print-floor-source`
-# over origin/main...HEAD returns 2, source `size`. Docs-only research capture: 12 new files
-# under research/operations/2026-09-11-kbli-science-audit-verification/, ~1,650 churn lines,
-# over SIZE_GEAR2_THRESHOLD (400) and under SIZE_GEAR3_THRESHOLD (1,828). No hot-zone path.
-# The first push carried the full Science bundle (6,868 lines, floor 3); the six scripts
-# and per-lane JSON summaries were removed from the PR and their sha256 recorded in
-# the README so the bundle stays verifiable without a Gear-3 pack for a research artifact.
+# Floor for this diff: 2, source `size` (440 added lines: adapter, flags, tests, six one-line
+# fixtures, spec §6). No hot-zone path. Gear 2 declared to match the floor; no pack below Gear 3.
 objective: >-
-  Land the row-by-row verification of the Claude Science KBLI 2025 data-chain audit
-  (snapshot 64df83d10b, 342 findings) as a research capture: the Science CSVs and method
-  notes, a 342-row verification ledger (CONFIRMED / REFUTED / NEEDS-RUNTIME / NEEDS-SOURCE
-  with method and evidence per row), and a README that records what moved since the
-  June 19 baseline, the two snapshot-scope refutations, the corpus-side defects found and
-  the three codex adversarial rounds.
+  PR-A of docs/specs/2026-09-11-kbli-l2-oss-resnapshot-reingest-spec.md: make the KBLI L2
+  risk transform reproducible from a frozen vault snapshot. Adds the pure adapter
+  scripts/kbli_filiera/vault_to_risk_jsonl.py (vault -> the jsonl the transform already reads),
+  --root/--raw flags on scripts/build_kbli_l2_oss_risk.py with defaults equal to today's
+  literals, a machine-readable SUMMARY line, adapter tests, a six-code reproduction test on
+  real July-vault fixtures, and the spec's §6 recording the full-scale rule-4/rule-5 outcome.
 constraints:
   - >-
-    Research artifacts only: no file outside research/operations/ and this brief; no code
-    path, no data file, no skill touched. Cures for the defects found (corpus metadata.source
-    label, 49213 per_skala scope text, stale "1,563" literals) are listed, not shipped.
+    No logic change in the transform: flags, derived paths and one SUMMARY print only.
+    apps/backend-rag/scripts/build_kbli_l2_oss_risk.py untouched (its merge is a deploy).
   - >-
-    No client PII: the audit covers public KBLI classification data and repository code;
-    validate_outputs.py's personal-data heuristics ran with 0 violations.
+    No data file changes: the canonical corpus, its five copies and the sidecar are
+    byte-identical to origin/main. --apply was run only on /tmp copies.
   - >-
-    The R1 gate applies to every .md under research/: the README names codex as reviewer with
-    a filled "Adversarial review" section; the four Science .md files carry an explicit
-    exempt- value naming the README as their grader.
+    No network, no credentials: the adapter reads a vault on disk; vaults were never modified
+    (the September vault is chmod a-w with a sha256 manifest).
 acceptance:
   - text: >-
-      A1: WHEN `python3 scripts/check_adversarial_review.py --files <README>` runs SHALL print
-      "PASS — 1 research file(s) carry a valid adversarial review".
-    probe: python3 scripts/check_adversarial_review.py --files research/operations/2026-09-11-kbli-science-audit-verification/README.md
+      A1: WHEN `python3 -m pytest scripts/kbli_filiera/tests -q` runs SHALL pass, including the
+      adapter determinism/ordering/404/exit-2 tests and the six-code reproduction test that
+      asserts the L2-owned field set equal to the canonical slice.
+    probe: python3 -m pytest scripts/kbli_filiera/tests -q
   - text: >-
-      A2: WHEN verification_ledger.csv is parsed SHALL contain exactly 342 rows whose
-      finding_id set equals the union of the three Science CSVs, with verdict counts
-      CONFIRMED 324 / REFUTED 2 / NEEDS-RUNTIME 15 / NEEDS-SOURCE 1.
-    probe: python3 -c "import csv,collections;r=list(csv.DictReader(open('research/operations/2026-09-11-kbli-science-audit-verification/verification_ledger.csv')));print(len(r),collections.Counter(x['verdict'] for x in r))"
+      A2 Bites: WHEN the adapter runs over the frozen July vault and the transform dry-runs with
+      --root /tmp/l2/root --raw /tmp/l2/july.jsonl SHALL print a SUMMARY line, and the
+      field-level diff of an --apply on that /tmp copy SHALL show 0 codes differing on
+      skala_usaha/kategori_risiko/scope_index and exactly 1 (49213) on the other L2-owned
+      fields — the observation recorded in spec §6 before this PR was opened.
+    probe: python3 scripts/kbli_filiera/vault_to_risk_jsonl.py --vault-root ~/nuzantara-vault --out /tmp/l2/july.jsonl && python3 scripts/build_kbli_l2_oss_risk.py --root /tmp/l2/root --raw /tmp/l2/july.jsonl | tail -1
   - text: >-
-      A3 Bites: WHEN a cure PR for C-CLAIM-014, A-PSK-0001 or C-CLAIM-001…010 opens SHALL cite
-      the finding_id from this ledger; the ledger is the consumer contract those PRs read.
-    probe: grep -c "C-CLAIM-014\|A-PSK-0001" research/operations/2026-09-11-kbli-science-audit-verification/README.md
+      A3: WHEN `python3 scripts/build_kbli_l2_oss_risk.py` runs with no flags SHALL resolve the
+      same /tmp/kbli-l2-risk and /tmp/oss_risk_raw.jsonl paths as before this PR (defaults
+      unchanged), so the June run is still reproducible.
+    probe: python3 scripts/build_kbli_l2_oss_risk.py --help | grep -c "/tmp/kbli-l2-risk"
 assumptions:
   - text: >-
-      The Science scripts are deterministic: re-running them unchanged on origin/main
-      0b56e22f56 reproduces the delivered CSVs byte-for-byte except the ledger-consumer row.
+      The vault ruang_lingkup.json is byte-for-byte the response the June fetcher stored under
+      "data", so the adapter's records are the transform's native input.
     status: verified
-    probe: cmp of the three CSVs and chain_alignment.json before/after the re-run in the worktree (1 differing row, B-LEDG-002)
+    probe: "rule-5 recheck — adapter-driven change set equals the raw-vault diff set 178/178"
   - text: >-
-      apps/kbli-navigator is not a production surface, so Lane C findings carry internal weight.
+      jangka_waktu, fiktif_positif and jangka_waktu_source are owned by layers after L2, so
+      their divergence is not a transform defect.
     status: verified
-    probe: apps/kbli-navigator/README.md line 3; curl knowledge.balizero.com/kbli/56101 -> 302 to kita login; kbli-navigator-rebuild.vercel.app -> DEPLOYMENT_NOT_FOUND
+    probe: "scripts/enrich_kbli_jangka_waktu.py (2026-06-28) writes jangka_waktu_source; canonical carries it on 4,095 rows"
   - text: >-
-      The 21 SECTION_META titles match BPS Perka 7/2025 (C-HARD-001).
-    status: unverified
-    probe: compare against the BPS publication; no section records exist in the OSS ground truth or the corpus
+      The apps/backend-rag copy of the transform is the one whose L4 logic the canonical reflects.
+    status: verified
+    probe: "full-scale run of both copies on the July jsonl — l4_bali.blocked flips: scripts/ 21, backend 0"

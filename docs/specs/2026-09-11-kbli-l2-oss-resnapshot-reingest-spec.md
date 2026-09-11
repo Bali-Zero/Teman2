@@ -94,3 +94,37 @@ codes_changed: 178, absent_pending: 13}`, `metadata.source` corrected to `PP28_2
 - PR-B: one 36 MB file rewritten in five copies; Gear 3 by size, evidence pack mandatory;
   client-facing change on 178 code pages and on the RAG answers for those codes.
 - Nothing touches the KG, the WhatsApp bot rules, or the editorial pages.
+
+## 6. Rule-4 outcome — PR-A gate run, 2026-09-11 (r2)
+
+Measured on M5 with the adapter over the **July** vault (1559/1559, no missing evidence),
+`--apply` on a `/tmp` copy only, field-level diff against the canonical `v10.0-L2-oss-risk`:
+
+| field                                                                 | codes differing                                                      | note                                                                                               |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `skala_usaha`, `kategori_risiko`, `scope_index`                       | 0                                                                    | L2-owned, reproduced                                                                               |
+| `scope_uraian`, `perizinan`, `persyaratan`, `kewajiban`, `kewenangan` | 1 (49213)                                                            | the divergence Lane A already recorded (A-PSK-0001)                                                |
+| `jangka_waktu`                                                        | 942                                                                  | NOT L2-owned: rewritten after L2 by `scripts/enrich_kbli_jangka_waktu.py` (2026-06-28, PP28 rules) |
+| `fiktif_positif`                                                      | dropped on 1337 rows                                                 | a later layer adds it; the transform does not carry it                                             |
+| `jangka_waktu_source`                                                 | dropped on 941 rows                                                  | same                                                                                               |
+| per_skala row count                                                   | 1 (20111: 0 → 12 scopes)                                             | new OSS data, not a loss                                                                           |
+| `l4_bali.blocked`                                                     | 21 with `scripts/` copy, **0 with `apps/backend-rag/scripts/` copy** | backend copy's NO_BESAR → `CHIUSO_PMA_NO_BESAR` (blocked) is what the canonical carries            |
+
+Rule 5 (September vault): the adapter-driven (scope, skala, resiko) change set equals the
+vault-diff set **178/178** (0 in either difference); absences 13 old-only / 9 new-only / 212 both.
+
+**Rulings that follow (r2):**
+
+1. Rule 4 is restated: reproduction means the **L2-owned field set** —
+   `per_skala[].{skala_usaha, kategori_risiko, scope_index, scope_uraian, perizinan, persyaratan,
+kewajiban, kewenangan}` + `_l2_source` + `_l2_status` — identical on every code except the ones
+   the vault diff names. `jangka_waktu`, `fiktif_positif`, `jangka_waktu_source` and the L4 labels
+   belong to later layers and are excluded by name, never silently.
+2. The canonical L4 logic is the **`apps/backend-rag/scripts/` copy** (NO_BESAR is a block).
+   PR-B ports that mapping into `scripts/build_kbli_l2_oss_risk.py` with a test on the 21 codes,
+   and the backend copy is retired in a separate backend PR (its merge is a deploy).
+3. PR-B's transform needs a **merge policy**, not a rewrite: on `--apply` it must preserve
+   `jangka_waktu` where `jangka_waktu_source` is set, and carry `fiktif_positif` and
+   `jangka_waktu_source` through; a dry-run field table like the one above is part of PR-B's
+   evidence pack, and any non-zero cell outside the predicted set is a STOP.
+4. 49213 is resynced from OSS in PR-B (closes A-PSK-0001); 20111 gains its 12 scopes.
