@@ -19,9 +19,12 @@ below as a positive result, not worked around.
 from __future__ import annotations
 
 import hashlib
+import json
+from pathlib import Path
 from typing import Any
 
 import pytest
+from research_os.hashing import object_hash
 
 from .research_os_admission_reference import (
     EXCLUSION_REASONS,
@@ -37,14 +40,64 @@ _BODY = (
 )
 _QUOTE = "The processing fee for a Class A application is IDR 1,234,000"
 _URL = "https://example.invalid/synthetic-instrument-01"
+_EVENT_ID = "11111111-0000-4000-8000-0000000000e1"
+
+_REPO_ROOT = next(
+    p for p in Path(__file__).resolve().parents if (p / "packages" / "research-os-core").is_dir()
+)
+_SEED_COHORT_PATH = (
+    _REPO_ROOT
+    / "research/operations/execution/research-os-v1.0.0/evidence/p06"
+    / "ros-v1-p06-naga-prep-b01/fixtures/seed_public_regulatory/01_z2_seed_cohort.json"
+)
 
 
 def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def _intel_event(event_id: str = _EVENT_ID) -> dict[str, Any]:
+    """A minimal schema-valid, hash-correct canonical `IntelEvent` for the admissible fixture.
+
+    Exists so `_source()` can give rule 5's cured predicate something real to resolve
+    `_admissible_record()`'s `source_event_ref` against -- the presence-only predecessor never
+    needed this because it never looked past the id string.
+    """
+
+    node: dict[str, Any] = {
+        "event_id": event_id,
+        "contract_version": "research-os/v1.0.0",
+        "tenant": "bali-zero",
+        "event_type": "naga.regulatory_document.fetched",
+        "producer": {
+            "name": "naga.orchestrator.v1",
+            "version": "1.0.0",
+            "machine_class": "synthetic-fixture",
+        },
+        "source": {"uri": _URL, "source_type": "government.gazette"},
+        "times": {
+            "observed_at": "2026-03-01T00:00:00Z",
+            "ingested_at": "2026-03-01T00:05:00Z",
+        },
+        "identity": {
+            "content_hash": _sha256(_BODY),
+            "idempotency_key": "synthetic-instrument-01",
+        },
+        "classification": {"risk_class": "green", "sensitivity": "public"},
+        "lineage": {
+            "pipeline_run_id": "22222222-0000-4000-8000-000000000002",
+            "input_event_refs": [],
+        },
+        "payload_ref": {"ref_type": "reference", "uri": _URL, "content_hash": _sha256(_BODY)},
+        "retention": {"retention_class": "public_record", "legal_hold": False},
+        "object_hash": "0" * 64,
+    }
+    node["object_hash"] = object_hash(node)
+    return node
+
+
 def _source() -> dict[str, Any]:
-    return {"body": _BODY}
+    return {"body": _BODY, "intel_events": {_EVENT_ID: _intel_event()}}
 
 
 def _admissible_record() -> dict[str, Any]:
@@ -171,6 +224,67 @@ def test_a_fabricated_triple_is_excluded_by_name() -> None:
     decision = admit(record, _source())
     assert isinstance(decision, Excluded)
     assert decision.reason == "statement_not_from_source"
+
+
+def test_an_absent_intel_event_reference_is_excluded_by_name() -> None:
+    """A `source_event_ref` naming an event NOT in the snapshot is a dangling reference.
+
+    Presence of an `event_id` string is not provenance -- RESOLUTION is
+    (R1-build-spec.md §3 rule 5, `02-p04-adapter-mapping.md:87`). The event_id here is a
+    syntactically fine UUID that simply names nothing in `source["intel_events"]`: the
+    presence-only predecessor would have PASSED this mutation, because it never looked past the
+    string itself.
+    """
+
+    record = _admissible_record()
+    record["source_event_ref"] = {"event_id": "99999999-0000-4000-8000-000000000000"}
+    decision = admit(record, _source())
+    assert isinstance(decision, Excluded)
+    assert decision.reason == "intel_event_identity_missing"
+
+
+def test_a_resolved_but_invalid_intel_event_is_excluded_by_name() -> None:
+    """Resolving to *something* is not enough -- the something must be a real `IntelEvent`.
+
+    Two shapes of the same failure, both load-bearing: an object missing a required
+    `IntelEvent` field never validates against `intel_event.schema.json` or
+    `IntelEvent.model_validate`, and an object whose stored `object_hash` has been tampered with
+    never matches the RECOMPUTED `research_os.hashing.object_hash`. The predicate trusts neither
+    the `source_event_ref`'s say-so nor the resolved object's own claimed hash -- both mutations
+    leave `record["source_event_ref"]` completely untouched, so only the cured resolution step
+    can be catching them.
+    """
+
+    malformed_source = _source()
+    del malformed_source["intel_events"][_EVENT_ID]["classification"]
+    decision = admit(_admissible_record(), malformed_source)
+    assert isinstance(decision, Excluded)
+    assert decision.reason == "intel_event_identity_missing"
+
+    tampered_source = _source()
+    tampered_source["intel_events"][_EVENT_ID]["object_hash"] = _sha256("not the real content")
+    decision2 = admit(_admissible_record(), tampered_source)
+    assert isinstance(decision2, Excluded)
+    assert decision2.reason == "intel_event_identity_missing"
+
+
+def test_the_seed_cohorts_fully_sourced_records_are_admitted() -> None:
+    """R1-build-spec.md §5c's Z2 seed cohort, driven through the CURED predicate end to end.
+
+    Every record in `01_z2_seed_cohort.json` carries a `source["intel_events"]` mapping whose
+    entry is a real, schema-valid, hash-verified canonical `IntelEvent` reachable from the
+    record's own `source_event_ref` -- this is the fixture's own top-level `expected_behavior`
+    claim ("Every record's record+source pair must be Admitted"), exercised here rather than
+    left as an unread comment. It is also the non-regression guard for the rule 5 cure: curing
+    presence-into-resolution must not turn the honestly-sourced seed cohort into a false
+    exclusion.
+    """
+
+    doc = json.loads(_SEED_COHORT_PATH.read_text(encoding="utf-8"))
+    assert doc["records"], "the seed cohort must carry at least one record"
+    for entry in doc["records"]:
+        decision = admit(entry["record"], entry["source"])
+        assert isinstance(decision, Admitted), f"{entry['label']}: {decision}"
 
 
 @pytest.mark.parametrize(

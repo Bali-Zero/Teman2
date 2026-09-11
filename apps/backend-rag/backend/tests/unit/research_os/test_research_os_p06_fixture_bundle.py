@@ -13,8 +13,9 @@ both a canonical object's own hash and every in-file reference to one -- rather 
 value the fixture happens to carry.
 
 WHAT "CANONICAL" MEANS HERE. A JSON object (dict) carrying both `contract_version` and
-`object_hash` is a full canonical Research OS object (`Claim`/`Evidence`/`ObjectSuccessorEdge`);
-most fixtures in this bundle (`abstention/*`, `contradiction/*`, `evidence_independence/*`,
+`object_hash` is a full canonical Research OS object
+(`Claim`/`Evidence`/`ObjectSuccessorEdge`/`IntelEvent`); most fixtures in this bundle
+(`abstention/*`, `contradiction/*`, `evidence_independence/*`,
 `sanitization/*`, `scope_jurisdiction/*`, `source_span/*`, `invalidation/*`, and the
 not-yet-rewritten `bitemporal/01`/`02`) are deliberately ILLUSTRATIVE and carry none -- this
 module's schema/pydantic/hash checks are parametrised over whatever canonical objects are
@@ -97,6 +98,8 @@ def _kind_of(node: dict[str, Any]) -> str | None:
         return "evidence"
     if "object_successor_edge_id" in node:
         return "object_successor_edge"
+    if "event_id" in node:
+        return "intel_event"
     return None
 
 
@@ -130,20 +133,24 @@ def _canonical_objects(doc: Any) -> list[tuple[str, dict[str, Any]]]:
 def _in_file_references(doc: Any) -> list[dict[str, Any]]:
     """Every reference dict (`object_hash` alongside an id, but no `contract_version`) whose
     target object is present elsewhere in the SAME document -- resolved by `claim_id`,
-    `evidence_id`, or an `{object_kind, object_id}` pair naming `claim`/`evidence`.
+    `evidence_id`, `event_id`, or an `{object_kind, object_id}` pair naming `claim`/`evidence`.
 
     A reference to something NOT present in the file (e.g. `Claim.statement.subject_ref` naming
-    an external "regulation" document, or `Evidence.source_event_ref` naming a placeholder
-    `IntelEvent` this bundle never instantiates) is not returned here -- there is nothing to
+    an external "regulation" document, or an `Evidence.source_event_ref` naming an `IntelEvent`
+    a particular fixture does not instantiate) is not returned here -- there is nothing to
     recompute it against, and asserting equality against nothing would be vacuous.
+    `seed_public_regulatory/01_z2_seed_cohort.json` DOES instantiate a real `IntelEvent` per
+    record, so its `source_event_ref` occurrences resolve here via `event_id`.
     """
 
-    id_map: dict[str, dict[str, str]] = {"claim": {}, "evidence": {}}
+    id_map: dict[str, dict[str, str]] = {"claim": {}, "evidence": {}, "intel_event": {}}
     for kind, node in _canonical_objects(doc):
         if kind == "claim":
             id_map["claim"][node["claim_id"]] = node["object_hash"]
         elif kind == "evidence":
             id_map["evidence"][node["evidence_id"]] = node["object_hash"]
+        elif kind == "intel_event":
+            id_map["intel_event"][node["event_id"]] = node["object_hash"]
 
     references: list[dict[str, Any]] = []
     for node in _walk_dicts(doc):
@@ -154,6 +161,8 @@ def _in_file_references(doc: Any) -> list[dict[str, Any]]:
             target = id_map["claim"][node["claim_id"]]
         elif "evidence_id" in node and node["evidence_id"] in id_map["evidence"]:
             target = id_map["evidence"][node["evidence_id"]]
+        elif "event_id" in node and node["event_id"] in id_map["intel_event"]:
+            target = id_map["intel_event"][node["event_id"]]
         else:
             kind = node.get("object_kind")
             object_id = node.get("object_id")
@@ -186,13 +195,15 @@ def _discover_references() -> list[tuple[Path, dict[str, Any]]]:
 
 _CANONICAL_OBJECTS = _discover_canonical_objects()
 _CANONICAL_OBJECT_IDS = [
-    f"{_fixture_id(path)}::{kind}::{node.get('claim_id') or node.get('evidence_id') or node.get('object_successor_edge_id')}"
+    f"{_fixture_id(path)}::{kind}::"
+    f"{node.get('claim_id') or node.get('evidence_id') or node.get('object_successor_edge_id') or node.get('event_id')}"
     for path, kind, node in _CANONICAL_OBJECTS
 ]
 
 _REFERENCES = _discover_references()
 _REFERENCE_IDS = [
-    f"{_fixture_id(path)}::{reference['node'].get('claim_id') or reference['node'].get('evidence_id') or reference['node'].get('object_id')}"
+    f"{_fixture_id(path)}::"
+    f"{reference['node'].get('claim_id') or reference['node'].get('evidence_id') or reference['node'].get('object_id') or reference['node'].get('event_id')}"
     for path, reference in _REFERENCES
 ]
 

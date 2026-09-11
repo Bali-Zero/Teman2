@@ -24,14 +24,37 @@ the failure.
 WHERE IT LIVES AND WHY. R1 may not write under `services/**`; R2 implements
 `services/research_os/naga_admission.py` against this. The reason vocabulary here is the
 contract between the two windows: R2 may add reasons, may not rename these.
+
+RULE 5 IS RESOLUTION, NOT PRESENCE (cured 2026-09-11, R1-build-spec.md §3 rule 5,
+`02-p04-adapter-mapping.md:87`). The predicate used to accept any truthy
+`source_event_ref.event_id` string -- a record pointing at an `IntelEvent` that exists nowhere
+was ADMITTED, which is exactly the "placeholder reference presented as provenance" class the
+mandate forbids. The cured rule requires the id to RESOLVE inside the `source` SourceSnapshot's
+own `intel_events` mapping (keyed by `event_id`), the resolved object to validate against
+`intel_event.schema.json` AND round-trip `IntelEvent.model_validate`, and its `object_hash` to
+equal the RECOMPUTED `research_os.hashing.object_hash` -- never the value the object happens to
+carry. A dangling id, an id resolving to something that is not a valid `IntelEvent`, and an
+`IntelEvent` whose stored hash does not verify are all the same failure by this rule's lights:
+none of them is provenance, and the rule refuses to guess which of the three it is looking at.
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
+
+import jsonschema
+from pydantic import ValidationError
+from research_os.hashing import object_hash as _recomputed_object_hash
+from research_os.schemas import SCHEMA_DIRECTORY, SCHEMA_MODELS
+
+_INTEL_EVENT_SCHEMA: dict[str, Any] = json.loads(
+    (SCHEMA_DIRECTORY / "intel_event.schema.json").read_text(encoding="utf-8")
+)
+_INTEL_EVENT_VALIDATOR = jsonschema.Draft202012Validator(_INTEL_EVENT_SCHEMA)
 
 __all__ = [
     "EXCLUSION_REASONS",
@@ -140,12 +163,53 @@ def _span_is_exact(record: Mapping[str, Any]) -> bool:
     return bool(quoted) and span["quote_hash"] == _sha256(quoted)
 
 
+def _intel_event_identity_resolves(record: Mapping[str, Any], source: Mapping[str, Any]) -> bool:
+    """`intel_event_identity_missing` -- the id must RESOLVE, not merely be present.
+
+    `source` is a SourceSnapshot carrying an `intel_events` mapping keyed by `event_id` (a
+    field this predicate ADDS to the snapshot's contract -- the presence-only predecessor never
+    looked at `source` for this rule at all). Four gates, all of which must hold:
+
+    1. `record["source_event_ref"]["event_id"]` is present.
+    2. It resolves to an entry in `source["intel_events"]` -- a dangling id fails here.
+    3. The resolved entry validates against `intel_event.schema.json` AND round-trips
+       `IntelEvent.model_validate` -- an id resolving to a malformed or wrong-shaped object
+       fails here, not silently through to admission.
+    4. Its `object_hash` equals the RECOMPUTED `research_os.hashing.object_hash` of the object
+       itself -- a stored hash is a claim, not a fact, and this predicate never trusts a claim
+       about its own integrity.
+    """
+
+    event_ref = record.get("source_event_ref") or {}
+    event_id = event_ref.get("event_id")
+    if not event_id:
+        return False
+
+    intel_events = source.get("intel_events") or {}
+    node = intel_events.get(event_id)
+    if not isinstance(node, Mapping):
+        return False
+    if "contract_version" not in node or "object_hash" not in node:
+        return False
+
+    node_dict = dict(node)
+    if next(_INTEL_EVENT_VALIDATOR.iter_errors(node_dict), None) is not None:
+        return False
+
+    try:
+        SCHEMA_MODELS["intel_event"].model_validate(node_dict)
+    except ValidationError:
+        return False
+
+    return node_dict["object_hash"] == _recomputed_object_hash(node_dict)
+
+
 _RULES: tuple[tuple[str, Callable[[Mapping[str, Any], Mapping[str, Any]], bool]], ...] = (
     ("statement_not_from_source", lambda r, s: _statement_is_from_source(r, s)),
     ("content_hash_is_url", lambda r, s: not _content_hash_is_url(r, s)),
     ("source_version_missing", lambda r, s: bool(r.get("document_version_id"))),
     ("exact_span_missing", lambda r, s: _span_is_exact(r)),
-    ("intel_event_identity_missing", lambda r, s: bool((r.get("source_event_ref") or {}).get("event_id"))),
+    ("intel_event_identity_missing", lambda r, s: _intel_event_identity_resolves(r, s)),
     ("rights_missing", lambda r, s: bool((r.get("classification") or {}).get("rights"))),
     ("retention_missing", lambda r, s: bool((r.get("retention") or {}).get("retention_class"))),
     (

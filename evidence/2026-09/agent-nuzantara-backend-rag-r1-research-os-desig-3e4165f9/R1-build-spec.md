@@ -281,9 +281,21 @@ cd "$WT" && PYTHONPATH="$WT/packages/research-os-core" $V -m research_os.cli fix
 cd "$WT" && git diff --stat origin/main -- packages/research-os-core   # MUST be empty
 cd "$WT/apps/backend-rag/backend" && PYTHONPATH="$WT/packages/research-os-core" $V -m pytest \
     tests/unit/research_os tests/db/test_research_os_valid_time_is_not_text_orderable.py
-cd "$WT/apps/backend-rag/backend" && PYTHONPATH="$WT/packages/research-os-core" $V -m pytest \
+cd "$WT/apps/backend-rag/backend" && PYTHONPATH="$WT:$WT/packages/research-os-core" $V -m pytest \
     tests/unit/services/autonomous_lab   # Consul's tests still pass
 ```
+
+**CORRECTION, g3 2026-09-11, and it is the kind that stops a window for nothing.** The Consul leg above
+carried `PYTHONPATH="$WT/packages/research-os-core"` — the core only. Run that way it reports
+`1 failed, 272 passed`: `test_consul_native_broker.py::test_rpc_usage_projection_survives_native_checkpoint_and_broker_validation`
+dies on `ModuleNotFoundError: No module named 'scripts.conductor'`, because the repo root is not on the
+path. "Consul's tests go red" is a STOP-and-escalate condition in the mandate (R1 §6), so this command
+manufactures the one red that ends the mission — a red that belongs to the invocation, not to the branch.
+Measured both ways on the same sha: with `PYTHONPATH="$WT:$WT/packages/research-os-core"` the same single
+test passes, and the full leg reads `274 passed, 17 skipped` (the skips are the DSN-gated
+`test_dual_consul_postgres.py` integration cases, gated on `DUAL_CONSUL_TEST_DSN`, pre-existing and not
+this branch's). The general rule this window learned: before escalating a red, re-run it with the
+invocation changed and nothing else — a red that moves when only the command moves was never the code's.
 
 Plus: every fixture in the P06 bundle validates against its exported schema (a test does this, so CI
 carries the Bites observation before R2 exists).

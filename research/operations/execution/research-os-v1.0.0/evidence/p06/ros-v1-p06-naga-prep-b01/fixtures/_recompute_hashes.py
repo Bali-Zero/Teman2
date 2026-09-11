@@ -10,18 +10,21 @@ editing any canonical object in these fixtures and it puts every hash back in ag
 object it actually names.
 
 WHAT COUNTS AS "canonical" HERE. Any JSON object (dict) that carries BOTH `contract_version` and
-`object_hash` is a canonical Research OS object (`Claim`, `Evidence`, `ObjectSuccessorEdge`, ...);
-its own `object_hash` is recomputed from its own content via `research_os.hashing.object_hash`,
-which already excludes the `object_hash` field itself (`HASH_OMISSION_FIELDS`). Any OTHER dict
-that carries `object_hash` alongside `claim_id`, `evidence_id`, or an `{object_kind, object_id}`
-pair naming a `claim`/`evidence` is a REFERENCE to one of those canonical objects
-(`ClaimRef`/`EvidenceRef`/`ClaimEvidenceRef`/`ExactObjectRef`); its `object_hash` is set to match
-the CURRENT hash of the object it names, wherever that object lives in the SAME file. A reference
-to an object that is not present in the file at all (e.g. `Claim.statement.subject_ref` naming an
-external "regulation" document, or `Evidence.source_event_ref` naming a placeholder `IntelEvent`
-this bundle never instantiates) is left untouched -- there is nothing in this file to recompute it
+`object_hash` is a canonical Research OS object (`Claim`, `Evidence`, `ObjectSuccessorEdge`,
+`IntelEvent`, ...); its own `object_hash` is recomputed from its own content via
+`research_os.hashing.object_hash`, which already excludes the `object_hash` field itself
+(`HASH_OMISSION_FIELDS`). Any OTHER dict that carries `object_hash` alongside `claim_id`,
+`evidence_id`, `event_id`, or an `{object_kind, object_id}` pair naming a `claim`/`evidence` is a
+REFERENCE to one of those canonical objects (`ClaimRef`/`EvidenceRef`/`EventRef`/
+`ClaimEvidenceRef`/`ExactObjectRef`); its `object_hash` is set to match the CURRENT hash of the
+object it names, wherever that object lives in the SAME file. A reference to an object that is
+not present in the file at all (e.g. `Claim.statement.subject_ref` naming an external
+"regulation" document, or an `Evidence.source_event_ref` naming an `IntelEvent` a particular
+fixture does not instantiate) is left untouched -- there is nothing in this file to recompute it
 from, and inventing one here would be exactly the "presented as provenance" defect this script
-exists to remove.
+exists to remove. (`seed_public_regulatory/01_z2_seed_cohort.json` DOES instantiate a real
+`IntelEvent` per record, reachable from both `record.source_event_ref` and
+`canonical.evidence.source_event_ref` -- those resolve here, unlike the placeholder case above.)
 
 CONVERGENCE. A `Claim`'s own hash depends on its `evidence_refs`/`supersedes_claim_ref` being
 already-correct; an edge's hash depends on its `predecessor_ref`/`successor_ref` already being
@@ -76,7 +79,7 @@ def _walk(node: Any) -> Any:
 
 
 def _identity(node: dict[str, Any]) -> str:
-    for field in ("claim_id", "evidence_id", "object_successor_edge_id"):
+    for field in ("claim_id", "evidence_id", "object_successor_edge_id", "event_id"):
         if field in node:
             return f"{field}={node[field]}"
     return "?"
@@ -89,7 +92,7 @@ def _recompute_file(path: Path) -> list[str]:
 
     for round_index in range(_MAX_ROUNDS):
         changed_this_round = False
-        id_map: dict[str, dict[str, str]] = {"claim": {}, "evidence": {}}
+        id_map: dict[str, dict[str, str]] = {"claim": {}, "evidence": {}, "intel_event": {}}
 
         # Pass 1: every canonical object recomputes its OWN hash from its current content.
         for node in _walk(doc):
@@ -109,6 +112,8 @@ def _recompute_file(path: Path) -> list[str]:
                 id_map["claim"][node["claim_id"]] = node["object_hash"]
             if "evidence_id" in node:
                 id_map["evidence"][node["evidence_id"]] = node["object_hash"]
+            if "event_id" in node:
+                id_map["intel_event"][node["event_id"]] = node["object_hash"]
 
         # Pass 2: every REFERENCE to a canonical object present in this file is set to match.
         for node in _walk(doc):
@@ -122,6 +127,8 @@ def _recompute_file(path: Path) -> list[str]:
                 target_hash = id_map["claim"][node["claim_id"]]
             elif "evidence_id" in node and node["evidence_id"] in id_map["evidence"]:
                 target_hash = id_map["evidence"][node["evidence_id"]]
+            elif "event_id" in node and node["event_id"] in id_map["intel_event"]:
+                target_hash = id_map["intel_event"][node["event_id"]]
             else:
                 kind = node.get("object_kind")
                 object_id = node.get("object_id")
