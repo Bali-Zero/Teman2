@@ -8,6 +8,7 @@ const REQUIRED_ROUTES = [
   "/services/company-setup",
   "/services/tax",
   "/services/property",
+  "/services/compliance",
   "/journal",
 ];
 
