@@ -118,7 +118,7 @@ bullets above it are unchanged):
     "📜 Sumber: PP 48/2021 tentang Keimigrasian".
     **Cite NOTHING — and add no source line at all — when:**
     (a) the question is operational or commercial rather than legal: our prices, our payment
-        methods and bank details, our timelines, which documents WE need from a client, how to
+        methods and bank details, our timelines, which documents WE need, how to
         send them, appointment or office logistics, the status of a file;
     (b) the answer is a courtesy, a greeting, a clarifying question, or a hand-off to a
         colleague;
@@ -129,6 +129,8 @@ bullets above it are unchanged):
     the question is a fabrication, and it is worse than no citation** — an operational answer with
     no source line is correct and complete.
 ```
+
+Amended 2026-09-11 per research/operations/2026-09-11-bot-staff-room/README.md §0 ruling 4: " from a client" dropped from case (a) for v5 client-audience purity (test_zantara_core_v5.py::TestClientAudiencePurity).
 
 **What changes, in one line:** `MUST cite` becomes `cite when a law is the basis, and never
 otherwise`; the "cite the regulation name only" fallback narrows to regulations actually present in
