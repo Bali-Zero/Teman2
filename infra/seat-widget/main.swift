@@ -125,6 +125,13 @@ enum Labels {
     }()
 }
 
+/// What a measurement is given before it counts as lost. A healthy refresh takes ~30s.
+enum Budget {
+    static let measure: TimeInterval = 120
+    static let stuck: TimeInterval = 180
+    static let retry: TimeInterval = 180
+}
+
 enum Quota {
     struct Outcome {
         var seats: [Seat] = []
@@ -164,15 +171,30 @@ enum Quota {
         do { try proc.run() } catch {
             return Outcome(failure: "avvio fallito: \(error.localizedDescription)", source: source)
         }
-        let watchdog = DispatchWorkItem { if proc.isRunning { proc.terminate() } }
-        DispatchQueue.global().asyncAfter(deadline: .now() + 300, execute: watchdog)
-        var errData = Data()
-        let errThread = Thread { errData = err.fileHandleForReading.readDataToEndOfFile() }
-        errThread.start()
-        let outData = out.fileHandleForReading.readDataToEndOfFile()
+        // Two stages: a child that ignores SIGTERM must not be able to hold the widget still.
+        let pid = proc.processIdentifier
+        let term = DispatchWorkItem { if proc.isRunning { kill(pid, SIGTERM) } }
+        let hard = DispatchWorkItem { if proc.isRunning { kill(pid, SIGKILL) } }
+        DispatchQueue.global().asyncAfter(deadline: .now() + Budget.measure, execute: term)
+        DispatchQueue.global().asyncAfter(deadline: .now() + Budget.measure + 15, execute: hard)
+
+        // Both pipes on their own threads with a deadline: readDataToEndOfFile() on the
+        // calling thread was the point where a measurement could never return.
+        final class Box: @unchecked Sendable { var data = Data() }
+        let outBox = Box(), errBox = Box()
+        let readers = DispatchGroup()
+        for (pipe, box) in [(out, outBox), (err, errBox)] {
+            readers.enter()
+            DispatchQueue.global().async {
+                box.data = pipe.fileHandleForReading.readDataToEndOfFile()
+                readers.leave()
+            }
+        }
+        let readOK = readers.wait(timeout: .now() + Budget.measure + 30) == .success
         proc.waitUntilExit()
-        while errThread.isExecuting { usleep(10_000) }
-        watchdog.cancel()
+        term.cancel(); hard.cancel()
+        let outData = outBox.data, errData = errBox.data
+        if !readOK { return Outcome(failure: "misura scaduta dopo \(Int(Budget.measure))s", source: source) }
 
         let stderr = String(decoding: errData, as: UTF8.self)
             .split(separator: "\n").last.map(String.init) ?? ""
@@ -214,34 +236,105 @@ final class Model: ObservableObject {
     }
     var onChange: (() -> Void)?
     private var timer: Timer?
+    private var supervisor: Timer?
+    private(set) var interval: TimeInterval = 30 * 60
+    private var inflight: UUID?
+    private var inflightSince: Date?
+    private var attempt = 0
+
+    /// True once the numbers on screen are two intervals old: they must be declared stale,
+    /// not shown as if they were current.
+    var isStale: Bool {
+        guard let t = updatedAt else { return true }
+        return Date().timeIntervalSince(t) > interval * 2
+    }
+
+    var age: String? {
+        guard let t = updatedAt else { return nil }
+        let m = Int(Date().timeIntervalSince(t) / 60)
+        return m < 60 ? "\(m)m fa" : "\(m / 60)h\(m % 60 > 0 ? "\(m % 60)" : "") fa"
+    }
 
     func start(every seconds: TimeInterval) {
+        interval = seconds
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
+        // A Timer does not make up ticks missed while the Mac sleeps, and one missed tick is
+        // half an hour of frozen numbers: the per-minute supervisor picks them up and expires
+        // a hung refresh.
+        supervisor = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.tick() }
+        }
+        for t in [timer, supervisor] { t.map { RunLoop.main.add($0, forMode: .common) } }
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+        ) { [weak self] _ in Task { @MainActor in self?.refresh(force: true) } }
     }
 
-    func refresh() {
-        guard !loading else { return }
+    private func tick() {
+        if let since = inflightSince, Date().timeIntervalSince(since) > Budget.stuck {
+            log("stuck \(Int(Date().timeIntervalSince(since)))s: refresh abandoned")
+            inflight = nil
+            inflightSince = nil
+            loading = false
+            note = "misura bloccata, riprovo"
+        }
+        let waited = updatedAt.map { Date().timeIntervalSince($0) } ?? .greatestFiniteMagnitude
+        if !loading, waited >= nextDelay { refresh() } else { onChange?() }
+    }
+
+    /// After a failure it retries soon and widens, instead of waiting the full interval.
+    private var nextDelay: TimeInterval {
+        attempt == 0 ? interval
+                     : min(interval, Budget.retry * pow(2, Double(min(attempt, 4) - 1)))
+    }
+
+    func refresh(force: Bool = false) {
+        if loading {
+            let expired = inflightSince.map { Date().timeIntervalSince($0) > Budget.stuck } ?? true
+            guard force || expired else { return }
+            inflight = nil          // a late outcome from the abandoned run must be dropped
+        }
+        let token = UUID()
+        inflight = token
+        inflightSince = Date()
         loading = true
         let started = Date()
         DispatchQueue.global(qos: .userInitiated).async {
             let outcome = Quota.measure()
-            DispatchQueue.main.async { self.apply(outcome, started: started) }
+            DispatchQueue.main.async { self.apply(outcome, started: started, token: token) }
         }
+        onChange?()
     }
 
-    private func apply(_ o: Quota.Outcome, started: Date) {
+    private func apply(_ o: Quota.Outcome, started: Date, token: UUID) {
+        guard token == inflight else {
+            log("dropped: outcome of an already abandoned refresh")
+            return
+        }
+        inflight = nil
+        inflightSince = nil
         loading = false
         source = o.source
         defer { onChange?() }
         let secs = Int(Date().timeIntervalSince(started))
         if let f = o.failure {
+            attempt += 1
             note = f
-            log("err \(secs)s \(o.source): \(f)")
+            log("err \(secs)s \(o.source): \(f) [attempt \(attempt), retry in \(Int(nextDelay / 60))m]")
             return
         }
+        // No readable seat (typically a 429 on every profile): the last good measurement is
+        // worth more than the void, so it is kept and declared stale.
+        if o.seats.isEmpty, !seats.isEmpty {
+            attempt += 1
+            note = o.note ?? "nessun seat leggibile, mostro l'ultima misura buona"
+            log("empty \(secs)s \(o.source) hidden=\(o.hidden) [keeping \(age ?? "?"), attempt \(attempt)]")
+            return
+        }
+        attempt = 0
         seats = o.seats
         hidden = o.hidden
         note = o.note
@@ -399,20 +492,22 @@ struct RootView: View {
 
     var header: some View {
         HStack(spacing: 6) {
-            Circle().fill(Palette.text).frame(width: 8, height: 8)
+            Circle().fill(model.isStale ? Palette.ink : Palette.text).frame(width: 8, height: 8)
             Text(model.expanded ? "Claude seats" : "Claude")
                 .font(.system(size: model.expanded ? 15 : 13, weight: .medium, design: .serif))
                 .foregroundStyle(Palette.text)
                 .onTapGesture { model.expanded.toggle() }
             Spacer(minLength: 4)
             if model.expanded, let t = model.updatedAt {
-                Text("agg. " + Fmt.hm.string(from: t) + (model.source == "local" ? "" : " · " + model.source))
-                    .font(.system(size: 10)).foregroundStyle(Palette.muted)
+                Text((model.isStale ? "fermo da " + (model.age ?? "?") + " · " : "agg. ")
+                     + Fmt.hm.string(from: t) + (model.source == "local" ? "" : " · " + model.source))
+                    .font(.system(size: 10))
+                    .foregroundStyle(model.isStale ? Palette.ink : Palette.muted)
             }
             if model.loading {
                 ProgressView().controlSize(.mini).tint(.white)
             } else {
-                Button { model.refresh() } label: {
+                Button { model.refresh(force: true) } label: {
                     Image(systemName: "arrow.clockwise")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Palette.text)
@@ -473,7 +568,7 @@ struct RootView: View {
         .environment(\.colorScheme, .dark)
         .modifier(DragAnywhere())
         .contextMenu {
-            Button("Aggiorna adesso") { model.refresh() }
+            Button("Aggiorna adesso") { model.refresh(force: true) }
             Button(model.expanded ? "Riduci" : "Espandi") { model.expanded.toggle() }
             Divider()
             Button("Esci") { NSApp.terminate(nil) }

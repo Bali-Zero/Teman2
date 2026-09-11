@@ -162,6 +162,9 @@ def access_token(service: str) -> str | None:
     return tok or None
 
 
+RETRYABLE = {429, 500, 502, 503, 529}
+
+
 def api_get(path: str, token: str, attempts: int = 3) -> tuple[int, Any]:
     """GET with backoff on 429.
 
@@ -190,7 +193,7 @@ def api_get(path: str, token: str, attempts: int = 3) -> tuple[int, Any]:
             except json.JSONDecodeError:
                 payload = {"raw": body[:200]}
             last = (exc.code, payload)
-            if exc.code not in (429, 500, 502, 503, 529):
+            if exc.code not in RETRYABLE:
                 return last
         except (urllib.error.URLError, OSError, json.JSONDecodeError) as exc:
             last = (0, {"error": {"message": str(exc)[:160]}})
@@ -257,7 +260,7 @@ def collect(pace: float = 1.2) -> list[dict]:
             rows.append({"account": None, "stale": True,
                          "error": "no access token in keychain entry"})
             continue
-        _, prof = api_get(PROFILE_PATH, tok)
+        pcode, prof = api_get(PROFILE_PATH, tok)
         email = None
         if isinstance(prof, dict):
             acct = prof.get("account") or {}
@@ -267,8 +270,13 @@ def collect(pace: float = 1.2) -> list[dict]:
             msg = "unreadable"
             if isinstance(usage, dict):
                 msg = (usage.get("error") or {}).get("message", msg)
+            # A 429 outlives api_get's retries and leaves the account unnamed: that is a
+            # REFUSED PROBE, not an old login. Calling it stale is how ten logged-in seats
+            # read as ten dead credentials on 2026-09-11.
+            throttled = RETRYABLE & {code, pcode}
             rows.append({"account": email, "error": msg[:80], "http": code,
-                         "stale": email is None})
+                         "throttled": bool(throttled),
+                         "stale": email is None and not throttled})
             continue
         rows.append({
             "account": email,
@@ -444,7 +452,9 @@ def main() -> int:
         for r in rows:
             seat = r.get("seat") or "?"
             if r.get("error"):
-                label = r.get("account") or "(stale keychain entry)"
+                label = (r.get("account")
+                         or ("(probe refused)" if r.get("throttled")
+                             else "(stale keychain entry)"))
                 print(f"{seat:6s} | {label:30s} | {'-':>4} | {'-':26s} | {'-':>4} | "
                       f"{r['error']}")
                 continue
@@ -453,6 +463,11 @@ def main() -> int:
                   f"{when(r.get('session_resets_at'), now):26s} | "
                   f"{fmt(r.get('weekly_pct')):>4} | "
                   f"{when(r.get('weekly_resets_at'), now)}{flag}")
+        throttled = [r for r in rows if r.get("throttled")]
+        if throttled:
+            print(f"\n{len(throttled)} profile{'' if len(throttled) == 1 else 's'} "
+                  f"rate-limited by the endpoint: credential is LIVE, quota unreadable now. "
+                  f"Not a dead seat — retry later or measure from another egress.")
         if stale:
             print(f"\n{len(stale)} stale keychain entr{'y' if len(stale) == 1 else 'ies'} "
                   f"(old logins, no live credential) — informational, not a seat failure")
