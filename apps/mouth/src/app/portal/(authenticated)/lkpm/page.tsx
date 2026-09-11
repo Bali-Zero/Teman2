@@ -268,7 +268,22 @@ export default function LKPMPage() {
     );
   }
 
-  const nextDeadline = deadlines.find((d) => !d.is_overdue);
+  // The card used to render only `deadlines.find((d) => !d.is_overdue)`, so
+  // when EVERY deadline was overdue `find` returned undefined and the whole
+  // "Next Deadline" section was omitted — the most urgent state a client can
+  // be in rendered as if nothing were due (portal audit ux F3). An overdue
+  // filing is exactly what this page exists to surface, so show the
+  // most-overdue one instead of hiding it.
+  const upcomingDeadline = deadlines.find((d) => !d.is_overdue);
+  const mostOverdueDeadline = deadlines.reduce<LKPMDeadline | undefined>(
+    (worst, d) =>
+      d.is_overdue && (!worst || d.days_remaining < worst.days_remaining)
+        ? d
+        : worst,
+    undefined,
+  );
+  const nextDeadline = upcomingDeadline ?? mostOverdueDeadline;
+  const nextDeadlineIsOverdue = !upcomingDeadline && Boolean(nextDeadline);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -294,23 +309,35 @@ export default function LKPMPage() {
               className="w-5 h-5"
               style={{ color: "var(--bz-copper)" }}
             />
-            <h2 className="text-lg font-semibold">Next Deadline</h2>
+            <h2 className="text-lg font-semibold">
+              {nextDeadlineIsOverdue ? "Overdue Filing" : "Next Deadline"}
+            </h2>
           </div>
 
           <div
             className="p-4 rounded-lg flex items-center gap-3 border"
-            style={tonePanelStyle(deadlineToken(nextDeadline.days_remaining))}
+            style={tonePanelStyle(
+              nextDeadlineIsOverdue
+                ? "--state-danger"
+                : deadlineToken(nextDeadline.days_remaining),
+            )}
           >
             <Calendar
               className="w-5 h-5"
               style={{
-                color: `var(${deadlineToken(nextDeadline.days_remaining)})`,
+                color: `var(${
+                  nextDeadlineIsOverdue
+                    ? "--state-danger"
+                    : deadlineToken(nextDeadline.days_remaining)
+                })`,
               }}
             />
             <div className="flex-1">
               <p className="text-sm font-semibold">
                 {nextDeadline.quarter} {nextDeadline.year} —{" "}
-                {nextDeadline.days_remaining} days remaining
+                {nextDeadlineIsOverdue
+                  ? `overdue by ${Math.abs(nextDeadline.days_remaining)} days`
+                  : `${nextDeadline.days_remaining} days remaining`}
               </p>
               <p className="text-xs" style={{ color: "var(--bz-text-2)" }}>
                 Deadline:{" "}
