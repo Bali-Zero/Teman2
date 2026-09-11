@@ -95,7 +95,7 @@
       "requested_fact": "the all-in price for PT PMA company setup",
       "supporting_span": "Price: IDR 20,000,000 all inclusive.",
       "stratum": "sufficient",
-      "generic_overlap": false,
+      "generic_overlap": true,
       "company_prefix": true,
       "fee_policy": false,
       "expected_generation_gate": "pass",
@@ -153,16 +153,19 @@
         "note": "legacy literal, no writer (0.18 is below the measured formatted floor)"
       },
       "requested_fact": "the requirements for obtaining NIB and OSS registration",
-      "supporting_span": "including deed, ministry approval, NPWP tax number and NIB business identification number via OSS",
-      "stratum": "sufficient",
+      "missing_fact_explanation": "The chunk lists components of company setup (deed, ministry approval, NPWP, NIB via OSS) but does not state that they are the requirements for obtaining NIB or OSS registration.",
+      "stratum": "relevant_insufficient",
       "generic_overlap": false,
       "company_prefix": true,
       "fee_policy": false,
-      "expected_generation_gate": "pass",
-      "expected_label_gate": "pass",
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
       "synthetic": true,
       "origin": "golden:test_evidence_cross_language.py:182",
-      "label_review": "CONTESTABLE, proposed not settled: EN_CONTEXT lists deed, ministry approval, NPWP and NIB-via-OSS as SETUP COMPONENTS (what a PT PMA registration bundles), not as an explicit statement of 'these are the NIB/OSS requirements'. A reviewer could read this as relevant_insufficient instead. Adjudicate, do not coin-flip; a split verdict escalates."
+      "activates_in": "B2.1",
+      "recorded_golden_expectation": true,
+      "adjudication": "RULED staff room 2026-09-12 02:05 WITA (decision I13): D5 exception extended 3→5; labelled per Gemini 3.1 Pro + Codex gpt-5.6-sol agreement",
+      "label_review": "RATIFIED per both reviewers (Gemini 3.1 Pro + Codex gpt-5.6-sol, 2026-09-11): EN_CONTEXT lists deed, ministry approval, NPWP and NIB-via-OSS as SETUP COMPONENTS, not as an explicit statement of 'these are the NIB/OSS requirements' — relabelled relevant_insufficient by reviewer agreement; was CONTESTABLE sufficient at freeze."
     },
     {
       "case_id": "bs-6cd7df49",
@@ -246,16 +249,19 @@
         "note": "legacy literal, no writer (0.18 is below the measured formatted floor)"
       },
       "requested_fact": "the requirements for obtaining NIB and OSS registration",
-      "supporting_span": "termasuk akta notaris, pengesahan kementerian, NPWP dan NIB melalui OSS",
-      "stratum": "sufficient",
+      "missing_fact_explanation": "The chunk lists components of company setup (deed, ministry approval, NPWP, NIB via OSS) but does not state that they are the requirements for obtaining NIB or OSS registration.",
+      "stratum": "relevant_insufficient",
       "generic_overlap": false,
       "company_prefix": true,
       "fee_policy": false,
-      "expected_generation_gate": "pass",
-      "expected_label_gate": "pass",
+      "expected_generation_gate": "abstain",
+      "expected_label_gate": "abstain",
       "synthetic": true,
       "origin": "golden:test_evidence_cross_language.py:185",
-      "label_review": "CONTESTABLE, proposed not settled: ID_CONTEXT lists akta notaris, pengesahan kementerian, NPWP and NIB-via-OSS as SETUP COMPONENTS, not as an explicit statement of 'these are the NIB/OSS requirements'. Same contestability as :182 (English chunk); a reviewer could read this as relevant_insufficient instead. Adjudicate, do not coin-flip; a split verdict escalates."
+      "activates_in": "B2.1",
+      "recorded_golden_expectation": true,
+      "adjudication": "RULED staff room 2026-09-12 02:05 WITA (decision I13): D5 exception extended 3→5; labelled per Gemini 3.1 Pro + Codex gpt-5.6-sol agreement",
+      "label_review": "RATIFIED per both reviewers (Gemini 3.1 Pro + Codex gpt-5.6-sol, 2026-09-11): ID_CONTEXT lists akta notaris, pengesahan kementerian, NPWP and NIB-via-OSS as SETUP COMPONENTS, not as an explicit statement of 'these are the NIB/OSS requirements' — relabelled relevant_insufficient by reviewer agreement; was CONTESTABLE sufficient at freeze. Same contestability as :182 (English-context case bs-30ca5e5a)."
     },
     {
       "case_id": "bs-a3a7f1ca",
@@ -574,7 +580,7 @@
       "query": "How much is a PT PMA company, all in?",
       "query_lang": "EN",
       "context": [
-        "Pendirian PT PMA mencakup akta notaris, pengesahan Kementerian Hukum, pendaftaran NPWP dan izin usaha NIB melalui OSS. Biaya layanan lengkapnya IDR 20.000.000 sudah termasuk semuanya, termasuk biaya pemerintah."
+        "Pendirian PT PMA mencakup akta notaris, pengesahan Kementerian Hukum, pendaftaran NPWP dan NIB (Nomor Induk Berusaha) melalui OSS. Biaya layanan lengkapnya IDR 20.000.000 sudah termasuk semuanya, termasuk biaya pemerintah."
       ],
       "context_lang": "ID",
       "provenance_fixture": {
@@ -606,7 +612,7 @@
       "query": "How much is a PT PMA company, all in?",
       "query_lang": "EN",
       "context": [
-        "Pendirian PT PMA mencakup akta notaris, pengesahan Kementerian Hukum, pendaftaran NPWP dan izin usaha NIB melalui OSS. Biaya layanan lengkapnya tergantung klasifikasi KBLI yang dipilih dan tidak disebutkan dalam ringkasan ini."
+        "Pendirian PT PMA mencakup akta notaris, pengesahan Kementerian Hukum, pendaftaran NPWP dan NIB (Nomor Induk Berusaha) melalui OSS. Biaya layanan lengkapnya tergantung klasifikasi KBLI yang dipilih dan tidak disebutkan dalam ringkasan ini."
       ],
       "context_lang": "ID",
       "provenance_fixture": {
@@ -655,7 +661,7 @@
       "requested_fact": "the all-in price for PT PMA company registration",
       "supporting_span": "The complete service is IDR 20,000,000 all inclusive, government fees included.",
       "stratum": "sufficient",
-      "generic_overlap": false,
+      "generic_overlap": true,
       "company_prefix": true,
       "fee_policy": true,
       "expected_generation_gate": "pass",
@@ -702,7 +708,7 @@
       "query": "Harga PT PMA berapa all in?",
       "query_lang": "ID",
       "context": [
-        "Pendirian PT PMA mencakup akta notaris, pengesahan Kementerian Hukum, pendaftaran NPWP dan izin usaha NIB melalui OSS. Biaya layanan lengkapnya IDR 20.000.000 sudah termasuk semuanya, termasuk biaya pemerintah."
+        "Pendirian PT PMA mencakup akta notaris, pengesahan Kementerian Hukum, pendaftaran NPWP dan NIB (Nomor Induk Berusaha) melalui OSS. Biaya layanan lengkapnya IDR 20.000.000 sudah termasuk semuanya, termasuk biaya pemerintah."
       ],
       "context_lang": "ID",
       "provenance_fixture": {
@@ -734,7 +740,7 @@
       "query": "Harga PT PMA berapa all in?",
       "query_lang": "ID",
       "context": [
-        "Pendirian PT PMA mencakup akta notaris, pengesahan Kementerian Hukum, pendaftaran NPWP dan izin usaha NIB melalui OSS. Biaya layanan lengkapnya tergantung klasifikasi KBLI yang dipilih dan tidak disebutkan dalam ringkasan ini."
+        "Pendirian PT PMA mencakup akta notaris, pengesahan Kementerian Hukum, pendaftaran NPWP dan NIB (Nomor Induk Berusaha) melalui OSS. Biaya layanan lengkapnya tergantung klasifikasi KBLI yang dipilih dan tidak disebutkan dalam ringkasan ini."
       ],
       "context_lang": "ID",
       "provenance_fixture": {
@@ -1086,7 +1092,7 @@
       "query": "What is the minimum paid-up capital for a PT PMA?",
       "query_lang": "EN",
       "context": [
-        "PT PMA adalah perusahaan terbatas berpenanaman modal asing yang diatur berdasarkan regulasi investasi Indonesia. Modal disetor minimum adalah IDR 2,5 miliar, sesuai Peraturan BKPM No. 5/2025."
+        "PT PMA adalah perseroan terbatas penanaman modal asing (PT PMA) yang diatur berdasarkan regulasi investasi Indonesia. Modal disetor minimum adalah IDR 2,5 miliar, sesuai Peraturan BKPM No. 5/2025."
       ],
       "context_lang": "ID",
       "provenance_fixture": {
@@ -1118,7 +1124,7 @@
       "query": "What is the minimum paid-up capital for a PT PMA?",
       "query_lang": "EN",
       "context": [
-        "PT PMA adalah perusahaan terbatas berpenanaman modal asing yang diatur berdasarkan regulasi investasi Indonesia. Modal disetor minimum tergantung rencana investasi yang disetujui dan tidak disebutkan dalam ringkasan ini."
+        "PT PMA adalah perseroan terbatas penanaman modal asing (PT PMA) yang diatur berdasarkan regulasi investasi Indonesia. Modal disetor minimum tergantung rencana investasi yang disetujui dan tidak disebutkan dalam ringkasan ini."
       ],
       "context_lang": "ID",
       "provenance_fixture": {
@@ -1214,7 +1220,7 @@
       "query": "Berapa modal disetor minimum PT PMA?",
       "query_lang": "ID",
       "context": [
-        "PT PMA adalah perusahaan terbatas berpenanaman modal asing yang diatur berdasarkan regulasi investasi Indonesia. Modal disetor minimum adalah IDR 2,5 miliar, sesuai Peraturan BKPM No. 5/2025."
+        "PT PMA adalah perseroan terbatas penanaman modal asing (PT PMA) yang diatur berdasarkan regulasi investasi Indonesia. Modal disetor minimum adalah IDR 2,5 miliar, sesuai Peraturan BKPM No. 5/2025."
       ],
       "context_lang": "ID",
       "provenance_fixture": {
@@ -1246,7 +1252,7 @@
       "query": "Berapa modal disetor minimum PT PMA?",
       "query_lang": "ID",
       "context": [
-        "PT PMA adalah perusahaan terbatas berpenanaman modal asing yang diatur berdasarkan regulasi investasi Indonesia. Modal disetor minimum tergantung rencana investasi yang disetujui dan tidak disebutkan dalam ringkasan ini."
+        "PT PMA adalah perseroan terbatas penanaman modal asing (PT PMA) yang diatur berdasarkan regulasi investasi Indonesia. Modal disetor minimum tergantung rencana investasi yang disetujui dan tidak disebutkan dalam ringkasan ini."
       ],
       "context_lang": "ID",
       "provenance_fixture": {
@@ -1542,7 +1548,7 @@
       "query": "What time does the ferry to Nusa Penida leave?",
       "query_lang": "EN",
       "context": [
-        "The government fee (PNBP) for this permit is set by Indonesian immigration and can change over time, so please confirm the current figure with our team rather than relying on a quoted amount here."
+        "The government fee (PNBP) for this permit is set by Indonesian immigration and can change periodically, so please confirm the current figure with our team rather than relying on a quoted amount here."
       ],
       "context_lang": "EN",
       "provenance_fixture": {
@@ -1662,10 +1668,10 @@
     },
     {
       "case_id": "bs-e234b992",
-      "query": "How long does a visa extension processing take?",
+      "query": "How long does an online visa extension take?",
       "query_lang": "EN",
       "context": [
-        "Pendaftaran perusahaan baru di Bali meliputi pembuatan akta notaris, persetujuan Kementerian, penerbitan NPWP dan izin usaha berbasis OSS. Proses biasanya selesai dalam waktu sebulan."
+        "Pendaftaran perusahaan baru di Bali meliputi pembuatan akta notaris, persetujuan Kementerian, penerbitan NPWP dan izin usaha yang diurus secara online melalui OSS. Proses biasanya selesai dalam waktu sebulan."
       ],
       "context_lang": "ID",
       "provenance_fixture": {
@@ -1680,7 +1686,7 @@
         "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
       },
       "requested_fact": "how long visa extension processing takes",
-      "missing_fact_explanation": "the chunk describes NEW COMPANY registration processing time, not visa extension — 'processing'/'proses' is the only shared word and it is generic, not a topic match.",
+      "missing_fact_explanation": "the chunk describes NEW COMPANY registration processing time, not visa extension — 'online' is the only literally shared word between the English query and the Indonesian context, and it is generic, not an identifier.",
       "stratum": "generic_overlap",
       "generic_overlap": true,
       "company_prefix": false,
@@ -1689,7 +1695,7 @@
       "expected_label_gate": "abstain",
       "synthetic": true,
       "origin": "constructed",
-      "label_review": "New wording of the xfail's shape (test_one_generic_word_should_not_be_evidence): a non-company question sharing exactly one generic word ('processing'/'proses') with an on-topic company chunk, constructed independently."
+      "label_review": "R2 (label-review round 2026-09-11, Codex gpt-5.6-sol + Gemini 3.1 Pro agreement): 'processing'/'proses' was flagged by both reviewers as a translation pair, not a literal shared word, which breaks the cross-language generic_overlap definition (a shared query WORD). Reworded query and context to share the generic loanword 'online' literally instead of relying on translation-equivalent vocabulary; stratum and generic_overlap unchanged."
     },
     {
       "case_id": "bs-b3d343f6",
@@ -1754,10 +1760,10 @@
     },
     {
       "case_id": "bs-2ae24f1c",
-      "query": "Berapa lama proses perpanjangan visa?",
+      "query": "Berapa lama perpanjangan visa online?",
       "query_lang": "ID",
       "context": [
-        "New company registration in Bali includes notarial deed drafting, Ministry approval, tax ID issuance and the OSS-based business license. Processing usually finishes within a month."
+        "New company registration in Bali includes notarial deed drafting, Ministry approval, tax ID issuance and the OSS-based business license, filed online. Processing usually finishes within a month."
       ],
       "context_lang": "EN",
       "provenance_fixture": {
@@ -1772,7 +1778,7 @@
         "note": "constructed off-topic: rank 0 in the dense list only -> server-side RRF fusion 0.5 -> formatted 0.6667"
       },
       "requested_fact": "how long visa extension processing takes",
-      "missing_fact_explanation": "the chunk describes NEW COMPANY registration processing time, not visa extension — 'processing'/'proses' is the only shared word and it is generic, not a topic match.",
+      "missing_fact_explanation": "the chunk describes NEW COMPANY registration processing time, not visa extension — 'online' is the only literally shared word between the Indonesian query and the English context, and it is generic, not an identifier.",
       "stratum": "generic_overlap",
       "generic_overlap": true,
       "company_prefix": false,
@@ -1781,7 +1787,7 @@
       "expected_label_gate": "abstain",
       "synthetic": true,
       "origin": "constructed",
-      "label_review": "New wording of the xfail's shape (test_one_generic_word_should_not_be_evidence): a non-company question sharing exactly one generic word ('processing'/'proses') with an on-topic company chunk, constructed independently."
+      "label_review": "R2 (label-review round 2026-09-11, Codex gpt-5.6-sol + Gemini 3.1 Pro agreement): 'proses'/'processing' was flagged by both reviewers as a translation pair, not a literal shared word, which breaks the cross-language generic_overlap definition (a shared query WORD). Reworded query and context to share the generic loanword 'online' literally instead of relying on translation-equivalent vocabulary; stratum and generic_overlap unchanged."
     },
     {
       "case_id": "bs-5bab1cbe",

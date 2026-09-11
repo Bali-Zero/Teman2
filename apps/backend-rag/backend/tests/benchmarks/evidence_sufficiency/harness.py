@@ -28,6 +28,7 @@ from backend.services.rag.agentic.reasoning_utils import calculate_evidence_scor
 
 _HERE = Path(__file__).resolve().parent
 DEFAULT_MANIFEST = _HERE / "manifest_mandatory.json"
+DEFAULT_VALIDATION = _HERE / "validation_codex.json"
 
 _STRATA = frozenset(
     {
@@ -90,6 +91,18 @@ def validate(manifest: dict[str, Any]) -> list[str]:
             if field not in case:
                 errors.append(f"{tag}: missing mandatory field {field!r}")
 
+        # the three nuisance booleans are mandatory and must actually be bool
+        # (a truthy/falsy non-bool, e.g. "true" or 1, silently passes a bare
+        # `if not case.get(...)` check and was findable only by report()
+        # mis-bucketing a case — Codex finding 7)
+        for bool_field in ("generic_overlap", "company_prefix", "fee_policy"):
+            if bool_field not in case:
+                errors.append(f"{tag}: missing mandatory field {bool_field!r}")
+            elif not isinstance(case[bool_field], bool):
+                errors.append(
+                    f"{tag}: {bool_field!r} must be a bool, got {type(case[bool_field]).__name__}",
+                )
+
         if case.get("query_lang") not in ("EN", "ID"):
             errors.append(f"{tag}: query_lang must be EN or ID, got {case.get('query_lang')!r}")
         if case.get("context_lang") not in ("EN", "ID"):
@@ -134,9 +147,22 @@ def validate(manifest: dict[str, Any]) -> list[str]:
                 f"inconsistent with stratum {stratum!r} (expected {expected_gate!r})",
             )
 
-        # score_kind in vocabulary
+        # provenance_fixture: inventory_row must be an int, sources must carry
+        # score/score_kind/score_raw, and score_kind must be in vocabulary
+        # (Codex finding 7 — a provenance_fixture with a missing/malformed
+        # inventory_row or an incomplete source silently passed validate()).
         prov = case.get("provenance_fixture") or {}
+        inventory_row = prov.get("inventory_row")
+        if not isinstance(inventory_row, int) or isinstance(inventory_row, bool):
+            errors.append(
+                f"{tag}: provenance_fixture.inventory_row must be an int, got {inventory_row!r}",
+            )
         for src in prov.get("sources") or []:
+            for src_field in ("score", "score_kind", "score_raw"):
+                if src_field not in src:
+                    errors.append(
+                        f"{tag}: provenance_fixture source missing {src_field!r}",
+                    )
             kind = src.get("score_kind")
             if kind not in SCORE_KINDS:
                 errors.append(
@@ -217,10 +243,10 @@ def _accumulate(bucket: dict[str, Any], stratum: str, expected: str, actual: str
         bucket["by_stratum"][stratum][metric_name]["count"] += 1
 
 
-def report(manifest: dict[str, Any]) -> dict[str, Any]:
-    """Run `decide()` on every case and aggregate false-abstention /
-    false-acceptance counts per cell, per gate, per stratum, plus a
-    fee_policy column and a spec_pairs view."""
+def _report_one(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Run `decide()` on every case in ONE manifest and aggregate
+    false-abstention / false-acceptance counts per cell, per gate, per
+    stratum, plus a fee_policy column and a spec_pairs view."""
     cases = manifest.get("cases", [])
 
     by_cell: dict[str, dict[str, Any]] = {}
@@ -295,6 +321,29 @@ def report(manifest: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def report(
+    manifest: dict[str, Any],
+    validation: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Report on the MANDATORY manifest and, separately, on an optional
+    VALIDATION manifest. The two sets are never pooled: each is scored by
+    its own `_report_one()` call over only its own cases, so a validation
+    case can never inflate or dilute a mandatory denominator (Codex finding
+    5). A validation manifest with no cases (the frozen `cases: []` shape
+    before the adversarial seat's draws are copied in) reports as `None`
+    rather than an all-zero-denominator report.
+
+    Returns `{"mandatory": <report>, "validation": <report> | None}`.
+    """
+    mandatory_report = _report_one(manifest)
+
+    validation_report: dict[str, Any] | None = None
+    if validation is not None and validation.get("cases"):
+        validation_report = _report_one(validation)
+
+    return {"mandatory": mandatory_report, "validation": validation_report}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Run the B1.3 evidence-sufficiency benchmark and print its report.",
@@ -302,7 +351,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--manifest",
         default=str(DEFAULT_MANIFEST),
-        help="path to a manifest JSON file (default: the frozen mandatory manifest)",
+        help="path to the mandatory manifest JSON file (default: the frozen mandatory manifest)",
+    )
+    parser.add_argument(
+        "--validation",
+        default=str(DEFAULT_VALIDATION),
+        help=(
+            "path to the validation manifest JSON file (default: validation_codex.json "
+            "beside the harness); an empty validation set (no cases) reports as null"
+        ),
     )
     parser.add_argument(
         "--json",
@@ -318,14 +375,26 @@ def main(argv: list[str] | None = None) -> int:
             print(f"VALIDATION ERROR: {e}", file=sys.stderr)
         return 1
 
-    result = report(manifest)
+    # The validation set is drawn by an adversarial seat and MAY carry a
+    # mechanically-invalid case on purpose (the Dux decides whether to keep
+    # it as drawn) — so its own validate() errors are reported but never
+    # abort the run the way a mandatory-manifest error does.
+    validation_manifest: dict[str, Any] | None = None
+    validation_path = Path(args.validation)
+    if validation_path.exists():
+        validation_manifest = load(validation_path)
+        for e in validate(validation_manifest):
+            print(f"VALIDATION SET WARNING: {e}", file=sys.stderr)
+
+    result = report(manifest, validation_manifest)
 
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
     else:
-        print(f"frozen_for={result['frozen_for']} base_sha={result['base_sha']}")
-        print(f"cases={result['case_count']}")
-        for cell, gates in sorted(result["by_cell"].items()):
+        mandatory = result["mandatory"]
+        print(f"frozen_for={mandatory['frozen_for']} base_sha={mandatory['base_sha']}")
+        print(f"mandatory cases={mandatory['case_count']}")
+        for cell, gates in sorted(mandatory["by_cell"].items()):
             for gate in _GATES:
                 fa = gates[gate]["false_abstention"]
                 fac = gates[gate]["false_acceptance"]
@@ -333,11 +402,15 @@ def main(argv: list[str] | None = None) -> int:
                     f"  {cell} {gate}: false_abstention={fa['count']}/{fa['denominator']} "
                     f"false_acceptance={fac['count']}/{fac['denominator']}",
                 )
-        summary = result["spec_pairs_summary"]
+        summary = mandatory["spec_pairs_summary"]
         print(
             f"spec_pairs: {summary['distinguished_generation_count']}/{summary['total']} "
             "distinguished (generation gate)",
         )
+        if result["validation"] is None:
+            print("validation cases=0 (empty validation set)")
+        else:
+            print(f"validation cases={result['validation']['case_count']}")
 
     return 0
 

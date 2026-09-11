@@ -21,13 +21,14 @@ from backend.tests.benchmarks.evidence_sufficiency import harness
 _BENCH_DIR = Path(harness.__file__).resolve().parent
 _MANDATORY_PATH = _BENCH_DIR / "manifest_mandatory.json"
 _SUPPLEMENT_PATH = _BENCH_DIR / "manifest_supplement_b2.json"
+_VALIDATION_PATH = _BENCH_DIR / "validation_codex.json"
 _GOLDEN_TEST_PATH = Path(__file__).resolve().parent / "agentic" / "test_evidence_cross_language.py"
 
 # Pinned on the manifest's bytes as frozen for B1.3. A change to the file
 # after the freeze — a re-labelled case, a reworded span, anything — makes
 # this red. That is the point: the mandatory set is frozen, and B2
 # supplements live in a SEPARATE file (`manifest_supplement_b2.json`).
-MANDATORY_MANIFEST_SHA256 = "53fa143e5eaae714c109f7f2d931ef16bce3c97e7838b6a526eeb0261ca00c5d"
+MANDATORY_MANIFEST_SHA256 = "9a46a96b2dbce31218a51c9b53679384c3c277cc014068c09f6c5016b0b178d2"
 
 _CELLS = ("EN>EN", "EN>ID", "ID>EN", "ID>ID")
 _NEGATIVE_STRATA = (
@@ -94,7 +95,7 @@ class TestEveryCellByGateByMetricHasAPositiveDenominator:
         self, manifest: dict, cell: str, gate: str, metric: str
     ) -> None:
         result = harness.report(manifest)
-        denominator = result["by_cell"][cell][gate][metric]["denominator"]
+        denominator = result["mandatory"]["by_cell"][cell][gate][metric]["denominator"]
         assert denominator > 0, (cell, gate, metric, denominator)
 
 
@@ -117,7 +118,14 @@ def test_every_topic_in_spec_pair_covers_all_four_cells(manifest: dict) -> None:
 
 
 def test_the_three_golden_corrections_carry_activates_in_b2_1(manifest: dict) -> None:
-    corrected = [c for c in manifest["cases"] if c.get("recorded_golden_expectation") is True]
+    """The original D5 set: :183, :186, :187. Distinguished from the label
+    -review round's two ADDITIONAL corrections (:182, :185, below) by the
+    absence of an `adjudication` field — these three were never contested."""
+    corrected = [
+        c
+        for c in manifest["cases"]
+        if c.get("recorded_golden_expectation") is True and "adjudication" not in c
+    ]
     assert len(corrected) == 3, corrected
     for case in corrected:
         assert case["activates_in"] == "B2.1", case
@@ -127,6 +135,30 @@ def test_the_three_golden_corrections_carry_activates_in_b2_1(manifest: dict) ->
         "golden:test_evidence_cross_language.py:183",
         "golden:test_evidence_cross_language.py:186",
         "golden:test_evidence_cross_language.py:187",
+    }, origins
+
+
+def test_two_more_golden_corrections_carry_adjudication(manifest: dict) -> None:
+    """Label-review round (2026-09-11): :182 and :185 were relabelled from
+    `sufficient` to `relevant_insufficient` on Gemini 3.1 Pro + Codex
+    gpt-5.6-sol agreement, ratified by the staff room (decision I13,
+    2026-09-12 02:05 WITA) as a D5 extension from three named corrections to
+    five. Distinguished from the original three by carrying an
+    `adjudication` field that records the ruling."""
+    adjudicated = [
+        c
+        for c in manifest["cases"]
+        if c.get("recorded_golden_expectation") is True and "adjudication" in c
+    ]
+    assert len(adjudicated) == 2, adjudicated
+    for case in adjudicated:
+        assert case["activates_in"] == "B2.1", case
+        assert case["stratum"] == "relevant_insufficient", case
+        assert case["adjudication"].startswith("RULED staff room"), case["adjudication"]
+    origins = {c["origin"] for c in adjudicated}
+    assert origins == {
+        "golden:test_evidence_cross_language.py:182",
+        "golden:test_evidence_cross_language.py:185",
     }, origins
 
 
@@ -200,6 +232,74 @@ def test_run_the_harness_cli_once(manifest: dict) -> None:
     errors = harness.validate(manifest)
     assert errors == []
     result = harness.report(manifest)
-    assert result["case_count"] == len(manifest["cases"])
-    assert set(result["by_cell"]) == set(_CELLS)
-    assert result["spec_pairs_summary"]["total"] == 16
+    mandatory = result["mandatory"]
+    assert mandatory["case_count"] == len(manifest["cases"])
+    assert set(mandatory["by_cell"]) == set(_CELLS)
+    assert mandatory["spec_pairs_summary"]["total"] == 16
+
+
+class TestMandatoryAndValidationReportsAreNeverPooled:
+    """Codex finding 5: `report()` used to accept one manifest and return one
+    undifferentiated aggregate. It now takes an optional second (validation)
+    manifest and reports it SEPARATELY — a validation case can never inflate
+    or dilute a mandatory denominator, and vice versa."""
+
+    def test_report_without_validation_has_a_null_validation_section(self, manifest: dict) -> None:
+        result = harness.report(manifest)
+        assert set(result) == {"mandatory", "validation"}
+        assert result["validation"] is None
+        assert result["mandatory"]["case_count"] == len(manifest["cases"])
+
+    def test_a_validation_manifest_with_no_cases_reports_as_null(self, manifest: dict) -> None:
+        empty_validation = {"schema_version": 1, "drawn_by": None, "cases": []}
+        result = harness.report(manifest, empty_validation)
+        assert result["validation"] is None
+
+    def test_validation_cases_never_change_the_mandatory_report(self, manifest: dict) -> None:
+        baseline = harness.report(manifest)
+        validation = harness.load(_VALIDATION_PATH)
+        pooled_check = harness.report(manifest, validation)
+        assert pooled_check["mandatory"] == baseline["mandatory"]
+
+    def test_the_validation_set_is_reported_on_its_own_case_count(self, manifest: dict) -> None:
+        validation = harness.load(_VALIDATION_PATH)
+        result = harness.report(manifest, validation)
+        assert result["validation"] is not None
+        assert result["validation"]["case_count"] == len(validation["cases"])
+        # the mandatory and validation case counts are disjoint sets of ids
+        mandatory_ids = {c["case_id"] for c in manifest["cases"]}
+        validation_ids = {c["case_id"] for c in validation["cases"]}
+        assert mandatory_ids.isdisjoint(validation_ids)
+
+
+class TestValidateRejectsMalformedNuisanceBooleansAndProvenance:
+    """Codex finding 7: `validate()` used to silently accept a case missing
+    the nuisance booleans, or a `provenance_fixture` with a malformed
+    `inventory_row` or an incomplete source."""
+
+    @pytest.mark.parametrize("field", ("generic_overlap", "company_prefix", "fee_policy"))
+    def test_missing_nuisance_boolean_is_rejected(self, manifest: dict, field: str) -> None:
+        mutated = copy.deepcopy(manifest)
+        del mutated["cases"][0][field]
+        errors = harness.validate(mutated)
+        assert any(field in e for e in errors), errors
+
+    @pytest.mark.parametrize("field", ("generic_overlap", "company_prefix", "fee_policy"))
+    def test_non_bool_nuisance_value_is_rejected(self, manifest: dict, field: str) -> None:
+        mutated = copy.deepcopy(manifest)
+        mutated["cases"][0][field] = "true"
+        errors = harness.validate(mutated)
+        assert any(field in e for e in errors), errors
+
+    def test_non_int_inventory_row_is_rejected(self, manifest: dict) -> None:
+        mutated = copy.deepcopy(manifest)
+        mutated["cases"][0]["provenance_fixture"]["inventory_row"] = "5"
+        errors = harness.validate(mutated)
+        assert any("inventory_row" in e for e in errors), errors
+
+    @pytest.mark.parametrize("field", ("score", "score_kind", "score_raw"))
+    def test_source_missing_a_required_field_is_rejected(self, manifest: dict, field: str) -> None:
+        mutated = copy.deepcopy(manifest)
+        del mutated["cases"][0]["provenance_fixture"]["sources"][0][field]
+        errors = harness.validate(mutated)
+        assert any(field in e for e in errors), errors
