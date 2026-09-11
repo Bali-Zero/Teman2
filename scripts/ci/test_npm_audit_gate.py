@@ -102,8 +102,13 @@ def test_a_genuinely_clean_report_passes():
 
 # --- scar pin: the live shape this gate was written for ---------------------
 
-def test_retired_advisories_block_if_reintroduced() -> None:
-    """Exercise the shipped defaults: patched advisories get no standing pardon."""
+def test_retired_advisories_get_no_standing_waiver() -> None:
+    """Exercise the shipped defaults: patched advisories get no standing pardon.
+
+    Each id is fed at `vuln()`'s default HIGH severity. Upstream the two Hono
+    advisories are Moderate, which BLOCKING ignores by design, so this proves the
+    waiver is gone — not that a real Moderate reintroduction would block.
+    """
     for package, advisory, node in (
         ("@hono/node-server", "GHSA-frvp-7c67-39w9", "node_modules/@hono/node-server"),
         ("@hono/node-server", "GHSA-9mqv-5hh9-4cgg", "node_modules/@hono/node-server"),
@@ -118,7 +123,10 @@ def test_retired_advisories_block_if_reintroduced() -> None:
         assert run_cli(payload) == 1, advisory
 
 
-def test_the_same_advisory_on_a_production_path_we_never_vetted_blocks():
+def test_an_unwaived_advisory_on_a_production_path_we_never_vetted_blocks():
+    # With the shipped WAIVE empty this blocks as "not waived"; the path-scoping
+    # branch ("waived, but on unexpected paths") is pinned by the fixture-WAIVE
+    # tests above, which pass their own waiver explicitly.
     payload = {
         "vulnerabilities": {
             "js-yaml": {
