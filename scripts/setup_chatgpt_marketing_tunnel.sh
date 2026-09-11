@@ -51,6 +51,11 @@ if [ "$(hostname)" != "Nuzantara" ]; then
     printf 'This tunnel runtime must be configured on Pro (hostname Nuzantara).\n' >&2
     exit 69
 fi
+if launchctl list com.nuzantara.chatgpt-marketing-tunnel >/dev/null 2>&1; then
+    printf 'Launchd already supervises this marketing profile. No configuration was changed.\n' >&2
+    printf 'Use the existing launchd job for restart; see docs/runbooks/chatgpt-business-marketing-bridge.md.\n' >&2
+    exit 69
+fi
 if [[ ! "$TUNNEL_ID" =~ ^tunnel_[A-Za-z0-9]{16,}$ ]]; then
     printf 'Invalid or missing tunnel id. Copy it from Platform tunnel settings.\n' >&2
     exit 64

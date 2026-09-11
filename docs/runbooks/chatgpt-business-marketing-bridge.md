@@ -166,5 +166,45 @@ Never enable raw HTTP logging or payload capture in production. Tunnel
 transport logs and app-level compliance logs are different boundaries; keep
 both free of article bodies, prompts, identifiers, and secrets.
 
+### Editorial provider outage
+
+Tunnel health and the News Room HTTP contract do not establish fact-check
+readiness. `workspace_health.editorial_verification` probes NotebookLM with
+`nlm login --check` and the isolated reviewer identity with `claude auth status`.
+These bounded checks run concurrently and may take up to 60 seconds. The existing
+top-level `ready` still describes the armed News Room contract. Inspect the new
+`authentication_ready` field separately; `verdict: not_run` is intentional.
+Claude's `configured` status cannot establish quota or remote token validity.
+Only a real `newsroom_fact_gate` response proves editorial verification works.
+
+On 2026-09-11, the real gate failed because NotebookLM returned expired
+authentication, while the tunnel and News Room health were green. The independent
+reviewer identity was configured. Restarting the tunnel cannot renew Google
+authentication. An authorized operator must run `nlm login` on Pro with the
+existing profile, complete any browser login, then run `nlm login --check`.
+Do not delete the profile, import cookies into artifacts, change provider, or
+treat a provider failure as an editorial verdict. The bridge returns a fixed
+actionable auth error and logs only provider, exit code and a closed status.
+The existing auth-sentinel is the scheduled authentication monitor; its probe
+and operating constraints are documented in `auth-sentinel.md`. Do not add a
+second daemon or enable notifications without authorization.
+
+### One runtime supervisor
+
+On Pro, first check `launchctl list com.nuzantara.chatgpt-marketing-tunnel`.
+When that existing job owns the runtime, use its existing native profile and
+`launchctl kickstart -k gui/$(id -u)/com.nuzantara.chatgpt-marketing-tunnel`
+for an authorized restart. Do not also run `runtimes connect`: a second runtime
+can be created against the same profile. On 2026-09-11 both processes existed;
+the launchd job already had `KeepAlive` and `RunAtLoad` enabled.
+
+For a confirmed duplicate created by `runtimes connect`, identify the alias PID
+and the launchd PID before stopping the alias with `runtimes stop`. Preserve the
+profile and its existing write flag. After a launchd restart, verify one process,
+both local health endpoints, and the actual `workspace_health` bridge call.
+The alias tracker can say `stopped` while launchd's process serves healthy
+endpoints; that is a supervisor ownership mismatch, not grounds to start another
+process. Never emit unfiltered runtime JSON: it includes tunnel identifiers.
+
 The Pro-only setup paths are intentional. Do not run this installer from
 Air-M5 or Mini; those machines are not the tunnel runtime.
