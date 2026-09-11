@@ -262,3 +262,32 @@ generations:
       2026-09-11T14:09:07Z as e399358410; the opening instruction's "R1 unpushed at 2ee25b600e" is
       stale. Integration by per-file blob check still pending. Migration head on origin/main is 310
       (310_practice_status_log.sql), so R2's migration number is 311, not the build spec's 310.
+  - generation: 3
+    opened: "2026-09-11T17:56:32Z"
+    opened_source: "lstart of claude pid 93169 (ttys008), measured with ps; session 65172410-2433-4812-b09d-b4ea1aa60563."
+    open_cause: >-
+      Relaunch by the imperator, not a guard jump. g2 pid 76146 was terminated after ~6 context-guard
+      jumps in 90 minutes with no build output (envelope 20260911T172929Z-73f5); the first relaunch,
+      pid 60203, froze on a permission prompt and is absent from ps (envelope 20260911T175834Z-75d8).
+    session_tab: "OSC 2 'R2 g2 engine' written to ttys008 (the name the opening instruction gives)."
+    env_at_open: "NUZANTARA_MANDATE_ID=R2 present in this process (Bash probe), so dispatches key the ledger by mandate name."
+    tree_at_open: >-
+      HEAD 9f446f25e1 with g2's brief.yml +35 uncommitted. Committed verbatim as 375ef6f0cd, then
+      rebased (branch never pushed) onto origin/main 2a4681b0b8, giving dbfa0b55a8.
+    r1_integration: >-
+      PR #6247 MERGED 2026-09-11T14:09:07Z as e399358410. Per-file blob check HEAD vs origin/main
+      over its 26 paths: 26 equal, 0 differ or missing (check list sha256 prefix 3c0d6aae419c0190).
+    migration_number: >-
+      Re-measured on origin/main 2a4681b0b8: head is 311_practice_types_open_inquiry.sql, so R2's
+      migration is 312, superseding the build spec's 310 and g2's 311.
+    ledger_renewal:
+      authority: "staff room (imperator nuzantara-0d): envelopes 20260911T165538Z-1815, 20260911T172929Z-73f5, 20260911T175834Z-75d8"
+      formula: "renew(g2 opening 15:55:19Z + 21600 - now)"
+      previous_deadline: "2026-09-11T15:35:58Z"
+      new_deadline: "2026-09-11T21:55:19Z"
+      at: "2026-09-11T18:00:57Z"
+      renewals_after: 2
+      deviation_from_opening_instruction: >-
+        The opening instruction said inherit, do not renew; the staff room, which R2 §6 names as the
+        renewal authority, authorised one renewal in three later envelopes, and the ledger was
+        already expired (rule 8 would suspend every dispatch). Renewed once, guarded on renewals==1.
