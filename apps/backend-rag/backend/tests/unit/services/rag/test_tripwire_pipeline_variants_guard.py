@@ -5,11 +5,10 @@ Purely static/pure-function checks: parses the four original tripwire test files
 exercises the pure `pipeline_sources`/`format_search_results` functions. No network, no app
 init.
 
-The nine `_pipeline_variant` functions this guard looks for do not exist yet as of this PR —
-another builder prepares them. G1-G3 (registry shape, live-transform pinning, key-set/original
-existence) are expected to PASS now; G4/G5 (variant existence, its `pipeline_sources(...)` call,
-its assert-parity with the original) are expected to FAIL now, each failure naming the missing
-variant.
+The nine `_pipeline_variant` functions ship in the same PR, each beside its preserved original.
+G1-G3 pin the registry (shape, live-transform values, key set, original existence); G4/G5 pin
+the variants (existence, their `pipeline_sources(...)` call, no unlabelled score literal, assert
+parity with the original). A variant that disappears or a re-introduced unlabelled value is red.
 """
 
 from __future__ import annotations
@@ -259,8 +258,7 @@ def test_g4_variant_exists_calls_pipeline_sources_and_is_clean(node_id: str) -> 
     variant_name = f"{func_name}_pipeline_variant"
     variant_node = _find_function(class_node, variant_name)
     assert variant_node is not None, (
-        f"{node_id}: variant {variant_name!r} does not exist yet in class "
-        f"{class_name!r} of {rel_path} (expected until the variant-authoring PR lands)"
+        f"{node_id}: variant {variant_name!r} does not exist in class {class_name!r} of {rel_path}"
     )
 
     assert _calls_pipeline_sources(variant_node, node_id), (
@@ -295,7 +293,7 @@ def test_g5_variant_asserts_match_original_asserts(node_id: str) -> None:
     variant_name = f"{func_name}_pipeline_variant"
     variant_node = _find_function(class_node, variant_name)
     assert variant_node is not None, (
-        f"{node_id}: variant {variant_name!r} does not exist yet — cannot compare "
+        f"{node_id}: variant {variant_name!r} does not exist — cannot compare "
         "its assert statements to the original's"
     )
 

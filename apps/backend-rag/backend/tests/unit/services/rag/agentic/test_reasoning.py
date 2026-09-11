@@ -214,6 +214,18 @@ class TestCalculateEvidenceScore:
         score = calculate_evidence_score(sources, context, "quantum physics theory")
         assert score < 0.15
 
+    def test_no_keyword_overlap_pipeline_variant(self):
+        """Pipeline variant: same inputs and assertions, dense_formatted provenance."""
+        from backend.tests.fixtures.pipeline_score_fixtures import pipeline_sources
+
+        # B1.1 inventory row 2 (dense_formatted): PIPELINE_TRIPWIRE_FIXTURES["unit/services/rag/agentic/test_reasoning.py::TestCalculateEvidenceScore::test_no_keyword_overlap"]
+        sources = pipeline_sources(
+            "unit/services/rag/agentic/test_reasoning.py::TestCalculateEvidenceScore::test_no_keyword_overlap"
+        )
+        context = ["KBLI classification code retail 47911"]
+        score = calculate_evidence_score(sources, context, "quantum physics theory")
+        assert score < 0.15
+
     def test_entity_type_mismatch_visa_vs_kbli(self):
         """KITAS query + KBLI context triggers mismatch penalty."""
         sources = [{"score": 0.7}]
