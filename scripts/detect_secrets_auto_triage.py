@@ -657,6 +657,30 @@ CONTENT_KEYED_RULES: list[tuple[re.Pattern[str], re.Pattern[str], str]] = [
         "Evidence Pack diff.measured_at: a git commit SHA (merge-base "
         "the diff was measured against), not a credential",
     ),
+    # apps/website/src/components/services/__fixtures__/legacy-service-inventory.json
+    # (2026-09-11, PR #6210): the compliance-corner parity fixture carries the
+    # 108 legacy service records with `descriptionSha256` (digest of the
+    # legacy service description) and one `sha256` per feature (digest of
+    # the feature prose) — 250 sha256 content digests of PUBLIC marketing
+    # copy, kept as provenance pins so the migrated catalog can be checked
+    # against the legacy copy without carrying the prose. Detect Secrets
+    # flags every one as a Hex High Entropy String (222 residue on PR
+    # #6210's head). Path-keyed to that one fixture, content-keyed to a line
+    # that is exactly one of the two digest keys holding 64 lowercase hex
+    # (optional trailing comma), so a real secret added to the same file
+    # under any other key — or any other value shape — stays unaudited.
+    (
+        re.compile(
+            r"(^|/)apps/website/src/components/services/__fixtures__/"
+            r"legacy-service-inventory\.json$"
+        ),
+        re.compile(
+            r'^\s*"(?:descriptionSha256|sha256)"\s*:\s*"[0-9a-f]{64}"\s*,?\s*$'
+        ),
+        "website legacy-service-inventory fixture: descriptionSha256/sha256 are "
+        "sha256 content digests of legacy public service prose (provenance pins "
+        "for the compliance-corner parity tests), never a credential",
+    ),
 ]
 
 # Each rule is (pattern, reason). The pattern matches the file path
