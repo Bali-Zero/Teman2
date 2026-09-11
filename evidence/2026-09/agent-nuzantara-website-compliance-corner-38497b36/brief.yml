@@ -1,18 +1,24 @@
 task_id: compliance-corner
-gear: 1
+gear: 2
 l_level: L2
 gate_class: opus
 gear_note: >-
-  Floor the CI way: git diff --name-only codex/website-r19-integrated... (19 files) piped to
-  scripts/evidence_pack_lint.py --print-floor --changed-files-file <that list> --net-lines 2135
-  (net-lines = git diff --numstat codex/website-r19-integrated... | awk '{a+=$1-$2}') -> floor 1,
-  source none (no hot-zone path hit). Declared 1. The raw git diff --stat is much larger than the
-  content this PR adds because the repo's pre-commit hook runs `prettier --check` on the FULL
-  content of every staged file, not just the diff, and several touched files (service-dossier-
-  data.ts especially) were not prettier-clean before this change (confirmed against an untouched
-  sibling file, which also fails `prettier --check` with no config override anywhere in the repo).
-  Committing without --no-verify required a whole-file `prettier --write`, which is reformatting
-  churn, not new content -- recorded here so the size term is read correctly.
+  RECOMPUTED after the PR was rebased onto agent/nuzantara/website/prettier-content-files (PR
+  #6211, which prettier-normalizes the pre-existing content of every file this PR also touches,
+  merged in as this PR's new base) -- the earlier gear:1 declaration above was measured against
+  the OLD base (codex/website-r19-integrated) where those files were not yet prettier-clean, so
+  this PR's own diff against that old base was inflated by reformatting churn belonging to
+  #6211, not to this PR's content. Recipe: `git diff --name-only
+  agent/nuzantara/website/prettier-content-files...HEAD > /tmp/cfb.txt; git diff --numstat
+  agent/nuzantara/website/prettier-content-files...HEAD > /tmp/nsb.txt; python3
+  scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/cfb.txt --numstat-file
+  /tmp/nsb.txt` -> floor 2, source size (`--print-floor-source` confirms `size`). 20 files
+  changed against the new base (19 content/test files + this brief.yml), churn (added+deleted
+  per file, per _size_term_net_lines(), `awk -F'\t' '{s+=$1+$2} END{print s}' /tmp/nsb.txt`)
+  totals 811 (12+6 + 1+0 + 1+0 + 1+0 + 11+4 + 51+37 + 15+6 + 18+14 + 23+2 + 25+0 + 85+0 + 134+0
+  + 116+0 + 27+2 + 20+0 + 62+0 + 27+1 + 1+0 + 3+0 + 106+0), between SIZE_GEAR2_THRESHOLD (400)
+  and SIZE_GEAR3_THRESHOLD (1828), no hot-zone path hit ->
+  floor 2. Declared 2 to match the measurement, superseding the stale gear:1 above.
 objective: >-
   Add "compliance" as the fifth first-class service pillar on the NEW apps/website R19 site
   (branch codex/website-r19-integrated, not yet on main): a full ServicePage entry rendered by
