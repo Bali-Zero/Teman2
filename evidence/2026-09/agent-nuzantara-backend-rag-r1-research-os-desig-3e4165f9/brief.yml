@@ -407,6 +407,16 @@ team:
       room, not by this window; it signs and never arms.
 
 checkpoints:
+  - generation: 4
+    state: round-1-cure-green
+    envelope: 20260911T113047Z-27fe.md
+    envelope_sha256: 31505741de08df704f314af196670a2da8f000189aa41a627b5ff29d2de91186
+    sent: "2026-09-11T11:30:47Z"
+    ack: >-
+      R1-ack g4, imperator nuzantara-0d, 2026-09-11T11:36Z, quoting the envelope and its sha256. Mutation
+      proof accepted as the standard the gate re-runs on a sample; N5 deferral accepted as named, to
+      be listed in the PR body under "Deferred, named". Round 2 then returned REWORK from both quorum
+      seats on one converged blocker, corrected at depth 1 in 1bd1319590.
   - generation: 3
     state: window-jump
     envelope: 20260911T111701Z-592c.md

@@ -1,0 +1,340 @@
+task_id: r1-research-os-design
+mandate: R1
+colour: BLUE
+pr: R1 DESIGN (P06 slice 2)
+head_sha: 1bd1319590d323a029c4db81b90e9f699a8d5783 # pragma: allowlist secret — the evidence commit on top changes evidence/ only
+code_sha: 1bd1319590d323a029c4db81b90e9f699a8d5783 # pragma: allowlist secret — last commit touching apps/
+reviewed_sha: e6754556e1402f36a9d017c6d32ddec30697bd83 # pragma: allowlist secret — what adversarial round 2 read; the round-2 correction on top is NOT seat-reviewed (two rounds is the appetite) and is handed to the gate as such
+base_sha: 9304392d1a3c1f50dc6be847e8cd16d29a0c738b # pragma: allowlist secret
+brief_ref: evidence/2026-09/agent-nuzantara-backend-rag-r1-research-os-desig-3e4165f9/brief.yml
+gear: 3
+
+spend:
+  # Mission wall clock summed over four generations: g1 0.5 h + g2 ~0.4 h + g3 ~1.25 h + g4 ~0.6 h.
+  wall_clock_hours: 2.8
+  adversarial_rounds: 2
+  # tokens NOT MEASURED end to end: no single counter spans four windows. Measured per seat only:
+  # codex round 1 106,720 and round 2 102,636 on their own traces.
+  tokens: not measured
+  # children that returned work: g2 FIXTURES + DOCS, g3 INTELEVENT + BLOCKERS (the last died with
+  # its window). g1's four reservations died unspent with the g1 Dux; g4 dispatched none.
+  children: 4
+  child_depth: 1
+
+result: >-
+  D3 (the bitemporal reader) and D4 (legacy admission) are executable reference modules with one
+  test row per case, over canonical fixtures that validate; the P06 bundle's Evidence mapping is
+  32/32 and executed; the control room reads the real program state. Adversarial round 1 returned
+  REWORK on one defect family — presence, then resolution, then BINDING — and generation 4 cured
+  it at the binding level, proven load-bearing by mutation (13 of 13 round-1 cures red under their own
+  deletion). Round 2: both quorum seats REWORK on ONE converged blocker — rule 1 still derived by
+  digit overlap — plus Codex's stricter reading of B3; both corrected at depth 1 (whole-token
+  anchoring, version bound to document and body) and proven by mutation, with the semantic residual
+  named as G-STATEMENT. No third round: the fresh gate reads the correction.
+
+measured:
+  - "pytest tests/unit/research_os + tests/db/test_research_os_valid_time_is_not_text_orderable.py: 520 passed, 0 failed, 0 skip, 0 xfail (at the round-2 code sha)"
+  - "research_os.cli fixtures --check: checked 218, failures [], valid true"
+  - "git diff origin/main -- packages/research-os-core: 0 lines (frozen contract surface untouched)"
+  - "Consul innocence, tests/unit/services/autonomous_lab + tests/integration/test_dual_consul_postgres.py: 274 passed, 17 skipped (all DSN-gated, pre-existing), identical to g3 checkpoint 2"
+  - "gear floor: evidence_pack_lint.py --print-floor over the mission numstat = 3 (net +6151 -124, 8 commits before the pack)"
+  - "git merge-tree --write-tree origin/main HEAD: clean"
+
+load_bearing_proof:
+  method: >-
+    Each cure deleted IN PLACE on the committed tree (restore by git checkout was safe because the
+    cure was committed first), its own test run, file restored and verified clean by git status.
+  results:
+    - "M1 rule-5 binding on source.uri -> red (after the per-gate split; GREEN on the first version)"
+    - "M1b rule-5 binding on identity.content_hash -> red (after the split; GREEN on the first version)"
+    - "M1c rule-5 binding on payload_ref.content_hash -> red"
+    - "M2 stated source_event_ref.object_hash -> red"
+    - "M3 rule-3 version resolution -> red"
+    - "M4 rule-4 locator resolution -> red"
+    - "M5 rule-1 derivation from the span -> red"
+    - "M6 reader: raw family compare and no fallback attachment (the B5 defect restored) -> red"
+    - "M7 reader: refs by claim_id (the N1 defect restored) -> red"
+    - "M8 reader: structural non_unique_current_member removed -> red"
+    - "M9 reader: consequence read from a flag -> red"
+    - "M10 reader: colliding families joined into one id -> red"
+    - "M11 reader: unmatched edge silently dropped -> red"
+    - "M12a jsonschema step alone removed -> GREEN, by design (pydantic still rejects); M12ab both validators removed -> red"
+    - "ROUND 2 — M13a rule-1 string value by containment instead of equality -> red"
+    - "ROUND 2 — M13b rule-1 numeric delimiter removed (part of a larger number) -> red"
+    - "ROUND 2 — M13c rule-1 anchor made optional -> red"
+    - "ROUND 2 — M13d rule-1 numeric equality removed (anchor on another number) -> red"
+    - "ROUND 2 — M14 rule-3 document_id binding removed -> red"
+    - "ROUND 2 — M15 retention/classification rule order swapped -> red"
+  disclosed: >-
+    Two mutations did not bite on the first version and the test was changed because of it, not
+    the claim: the first binding row broke uri, identity hash and payload hash in one borrowed
+    event, so deleting any single gate stayed green. Split into one broken gate per case
+    (e6754556e1) and re-proven.
+
+adversarial:
+  round_1:
+    seat: codex-gpt-5.6-sol
+    account: >-
+      O2 (CODEX_HOME=~/.codex-acct2). O1 answers "workspace out of credits" on both codex
+      binaries on Pro, so the failure is the account, not the binary-shadowing trap.
+    outside_chain: true
+    sandbox: read-only
+    reviewed_sha: 3a47abf98ac55822c7ca2b82ef6c403abffc8458 # pragma: allowlist secret
+    artifact: codex-round1-verdict.txt
+    artifact_sha256: c6ebe07664c0ea47a0eb5b4217ff3f295b5e25e23e485e440dacb6fb6d08f0f9 # pragma: allowlist secret
+    full_trace_path: ~/.claude/state/r1-evidence/codex-round1-full-trace.txt
+    full_trace_sha256: bf6bfab938557922330ebcbf9709ddd44489e718ded8f0c0d047f2b3c7a38005 # pragma: allowlist secret
+    verdict: REWORK
+    confirmed_and_cured:
+      - {
+          id: B1,
+          severity: BLOCKER,
+          cure: "rule 5 binds the resolved IntelEvent to the record's own document_id and body hash; a stated ref hash must equal the recomputed one",
+        }
+      - {
+          id: B2,
+          severity: BLOCKER,
+          cure: "rule 1 no longer trusts the flag; round 1 derived by digit overlap (REWORKED in round 2), round 2 anchors the value to a whole delimited token",
+        }
+      - {
+          id: B3,
+          severity: BLOCKER,
+          cure: "rule 3 resolves document_version_id for this body hash; round 2 bound it to document_id too",
+        }
+      - {
+          id: B4,
+          severity: BLOCKER,
+          cure: "rule 4 resolves the locator to {start,end} offsets whose body slice is the quote",
+        }
+      - {
+          id: B5,
+          severity: BLOCKER,
+          cure: "the reader derives the RegisteredName naga.claim_family.<uuid> from the claim (graph.py:24 vs claim.schema format uuid); unmatched edges attach by ref and quarantine",
+        }
+      - {
+          id: B6,
+          severity: BLOCKER,
+          cure: "structural non_unique_current_member runs in integrity, before any temporal filter",
+        }
+      - {
+          id: M-246,
+          severity: MEDIUM,
+          cure: "malformed-event mutation rehashed so the validators are what rejects; proven by the M12ab double deletion",
+        }
+      - {
+          id: M-229/M-271,
+          severity: MEDIUM,
+          cure: "binding, stated-hash, version, locator and derivation rows added; each proven by mutation",
+        }
+      - {
+          id: M-315,
+          severity: MEDIUM,
+          cure: "two-defect rows pin the rule order at six boundaries (three added on kimi round 2)",
+        }
+      - {
+          id: M-174,
+          severity: MEDIUM,
+          cure: "read() runs over the COMMITTED seed correction pair and a committed canonical claim",
+        }
+      - {
+          id: M-21,
+          severity: MEDIUM,
+          cure: "figures made unmistakably invented; this also cured rptka-sponsor-fee-04 stating 1200000 over a span saying USD 1,200, caught by the cured rule 1 on its first run",
+        }
+    deferred_named:
+      - {
+          id: L-334,
+          severity: LOW,
+          reason: "atomic-correction invariants for the seed pair are facts of the JSON, not a guarded test; not reached inside the cap",
+        }
+      - {
+          id: L-111,
+          severity: LOW,
+          reason: "helper-data oracle: partially closed by the committed-fixture rows above; the algorithmic rows keep hand-built corpora by design (module docstring)",
+        }
+  second_reader:
+    seat: gemini-3.1-pro-agy
+    non_quorum: true
+    artifact: gemini-second-reader.txt
+    artifact_sha256: 4f294995a36a00dfd6129bec135bc8c99355ba2cdc0fed3a77db4011b10f8ecb # pragma: allowlist secret
+    cured: [N1, N2, N3, N4]
+    deferred_named:
+      - id: N5
+        reason: >-
+          The correction pair's evidence_refs stay empty. Pointing them at the Evidence objects of
+          OTHER instruments in the same file would be exactly the borrowed provenance rule 5 now
+          forbids; a real cure needs two more fully-sourced records. The pair is a reader seed and
+          the cohort is declared non-production-eligible (z2b_production_eligibility).
+  round_1_kimi:
+    seat: kimi-code/k3
+    artifact: kimi-round1-verdict.txt
+    artifact_sha256: 85aef4cd24fb305b00fcff6fd54c35511dcdc5d867699036890cb225a932eb40 # pragma: allowlist secret
+    coverage: PARTIAL (diff truncated at 900 lines; the seat said so)
+    own_finding_disposition: >-
+      The lowercase 'z' terminator: measured as a real split between the two validators of the
+      frozen surface and filed as freeze-change-proposal-002 rather than changed here.
+  round_2:
+    reviewed_sha: e6754556e1402f36a9d017c6d32ddec30697bd83 # pragma: allowlist secret
+    seats:
+      - seat: codex-gpt-5.6-sol
+        account: O2 (CODEX_HOME=~/.codex-acct2), read-only, read the repository itself
+        artifact: codex-round2-verdict.txt
+        artifact_sha256: a4c7827e37a258328a28afd0618d8d531c6d93150a6172bff6acdfd313366f7b # pragma: allowlist secret
+        full_trace_path: ~/.claude/state/r1-evidence/codex-round2-full-trace.txt
+        full_trace_sha256: a38651ad62cd5a88230da513e02ccae599c672aae1a2e7dba99f53bed25c95f3 # pragma: allowlist secret
+        tokens: 102636
+        verdict: REWORK
+        table: "CURED B1 B4 B5 B6 N1 N2 N3 N4 + the three MEDIUMs; PARTIAL B2 and B3"
+      - seat: kimi-code/k3
+        coverage: FULL Python diff inlined (round 1 was truncated); ran the suite itself (511 passed) and probed rule 1 live
+        artifact: kimi-round2-verdict.txt
+        artifact_sha256: 4b14deef1ee399c2e3916f4958a4354825ede9511753fae98676f5765acd8ded # pragma: allowlist secret
+        full_trace_path: ~/.claude/state/r1-evidence/kimi-round2-full-trace.txt
+        full_trace_sha256: 62fc5d1e07cd2bceb3f1e2232f14ac0bdc50d1b8a7fa75097df4687a8ee253f3 # pragma: allowlist secret
+        verdict: REWORK
+        table: "CURED B1 B3 B4 B5 B6 N1 N2 N3 N4 + the three MEDIUMs; PARTIAL B2"
+    converged_blocker:
+      finding: >-
+        Both seats, independently and each by its own probe: rule 1's round-1 cure derived by
+        DIGIT-GROUP INTERSECTION, so a value that merely shares a figure with the span was
+        admitted ("1 year" over "Article 1"; "1,234,000 days of detention" over a fee of IDR
+        1,234,000). Overlap is not derivation.
+      family_count: >-
+        The SECOND red on the provenance family (round 1, round 2) — not the third, so no
+        suspension. The correction is a fix-of-a-fix at depth 1, the last the contract allows:
+        if it is wrong, the surface is under-specified and the answer is a spec, not a third cure.
+      cure: >-
+        statement.value_span = {start, end} offsets of the value's WHOLE, DELIMITED token inside the
+        quoted span, compared by full equality (an int against the separator-stripped digits of one
+        number token; a string against identical characters). Incidental overlap, a paraphrase
+        around the figure, part of a larger number, no anchor, and an anchor on another number are
+        each a pinned exclusion. The two paraphrased seed values became the literal tokens they
+        anchor to.
+      residual_named: >-
+        NECESSARY, NOT SUFFICIENT: a record that points a real token at the wrong phrase still
+        passes; what a token MEANS needs the statement atomizer (G-STATEMENT, deferred) and review.
+    b3_split: >-
+      Codex PARTIAL (the version mapping bound the body hash but not document_id), Kimi CURED. The
+      Dux took the stricter reading: document_versions values are {document_id, content_hash} and
+      a version registered for another document with the same body is a pinned exclusion.
+    lows:
+      - {
+          seat: kimi-code/k3,
+          finding: "_group docstring promised 'never dropped' for cross-key edges",
+          disposition: "docstring narrowed to what the code guarantees",
+        }
+      - {
+          seat: kimi-code/k3,
+          finding: "rule-order tail adjacencies (7,8) (8,9) (9,10) unpinned",
+          disposition: "pinned",
+        }
+      - {
+          seat: kimi-code/k3,
+          finding: "boolean value admitted by substring 'true'",
+          disposition: "gone with rule 1 v2: a bool is neither an int token nor a string and is not admitted",
+        }
+    no_round_3: >-
+      Two adversarial rounds is the appetite. The round-2 correction is verified by mutation on the
+      committed tree and handed to the fresh Opus 5 gate, which reads it as unreviewed-by-seat code.
+
+council_run: council-journal.jsonl
+
+dissent:
+  - seat: "claude-opus-5 (g4 Dux) vs the g3 implementer child's B5 cure"
+    status: CONFIRMED
+    objection: >-
+      The child cured B5 by stripping naga.claim_family. from the supersession/01 edge. That
+      fixture then passed the RegisteredName pattern only because its uuid starts with a letter,
+      pydantic rejected the edge, and the hash was never recomputed. Reverted; the reader derives
+      the registered name instead. Reported to the imperator at checkpoint 3b before the cure.
+  - seat: "claude-opus-5 (g4 Dux), on its own proof"
+    status: CONFIRMED
+    objection: >-
+      The first binding test was a combined-defect row that no single-gate deletion could turn
+      red. Found by mutation, split, re-proven — recorded rather than smoothed over.
+
+bites:
+  consumer: >-
+    R2's persistence and admission code (services/research_os/naga_admission.py and the SQL
+    reader), which imports these fixtures and implements against these reference modules. R2
+    cannot exist before R1 merges (D7 release order), so per the brief the observation made
+    BEFORE reporting done is on this PR's own CI:
+  observation: >-
+    The P06 fixture-bundle rows (every canonical object validates against its schema and model,
+    every object_hash is the recomputed hash) and the committed-fixture reader rows
+    (test_the_shipped_correction_edge_is_consumed_*) green on this branch's CI run, plus
+    fixtures --check on the merged tree.
+
+# Every figure, instrument number, URL and identifier is synthetic and labelled so; no client
+# data in any file, artifact or checkpoint.
+pii_scan: clean
+
+lanes:
+  # ONE build lane, on purpose and accurately: one mission over the same files, built
+  # SEQUENTIALLY — Sonnet 5 implementer children (g1-g3) and Opus 5 Dux cures (g2 guard rewrite,
+  # g4 round-1 and round-2 cures). Splitting it by generation would describe a parallelism that
+  # never existed. Seat diversity lives in the REVIEW lanes, non-Anthropic by construction.
+  - {
+      lane: "R1 DESIGN reference modules, fixtures and control room",
+      role: build,
+      seat: "claude-sonnet-5 (implementer children g1-g3) then claude-opus-5 (Dux cures g2, g4)",
+      state: "delivered",
+    }
+  - {
+      lane: "R1 adversarial rounds 1 and 2 (quorum)",
+      role: review,
+      seat: "codex-gpt-5.6-sol (O2) and kimi-code/k3",
+      state: "REWORK, REWORK; round-2 correction handed to the gate",
+    }
+  - {
+      lane: "R1 second reader (non-quorum)",
+      role: review,
+      seat: "gemini-3.1-pro-agy",
+      state: "5 findings, 4 cured, N5 deferred by name",
+    }
+
+deviations:
+  - >-
+    Descendants: implementer attempts raised 4 -> 6 -> 8 by the staff room across generations
+    (recorded in brief.yml); g3 spent its 2; g4 dispatched none and wrote the remaining cure itself.
+  - >-
+    Size: net +6151 over the ~400-line guideline — one mission (D3 + D4 + the P06 bundle), gear
+    floor 3 by size, declared in the brief from g1.
+
+receipts:
+  - claim: "the research_os suite is green on the shipped bytes"
+    cmd: "cd apps/backend-rag/backend && PYTHONPATH=$PWD:<wt>/packages/research-os-core .venv/bin/python -m pytest tests/unit/research_os tests/db/test_research_os_valid_time_is_not_text_orderable.py"
+    exit: 0
+    ts: 2026-09-11T11:29:00Z
+    seat: claude-opus-5
+    output: "520 passed"
+  - claim: "the core fixture corpus still validates"
+    cmd: "PYTHONPATH=packages/research-os-core .venv/bin/python -m research_os.cli fixtures --check"
+    exit: 0
+    ts: 2026-09-11T11:25:00Z
+    seat: claude-opus-5
+    output: '{"checked": 218, "failures": [], "valid": true}'
+  - claim: "the frozen contract surface is byte-identical to origin/main"
+    cmd: "git diff origin/main -- packages/research-os-core | wc -l"
+    exit: 0
+    ts: 2026-09-11T11:23:00Z
+    seat: claude-opus-5
+    output: "0"
+  - claim: "Consul's persistence consumer is unmoved"
+    cmd: "cd apps/backend-rag/backend && PYTHONPATH=$PWD:<wt>:<wt>/packages/research-os-core .venv/bin/python -m pytest tests/unit/services/autonomous_lab tests/integration/test_dual_consul_postgres.py"
+    exit: 0
+    ts: 2026-09-11T11:36:00Z
+    seat: claude-opus-5
+    output: "274 passed, 17 skipped (a first run without the repo root on PYTHONPATH read 1 failed on 'No module named scripts.conductor' — an invocation artifact, the diff touches neither scripts/ nor autonomous_lab)"
+  - claim: "every cure is load-bearing"
+    cmd: "in-place deletion per cure on the committed tree, pytest <row>, git checkout -- <file>, git status clean"
+    exit: 0
+    ts: 2026-09-11T11:31:00Z
+    seat: claude-opus-5
+    output: "20 cure deletions red under their own row; 1 single-validator deletion green by design, its double deletion red (see load_bearing_proof)"
+  - claim: "the mapping guard no longer pins the gap"
+    cmd: "grep -c 'absent) == 15' apps/backend-rag/backend/tests/unit/research_os/test_naga_evidence_mapping_preconditions.py"
+    exit: 1
+    ts: 2026-09-11T11:36:00Z
+    seat: claude-opus-5
+    output: "0"
