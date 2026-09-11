@@ -66,10 +66,19 @@ class SendMessageRequest(BaseModel):
 
 
 class UpdatePreferencesRequest(BaseModel):
-    """Request to update preferences"""
+    """Request to update LOCALE preferences.
 
-    email_notifications: bool | None = None
-    whatsapp_notifications: bool | None = None
+    Notification consent is not settable here: `notification_prefs`
+    (`PUT /api/portal/notifications/prefs`) is the single source of truth,
+    because it is the only store `alert_dispatcher` reads. Declaring
+    `email_notifications` / `whatsapp_notifications` on this endpoint is how
+    the two came to disagree live (portal audit F-04): it answered
+    `whatsapp_notifications: true` for an account whose enforced setting was
+    false. Pydantic ignores unknown keys by default, so an older client build
+    that still sends them keeps working — its values are simply no longer
+    written anywhere.
+    """
+
     language: Literal["it", "en", "id"] | None = None
     timezone: str | None = None
 

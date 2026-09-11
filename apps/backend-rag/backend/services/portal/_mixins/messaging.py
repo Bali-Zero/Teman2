@@ -184,12 +184,35 @@ class PortalMessagingMixin:
         *,
         current_user: ClientContext,
     ) -> dict[str, Any]:
-        """Get client preferences."""
+        """Get client locale preferences.
+
+        NOTIFICATION CONSENT IS NOT HERE. `notification_prefs` (keyed by the
+        portal `user_id`, served by `portal_notification_prefs.py`) is the
+        single source of truth, because it is the only one anything reads:
+        `services/compliance/alert_dispatcher.py` consults it to decide
+        whether a client gets a compliance email or WhatsApp message. The
+        `client_preferences.email_notifications` /
+        `whatsapp_notifications` columns had NO reader anywhere — not a cron,
+        not a dispatcher, not a CRM surface — yet this endpoint kept
+        reporting them, defaulting to true/true.
+
+        Measured live 2026-09-11 on the same account at the same moment
+        (portal audit F-04 + bridge F3):
+            GET /api/portal/notifications/prefs -> {"wa_enabled": false, ...}
+            GET /api/portal/settings            -> {"whatsapp_notifications": true, ...}
+        Two answers to one question, and the one a client could reach through
+        the UI was the one nobody enforces. Under UU PDP that is a consent
+        mismatch, not a display bug — so the field is gone from this
+        endpoint rather than left as the obvious place for the next
+        developer to wire a new UI or cron.
+
+        The columns themselves are left in place: dropping them is a
+        migration and a data decision, not a bug fix.
+        """
         async with self.pool.acquire() as conn:
             prefs = await conn.fetchrow(
                 """
-                SELECT email_notifications, whatsapp_notifications,
-                       language, timezone
+                SELECT language, timezone
                 FROM client_preferences
                 WHERE client_id = $1
                 """,
@@ -199,15 +222,11 @@ class PortalMessagingMixin:
             if not prefs:
                 # Return defaults
                 return {
-                    "email_notifications": True,
-                    "whatsapp_notifications": True,
                     "language": "en",
                     "timezone": "Asia/Jakarta",
                 }
 
             return {
-                "email_notifications": prefs["email_notifications"],
-                "whatsapp_notifications": prefs["whatsapp_notifications"],
                 "language": prefs["language"],
                 "timezone": prefs["timezone"],
             }
@@ -225,7 +244,14 @@ class PortalMessagingMixin:
         *,
         current_user: ClientContext,
     ) -> dict[str, Any]:
-        """Update client preferences."""
+        """Update client locale preferences.
+
+        `email_notifications` / `whatsapp_notifications` are deliberately NOT
+        accepted here — see `get_preferences` for why. A payload carrying
+        them is ignored rather than rejected, so an older client build cannot
+        start failing; what it can no longer do is write a consent value that
+        nothing enforces.
+        """
         async with self.pool.acquire() as conn:
             # Build dynamic update
             updates = []
@@ -233,8 +259,6 @@ class PortalMessagingMixin:
             param_idx = 2
 
             allowed_fields = {
-                "email_notifications": bool,
-                "whatsapp_notifications": bool,
                 "language": str,
                 "timezone": str,
             }
@@ -252,10 +276,15 @@ class PortalMessagingMixin:
                 )
 
             # Upsert preferences
+            # The INSERT arm seeds the row's defaults; the DO UPDATE arm
+            # applies the caller's values. The seed list is written out, not
+            # derived from `allowed_fields`, because the two used to be
+            # coupled by position — a field added to or removed from that
+            # dict silently shifted the VALUES tuple.
             await conn.execute(
                 f"""
-                INSERT INTO client_preferences (client_id, {", ".join(allowed_fields.keys())})
-                VALUES ($1, true, true, 'en', 'Asia/Jakarta')
+                INSERT INTO client_preferences (client_id, language, timezone)
+                VALUES ($1, 'en', 'Asia/Jakarta')
                 ON CONFLICT (client_id) DO UPDATE
                 SET {", ".join(updates)}
                 """,

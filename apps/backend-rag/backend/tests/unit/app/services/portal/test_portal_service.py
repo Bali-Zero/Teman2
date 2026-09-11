@@ -652,9 +652,7 @@ class TestPortalServicePreferences:
             client_id=1,
             current_user=ctx_client_1,
         )
-        assert result["email_notifications"] is True
-        assert result["language"] == "en"
-        assert result["timezone"] == "Asia/Jakarta"
+        assert result == {"language": "en", "timezone": "Asia/Jakarta"}
 
     @pytest.mark.asyncio
     async def test_get_preferences_stored(
@@ -663,10 +661,15 @@ class TestPortalServicePreferences:
         mock_conn,
         ctx_client_1,
     ):
-        """Returns stored preferences."""
+        """Returns stored LOCALE preferences — and no notification consent.
+
+        Portal audit F-04 (2026-09-11): this endpoint used to answer
+        `whatsapp_notifications: true` for an account whose enforced setting
+        — in `notification_prefs`, the only store `alert_dispatcher` reads —
+        was false. Two answers to one consent question. Guilt-proof: put
+        either field back into `get_preferences` and this fails.
+        """
         mock_conn.fetchrow.return_value = {
-            "email_notifications": False,
-            "whatsapp_notifications": True,
             "language": "it",
             "timezone": "Europe/Rome",
         }
@@ -674,8 +677,38 @@ class TestPortalServicePreferences:
             client_id=1,
             current_user=ctx_client_1,
         )
-        assert result["language"] == "it"
-        assert result["email_notifications"] is False
+        assert result == {"language": "it", "timezone": "Europe/Rome"}
+
+    @pytest.mark.asyncio
+    async def test_update_preferences_refuses_to_write_notification_consent(
+        self,
+        portal_service,
+        mock_conn,
+        ctx_client_1,
+    ):
+        """A payload carrying notification fields is ignored, not written.
+
+        An older client build must keep working; what it can no longer do is
+        write a consent value that nothing enforces.
+        """
+        mock_conn.fetchrow.return_value = {
+            "language": "en",
+            "timezone": "Asia/Jakarta",
+        }
+        await portal_service.update_preferences(
+            client_id=1,
+            preferences={
+                "whatsapp_notifications": False,
+                "email_notifications": False,
+                "language": "id",
+            },
+            current_user=ctx_client_1,
+        )
+
+        written = "".join(str(call) for call in mock_conn.execute.call_args_list)
+        assert "language" in written
+        assert "whatsapp_notifications" not in written
+        assert "email_notifications" not in written
 
 
 # ============================================================================
