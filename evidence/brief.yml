@@ -29,16 +29,17 @@ acceptance:
     probe: python3 -m pytest scripts/kbli_filiera/tests -q
   - text: >-
       A2 Bites: WHEN the adapter runs over the frozen July vault and the transform dry-runs with
-      --root /tmp/l2/root --raw /tmp/l2/july.jsonl SHALL print a SUMMARY line, and the
-      field-level diff of an --apply on that /tmp copy SHALL show 0 codes differing on
-      skala_usaha/kategori_risiko/scope_index and exactly 1 (49213) on the other L2-owned
-      fields — the observation recorded in spec §6 before this PR was opened.
-    probe: python3 scripts/kbli_filiera/vault_to_risk_jsonl.py --vault-root ~/nuzantara-vault --out /tmp/l2/july.jsonl && python3 scripts/build_kbli_l2_oss_risk.py --root /tmp/l2/root --raw /tmp/l2/july.jsonl | tail -1
+      --root /tmp/l2/root --raw /tmp/l2/july.jsonl SHALL print one line starting with SUMMARY
+      carrying no_oss_risk=221 and l4_changed=21 (this scripts/ copy; the backend copy gives 0),
+      and the field-level table of an --apply on that /tmp copy (spec §6, measured before this
+      PR was opened) SHALL show 0 codes differing on skala_usaha/kategori_risiko/scope_index
+      and exactly 1 (49213) on the other L2-owned fields.
+    probe: set -o pipefail; python3 scripts/kbli_filiera/vault_to_risk_jsonl.py --vault-root ~/nuzantara-vault --out /tmp/l2/july.jsonl && python3 scripts/build_kbli_l2_oss_risk.py --root /tmp/l2/root --raw /tmp/l2/july.jsonl | grep '^SUMMARY'
   - text: >-
-      A3: WHEN `python3 scripts/build_kbli_l2_oss_risk.py` runs with no flags SHALL resolve the
-      same /tmp/kbli-l2-risk and /tmp/oss_risk_raw.jsonl paths as before this PR (defaults
-      unchanged), so the June run is still reproducible.
-    probe: python3 scripts/build_kbli_l2_oss_risk.py --help | grep -c "/tmp/kbli-l2-risk"
+      A3: WHEN the transform's source is read SHALL still define ROOT as /tmp/kbli-l2-risk and
+      RAW as /tmp/oss_risk_raw.jsonl and use them as the --root/--raw defaults (grep count 2),
+      so the June run is still reproducible.
+    probe: grep -c 'Path("/tmp/kbli-l2-risk")\|Path("/tmp/oss_risk_raw.jsonl")' scripts/build_kbli_l2_oss_risk.py
 assumptions:
   - text: >-
       The vault ruang_lingkup.json is byte-for-byte the response the June fetcher stored under
@@ -49,7 +50,7 @@ assumptions:
       jangka_waktu, fiktif_positif and jangka_waktu_source are owned by layers after L2, so
       their divergence is not a transform defect.
     status: verified
-    probe: "scripts/enrich_kbli_jangka_waktu.py (2026-06-28) writes jangka_waktu_source; canonical carries it on 4,095 rows"
+    probe: "scripts/enrich_kbli_jangka_waktu.py (2026-06-28) writes jangka_waktu_source; canonical carries it on 4,200 rows of 941 codes"
   - text: >-
       The apps/backend-rag copy of the transform is the one whose L4 logic the canonical reflects.
     status: verified
