@@ -25,8 +25,10 @@ const OUTPUT_EN = path.join(process.cwd(), "public/llms-full.txt");
 const OUTPUT_ID = path.join(process.cwd(), "public/llms-id.txt");
 const OUTPUT_KBLI = path.join(process.cwd(), "public/llms-kbli.txt");
 const LLMS_TXT_PATH = path.join(process.cwd(), "public/llms.txt");
-const FULL_ONLY = process.env.LLMS_GENERATE_FULL_ONLY === "1";
 const ARTICLES_ONLY = process.env.LLMS_GENERATE_ARTICLES_ONLY === "1";
+// The build sets ARTICLES_ONLY; a legacy FULL_ONLY=1 left in the environment
+// must not stop it before the ID export and the freshness block.
+const FULL_ONLY = process.env.LLMS_GENERATE_FULL_ONLY === "1" && !ARTICLES_ONLY;
 
 async function generate(): Promise<void> {
   console.log("🚀 Generating AI Master Data files...");
