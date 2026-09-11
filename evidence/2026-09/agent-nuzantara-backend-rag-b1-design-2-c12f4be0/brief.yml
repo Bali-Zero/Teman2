@@ -10,8 +10,8 @@ objective: >-
   B1.2 of mandate B1 (BLUE). Re-base the nine historical "impossible cosine"
   abstain tripwires by ADDITION, never by edit (README D3/D5): each original
   stays byte-identical, and beside it a pipeline-derived variant feeds the
-  same query, context and assertions with sources minted from a measured
-  registry. The only real number that exists for these (query, context)
+  same query, context and assertions with sources minted from a registry of
+  measured cosines. The only real number that exists for these (query, context)
   texts is rc1a's text-embedding-3-small cosine (prod rag container,
   2026-09-10T18:03Z); no hybrid rank was ever measured for them, so every
   variant declares the DENSE path (B1.1 inventory row 2, score_kind
@@ -36,9 +36,12 @@ constraints:
     each variant body is equivalent to its original except the sources
     literal (AST normalisation script, output in the PR body).
   - >-
-    Nothing is invented: rank, fusion and list membership are declared only
-    where measured (dense, rank 0/1 from rc1a's cosine order); the tenth
-    regression (a behaviour gap) and the eleventh (named by count, never
+    Nothing is invented: only the cosines are measured (rc1a). No retrieval
+    rank, list membership, fusion or Qdrant server was ever measured for these
+    texts, so dense_rank0 and qdrant_server are None; formatter_collection,
+    lists and fallback_path are declared simulation inputs (the `simulated`
+    field names them); row 9's source-to-chunk association is unresolved. The
+    tenth regression (a behaviour gap) and the eleventh (named by count, never
     itemised) stay UNRESOLVED as B1.1's inventory recorded them.
 acceptance:
   - text: >-

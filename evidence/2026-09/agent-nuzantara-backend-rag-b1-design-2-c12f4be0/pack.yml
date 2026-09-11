@@ -15,7 +15,7 @@ spend:
   external_builder_calls: 4
 result: >-
   Nine dense-path pipeline variants added beside the nine preserved tripwire
-  originals; a measured registry (tests/fixtures/pipeline_score_fixtures.py)
+  originals; a registry of measured cosines (tests/fixtures/pipeline_score_fixtures.py)
   supplies their sources with score_kind dense_formatted, score_raw = rc1a's
   measured cosine and the score the real formatter mints; a guard pins the
   registry to the live transform and turns red on an unlabelled score
@@ -97,9 +97,14 @@ measured:
       test_abstain_bypass_policy: "34 -> 35",
       test_reasoning: "86 -> 87",
     }
-  guard: "46 passed"
+  guard: "46 passed at 4963e47f91; 86 passed at 8001e29180 (G1-G11)"
   mutation_a: "first registry entry score_kind -> UNKNOWN: 1 failed (G1) / 45 passed"
   mutation_b: '{"score": 0.9} literal inside test_no_keyword_overlap_pipeline_variant: 1 failed (G4) / 45 passed'
+  round_2_cure_mutations:
+    measured_at: "2026-09-11T18:3xZ, Pro, 8001e29180, test_reasoning.py backed up with cp, restored, sha256 re-checked equal"
+    r1: "class-body `test_no_keyword_overlap_pipeline_variant = test_no_keyword_overlap` after the variant: 1 failed (test_g11_runtime_binding_matches_the_parsed_def[...test_no_keyword_overlap]) / 85 passed"
+    r2: "module-level `TestCalculateEvidenceScore.test_no_keyword_overlap_pipeline_variant = lambda self: None`: 1 failed (G11, same node) / 85 passed"
+    r3: "class decorator that setattr()s the variant to the original: 1 failed (G11, same node) / 85 passed"
   assertion_diff: "0 variants whose asserts/prints differ; 0 variants whose body differs beyond the sources literal (AST)"
   numstat_existing_files_deletions: 0
   innocence:
@@ -128,8 +133,15 @@ lanes:
   - lane: "B1.2 adversarial round 1"
     role: review
     seat: "codex gpt-5.6-sol, effort high, read-only (round 1 account 1 Pro, round 2 account 2 Mini)"
-    state: "round 1 BLOCK -> cured; round 2 pending"
+    state: "round 1 BLOCK -> cured; round 2 BLOCK -> cured (G11); round 3 pending"
 dissent: []
+appetite_exceeded: >-
+  adversarial rounds: a third round is needed against a declared appetite of 2.
+  Named cause: round 2 found the round-1 cure of finding 3 incomplete (G7 counts
+  `def` nodes, a class-body rebinding escapes it) and the evidence wording still
+  carried the old rank claim. Per the fix-of-a-fix rule the surface was written
+  as a spec (B1-2-round-2-cure-spec.md) before the second cure; round 3 is
+  scoped to that cure only.
 deviations:
   - >-
     Net size above the ~400-line guideline (registry + guard grew to about 1,250
@@ -155,6 +167,13 @@ adversarial:
       - "F4 MAJOR fields unpinned: CURED — G9 independent literal table, G2 recomputes with rounding_digits; Dux mutations m4, m6 red"
       - "F5 MAJOR shallow immutability: CURED — MappingProxyType registry and carried_keys, G10"
   - round: 2
-    seat: "codex gpt-5.6-sol, effort high, read-only, account 2 (Mini)"
+    seat: "codex gpt-5.6-sol, effort high, read-only, account 2 (Mini), diffs inlined"
     reviewed_sha: 5a4505040b
-    verdict: pending
+    at: "2026-09-11T18:04:45Z (after account 1 out of credits 17:56Z and a Mini tool-runner failure 17:59Z-18:03Z)"
+    verdict: BLOCK
+    record: evidence/2026-09/agent-nuzantara-backend-rag-b1-design-2-c12f4be0/codex-round-2-b1-2.md
+    dispositions:
+      - "R1-F1 PARTIAL -> CURED in evidence: brief.yml constraint and B1-2-build-spec.md no longer call rank/collection/server measured (correction block + superseded rank column)"
+      - "R1-F2..F5 CURED (reviewer)"
+      - "R2-N1 BLOCKER class-body rebinding `variant = original` keeps G1-G10 green: AGREE — spec B1-2-round-2-cure-spec.md, G11 pins the runtime binding (qualname, co_filename, co_firstlineno) instead of enumerating rebinding syntaxes"
+      - "R2-N2 BLOCKER evidence wording: AGREE, cured as R1-F1 above"

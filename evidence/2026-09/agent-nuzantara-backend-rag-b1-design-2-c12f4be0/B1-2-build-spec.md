@@ -7,6 +7,16 @@ Paths below are relative to `apps/backend-rag/backend/`.
 
 ## Decision (Dux): every variant is a DENSE-path fixture carrying a MEASURED cosine
 
+> **Corrected after adversarial rounds 1 and 2** (`codex-round-1-b1-2.md`, `codex-round-2-b1-2.md`):
+> only the COSINES are measured. The first draft of §1 below declared `dense_rank0` values (from the
+> cosine order), a Qdrant server version and a retrieval collection as if observed — none was measured
+> for these texts. The shipped registry therefore carries `dense_rank0=None`, `qdrant_server=None`,
+> `formatter_collection` (a simulation input to `format_search_results` that selects no boost, not an
+> observed collection), a `simulated` field naming every declared-not-observed input (`formatter_collection`,
+> `lists`, `fallback_path`), and row 9's source-to-chunk association recorded as unresolved. §1 and the
+> table are amended accordingly; the guard grew G6–G11 (whole-body parity, single definition, pinned
+> original AST, independent field table, immutability, runtime binding).
+
 The only real number that exists for these (query, context) texts is rc1a's `text-embedding-3-small`
 cosine (prod `rag` container, 2026-09-10T18:03Z, one request, 20 texts, 216 prompt tokens). On the
 hybrid path the value is a function of ranks in two lists, and no rank was ever measured for these
@@ -24,9 +34,10 @@ score_kind=DENSE_FORMATTED)` and the real scorer: all nine variants PASS their u
   `inventory_row: int` (=2) · `score_kind: str` (=`score_provenance.DENSE_FORMATTED`) ·
   `provider: str` (="openai") · `model: str` (="text-embedding-3-small") ·
   `measured_at: str` (="2026-09-10T18:03Z") · `measurement_ref: str` (="rc1a 92f40801235cf33b32a8d71f241b6400cad64536 measured_cosines.py") ·
-  `qdrant_server: str` (="1.16.3") · `fallback_path: str` (="search_service dense branch / core/qdrant_db.py:1362 internal fallback") ·
-  `fusion: None` (dense path has no fusion) · `lists: tuple[str, ...]` (=("dense",)) · `dense_rank0: int` ·
-  `cosine: float` · `collection: str` (="kbli_2025_final_hybrid") · `primary_collection: None` ·
+  `qdrant_server: None` (no server receipt for these texts) · `fallback_path: str` (declared simulation input: "search_service dense branch / core/qdrant_db.py:1362 internal fallback") ·
+  `fusion: None` (dense path has no fusion) · `lists: tuple[str, ...]` (=("dense",), declared simulation input) · `dense_rank0: None` (unmeasured) ·
+  `cosine: float` (the one measured number) · `formatter_collection: str` (="kbli_2025_final_hybrid", simulation input selecting no boost, NOT an observed collection) · `primary_collection: None` ·
+  `simulated: tuple[str, ...]` (names every declared-not-observed field) · `source_chunk_association: str | None` (None except row 9, unresolved) ·
   `boosts: tuple[str, ...]` (=() — no boost applies) · `transform: str` (="distance = 1 - cosine; score = 1/(1+distance)") ·
   `rounding_digits: int` (=4) · `score: float` (literal, pinned) ·
   `carried_keys: Mapping[str, Any]` (non-score keys of the original source, verbatim, e.g. id/title) ·
@@ -48,12 +59,17 @@ score_kind=DENSE_FORMATTED)` and the real scorer: all nine variants PASS their u
 | 8   | `services/rag/test_evidence_scoring_abstain.py::TestEvidenceScoringFixed::test_nonsense_query_zero_score`                                               | `[{"id": 1, "title": "Random Doc", "score": 0.8}]`                                                               | 0.22                | 0             | 0.5618                  |
 | 9   | `services/rag/test_evidence_scoring_abstain.py::TestEvidenceScoringFixed::test_entity_type_mismatch_detection`                                          | `[{"id": 1, "score": 0.9}]`                                                                                      | 0.40 (top chunk)    | 0             | 0.625                   |
 
-Row 7: list order is the ORIGINAL order (inputs stay byte-identical); ranks are declared per source.
-Row 9: one source, as in the original; it is the top dense hit (max of the two measured chunk cosines);
-the other chunk's cosine is `unsourced_context_cosines=(0.32,)`.
+The `dense_rank0` column is SUPERSEDED: those numbers are the cosine order, not a measured retrieval
+rank; the shipped registry carries `None` on every row.
 
-Module docstring (short): what the registry is, that values are measured-not-invented, that a kind is
-declared and never inferred from magnitude, and that originals are PRESERVED beside the variants (D3/D5).
+Row 7: list order is the ORIGINAL order (inputs stay byte-identical); no rank is declared.
+Row 9: one source, as in the original; it carries the larger of the two measured chunk cosines, and
+which chunk that source corresponds to is UNRESOLVED (`source_chunk_association`); the other chunk's
+cosine is `unsourced_context_cosines=(0.32,)`.
+
+Module docstring (short): what the registry is, that the cosines are measured and every other input
+is declared (never presented as observed), that a kind is declared and never inferred from magnitude,
+and that originals are PRESERVED beside the variants (D3/D5).
 
 ## 2. Variants — beside each original (GLM 5.2 prepares, Dux verifies)
 
