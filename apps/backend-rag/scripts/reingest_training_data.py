@@ -4,10 +4,16 @@ Re-ingest corrected training data files into training_conversations_hybrid colle
 
 Uses direct HTTP requests to bypass qdrant-client SSL issues on Fly.io.
 
+Every chunk passes the government-fee gate first (RULED Zero 2026-09-11): a
+chunk that states a government-fee figure is never embedded and never upserted.
+
 Run LOCALLY:
     cd apps/backend-rag && python scripts/reingest_training_data.py
+Dry run — what the gate refuses, no embedding, no Qdrant:
+    cd apps/backend-rag && python scripts/reingest_training_data.py --dry-run [files...]
 """
 
+import argparse
 import hashlib
 import logging
 import os
@@ -22,7 +28,9 @@ script_dir = Path(__file__).parent
 backend_rag_root = script_dir.parent
 dotenv_path = backend_rag_root / ".env"
 
-# Add backend to path
+# Add backend to path (`core.*`), and the backend-rag root (`backend.*`, for
+# the government-fee detector shared with curated_qa_harvest.py)
+sys.path.insert(0, str(backend_rag_root))
 sys.path.insert(0, str(backend_rag_root / "backend"))
 
 from dotenv import load_dotenv
@@ -115,6 +123,51 @@ def upsert_point(
     return False
 
 
+CHUNK_SIZE = 1500
+CHUNK_OVERLAP = 200
+
+
+def government_fee_refusal(chunk_text: str) -> str | None:
+    """The pre-ingest FACT-scan of one chunk (cycle 359, root cause 2).
+
+    RULED Zero 2026-09-11: the local training-data files must not be able to
+    write a government-fee figure — the PNBP-versus-service-fee split — back
+    into this collection. One detector, one owner: this is the detector that
+    `curated_qa_harvest.py` gates on (PR #5615), in its no-marker form.
+    """
+    from backend.services.misc.curated_qa_government_fee_detector import text_is_refused
+
+    return text_is_refused(chunk_text)
+
+
+def dry_run(files: list[str]) -> tuple[int, int]:
+    """Chunk every file exactly as the ingest does and report what the gate refuses.
+
+    No embedding, no BM25, no Qdrant. Returns (chunks, refused).
+    """
+    from core.chunker import TextChunker
+
+    chunker = TextChunker(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+    total = refused = 0
+    for file_path in files:
+        full_path = backend_rag_root / file_path
+        if not full_path.exists():
+            logger.warning(f"File not found: {full_path}")
+            continue
+        chunks = chunker.chunk_text(full_path.read_text(encoding="utf-8"))
+        total += len(chunks)
+        for idx, chunk_text in enumerate(chunks):
+            reason = government_fee_refusal(chunk_text)
+            if reason:
+                refused += 1
+                logger.warning(f"REFUSED {file_path} chunk {idx}: {reason}")
+    logger.info(
+        f"DRY RUN: the government-fee gate refuses {refused}/{total} chunk(s) "
+        f"in {len(files)} file(s)"
+    )
+    return total, refused
+
+
 def reingest_files():
     """Re-ingest corrected training data files."""
     from core.bm25_vectorizer import BM25Vectorizer
@@ -125,13 +178,14 @@ def reingest_files():
 
     embedder = create_embeddings_generator()
     bm25 = BM25Vectorizer()
-    chunker = TextChunker(chunk_size=1500, chunk_overlap=200)
+    chunker = TextChunker(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
 
     # Get base path (apps/backend-rag)
     base_path = backend_rag_root
 
     total_chunks = 0
     total_upserted = 0
+    total_refused = 0
 
     for file_path in FILES_TO_REINGEST:
         full_path = base_path / file_path
@@ -167,6 +221,12 @@ def reingest_files():
         logger.info(f"  Created {len(chunks)} chunks")
 
         for idx, chunk_text in enumerate(chunks):
+            reason = government_fee_refusal(chunk_text)
+            if reason:
+                total_refused += 1
+                logger.error(f"  REFUSED chunk {idx}: {reason}")
+                continue
+
             # Generate embeddings
             dense_embedding = embedder.generate_query_embedding(chunk_text)
 
@@ -209,8 +269,31 @@ def reingest_files():
 
     logger.info(f"\n{'=' * 60}")
     logger.info(f"COMPLETED: {total_upserted}/{total_chunks} chunks upserted")
+    logger.info(f"REFUSED by the government-fee gate: {total_refused} chunk(s)")
     logger.info(f"Collection: {COLLECTION_NAME}")
 
 
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=f"Re-ingest training data into {COLLECTION_NAME}.")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="only report what the government-fee gate refuses: no embedding, no Qdrant write",
+    )
+    parser.add_argument(
+        "files",
+        nargs="*",
+        help="with --dry-run: paths relative to apps/backend-rag (default: FILES_TO_REINGEST)",
+    )
+    args = parser.parse_args(argv)
+    if args.files and not args.dry_run:
+        parser.error("file arguments are accepted only with --dry-run")
+    if args.dry_run:
+        dry_run(args.files or FILES_TO_REINGEST)
+    else:
+        reingest_files()
+    return 0
+
+
 if __name__ == "__main__":
-    reingest_files()
+    sys.exit(main())
