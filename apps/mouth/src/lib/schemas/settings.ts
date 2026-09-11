@@ -13,9 +13,8 @@
  *     Pydantic model has id/user_id aliases, `language` with default "en",
  *     optional tone/complexity/timezone/role_level/status/avatar/metadata.
  *   - /api/portal/settings → `apps/backend-rag/backend/app/routers/portal.py:669`
- *     Returns `{ success, data: { email_notifications, whatsapp_notifications,
- *     language, timezone } }` from
- *     `backend/services/portal/_mixins/messaging.py:160 (get_preferences)`.
+ *     Returns `{ success, data: { language, timezone } }` from
+ *     `backend/services/portal/_mixins/messaging.py (get_preferences)`.
  *   - /api/portal/notifications/prefs →
  *     `apps/backend-rag/backend/app/routers/portal_notification_prefs.py`
  *     GET returns `NotificationPrefsOut` = `{ email_enabled, wa_enabled,
@@ -106,16 +105,19 @@ export type UserProfile = z.infer<typeof UserProfile>;
 // ============================================
 
 /**
- * Inner `data` of `GET /api/portal/settings`.
+ * Inner `data` of `GET /api/portal/settings` — LOCALE only.
  *
- * Mirrors `PortalMessagingMixin.get_preferences` dict (messaging.py:187).
- * The BE defaults are `{ email_notifications: true, whatsapp_notifications:
- * true, language: "en", timezone: "Asia/Jakarta" }` when the client row is
+ * Mirrors `PortalMessagingMixin.get_preferences`. The BE defaults are
+ * `{ language: "en", timezone: "Asia/Jakarta" }` when the client row is
  * missing.
+ *
+ * `email_notifications` / `whatsapp_notifications` were removed on
+ * 2026-09-11: they had no reader anywhere, while `notification_prefs`
+ * (`NotificationPrefs` below) is what `alert_dispatcher` actually enforces —
+ * and the two disagreed live on the same account at the same moment (portal
+ * audit F-04). Do not add them back here.
  */
 export const PortalSettings = z.object({
-  email_notifications: z.boolean(),
-  whatsapp_notifications: z.boolean(),
   language: z.string(),
   timezone: z.string(),
 });

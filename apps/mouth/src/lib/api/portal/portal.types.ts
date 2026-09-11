@@ -206,9 +206,15 @@ export interface SendMessageRequest {
 // Settings Types
 // ============================================================================
 
+/**
+ * Locale preferences only. Notification consent lives in
+ * `notification_prefs` (`/api/portal/notifications/prefs`, `useNotificationPrefs`)
+ * — the only store `alert_dispatcher` reads. The two used to disagree live
+ * (portal audit F-04): `/api/portal/settings` answered
+ * `whatsapp_notifications: true` for an account whose real setting was
+ * false. Do not add notification fields back here.
+ */
 export interface PortalPreferences {
-  emailNotifications: boolean;
-  whatsappNotifications: boolean;
   language: string;
   timezone: string;
 }

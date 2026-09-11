@@ -104,26 +104,38 @@ describe("UserProfile", () => {
 describe("PortalSettings", () => {
   it("parses BE defaults (no row in client_preferences)", () => {
     const parsed = PortalSettings.parse({
-      email_notifications: true,
-      whatsapp_notifications: true,
       language: "en",
       timezone: "Asia/Jakarta",
     });
-    expect(parsed.email_notifications).toBe(true);
     expect(parsed.language).toBe("en");
+    expect(parsed.timezone).toBe("Asia/Jakarta");
   });
 
   it("rejects missing fields", () => {
-    const result = PortalSettings.safeParse({ email_notifications: true });
+    const result = PortalSettings.safeParse({ language: "en" });
     expect(result.success).toBe(false);
+  });
+
+  // Portal audit F-04 (2026-09-11): this endpoint used to carry notification
+  // consent that nothing enforced, and it disagreed live with
+  // `notification_prefs` — the store `alert_dispatcher` actually reads.
+  // Consent has ONE home; a stray field here must not become a second one.
+  it("does not carry notification consent, even if the wire still sends it", () => {
+    const parsed = PortalSettings.parse({
+      language: "en",
+      timezone: "Asia/Jakarta",
+      email_notifications: true,
+      whatsapp_notifications: true,
+    });
+    expect(parsed).toEqual({ language: "en", timezone: "Asia/Jakarta" });
+    expect("email_notifications" in parsed).toBe(false);
+    expect("whatsapp_notifications" in parsed).toBe(false);
   });
 
   it("parses the full envelope { success, data }", () => {
     const parsed = PortalSettingsResponse.parse({
       success: true,
       data: {
-        email_notifications: false,
-        whatsapp_notifications: true,
         language: "it",
         timezone: "Asia/Bali",
       },
