@@ -98,6 +98,37 @@ class TestGetClientProfile:
         assert result["stats"]["family_count"] == 0
 
     @pytest.mark.asyncio
+    async def test_profile_documents_query_projects_deleted_at(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict, client_row: dict
+    ) -> None:
+        """The documents SELECT must name d.deleted_at and d.uploaded_source.
+
+        Guilt-proof for portal audit finding F-02: a document the CLIENT removed
+        from their vault is soft-deleted (deleted_at set, file kept in Drive,
+        restorable for 30 days) but is NOT archived, so it stays in this list —
+        and until 2026-09-11 the projection did not carry deleted_at, so the
+        team's CRM rendered it exactly like a live document. The assertion is on
+        the SQL text because the handler returns the rows unchanged
+        (``[dict(d) for d in documents]``): a row-level mock would only prove the
+        mock. Drop either column from the SELECT and this test goes red.
+        """
+        from backend.app.routers.crm_enhanced import get_client_profile
+
+        with patch("backend.app.routers.crm_enhanced.verify_client_access", new=AsyncMock()):
+            mock_db_conn.fetchrow = AsyncMock(return_value=client_row)
+            mock_db_conn.fetch = AsyncMock(return_value=[])
+            await get_client_profile(client_id=42, pool=mock_db_pool, current_user=admin_user)
+
+        doc_queries = [
+            call.args[0]
+            for call in mock_db_conn.fetch.await_args_list
+            if "FROM documents d" in call.args[0]
+        ]
+        assert len(doc_queries) == 1, "expected exactly one SELECT ... FROM documents d"
+        assert "d.deleted_at" in doc_queries[0]
+        assert "d.uploaded_source" in doc_queries[0]
+
+    @pytest.mark.asyncio
     async def test_profile_not_found(
         self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
     ) -> None:
