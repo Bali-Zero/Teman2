@@ -51,13 +51,19 @@ assumptions:
       Read on disk before implementing, not assumed. No "already fixed" case among the three.
   - assumption: >-
       Every guard is proven by its own mutation.
-    status: verified
+    status: verified # CORRECTED — it was claimed verified on FOUR mutations and was FALSE
     evidence: >-
-      Four mutations run independently of the implementer, each in a throwaway copy, the
-      real file never touched — sticky-limit check neutered 1 failed/180; the
-      _normalize_rearm_pr RuntimeError wrap removed 2 failed/179; the gc_alerted_state call
-      site removed 1 failed/180; the candidate count moved back below the GC step
-      1 failed/183.
+      This assumption was written after four mutations and the fresh Opus 5 gate then ran
+      SEVENTEEN and found THREE guards the suite could not see, all green under deletion:
+      the gc_rearm_fail_state CALL SITE (the function had a test, the wired step did not —
+      the earlier spalla finding surviving one level up), the alerted_state pop of the
+      rearm-write-fail dedup key on a SUCCESSFUL write (without it a second run of three
+      failures after a recovery is silent, which is the K-3 disease reintroduced by the
+      dedup cache meant to cure it), and gc_alerted_state's documented "an unparseable key
+      is KEPT, never silently dropped" invariant. All three now have a test and all three
+      mutations were re-run after it: 1 failed/186 each. The claim is true at THIS sha and
+      the four-mutation version of it was not — recorded rather than quietly overwritten,
+      because a brief that inherits an over-claim is worse than one that never claimed.
   - assumption: >-
       K-3's alert path works end to end in production.
     status: unverified
@@ -70,9 +76,12 @@ assumptions:
       The second state file this PR adds (REARM_FAIL_FILE) does not itself grow unbounded.
     status: verified
     evidence: >-
-      gc_rearm_fail_state ages entries on last_attempt_at like gc_budget_state, and an
-      adversarial review found it shipped UNTESTED — the fix for an unbounded-growth bug
-      had introduced a second un-proven GC. Now pinned by a guilt+innocence test.
+      gc_rearm_fail_state ages entries on last_attempt_at like gc_budget_state. A spalla
+      review found it shipped UNTESTED — the fix for an unbounded-growth bug had introduced
+      a second un-proven GC — and the test added then covered only the FUNCTION, so removing
+      its call site still left the suite green. The wired step is now pinned end to end by
+      test_run_rearm_pass_actually_prunes_the_rearm_fail_file_B1 (aged entry absent, fresh
+      entry present, read back off disk after the pass).
 consumer_map:
   - >-
     launchd on Pro runs scripts/queue_shepherd.py every 600s as

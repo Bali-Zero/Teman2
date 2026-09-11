@@ -3215,3 +3215,91 @@ def test_gc_alerted_state_keeps_both_key_families_apart(tmp_path):
     }
     kept = qs.gc_alerted_state(state, {910})
     assert set(kept) == {"910:shaOpen", "rearm-write-fail:910:shaOpen"}
+
+
+# ── gate findings on THIS PR: three guards the suite could not see (2026-09-11) ─────────────
+# A fresh Opus 5 gate ran 17 guilt mutations against this branch and three left all 184 GREEN.
+# Each of the three is the SAME shape as the finding that opened K-3/K-7/K-8: the code is right
+# and the suite is blind to it. B1 in particular is the earlier spalla finding surviving one
+# level up — gc_rearm_fail_state was tested as a FUNCTION and never as a WIRED STEP.
+
+
+def test_run_rearm_pass_actually_prunes_the_rearm_fail_file_B1(monkeypatch, tmp_path):
+    """B1: removing the `gc_rearm_fail_state(...)` CALL SITE left the whole suite green, because
+    the only coverage drove the function directly. This drives the wired step: an aged entry
+    present on disk before the pass is gone from the saved file after it."""
+    monkeypatch.setattr(qs, "BUDGET_FILE", tmp_path / "budget.json")
+    monkeypatch.setattr(qs, "ALERTED_FILE", tmp_path / "alerted.json")
+    monkeypatch.setattr(qs, "RED_FILE", tmp_path / "red.json")
+    monkeypatch.setattr(qs, "REARM_FAIL_FILE", tmp_path / "rearm_fail.json")
+
+    old = (NOW - _dt.timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    fresh = NOW.strftime("%Y-%m-%dT%H:%M:%SZ")
+    qs._save_json(qs.REARM_FAIL_FILE, {
+        "950:shaAged": {"consecutive": 2, "last_attempt_at": old},
+        "951:shaFresh": {"consecutive": 1, "last_attempt_at": fresh},
+    })
+    monkeypatch.setattr(qs, "fetch_open_prs", lambda repo=qs.REPO: [])
+
+    qs.run_rearm_pass(dry_run=False, now=NOW)
+
+    saved = qs._load_json(qs.REARM_FAIL_FILE)
+    assert "951:shaFresh" in saved, "a fresh entry must survive the wired GC"
+    assert "950:shaAged" not in saved, "the wired GC step must actually prune — not just the function"
+
+
+def test_rearm_pass_second_run_of_failures_alerts_again_after_a_success_B2(monkeypatch, tmp_path):
+    """B2: the `alerted_state.pop("rearm-write-fail:...")` on a SUCCESSFUL write had no test.
+    Without it a (pr, head) that fails 3x, alerts, then succeeds, then fails 3x again is SILENT
+    the second time — the exact K-3 disease (a failure with no alert), reintroduced by the dedup
+    cache it was given."""
+    monkeypatch.setattr(qs, "BUDGET_FILE", tmp_path / "budget.json")
+    monkeypatch.setattr(qs, "ALERTED_FILE", tmp_path / "alerted.json")
+    monkeypatch.setattr(qs, "RED_FILE", tmp_path / "red.json")
+    monkeypatch.setattr(qs, "REARM_FAIL_FILE", tmp_path / "rearm_fail.json")
+
+    sends: list[str] = []
+    monkeypatch.setattr(qs, "send_telegram", lambda *a, **k: (sends.append(str(k.get("dedup_key") or a)), True)[1])
+    monkeypatch.setattr(
+        qs, "fetch_open_prs",
+        lambda repo=qs.REPO: [_pr(number=960, head_sha="shaB2", head_ref_name="agent/x/y")],
+    )
+    monkeypatch.setattr(
+        qs, "fetch_last_ejection",
+        lambda repo, number: {"reason": "failed_checks", "removed_at": _iso(NOW), "before_commit": "shaB2"},
+    )
+    monkeypatch.setattr(qs, "fetch_infra_hint_and_fingerprint", lambda repo, number, removed_at: (True, None))
+
+    write_ok = {"v": False}
+    monkeypatch.setattr(qs, "rearm_pr", lambda repo, number: write_ok["v"])
+
+    for i in range(3):  # first run of failures -> one alert
+        qs.run_rearm_pass(dry_run=False, now=NOW + _dt.timedelta(minutes=i))
+    assert len(sends) == 1, f"three consecutive failures must alert exactly once, got {sends}"
+
+    write_ok["v"] = True  # the write recovers
+    qs.run_rearm_pass(dry_run=False, now=NOW + _dt.timedelta(minutes=3))
+
+    write_ok["v"] = False  # and fails again, three more times
+    for i in range(4, 7):
+        qs.run_rearm_pass(dry_run=False, now=NOW + _dt.timedelta(minutes=i))
+
+    assert len(sends) == 2, (
+        f"a SECOND run of three failures after a recovery must alert again, not be swallowed "
+        f"by the stale dedup key — got {sends}"
+    )
+
+
+def test_gc_alerted_state_keeps_an_unparseable_key_B3():
+    """B3: the docstring's own invariant — 'a key without a parseable leading PR number is KEPT
+    rather than dropped' — had zero coverage, so turning it into a silent drop left 184 green.
+    This file is a dedup cache, and destroying a key here re-opens the alert it deduplicates."""
+    state = {
+        "970:shaOpen": {"at": "x"},
+        "hand-written-nonsense": {"at": "x"},
+        "rearm-write-fail:not-a-number:sha": {"at": "x"},
+    }
+    kept = qs.gc_alerted_state(state, {970})
+    assert "hand-written-nonsense" in kept
+    assert "rearm-write-fail:not-a-number:sha" in kept
+    assert "970:shaOpen" in kept
