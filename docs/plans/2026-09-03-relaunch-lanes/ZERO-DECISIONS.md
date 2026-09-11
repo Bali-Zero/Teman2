@@ -9,6 +9,15 @@ one question, the options with their measured cost, and who executes once ruled.
    GRANT to the runtime role) is superseded and unsafe. → Lane A executes.
    **RULED 2026-09-11 — D.** Runner shipped (see `STEP5-PRIVILEGE-DECISION.md` header for the
    three remaining steps; step 1 is Zero's superuser session + Fly secret, `operator[secret]`).
+   **G0 EXECUTED 2026-09-11 (Zero delegated: "1 trova tu · 2 placeholder · 3 fai tu · 4 R19").**
+   (1) `backend_rag_migrator` created on the primary (LOGIN, NOSUPERUSER, member of `backend_rag_v2` and
+   `visa_ledger_owner` WITH INHERIT/SET; read-back `t,f,t,t,f`); `MIGRATION_DATABASE_URL` STAGED on
+   `nuzantara-rag`, effective at the next deploy. (2) Xendit sandbox secrets are PLACEHOLDERS
+   (`xnd_development_PLACEHOLDER_…` + random callback token, staged): the provider guard is satisfied,
+   real invoice creation will fail at Xendit — W2 must simulate the callback path, and the public
+   funnel's checkout will error instead of answering 503 once deployed. (3) Retention policy
+   `garuda-document-privacy-v1` active: PRODUCTION / GARUDA_DOCUMENT / 30 days / CREATED_AT / approved_by
+   zero, mirrors `garuda-order-privacy-v1`. (4) Staff console visual system: **R19**.
 
 2. **KBLI — the 61 non-OSS-issued codes.** Relabel now with what the statute implies, or gate on
    the F2 router increment that renders the issuer (Phase 1b)? Spec §9 of
