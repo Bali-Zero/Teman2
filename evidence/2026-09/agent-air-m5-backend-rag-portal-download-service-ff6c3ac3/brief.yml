@@ -1,0 +1,54 @@
+task: >-
+  Fix the portal download proxies: a client pressing DOWNLOAD on their own vault document got
+  HTTP 500 and no toast (measured live 2026-09-11 on document 19454 — portal audit finding
+  F-01). All three proxies (vault document, invoice PDF, LKPM receipt) asked
+  GoogleDriveService.get_valid_token("SYSTEM"), which returns None BY DESIGN since 2026-05-10
+  ("OAuth SYSTEM disabled — Drive operations use ServiceAccountDriveService"); the stored
+  SYSTEM row expired 2026-06-15. Uploads had already moved to the Service Account, which also
+  OWNS the files, so the reads must use the same credential. Adds
+  ServiceAccountDriveService.download_file_content and one shared read path
+  (services/portal/_drive_fetch.py) used by all three call sites.
+lane: backend-rag/portal-download-service-account
+machine: M5
+date: 2026-09-11
+
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, source `size`: CI run 34544192384 measured the diff above the SIZE
+  term's threshold (378+/305- across 9 files, brief excluded). No hot-zone path: services and
+  tests only, no app/routers, no migration, no ingestion. The work itself is one root cause at
+  three call sites, not three problems.
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+
+acceptance:
+  A1: >-
+    The vault download proxy fetches bytes through the Service Account and never consults the
+    SYSTEM OAuth token; a Drive 404/410 surfaces as a client-visible 404 while any other Drive
+    failure stays a 5xx, so an outage is never reported as "your document does not exist".
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/unit/app/services/portal/test_documents_mixin.py -v
+  A2: >-
+    The invoice-PDF and LKPM-receipt proxies use the same shared read path, with a guilt-proof
+    per surface asserting get_valid_token is never called.
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/unit/routers/test_portal_billing.py
+      backend/tests/unit/app/routers/test_lkpm_receipt_client_safe.py -v
+  A3: >-
+    No regression on the portal service suite, whose previous tests passed only by mocking
+    get_valid_token to return "access-token" — a value production cannot obtain (superscar #2,
+    esiste != armato, inside the test suite). They now mock only the Drive API boundary.
+    probe: >-
+      apps/backend-rag/.venv/bin/python -m pytest
+      backend/tests/unit/app/services/portal/test_portal_service.py -v
+
+out_of_scope: >-
+  Migrating the remaining non-portal Drive read paths off GoogleDriveService (this lane touches
+  only the three client-facing download proxies named above). Streaming the download to disk
+  instead of buffering the response body (portal documents observed are sub-10MB, the upload
+  cap). Surfacing a richer error body to the vault UI — the client-visible detail is handled in
+  the separate vault-upload-detail lane (PR #6192).

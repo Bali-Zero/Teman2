@@ -483,27 +483,19 @@ class TestPortalServiceDocumentDownload:
             "status": "verified",
         }
 
-        meta_response = MagicMock(status_code=200)
-        meta_response.json.return_value = {
-            "name": "passport.pdf",
-            "mimeType": "application/pdf",
-        }
-        download_response = MagicMock(status_code=200, content=b"PDF_CONTENT")
+        # Service Account, not the SYSTEM OAuth token: that token has been
+        # dead by design since 2026-05-10, which is why every portal download
+        # 500'd until 2026-09-11 (audit F-01).
+        sa = MagicMock()
+        sa.get_file_metadata = AsyncMock(
+            return_value={"name": "passport.pdf", "mimeType": "application/pdf"}
+        )
+        sa.download_file_content = AsyncMock(return_value=b"PDF_CONTENT")
 
-        async_http = MagicMock()
-        async_http.get = AsyncMock(side_effect=[meta_response, download_response])
-
-        with (
-            patch(
-                "backend.services.integrations.google_drive_service.GoogleDriveService"
-            ) as drive_cls,
-            patch("httpx.AsyncClient") as client_cls,
+        with patch(
+            "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+            return_value=sa,
         ):
-            drive_cls.SYSTEM_USER_ID = "SYSTEM"
-            drive_cls.return_value.get_valid_token = AsyncMock(return_value="access-token")
-            client_cls.return_value.__aenter__ = AsyncMock(return_value=async_http)
-            client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-
             result = await portal_service.download_document(
                 1,
                 10,
@@ -516,16 +508,8 @@ class TestPortalServiceDocumentDownload:
             "mime_type": "application/pdf",
         }
         mock_conn.fetchrow.assert_called_once()
-        async_http.get.assert_any_call(
-            "https://www.googleapis.com/drive/v3/files/drive_file_123",
-            params={"fields": "mimeType,name,size"},
-            headers={"Authorization": "Bearer access-token"},
-        )
-        async_http.get.assert_any_call(
-            "https://www.googleapis.com/drive/v3/files/drive_file_123",
-            params={"alt": "media"},
-            headers={"Authorization": "Bearer access-token"},
-        )
+        sa.get_file_metadata.assert_awaited_once_with("drive_file_123")
+        sa.download_file_content.assert_awaited_once_with("drive_file_123")
 
 
 # ============================================================================

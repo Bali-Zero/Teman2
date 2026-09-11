@@ -24,13 +24,13 @@ from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
-import httpx
 
 from backend.app.utils.logging_utils import get_logger
 from backend.services.common.background import spawn
 from backend.services.common.cache import cache_invalidating
 from backend.services.pii.violation_store import hash_subject
 from backend.services.portal._document_visibility import document_visibility_clause
+from backend.services.portal._drive_fetch import fetch_drive_file
 from backend.services.portal._rbac import ClientContext, require_client_access
 from backend.services.portal.document_processing import (
     DocumentOCR,
@@ -279,45 +279,19 @@ class PortalDocumentsMixin:
         if not file_id:
             return None
 
-        from backend.services.integrations.google_drive_service import GoogleDriveService
-
-        drive_service = GoogleDriveService(self.pool)
-        access_token = await drive_service.get_valid_token(GoogleDriveService.SYSTEM_USER_ID)
-        if not access_token:
-            raise RuntimeError("Google Drive is not connected")
-
-        headers = {"Authorization": f"Bearer {access_token}"}
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            meta_response = await client.get(
-                f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                params={"fields": "mimeType,name,size"},
-                headers=headers,
-            )
-            if meta_response.status_code == 404:
-                return None
-            if meta_response.status_code != 200:
-                logger.error("Portal document metadata fetch failed: %s", meta_response.status_code)
-                raise RuntimeError("Failed to fetch document metadata")
-
-            metadata = meta_response.json()
-            mime_type = metadata.get("mimeType") or row["mime_type"] or "application/octet-stream"
-            file_name = metadata.get("name") or row["file_name"] or "document"
-
-            download_response = await client.get(
-                f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                params={"alt": "media"},
-                headers=headers,
-            )
-            if download_response.status_code == 404:
-                return None
-            if download_response.status_code != 200:
-                logger.error("Portal document download failed: %s", download_response.status_code)
-                raise RuntimeError("Failed to download document")
+        drive_file = await fetch_drive_file(
+            file_id,
+            fallback_file_name=row["file_name"] or "document",
+            fallback_mime_type=row["mime_type"] or "application/octet-stream",
+            what="document",
+        )
+        if drive_file is None:
+            return None
 
         return {
-            "content": download_response.content,
-            "file_name": file_name,
-            "mime_type": mime_type,
+            "content": drive_file.content,
+            "file_name": drive_file.file_name,
+            "mime_type": drive_file.mime_type,
         }
 
     async def _record_timeline_event(
