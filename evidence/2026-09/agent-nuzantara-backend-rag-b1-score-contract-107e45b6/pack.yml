@@ -150,9 +150,19 @@ deviations:
     without the machine clearing, the load coming from other fleet sessions.
     Pre-accepted by the staff room; declared here rather than hidden.
   - >-
-    Net lines: 1185 insertions across 14 files. The MODIFIED SOURCE is ~123
-    changed lines across seven writers; the bulk is one new 508-line crossing
-    test module plus 437 lines of evidence. One concern throughout.
+    Net lines: the TOTAL is deliberately not narrated here as a literal. It is
+    self-referential — writing the count into the pack changes the pack and so
+    changes the count, which is how the previous literal ("1185 insertions across
+    14 files", generation 1's) went stale through the cure commit, the evidence
+    tidy and the gear correction. The countable-claims rule exists to catch
+    exactly that and it did. Measure it instead:
+    `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`.
+    What IS stable and therefore stated: the modified SOURCE is ~146 changed
+    lines across seven writers, the code has been frozen since f56d3e5dc1, and
+    the bulk of the diff is one 508-line crossing test module plus this evidence
+    pack. One concern throughout. The size is also why the deterministic floor
+    computes to 3 — past ~1800 net lines the floor's "size" term binds on its
+    own, independently of any hot-zone path.
 
 adversarial:
   round_1:
