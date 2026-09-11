@@ -180,11 +180,12 @@
     }
   ],
   "invariantsAtHead": [
-    "TOTALITY: `git diff --name-only ea50eb262f..HEAD` == exactly the 10 files of patch 90589bfa (8 modified, 2 added) plus paths under evidence/2026-09/agent-air-m5-mouth-shweb-w1-tech-20260911-1bf4ea22/; nothing else (Kimi K3 F1)",
+    "TOTALITY: `git diff --name-only ea50eb262f..HEAD` == exactly the 10 files of patch 90589bfa (8 modified, 2 added) plus paths under this evidence directory plus .secrets.baseline (D4); nothing else (Kimi K3 F1)",
     "PATCH ONCE: post-adoption sha256 of the 10 files recorded in postAdoption below right after `git apply`; a second apply exits 1 (self-revealing)",
     "DELTA D1 only: after adoption, scripts/ci/test_npm_audit_gate.py may differ from its patch post-image ONLY in two test function names and their docstrings/comments — zero assertion or payload change (Codex Sol F3, Kimi K3 F4)",
     "DELTA D2 only: .agents/skills/secondhome/SKILL.md may differ from its patch post-image only by Prettier whitespace padding on the one table row the patch edits (`git diff -w` empty)",
     "DELTA D3 only: research/secondhome/2026-09-11-f7-reverification.md = patch post-image with a YAML frontmatter prepended and a `## Adversarial review` section appended; 0 body lines removed (adversarial-review-gate)",
+    "DELTA D4 only: .secrets.baseline differs from base by added entries for this pack's contract-lock.json alone, every one is_secret false, 0 lines removed (Detect Secrets check)",
     "package-lock.json sha256 unchanged (0952ade1…)",
     "research/secondhome/e33-fact-registry.json sha256 unchanged (c056bb86…)",
     "types.ts, plan-codec.ts, pricing-key.ts, rules.ts sha256 unchanged",

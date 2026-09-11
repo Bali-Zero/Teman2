@@ -14,7 +14,7 @@ build_lane: >-
   `npm run build` (generator + next build --webpack + login-bundle assert) is verified on the Vercel
   preview build of the PR — the same buildCommand production runs — with its build log recorded;
   Pro is the fallback lane if the preview build is unavailable (Codex Sol PRE-review F6/F7).
-base_sha: ea50eb262f9ed96ce070cb407b55202002b0dae8
+base_sha: ea50eb262f9ed96ce070cb407b55202002b0dae8 # pragma: allowlist secret - public Git commit ID
 worktree: .worktrees/mouth-shweb-w1-tech-20260911
 branch: agent/air-m5/mouth/shweb-w1-tech-20260911
 opened_at: "2026-09-11T11:04Z"
@@ -40,6 +40,7 @@ scope:
   - scripts/ci/test_npm_audit_gate.py
   - research/secondhome/2026-09-11-f7-reverification.md # new
   - evidence/2026-09/agent-air-m5-mouth-shweb-w1-tech-20260911-1bf4ea22/**
+  - .secrets.baseline # D4 only: additions for this pack's contract-lock.json
 constraints:
   - No lockfile line, no npm audit fix, no bump of js-yaml/sharp/mysql2/prisma, no new waiver (FINAL §2.20).
   - No MDX, price list, fact registry, DB/switch, WEB/R19 file, apps/website, layout/token/global font.
@@ -56,6 +57,11 @@ constraints:
   - >-
     Declared delta D3 (found by running the R1 gate): research frontmatter + `## Adversarial review`
     section added to research/secondhome/2026-09-11-f7-reverification.md; body unchanged (42 added, 0 removed).
+  - >-
+    Declared delta D4 (found by the Detect Secrets check on PR #6243): .secrets.baseline gains the 38
+    detect-secrets entries of this pack's contract-lock.json marked is_secret false (public sha256 digests
+    of repo files and a public commit id), spliced textually with 0 lines removed; brief.yml's base_sha
+    line carries the repo's inline allowlist pragma.
   - A frozen file in the diff is STOP plus a line to the imperator.
 acceptance:
   - text: >-
