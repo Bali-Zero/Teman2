@@ -117,8 +117,10 @@ arm to the trigger; or declare that the timeline starts at the first _transition
 `old_status` column from the query so the code stops implying otherwise.
 
 **Owner: session**, once Q2 is answered — it is a modelling choice, not a business one. Note the
-SQL comment at `310_practice_status_log.sql:75` is **wrong as written**: for a pre-existing
-practice the trigger records `OLD.status`, not `NULL`.
+SQL comment on `old_status` was **wrong as written** — for a pre-existing practice the trigger
+records `OLD.status`, not `NULL` — and was CORRECTED in this same diff
+(`310_practice_status_log.sql:79`, reworded to "NULL only when the PREVIOUS status was itself
+NULL"). Kept here because the modelling choice above still stands on its own.
 
 ### Q4 — Ordering and snapshot
 

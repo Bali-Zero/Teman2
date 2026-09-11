@@ -42,9 +42,9 @@ constraints:
   - "The narrowed except must NOT become a new catch-all. `UndefinedTableError` degrades and says so;
     a `PostgresError` logs with a traceback; anything else PROPAGATES rather than being rendered as
     an empty history, which is indistinguishable from a practice that never moved."
-  - "Nothing in this diff touches a running database. Applying 310 to prod is a separate step, and
-    at the time of writing `flyctl deploy` / `flyctl secrets set` are both refused in this session by
-    the auto-mode classifier."
+  - "CORRECTED 2026-09-11 (final on-disk gate): this constraint said 'nothing in this diff touches a
+    running database. Applying 310 to prod is a separate step.' It is FALSE — `fly.toml:15` sets a
+    release_command that runs `migrate apply-all`, so merging to main APPLIES 310 in production."
 acceptance:
   - "The trigger is proven by EXECUTION against a live Postgres, not by reading the SQL — the defect
     being fixed is precisely an artifact that looked correct and was never run. Seven cases: an

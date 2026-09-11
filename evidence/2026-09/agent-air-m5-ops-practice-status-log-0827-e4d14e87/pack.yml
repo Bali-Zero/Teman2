@@ -9,9 +9,11 @@ diff:
     re-measured after every commit that follows it, and the figure it carried before was true of an
     earlier one. Replace it line-for-line: adding a line here changes the number it states.
   behaviour_change: >-
-    New table + trigger (not applied to any running database by this diff). One behaviour change in
-    the reader: a non-Postgres exception in the history query now PROPAGATES where it was previously
-    swallowed, and the two degraded paths now log.
+    New table + trigger, APPLIED TO PRODUCTION BY THE MERGE — `fly.toml:15` runs `migrate apply-all`
+    as the release_command, so there is no operator step in between. Reader changes: a non-Postgres
+    exception now PROPAGATES where it was swallowed; both degraded paths log; and `cancelled` becomes
+    `completed=true` on BOTH paths per the 2026-09-11 ruling, which changes how 124 of 893 real
+    client-visible timelines render — on the fallback path too, i.e. from the first request.
 receipts:
   - claim: "practice_status_log DOES NOT EXIST in prod, while four surfaces reference it"
     cmd: "scripts/pg.sh -c 'SELECT count(*) FROM practice_status_log' -> ERROR relation does not exist; then information_schema.columns for that table -> 0 rows; then `git grep -ln practice_status_log origin/main` -> 6 files (router, its test, portal.types.ts, schemas/process.ts, a schemas test, a 2026-03-30 plan)"
