@@ -64,5 +64,36 @@ risks:
     builder's call.
 pii: none
 adversarial_review:
-  refuter: "codex exec --sandbox read-only (Codex GPT-5.6, account default model)"
-  status: pending
+  - round: 1
+    refuter: "codex exec --sandbox read-only"
+    model: "gpt-6-astra (account default)"
+    reasoning: xhigh
+    duration_s: 332
+    verdict: REWORK
+    findings:
+      - id: F4
+        severity: MAJOR
+        summary: >-
+          live-state-log.md's PR #5855 entry said "After rebasing onto the merged seq-20
+          wave" but the PR body states origin/main was merged in via a merge commit, not
+          a rebase.
+        disposition: fixed in the follow-up commit
+      - id: F5
+        severity: MAJOR
+        summary: >-
+          live-state-log.md's PR #5855 entry said "two findings were documented as stated
+          bounds" but the PR body documents only the sampling-limit finding as a stated
+          bound; the ASK_FOLLOW_UP prerequisite-recheck finding was left for the gate as
+          defence-in-depth, not documented as a stated bound.
+        disposition: fixed in the follow-up commit
+      - id: F8
+        severity: MAJOR
+        summary: >-
+          contract-lock.json pinned 02-DECISIONI-ZERO.md at a hash that went stale when the
+          Desktop file changed at 19:15 WITA (an imperator technical exception for
+          W1-SH-TECH was appended).
+        disposition: fixed in the follow-up commit
+  - round: 2
+    refuter: "codex exec --sandbox read-only"
+    status: pending
+    note: re-check by the same seat after the round-1 fixes

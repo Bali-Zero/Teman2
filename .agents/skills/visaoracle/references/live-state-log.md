@@ -63,13 +63,15 @@ Pointer: current summary lives in `.agents/skills/visaoracle/SKILL.md` § LIVE S
   maps `diaspora` to FAMILY (previously unreachable `UNKNOWN`), deletes the unused `work_role`
   question that was silently suppressing E23 for every employment interview, adds the STEPCHILD
   option row (E31D previously unreachable), and appends a follow-up question on `NEEDS_INPUT`
-  instead of resetting the interview. After rebasing onto the merged seq-20 wave, census moved
-  11/10/22 over 43 walks → **0/10/51 over 61 walks, `WALK_DEAD_END_ALLOWLIST` empty** — the PR
+  instead of resetting the interview. With `origin/main` merged in (a merge commit, not a
+  rebase) so the seq-20 wave was in, census moved 11/10/22 over 43 walks → **0/10/51 over 61
+  walks, `WALK_DEAD_END_ALLOWLIST` empty** — the PR
   body stresses this `51` is engine-level with `disclosed_review_flags=()` and is not 51 users
   seeing a recommendation with no human review; supplying the diaspora `ACTIVITY_BOUNDARY` flag
   alone gives 10/15/36. Independent adversarial review (codex) returned BLOCKER with 4 findings;
   the census's blindness to disclosure flags was ruled pre-existing/out of scope, one guilt-test
-  regression was cured, two findings were documented as stated bounds. Merge commit
+  regression was cured, the sampling limit was documented as a stated bound, and the
+  `ASK_FOLLOW_UP` prerequisite re-check was left for the gate as defence-in-depth. Merge commit
   `f4ee72133d` (2026-09-07T09:04:40Z). Appended retroactively on 2026-09-11 by W-ORACLE PR-O0
   from the PR body; not re-measured here.
 

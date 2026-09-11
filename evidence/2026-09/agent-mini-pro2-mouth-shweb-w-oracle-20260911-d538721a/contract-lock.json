@@ -73,10 +73,11 @@
     },
     {
       "path": "/Users/nuzantara/Desktop/w-oracle-launch-20260911/02-DECISIONI-ZERO.md",
-      "sha256_source": "5e9f325cb435136f699bf3809aa917b0aa11538379bcf1afb9b6166968ab8229",
+      "sha256_source": "41cd82f3b1c614fbac36a74447cc227ed6ec669a4b23ce72c8c9d35bd6b05d55",
+      "sha256_at_session_start": "5e9f325cb435136f699bf3809aa917b0aa11538379bcf1afb9b6166968ab8229",
       "repo_path": null,
       "sha256_repo": null,
-      "note": "pin only — not copied into this PR"
+      "note": "changed 19:15 WITA: an imperator technical exception for W1-SH-TECH was appended; D1-D6 and M unchanged, re-read by the orchestrator"
     }
   ],
   "active_pack": {
