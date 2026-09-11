@@ -1,0 +1,44 @@
+# W1-SH-TECH rework after POST refuter round 2 — 2026-09-11T13:40:45Z — host Air-M5
+# tree = HEAD a3e1ee39bd + the round-2 cure in generate-llms-full.ts / llms-article-exports.test.ts (committed right after)
+
+$ npx vitest run src/lib/llms-article-exports.test.ts   # cured tree
+      Tests  2 passed (2)
+
+## M1 guilt: legacy guard removed — const FULL_ONLY = process.env.LLMS_GENERATE_FULL_ONLY === "1";
+31:const FULL_ONLY = process.env.LLMS_GENERATE_FULL_ONLY === "1";
+   × the build refreshes both article exports and freshness, excluding drafts and noIndex (inherited FULL_ONLY=1) 411ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 1 passed (2)
+
+## M2 guilt: .slice(0, 5) removed from the freshness block
+slice occurrences: 0
+   × the build refreshes both article exports and freshness, excluding drafts and noIndex (inherited FULL_ONLY=0) 317ms
+   × the build refreshes both article exports and freshness, excluding drafts and noIndex (inherited FULL_ONLY=1) 297ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  2 failed (2)
+
+## M3 guilt: enArticles.sort(...) removed
+   × the build refreshes both article exports and freshness, excluding drafts and noIndex (inherited FULL_ONLY=0) 415ms
+   × the build refreshes both article exports and freshness, excluding drafts and noIndex (inherited FULL_ONLY=1) 379ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  2 failed (2)
+
+## restored: byte-identical
+
+$ npx tsc --noEmit
+rc=0
+
+$ npx eslint scripts/generate-llms-full.ts src/lib/llms-article-exports.test.ts
+/Users/balizero/nuzantara/.worktrees/mouth-shweb-w1-tech-20260911/apps/mouth/src/lib/llms-article-exports.test.ts
+  0:0  warning  File ignored because of a matching ignore pattern. Use "--no-ignore" to disable file ignore settings or use "--no-warn-ignored" to suppress this warning
+
+✖ 2 problems (0 errors, 2 warnings)
+
+rc=0
+
+$ npx vitest run second-home secondhome llms-article-exports kbli-llms-corpus
+ Test Files  31 passed (31)
+      Tests  553 passed (553)
+
+$ git diff --cached --check ea50eb262f   # refrozen tree, staged 2026-09-11T13:50:46Z
+rc=0

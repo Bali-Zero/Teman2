@@ -2,7 +2,11 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { buildKbliCorpus } from "../src/lib/kbli-llms-corpus";
-import { articleUrl, normalizeCategory } from "../src/lib/blog/categories";
+import {
+  articleUrl,
+  normalizeCategory,
+  publicSlug,
+} from "../src/lib/blog/categories";
 
 /**
  * AI Master Data Generator
@@ -21,9 +25,12 @@ const OUTPUT_EN = path.join(process.cwd(), "public/llms-full.txt");
 const OUTPUT_ID = path.join(process.cwd(), "public/llms-id.txt");
 const OUTPUT_KBLI = path.join(process.cwd(), "public/llms-kbli.txt");
 const LLMS_TXT_PATH = path.join(process.cwd(), "public/llms.txt");
-const FULL_ONLY = process.env.LLMS_GENERATE_FULL_ONLY === "1";
+const ARTICLES_ONLY = process.env.LLMS_GENERATE_ARTICLES_ONLY === "1";
+// The build sets ARTICLES_ONLY; a legacy FULL_ONLY=1 left in the environment
+// must not stop it before the ID export and the freshness block.
+const FULL_ONLY = process.env.LLMS_GENERATE_FULL_ONLY === "1" && !ARTICLES_ONLY;
 
-async function generate() {
+async function generate(): Promise<void> {
   console.log("🚀 Generating AI Master Data files...");
 
   // --- 1 & 2: Articles (EN & ID) ---
@@ -67,6 +74,7 @@ async function generate() {
       // raw filename here is what published ~1,600 dead URLs: see that file.
       const articleData = {
         title: frontmatter.title,
+        isCanonical: file === `${publicSlug(file)}.mdx`,
         category: normalizeCategory(category),
         url: articleUrl(category, file),
         publishedAt: frontmatter.publishedAt || new Date().toISOString(),
@@ -122,7 +130,7 @@ async function generate() {
   fs.writeFileSync(OUTPUT_ID, idContent);
 
   // --- 3: KBLI Master Data ---
-  if (fs.existsSync(KBLI_DATA_PATH)) {
+  if (!ARTICLES_ONLY && fs.existsSync(KBLI_DATA_PATH)) {
     console.log("📊 Generating llms-kbli.txt...");
     const rawData = JSON.parse(fs.readFileSync(KBLI_DATA_PATH, "utf-8"));
     const codes = rawData.data || rawData;
@@ -140,6 +148,8 @@ async function generate() {
     const freshnessHeader =
       "## Recently Published & Updated (Freshness Signal)";
     const latest5 = enArticles
+      // Translations share the canonical URL; list each English article once.
+      .filter((a) => a.isCanonical)
       .slice(0, 5)
       .map(
         (a) =>
