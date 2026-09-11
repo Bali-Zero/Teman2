@@ -11,9 +11,12 @@ from backend.services.crm.practice_state_machine import (
     ADMIN_ONLY_TRANSITIONS,
     ALL_STATES,
     LEGACY_STATE_MAP,
+    OPEN_INQUIRY_TYPE_CODE,
+    STATES_WITHOUT_SERVICE,
     VALID_TRANSITIONS,
     InvalidTransitionError,
     normalize_state,
+    validate_service_selected,
     validate_transition,
 )
 
@@ -195,3 +198,31 @@ class TestStructuralIntegrity:
 
     def test_exactly_six_states(self) -> None:
         assert len(ALL_STATES) == 6  # 5 workflow + cancelled
+
+
+# ─── Service-selection gate (open inquiry, migration 311) ───────────────────
+
+
+class TestValidateServiceSelected:
+    """An open inquiry (placeholder service) may not leave the inquiry stage."""
+
+    @pytest.mark.parametrize("to_state", sorted(ALL_STATES - STATES_WITHOUT_SERVICE))
+    def test_placeholder_blocks_every_state_past_inquiry(self, to_state: str) -> None:
+        with pytest.raises(InvalidTransitionError, match="select a service"):
+            validate_service_selected(to_state, OPEN_INQUIRY_TYPE_CODE)
+
+    @pytest.mark.parametrize("to_state", sorted(STATES_WITHOUT_SERVICE))
+    def test_placeholder_allowed_in_inquiry_and_cancelled(self, to_state: str) -> None:
+        assert validate_service_selected(to_state, OPEN_INQUIRY_TYPE_CODE) is True
+
+    def test_real_service_passes(self) -> None:
+        assert validate_service_selected("waiting_documents", "kitas_working_onshore") is True
+
+    def test_unknown_or_null_type_is_not_blocked(self) -> None:
+        # Legacy rows with practice_type_id NULL keep advancing as before.
+        assert validate_service_selected("waiting_documents", None) is True
+        assert validate_service_selected("on_process", "") is True
+
+    def test_states_without_service_is_inquiry_and_cancelled(self) -> None:
+        assert STATES_WITHOUT_SERVICE == frozenset({"inquiry", "cancelled"})
+        assert OPEN_INQUIRY_TYPE_CODE == "open_inquiry"

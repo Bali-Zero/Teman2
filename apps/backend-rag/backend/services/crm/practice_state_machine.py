@@ -34,6 +34,14 @@ ADMIN_ONLY_TRANSITIONS: set[tuple[str, str]] = {
 # All valid states
 ALL_STATES = frozenset(VALID_TRANSITIONS.keys())
 
+# Placeholder practice type used when an inquiry is opened WITHOUT a service
+# (migration 311). The real service must be chosen before the practice leaves
+# the inquiry stage — see `validate_service_selected`.
+OPEN_INQUIRY_TYPE_CODE = "open_inquiry"
+
+# States a practice may sit in while its service is still undefined.
+STATES_WITHOUT_SERVICE: frozenset[str] = frozenset({"inquiry", "cancelled"})
+
 
 class InvalidTransitionError(Exception):
     """Raised when a practice status transition is not allowed."""
@@ -100,6 +108,28 @@ def validate_transition(
 
     logger.debug("State transition validated: %s → %s", from_state, to_state)
     return True
+
+
+def validate_service_selected(to_state: str, practice_type_code: str | None) -> bool:
+    """
+    Gate: a practice cannot move past the inquiry stage while its service is
+    still the `open_inquiry` placeholder.
+
+    Raises:
+        InvalidTransitionError: target state needs a service and none is chosen
+    """
+    to_state = normalize_state(to_state)
+    if to_state in STATES_WITHOUT_SERVICE:
+        return True
+    # Only the explicit placeholder is blocked: legacy rows with a NULL /
+    # unknown type keep advancing exactly as before this gate existed.
+    if practice_type_code != OPEN_INQUIRY_TYPE_CODE:
+        return True
+    raise InvalidTransitionError(
+        "inquiry",
+        to_state,
+        f"select a service before moving to '{to_state}'",
+    )
 
 
 # Legacy state mapping for migration
