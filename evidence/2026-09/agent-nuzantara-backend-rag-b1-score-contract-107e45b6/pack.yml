@@ -10,7 +10,7 @@ gated_sha: fbcb10fd3cce67c9f247254a51eabdb8574e638b # pragma: allowlist secret �
 reviewed_sha: 4675f04bca2925e4502286dc5949857bdb5ff032 # pragma: allowlist secret — what round 1 read
 base_sha: 1d726045c9ca75ab64a75e92b062e52b0b763a98 # pragma: allowlist secret
 brief_ref: evidence/brief.yml
-gear: 2
+gear: 3
 
 spend:
   wall_clock_hours: 4.4
@@ -418,3 +418,38 @@ evidence_extraction:
     with no writer yet. That is deliberate scoping, not an oversight — the
     inventory declares the KG fast path as `unknown` rather than claiming it is
     covered, and the constant is reserved for B2.
+
+gear_floor_correction:
+  what: >-
+    The brief and pack declared gear 2. CI's "Harness floor recompute" computed
+    the deterministic floor as 3 and went RED. Corrected to gear 3 — which is the
+    ACCURATE declaration, not a number picked to green a gate: what was actually
+    done here is Gear-3 shaped (two independent adversarial rounds, a REWORK with
+    a confirmed BLOCKER, mutation-proof on every new assertion, a fresh Opus 5
+    gate outside the chain), and Gear 3's effort requirement is xhigh, which is
+    what this mandate has run at from the open. Declaring 2 understated the work.
+  floor_source: >-
+    "size", NOT a hot-zone path — 1883 net lines (1863 + 20). Reproduced locally
+    in CI's exact shape before believing the message: `--print-floor` WITHOUT
+    `--numstat-file` prints floor 1 source "none"; WITH it, floor 3 source "size".
+  gate_effort_deviation: >-
+    DECLARED, not hidden. The fresh Opus 5 gate signed PASS on fbcb10fd3c running
+    at the SUBAGENT DEFAULT effort — this session dispatched it with the model
+    pinned to Opus 5 and did NOT set an effort override, so "max" cannot be
+    claimed and is not. Gear 3 normally binds the final gate to max effort; here
+    the floor was raised to 3 by SIZE *after* the gate had signed, not by
+    hot-zone risk, and the staff room accepted the deviation on that basis. No
+    re-run: the gate's own receipts (seven pytest runs incl. random order, the
+    base-sha literals re-derived independently, four self-chosen mutations, two
+    null runs declared) are what the signature rests on, and the code they
+    covered is byte-identical to what ships.
+  fleet_finding_two_traps: >-
+    Both cost this session time and will bite the next lane. (1) `evidence/brief.yml`
+    still exists at repo ROOT, tracked on main from #6082 and belonging to a
+    DIFFERENT lane; `evidence_pack_lint.py` run bare reads THAT file, so it kept
+    reporting "declared 2" after this PR's own brief had been changed to 3. CI is
+    unaffected — `scripts/ci/evidence_paths.py --resolve brief
+    --changed-files-file` resolves the per-PR brief — but a human or agent
+    debugging locally is measuring another lane's declaration. (2) The lint reads
+    the COMMITTED brief, not the working tree: an uncommitted correction is
+    invisible to it, which reads exactly like "my fix did nothing".

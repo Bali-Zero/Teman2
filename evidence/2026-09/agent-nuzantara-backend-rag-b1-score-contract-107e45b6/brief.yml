@@ -1,5 +1,5 @@
 task_id: backend-rag-b1-score-contract
-gear: 2
+gear: 3
 l_level: L2
 gate_class: opus
 base_sha: 1d726045c9ca75ab64a75e92b062e52b0b763a98 # pragma: allowlist secret
