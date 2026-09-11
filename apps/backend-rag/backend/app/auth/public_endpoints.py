@@ -701,10 +701,16 @@ _VISA_ORACLE = (
     # `test_garuda_voa_public_root_allowlist.py` pins both halves: every
     # public route below answers anonymously through the REAL mounted app
     # (`main_api.app`, not a bare `FastAPI()+include_router()` double — the
-    # note above was only caught that way), and the staff route still 401s
-    # with the middleware's OWN "Authentication required" body (never the
-    # handler's SESSION_REQUIRED) — the second assertion is what stays red
-    # if a future edit ever widens one of these entries into a prefix.
+    # note above was only caught that way), and every staff route is still
+    # refused by the middleware itself. That second assertion used to read
+    # the middleware's OWN "Authentication required" body; since the W3C
+    # contract-closure PR the middleware serves the frozen contract's
+    # SESSION_REQUIRED envelope on `/api/visa/voa/staff/**`
+    # (`hybrid_auth.contract_401_body` — a BODY change only, never a grant),
+    # so the body no longer discriminates and the test asserts two things
+    # that cannot go blind instead: `find_entry(<staff path>) is None`
+    # (reads THIS registry directly) and the `WWW-Authenticate` header the
+    # middleware's 401 branch sets and no GARUDA router ever does.
     PublicEndpoint(
         "/api/visa/voa/eligibility-checks",
         Category.VISA_ORACLE,

@@ -35,6 +35,47 @@ logger = logging.getLogger(__name__)
 
 _PII_RESTRICTED_PUBLIC_ENDPOINTS = frozenset({"/api/visa-oracle/evaluate"})
 
+#: Paths whose 401 BODY is fixed by a frozen product contract, so this
+#: middleware's generic `{"detail": "Authentication required"}` is a contract
+#: violation even though the REFUSAL itself is correct.
+#:
+#: This changes the body of a refusal and NOTHING else: the status stays 401,
+#: `WWW-Authenticate: Bearer` stays on the response, the handler still never
+#: runs, and no path listed here becomes public — public-ness is decided one
+#: step earlier in `dispatch`, exclusively by `PUBLIC_ENDPOINTS`.
+#:
+#: GARUDA VOA: all five staff operations under `/api/visa/voa/staff`
+#: (`listStaffPractices`, `getStaffPractice`, `assignPractice`,
+#: `transitionPractice`, `resolveLateOrder`) declare `401 ->
+#: {"code": "SESSION_REQUIRED", ...}` in
+#: `products/garuda-voa/contracts/openapi.yaml`. The kita client reads `code`
+#: for its error boundary and saw `undefined` on this path because this
+#: middleware refuses before `garuda_staff_router` runs.
+#:
+#: Matched on a `/` SEGMENT boundary, never as a substring (cicatrix #3,
+#: guard-over-match): `/api/visa/voa/staffroom` does NOT match.
+_CONTRACT_401_ENVELOPES: tuple[tuple[str, dict[str, Any]], ...] = (
+    (
+        "/api/visa/voa/staff",
+        {
+            "code": "SESSION_REQUIRED",
+            "retryable": False,
+            "message_key": "garuda_voa.error.session_required",
+        },
+    ),
+)
+
+
+def contract_401_body(path: str) -> dict[str, Any] | None:
+    """The frozen-contract 401 envelope for `path`, or None for the generic body.
+
+    Returns a fresh dict each call so a caller can never mutate the registry.
+    """
+    for prefix, envelope in _CONTRACT_401_ENVELOPES:
+        if path == prefix or path.startswith(prefix + "/"):
+            return dict(envelope)
+    return None
+
 
 def _get_correlation_id(request: Request) -> str:
     """Extract correlation ID from request state for logging"""
@@ -309,7 +350,9 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 cors_headers = self._cors_headers_for_request(request)
                 return JSONResponse(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    content={"detail": "Authentication required"},
+                    content=(
+                        contract_401_body(request.url.path) or {"detail": "Authentication required"}
+                    ),
                     headers={"WWW-Authenticate": "Bearer", **cors_headers},
                 )
 
