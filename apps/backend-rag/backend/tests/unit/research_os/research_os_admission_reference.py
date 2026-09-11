@@ -25,23 +25,31 @@ WHERE IT LIVES AND WHY. R1 may not write under `services/**`; R2 implements
 `services/research_os/naga_admission.py` against this. The reason vocabulary here is the
 contract between the two windows: R2 may add reasons, may not rename these.
 
-RULE 5 IS RESOLUTION, NOT PRESENCE (cured 2026-09-11, R1-build-spec.md §3 rule 5,
-`02-p04-adapter-mapping.md:87`). The predicate used to accept any truthy
-`source_event_ref.event_id` string -- a record pointing at an `IntelEvent` that exists nowhere
-was ADMITTED, which is exactly the "placeholder reference presented as provenance" class the
-mandate forbids. The cured rule requires the id to RESOLVE inside the `source` SourceSnapshot's
-own `intel_events` mapping (keyed by `event_id`), the resolved object to validate against
-`intel_event.schema.json` AND round-trip `IntelEvent.model_validate`, and its `object_hash` to
-equal the RECOMPUTED `research_os.hashing.object_hash` -- never the value the object happens to
-carry. A dangling id, an id resolving to something that is not a valid `IntelEvent`, and an
-`IntelEvent` whose stored hash does not verify are all the same failure by this rule's lights:
-none of them is provenance, and the rule refuses to guess which of the three it is looking at.
+RULE 5 IS RESOLUTION-AND-BINDING, NOT PRESENCE (cured 2026-09-11, then cured a second time the
+same day -- codex round 1, finding 1). The first cure required the `source_event_ref.event_id` to
+RESOLVE inside the `source` SourceSnapshot's own `intel_events` mapping, validate against
+`intel_event.schema.json`, round-trip `IntelEvent.model_validate`, and carry a RECOMPUTED
+`object_hash`. That closed presence but left resolution unbound: a record could point at ANY
+unrelated, otherwise-valid `IntelEvent` and be admitted with fictional provenance, because nothing
+ever compared the resolved event to the record's OWN document. The second cure adds the missing
+comparison -- the resolved event must be the event FOR THIS DOCUMENT: its `source.uri` must equal
+the record's `document_id`, and its `identity.content_hash` / `payload_ref.content_hash` must both
+equal the record's `document_content_hash` (guaranteed, by rule order, to already be a real body
+hash and not the URL hash rule 2 forbids). When `source_event_ref.object_hash` is present it is a
+STATED claim about the resolved event's identity, not a hint: a stated hash that disagrees with
+the recomputed one is a REJECTION, never a warning, because trusting the caller's own say-so about
+the very thing this rule exists to verify would reopen the hole from underneath. A dangling id, an
+id resolving to something that is not a valid `IntelEvent`, an `IntelEvent` whose stored hash does
+not verify, and an `IntelEvent` that verifies but names a DIFFERENT document are all the same
+failure by this rule's lights: none of them is provenance FOR THIS RECORD, and the rule refuses to
+guess which of the four it is looking at.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -115,13 +123,61 @@ def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def _statement_is_from_source(record: Mapping[str, Any], source: Mapping[str, Any]) -> bool:
-    """The triple must be derivable from the quoted span, not from the claim's prose.
+#: Digit runs inside prose, admitting the locale thousands-separators ("," and ".") the seed
+#: cohort's Indonesian gazette text and English fixtures both use — "Rp1.234.567" and "1,234,000"
+#: both match, and the separators are stripped before comparison so either grouping normalises to
+#: the same digit string as the record's own numeric `object_ref_or_value`.
+_NUMERIC_SPAN_RE = re.compile(r"\d(?:[\d.,]*\d)?")
 
-    Modelled here as: the span's quoted text must be present in the document body, AND the
-    triple must be marked as having been derived from that span by a human or rule pass. NAGA
-    has no atomizer (`G-STATEMENT`, still deferred), so for a legacy row this is False by
-    construction — which is the honest answer, not a bug in this predicate.
+
+def _digit_groups(text: str) -> set[str]:
+    """Every digit run in `text`, thousands separators stripped and normalised.
+
+    "Rp1.234.567", "1,234,567" and "1234567" all normalise to the same group -- the same
+    figure is spelled with different locale separators across this bundle's fixtures (the
+    Indonesian gazette bodies use "." per group, the English ones use ",") and neither spelling
+    is the raw `int`.
+    """
+
+    return {match.group().replace(",", "").replace(".", "") for match in _NUMERIC_SPAN_RE.finditer(text)}
+
+
+def _object_value_occurs_in_span(value: Any, quoted_text: str) -> bool:
+    """Is `value` actually IN the quoted span, not merely somewhere plausible?
+
+    A caller's `derived_from_span=True` is a promise, not a derivation (B2, codex round 1 finding
+    2) — this function is the derivation. When `value`'s own text carries a digit run (true for
+    every numeric `object_ref_or_value` AND for a natural-language paraphrase that names its
+    figure, e.g. "13 years from date of issuance" or "the 23rd of the seventh following month"), a shared
+    normalised digit group between the value and the quoted span IS the derivation -- the
+    paraphrase's language need not match the quote's (this bundle mixes English record-level
+    paraphrases with Indonesian gazette quotes), only its figure. A value with no digits at all
+    falls back to an exact substring check (case folded).
+    """
+
+    if isinstance(value, bool):
+        return str(value).lower() in quoted_text.lower()
+    text = str(value)
+    value_digits = _digit_groups(text)
+    if value_digits:
+        return bool(value_digits & _digit_groups(quoted_text))
+    return bool(text) and (text in quoted_text or text.lower() in quoted_text.lower())
+
+
+def _statement_is_from_source(record: Mapping[str, Any], source: Mapping[str, Any]) -> bool:
+    """The triple must be DERIVABLE from the quoted span, not merely asserted to be (B2 cure).
+
+    The presence-only predecessor accepted the self-asserted boolean
+    `statement.derived_from_span`: a fabricated triple was admitted whenever ITS QUOTE happened
+    to occur somewhere in the body and the caller set the flag to `true` — the flag alone carried
+    the rule, per codex round 1 finding 2. The cure derives: the span's quoted text must be
+    present in the document body (unchanged), every required part of the triple must be present
+    (unchanged), AND the triple's `object_ref_or_value` must actually OCCUR in the quoted span
+    itself (`_object_value_occurs_in_span`) — not merely in the wider body, and not merely
+    asserted by the flag. The flag remains a required gate (a genuine derivation the caller forgot
+    to mark is still not admitted — NAGA has no atomizer, `G-STATEMENT`, still deferred, so for a
+    legacy row this is False by construction, which is the honest answer, not a bug), but it can
+    no longer carry the rule alone.
     """
 
     span = record.get("source_span") or {}
@@ -131,7 +187,9 @@ def _statement_is_from_source(record: Mapping[str, Any], source: Mapping[str, An
     statement = record.get("statement") or {}
     if not all(statement.get(part) for part in ("subject_ref", "predicate", "object_ref_or_value")):
         return False
-    return statement.get("derived_from_span") is True
+    if statement.get("derived_from_span") is not True:
+        return False
+    return _object_value_occurs_in_span(statement["object_ref_or_value"], quoted)
 
 
 def _content_hash_is_url(record: Mapping[str, Any], source: Mapping[str, Any]) -> bool:
@@ -149,26 +207,43 @@ def _content_hash_is_url(record: Mapping[str, Any], source: Mapping[str, Any]) -
     return stored == _sha256(document_id)
 
 
-def _span_is_exact(record: Mapping[str, Any]) -> bool:
-    """`locator` and `quote_hash` are both required, and the hash must match the quote.
+def _span_is_exact(record: Mapping[str, Any], source: Mapping[str, Any]) -> bool:
+    """`locator` and `quote_hash` are both required, the hash must match the quote, AND the
+    locator must RESOLVE to that quote inside this document (B4 cure, codex round 1 finding 3).
 
     A hint string is not a locator (`02:84`). A `quote_hash` that does not hash the quoted text
-    is worse than an absent one — it is a provenance claim that does not hold.
+    is worse than an absent one — it is a provenance claim that does not hold. The
+    presence-only predecessor stopped there, so a genuine quote paired with a FICTIONAL locator
+    was admitted: a truthy string was taken for a location. The cure resolves it against
+    `source["locators"]` — a mapping this predicate ADDS to the SourceSnapshot's contract, keyed
+    by locator, valued by the `{start, end}` character offsets of that location in `body` — and
+    requires `body[start:end]` to BE the quoted text. A locator naming nothing, and a locator
+    naming somewhere else in the same document, are the same failure.
     """
 
     span = record.get("source_span") or {}
-    if not span.get("locator") or not span.get("quote_hash"):
-        return False
+    locator = span.get("locator")
     quoted = span.get("quoted_text")
-    return bool(quoted) and span["quote_hash"] == _sha256(quoted)
+    if not locator or not span.get("quote_hash") or not quoted:
+        return False
+    if span["quote_hash"] != _sha256(quoted):
+        return False
+    resolved = (source.get("locators") or {}).get(locator)
+    if not isinstance(resolved, Mapping):
+        return False
+    start, end = resolved.get("start"), resolved.get("end")
+    if type(start) is not int or type(end) is not int:
+        return False
+    body = source.get("body") or ""
+    return 0 <= start < end <= len(body) and body[start:end] == quoted
 
 
 def _intel_event_identity_resolves(record: Mapping[str, Any], source: Mapping[str, Any]) -> bool:
-    """`intel_event_identity_missing` -- the id must RESOLVE, not merely be present.
+    """`intel_event_identity_missing` -- the id must RESOLVE and BIND, not merely be present.
 
     `source` is a SourceSnapshot carrying an `intel_events` mapping keyed by `event_id` (a
     field this predicate ADDS to the snapshot's contract -- the presence-only predecessor never
-    looked at `source` for this rule at all). Four gates, all of which must hold:
+    looked at `source` for this rule at all). Gates, ALL of which must hold:
 
     1. `record["source_event_ref"]["event_id"]` is present.
     2. It resolves to an entry in `source["intel_events"]` -- a dangling id fails here.
@@ -178,6 +253,18 @@ def _intel_event_identity_resolves(record: Mapping[str, Any], source: Mapping[st
     4. Its `object_hash` equals the RECOMPUTED `research_os.hashing.object_hash` of the object
        itself -- a stored hash is a claim, not a fact, and this predicate never trusts a claim
        about its own integrity.
+    5. If `source_event_ref.object_hash` is STATED, it must equal the recomputed hash too -- a
+       stated hash that disagrees with the resolved event is a REJECTION, never a warning
+       (codex round 1 finding 1's own framing: a caller's say-so is not provenance).
+    6. BINDING (codex round 1 finding 1, the second cure of this rule the same day): the
+       resolved event must be the event FOR *THIS* DOCUMENT, not merely any valid event.
+       `node.source.uri` must equal `record.document_id`, and `node.identity.content_hash` /
+       `node.payload_ref.content_hash` must both equal `record.document_content_hash`. By rule
+       order `document_content_hash` has already survived rule 2 (`content_hash_is_url`) here,
+       so it is guaranteed to be a real body hash and not the URL hash -- the comparison is
+       against a body hash, never against the thing rule 2 forbids. Without this gate a record
+       could borrow ANY unrelated canonical `IntelEvent` and be admitted with fictional
+       provenance -- resolution alone proves the event is real, not that it is THIS record's.
     """
 
     event_ref = record.get("source_event_ref") or {}
@@ -201,14 +288,59 @@ def _intel_event_identity_resolves(record: Mapping[str, Any], source: Mapping[st
     except ValidationError:
         return False
 
-    return node_dict["object_hash"] == _recomputed_object_hash(node_dict)
+    recomputed = _recomputed_object_hash(node_dict)
+    if node_dict["object_hash"] != recomputed:
+        return False
+
+    stated_hash = event_ref.get("object_hash")
+    if stated_hash is not None and stated_hash != recomputed:
+        return False
+
+    document_id = record.get("document_id")
+    document_hash = record.get("document_content_hash")
+    event_uri = (node_dict.get("source") or {}).get("uri")
+    event_identity_hash = (node_dict.get("identity") or {}).get("content_hash")
+    event_payload_hash = (node_dict.get("payload_ref") or {}).get("content_hash")
+
+    if document_id is None or event_uri != document_id:
+        return False
+    if not document_hash:
+        return False
+    if event_identity_hash != document_hash or event_payload_hash != document_hash:
+        return False
+
+    return True
+
+
+def _source_version_resolves(record: Mapping[str, Any], source: Mapping[str, Any]) -> bool:
+    """`source_version_missing` -- the version must RESOLVE, not merely be non-empty (B3 cure).
+
+    The presence-only predecessor accepted any truthy `document_version_id` string, contrary to
+    `R1-build-spec.md §3` rule 3's own text: "no `document_version_id` for this `(document_id,
+    body hash)`". The cure resolves it against `source["document_versions"]` -- a mapping this
+    predicate ADDS to the SourceSnapshot's contract, keyed by `document_version_id`, valued by
+    the body hash THAT version was registered for. An invented version id that resolves to
+    nothing, or one that resolves to a DIFFERENT body hash than this record's own
+    `document_content_hash`, is the same failure: neither is the version for this document and
+    this body.
+    """
+
+    version_id = record.get("document_version_id")
+    if not version_id:
+        return False
+    document_hash = record.get("document_content_hash")
+    if not document_hash:
+        return False
+    versions = source.get("document_versions") or {}
+    registered_hash = versions.get(version_id)
+    return registered_hash is not None and registered_hash == document_hash
 
 
 _RULES: tuple[tuple[str, Callable[[Mapping[str, Any], Mapping[str, Any]], bool]], ...] = (
     ("statement_not_from_source", lambda r, s: _statement_is_from_source(r, s)),
     ("content_hash_is_url", lambda r, s: not _content_hash_is_url(r, s)),
-    ("source_version_missing", lambda r, s: bool(r.get("document_version_id"))),
-    ("exact_span_missing", lambda r, s: _span_is_exact(r)),
+    ("source_version_missing", lambda r, s: _source_version_resolves(r, s)),
+    ("exact_span_missing", lambda r, s: _span_is_exact(r, s)),
     ("intel_event_identity_missing", lambda r, s: _intel_event_identity_resolves(r, s)),
     ("rights_missing", lambda r, s: bool((r.get("classification") or {}).get("rights"))),
     ("retention_missing", lambda r, s: bool((r.get("retention") or {}).get("retention_class"))),

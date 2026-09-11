@@ -266,7 +266,11 @@ descendants:
     reset: g2 spent exactly 2 (lane FIXTURES, lane DOCS), both at depth 1, both pinned to
     claude-sonnet-5, and dispatched no third.
   spent_by_generation_2: 2
-  spent_by_generation_3: 0
+  spent_by_generation_3: 2
+  spent_by_generation_3_note: >-
+    Corrected from 0 by g4: lane INTELEVENT (rule-5 resolution cure) and lane BLOCKERS (the
+    round-1 cure, died with the g3 window before reporting). Generation 4 dispatched none.
+  spent_by_generation_4: 0
   deviation_generation_3: >-
     Raised 6 -> 8 by the staff room at the g3 opening, same shape as the g1 -> g2
     raise and recorded the same way: g2 spent its 2 usable attempts (lanes FIXTURES
@@ -320,6 +324,24 @@ generations:
       existing entry: renew(seconds = opening + 14400 - now = 14196), previous_deadline
       2026-09-11T01:05:00Z, new_deadline 2026-09-11T13:55:42Z, renewals now 2, reservations
       and counters untouched. Never renew(14400).
+    ended: "2026-09-11T~11:11Z"
+    cause: >-
+      context guard (window jump, not a death): the session resumed in a fresh window on the
+      same worktree. The implementer child r1-lane-blockers died with the old window mid-cure,
+      leaving an uncommitted partial cure secured as refs/keep/r1-g3-child-partial-cure-2026-09-11
+      -> bf40816b52. Checkpoint 3b, envelope 20260911T111701Z-592c.md.
+  - generation: 4
+    seat: claude-opus-5
+    opened: "2026-09-11T11:12Z"
+    deadline: "2026-09-11T13:55:42Z"
+    note: >-
+      Numbered 4 by the imperator's R1-ack of checkpoint 3b (R1 §6: a fresh window after a jump
+      increments the generation). SAME worktree, SAME clock, NO renewal. With the g3 implementer
+      holds exhausted (2 of 2) and no raise requested, the Dux wrote the remaining round-1 cure
+      itself — as g2 wrote the guard rewrite — and reverted the one part of the child's cure
+      that was wrong by contract (stripping the registered family prefix from the supersession/01
+      edge). Generator is not grader: round 2 stays with the external seats, the final gate with
+      a fresh Opus 5 session.
 
 corrections_to_the_handover:
   - text: >-
@@ -385,6 +407,16 @@ team:
       room, not by this window; it signs and never arms.
 
 checkpoints:
+  - generation: 3
+    state: window-jump
+    envelope: 20260911T111701Z-592c.md
+    envelope_sha256: fdb3527611f824cabfec20e0fef5bd6e607bdfd11e681a489344f4efbde00979
+    sent: "2026-09-11T11:17:01Z"
+    ack: >-
+      R1-ack, imperator nuzantara-0d, 2026-09-11T11:27Z, quoting the envelope and its sha256.
+      Record correction: this window is generation 4. Dispositions accepted — revert of the
+      child's B5 edge strip, no attempt raise, Dux writes the remaining cure, round 2 with codex O2
+      + kimi, freeze at ~12:50Z if not green. "Never commit a rewritten baseline."
   - generation: 3
     state: adversarial-round-1
     envelope: 20260911T110055Z-1772.md

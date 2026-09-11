@@ -96,6 +96,34 @@ def instant_sort_key(text: str) -> str:
     return moment.strftime("%Y-%m-%dT%H:%M:%S.") + f"{moment.microsecond:06d}Z"
 
 
+#: The registered-name prefix a claim family carries on an `ObjectSuccessorEdge`. The two fields
+#: are DIFFERENT TYPES by contract: `Claim.claim_family_id` is `format: uuid`, while
+#: `ObjectSuccessorEdge.family_id` and `graph.GraphMember.family_id` (`graph.py:24`) are
+#: `RegisteredName`. Both shipped fixtures spell the edge side `naga.claim_family.<uuid>`
+#: (`supersession/01`, the seed cohort's `correction_pair`).
+CLAIM_FAMILY_NAMESPACE = "naga.claim_family."
+
+
+def registered_family_name(claim_family_id: str) -> str:
+    """The `RegisteredName` an edge must carry to bind a claim of this `claim_family_id`."""
+
+    return f"{CLAIM_FAMILY_NAMESPACE}{claim_family_id}"
+
+
+def _ref_id(ref: Mapping[str, Any]) -> str | None:
+    """The claim a canonical `ExactObjectRef` names — `object_id`, never an invented `claim_id`.
+
+    Gemini second reader N1: the reader used to index `ref["claim_id"]`, a key no canonical
+    `ObjectSuccessorEdge` ref carries (`object_kind`, `object_id`, `object_hash`), so every
+    schema-valid edge raised `KeyError` and only the tests' private edge shape ever worked.
+    """
+
+    if ref.get("object_kind") != "claim":
+        return None
+    object_id = ref.get("object_id")
+    return object_id if isinstance(object_id, str) else None
+
+
 def subject_key_of(claim: Mapping[str, Any]) -> str | None:
     """The `subject_key` this claim's family answers under, or None if it carries none.
 
@@ -171,8 +199,8 @@ def _integrity_reasons(family: _Family) -> set[str]:
     reasons: set[str] = set()
     outgoing: dict[str, set[str]] = {}
     for edge in family.edges:
-        predecessor = edge["predecessor_ref"]["claim_id"]
-        successor = edge["successor_ref"]["claim_id"]
+        predecessor = _ref_id(edge["predecessor_ref"])
+        successor = _ref_id(edge["successor_ref"])
         for ref, claim_id in (
             (edge["predecessor_ref"], predecessor),
             (edge["successor_ref"], successor),
@@ -181,9 +209,9 @@ def _integrity_reasons(family: _Family) -> set[str]:
             if member is None:
                 reasons.add("missing_node")
                 continue
-            if member["object_hash"] != ref["object_hash"]:
+            if member["object_hash"] != ref.get("object_hash"):
                 reasons.add("hash_mismatch")
-            if member["claim_family_id"] != family.family_id:
+            if registered_family_name(member["claim_family_id"]) != edge.get("family_id"):
                 reasons.add("family_identity_mismatch")
         before, after = family.members.get(predecessor), family.members.get(successor)
         if before is not None and after is not None:
@@ -198,6 +226,24 @@ def _integrity_reasons(family: _Family) -> set[str]:
 
     if _has_cycle(outgoing):
         reasons.add("cycle")
+
+    # STRUCTURAL terminal-member check (B6 cure, codex round 1 finding 6), mirroring
+    # `graph.py::select_current_member`'s `current_keys = member_keys - outgoing_keys`: a
+    # family must have EXACTLY one member with no outgoing successor edge, and this is a
+    # property of the edge TOPOLOGY alone -- it does not depend on `known_at` at all.
+    # R1-build-spec.md §2 step 2 runs integrity "BEFORE any temporal filter -- the order IS the
+    # specification"; the defect this fixes is that `non_unique_current_member` used to be
+    # computed only AFTER filtering candidates by `known_at` (inside `_current_at`), so a family
+    # with two edge-less (therefore structurally non-unique) members whose `recorded_at` both
+    # postdate `known_at` produced an EMPTY filtered set and the caller saw `Abstain` instead of
+    # `Quarantine` -- the structural defect hid behind a query that happened to ask about the
+    # past. Computing it here, over ALL members unconditionally, closes that.
+    member_ids = set(family.members)
+    outgoing_ids = {predecessor for predecessor, successors in outgoing.items() if successors}
+    current_ids = member_ids - outgoing_ids
+    if len(current_ids) != 1:
+        reasons.add("non_unique_current_member")
+
     return reasons
 
 
@@ -234,8 +280,7 @@ def _current_at(family: _Family, known_at: datetime) -> list[Mapping[str, Any]]:
     """
 
     successor_by_predecessor = {
-        edge["predecessor_ref"]["claim_id"]: edge["successor_ref"]["claim_id"]
-        for edge in family.edges
+        _ref_id(edge["predecessor_ref"]): _ref_id(edge["successor_ref"]) for edge in family.edges
     }
     current: list[Mapping[str, Any]] = []
     for claim_id, member in family.members.items():
@@ -273,12 +318,20 @@ def _covers(member: Mapping[str, Any], valid_at: datetime) -> bool:
 def _is_consequential(member: Mapping[str, Any]) -> bool:
     """`CONTRACTS.md:266` — consequential numeric and regulatory claims need explicit valid time.
 
-    Marked on the fixture rather than guessed from the statement: guessing would make the
-    reader's admissibility rule depend on natural-language classification, which is precisely
-    the dependency D4 refuses for admission and this reader refuses for reads.
+    Derived from the canonical statement, never from a flag the caller sets (Gemini second
+    reader N2): a claim is consequential when its `object_ref_or_value` is a NUMBER, or when its
+    `subject_ref` names a `regulation`. Both are structural fields of the canonical `Claim`, so
+    the rule still refuses natural-language classification — and a canonical claim can no
+    longer escape the quarantine by simply not carrying an invented `consequential` key, which
+    no schema defines.
     """
 
-    return bool(member.get("consequential", False))
+    statement = member.get("statement") or {}
+    value = statement.get("object_ref_or_value")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return True
+    subject = statement.get("subject_ref")
+    return isinstance(subject, Mapping) and subject.get("object_kind") == "regulation"
 
 
 def read(
@@ -345,9 +398,8 @@ def read(
             admissible.append((family.family_id, member))
 
     if len(admissible) > 1:
-        quarantined.setdefault(
-            ",".join(sorted(family_id for family_id, _ in admissible)), set()
-        ).add("ambiguous_subject_key")
+        for family_id, _ in admissible:
+            quarantined.setdefault(family_id, set()).add("ambiguous_subject_key")
 
     if quarantined:
         return Quarantine(
@@ -372,15 +424,39 @@ def _group(
     edges: Iterable[Mapping[str, Any]],
     subject_key: str,
 ) -> dict[str, _Family]:
+    """Group claims into families and attach each edge to the family it names.
+
+    B5 cure (codex round 1 finding 5). An edge binds a family through its `RegisteredName`,
+    `registered_family_name(claim_family_id)`, compared EXACTLY — the same exact equality
+    `graph.py:118` applies, after the one typed conversion the contract itself implies
+    (`Claim.claim_family_id` is a uuid, `ObjectSuccessorEdge.family_id` a registered name). The
+    predecessor compared the two raw values, so the shipped correction edge
+    (`naga.claim_family.bdd…` against claims carrying `bdd…`) was never attached and every
+    temporal test stayed green over edges manufactured in the reader's private shape.
+
+    An edge is NEVER silently dropped. One whose `family_id` names no family here but whose
+    refs name a member of one is attached to that member's family, where
+    `_integrity_reasons` quarantines it as `family_identity_mismatch` — ignoring it would be the
+    very defect this function was cured of.
+    """
+
     families: dict[str, _Family] = {}
+    family_of_member: dict[str, _Family] = {}
     for claim in claims:
         if subject_key_of(claim) != subject_key:
             continue
         family_id = claim["claim_family_id"]
         family = families.setdefault(family_id, _Family(family_id=family_id))
         family.members[claim["claim_id"]] = claim
+        family_of_member[claim["claim_id"]] = family
+    by_registered_name = {registered_family_name(family_id): family for family_id, family in families.items()}
     for edge in edges:
-        family = families.get(edge.get("family_id", ""))
+        family = by_registered_name.get(edge.get("family_id", ""))
+        if family is None:
+            for ref in (edge.get("predecessor_ref") or {}, edge.get("successor_ref") or {}):
+                family = family_of_member.get(_ref_id(ref) or "")
+                if family is not None:
+                    break
         if family is not None:
             family.edges.append(edge)
     return families

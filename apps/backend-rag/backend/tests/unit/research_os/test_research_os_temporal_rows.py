@@ -37,6 +37,7 @@ from .research_os_reader_reference import (
     instant_sort_key,
     parse_instant,
     read,
+    registered_family_name,
 )
 
 _REPO_ROOT = next(
@@ -73,7 +74,7 @@ def _claim(
         "claim_id": claim_id,
         "claim_family_id": family_id,
         "object_hash": object_hash or (claim_id[-1] * 64),
-        "consequential": consequential,
+        "statement": _statement(consequential=consequential),
         "time": {"valid_from": valid_from, "valid_to": valid_to, "recorded_at": recorded_at},
         "extensions": {
             SUBJECT_KEY_NAMESPACE: {
@@ -89,15 +90,39 @@ def _claim(
     }
 
 
-def _edge(family_id: str, predecessor: dict[str, Any], successor: dict[str, Any]) -> dict[str, Any]:
+def _statement(*, consequential: bool) -> dict[str, Any]:
+    """The canonical statement shape the reader derives consequence from — never a flag."""
+
+    if consequential:
+        return {
+            "subject_ref": {"object_kind": "regulation", "object_id": "synthetic-instrument-01"},
+            "predicate": "synthetic.fee.amount",
+            "object_ref_or_value": 1234000,
+        }
     return {
-        "family_id": family_id,
+        "subject_ref": {"object_kind": "topic", "object_id": "synthetic-topic-01"},
+        "predicate": "synthetic.note",
+        "object_ref_or_value": "a descriptive note",
+    }
+
+
+def _edge(family_id: str, predecessor: dict[str, Any], successor: dict[str, Any]) -> dict[str, Any]:
+    """A canonical-SHAPED edge: `object_id` refs and the family's `RegisteredName`.
+
+    The private `claim_id` ref shape this helper used to build is exactly how the reader's
+    incompatibility with every real edge stayed hidden (codex round 1 finding 5, Gemini N1).
+    """
+
+    return {
+        "family_id": registered_family_name(family_id),
         "predecessor_ref": {
-            "claim_id": predecessor["claim_id"],
+            "object_kind": "claim",
+            "object_id": predecessor["claim_id"],
             "object_hash": predecessor["object_hash"],
         },
         "successor_ref": {
-            "claim_id": successor["claim_id"],
+            "object_kind": "claim",
+            "object_id": successor["claim_id"],
             "object_hash": successor["object_hash"],
         },
     }
@@ -462,6 +487,8 @@ def test_two_families_answering_the_same_question_quarantine_rather_than_rank() 
     result = read([first, second], [], _SUBJECT, "2026-08-01T00:00:00Z", "2026-09-01T00:00:00Z")
     assert isinstance(result, Quarantine)
     assert "ambiguous_subject_key" in result.reasons
+    # Gemini N3: the colliding families are named SEPARATELY, never as one joined string.
+    assert result.family_ids == tuple(sorted({first["claim_family_id"], second["claim_family_id"]}))
 
 
 def test_a_null_valid_from_on_a_consequential_claim_is_inadmissible() -> None:
@@ -485,7 +512,7 @@ def test_a_null_valid_from_on_a_consequential_claim_is_inadmissible() -> None:
     assert isinstance(result, Quarantine)
     assert "null_valid_from_on_consequential_claim" in result.reasons
 
-    harmless = dict(unbounded, consequential=False)
+    harmless = dict(unbounded, statement=_statement(consequential=False))
     assert isinstance(read([harmless], [], _SUBJECT, "2026-03-01T00:00:00Z", "2026-06-01T00:00:00Z"), Answer)
 
 
@@ -500,3 +527,102 @@ def test_the_answer_carries_an_identity_and_not_a_value() -> None:
     result = read(claims, edges, _SUBJECT, "2026-03-01T00:00:00Z", "2026-08-01T00:00:00Z")
     assert isinstance(result, Answer)
     assert set(vars(result)) == {"claim_id", "object_hash", "claim_family_id"}
+
+
+# --------------------------------------------------------------------------------------
+# Round-1 cures — each row runs the READER over bytes it did not manufacture.
+# --------------------------------------------------------------------------------------
+
+_SEED_COHORT = _BUNDLE / "fixtures/seed_public_regulatory/01_z2_seed_cohort.json"
+_SEED_PAIR_SUBJECT = "id/permenkumham-synth-40-2026/pasal-5-ayat-2"
+
+
+def _seed_correction_pair() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    pair = json.loads(_SEED_COHORT.read_text(encoding="utf-8"))["correction_pair"]
+    return pair["claims"], pair["object_successor_edges"]
+
+
+def test_the_shipped_correction_edge_is_consumed_before_discovery() -> None:
+    """Codex B5 + Gemini N1: the COMMITTED canonical edge — `object_id` refs, a `RegisteredName`
+    family — drives the reader. At S before the amendment was recorded, the original answers."""
+
+    claims, edges = _seed_correction_pair()
+    result = read(claims, edges, _SEED_PAIR_SUBJECT, "2026-08-01T00:00:00Z", "2026-03-01T00:00:00Z")
+    assert isinstance(result, Answer)
+    assert result.claim_id == claims[0]["claim_id"]
+
+
+def test_the_shipped_correction_edge_is_consumed_after_discovery() -> None:
+    """The same committed bytes after the amendment's `recorded_at`: the successor answers.
+
+    Without the edge attached both members would be terminal and the family would quarantine —
+    so an `Answer` naming the successor is only reachable through the shipped edge itself.
+    """
+
+    claims, edges = _seed_correction_pair()
+    result = read(claims, edges, _SEED_PAIR_SUBJECT, "2026-08-01T00:00:00Z", "2026-08-01T00:00:00Z")
+    assert isinstance(result, Answer)
+    assert result.claim_id == claims[1]["claim_id"]
+    assert result.object_hash == claims[1]["object_hash"]
+
+
+def test_an_edge_naming_the_wrong_family_quarantines_and_is_never_dropped() -> None:
+    """The committed edge with its family spelled as the bare uuid — the defect B5 hid.
+
+    A reader that silently skipped the unmatched edge would see two terminal members; one that
+    trusted it would answer. Neither: the edge is attached by its refs and the family
+    quarantines as `family_identity_mismatch`.
+    """
+
+    claims, edges = _seed_correction_pair()
+    wrong = [dict(edges[0], family_id=claims[0]["claim_family_id"])]
+    result = read(claims, wrong, _SEED_PAIR_SUBJECT, "2026-08-01T00:00:00Z", "2026-08-01T00:00:00Z")
+    assert isinstance(result, Quarantine)
+    assert "family_identity_mismatch" in result.reasons
+
+
+def test_structural_non_uniqueness_quarantines_even_when_every_member_is_in_the_future() -> None:
+    """Codex B6: integrity runs BEFORE any temporal filter.
+
+    Two edge-less members of one family, both recorded after S. The `known_at` filter would
+    leave nothing and the old reader said `Abstain`; the family is structurally forked, so it
+    quarantines whatever S the caller asks about.
+    """
+
+    family = "dddddddd-2222-4000-8000-00000000002d"
+    left = _claim(
+        "d0000001-0000-4000-8000-00000000002d",
+        family,
+        valid_from="2026-01-01T00:00:00Z",
+        valid_to=None,
+        recorded_at="2027-01-01T00:00:00Z",
+    )
+    right = _claim(
+        "d0000002-0000-4000-8000-00000000002d",
+        family,
+        valid_from="2026-01-01T00:00:00Z",
+        valid_to=None,
+        recorded_at="2027-02-01T00:00:00Z",
+    )
+    result = read([left, right], [], _SUBJECT, "2026-03-01T00:00:00Z", "2026-06-01T00:00:00Z")
+    assert isinstance(result, Quarantine)
+    assert "non_unique_current_member" in result.reasons
+    assert not isinstance(result, Abstain)
+
+
+def test_a_canonical_claim_is_consequential_by_its_payload_not_by_a_flag() -> None:
+    """Gemini N2: a COMMITTED canonical claim carries no `consequential` key at all.
+
+    Record 0 of the seed cohort states a number about a regulation; with its `valid_from`
+    nulled it must quarantine. The old reader read `member.get("consequential", False)` and
+    answered.
+    """
+
+    record = json.loads(_SEED_COHORT.read_text(encoding="utf-8"))["records"][0]
+    claim = json.loads(json.dumps(record["canonical"]["claim"]))
+    assert "consequential" not in claim
+    claim["time"]["valid_from"] = None
+    subject = claim["extensions"][SUBJECT_KEY_NAMESPACE]["payload"]["subject_key"]
+    result = read([claim], [], subject, "2026-03-01T00:00:00Z", "2026-10-01T00:00:00Z")
+    assert isinstance(result, Quarantine)
+    assert "null_valid_from_on_consequential_claim" in result.reasons

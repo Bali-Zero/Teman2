@@ -96,8 +96,21 @@ def _intel_event(event_id: str = _EVENT_ID) -> dict[str, Any]:
     return node
 
 
+_VERSION_ID = "synthetic-instrument-01@2026-03-01"
+_LOCATOR = "art-1/para-1"
+
+
 def _source() -> dict[str, Any]:
-    return {"body": _BODY, "intel_events": {_EVENT_ID: _intel_event()}}
+    """The SourceSnapshot: body, the events it can resolve, and the two mappings rules 3 and 4
+    resolve against — the version registered for THIS body hash, and where each locator IS."""
+
+    start = _BODY.index(_QUOTE)
+    return {
+        "body": _BODY,
+        "intel_events": {_EVENT_ID: _intel_event()},
+        "document_versions": {_VERSION_ID: _sha256(_BODY)},
+        "locators": {_LOCATOR: {"start": start, "end": start + len(_QUOTE)}},
+    }
 
 
 def _admissible_record() -> dict[str, Any]:
@@ -256,7 +269,11 @@ def test_a_resolved_but_invalid_intel_event_is_excluded_by_name() -> None:
     """
 
     malformed_source = _source()
-    del malformed_source["intel_events"][_EVENT_ID]["classification"]
+    malformed_node = malformed_source["intel_events"][_EVENT_ID]
+    del malformed_node["classification"]
+    # Rehash AFTER the deletion (codex round 1, MEDIUM at :246): with a stale hash the
+    # hash gate alone rejected this, so schema/model validation could be deleted unnoticed.
+    malformed_node["object_hash"] = object_hash(malformed_node)
     decision = admit(_admissible_record(), malformed_source)
     assert isinstance(decision, Excluded)
     assert decision.reason == "intel_event_identity_missing"
@@ -266,6 +283,115 @@ def test_a_resolved_but_invalid_intel_event_is_excluded_by_name() -> None:
     decision2 = admit(_admissible_record(), tampered_source)
     assert isinstance(decision2, Excluded)
     assert decision2.reason == "intel_event_identity_missing"
+
+
+def test_an_unrelated_valid_intel_event_is_not_provenance_for_this_record() -> None:
+    """Codex round 1 BLOCKER 1: resolution without BINDING.
+
+    The borrowed event is schema-valid, model-valid and hash-correct — it is simply the event
+    for ANOTHER document. Resolution alone admitted it; binding to this record's own
+    `document_id` and body hash does not. The innocence half is the same snapshot with the
+    record pointing at its own event, which is admitted.
+    """
+
+    other_uri = "https://example.invalid/synthetic-instrument-02"
+    other_body = "SYNTHETIC INSTRUMENT 02. An unrelated document."
+    other_id = "11111111-0000-4000-8000-0000000000e2"
+    node = _intel_event(other_id)
+    node["source"]["uri"] = other_uri
+    node["identity"]["content_hash"] = _sha256(other_body)
+    node["payload_ref"] = {"ref_type": "reference", "uri": other_uri, "content_hash": _sha256(other_body)}
+    node["object_hash"] = object_hash(node)
+    source = _source()
+    source["intel_events"][other_id] = node
+
+    borrowed = _admissible_record()
+    borrowed["source_event_ref"] = {"event_id": other_id}
+    decision = admit(borrowed, source)
+    assert isinstance(decision, Excluded)
+    assert decision.reason == "intel_event_identity_missing"
+    assert isinstance(admit(_admissible_record(), source), Admitted)
+
+
+def test_a_stated_event_hash_that_disagrees_is_a_rejection() -> None:
+    """A `source_event_ref.object_hash` is a claim about the resolved event, never a hint."""
+
+    record = _admissible_record()
+    record["source_event_ref"] = {"event_id": _EVENT_ID, "object_hash": "f" * 64}
+    decision = admit(record, _source())
+    assert isinstance(decision, Excluded)
+    assert decision.reason == "intel_event_identity_missing"
+
+    record["source_event_ref"]["object_hash"] = _intel_event()["object_hash"]
+    assert isinstance(admit(record, _source()), Admitted)
+
+
+def test_an_invented_or_mismatched_version_is_excluded_by_name() -> None:
+    """Codex round 1 BLOCKER 4: the version must be the one FOR this `(document_id, body hash)`."""
+
+    invented = _admissible_record()
+    invented["document_version_id"] = "synthetic-instrument-01@invented"
+    first = admit(invented, _source())
+    assert isinstance(first, Excluded) and first.reason == "source_version_missing"
+
+    other_body = _source()
+    other_body["document_versions"][_VERSION_ID] = _sha256("a different body")
+    second = admit(_admissible_record(), other_body)
+    assert isinstance(second, Excluded) and second.reason == "source_version_missing"
+
+
+def test_a_genuine_quote_at_a_fictional_locator_is_excluded_by_name() -> None:
+    """Codex round 1 BLOCKER 3: a truthy locator is not a location.
+
+    Both halves keep the quote and its hash genuine: a locator naming nothing, and a locator
+    whose offsets point somewhere else in the same body.
+    """
+
+    fictional = _admissible_record()
+    fictional["source_span"]["locator"] = "art-9/para-9"
+    first = admit(fictional, _source())
+    assert isinstance(first, Excluded) and first.reason == "exact_span_missing"
+
+    elsewhere = _source()
+    elsewhere["locators"][_LOCATOR] = {"start": 0, "end": len(_QUOTE)}
+    second = admit(_admissible_record(), elsewhere)
+    assert isinstance(second, Excluded) and second.reason == "exact_span_missing"
+
+
+def test_a_flagged_triple_whose_value_is_not_in_the_span_is_excluded_by_name() -> None:
+    """Codex round 1 BLOCKER 2: `derived_from_span: true` is a promise, not a derivation."""
+
+    record = _admissible_record()
+    record["statement"]["object_ref_or_value"] = "IDR 9,999,000"
+    assert record["statement"]["derived_from_span"] is True
+    decision = admit(record, _source())
+    assert isinstance(decision, Excluded)
+    assert decision.reason == "statement_not_from_source"
+
+
+def test_two_simultaneous_defects_report_the_earlier_rule() -> None:
+    """Codex round 1 MEDIUM at :315: the ORDER is part of the contract, so pin it with pairs.
+
+    Every other row carries one defect; a reordering of rules 2–10 would pass them all.
+    """
+
+    version_and_span = _admissible_record()
+    version_and_span["document_version_id"] = "invented"
+    version_and_span["source_span"]["locator"] = "nowhere"
+    first = admit(version_and_span, _source())
+    assert isinstance(first, Excluded) and first.reason == "source_version_missing"
+
+    span_and_event = _admissible_record()
+    span_and_event["source_span"]["locator"] = "nowhere"
+    span_and_event["source_event_ref"] = {"event_id": "99999999-0000-4000-8000-000000000000"}
+    second = admit(span_and_event, _source())
+    assert isinstance(second, Excluded) and second.reason == "exact_span_missing"
+
+    rights_and_retention = _admissible_record()
+    del rights_and_retention["classification"]["rights"]
+    rights_and_retention["retention"] = {}
+    third = admit(rights_and_retention, _source())
+    assert isinstance(third, Excluded) and third.reason == "rights_missing"
 
 
 def test_the_seed_cohorts_fully_sourced_records_are_admitted() -> None:
