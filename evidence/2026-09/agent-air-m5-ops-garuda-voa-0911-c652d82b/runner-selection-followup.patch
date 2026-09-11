@@ -1,0 +1,146 @@
+--- a/apps/backend-rag/backend/db/migration_base.py
++++ b/apps/backend-rag/backend/db/migration_base.py
+@@ -65,9 +65,14 @@
+     return settings.migration_database_url or settings.database_url
+ 
+ 
+-def migration_dsn_is_dedicated() -> bool:
+-    """True when the runner is on its own DSN rather than the runtime's."""
+-    return bool(settings.migration_database_url)
++def migration_dsn_is_dedicated(database_url: str | None = None) -> bool:
++    """Classify the selected URL; a different explicit override stays legacy.
++
++    An alternate dedicated URL must pass dedicated=True explicitly.
++    """
++    return bool(settings.migration_database_url and (
++        database_url is None or database_url == settings.migration_database_url
++    ))
+ 
+ 
+ async def assume_runtime_role(
+@@ -159,9 +164,8 @@
+     if row["cu"] == runtime_role:
+         # Already assumed on this physical connection (a pool re-acquire whose
+         # release did not reset the role). Idempotent by design: the pool's
+-        # `setup` hook runs on EVERY acquire, because asyncpg's release-time
+-        # `RESET ALL` undoes `SET ROLE` (kimi, 2026-09-11) -- so the hook must
+-        # be safe both when the reset happened and when it did not.
++        # `setup` hook runs on EVERY acquire. PostgreSQL RESET ALL preserves
++        # role; an explicit RESET ROLE by a borrower must still be healed.
+         return runtime_role
+     if row["cu"] != row["su"]:
+         raise _refuse(
+@@ -761,7 +765,9 @@
+         """
+         return True
+ 
+-    async def apply(self, database_url: str | None = None) -> bool:
++    async def apply(
++        self, database_url: str | None = None, *, dedicated: bool | None = None
++    ) -> bool:
+         """
+         Apply migration with transaction and automatic rollback.
+ 
+@@ -771,6 +777,8 @@
+                 ONE database (codex finding 1, 2026-09-11 -- before this the
+                 manager's pool and this connect could resolve differently).
+                 Defaults to `resolve_migration_dsn()`.
++            dedicated: Bound mode from the manager, or resolve it from
++                the selected DSN when called standalone.
+ 
+         Returns:
+             True if migration applied successfully, False otherwise
+@@ -779,6 +787,8 @@
+             MigrationError: If migration fails or validation fails
+         """
+         dsn = database_url or resolve_migration_dsn()
++        if dedicated is None:
++            dedicated = migration_dsn_is_dedicated(dsn)
+         if not dsn:
+             raise MigrationError("DATABASE_URL not configured")
+ 
+@@ -816,7 +826,7 @@
+         # transaction opens, so the file's own `RESET ROLE`/`SET ROLE` pair
+         # (if any) brackets exactly the block that needs the ledger owner.
+         try:
+-            await assume_runtime_role(conn)
++            await assume_runtime_role(conn, dedicated=dedicated)
+         except MigrationError:
+             await conn.close()
+             raise
+--- a/apps/backend-rag/backend/db/migration_manager.py
++++ b/apps/backend-rag/backend/db/migration_manager.py
+@@ -4,6 +4,7 @@
+ """
+ 
+ import logging
++from functools import partial
+ from pathlib import Path
+ from urllib.parse import urlparse
+ 
+@@ -14,6 +15,7 @@
+     BaseMigration,
+     MigrationError,
+     assume_runtime_role,
++    migration_dsn_is_dedicated,
+     resolve_migration_dsn,
+     split_migration_sql,
+ )
+@@ -87,16 +89,21 @@
+     - Connection pooling for performance
+     """
+ 
+-    def __init__(self, database_url: str | None = None) -> None:
++    def __init__(
++        self, database_url: str | None = None, *, dedicated: bool | None = None
++    ) -> None:
+         """
+         Initialize migration manager.
+ 
+         Args:
+-            database_url: Database URL (defaults to settings.database_url)
++            database_url: Explicit override, else the configured migration/runtime URL.
++            dedicated: Override the selected mode for an alternate dedicated URL.
+         """
+         # Option D (RULED 2026-09-11): `MIGRATION_DATABASE_URL` wins over
+         # `DATABASE_URL` for the RUNNER only; see `resolve_migration_dsn`.
+         self.database_url = database_url or resolve_migration_dsn()
++        self._dedicated = (migration_dsn_is_dedicated(self.database_url)
++                           if dedicated is None else dedicated)
+         if not self.database_url:
+             raise MigrationError("DATABASE_URL not configured")
+         self.pool: asyncpg.Pool | None = None
+@@ -117,10 +124,9 @@
+                 # creation): the ledger tables (`_ensure_migration_log`) and the
+                 # advisory lock go through this pool, a `CREATE TABLE IF NOT
+                 # EXISTS` here must not mint a migrator-owned table, and
+-                # asyncpg's release-time `RESET ALL` undoes `SET ROLE` -- so an
+-                # `init`-only hook would hold for the first acquire and silently
+-                # lapse on the second (kimi, 2026-09-11). The hook is idempotent.
+-                setup=assume_runtime_role,
++                # an explicit RESET ROLE by a borrower is healed on checkout.
++                # Bind mode once with the URL, including explicit overrides.
++                setup=partial(assume_runtime_role, dedicated=self._dedicated),
+             )
+             logger.info("Migration manager connection pool created")
+ 
+@@ -371,7 +377,7 @@
+         Raises:
+             MigrationError: If migration fails
+         """
+-        return await migration.apply(database_url=self.database_url)
++        return await migration.apply(database_url=self.database_url, dedicated=self._dedicated)
+ 
+     # Process-wide advisory lock id used to serialise concurrent migration
+     # runs. `pg_advisory_lock` / `pg_advisory_unlock` are *session-scoped* —
+--- a/apps/backend-rag/backend/tests/db/test_migration_runner_dedicated_role.py
++++ b/apps/backend-rag/backend/tests/db/test_migration_runner_dedicated_role.py
+@@ -91,7 +91,7 @@
+     seen: dict = {}
+ 
+     class _Mig:
+-        async def apply(self, database_url=None):
++        async def apply(self, database_url=None, *, dedicated=None):
+             seen["dsn"] = database_url
+             return True
+ 

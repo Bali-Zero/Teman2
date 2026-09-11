@@ -81,6 +81,7 @@ flag, simulate payment. Nothing is "done" because it merged — done is proved o
 
 ## LIVE STATE (update before ending the session)
 
+- **2026-09-11 (final spec)** — the lane is now driven by `docs/plans/2026-09-11-garuda-voa-final-spec.md` (G0 + eight windows, reconciled with Astra; Astra's full production audit and option-D proof pack: `evidence/2026-09/agent-air-m5-ops-garuda-voa-0911-c652d82b/README.md`, operator steps in `OPERATOR-D.md`).
 - 2026-09-11 (M5, re-measured from `origin/main` @ `be45266252` and prod read-only): the table
   above is stale on three rows. **Step 7 EXISTS** (`apps/mouth/src/app/visa/voa/orders/[orderId]`,
   #5761 + #5779, 2026-09-05). **The public funnel is OPEN** since 2026-09-06 (Zero,

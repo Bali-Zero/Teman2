@@ -1,0 +1,94 @@
+gear: 2
+l_level: L1
+brief_ref: evidence/2026-09/agent-air-m5-docs-garuda-voa-final-spec-8fd0cd3b/brief.yml
+plan_ref: >-
+  PR #6130 (agent/air-m5/docs/garuda-voa-final-spec) — the GARUDA VOA final spec and
+  Astra's option-D proof pack. Docs + evidence only.
+grader: claude-opus-5 (fresh verifier outside this chain — NOT the authoring session)
+lanes:
+  - lane: garuda-voa-final-spec-author
+    role: build
+    seat: >-
+      claude-fable-5.1 (owner-opened window, M5): wrote the spec after re-measuring the funnel
+      and one `codex exec` reconciliation round with Astra (gpt-5.6-sol); a Sonnet builder
+      copied the pack, added the LANE-A pointer, committed, pushed and armed.
+  - lane: garuda-voa-final-spec-review
+    role: review
+    seat: >-
+      codex gpt-5.6-sol (Astra, read-only): reviewed the window plan and corrected it in two
+      places (runner follow-up as its own PR; fail-safe 304 bracket) — the reconciliation is
+      §6 of the spec itself.
+seat_diversity: satisfied
+seat_diversity_note: >-
+  Author Claude, reviewer Codex (cross-family); the reviewed artifact IS the spec's §3/§6.
+diff:
+  net_lines: >-
+    17 files, +1283/-0: the spec, the LANE-A pointer, Astra's pack (README.md, OPERATOR-D.md,
+    2 patches, 3 .py, 5 .json), this evidence pair, and .secrets.baseline (+184 lines: the 22
+    findings in the pack, all audited as false positives, inserted as text so the diff stays
+    purely additive).
+  behaviour_change: >-
+    None at runtime. No file under apps/, scripts/, infra/ or .github/ changes; nothing imports
+    evidence/. The one non-doc mutation is .secrets.baseline: 22 audit decisions added, none
+    removed or altered — a reviewer should read those 22 entries (sha256 digests and synthetic
+    test values) and nothing else in the diff needs a security eye.
+receipts:
+  - claim: The pack is byte-identical to Astra's worktree copy
+    cmd: diff -r /Users/balizero/nuzantara/.worktrees/ops-garuda-voa-0911/evidence/2026-09/agent-air-m5-ops-garuda-voa-0911-c652d82b evidence/2026-09/agent-air-m5-ops-garuda-voa-0911-c652d82b
+    result: "(empty)"
+    exit: 0
+    ts: 2026-09-11T18:43Z
+    seat: ship-spec (sonnet builder)
+  - claim: No credential in the pack
+    cmd: grep -rEn "postgres(ql)?://[^ ]*:[^ @]+@|password=|secret_key|BEGIN PRIVATE" evidence/2026-09/agent-air-m5-ops-garuda-voa-0911-c652d82b
+    result: "no match"
+    exit: 1
+    ts: 2026-09-11T18:43Z
+    seat: ship-spec (sonnet builder)
+  - claim: The floor is 2 by SIZE only, not by path
+    cmd: git diff --numstat origin/main...HEAD | awk '{a+=$1;d+=$2} END{print a-d}'
+    result: "1283 (> SIZE_GEAR2_THRESHOLD 400, < SIZE_GEAR3_THRESHOLD 1828); no hot-zone path in the diff"
+    exit: 0
+    ts: 2026-09-11T20:40Z
+    seat: session (M5, window 2 — re-measured after the gate's round-1 finding)
+  - claim: The .secrets.baseline change is purely additive
+    cmd: git diff --numstat origin/main...HEAD -- .secrets.baseline
+    result: "184\t0\t.secrets.baseline"
+    exit: 0
+    ts: 2026-09-11T20:40Z
+    seat: session (M5, window 2)
+  - claim: >-
+      The 22 detect-secrets findings in the pack (sha256 manifest digests and the disposable
+      cluster's synthetic env values) are audited as false positives in .secrets.baseline, and
+      a PR-scoped diff scan of this branch adds no unaudited finding
+    cmd: python3 scripts/detect_secrets_check_unaudited.py
+    result: "All findings audited (8121 total)"
+    exit: 0
+    ts: 2026-09-11T20:40Z
+    seat: session (M5, window 2)
+pii_scan: clean
+pii_scan_note: >-
+  Spec and pack carry no client data; production read-backs quoted are aggregates (0 orders,
+  0 practices) and catalogue facts.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      The first window plan folded the runner follow-up into the 304 PR and proposed an
+      `IF EXISTS(...) AND pg_has_role(...)` bracket whose AND order Postgres does not guarantee.
+    status: CONFIRMED
+    resolution: >-
+      W1R is its own PR before W1S; the bracket is specified with to_regrole, nested IF and a
+      version-gated SET/MEMBER check (spec §3 and §6).
+  - seat: gate-6130 (claude-opus-5, fresh verifier, round 1 on 5a8cd39c)
+    objection: >-
+      The pack narrated 14 files / 963 lines while the diff measured 17 / 1271, and it did not
+      name the .secrets.baseline mutation; the commissioned sha was also superseded mid-gate.
+    status: CONFIRMED
+    resolution: >-
+      Counts re-measured from the live diff (this version), the baseline mutation named in
+      behaviour_change with its own additive receipt; the gate re-signs on the final head.
+bites:
+  consumer: >-
+    The next GARUDA VOA session opening W1R / W3C / W3A: its launch prompt names this spec by
+    path and Zero's operator read-back commands in OPERATOR-D.md must be reachable on main.
+  where: ci
