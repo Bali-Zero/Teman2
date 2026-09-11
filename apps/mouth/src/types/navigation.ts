@@ -157,6 +157,7 @@ export const routeTitles: Record<string, string> = {
   "/second-home": "Second Home",
   "/second-home/new": "New Second Home Case",
   "/review": "Document Review",
+  "/obligations": "Obligations",
   "/knowledge": "Knowledge Base",
   "/team": "Team",
   "/team/timesheet": "Timesheet",
