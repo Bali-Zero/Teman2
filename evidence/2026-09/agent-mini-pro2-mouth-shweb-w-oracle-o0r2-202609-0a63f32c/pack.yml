@@ -159,10 +159,12 @@ notes:
     imperator, recorded pending in brief.yml's adversarial_review round 4 —
     never claimed as done by this builder session.
   - >-
-    Detect Secrets: cured for 2 of 3 flagged files (contract-lock.json,
-    live-browser.json — sha256/git-sha digests, regex-excluded per the #6166
-    precedent). census.json's 2 findings (lines 313, 325) are plain-text
-    labels, not digests, so per the no-blind-broadening rule they were left
-    unaudited rather than cured — `scripts/detect_secrets_check_unaudited.py`
-    still exits 1 on those 2, reported here for an owner decision, not done.
+    Detect Secrets: cured per finding for all 3 flagged files.
+    contract-lock.json and live-browser.json keep the #6166-precedent
+    file-anchored regex (sha256/git-sha digests). census.json's 2 findings,
+    at lines 313 and 325, are plain-text synthetic walk labels, not digests
+    — `.secrets.baseline` now carries an `is_secret: false` audit decision
+    keyed to their two hashed_secret values, so census.json itself stays
+    scanned and any NEW finding added to it still arrives unaudited and
+    fails the gate. `scripts/detect_secrets_check_unaudited.py` exits 0.
   - "gh pr merge --auto is the orchestrator's action, not this builder session's — this session commits only, per its hard limits."

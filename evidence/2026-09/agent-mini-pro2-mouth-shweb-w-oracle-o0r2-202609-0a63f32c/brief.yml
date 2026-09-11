@@ -22,17 +22,19 @@ objective: >-
   for all 13 paths, cured for the three causes: (1) gear declared 3 with this
   Gear-3 evidence pack; (2) frontmatter + appended "## Adversarial review"
   section added to the two research .md files, pinned-byte-preserving; (3)
-  Detect Secrets baseline cured per the #6166 precedent (regex filter scoped
-  to the sha256-digest shape, not a blind line allowlist) for 2 of the 3
-  flagged files — contract-lock.json (16 findings) and live-browser.json
-  (1 finding), all sha256/git-sha digests. census.json's 2 findings
-  (line 313, line 325 — "Base64 High Entropy String") are NOT digests: they
-  are the plain-text labels "offshore/family/STEPCHILD/spNat=IT" and
-  "...=ID", which only trip the entropy heuristic because they happen to sit
-  inside the base64 character set. Per the no-blind-broadening rule these
-  were left unaudited rather than excluded — the unaudited-findings check
-  still fails (exit 1) on those 2, reported for an owner decision, not cured
-  by this session.
+  Detect Secrets baseline cured per finding for all 3 flagged files:
+  contract-lock.json (16 findings) and live-browser.json (1 finding) keep
+  the #6166-precedent file-anchored regex, all sha256/git-sha digests.
+  census.json's 2 findings, at lines 313 and 325, are NOT digests — they are
+  plain-text synthetic walk labels that trip the entropy heuristic only
+  because every character happens to sit inside the base64 alphabet. These
+  are cured per finding, not per file: `.secrets.baseline` now carries an
+  `is_secret: false` audit decision keyed to their two hashed_secret values
+  (d3b557d5…, a8463d95…), so census.json itself stays scanned and any NEW
+  finding added to it still arrives unaudited and fails the gate. An earlier
+  draft of this brief quoted the label string verbatim to explain the false
+  positive and tripped the same entropy heuristic on itself — this version
+  names the two line numbers instead.
 scope:
   - research/visa/2026-09-11-oracle-final-window-spec.md
   - research/visa/2026-09-11-review-reason-audit/README.md
