@@ -31,6 +31,16 @@ gear_note: >-
   brief.yml), churn `awk -F'\t' '{s+=$1+$2} END{print s}' /tmp/nsb3.txt` = 984, still between
   SIZE_GEAR2_THRESHOLD (400) and SIZE_GEAR3_THRESHOLD (1828), no hot-zone path hit. Gear stays
   2.
+
+  FINAL RECOMPUTE after #6211 merged (909e257d97) and this branch was rebased --onto
+  origin/codex/website-r19-integrated (the PR's own base as GitHub now reads it, once
+  agent/nuzantara/website/prettier-content-files merged into it), plus the #6211 pack brief_ref
+  fix and the Coretax re-cure landed inside this branch: `git diff --name-only
+  origin/codex/website-r19-integrated...HEAD > /tmp/cfb5.txt; git diff --numstat
+  origin/codex/website-r19-integrated...HEAD > /tmp/nsb5.txt; python3
+  scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/cfb5.txt --numstat-file
+  /tmp/nsb5.txt` -> still floor 2, source size. 24 files, churn `awk -F'\t' '{s+=$1+$2}
+  END{print s}' /tmp/nsb5.txt` = 1021, still between 400 and 1828. Gear stays 2.
 objective: >-
   Add "compliance" as the fifth first-class service pillar on the NEW apps/website R19 site
   (branch codex/website-r19-integrated, not yet on main): a full ServicePage entry rendered by
@@ -64,17 +74,27 @@ constraints:
     Why-now facts are the three the task specified, sourced, and NOT the draft's unverified
     "PP 28/2025 fines" line: (a) Komdigi blocked eBay and KLM on 28 June 2025 and sent
     notification letters to 25 operators on 26 June 2026 (Komdigi press releases 9446 and
-    10354); (b) CURED at gate r1 (REWORK-BUILD, comment 5630621483) -- the original "extended to
-    31 May after around 4,000 complaints" had no repo provenance for the causal "~4,000
-    complaints" claim. Resourced to
+    10354); (b) CURED at gate r1 (REWORK-BUILD, comment 5630621483), then RE-CURED with more
+    precise sourcing -- the original "extended to 31 May after around 4,000 complaints" had no
+    repo provenance for the causal "~4,000 complaints" claim. First resourced to
     docs/superpowers/specs/2026-05-08-domain-mesh-research/r3-djp-coretax-tax-tech-2026-05-08.md
-    sec. 1.4 (LMI Consultancy, quoted): KEP-71/PJ/2026 (reinforced by PENG-31/PJ.09/2026)
-    extended the 2025 corporate income tax return filing window through 31 May 2026 and waived
-    administrative sanctions for corporate taxpayers who file and settle any Article 29
-    underpayment within that window. The same doc's "~4,000" figure (HeyGoTrade) attaches to a
-    different claim ("formal petitions... for the deadline relief"), not "complaints" -- dropped
-    rather than restated imprecisely; (c) quarterly LKPM deadlines moved to the 15th under BKPM
-    Regulation 5/2025.
+    sec. 1.4 (LMI Consultancy paraphrase) as an "extended... filing window" framing; corrected
+    again on the team-lead's finding of more precise, DDTC-backed sourcing:
+    research/regulatory/2026-05-28-delta.json ("DJP decision (KEP) issued 30 April 2026 setting
+    tax policy for corporate taxpayers filing annual SPT... under the Coretax... system for tax
+    year 2025", citation KEP-71/PJ/2026) and
+    research/regulatory/2026-05-31-delta.json (verbatim_excerpt: "KEP-71/PJ/2026 grants
+    corporate taxpayers a relaxation window to file their 2025 annual income tax returns (SPT
+    Tahunan Badan) without administrative penalties, with the deadline expiring on May 31,
+    2026"). Both files verified directly (grep) before writing. This DDTC-sourced framing is a
+    penalty-free relaxation window layered on KEP-71's issuance, not a moved statutory deadline
+    -- "extended" dropped per instruction. Final bullet: "Coretax's first corporate filing
+    season needed a rescue: DJP's KEP-71/PJ/2026 (issued 30 April 2026) waived late-filing
+    penalties on 2025 corporate income tax returns (SPT Tahunan Badan) through 31 May 2026." The
+    same delta files' "~4,000" figure (HeyGoTrade, in the earlier doc) attaches to a different
+    claim ("formal petitions... for the deadline relief"), not "complaints" against Coretax --
+    dropped rather than restated imprecisely; (c) quarterly LKPM deadlines moved to the 15th
+    under BKPM Regulation 5/2025.
   - >-
     A parallel, unrelated lane (roster name dux-w1-pr2-compliance-page) is adding an UNLISTED,
     noindex /services/compliance page to a DIFFERENT app (apps/mouth, reading a committed price
@@ -111,7 +131,11 @@ acceptance:
       both still listed only four pillars; both cured (commit bb76bbecef), plus
       Company.test.tsx's hardcoded expected-routes assertion, which the sweep also missed
       (commit 96dd25fe33). grep -rn "companyExpertise\|REQUIRED_ROUTES" apps/website/src
-      apps/website/tests now shows both including /services/compliance.
+      apps/website/tests now shows both including /services/compliance. Live-server check:
+      `npm run build && npx next start --hostname 127.0.0.1 --port 3105` then `node
+      tests/qa/site-smoke.mjs` against it -> requiredRoutes 8/8 passing (incl.
+      /services/compliance), fragmentTargets 1/1, homeAssets 14/14, failures 0. Server killed
+      after.
   - text: Typecheck, full test suite and production build SHALL be clean.
     probe: >-
       npx tsc --noEmit (exit 0); npm test -- --maxWorkers=1 --no-file-parallelism (100 files /
