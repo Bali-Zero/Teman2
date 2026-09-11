@@ -31,7 +31,9 @@ PROVENANCE = BaseMigration.MIGRATIONS_DIR / "299_schema_versions_provenance.sql"
 RESUME_TAGS = (
     "garuda_304_resume_runtime_role_after_scope",
     "garuda_304_resume_runtime_role_after_transfer",
+    "garuda_304_resume_runtime_role_after_rollback",
 )
+RECORD = "SELECT set_config('garuda.migration_304_resume_role', current_user, true);\n"
 NARROW_SCOPES = ("VISA_DECISION", "GARUDA_CHECK", "GARUDA_ORDER", "GARUDA_MAGIC_LINK")
 WIDENED_SCOPES = (*NARROW_SCOPES, "GARUDA_DOCUMENT")
 FUNCTIONS = (
@@ -84,9 +86,10 @@ def _migration(sql_dir: Path = BaseMigration.MIGRATIONS_DIR) -> BaseMigration:
 
 
 def _without_bracket(sql: str) -> str:
-    """Returns sql with both RESET ROLE statements and both resume blocks removed."""
-    assert sql.count("RESET ROLE;\n") == 2
-    sql = sql.replace("RESET ROLE;\n", "")
+    """Returns sql with its three set_config records, three RESET ROLE statements and three resume blocks removed."""
+    assert sql.count(RECORD) == 3
+    assert sql.count("RESET ROLE;\n") == 3
+    sql = sql.replace(RECORD, "").replace("RESET ROLE;\n", "")
     for tag in RESUME_TAGS:
         start = sql.index(f"DO ${tag}$")
         end = sql.index(f"${tag}$;") + len(f"${tag}$;")
@@ -197,13 +200,21 @@ async def test_304_applies_as_a_superuser_session_with_the_production_roles_abse
         assert catalogue["tables"] == {"garuda_documents": session, "garuda_document_review_fields": session}
         assert catalogue["functions"] == dict.fromkeys(FUNCTIONS, session)
         assert catalogue["scope_widened"] is True
+
+        async with MigrationManager(database_url=dsn) as manager:
+            assert manager._dedicated is False
+            assert await manager.rollback_migration(_migration().migration_name)
+        catalogue = await _catalogue(dsn)
+        assert catalogue["tables"] == {} and catalogue["functions"] == {}
+        assert catalogue["ledgers"] == {"schema_migrations": 0, "_schema_versions": 0}
+        assert catalogue["scope_widened"] is False
     finally:
         await _drop_database(_CI_ADMIN_URL, dsn)
 
 
 @pytest_asyncio.fixture
 async def disposable_cluster() -> AsyncIterator[str]:
-    """Yields a local disposable cluster's superuser DSN holding the three production role names; drops the roles it created."""
+    """Yields a local cluster's superuser DSN after creating the three production role names; skips if any pre-exists; drops them after."""
     if not _DISPOSABLE_ADMIN_URL:
         pytest.skip("OPTION_D_DISPOSABLE_PG_URL unset: this shape creates cluster-wide production role names")
     if urlsplit(_DISPOSABLE_ADMIN_URL).hostname not in ("127.0.0.1", "localhost"):
@@ -212,10 +223,13 @@ async def disposable_cluster() -> AsyncIterator[str]:
     created: list[str] = []
     try:
         assert await admin.fetchval("SELECT rolsuper FROM pg_roles WHERE rolname = session_user")
+        if await admin.fetchval(
+            "SELECT count(*) FROM pg_roles WHERE rolname = ANY($1::text[])", [RUNTIME, LEDGER, MIGRATOR]
+        ):
+            pytest.skip("a production role name already exists on this cluster")
         for role, login in ((RUNTIME, "LOGIN"), (LEDGER, "NOLOGIN"), (MIGRATOR, "LOGIN")):
-            if await admin.fetchval("SELECT to_regrole($1) IS NULL", role):
-                await admin.execute(f"CREATE ROLE {role} NOSUPERUSER INHERIT {login}")
-                created.append(role)
+            await admin.execute(f"CREATE ROLE {role} NOSUPERUSER INHERIT {login}")
+            created.append(role)
         options = "WITH INHERIT TRUE, SET TRUE" if await admin.fetchval(
             "SELECT current_setting('server_version_num')::int >= 160000"
         ) else ""
@@ -253,6 +267,66 @@ async def test_304_applies_through_the_dedicated_migrator(
             assert await conn.fetchval(f"SELECT pg_has_role('{RUNTIME}', '{LEDGER}', 'MEMBER')") is False
         finally:
             await conn.close()
+
+        async with MigrationManager() as manager:
+            assert await manager.rollback_migration(_migration().migration_name)
+        catalogue = await _catalogue(dsn)
+        assert catalogue["tables"] == {} and catalogue["functions"] == {}
+        assert catalogue["ledgers"] == {"schema_migrations": 0, "_schema_versions": 0}
+        assert catalogue["scope_widened"] is False
+    finally:
+        await _drop_database(disposable_cluster, dsn)
+
+
+async def test_304_rollback_without_its_role_bracket_fails_atomically_through_the_migrator(
+    disposable_cluster: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sql = SOURCE.read_text(encoding="utf-8")
+    migration = BaseMigration(
+        304, SOURCE.name, "garuda documents", rollback_sql=split_migration_sql(_without_bracket(sql))[1]
+    )
+    dsn = await _build_substrate(disposable_cluster, split_owners=True, scopes=WIDENED_SCOPES)
+    try:
+        monkeypatch.setattr(migration_base.settings, "migration_database_url", _dsn_as(dsn, MIGRATOR))
+        async with MigrationManager() as manager:
+            assert await manager.apply_migration(migration)
+            with pytest.raises(asyncpg.InsufficientPrivilegeError):
+                await manager.rollback_migration(migration.migration_name)
+        catalogue = await _catalogue(dsn)
+        assert catalogue["tables"] == {"garuda_documents": RUNTIME, "garuda_document_review_fields": RUNTIME}
+        assert catalogue["functions"]["bind_garuda_document_retention_policy"] == LEDGER
+        assert catalogue["ledgers"] == {"schema_migrations": 1, "_schema_versions": 1}
+    finally:
+        await _drop_database(disposable_cluster, dsn)
+
+
+async def test_304_applies_and_rolls_back_as_a_superuser_session_with_ungranted_production_roles_present(
+    disposable_cluster: str,
+) -> None:
+    dsn = await _build_substrate(disposable_cluster, split_owners=False, scopes=NARROW_SCOPES)
+    conn = await asyncpg.connect(dsn)
+    try:
+        session = await conn.fetchval("SELECT session_user")
+        assert await conn.fetchval(f"SELECT has_schema_privilege('{RUNTIME}', 'public', 'CREATE')") is False
+    finally:
+        await conn.close()
+    try:
+        assert await _migration().apply(database_url=dsn, dedicated=False)
+        catalogue = await _catalogue(dsn)
+        assert catalogue["applied_as"] == session
+        assert catalogue["ledgers"] == {"schema_migrations": 1, "_schema_versions": 1}
+        assert catalogue["tables"] == {"garuda_documents": session, "garuda_document_review_fields": session}
+        assert catalogue["functions"] == {
+            "bind_garuda_document_retention_policy": LEDGER,
+            "guard_garuda_document_mutation": session,
+            "active_garuda_document_policy_available": session,
+        }
+
+        async with MigrationManager(database_url=dsn) as manager:
+            assert await manager.rollback_migration(_migration().migration_name)
+        catalogue = await _catalogue(dsn)
+        assert catalogue["tables"] == {} and catalogue["functions"] == {}
+        assert catalogue["ledgers"] == {"schema_migrations": 0, "_schema_versions": 0}
     finally:
         await _drop_database(disposable_cluster, dsn)
 

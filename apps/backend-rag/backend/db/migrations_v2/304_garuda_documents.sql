@@ -1,13 +1,15 @@
 -- ============================================================================
 -- 304_garuda_documents.sql
 -- GARUDA VOA document-upload persistence: garuda_documents + garuda_document_review_fields.
--- Each of the two ledger-owned blocks is preceded by RESET ROLE and followed by a conditional SET ROLE backend_rag_v2 block.
+-- Each ledger-owned block (forward and rollback) is preceded by RESET ROLE and followed by a block that restores backend_rag_v2 only if it was the effective role before.
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
 -- (0) Widen the policy_scope CHECK of visa_decision_retention_policies with GARUDA_DOCUMENT
 -- ----------------------------------------------------------------------------
 
+-- Stores current_user in the transaction-local custom GUC garuda.migration_304_resume_role, then RESET ROLE.
+SELECT set_config('garuda.migration_304_resume_role', current_user, true);
 RESET ROLE;
 
 -- Replaces the policy_scope CHECK only when its definition does not already contain GARUDA_DOCUMENT.
@@ -41,16 +43,18 @@ BEGIN
 END;
 $garuda_304_widen_scope_check$;
 
--- SET ROLE backend_rag_v2 only when that role exists and session_user may assume it (SET on PG>=16, MEMBER on 15).
+-- SET ROLE backend_rag_v2 only when it is the recorded role, exists, and session_user may assume it (SET on PG>=16, MEMBER on 15).
 DO $garuda_304_resume_runtime_role_after_scope$
 BEGIN
-    IF to_regrole('backend_rag_v2') IS NOT NULL THEN
-        IF current_setting('server_version_num')::int >= 160000 THEN
-            IF pg_has_role(session_user, 'backend_rag_v2', 'SET') THEN
+    IF current_setting('garuda.migration_304_resume_role', true) = 'backend_rag_v2' THEN
+        IF to_regrole('backend_rag_v2') IS NOT NULL THEN
+            IF current_setting('server_version_num')::int >= 160000 THEN
+                IF pg_has_role(session_user, 'backend_rag_v2', 'SET') THEN
+                    EXECUTE 'SET ROLE backend_rag_v2';
+                END IF;
+            ELSIF pg_has_role(session_user, 'backend_rag_v2', 'MEMBER') THEN
                 EXECUTE 'SET ROLE backend_rag_v2';
             END IF;
-        ELSIF pg_has_role(session_user, 'backend_rag_v2', 'MEMBER') THEN
-            EXECUTE 'SET ROLE backend_rag_v2';
         END IF;
     END IF;
 END;
@@ -168,6 +172,8 @@ FOR EACH ROW EXECUTE FUNCTION public.bind_garuda_document_retention_policy();
 -- (2) Transfer bind_garuda_document_retention_policy() to visa_ledger_owner
 -- ----------------------------------------------------------------------------
 
+-- Stores current_user in the transaction-local custom GUC garuda.migration_304_resume_role, then RESET ROLE.
+SELECT set_config('garuda.migration_304_resume_role', current_user, true);
 RESET ROLE;
 
 -- Transfers the binder when visa_ledger_owner exists, then raises if visa_ledger_owner is still not its owner.
@@ -211,16 +217,18 @@ BEGIN
 END;
 $garuda_304_owner_transfer$;
 
--- SET ROLE backend_rag_v2 only when that role exists and session_user may assume it (SET on PG>=16, MEMBER on 15).
+-- SET ROLE backend_rag_v2 only when it is the recorded role, exists, and session_user may assume it (SET on PG>=16, MEMBER on 15).
 DO $garuda_304_resume_runtime_role_after_transfer$
 BEGIN
-    IF to_regrole('backend_rag_v2') IS NOT NULL THEN
-        IF current_setting('server_version_num')::int >= 160000 THEN
-            IF pg_has_role(session_user, 'backend_rag_v2', 'SET') THEN
+    IF current_setting('garuda.migration_304_resume_role', true) = 'backend_rag_v2' THEN
+        IF to_regrole('backend_rag_v2') IS NOT NULL THEN
+            IF current_setting('server_version_num')::int >= 160000 THEN
+                IF pg_has_role(session_user, 'backend_rag_v2', 'SET') THEN
+                    EXECUTE 'SET ROLE backend_rag_v2';
+                END IF;
+            ELSIF pg_has_role(session_user, 'backend_rag_v2', 'MEMBER') THEN
                 EXECUTE 'SET ROLE backend_rag_v2';
             END IF;
-        ELSIF pg_has_role(session_user, 'backend_rag_v2', 'MEMBER') THEN
-            EXECUTE 'SET ROLE backend_rag_v2';
         END IF;
     END IF;
 END;
@@ -268,6 +276,10 @@ COMMENT ON TABLE public.garuda_document_review_fields IS
 
 -- === ROLLBACK ===
 
+-- Stores current_user in the transaction-local custom GUC garuda.migration_304_resume_role, then RESET ROLE.
+SELECT set_config('garuda.migration_304_resume_role', current_user, true);
+RESET ROLE;
+
 DROP TRIGGER IF EXISTS trg_guard_garuda_document_mutation ON public.garuda_documents;
 DROP FUNCTION IF EXISTS public.guard_garuda_document_mutation();
 DROP TABLE IF EXISTS public.garuda_document_review_fields;
@@ -293,3 +305,20 @@ BEGIN
     END IF;
 END;
 $garuda_304_narrow_policy_scope$;
+
+-- SET ROLE backend_rag_v2 only when it is the recorded role, exists, and session_user may assume it (SET on PG>=16, MEMBER on 15).
+DO $garuda_304_resume_runtime_role_after_rollback$
+BEGIN
+    IF current_setting('garuda.migration_304_resume_role', true) = 'backend_rag_v2' THEN
+        IF to_regrole('backend_rag_v2') IS NOT NULL THEN
+            IF current_setting('server_version_num')::int >= 160000 THEN
+                IF pg_has_role(session_user, 'backend_rag_v2', 'SET') THEN
+                    EXECUTE 'SET ROLE backend_rag_v2';
+                END IF;
+            ELSIF pg_has_role(session_user, 'backend_rag_v2', 'MEMBER') THEN
+                EXECUTE 'SET ROLE backend_rag_v2';
+            END IF;
+        END IF;
+    END IF;
+END;
+$garuda_304_resume_runtime_role_after_rollback$;
