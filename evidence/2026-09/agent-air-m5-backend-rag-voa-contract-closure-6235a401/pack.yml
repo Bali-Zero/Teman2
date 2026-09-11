@@ -1,7 +1,7 @@
 task_id: voa-contract-closure
 gear: 3
 gate_class: opus
-brief_ref: evidence/2026-09/agent-air-m5-backend-rag-voa-contract-closure-6235a401/brief.yml
+brief_ref: evidence/brief.yml
 date: 2026-09-11
 machine: air-m5 (M5)
 lanes:
@@ -63,23 +63,32 @@ outcome: >-
   patched on one side only. Round 2 and Kimi's contract-diff read are both
   still pending — recorded honestly, not implied as done.
 diff:
-  files: 5
+  # The PULL REQUEST changes eight paths: the five scoped code files plus
+  # this pack, its brief and its council journal. Stated as the whole
+  # number rather than the code-only five, because that is the set the
+  # linter and the gate both measure — an author-flattering subset here
+  # would disagree with every tool that reads it.
+  files: 8
   net_lines: >-
-    +532/-56 across the 5 scoped code files, measured merge-base-anchored
-    against origin/main (never a two-dot diff — W102):
-    `git diff --numstat $(git merge-base origin/main HEAD)..HEAD`. The
-    earlier figure in this field was the ROUND-1 measurement and went
-    stale the moment the round-2 cures landed; the linter's countable-claims
-    rule caught it, which is the whole point of writing the command next to
-    the number. Per-file (added/removed): public_endpoints.py 40/14,
-    hybrid_auth.py 100/3, test_garuda_staff_public_prefix_guard.py 52/12,
-    test_garuda_voa_public_root_allowlist.py 129/27,
-    test_hybrid_auth_contract_401_envelope.py 211/0 (new file). The three
-    evidence files are excluded from this count and add ~438 more lines to
-    the PR total — declared, not hidden: the PR contract's ~400-line
-    guidance is about the change under review, and 532 added lines of
-    middleware + derived-anchor tests for a diff that took two refuter
-    rounds is the honest cost of this concern, not scope creep.
+    Deliberately NOT restated as a literal here. The linter measures it
+    itself, merge-base-anchored, from `git diff --no-renames --numstat
+    $(git merge-base BASE HEAD) HEAD` over the WHOLE pull request — evidence
+    files included, no path filter — and `harness-floor.yml` hands it that
+    measurement through `--numstat-file`. Two lints already failed on a
+    literal in this field, for two different reasons, and both were the same
+    mistake: the first figure counted only the scoped CODE files while the
+    rule counts the whole PR, and the second went stale the instant a commit
+    touched this very file. A number that changes when you write it down
+    cannot be written down; the command that produces it can. Shape, in
+    prose rather than arithmetic: the middleware carries the registry, the
+    matcher and a long comment block explaining why it matches templates and
+    not a prefix; `public_endpoints.py` gains the extracted
+    `path_matches_template` and loses the inline copy; the new unit-test file
+    is the largest single addition and is almost entirely innocence cases and
+    two derived anchors; the two mounted canaries gain header assertions and
+    lose their retired body-equality discriminator. The evidence directory is
+    the rest. Per-file insertions and deletions are in the run log of the
+    command above — read there, not from a copy here that can go stale.
   behaviour_change: >-
     HybridAuthMiddleware's 401 body and headers change for the five GARUDA
     VOA staff routes only. No router, service, or contract file changes.
