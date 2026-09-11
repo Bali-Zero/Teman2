@@ -7,6 +7,7 @@ Handles client invitation flow:
 3. Client creates PIN to complete registration
 """
 
+import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -30,6 +31,48 @@ INVITE_EXPIRY_HOURS = 72  # 3 days
 # `/portal/invite?token=` link that this service has not produced for a long time, so
 # a test could stay green while the real link rotted (cross-family review, 2026-09-10).
 INVITE_PATH_TEMPLATE = "/portal/register?token={token}"
+
+# A stored invitation token is a sha256 hex digest: 64 lowercase hex chars.
+# A RAW token is `secrets.token_urlsafe(64)` — ~86 base64url chars — so the
+# two shapes can never be confused, which is what makes the legacy read path
+# below safe (see `_LEGACY_PLAINTEXT_PREDICATE`).
+_HASHED_TOKEN_RE = "^[0-9a-f]{64}$"
+
+
+def _hash_token(raw_token: str) -> str:
+    """sha256 hex of the raw token — what we persist and match on.
+
+    Mirrors `magic_link_service._hash_token`, whose module docstring already
+    contrasted itself against this service ("72h, plaintext token"). A raw
+    `client_invitations.token` is a live, unused, 72h-valid registration
+    credential: anyone who can read that table — a DB console, a future
+    export endpoint, a logging accident — could redeem it without ever
+    touching the client's mailbox (portal audit finding, authz F1).
+    """
+    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+
+# Rows written BEFORE this change still hold a plaintext token, so the two
+# read paths accept either. The predicate is not cosmetic: without it, the
+# value stored in the row would itself be a working credential again — an
+# attacker reading the table could submit the stored hash AS the token and
+# the plaintext branch would match it. Restricting the plaintext branch to
+# rows that do NOT look like a digest closes that door.
+#
+# Those legacy rows are not scrubbed here. Measured on production
+# 2026-09-11: 245 invitation rows, ZERO of them live (`used_at IS NULL AND
+# expires_at > NOW()`), so every plaintext token still on disk is already
+# spent or expired and cannot be redeemed. Rewriting them is a one-line
+# UPDATE against a hot-zone migration path (deterministic floor 3) for no
+# change in exposure, so it is left as an operator-run follow-up:
+#   UPDATE client_invitations
+#      SET token = encode(sha256(token::bytea), 'hex')
+#    WHERE token !~ '^[0-9a-f]{64}$';
+# (verified equal to Python's sha256 for the same input). Once that has
+# run, this branch matches nothing and can be deleted.
+_LEGACY_PLAINTEXT_PREDICATE = (
+    "(i.token = $1 OR (i.token = $2 AND i.token !~ '" + _HASHED_TOKEN_RE + "'))"
+)
 
 
 class InviteService:
@@ -95,11 +138,11 @@ class InviteService:
                 """
                 INSERT INTO client_invitations (client_id, email, token, expires_at, created_by)
                 VALUES ($1, $2, $3, $4, $5)
-                RETURNING id, token, expires_at, created_at
+                RETURNING id, expires_at, created_at
                 """,
                 client_id,
                 email,
-                token,
+                _hash_token(token),
                 expires_at,
                 created_by,
             )
@@ -141,21 +184,25 @@ class InviteService:
                        c.full_name as client_name
                 FROM client_invitations i
                 JOIN clients c ON c.id = i.client_id AND c.deleted_at IS NULL
-                WHERE i.token = $1
-                """,
+                WHERE """
+                + _LEGACY_PLAINTEXT_PREDICATE,
+                _hash_token(token),
                 token,
             )
 
             if not result:
-                logger.warning(f"Invalid invitation token: {token[:8]}...")
+                # The DIGEST prefix, never the raw token's: a log line is
+                # storage too, and these three used to print the first 8
+                # characters of a live 72h credential.
+                logger.warning("Invalid invitation token: %s...", _hash_token(token)[:8])
                 return None
 
             if result["used_at"] is not None:
-                logger.warning(f"Token already used: {token[:8]}...")
+                logger.warning("Token already used: %s...", _hash_token(token)[:8])
                 return {"error": "already_used", "message": "This invitation has already been used"}
 
             if result["expires_at"] < datetime.now(timezone.utc):
-                logger.warning(f"Token expired: {token[:8]}...")
+                logger.warning("Token expired: %s...", _hash_token(token)[:8])
                 return {"error": "expired", "message": "This invitation has expired"}
 
             return {
@@ -200,9 +247,12 @@ class InviteService:
                            c.full_name as client_name
                     FROM client_invitations i
                     JOIN clients c ON c.id = i.client_id AND c.deleted_at IS NULL
-                    WHERE i.token = $1
+                    WHERE """
+                    + _LEGACY_PLAINTEXT_PREDICATE
+                    + """
                     FOR UPDATE
                     """,
+                    _hash_token(token),
                     token,
                 )
 
