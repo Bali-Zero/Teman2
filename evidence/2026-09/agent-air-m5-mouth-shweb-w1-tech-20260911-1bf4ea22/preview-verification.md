@@ -19,8 +19,9 @@ No lead submitted, no message sent, no secret recorded.
 - The literal `Compiled successfully` string fell outside the captured log windows (the tool caps at about
   59K characters per call). Completion is evidenced by the route table, `Build Completed` and READY.
 
-Every commit after `d5e267c735` on this branch touches only `evidence/**` and `.secrets.baseline`
-(no `apps/mouth` path), so this build is the build of the frozen product tree.
+Every commit after `40646c54be` (D5: `ARTICLES_ONLY` precedence + export tests) on this branch touches only `evidence/**`
+and `.secrets.baseline` (no `apps/mouth` path); the preview verified in §Round 2 below is the build of that product tree,
+which equals the gated head `4ec63cdbe7` (corrected in the discharge PR: refuter round 3 F2, the earlier sentence still named `d5e267c735`).
 
 ## Browser — Studio on the preview (plans loaded through the `#p=` fragment, per `plan-codec.ts`)
 
