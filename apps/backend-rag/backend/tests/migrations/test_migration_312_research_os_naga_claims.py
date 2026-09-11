@@ -49,33 +49,11 @@ def _forward(name: str) -> str:
     return forward
 
 
-# ---------------------------------------------------------------------------
-# The intended rollback for 312, exercised HERE rather than from the .sql file.
-# ---------------------------------------------------------------------------
-# Migration 312's own `-- === ROLLBACK ===` section is currently EMPTY. Measured: this
-# repository's guardrails daemon (`~/.claude/daemons/guardrails.py::SQL_DESTRUCTIVE_IN_
-# CONTENT`, mirrored by `~/.claude/hooks/guardrails-static.py`) refuses any `Write`/`Edit`
-# that introduces the wipe-everything-at-once DDL verb OR the "DROP TABLE" shape into a
-# file whose path ends in `.sql` -- with no comment-vs-statement distinction (it diffs the
-# WHOLE new file content against whatever existed before, and for a brand-new file that is
-# an empty string, so any match at all counts as "introduced"; cicatrix superscar family
-# #3, guard-over-match). Both a `Write` of the complete file and a follow-up `Edit` adding
-# only the rollback section were refused, verbatim:
-#     GUARDRAILS BLOCK: SQL destructive introduced in Write to <path>
-#     If this is intentional, ask Antonello to bypass guardrails.
-# That refusal was NOT bypassed (no heredoc, no env var, no alternate tool), per this
-# slice's build mandate. Since the guard only inspects paths matching `\.sql$`, it does not
-# scan this `.py` file -- so the four statements a correct rollback needs are proven correct
-# HERE, executed against a real server, even though they cannot yet live in the migration
-# file itself. Whoever is authorized to grant the bypass (or to fix the guard's own
-# comment-blindness) can copy this constant verbatim into 312's rollback section.
-_312_ROLLBACK_SQL = """
-DROP TRIGGER IF EXISTS research_os_naga_admission_immutable ON public.research_os_naga_admission;
-DROP TABLE IF EXISTS public.research_os_naga_admission;
-DROP INDEX IF EXISTS public.research_os_objects_valid_to_key_idx;
-DROP INDEX IF EXISTS public.research_os_objects_valid_from_key_idx;
-DROP FUNCTION IF EXISTS public.research_os_instant_key(text);
-"""
+def _rollback(name: str) -> str:
+    """The migration file's OWN rollback section -- never a copy of it kept in this test."""
+
+    _, rollback = split_migration_sql((MIGRATIONS_DIR / name).read_text(encoding="utf-8"))
+    return rollback or ""
 
 
 @pytest.fixture
@@ -300,24 +278,28 @@ async def test_delete_on_naga_admission_raises(db: asyncpg.Connection) -> None:
             await db.execute("DELETE FROM research_os_naga_admission WHERE id = $1", row_id)
 
 
-async def test_truncate_guard_is_a_known_gap_not_yet_present(db: asyncpg.Connection) -> None:
-    """Documents, rather than hides, the gap named in migration 312's own header.
+async def test_truncate_on_naga_admission_raises(db: asyncpg.Connection) -> None:
+    """Row triggers never fire for the wipe statement: only the STATEMENT-level guard stops it."""
 
-    Migration 280 binds `reject_research_os_objects_mutation()` to BOTH a row-level
-    UPDATE/DELETE trigger and a statement-level wipe-everything-at-once-DDL trigger on
-    `research_os_objects`. 312 only carries the row-level trigger on
-    `research_os_naga_admission`: the guardrails daemon refused the `Write`/`Edit` that
-    would have added the statement-level one (message quoted in 312's header and at the top
-    of this file), and that refusal was not bypassed. This test pins the CURRENT, gapped
-    state -- the statement below succeeds -- so that the day someone adds the missing
-    trigger, this assertion flips to a failure and forces this file to be updated instead
-    of staying silently wrong.
-    """
     await _insert_admission_row(db, legacy_claim_id="truncate-me")
-    async with db.transaction():
-        await db.execute("TRUNCATE research_os_naga_admission")
-    count = await db.fetchval("SELECT count(*) FROM research_os_naga_admission")
-    assert count == 0
+    with pytest.raises(asyncpg.PostgresError, match="append-only"):
+        async with db.transaction():
+            await db.execute("TRUNCATE research_os_naga_admission")
+    assert await db.fetchval("SELECT count(*) FROM research_os_naga_admission") == 1
+
+
+async def test_admission_guards_installed_at_row_and_statement_level(
+    db: asyncpg.Connection,
+) -> None:
+    rows = await db.fetch(
+        "SELECT tgname, (tgtype & 1) = 1 AS row_level FROM pg_trigger "
+        "WHERE tgrelid = 'public.research_os_naga_admission'::regclass AND NOT tgisinternal "
+        "ORDER BY tgname"
+    )
+    assert [(r["tgname"], r["row_level"]) for r in rows] == [
+        ("research_os_naga_admission_immutable", True),
+        ("research_os_naga_admission_no_wipe", False),
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -325,8 +307,26 @@ async def test_truncate_guard_is_a_known_gap_not_yet_present(db: asyncpg.Connect
 # ---------------------------------------------------------------------------
 
 
+async def test_migration_312_rollback_refuses_while_admission_rows_exist(
+    db: asyncpg.Connection,
+) -> None:
+    await _insert_admission_row(db, legacy_claim_id="keep-me")
+    with pytest.raises(asyncpg.PostgresError, match="rollback refused"):
+        async with db.transaction():
+            await db.execute(_rollback("312_research_os_naga_claims.sql"))
+    assert await db.fetchval("SELECT count(*) FROM research_os_naga_admission") == 1
+
+
 async def test_migration_312_rolls_back_cleanly_and_reapplies(db: asyncpg.Connection) -> None:
-    await db.execute(_312_ROLLBACK_SQL)
+    rollback = _rollback("312_research_os_naga_claims.sql")
+    assert rollback.strip(), "312's own rollback section is empty"
+    await db.execute(rollback)
+
+    guards_279_280 = await db.fetchval(
+        "SELECT count(*) FROM pg_trigger WHERE tgname IN "
+        "('research_os_objects_immutable', 'research_os_objects_no_wipe')"
+    )
+    assert guards_279_280 == 2
 
     gone = await db.fetchval(
         "SELECT NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'research_os_instant_key') "
@@ -380,10 +380,13 @@ async def test_ledger_row_21_key_ordering_and_half_open_predicate(
     """
     from datetime import datetime, timezone
 
+    # The core is not an installed package: this bootstrap must run BEFORE `research_os` is
+    # imported, or the test only passes when an earlier module happened to put it on sys.path.
+    import backend.services.research_os._core_path  # noqa: F401
+
+    # isort: split
     from pydantic import BaseModel
     from research_os.primitives import UtcDateTime
-
-    import backend.services.research_os._core_path  # noqa: F401  (sys.path bootstrap)
 
     class _InstantProbe(BaseModel):
         t: UtcDateTime
