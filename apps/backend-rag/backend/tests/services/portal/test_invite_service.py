@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 
@@ -312,7 +313,12 @@ async def test_complete_registration_join_excludes_archived_clients_by_query() -
 
     query, args = conn.fetchrow_calls[0]
     assert "c.deleted_at IS NULL" in query
-    assert args == ("tok-archived",)
+    # $1 is the digest, $2 the raw token for rows written before hashing
+    # landed (authz F1); the archived-client guard is unaffected by either.
+    assert args == (
+        hashlib.sha256(b"tok-archived").hexdigest(),
+        "tok-archived",
+    )
 
 
 @pytest.mark.asyncio
@@ -569,4 +575,119 @@ async def test_validate_token_excludes_archived_clients() -> None:
 
     query, args = conn.fetchrow_calls[0]
     assert "JOIN clients c ON c.id = i.client_id AND c.deleted_at IS NULL" in query
-    assert args == ("tok-archived",)
+    assert args == (
+        hashlib.sha256(b"tok-archived").hexdigest(),
+        "tok-archived",
+    )
+
+
+# ---------------------------------------------------------------------------
+# authz F1 — the invitation token is a credential, and is hashed at rest
+# ---------------------------------------------------------------------------
+
+_RAW = "token-abc"
+_DIGEST = hashlib.sha256(_RAW.encode("utf-8")).hexdigest()
+
+
+@pytest.mark.asyncio
+async def test_create_invitation_stores_the_digest_and_mails_the_raw_token() -> None:
+    """GUILT: the row must never hold a redeemable token.
+
+    `client_invitations.token` used to hold `secrets.token_urlsafe(64)` in
+    the clear — an unused, unexpired row was a live 72h registration
+    credential for anyone who could read the table (portal audit, authz F1).
+    The client still receives the RAW token: only the stored copy changes.
+    """
+    expires_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    conn = FakeConnection(
+        fetchrow_results=[
+            {"id": 7, "full_name": "Client Name", "email": "old@example.com"},
+            None,
+            {"id": 44, "expires_at": expires_at, "created_at": expires_at},
+        ],
+    )
+    service = InviteService(FakePool(conn))
+
+    with (
+        patch(
+            "backend.services.portal.invite_service.secrets.token_urlsafe",
+            return_value=_RAW,
+        ),
+        patch(
+            "backend.services.common.cache._invalidate_cache",
+            new=AsyncMock(return_value=1),
+        ),
+    ):
+        result = await service.create_invitation(
+            client_id=7,
+            email="client@example.com",
+            created_by="team@example.com",
+        )
+
+    insert_query, insert_args = conn.fetchrow_calls[-1]
+    assert "INSERT INTO client_invitations" in insert_query
+    assert _DIGEST in insert_args, "the stored token must be the sha256 digest"
+    assert _RAW not in insert_args, "the raw token must never reach the database"
+
+    # What the client receives is unchanged — otherwise the link would not work.
+    assert result["token"] == _RAW
+    assert result["invite_url"] == f"/portal/register?token={_RAW}"
+
+
+@pytest.mark.asyncio
+async def test_validate_token_matches_on_the_digest() -> None:
+    conn = FakeConnection(fetchrow_results=[None])
+    service = InviteService(FakePool(conn))
+
+    assert await service.validate_token(_RAW) is None
+
+    query, args = conn.fetchrow_calls[0]
+    assert args[0] == _DIGEST
+    assert "i.token = $1" in query
+
+
+@pytest.mark.asyncio
+async def test_complete_registration_matches_on_the_digest() -> None:
+    conn = FakeConnection(fetchrow_results=[None])
+
+    class _Tx:
+        async def __aenter__(self) -> None:
+            return None
+
+        async def __aexit__(self, *_: object) -> None:
+            return None
+
+    conn.transaction = lambda: _Tx()  # type: ignore[attr-defined]
+    service = InviteService(FakePool(conn))
+
+    with (
+        pytest.raises(ValueError, match="Invalid invitation token"),
+        patch(
+            "backend.services.common.cache._invalidate_cache",
+            new=AsyncMock(return_value=1),
+        ),
+    ):
+        await service.complete_registration(token=_RAW, pin="1234")
+
+    _query, args = conn.fetchrow_calls[0]
+    assert args[0] == _DIGEST
+
+
+def test_a_stored_digest_cannot_be_replayed_as_a_token() -> None:
+    """GUILT: the legacy plaintext branch must not re-open the hole.
+
+    Both read paths still accept a plaintext row, because rows written
+    before this change hold one. Without the shape guard, an attacker who
+    read the table could submit the STORED digest as their token and the
+    plaintext branch would match it — the table would be a credential
+    store again. The predicate therefore excludes rows whose token already
+    looks like a digest; migration 310 rewrites the rest.
+    """
+    from backend.services.portal.invite_service import (
+        _HASHED_TOKEN_RE,
+        _LEGACY_PLAINTEXT_PREDICATE,
+    )
+
+    assert _HASHED_TOKEN_RE == "^[0-9a-f]{64}$"
+    assert f"i.token !~ '{_HASHED_TOKEN_RE}'" in _LEGACY_PLAINTEXT_PREDICATE
+    assert "i.token = $2" in _LEGACY_PLAINTEXT_PREDICATE
