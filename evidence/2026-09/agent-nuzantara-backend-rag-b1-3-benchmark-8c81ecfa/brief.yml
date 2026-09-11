@@ -1,0 +1,109 @@
+task_id: backend-rag-b1-3-benchmark
+gear: 2
+l_level: L2
+gate_class: opus
+base_sha: 2a4681b0b88a291b4ed4d0c8885bc1a5990ec8ed # pragma: allowlist secret
+mandate: B1
+colour: BLUE
+pr: B1.3
+objective: >-
+  B1.3 of mandate B1 (BLUE). Freeze a hand-labelled evidence-sufficiency
+  benchmark whose labels never select inputs (README D2): 58 synthetic cases,
+  each storing query, actual context, provenance fixture, requested fact,
+  supporting span or missing-fact explanation, stratum with precedence,
+  nuisance booleans and expected gate outcomes; four constructed spec pairs
+  per topic across both query and context languages; the golden rows whose
+  contexts lack the fact recorded as relevant_insufficient with their
+  correction deferred to B2.1 (D5, extended 3->5 by ruling I13). A reporting
+  harness prints false abstention and false acceptance per cell, gate and
+  stratum, the mandatory set and the independently drawn validation set
+  reported separately. Nothing new is asserted about the scorer; its numbers
+  on this base are the baseline.
+appetite:
+  wall_clock_hours: 5
+  adversarial_rounds: 2
+  tokens: 1500000
+deadline_utc: "2026-09-11T21:59:55Z"
+constraints:
+  - >-
+    Tests and docs only: tests/benchmarks/evidence_sufficiency/** (new), the
+    structural test module (new), README §0 D5 one-line amendment (ruling I13
+    condition 3). test_evidence_cross_language.py stays byte-identical. No
+    backend/services/**, backend/core/**, no corner, no zantara_core.py, no
+    migration, no network, no embedding or generation call.
+  - >-
+    Every case synthetic: no real person, client, phone, email or document
+    number; decide() reads only query, context and provenance sources.
+  - >-
+    Labels reviewed case by case BEFORE the freeze by two families: Gemini 3.1
+    Pro (second reader) and Codex (adversarial seat, which also drew the
+    validation set); every disagreement dispositioned in pack.yml.
+acceptance:
+  - status: verified
+    text: >-
+      A1: WHEN the structural module runs on this head THEN validate() returns
+      no error, every EN/ID cell holds at least three sufficient cases and one
+      case of each negative stratum, every cell x gate x metric denominator is
+      positive, and the manifest bytes match the pinned sha256.
+    probe: >-
+      pytest backend/tests/unit/services/rag/test_evidence_sufficiency_benchmark.py
+      -> 59 passed
+  - status: verified
+    text: >-
+      A2: WHEN every label field of every case is flipped in a deep copy THEN
+      every decide() output is identical (labels never select inputs).
+    probe: >-
+      test_decide_output_is_identical_under_label_mutation in the same module
+  - status: verified
+    text: >-
+      A3: WHEN the harness CLI runs THEN it prints the mandatory and the
+      validation report separately, with the baseline recorded in pack.yml.
+    probe: >-
+      python -m backend.tests.benchmarks.evidence_sufficiency.harness --json
+assumptions:
+  - status: verified
+    text: >-
+      The band values in the manifest header are read from the code on this
+      base (generation 0.15; label default/pricing 0.15, tax 0.10, visa 0.12,
+      kbli 0.20; confidence 0.15/0.60; source-quality bands 0.7/0.5/0.3/0.15).
+team:
+  dux:
+    {
+      model: claude-opus-5,
+      effort: xhigh,
+      role: "Dux + release owner + label adjudicator",
+      host: Pro,
+    }
+  implementer:
+    {
+      model: claude-sonnet-5,
+      role: "manifest, harness, tests; round-1 cure",
+      commits: [6e50a41535, 2e830b0245],
+    }
+  second_reader:
+    {
+      seat: gemini,
+      model: gemini-3.1-pro,
+      effort: high,
+      via: agy,
+      outcome: "54 agree / 4 disagree",
+    }
+  adversarial_reviewer:
+    {
+      seat: codex,
+      model: gpt-5.6-sol,
+      effort: high,
+      sandbox: read-only,
+      round_1: "account 1 Pro, BLOCK 51/7 + 12 validation cases",
+      round_2: "account 2 Mini (account 1 out of credits), diffs inlined",
+    }
+  staff_room:
+    {
+      window: "Fable imperator M5 7c40d5cf",
+      ruling: "I13 — D5 exception extended 3->5",
+    }
+  final_gate: "fresh Opus 5 session commissioned by the staff room"
+sibling_outputs:
+  at: "2026-09-11T17:31:33Z"
+  open_prs_touching_paths: "none touching tests/benchmarks or bot-staff-room"
+  agent_start_list: "b1-design-2 (B1.2), b1-3-benchmark (this), b1-4-support-signal (B1.4)"
