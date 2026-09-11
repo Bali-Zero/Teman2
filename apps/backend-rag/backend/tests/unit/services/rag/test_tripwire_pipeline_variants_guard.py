@@ -1,4 +1,4 @@
-"""Guard for the nine tripwire pipeline variants (B1.2, spec §3, G1-G10).
+"""Guard for the nine tripwire pipeline variants (B1.2, spec §3, G1-G11).
 
 Purely static/pure-function checks: parses the four original tripwire test files with `ast`
 (paths resolved relative to THIS file's own location, never a hardcoded absolute path) and
@@ -26,6 +26,15 @@ Added in the B1.2 round-1 cure (Codex BLOCK, 5 findings):
     `pipeline_sources` still returns fresh, independently-mutable plain dicts (finding 5:
     `frozen=True` alone does not stop `PIPELINE_TRIPWIRE_FIXTURES.clear()` or
     `spec.carried_keys["k"] = 1`).
+
+Added in the B1.2 round-2 cure (Codex BLOCK, finding 1):
+  * G11 — the RUNTIME object pytest collects for each of the 18 protected names (9
+    originals + 9 `_pipeline_variant`s) matches the `def` this guard parsed (finding 1: G7
+    counts only `def` nodes, so a later class-body assignment
+    (`test_x_pipeline_variant = test_x`), a class decorator, or a module-level `setattr`
+    rebinds a protected name to a different object while every AST-based check above stays
+    green — pytest runs whatever the class attribute is bound to, not the `def` the guard
+    inspected).
 """
 
 from __future__ import annotations
@@ -34,6 +43,8 @@ import ast
 import copy
 import dataclasses
 import hashlib
+import importlib
+import inspect
 from pathlib import Path
 from typing import Any, Final
 
@@ -92,8 +103,12 @@ def _tests_root() -> Path:
     return path
 
 
+def _file_path(rel_path: str) -> Path:
+    return _tests_root() / rel_path
+
+
 def _parse_module(rel_path: str) -> ast.Module:
-    file_path = _tests_root() / rel_path
+    file_path = _file_path(rel_path)
     source = file_path.read_text()
     return ast.parse(source, filename=str(file_path))
 
@@ -515,7 +530,9 @@ def test_g7_no_duplicate_definitions_of_protected_names(node_id: str) -> None:
         assert count == 1, (
             f"{node_id}: class {class_name!r} of {rel_path} defines {protected_name!r} "
             f"{count} times — Python binds the LAST one, so a duplicate can run a "
-            "definition this guard never inspects"
+            "definition this guard never inspects (G7 counts `def` nodes only — a "
+            "non-`def` rebinding of the same name, e.g. an assignment or a class "
+            "decorator, is G11's job)"
         )
 
 
@@ -777,3 +794,85 @@ def test_g10_pipeline_sources_still_returns_fresh_mutable_dicts() -> None:
         "pipeline_sources must return a fresh dict per call — mutating one call's "
         "result leaked into another"
     )
+
+
+# ============================================================================
+# G11 — the RUNTIME object pytest collects for a protected name matches the
+# `def` this guard parsed.
+#
+# Finding 1 (Codex round 2): G7's duplicate-`def` count cannot see a LATER
+# class-body rebinding that is not itself a `def` — an assignment
+# (`test_x_pipeline_variant = test_x`), a class decorator, or a module-level
+# `setattr` all replace the runtime attribute pytest actually collects while
+# leaving G1-G9's parsed `def` untouched and every earlier AST-based check
+# green. G11 imports the real module and compares the RUNTIME-bound object
+# against the parsed `def` node: wrong identity, wrong name/qualname, wrong
+# source file, or a first line that does not match the parsed def (nor its
+# first decorator) is red.
+# ============================================================================
+
+
+def _module_dotted_name(rel_path: str) -> str:
+    """`backend.tests.` + `rel_path` without `.py`, `/` -> `.`."""
+    return "backend.tests." + rel_path.removesuffix(".py").replace("/", ".")
+
+
+@pytest.mark.parametrize("node_id", NODE_IDS)
+def test_g11_runtime_binding_matches_the_parsed_def(node_id: str) -> None:
+    rel_path, class_name, func_name, _module, class_node = _locate_original(node_id)
+    assert class_node is not None, f"{node_id}: class {class_name!r} not found in {rel_path}"
+
+    module = importlib.import_module(_module_dotted_name(rel_path))
+    file_path = _file_path(rel_path)
+    variant_name = f"{func_name}_pipeline_variant"
+
+    for protected_name in (func_name, variant_name):
+        cls = getattr(module, class_name)
+        assert cls.__module__ == module.__name__, (
+            f"{node_id}: {class_name!r} imported from {module.__name__!r} but "
+            f"cls.__module__ is {cls.__module__!r} — the module-level class name is "
+            "bound to a class defined elsewhere (G11)"
+        )
+        assert cls.__qualname__ == class_name, (
+            f"{node_id}: {class_name}.__qualname__ is {cls.__qualname__!r}, expected "
+            f"{class_name!r} — the module-level name is bound to a different class (G11)"
+        )
+
+        assert protected_name in cls.__dict__, (
+            f"{node_id}: {protected_name!r} is not a direct attribute of "
+            f"{class_name}.__dict__ (missing or only inherited) (G11)"
+        )
+        obj = cls.__dict__[protected_name]
+        assert inspect.isfunction(obj), (
+            f"{node_id}: {class_name}.{protected_name} is bound to {obj!r}, not a "
+            "plain function — a class decorator or a non-`def` rebinding replaced it "
+            "(G11)"
+        )
+        assert obj.__name__ == protected_name, (
+            f"{node_id}: {class_name}.{protected_name} is bound to a function named "
+            f"{obj.__name__!r} — a later assignment rebound this name to a different "
+            "function object (G11)"
+        )
+        assert obj.__qualname__ == f"{class_name}.{protected_name}", (
+            f"{node_id}: {class_name}.{protected_name}.__qualname__ is "
+            f"{obj.__qualname__!r}, expected {class_name}.{protected_name!r} — the "
+            "runtime object was defined outside this class body (G11)"
+        )
+        assert Path(obj.__code__.co_filename).resolve() == file_path.resolve(), (
+            f"{node_id}: {class_name}.{protected_name} runs code from "
+            f"{obj.__code__.co_filename!r}, expected {file_path!r} (G11)"
+        )
+
+        node = _find_function(class_node, protected_name)
+        assert node is not None, (
+            f"{node_id}: {protected_name!r} not found as a def in class {class_name!r} "
+            f"of {rel_path} — G11 has nothing to compare the runtime object against"
+        )
+        expected_firstlineno = min([node.lineno] + [d.lineno for d in node.decorator_list])
+        assert obj.__code__.co_firstlineno == expected_firstlineno, (
+            f"{node_id}: {class_name}.{protected_name} runs code starting at line "
+            f"{obj.__code__.co_firstlineno}, but the guard parsed its def at line "
+            f"{expected_firstlineno} — pytest is executing a DIFFERENT object than the "
+            "one this guard inspected (G11); a later class-body rebinding (assignment, "
+            "class decorator, setattr) replaced the runtime binding"
+        )
