@@ -291,3 +291,67 @@ generations:
         The opening instruction said inherit, do not renew; the staff room, which R2 §6 names as the
         renewal authority, authorised one renewal in three later envelopes, and the ledger was
         already expired (rule 8 would suspend every dispatch). Renewed once, guarded on renewals==1.
+  - generation: 4
+    opened: "2026-09-11T18:44:28Z"
+    opened_source: "lstart of claude pid 28143 (ttys012), session ad109e90-21f8-4a05-92a6-d85052086a60."
+    open_cause: "Relaunch by the imperator after g3 (pid 93169) died mid-lane-C: a resume, not a restart."
+    env_at_open: "NUZANTARA_MANDATE_ID=R2 present in this process (Bash probe)."
+    tree_at_open: >-
+      HEAD 790680104f carried lane B ONLY. Lane A (312 SQL + its two migration tests) and lane C
+      (naga_persistence.py + its unit test) were UNTRACKED, not committed as the relaunch prompt
+      said. Backed up outside the worktree, then committed as 454cb2cbd9 after curing two RH005
+      findings (accept-path tests asserting nothing) raised by the anti-reward-hacking pre-commit lint.
+    ledger_at_open: "sha256(R2) deadline 2026-09-11T21:55:19Z, renewals 2, not expired; not renewed."
+    r1_integration_recheck: "origin/main 2a4681b0b8 unchanged; 26/26 R1 paths blob-equal at 18:52Z; migration head still 311."
+    guardrail:
+      ruling_received: "20260911T184323Z-4ba4 (imperator): Zero authorized the source cure of the TRUNCATE over-match; write the statement-level guard."
+      measured: >-
+        The cure is on disk (guardrails.py:102 lookahead, mtime 02:42 local) but NOT loaded: the
+        daemon pid 1487 has run since 2026-09-10 08:20 local, and the T2 fallback
+        guardrails-static.py:146 still carries the old pattern. The Edit adding the statement-level
+        guard to 312 was refused at 18:50Z. Not bypassed; the daemon was not restarted by this
+        window (superscar #2: on disk, not armed).
+      rollback: >-
+        312's rollback section is empty. An executable rollback must remove the admission table and
+        the guardrail's DROP TABLE pattern refuses that line (a true positive). Proposed text kept
+        outside the repo; needs Zero's two-key bypass for one Edit, or an operator paste.
+    defect_found: >-
+      test_ledger_row_21_key_ordering_and_half_open_predicate imported research_os before the
+      _core_path bootstrap and passed only when an earlier module had already put the core on
+      sys.path; red when its file runs alone. Cured in c99110469f.
+    seats_probed: >-
+      18:53Z: codex exec -m gpt-5.6-sol with CODEX_HOME=~/.codex-acct2 (/opt/homebrew/bin/codex)
+      PONG exit 0; kimi -m kimi-code/k3 PONG exit 0; agy PONG exit 0 (--model must precede -p).
+    non_quorum_reader: >-
+      Gemini gemini-3.1-pro-high 18:59-19:02Z on f34c68f815: COUNCIL: BLOCK with two BLOCKERs, the
+      missing statement-level wipe guard and the empty rollback section, both already escalated.
+    children:
+      attempts_used_total: 5
+      attempts_ceiling: 6
+      g4_dispatches:
+        - lane: C2
+          model: sonnet
+          result: >-
+            test_naga_persistence_pg.py + test_naga_reader_pg.py. Dux re-ran them: 25 passed twice on
+            postgres:15, no skip/xfail, ruff clean. Committed d3e08fecfe.
+        - lane: D
+          model: sonnet
+          result: "naga_backfill.py + its tests; running at 19:10Z."
+    checkpoints_sent:
+      - {
+          n: 1,
+          envelope: 20260911T184722Z-661e.md,
+          note: "superseded by n2 within four minutes, before any ack",
+        }
+      - { n: 2, envelope: 20260911T185057Z-00d0.md }
+      - {
+          n: 3,
+          envelope: 20260911T185900Z-3042.md,
+          note: "self-contained restatement",
+        }
+      - {
+          n: 4,
+          envelope: 20260911T190317Z-14cb.md,
+          note: "rollback recommendation corrected to the executable form",
+        }
+    acks_received: "none for g4 as of 19:10Z"
