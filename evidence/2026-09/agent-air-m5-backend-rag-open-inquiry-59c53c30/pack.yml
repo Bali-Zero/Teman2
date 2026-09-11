@@ -28,17 +28,50 @@ lanes:
       — see dissent. External seats (codex, kimi, agy, qwen) were all
       TIMEOUT in the organism probe at session start (2026-09-11), so the
       spalla ran on the Claude seat, on a model different from the author.
+  - lane: independent-diff-review-2
+    role: review
+    seat: kimi-code/k3
+    note: >-
+      scripts/kimi_client.py (credential-scrubbed child, prompt-only, no
+      tools), bounded prompt = diff of a14aac2464 + the round-1 summary.
+      SEAT-VERDICT: not-ok. 4 findings, 2 fixed, 1 refuted with a receipt,
+      1 accepted — see dissent. 95 s wall clock.
+  - lane: independent-diff-review-3
+    role: review
+    seat: codex-gpt-5.6-sol
+    note: >-
+      `codex exec --sandbox read-only --skip-git-repo-check -` (codex-cli
+      0.154.0, model gpt-6-astra, xhigh), bounded prompt = diff of
+      a14aac2464, no repo access, no tests. SEAT-VERDICT: not-ok. 2
+      findings: 1 already closed by the kimi round, 1 refuted with a pinned
+      test — see dissent. The installed 0.147 CLI refused the configured
+      model; upgraded to 0.154.0 for this run. 69 s wall clock.
   - lane: final-gate
     role: review
     seat: claude-opus-5
     note: "Pending — gate_verdict is posted by the final-gate seat via scripts/harness_fable_gate.py on the head sha, not here."
 
 spend:
-  wall_clock_hours: 1.9
-  adversarial_rounds: 1
+  wall_clock_hours: 2.6
+  adversarial_rounds: 3
 
-appetite_exceeded: none
+appetite_exceeded: >-
+  Three adversarial rounds instead of the one declared, 2.6 h instead of
+  2: the Claude spalla surfaced two HIGH defects worth a fix commit, and
+  the Gear-3 council rule requires two external seats (kimi, codex), the
+  second of which needed a CLI upgrade before it would answer. Each round
+  produced a real fix or a receipt-backed refutation; none was ceremony.
 
+cloud_ok: >-
+  SYMBIOSIS Law 2 output boundary, CLAUDE.md Builder Contract 4. The
+  pii_local rule fires on the PATH (backend/app/routers/crm_practices.py,
+  backend/services/crm/**), not on the CONTENT, and rightly so: those are
+  PII-bearing modules. What travelled to the non-local seats (the Claude
+  spalla subagent, kimi-code/k3 via scripts/kimi_client.py with credentials
+  scrubbed, codex via `codex exec --sandbox read-only`) is the git diff of
+  code, SQL catalog text and unit tests with synthetic fixtures — no client
+  row, no CRM content, no log excerpt. Verified by the pii_scan grep below
+  before dispatch.
 pii_scan: clean
 pii_scan_note: >-
   The diff is Python (router, state machine, unit tests with synthetic
@@ -62,9 +95,9 @@ receipts:
       cd apps/backend-rag && .venv/bin/python -m pytest
       backend/tests/services/crm/test_practice_state_machine.py
       backend/tests/unit/routers/test_crm_practices.py -p no:cacheprovider
-    result: "158 passed in 1.04s"
+    result: "159 passed in 1.06s (after the kimi and codex rounds)"
     exit: 0
-    ts: "2026-09-11T14:44:04Z"
+    ts: "2026-09-11T15:50:03Z"
     seat: claude-fable-5-1 (build)
 
   - probe: A2
@@ -232,6 +265,63 @@ dissent:
     disposition: >-
       Fixed: the blocked-transition test asserts fetchrow.call_count == 1
       (the old-row read only).
+  - seat: kimi-code/k3
+    objection: >-
+      (HIGH) The rollback soft-disable after the `-- === ROLLBACK ===`
+      marker is live SQL, so every apply would seed the row and immediately
+      deactivate it, leaving PATCH unable to resolve the placeholder.
+    status: PLAUSIBLE
+    disposition: >-
+      Refuted, no code change. backend.db.migration_base.split_migration_sql
+      splits the file on that marker before apply (receipt A4-static:
+      forward 1601 bytes, rollback 217 bytes) and sibling migration 220 has
+      the identical shape with its rows active in prod today
+      (company_dissolving|t, other_custom|t in the catalog read at GROUND).
+  - seat: kimi-code/k3
+    objection: >-
+      (LOW) The 42703 fallback SELECT does not fetch quoted_price, so a
+      later service pick on such a row back-fills over an existing price.
+    status: CONFIRMED
+    disposition: >-
+      Fixed: the fallback now selects p.quoted_price and assigns
+      old_quoted_price, so the back-fill condition sees the real value.
+  - seat: kimi-code/k3
+    objection: >-
+      (LOW) create_practice's lookup has no is_active filter while the PATCH
+      lookup requires it — asymmetric across the placeholder lifecycle.
+    status: PLAUSIBLE
+    disposition: >-
+      Same point as the Claude spalla's LOW; accepted and documented, no
+      code change (pre-existing behaviour of the create path).
+  - seat: kimi-code/k3
+    objection: >-
+      (LOW) validate_service_selected does not normalize to_state while the
+      sibling check in update_practice does.
+    status: CONFIRMED
+    disposition: >-
+      Fixed: the gate normalizes the target state before the
+      inquiry/cancelled check.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      (MEDIUM) The 42703 fallback leaves old_quoted_price None without
+      reading the existing quote, so a later service selection back-fills
+      base_price over a negotiated price.
+    status: CONFIRMED
+    disposition: >-
+      Same defect as kimi's LOW, closed in 4cd4ecb85f (fallback SELECT now
+      carries p.quoted_price). Codex reviewed the pre-fix diff.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      (MEDIUM) An explicit quoted_price: null in the same PATCH as a service
+      pick suppresses the back-fill (key-presence check) and leaves the
+      quote NULL while satisfying the service gate.
+    status: PLAUSIBLE
+    disposition: >-
+      Refuted, no code change: quoted_price is not in
+      PRACTICE_CLEARABLE_FIELDS, so the field loop raises 400
+      "quoted_price cannot be null" before any SQL runs. Pinned by
+      test_update_explicit_null_quoted_price_is_rejected_not_backfilled
+      (fetchrow.call_count == 2: old row + type lookup, no UPDATE).
 
 bites:
   consumer: >-

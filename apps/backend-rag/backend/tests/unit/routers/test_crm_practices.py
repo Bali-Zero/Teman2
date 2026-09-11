@@ -1015,6 +1015,44 @@ class TestOpenInquiry:
         assert update_params[1] == Decimal("36000000")
 
     @pytest.mark.asyncio
+    async def test_update_explicit_null_quoted_price_is_rejected_not_backfilled(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        """codex finding: an explicit quoted_price: null next to a service pick
+        must not slip past the back-fill and leave the price NULL — it is
+        refused (quoted_price is not a clearable field) before any SQL."""
+        from backend.app.routers.crm_practices import PracticeUpdate, update_practice
+
+        old_row = {
+            "status": "inquiry",
+            "client_id": 42,
+            "client_visible": True,
+            "created_by": "admin@balizero.com",
+            "assigned_to": "team@balizero.com",
+            "quoted_price": None,
+            "practice_type_code": "open_inquiry",
+        }
+        type_row = {"id": 24, "base_price": Decimal("36000000")}
+        mock_db_conn.fetchrow = AsyncMock(side_effect=[old_row, type_row])
+
+        with (
+            patch("backend.app.routers.crm_practices.is_crm_admin", return_value=True),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            await update_practice(
+                request=MagicMock(),
+                practice_id=1,
+                updates=PracticeUpdate(
+                    practice_type_code="kitas_working_onshore", quoted_price=None
+                ),
+                db_pool=mock_db_pool,
+                current_user=admin_user,
+            )
+        assert exc_info.value.status_code == 400
+        assert "quoted_price cannot be null" in exc_info.value.detail
+        assert mock_db_conn.fetchrow.call_count == 2  # old row + type lookup, no UPDATE
+
+    @pytest.mark.asyncio
     async def test_catalog_hides_placeholder(
         self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
     ) -> None:
