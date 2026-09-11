@@ -10,7 +10,7 @@ gear: 2
 # imperator: Gear-2 machinery, not a Gear-3 council.
 l_level: L2
 gate_class: opus
-base_sha: 19d47e938674b856039e53c541a03660673b3ef0 # pragma: allowlist secret - verified public Git commit
+base_sha: 42d41f86e2be91306e263d5c2f7a182b50042451 # pragma: allowlist secret - verified public Git commit
 objective: >-
   Replace the `MANDATORY LAW CITATION` bullet of `CITATION_RULES` in
   apps/backend-rag/backend/prompts/zantara_core.py with the paragraph Zero
