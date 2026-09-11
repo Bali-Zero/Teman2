@@ -313,7 +313,7 @@ export const serviceSectionContent: Record<
       {
         question: "Can you get us appointed as a PMSE VAT collector?",
         answer:
-          "No one can. DJP appoints collectors under PMK 60/2022. We assess the threshold and prepare readiness; appointment itself is DJP's decision.",
+          "No one can. DJP appoints collectors under PMK 81/2024. We assess the threshold and prepare readiness; appointment itself is DJP's decision.",
       },
     ],
     whyNow: [

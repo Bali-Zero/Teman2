@@ -1305,9 +1305,9 @@ export const dossierFamilies = {
     purpose:
       "For an operator assessing whether it is likely to be appointed a PMSE VAT collector by DJP.",
     distinction:
-      "No one applies to become a collector; DJP appoints under PMK 60/2022. This service assesses the threshold and prepares readiness, it does not request or confirm appointment.",
+      "No one applies to become a collector; DJP appoints under PMK 81/2024. This service assesses the threshold and prepares readiness, it does not request or confirm appointment.",
     scope: [
-      "Threshold assessment under PMK 60/2022",
+      "Threshold assessment under PMK 81/2024",
       "A readiness pack for systems and invoicing",
       "Support during a DJP appointment, if one follows",
     ],
