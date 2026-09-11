@@ -265,6 +265,43 @@ bites:
     (test_the_shipped_correction_edge_is_consumed_*) green on this branch's CI run, plus
     fixtures --check on the merged tree.
 
+# The fresh Opus 5 gate read the frozen candidate and returned PASS-WITH-CONDITIONS. This block is
+# the ledger row its status points to: every condition with owner and deadline. The PENDING-ARMS
+# row lands in the tranche ledger PR, not in this one.
+gate_conditions:
+  verdict: PASS-WITH-CONDITIONS
+  gate_seat: "claude-opus-5 (gate-r1, fresh, read-only, outside the contribution chain)"
+  gated_sha: 0d359097a7d6593d90b5009cb60bcd33628b7ddc # pragma: allowlist secret
+  read_at: 2026-09-11T12:07:00Z
+  envelope: 20260911T120802Z-7d20
+  conditions:
+    - id: C1
+      severity: MEDIUM
+      owner: "claude-opus-5 (R1 g4 Dux)"
+      deadline: 2026-09-11T13:55:42Z
+      condition: >-
+        The PR body carries base:, a Bites: line (consumer + observation), the sentence that 0
+        rows were written to production, and the deferred items by name: N5, the seed-pair
+        atomic-correction test, G-STATEMENT, Z2b production cohort sourcing,
+        freeze-change-proposal-002.
+    - id: C2
+      severity: MEDIUM
+      owner: "claude-opus-5 (R1 g4 Dux)"
+      deadline: 2026-09-11T13:55:42Z
+      condition: >-
+        The schema validation of every P06 fixture is OBSERVED in CI on the pushed branch before
+        the work is reported done.
+    - id: C3
+      severity: LOW
+      optional: true
+      owner: "claude-opus-5 (R1 g4 Dux)"
+      deadline: 2026-09-11T13:55:42Z
+      condition: >-
+        README line 7 names the mandate file (today the control room names it at line 16).
+      disposition: >-
+        Not taken on this candidate: the one commit the gate allowed after its verdict is
+        evidence-only. Carried to the tranche ledger PR.
+
 # Every figure, instrument number, URL and identifier is synthetic and labelled so; no client
 # data in any file, artifact or checkpoint.
 pii_scan: clean
