@@ -58,4 +58,31 @@ describe("authored archive memo", () => {
       firstReadCount,
     );
   });
+
+  // The test above is named "for five minutes" but never advanced a clock, so
+  // raising articleArchiveMemoMaxAgeMs to five HOURS left it green. The
+  // ceiling matters on its own: the fingerprint is folder mtime + file count,
+  // so an in-place edit of a body or of frontmatter changes NEITHER, and the
+  // ceiling is the only thing that ever evicts it.
+  it("stops reusing the memo once the ceiling passes, with the folder untouched", async () => {
+    vi.useFakeTimers();
+    try {
+      const first = await listAuthoredEnglishArticles();
+      const firstReadCount = archiveSpies.readFile.mock.calls.length;
+
+      // Just inside the ceiling: still the same object, no re-read.
+      vi.advanceTimersByTime(5 * 60 * 1000 - 1000);
+      expect(await listAuthoredEnglishArticles()).toBe(first);
+      expect(archiveSpies.readFile).toHaveBeenCalledTimes(firstReadCount);
+
+      // Just past it, folder mtime deliberately unchanged: must re-read.
+      vi.advanceTimersByTime(2000);
+      expect(await listAuthoredEnglishArticles()).not.toBe(first);
+      expect(archiveSpies.readFile.mock.calls.length).toBeGreaterThan(
+        firstReadCount,
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
