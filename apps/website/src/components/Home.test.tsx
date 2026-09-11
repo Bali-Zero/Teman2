@@ -82,17 +82,24 @@ describe("editorial carousel", () => {
   });
 });
 describe("service routes", () => {
-  it("provides four direct product links and four contextual conversations", () => {
+  it("provides five direct product links and five contextual conversations", () => {
     render(<Services />);
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /Find a business code/ }),
     ).toHaveAttribute("href", "/kbli");
     const contacts = screen.getAllByRole("link", { name: /Talk to our team/ });
-    expect(contacts).toHaveLength(4);
-    expect(new Set(contacts.map((x) => x.getAttribute("href"))).size).toBe(4);
-    for (const id of ["visa", "business", "tax", "property"])
+    expect(contacts).toHaveLength(5);
+    expect(new Set(contacts.map((x) => x.getAttribute("href"))).size).toBe(5);
+    for (const id of ["visa", "business", "tax", "property", "compliance"])
       expect(document.getElementById(id + "-tool")).toBeInTheDocument();
+    const complianceCard = document.getElementById("compliance-tool")!;
+    expect(
+      within(complianceCard).getByRole("link", {
+        name: "Explore Compliance and obligations",
+      }),
+    ).toHaveAttribute("href", "/services/compliance");
+    expect(within(complianceCard).getAllByRole("link")).toHaveLength(2);
   });
   it("encodes user-facing topics as a single message parameter", () => {
     const url = new URL(contactHref("Tax & accounting"));

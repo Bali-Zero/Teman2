@@ -30,7 +30,7 @@ describe("service journeys", () => {
       }
     }
   });
-  it("publishes an overview and four resolvable local journeys", () => {
+  it("publishes an overview and five resolvable local journeys", () => {
     render(<ServicesOverview />);
     const main = screen.getByRole("main");
     const localRoutes = new Set([
@@ -39,7 +39,7 @@ describe("service journeys", () => {
       ...servicePages.map(({ slug }) => `/services/${slug}`),
     ]);
     const links = [...main.querySelectorAll('a[href^="/"]')];
-    expect(servicePages).toHaveLength(4);
+    expect(servicePages).toHaveLength(5);
     expect(generateStaticParams()).toEqual(
       servicePages.map(({ slug }) => ({ slug })),
     );
@@ -92,10 +92,16 @@ describe("service journeys", () => {
     expect(
       screen.getByRole("link", { name: "Back to all services" }),
     ).toHaveAttribute("href", "/services");
-    const tool = getDestination(service.toolDestinationId);
-    expect(
-      screen.getByRole("link", { name: `Open ${tool.label}` }),
-    ).toHaveAttribute("href", tool.href);
+    if (service.toolDestinationId) {
+      const tool = getDestination(service.toolDestinationId);
+      expect(
+        screen.getByRole("link", { name: `Open ${tool.label}` }),
+      ).toHaveAttribute("href", tool.href);
+    } else {
+      expect(
+        screen.queryByText("Optional independent starting point"),
+      ).not.toBeInTheDocument();
+    }
     expect(container.querySelector("form")).toBeNull();
     const content = serviceSectionContent[service.slug];
     const expectedServices = content.catalog.flatMap((group) => group.services);
