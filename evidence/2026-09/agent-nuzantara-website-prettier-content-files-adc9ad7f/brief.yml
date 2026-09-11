@@ -1,0 +1,63 @@
+task_id: website-prettier-content-normalize
+gear: 3
+l_level: L2
+gate_class: opus
+gear_note: >-
+  Measured via `python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file
+  /tmp/cfa.txt --numstat-file /tmp/nsa.txt` against base origin/codex/website-r19-integrated
+  (diff: `git diff --name-only|--numstat origin/codex/website-r19-integrated...HEAD`) on HEAD
+  798bc47c5a: floor=3, source=size. This DIFFERS from the originally-expected floor 2: the
+  original estimate assumed prettier's per-file churn would stay proportionate to real content
+  change, but _size_term_net_lines() sums added+deleted per file (CHURN, not net), and
+  Prettier's quoteProps:as-needed + trailingComma rewrite touches nearly every line of the
+  content-data files it reformats even though nothing semantic moves — 14 files, +2890/-1316 =
+  4206 churn, well above SIZE_GEAR3_THRESHOLD (1828, measured churn p90) and above
+  SIZE_GEAR2_THRESHOLD (400). No hot-zone path hit (source is "size" alone, not "both"). Declared
+  3, not the expected 2, because that is what the recipe measured; not rubber-stamping the
+  original estimate.
+objective: >-
+  Prettier-normalize (`npx prettier --write`, no manual edits) the 14 content/service/lib files
+  that the compliance-corner PR (#6210, agent/nuzantara/website/compliance-corner) also touches,
+  so #6210 can be rebased onto an already-formatted base and its own diff carries only its
+  semantic additions. Files: apps/website/src/app/services/services.test.tsx,
+  src/components/ContactOptions.tsx, src/components/Entry.test.tsx, src/components/Entry.tsx,
+  src/components/Home.test.tsx, src/components/Services.tsx,
+  src/components/services/ServiceDossiers.test.tsx, src/components/services/ServiceJourneys.tsx,
+  src/components/services/ServiceSections.tsx, src/content/service-dossier-data.ts,
+  src/content/service-price-identities.ts, src/content/service-section-content.ts,
+  src/lib/destinations/contact-context.ts, src/lib/destinations/lead-handoff.ts.
+constraints:
+  - Formatting only via `npx prettier --write`; no hand edits to logic, markup, or content.
+  - No arming, no merge, no gate status posted by this Dux.
+acceptance:
+  - text: The 14 files SHALL carry no semantic change versus base (6603d2913e).
+    probe: >-
+      Literal receipt as specified (ts.createSourceFile both sides, ts.createPrinter({
+      removeComments:false}).printFile, assert equal strings) actually FAILS on 13/14 (only
+      Home.test.tsx matches) — root-caused to three zero-semantic Prettier transforms the raw
+      printer does not normalize: (1) quoteProps "as-needed" (PropertyAssignment name
+      StringLiteral<->Identifier, same text — printer preserves raw source text so a requoted key
+      still shows as a diff), (2) trailing-comma insertion (TS printer preserves the source
+      NodeArray.hasTrailingComma flag verbatim rather than a normalized rule), (3) JSX/expression
+      ParenthesizedExpression wrap/unwrap around return statements (semantically transparent).
+      Stricter receipt, still via the TS compiler API: `ts.transpileModule` (jsx: ReactJSX, target
+      ES2020) lowers both sides to plain JS, then a structural walk (kind-by-kind via
+      forEachChild, property keys compared by resolved text, ParenthesizedExpression unwrapped)
+      compares the two resulting ASTs -> 14/14 identical, no other divergence in any file.
+  - text: Typecheck SHALL be clean.
+    probe: "`npx tsc --noEmit` (apps/website) -> exit 0, no output."
+  - text: Full test suite SHALL stay green.
+    probe: "`npx vitest run` (apps/website) -> Test Files 99 passed | 1 skipped (100); Tests 1338 passed | 1 skipped (1339)."
+consumer_map:
+  - "PR #6210 (agent/nuzantara/website/compliance-corner) rebases onto this branch's HEAD as its
+    new base so its own diff stops carrying incidental reformatting of files it merely touches."
+risks:
+  - "The literal AST-print-equality receipt as originally specified is not a reliable oracle for
+    this repo's Prettier config (quoteProps/trailingComma/JSX-paren cases produce false
+    positives) — flagged to the lane's team-lead before committing; documented here rather than
+    silently substituted."
+grader: >-
+  The final on-disk gate is a fresh Opus 5 session commissioned by the imperator; this Dux does
+  not post harness/fable-gate and did not arm auto-merge.
+budget: Existing subscription only; no paid API calls.
+pii: none
