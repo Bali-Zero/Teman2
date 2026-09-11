@@ -32,6 +32,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
+from backend.services.garuda_artifacts.ports import ArtifactDigestMismatch, ArtifactObjectMissing
+from backend.services.garuda_artifacts.service import GarudaArtifactService
 from backend.services.garuda_orders.errors import (
     NoOpenLateCase,
     OrderNotFound,
@@ -218,6 +220,21 @@ def get_repository(request: Request) -> GarudaOrderRepository:
     return repo
 
 
+def get_artifact_service(request: Request) -> GarudaArtifactService:
+    """Same fail-closed shape as `get_repository` above / `garuda_staff_
+    router.py::get_artifact_service` (a same-shaped LOCAL copy, not a
+    shared import, per LANES.md file-ownership discipline -- both routers
+    read the SAME `app.state.garuda_artifact_service` the orchestrator
+    wires once at composition time)."""
+
+    service = getattr(request.app.state, "garuda_artifact_service", None)
+    if service is None:
+        raise HTTPException(
+            status_code=503, detail={"code": "SERVICE_UNAVAILABLE", "retryable": True}
+        )
+    return service
+
+
 async def _require_magic_session_actor(request: Request) -> str:
     """Seam for L4's magic-link session (LANES.md: L4 owns auth).
 
@@ -332,6 +349,11 @@ def _idempotency_key(idempotency_key: str | None) -> str:
 _OPERATION_STATUS_CODES: dict[str, tuple[int, ...]] = {
     "createOrderFromCheck": (400, 401, 404, 409, 422, 429, 500, 503),
     "getOrderAndPractice": (401, 404, 500, 503),
+    # Phase 2 addition (W3A, spec §5): 403 deliberately absent -- the
+    # customer catalog has never had ACCESS_DENIED (fact 8), so a foreign
+    # order/no-practice/no-artifact/superseded/expired case all collapse to
+    # the same 404 ORDER_NOT_FOUND rather than importing a new code.
+    "getPracticeArtifact": (401, 404, 500, 503),
     "observePaymentBrowserReturn": (400, 401, 404, 422, 500, 503),
     "receivePaymentWebhook": (401, 404, 422, 500, 503),
     "resolveLateOrder": (400, 401, 404, 409, 422, 500, 503),
@@ -643,6 +665,75 @@ async def resolve_late_order(
     if replayed:
         response.headers["Idempotency-Replayed"] = "true"
     return body_out
+
+
+@router.get(
+    "/orders/{order_id}/artifact",
+    operation_id="getPracticeArtifact",
+    responses=_status_responses("getPracticeArtifact"),
+)
+async def get_practice_artifact(
+    order_id: str,
+    request: Request,
+    response: Response,
+    artifact_service: GarudaArtifactService = Depends(get_artifact_service),
+) -> Response:
+    """Customer read (spec §5). Fetch, verify, THEN emit -- the object
+    store's own `fetch_and_verify` is the single primitive that returns
+    bytes only once they hash to the row's digest (`ports.py`'s
+    `ArtifactObjectStorePort` docstring); this handler never touches
+    unverified bytes, and no chunked stream begins before the digest check
+    completes (a stream that hashes as it goes cannot un-send bytes once a
+    mismatch is discovered mid-flight).
+
+    Order-keyed, not practice-keyed (spec §5, fact 16): no customer path in
+    the frozen contract carries a `practice_id`, and keying by `order_id`
+    keeps the path parameter and the ownership predicate the SAME value
+    (`garuda_orders.result_id_ref = actor`) `get_order_and_practice` already
+    uses, so authorization cannot drift from routing.
+
+    The customer catalog has no `ACCESS_DENIED` (fact 8): a different
+    session, no practice, no live artifact, a superseded one, or one past
+    retention all collapse to the same non-enumerating 404
+    `ORDER_NOT_FOUND` -- `GarudaArtifactService.get_order_artifact`'s own
+    single ownership-filtered query (`postgres_repository.py::
+    get_live_for_order`) already makes every one of those cases indistinct
+    at the SQL layer; this handler only adds the `LookupError` mapping.
+    """
+    _privacy_headers(response)
+    actor = await _require_magic_session_actor(request)
+    pool = getattr(request.app.state, "garuda_db_pool", None)
+    if pool is None:
+        raise HTTPException(
+            status_code=503, detail={"code": "SERVICE_UNAVAILABLE", "retryable": True}
+        )
+    async with pool.acquire() as conn:
+        try:
+            _record, body = await artifact_service.get_order_artifact(
+                conn, order_id=order_id, result_id_ref=actor
+            )
+        except LookupError as exc:
+            raise HTTPException(
+                status_code=404, detail={"code": "ORDER_NOT_FOUND", "retryable": False}
+            ) from exc
+        except (ArtifactObjectMissing, ArtifactDigestMismatch):
+            # Zero body bytes on the wire -- never a partial or unverified
+            # payload, and never even the standard JSON error envelope
+            # (this route's success body IS the raw PDF; an envelope here
+            # would be indistinguishable from a malformed PDF to a naive
+            # caller). Built directly, bypassing `_ContractErrorRoute`
+            # (which only intercepts a raised `HTTPException`).
+            empty = Response(status_code=503, content=b"")
+            _privacy_headers(empty)
+            return empty
+
+    headers = {
+        "Content-Disposition": f'attachment; filename="voa-{order_id}.pdf"',
+        "Cache-Control": "no-store",
+    }
+    pdf_response = Response(content=body, media_type="application/pdf", headers=headers)
+    _privacy_headers(pdf_response)
+    return pdf_response
 
 
 __all__ = ["router"]

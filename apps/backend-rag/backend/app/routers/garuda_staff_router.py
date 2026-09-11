@@ -43,7 +43,11 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
 from backend.app.utils.logging_utils import sanitize_for_log
-from backend.services.garuda_artifacts.ports import ArtifactAlreadyExists
+from backend.services.garuda_artifacts.ports import (
+    ArtifactAlreadyExists,
+    ArtifactDigestMismatch,
+    ArtifactObjectMissing,
+)
 from backend.services.garuda_artifacts.service import (
     ArtifactTooLarge,
     GarudaArtifactService,
@@ -288,6 +292,7 @@ _OPERATION_STATUS_CODES: dict[str, tuple[int, ...]] = {
     # Phase 2 addition (W3A, not yet in the frozen contract -- see
     # ARTIFACT_ALREADY_EXISTS's comment above).
     "putPracticeArtifact": (400, 401, 403, 404, 409, 422, 500, 503),
+    "getStaffPracticeArtifact": (401, 403, 404, 500, 503),
 }
 
 
@@ -699,6 +704,71 @@ async def put_practice_artifact(
         extra={"practice_id": sanitize_for_log(practice_id)},
     )
     return response_body
+
+
+@router.get(
+    "/practices/{practice_id}/artifact",
+    operation_id="getStaffPracticeArtifact",
+    responses=_status_responses("getStaffPracticeArtifact"),
+    openapi_extra=_STAFF_SESSION_SECURITY,
+)
+async def get_staff_practice_artifact(
+    practice_id: str,
+    request: Request,
+    response: Response,
+    pool: asyncpg.Pool = Depends(get_pool),
+    artifact_service: GarudaArtifactService = Depends(get_artifact_service),
+) -> Response:
+    """Staff read (spec §4b): same auth/visibility gate as `getStaffPractice`
+    (practice lookup, then `visible_or_403`), then the SAME fetch-verify-emit
+    primitive `getPracticeArtifact` (customer lane) uses -- never a second,
+    divergent verification path (`ArtifactObjectStorePort.fetch_and_verify`'s
+    own docstring: "one verification path per lane"). Staff reads ARE
+    audited with the acting actor (spec fact 9's distinction from the
+    customer lane's anonymous count) -- logged as `_actor_log_id`'s keyed
+    hash, never the email in the clear."""
+
+    _privacy_headers(response)
+    actor = await _require_actor(request)
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT practice_id, assigned_to FROM garuda_practices WHERE practice_id = $1",
+            practice_id,
+        )
+        if row is None:
+            raise HTTPException(
+                status_code=404, detail={"code": "PRACTICE_NOT_FOUND", "retryable": False}
+            )
+        visible_or_403(row, actor)
+
+        try:
+            _record, body = await artifact_service.get_staff_practice_artifact(
+                conn, practice_id=practice_id
+            )
+        except LookupError as exc:
+            raise HTTPException(
+                status_code=404, detail={"code": "PRACTICE_NOT_FOUND", "retryable": False}
+            ) from exc
+        except (ArtifactObjectMissing, ArtifactDigestMismatch):
+            # Zero unverified/partial bytes on the wire -- built directly
+            # (bypassing `_ContractErrorRoute`, which only intercepts a
+            # raised `HTTPException`) exactly like the customer lane's own
+            # `getPracticeArtifact` handles the same two exceptions.
+            empty = Response(status_code=503, content=b"")
+            _privacy_headers(empty)
+            return empty
+
+    logger.info(
+        "garuda_staff.practice_artifact_read",
+        extra={"practice_id": sanitize_for_log(practice_id), "actor": _actor_log_id(actor["email"])},
+    )
+    headers = {
+        "Content-Disposition": f'attachment; filename="voa-{practice_id}.pdf"',
+        "Cache-Control": "no-store",
+    }
+    pdf_response = Response(content=body, media_type="application/pdf", headers=headers)
+    _privacy_headers(pdf_response)
+    return pdf_response
 
 
 __all__ = ["router"]
