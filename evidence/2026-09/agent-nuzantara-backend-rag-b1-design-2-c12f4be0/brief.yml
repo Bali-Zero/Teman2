@@ -1,0 +1,134 @@
+task_id: backend-rag-b1-design-2
+gear: 2
+l_level: L2
+gate_class: opus
+base_sha: 0141b8130a192483a67865376281518ce7b69f2f # pragma: allowlist secret
+mandate: B1
+colour: BLUE
+pr: B1.2
+objective: >-
+  B1.2 of mandate B1 (BLUE). Re-base the nine historical "impossible cosine"
+  abstain tripwires by ADDITION, never by edit (README D3/D5): each original
+  stays byte-identical, and beside it a pipeline-derived variant feeds the
+  same query, context and assertions with sources minted from a measured
+  registry. The only real number that exists for these (query, context)
+  texts is rc1a's text-embedding-3-small cosine (prod rag container,
+  2026-09-10T18:03Z); no hybrid rank was ever measured for them, so every
+  variant declares the DENSE path (B1.1 inventory row 2, score_kind
+  dense_formatted, score_raw = cosine) and the score the REAL
+  result_formatter transform produces from it. A guard pins the registry
+  to the live transform and fails when an unlabelled score literal returns.
+appetite:
+  wall_clock_hours: 5
+  adversarial_rounds: 2
+  tokens: 1500000
+deadline_utc: "2026-09-11T21:59:55Z"
+constraints:
+  - >-
+    Tests only. Writable: tests/fixtures/pipeline_score_fixtures.py (new),
+    tests/unit/services/rag/test_tripwire_pipeline_variants_guard.py (new),
+    and the four existing tripwire test files with additions only
+    (git diff --numstat deletions = 0). Nothing under backend/services/**,
+    backend/core/**, no corner, no zantara_core.py, no wa_codex_leg.py, no
+    migration, no network, no embedding or generation call.
+  - >-
+    Assertions of every variant are identical to its original's (AST), and
+    each variant body is equivalent to its original except the sources
+    literal (AST normalisation script, output in the PR body).
+  - >-
+    Nothing is invented: rank, fusion and list membership are declared only
+    where measured (dense, rank 0/1 from rc1a's cosine order); the tenth
+    regression (a behaviour gap) and the eleventh (named by count, never
+    itemised) stay UNRESOLVED as B1.1's inventory recorded them.
+acceptance:
+  - text: >-
+      A1: the nine originals are preserved and nine variants are added, each
+      assertion-identical to its original; the four touched files pass
+      before and after.
+    probe: >-
+      pytest the four files per file on base and head: reasoning_utils 84 -> 88,
+      evidence_scoring_abstain 26 -> 29, abstain_bypass_policy 34 -> 35,
+      reasoning 86 -> 87, all green
+  - text: >-
+      A2: the guard is load-bearing — a registry entry declared UNKNOWN turns
+      G1 red; an unlabelled {"score": 0.9} literal inside a variant turns G4
+      red.
+    probe: >-
+      two mutations in the worktree, backed up and restored with cp (never
+      git checkout --), cmp-verified restored; guard 46 passed otherwise
+  - text: >-
+      A3 (innocence): the six B1 §4 files at their base counts or better.
+    probe: >-
+      test_evidence_cross_language 122 passed + 2 xfailed; test_evidence_scoring_abstain
+      29 (26 + 3 variants); test_wa_package_builder 29; test_wa_greeting 64;
+      test_curated_qa_government_fee_gate 21; test_wa_finalize 79
+assumptions:
+  - >-
+    The two TestDetectTeamQuery failures seen when the four tripwire files run
+    together in one process are pre-existing and order-dependent: the same
+    combination on a clean base checkout reports 2 failed / 228 passed, and
+    test_reasoning_utils.py alone passes on both base and head.
+team:
+  dux:
+    {
+      model: claude-opus-5,
+      effort: xhigh,
+      role: "Dux + release owner",
+      host: Pro,
+      sessions:
+        [e14f8ad7-c934-4182-a460-af27cea37b18, "continuation (salto 1)"],
+    }
+  implementer_registry_guard:
+    {
+      model: claude-sonnet-5,
+      role: "registry + guard (commit 7a7f14706c)",
+      outcome: delivered,
+    }
+  external_builder:
+    - {
+        seat: tp1-glm-5.2,
+        model: glm-5.2,
+        try: 1,
+        at: "~17:04Z",
+        effort: high,
+        outcome: "FAIL rc=3 — reasoning-only response truncated (finish_reason=length)",
+      }
+    - {
+        seat: tp1-glm-5.2,
+        model: glm-5.2,
+        try: 2,
+        at: "17:11:16Z-17:11:59Z",
+        effort: medium,
+        outcome: "FAIL — off-task (returned a review, 0 code blocks); TP1 output redacts every token >= 24 chars",
+      }
+    - {
+        seat: tp1-glm-5.2,
+        model: glm-5.2,
+        try: 3,
+        at: "17:15:33Z-17:16:15Z",
+        effort: medium,
+        outcome: "FAIL — 9 blocks, none calls pipeline_sources; discarded",
+      }
+    - {
+        seat: tp1-qwen3.8-max,
+        model: qwen3.8-max,
+        at: "17:17:46Z-17:18:52Z",
+        role: "same-role fallback (seat rule)",
+        outcome: "9 blocks, 18 redactions de-mapped by the Dux; node-id argument came back as the bare function name — corrected by the Dux, then ruff-formatted and inlined to the original call shape",
+      }
+    - { seat: tp1-qwen3.7-max, outcome: "not needed" }
+  adversarial_reviewer:
+    {
+      seat: codex,
+      model: gpt-5.6-sol,
+      effort: high,
+      sandbox: read-only,
+      note: "default gpt-6-astra returns HTTP 400 on codex-cli 0.149.0 (CLI pinned by the WA daemon); explicit -m gpt-5.6-sol answers",
+    }
+  final_gate: "fresh Opus 5 session commissioned by the staff room (Fable imperator, M5, 7c40d5cf)"
+sibling_outputs:
+  at: "2026-09-11T17:31:33Z"
+  open_prs_touching_paths: "none (gh pr list --state open, files under backend/tests/(unit/)services/rag, tests/fixtures, bot-staff-room)"
+  agent_start_list: "b1-2-glm-variants, b1-3-benchmark, b1-4-support-signal, b1-design-2 (this); rc3-citation-rule-exit and rc1a ORPHAN, not ours"
+  children: "B1.3 benchmark (Sonnet 5, worktree b1-3-benchmark), B1.4 probe harness (Sonnet 5, worktree b1-4-support-signal)"
+  fleet_mail: "B1-ack received 17:19:16Z for checkpoint 1 (envelope 20260911T170154Z-3625.md)"
