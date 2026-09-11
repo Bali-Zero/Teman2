@@ -1,0 +1,33 @@
+task_id: pse-responsible-officer
+gear: 1
+l_level: L2
+gate_class: opus
+grader: Fresh Opus 5 on-disk gate commissioned by the imperator; no verdict asserted here.
+pii: none
+objective: >
+  In docs/ops/pse-registration-balizero.md, replace the literal placeholder
+  `<to be named by the owner>` (8 table-row occurrences across the per-system
+  tables plus 1 checklist line) with the owner's 2026-09-11 ruling ("fai tu")
+  naming the company director as the responsible officer for every system:
+  `Company director per the akta (the owner), position Direktur, contact
+  zero@balizero.com`. In the company-level table row where the source column
+  read "owner decision", change it to "owner ruling 2026-09-11" to reflect
+  that the field is now settled rather than pending.
+constraints:
+  - Docs only. Text substitution, no new claims, no regulatory interpretation added.
+  - No personal names beyond the literal role text the owner dictated; no PII introduced.
+  - Do not touch anything else in the file (URLs, hosting facts, other placeholders).
+acceptance:
+  - text: The old placeholder SHALL no longer appear anywhere in the file.
+    probe: "grep -c 'to be named by the owner' docs/ops/pse-registration-balizero.md"
+    expect: "0"
+  - text: The new responsible-officer text SHALL appear exactly 9 times.
+    probe: "grep -c 'Company director per the akta' docs/ops/pse-registration-balizero.md"
+    expect: "9"
+  - text: The file SHALL remain valid Prettier-formatted markdown.
+    probe: "npx prettier --check docs/ops/pse-registration-balizero.md"
+consumer_map:
+  - The staff member filing the PSE self-registration on OSS-RBA, reading the
+    responsible-officer field per system.
+deviations:
+  - none

@@ -42,18 +42,18 @@ legal name before concluding.
 
 ## 2. Company-level fields (shared by every system)
 
-| Field                   | Value                                                                 | Source                                         |
-| ----------------------- | --------------------------------------------------------------------- | ---------------------------------------------- |
-| Legal entity            | PT PMA, legal name as on the akta (to confirm)                        | `apps/mouth/src/app/terms/page.tsx` ("PT PMA") |
-| NIB                     | Active NIB number (to confirm)                                        | owner / accounting                             |
-| KBLI                    | KBLI on the NIB that covers the electronic systems below (to confirm) | owner / accounting                             |
-| NPWP                    | Company NPWP (to confirm)                                             | owner / accounting                             |
-| Akta and SK Kemenkumham | Deed of establishment and ministry decree (to confirm)                | owner / accounting                             |
-| Responsible officer     | `<to be named by the owner>`                                          | owner decision                                 |
-| Data-protection contact | privacy@balizero.com (role address published in the privacy policy)   | `apps/mouth/src/app/privacy/page.tsx`          |
-| Privacy policy          | https://balizero.com/privacy                                          | `apps/mouth/src/app/privacy/page.tsx`          |
-| Terms of service        | https://balizero.com/terms                                            | `apps/mouth/src/app/terms/page.tsx`            |
-| Registration fee        | None (no PNBP fee)                                                    | prep-check §3                                  |
+| Field                   | Value                                                                                     | Source                                         |
+| ----------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Legal entity            | PT PMA, legal name as on the akta (to confirm)                                            | `apps/mouth/src/app/terms/page.tsx` ("PT PMA") |
+| NIB                     | Active NIB number (to confirm)                                                            | owner / accounting                             |
+| KBLI                    | KBLI on the NIB that covers the electronic systems below (to confirm)                     | owner / accounting                             |
+| NPWP                    | Company NPWP (to confirm)                                                                 | owner / accounting                             |
+| Akta and SK Kemenkumham | Deed of establishment and ministry decree (to confirm)                                    | owner / accounting                             |
+| Responsible officer     | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com` | owner ruling 2026-09-11                        |
+| Data-protection contact | privacy@balizero.com (role address published in the privacy policy)                       | `apps/mouth/src/app/privacy/page.tsx`          |
+| Privacy policy          | https://balizero.com/privacy                                                              | `apps/mouth/src/app/privacy/page.tsx`          |
+| Terms of service        | https://balizero.com/terms                                                                | `apps/mouth/src/app/terms/page.tsx`            |
+| Registration fee        | None (no PNBP fee)                                                                        | prep-check §3                                  |
 
 The privacy policy states it follows UU PDP No. 27/2022 and lists the data categories,
 legal bases, storage locations and retention periods reused in section 3.
@@ -88,7 +88,7 @@ policy:
 | Repo source         | `apps/mouth` route groups `(marketing)`, `(blog)`; `PUBLIC_DOMAIN` in `apps/mouth/src/proxy.ts`                                                                                                                                                 |
 | Data categories     | Newsletter email address; inquiry contact details (name, email, phone, message); Visa Oracle answers held in the browser session (`evaluation-identity-store.ts`); web analytics (Google Analytics, per the CSP in `apps/mouth/next.config.ts`) |
 | Privacy policy      | https://balizero.com/privacy; Visa Oracle has its own notice at https://balizero.com/visa-oracle/privacy                                                                                                                                        |
-| Responsible officer | `<to be named by the owner>`                                                                                                                                                                                                                    |
+| Responsible officer | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com`                                                                                                                                                       |
 | KBLI                | To confirm                                                                                                                                                                                                                                      |
 
 ### 3.2 kita.balizero.com
@@ -102,7 +102,7 @@ policy:
 | Repo source         | `APP_DOMAIN` and `INTERNAL_ROUTES` in `apps/mouth/src/proxy.ts`                                                                                                                                                                                                                                                   |
 | Data categories     | Staff accounts and roles; client records: identity (name, nationality, date of birth, gender, address), passport data, contact details, family members, company data; case and permit status; client documents (passport, KTP, NPWP scans); message history across channels; financial data for visa applications |
 | Privacy policy      | https://balizero.com/privacy                                                                                                                                                                                                                                                                                      |
-| Responsible officer | `<to be named by the owner>`                                                                                                                                                                                                                                                                                      |
+| Responsible officer | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com`                                                                                                                                                                                                                         |
 | KBLI                | To confirm                                                                                                                                                                                                                                                                                                        |
 
 ### 3.3 my.balizero.com
@@ -116,7 +116,7 @@ policy:
 | Repo source         | `PORTAL_DOMAIN` in `apps/mouth/src/proxy.ts`; pages in `apps/mouth/src/app/portal/(authenticated)/`                                                                                                                   |
 | Data categories     | Client account and session cookie; profile; family members; company data; visa and permit status; tax and LKPM data; document vault (passport, KTP, NPWP scans); messages and chat; billing records; privacy settings |
 | Privacy policy      | https://balizero.com/privacy                                                                                                                                                                                          |
-| Responsible officer | `<to be named by the owner>`                                                                                                                                                                                          |
+| Responsible officer | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com`                                                                                                                             |
 | KBLI                | To confirm                                                                                                                                                                                                            |
 
 ### 3.4 zantara.balizero.com
@@ -130,7 +130,7 @@ policy:
 | Repo source         | `ZANTARA_DOMAIN` in `apps/mouth/src/proxy.ts`. `apps/web/README.md` also names this host; the live response carries the `x-pathname` header set by the mouth proxy, so mouth serves it today. Confirm in Vercel which project owns the domain. |
 | Data categories     | Chat messages and conversation history; account and session                                                                                                                                                                                    |
 | Privacy policy      | https://balizero.com/privacy                                                                                                                                                                                                                   |
-| Responsible officer | `<to be named by the owner>`                                                                                                                                                                                                                   |
+| Responsible officer | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com`                                                                                                                                                      |
 | KBLI                | To confirm                                                                                                                                                                                                                                     |
 
 ### 3.5 tax.balizero.com
@@ -144,7 +144,7 @@ policy:
 | Repo source         | `TAX_DOMAIN` in `apps/mouth/src/proxy.ts`; route group `apps/mouth/src/app/(tax-calendar)/`   |
 | Data categories     | No input form found in the route group on 2026-09-11: public content only, plus web analytics |
 | Privacy policy      | https://balizero.com/privacy                                                                  |
-| Responsible officer | `<to be named by the owner>`                                                                  |
+| Responsible officer | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com`     |
 | KBLI                | To confirm                                                                                    |
 
 DNS setup for this host: [tax-balizero-dns-setup.md](tax-balizero-dns-setup.md).
@@ -160,7 +160,7 @@ DNS setup for this host: [tax-balizero-dns-setup.md](tax-balizero-dns-setup.md).
 | Repo source         | `prime` rewrite in `apps/mouth/src/proxy.ts`; `apps/mouth/src/app/prime/`; chat route `apps/mouth/src/app/api/prime/chat/route.ts` |
 | Data categories     | Chat questions forwarded to the backend API; property proposal pages reached by token link                                         |
 | Privacy policy      | https://balizero.com/privacy                                                                                                       |
-| Responsible officer | `<to be named by the owner>`                                                                                                       |
+| Responsible officer | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com`                                          |
 | KBLI                | To confirm                                                                                                                         |
 
 ### 3.7 Backend API: Fly app nuzantara-rag
@@ -173,7 +173,7 @@ DNS setup for this host: [tax-balizero-dns-setup.md](tax-balizero-dns-setup.md).
 | Hosting and region  | Fly.io app `nuzantara-rag`, `primary_region = 'sin'` (Singapore), processes `api` and `rag` (`apps/backend-rag/fly.toml`) |
 | Data categories     | All categories in 3.1 to 3.6; stores listed in the table at the start of section 3                                        |
 | Privacy policy      | https://balizero.com/privacy                                                                                              |
-| Responsible officer | `<to be named by the owner>`                                                                                              |
+| Responsible officer | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com`                                 |
 | KBLI                | To confirm                                                                                                                |
 
 The API answers `GET` only: `curl -I` (HEAD) returns 404 on `/health` while `GET /health`
@@ -187,7 +187,7 @@ Channel: OSS-RBA (https://oss.go.id), integrated with the Komdigi PSE portal
 - [ ] Active NIB with a KBLI coherent with the systems in section 3 (KBLI to confirm)
 - [ ] Akta pendirian and SK Kemenkumham
 - [ ] Company NPWP
-- [ ] Responsible officer: `<to be named by the owner>`, with position and a reachable contact
+- [ ] Responsible officer: `Company director per the akta (the owner), position Direktur, contact zero@balizero.com`, with position and a reachable contact
 - [ ] System description and technology, one per system (section 3)
 - [ ] Domain or URL for every system, web and app filed separately (section 3)
 - [ ] Server and data location (section 3 storage table and each system's hosting row)

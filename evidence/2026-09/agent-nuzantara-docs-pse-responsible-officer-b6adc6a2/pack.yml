@@ -1,0 +1,57 @@
+brief_ref: evidence/2026-09/agent-nuzantara-docs-pse-responsible-officer-b6adc6a2/brief.yml
+task_id: pse-responsible-officer
+gear: 1
+date: 2026-09-11
+machine: Pro
+machine_note: worktree /Users/nuzantara/nuzantara/.worktrees/docs-pse-responsible-officer, branch agent/nuzantara/docs/pse-responsible-officer
+floor: >-
+  compute_floor = 1, floor source "none" (python3 scripts/evidence_pack_lint.py
+  --changed-files-file <git diff --name-only origin/main -- list> --numstat-file
+  <git diff --numstat origin/main --> --print-floor); measured 1 file +20/-20,
+  well below SIZE_GEAR2_THRESHOLD 400; no hot-zone path.
+lanes:
+  - lane: pse-responsible-officer
+    role: build
+    seat: claude-sonnet-5 (subagent dispatched by the Pro imperator session, docs lane)
+pii_scan: clean
+dissent: []
+receipts:
+  - claim: The old placeholder no longer appears anywhere in the file.
+    cmd: grep -c "to be named by the owner" docs/ops/pse-registration-balizero.md
+    result: "0"
+    exit: 0
+    ts: "2026-09-11T01:13:06Z"
+    seat: claude-sonnet-5
+  - claim: The new responsible-officer text appears exactly 9 times (8 table rows + 1 checklist line).
+    cmd: grep -c "Company director per the akta" docs/ops/pse-registration-balizero.md
+    result: "9"
+    exit: 0
+    ts: "2026-09-11T01:13:06Z"
+    seat: claude-sonnet-5
+  - claim: The company-level table's "owner decision" source column now reads the 2026-09-11 ruling.
+    cmd: grep -n "owner ruling 2026-09-11" docs/ops/pse-registration-balizero.md
+    result: "52:| Responsible officer     | `Company director per the akta (the owner), position Direktur, contact zero@balizero.com` | owner ruling 2026-09-11                        |"
+    exit: 0
+    ts: "2026-09-11T01:13:06Z"
+    seat: claude-sonnet-5
+  - claim: Prettier accepts the file as correctly formatted after --write.
+    cmd: npx prettier --check docs/ops/pse-registration-balizero.md
+    result: "All matched files use Prettier code style!"
+    exit: 0
+    ts: "2026-09-11T01:13:06Z"
+    seat: claude-sonnet-5
+  - claim: Evidence pack floor for this change is 1 (docs-only, small diff, no hot-zone path).
+    cmd: git diff --numstat origin/main -- ; python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/x.txt --numstat-file /tmp/numstat.txt
+    result: "1 file +20/-20; floor=1, floor-source=none"
+    exit: 0
+    ts: "2026-09-11T01:13:06Z"
+    seat: claude-sonnet-5
+outcome: >-
+  docs/ops/pse-registration-balizero.md: every occurrence (9) of the literal
+  placeholder `<to be named by the owner>` replaced with the owner's
+  2026-09-11 ruling naming the company director (per the akta, position
+  Direktur, contact zero@balizero.com) as responsible officer for every
+  system. The company-level table's source column changed from "owner
+  decision" to "owner ruling 2026-09-11" to reflect the field is now settled.
+  Pure text substitution, no regulatory claim added, no other content touched.
+  Prettier re-ran clean after edits.
