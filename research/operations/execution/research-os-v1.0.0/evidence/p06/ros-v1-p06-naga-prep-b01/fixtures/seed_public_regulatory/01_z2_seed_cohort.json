@@ -1,0 +1,1502 @@
+{
+  "synthetic": true,
+  "fixture_category": "seed_public_regulatory",
+  "adversarial_case_ref": "R1-build-spec.md §5c -- the Z2 seed cohort: fully-sourced canonical fixtures exercising D4's admitted path and D3's reader answer path.",
+  "expected_behavior": "Every record's `record`+`source` pair must be Admitted (never Excluded) by research_os_admission_reference.admit(), and each record's `canonical.claim`/`canonical.evidence` must independently validate against claim.schema.json/evidence.schema.json with a real, recomputed object_hash. Every regulation number, date, IDR/USD figure and person/company name in this file is INVENTED -- each record and the file itself carry `\"synthetic\": true`. `canonical.claim` carries the com.balizero.research-os.naga subject_key extension (R1-build-spec.md §1).",
+  "records": [
+    {
+      "synthetic": true,
+      "label": "kitas-renewal-fee-01",
+      "record": {
+        "id": "7c2521da-8233-585b-a5f3-0c06baca4156",
+        "document_id": "https://example.go.id/permenkumham-synth-77-2026",
+        "document_version_id": "v1-2026-01-01",
+        "document_content_hash": "a9636ceff890f42220ec13d58365d8427f07d7f86eb98c4f285ad298de57b965",
+        "statement": {
+          "subject_ref": {
+            "object_kind": "regulation",
+            "object_id": "permenkumham-synth-77-2026"
+          },
+          "predicate": "naga.fee_schedule.kitas_renewal",
+          "object_ref_or_value": 1234567,
+          "value_span": {
+            "start": 95,
+            "end": 104
+          },
+          "derived_from_span": true
+        },
+        "source_span": {
+          "locator": "https://example.go.id/permenkumham-synth-77-2026#pasal-9-ayat-3",
+          "quote_hash": "02a921fc5161b214b6cdcf4d36a5f8a12101c170b15ae09a8565c21123b8bc04",
+          "quoted_text": "Setiap perpanjangan Kartu Izin Tinggal Terbatas (KITAS) dikenakan biaya administrasi sebesar Rp1.234.567 (satu juta dua ratus tiga puluh empat ribu lima ratus enam puluh tujuh rupiah) per permohonan"
+        },
+        "source_event_ref": {
+          "event_id": "06850cdf-87a9-5ef9-a307-3c1859c3812e",
+          "object_hash": "4a6635e3762863bba50d17033a5b756d93865327f379ea5789e7ac96fec6a28d"
+        },
+        "classification": {
+          "rights": "public_domain_government_publication",
+          "risk_class": "green",
+          "sensitivity": "public"
+        },
+        "retention": {
+          "retention_class": "public_record",
+          "legal_hold": false
+        },
+        "review": {
+          "state": "unreviewed"
+        },
+        "manifest_family_id": "naga.evidence.kitas-renewal-fee-01",
+        "credibility_score": 0.86,
+        "relation": "supports",
+        "fetched_at": "2026-01-06T03:00:00Z",
+        "legacy_evidence_serial_id": 1001,
+        "naga_session_id": "cbc7d8f9-f0f2-5c67-b2e1-25d01733fb9c"
+      },
+      "source": {
+        "body": "SYNTHETIC GAZETTE TEXT. Peraturan Menteri Hukum dan HAM Republik Indonesia Nomor 77 Tahun 2026 tentang Biaya Perpanjangan KITAS (fiktif, untuk pengujian). Pasal 9 ayat (3): Setiap perpanjangan Kartu Izin Tinggal Terbatas (KITAS) dikenakan biaya administrasi sebesar Rp1.234.567 (satu juta dua ratus tiga puluh empat ribu lima ratus enam puluh tujuh rupiah) per permohonan, berlaku sejak 1 Januari 2026.",
+        "intel_events": {
+          "06850cdf-87a9-5ef9-a307-3c1859c3812e": {
+            "event_id": "06850cdf-87a9-5ef9-a307-3c1859c3812e",
+            "contract_version": "research-os/v1.0.0",
+            "tenant": "bali-zero",
+            "event_type": "naga.regulatory_document.fetched",
+            "producer": {
+              "name": "naga.orchestrator.v1",
+              "version": "1.0.0",
+              "machine_class": "synthetic-fixture"
+            },
+            "source": {
+              "uri": "https://example.go.id/permenkumham-synth-77-2026",
+              "source_type": "government.gazette",
+              "jurisdiction": "id"
+            },
+            "times": {
+              "observed_at": "2026-01-06T03:00:00Z",
+              "ingested_at": "2026-01-06T03:05:00Z"
+            },
+            "identity": {
+              "content_hash": "a9636ceff890f42220ec13d58365d8427f07d7f86eb98c4f285ad298de57b965",
+              "idempotency_key": "naga.evidence.kitas-renewal-fee-01"
+            },
+            "classification": {
+              "risk_class": "green",
+              "sensitivity": "public"
+            },
+            "lineage": {
+              "pipeline_run_id": "cbc7d8f9-f0f2-5c67-b2e1-25d01733fb9c",
+              "input_event_refs": []
+            },
+            "payload_ref": {
+              "ref_type": "reference",
+              "uri": "https://example.go.id/permenkumham-synth-77-2026",
+              "content_hash": "a9636ceff890f42220ec13d58365d8427f07d7f86eb98c4f285ad298de57b965"
+            },
+            "retention": {
+              "retention_class": "public_record",
+              "legal_hold": false
+            },
+            "object_hash": "4a6635e3762863bba50d17033a5b756d93865327f379ea5789e7ac96fec6a28d"
+          }
+        },
+        "document_versions": {
+          "v1-2026-01-01": {
+            "document_id": "https://example.go.id/permenkumham-synth-77-2026",
+            "content_hash": "a9636ceff890f42220ec13d58365d8427f07d7f86eb98c4f285ad298de57b965"
+          }
+        },
+        "locators": {
+          "https://example.go.id/permenkumham-synth-77-2026#pasal-9-ayat-3": {
+            "start": 173,
+            "end": 371
+          }
+        }
+      },
+      "canonical": {
+        "claim": {
+          "claim_id": "eb70bd34-831f-5c8d-a4cc-502092d58248",
+          "claim_family_id": "4d2d17da-1d21-55d6-b921-97a01cfb6877",
+          "contract_version": "research-os/v1.0.0",
+          "tenant": "bali-zero",
+          "statement": {
+            "subject_ref": {
+              "object_kind": "regulation",
+              "object_id": "permenkumham-synth-77-2026",
+              "object_hash": "6dd61743bf6dfaeecc35e1469f5cfc3dafafceadacabe6510b9bd6b16213b5ac"
+            },
+            "predicate": "naga.fee_schedule.kitas_renewal",
+            "object_ref_or_value": 1234567,
+            "unit": "per_application",
+            "currency": "IDR"
+          },
+          "scope": {
+            "domain": "visa.synthetic",
+            "jurisdiction": "national (synthetic)"
+          },
+          "time": {
+            "valid_from": "2026-01-01T00:00:00Z",
+            "valid_to": null,
+            "recorded_at": "2026-09-11T00:00:00Z"
+          },
+          "status": "supported",
+          "evidence_refs": [
+            {
+              "evidence_id": "2de03a18-78f3-5dc5-b028-73d802dbcea4",
+              "object_hash": "4d1f1af13716ca1002ee6ef0c5122434a44b0b1b5e8384d408708ab97646fd9c",
+              "stance": "supports"
+            }
+          ],
+          "confidence": {
+            "score": 0.86,
+            "method": "naga.claim_scorer.v1"
+          },
+          "classification": {
+            "risk_class": "green",
+            "sensitivity": "public"
+          },
+          "review": {
+            "state": "unreviewed"
+          },
+          "lineage": {
+            "run_id": "cbc7d8f9-f0f2-5c67-b2e1-25d01733fb9c",
+            "extractor": "naga.orchestrator.v1",
+            "input_claim_refs": []
+          },
+          "retention": {
+            "retention_class": "public_record",
+            "legal_hold": false
+          },
+          "extensions": {
+            "com.balizero.research-os.naga": {
+              "extension_version": "1.0.0",
+              "payload": {
+                "subject_key": "id/permenkumham-synth-77-2026/pasal-9-ayat-3",
+                "jurisdiction": "id",
+                "instrument": "permenkumham-synth-77-2026",
+                "provision": "pasal-9-ayat-3"
+              }
+            }
+          },
+          "object_hash": "e1f793d89ca524d4955a1e56ad6517bec12d36efa00b9faf28e9b2479751148c"
+        },
+        "evidence": {
+          "evidence_id": "2de03a18-78f3-5dc5-b028-73d802dbcea4",
+          "evidence_family_id": "naga.evidence.kitas-renewal-fee-01",
+          "contract_version": "research-os/v1.0.0",
+          "tenant": "bali-zero",
+          "source_event_ref": {
+            "event_id": "06850cdf-87a9-5ef9-a307-3c1859c3812e",
+            "object_hash": "4a6635e3762863bba50d17033a5b756d93865327f379ea5789e7ac96fec6a28d"
+          },
+          "document_id": "https://example.go.id/permenkumham-synth-77-2026",
+          "document_version_id": "v1-2026-01-01",
+          "document_content_hash": "a9636ceff890f42220ec13d58365d8427f07d7f86eb98c4f285ad298de57b965",
+          "source_span": {
+            "locator": "https://example.go.id/permenkumham-synth-77-2026#pasal-9-ayat-3",
+            "quote_hash": "02a921fc5161b214b6cdcf4d36a5f8a12101c170b15ae09a8565c21123b8bc04"
+          },
+          "source_tier": "naga.tier.high",
+          "stance": "supports",
+          "times": {
+            "observed_at": "2026-01-06T03:00:00Z",
+            "recorded_at": "2026-09-11T00:00:00Z"
+          },
+          "provenance": {
+            "extractor": "naga.orchestrator.v1",
+            "extractor_version": "1.0.0",
+            "run_id": "cbc7d8f9-f0f2-5c67-b2e1-25d01733fb9c",
+            "extraction_input_hash": "30129f922945639941e8d6ccde680b2fe2e2d5a2fabbc0c6f20f4e407c5c1451"
+          },
+          "classification": {
+            "risk_class": "green",
+            "sensitivity": "public",
+            "rights": "public_domain_government_publication"
+          },
+          "review_state": "unreviewed",
+          "retention": {
+            "retention_class": "public_record",
+            "legal_hold": false
+          },
+          "extensions": {
+            "com.balizero.research-os.naga.legacy": {
+              "extension_version": "1.0.0",
+              "payload": {
+                "legacy_evidence_serial_id": 1001
+              }
+            }
+          },
+          "object_hash": "4d1f1af13716ca1002ee6ef0c5122434a44b0b1b5e8384d408708ab97646fd9c"
+        },
+        "intel_event": {
+          "event_id": "06850cdf-87a9-5ef9-a307-3c1859c3812e",
+          "contract_version": "research-os/v1.0.0",
+          "tenant": "bali-zero",
+          "event_type": "naga.regulatory_document.fetched",
+          "producer": {
+            "name": "naga.orchestrator.v1",
+            "version": "1.0.0",
+            "machine_class": "synthetic-fixture"
+          },
+          "source": {
+            "uri": "https://example.go.id/permenkumham-synth-77-2026",
+            "source_type": "government.gazette",
+            "jurisdiction": "id"
+          },
+          "times": {
+            "observed_at": "2026-01-06T03:00:00Z",
+            "ingested_at": "2026-01-06T03:05:00Z"
+          },
+          "identity": {
+            "content_hash": "a9636ceff890f42220ec13d58365d8427f07d7f86eb98c4f285ad298de57b965",
+            "idempotency_key": "naga.evidence.kitas-renewal-fee-01"
+          },
+          "classification": {
+            "risk_class": "green",
+            "sensitivity": "public"
+          },
+          "lineage": {
+            "pipeline_run_id": "cbc7d8f9-f0f2-5c67-b2e1-25d01733fb9c",
+            "input_event_refs": []
+          },
+          "payload_ref": {
+            "ref_type": "reference",
+            "uri": "https://example.go.id/permenkumham-synth-77-2026",
+            "content_hash": "a9636ceff890f42220ec13d58365d8427f07d7f86eb98c4f285ad298de57b965"
+          },
+          "retention": {
+            "retention_class": "public_record",
+            "legal_hold": false
+          },
+          "object_hash": "4a6635e3762863bba50d17033a5b756d93865327f379ea5789e7ac96fec6a28d"
+        }
+      }
+    },
+    {
+      "synthetic": true,
+      "label": "pma-minimum-capital-02",
+      "record": {
+        "id": "f4d5ba6e-8268-5086-819e-7d1def316e0a",
+        "document_id": "https://example.go.id/pp-synth-58-2026",
+        "document_version_id": "v1-2026-02-01",
+        "document_content_hash": "cd91905c3f634560484bf3d231d8d310b058ee98c2528b9c9019175c578cdfa7",
+        "statement": {
+          "subject_ref": {
+            "object_kind": "regulation",
+            "object_id": "pp-synth-58-2026"
+          },
+          "predicate": "naga.eligibility_rule.min_capital",
+          "object_ref_or_value": 9876543210,
+          "value_span": {
+            "start": 87,
+            "end": 100
+          },
+          "derived_from_span": true
+        },
+        "source_span": {
+          "locator": "https://example.go.id/pp-synth-58-2026#pasal-4-ayat-1",
+          "quote_hash": "83aa64d4796c58b3e88d506df18ecf3d96d7069f0a5db0a0f9967277e032f03d",
+          "quoted_text": "Perseroan Terbatas Penanaman Modal Asing wajib memiliki modal disetor paling sedikit Rp9.876.543.210 (sembilan miliar delapan ratus tujuh puluh enam juta lima ratus empat puluh tiga ribu dua ratus sepuluh rupiah) per bidang usaha per lokasi"
+        },
+        "source_event_ref": {
+          "event_id": "ff5a0ef9-516a-5e1f-add2-ebf15cad8c82",
+          "object_hash": "e79b859cfe5bddacfeff35fccaa753a6b15a3e1242fab3fceeb99e183b77a0a6"
+        },
+        "classification": {
+          "rights": "public_domain_government_publication",
+          "risk_class": "green",
+          "sensitivity": "public"
+        },
+        "retention": {
+          "retention_class": "public_record",
+          "legal_hold": false
+        },
+        "review": {
+          "state": "unreviewed"
+        },
+        "manifest_family_id": "naga.evidence.pma-minimum-capital-02",
+        "credibility_score": 0.91,
+        "relation": "supports",
+        "fetched_at": "2026-02-03T09:00:00Z",
+        "legacy_evidence_serial_id": 1002,
+        "naga_session_id": "b8fe340c-3216-57e6-8aa3-100d63ead289"
+      },
+      "source": {
+        "body": "SYNTHETIC GAZETTE TEXT. Peraturan Pemerintah Nomor 58 Tahun 2026 tentang Modal Disetor Penanaman Modal Asing (fiktif, untuk pengujian). Pasal 4 ayat (1): Perseroan Terbatas Penanaman Modal Asing wajib memiliki modal disetor paling sedikit Rp9.876.543.210 (sembilan miliar delapan ratus tujuh puluh enam juta lima ratus empat puluh tiga ribu dua ratus sepuluh rupiah) per bidang usaha per lokasi, kecuali diatur lain dalam lampiran KBLI.",
+        "intel_events": {
+          "ff5a0ef9-516a-5e1f-add2-ebf15cad8c82": {
+            "event_id": "ff5a0ef9-516a-5e1f-add2-ebf15cad8c82",
+            "contract_version": "research-os/v1.0.0",
+            "tenant": "bali-zero",
+            "event_type": "naga.regulatory_document.fetched",
+            "producer": {
+              "name": "naga.orchestrator.v1",
+              "version": "1.0.0",
+              "machine_class": "synthetic-fixture"
+            },
+            "source": {
+              "uri": "https://example.go.id/pp-synth-58-2026",
+              "source_type": "government.gazette",
+              "jurisdiction": "id"
+            },
+            "times": {
+              "observed_at": "2026-02-03T09:00:00Z",
+              "ingested_at": "2026-02-03T09:05:00Z"
+            },
+            "identity": {
+              "content_hash": "cd91905c3f634560484bf3d231d8d310b058ee98c2528b9c9019175c578cdfa7",
+              "idempotency_key": "naga.evidence.pma-minimum-capital-02"
+            },
+            "classification": {
+              "risk_class": "green",
+              "sensitivity": "public"
+            },
+            "lineage": {
+              "pipeline_run_id": "b8fe340c-3216-57e6-8aa3-100d63ead289",
+              "input_event_refs": []
+            },
+            "payload_ref": {
+              "ref_type": "reference",
+              "uri": "https://example.go.id/pp-synth-58-2026",
+              "content_hash": "cd91905c3f634560484bf3d231d8d310b058ee98c2528b9c9019175c578cdfa7"
+            },
+            "retention": {
+              "retention_class": "public_record",
+              "legal_hold": false
+            },
+            "object_hash": "e79b859cfe5bddacfeff35fccaa753a6b15a3e1242fab3fceeb99e183b77a0a6"
+          }
+        },
+        "document_versions": {
+          "v1-2026-02-01": {
+            "document_id": "https://example.go.id/pp-synth-58-2026",
+            "content_hash": "cd91905c3f634560484bf3d231d8d310b058ee98c2528b9c9019175c578cdfa7"
+          }
+        },
+        "locators": {
+          "https://example.go.id/pp-synth-58-2026#pasal-4-ayat-1": {
+            "start": 154,
+            "end": 394
+          }
+        }
+      },
+      "canonical": {
+        "claim": {
+          "claim_id": "65cdd1c3-cba8-5084-993f-a55fc29b8763",
+          "claim_family_id": "29b9d556-0f0c-5b97-a519-64d9b0906889",
+          "contract_version": "research-os/v1.0.0",
+          "tenant": "bali-zero",
+          "statement": {
+            "subject_ref": {
+              "object_kind": "regulation",
+              "object_id": "pp-synth-58-2026",
+              "object_hash": "21e8a7700800fd99c47dafd0109969a1b1024d99052fe7424987c17772b7258a"
+            },
+            "predicate": "naga.eligibility_rule.min_capital",
+            "object_ref_or_value": 9876543210,
+            "currency": "IDR"
+          },
+          "scope": {
+            "domain": "company.synthetic",
+            "jurisdiction": "national (synthetic)"
+          },
+          "time": {
+            "valid_from": "2026-02-01T00:00:00Z",
+            "valid_to": null,
+            "recorded_at": "2026-09-11T00:00:00Z"
+          },
+          "status": "supported",
+          "evidence_refs": [
+            {
+              "evidence_id": "a5a45e81-d3dd-56b5-aa0c-4fa5e39e2ac5",
+              "object_hash": "77c46fdff2a13c51ffacaa18f1ea715f16b5cb1bdb50c4098af36d50f8ec3857",
+              "stance": "supports"
+            }
+          ],
+          "confidence": {
+            "score": 0.91,
+            "method": "naga.claim_scorer.v1"
+          },
+          "classification": {
+            "risk_class": "green",
+            "sensitivity": "public"
+          },
+          "review": {
+            "state": "unreviewed"
+          },
+          "lineage": {
+            "run_id": "b8fe340c-3216-57e6-8aa3-100d63ead289",
+            "extractor": "naga.orchestrator.v1",
+            "input_claim_refs": []
+          },
+          "retention": {
+            "retention_class": "public_record",
+            "legal_hold": false
+          },
+          "extensions": {
+            "com.balizero.research-os.naga": {
+              "extension_version": "1.0.0",
+              "payload": {
+                "subject_key": "id/pp-synth-58-2026/pasal-4-ayat-1",
+                "jurisdiction": "id",
+                "instrument": "pp-synth-58-2026",
+                "provision": "pasal-4-ayat-1"
+              }
+            }
+          },
+          "object_hash": "e076cd5de6009373fb46444c3c4f5b632e0e7246eafca960960abe7418e9c306"
+        },
+        "evidence": {
+          "evidence_id": "a5a45e81-d3dd-56b5-aa0c-4fa5e39e2ac5",
+          "evidence_family_id": "naga.evidence.pma-minimum-capital-02",
+          "contract_version": "research-os/v1.0.0",
+          "tenant": "bali-zero",
+          "source_event_ref": {
+            "event_id": "ff5a0ef9-516a-5e1f-add2-ebf15cad8c82",
+            "object_hash": "e79b859cfe5bddacfeff35fccaa753a6b15a3e1242fab3fceeb99e183b77a0a6"
+          },
+          "document_id": "https://example.go.id/pp-synth-58-2026",
+          "document_version_id": "v1-2026-02-01",
+          "document_content_hash": "cd91905c3f634560484bf3d231d8d310b058ee98c2528b9c9019175c578cdfa7",
+          "source_span": {
+            "locator": "https://example.go.id/pp-synth-58-2026#pasal-4-ayat-1",
+            "quote_hash": "83aa64d4796c58b3e88d506df18ecf3d96d7069f0a5db0a0f9967277e032f03d"
+          },
+          "source_tier": "naga.tier.high",
+          "stance": "supports",
+          "times": {
+            "observed_at": "2026-02-03T09:00:00Z",
+            "recorded_at": "2026-09-11T00:00:00Z"
+          },
+          "provenance": {
+            "extractor": "naga.orchestrator.v1",
+            "extractor_version": "1.0.0",
+            "run_id": "b8fe340c-3216-57e6-8aa3-100d63ead289",
+            "extraction_input_hash": "d38610bb6acb074db5966fb0993cf70f97d41c1997d0326341a27a35c73e6472"
+          },
+          "classification": {
+            "risk_class": "green",
+            "sensitivity": "public",
+            "rights": "public_domain_government_publication"
+          },
+          "review_state": "unreviewed",
+          "retention": {
+            "retention_class": "public_record",
+            "legal_hold": false
+          },
+          "extensions": {
+            "com.balizero.research-os.naga.legacy": {
+              "extension_version": "1.0.0",
+              "payload": {
+                "legacy_evidence_serial_id": 1002
+              }
+            }
+          },
+          "object_hash": "77c46fdff2a13c51ffacaa18f1ea715f16b5cb1bdb50c4098af36d50f8ec3857"
+        },
+        "intel_event": {
+          "event_id": "ff5a0ef9-516a-5e1f-add2-ebf15cad8c82",
+          "contract_version": "research-os/v1.0.0",
+          "tenant": "bali-zero",
+          "event_type": "naga.regulatory_document.fetched",
+          "producer": {
+            "name": "naga.orchestrator.v1",
+            "version": "1.0.0",
+            "machine_class": "synthetic-fixture"
+          },
+          "source": {
+            "uri": "https://example.go.id/pp-synth-58-2026",
+            "source_type": "government.gazette",
+            "jurisdiction": "id"
+          },
+          "times": {
+            "observed_at": "2026-02-03T09:00:00Z",
+            "ingested_at": "2026-02-03T09:05:00Z"
+          },
+          "identity": {
+            "content_hash": "cd91905c3f634560484bf3d231d8d310b058ee98c2528b9c9019175c578cdfa7",
+            "idempotency_key": "naga.evidence.pma-minimum-capital-02"
+          },
+          "classification": {
+            "risk_class": "green",
+            "sensitivity": "public"
+          },
+          "lineage": {
+            "pipeline_run_id": "b8fe340c-3216-57e6-8aa3-100d63ead289",
+            "input_event_refs": []
+          },
+          "payload_ref": {
+            "ref_type": "reference",
+            "uri": "https://example.go.id/pp-synth-58-2026",
+            "content_hash": "cd91905c3f634560484bf3d231d8d310b058ee98c2528b9c9019175c578cdfa7"
+          },
+          "retention": {
+            "retention_class": "public_record",
+            "legal_hold": false
+          },
+          "object_hash": "e79b859cfe5bddacfeff35fccaa753a6b15a3e1242fab3fceeb99e183b77a0a6"
+        }
+      }
+    },
+    {
+      "synthetic": true,
+      "label": "lkpm-filing-deadline-03",
+      "record": {
+        "id": "679e3ca7-a7f2-5065-9b39-3595845f6376",
+        "document_id": "https://example.go.id/permen-bkpm-synth-9-2026",
+        "document_version_id": "v1-2026-04-01",
+        "document_content_hash": "0fb619bf4b1ab49f083da462318d71f2ac2ea82202080c24ca2335d6b6894ac3",
+        "statement": {
+          "subject_ref": {
+            "object_kind": "regulation",
+            "object_id": "permen-bkpm-synth-9-2026"
+          },
+          "predicate": "naga.compliance_deadline.lkpm_filing",
+          "object_ref_or_value": "paling lambat tanggal 23 (dua puluh tiga) bulan ketujuh berikutnya",
+          "value_span": {
+            "start": 75,
+            "end": 141
+          },
+          "derived_from_span": true
+        },
+        "source_span": {
+          "locator": "https://example.go.id/permen-bkpm-synth-9-2026#pasal-12-ayat-2",
+          "quote_hash": "841cc2214dfbad08bbe9e4aa8c17bfe99d270116c57876376c3ffe67ddcf887e",
+          "quoted_text": "Laporan Kegiatan Penanaman Modal (LKPM) wajib disampaikan setiap triwulan, paling lambat tanggal 23 (dua puluh tiga) bulan ketujuh berikutnya setelah periode pelaporan berakhir"
+        },
+        "source_event_ref": {
+          "event_id": "6860fcc0-c2db-5b42-897d-e7e3383552c4",
+          "object_hash": "92fe629b29f945eac4f97887541958696c732fb2f35badf85228d3de4b8845c0"
+        },
+        "classification": {
+          "rights": "public_domain_government_publication",
+          "risk_class": "green",
+          "sensitivity": "public"
+        },
+        "retention": {
+          "retention_class": "public_record",
+          "legal_hold": false
+        },
+        "review": {
+          "state": "unreviewed"
+        },
+        "manifest_family_id": "naga.evidence.lkpm-filing-deadline-03",
+        "credibility_score": 0.62,
+        "relation": "supports",
+        "fetched_at": "2026-04-02T05:30:00Z",
+        "legacy_evidence_serial_id": 1003,
+        "naga_session_id": "cd991d76-0b01-5a7d-8b81-f44ec0094517"
+      },
+      "source": {
+        "body": "SYNTHETIC GAZETTE TEXT. Peraturan Kepala BKPM Nomor 9 Tahun 2026 tentang Laporan Kegiatan Penanaman Modal (fiktif, untuk pengujian). Pasal 12 ayat (2): Laporan Kegiatan Penanaman Modal (LKPM) wajib disampaikan setiap triwulan, paling lambat tanggal 23 (dua puluh tiga) bulan ketujuh berikutnya setelah periode pelaporan berakhir.",
+        "intel_events": {
+          "6860fcc0-c2db-5b42-897d-e7e3383552c4": {
+            "event_id": "6860fcc0-c2db-5b42-897d-e7e3383552c4",
+            "contract_version": "research-os/v1.0.0",
+            "tenant": "bali-zero",
+            "event_type": "naga.regulatory_document.fetched",
+            "producer": {
+              "name": "naga.orchestrator.v1",
+              "version": "1.0.0",
+              "machine_class": "synthetic-fixture"
+            },
+            "source": {
+              "uri": "https://example.go.id/permen-bkpm-synth-9-2026",
+              "source_type": "government.gazette",
+              "jurisdiction": "id"
+            },
+            "times": {
+              "observed_at": "2026-04-02T05:30:00Z",
+              "ingested_at": "2026-04-02T05:35:00Z"
+            },
+            "identity": {
+              "content_hash": "0fb619bf4b1ab49f083da462318d71f2ac2ea82202080c24ca2335d6b6894ac3",
+              "idempotency_key": "naga.evidence.lkpm-filing-deadline-03"
+            },
+            "classification": {
+              "risk_class": "green",
+              "sensitivity": "public"
+            },
+            "lineage": {
+              "pipeline_run_id": "cd991d76-0b01-5a7d-8b81-f44ec0094517",
+              "input_event_refs": []
+            },
+            "payload_ref": {
+              "ref_type": "reference",
+              "uri": "https://example.go.id/permen-bkpm-synth-9-2026",
+              "content_hash": "0fb619bf4b1ab49f083da462318d71f2ac2ea82202080c24ca2335d6b6894ac3"
+            },
+            "retention": {
+              "retention_class": "public_record",
+              "legal_hold": false
+            },
+            "object_hash": "92fe629b29f945eac4f97887541958696c732fb2f35badf85228d3de4b8845c0"
+          }
+        },
+        "document_versions": {
+          "v1-2026-04-01": {
+            "document_id": "https://example.go.id/permen-bkpm-synth-9-2026",
+            "content_hash": "0fb619bf4b1ab49f083da462318d71f2ac2ea82202080c24ca2335d6b6894ac3"
+          }
+        },
+        "locators": {
+          "https://example.go.id/permen-bkpm-synth-9-2026#pasal-12-ayat-2": {
+            "start": 152,
+            "end": 328
+          }
+        }
+      },
+      "canonical": {
+        "claim": {
+          "claim_id": "c1bec256-aed6-5fcd-bfde-6de01ba9c489",
+          "claim_family_id": "481eb851-0675-5822-9d1a-88193a5b264f",
+          "contract_version": "research-os/v1.0.0",
+          "tenant": "bali-zero",
+          "statement": {
+            "subject_ref": {
+              "object_kind": "regulation",
+              "object_id": "permen-bkpm-synth-9-2026",
+              "object_hash": "e1108477e0857c832ac26e5cd6891df055113763845295da439a65b5a446c558"
+            },
+            "predicate": "naga.compliance_deadline.lkpm_filing",
+            "object_ref_or_value": "paling lambat tanggal 23 (dua puluh tiga) bulan ketujuh berikutnya"
+          },
+          "scope": {
+            "domain": "compliance.synthetic",
+            "jurisdiction": "national (synthetic)"
+          },
+          "time": {
+            "valid_from": "2026-04-01T00:00:00Z",
+            "valid_to": null,
+            "recorded_at": "2026-09-11T00:00:00Z"
+          },
+          "status": "supported",
+          "evidence_refs": [
+            {
+              "evidence_id": "9f01af10-da15-5b7d-855f-cea987a9015e",
+              "object_hash": "93f0378d9177b3f0aecf392691adceb18c92e43474517d480244bd013de19a18",
+              "stance": "supports"
+            }
+          ],
+          "confidence": {
+            "score": 0.62,
+            "method": "naga.claim_scorer.v1"
+          },
+          "classification": {
+            "risk_class": "green",
+            "sensitivity": "public"
+          },
+          "review": {
+            "state": "unreviewed"
+          },
+          "lineage": {
+            "run_id": "cd991d76-0b01-5a7d-8b81-f44ec0094517",
+            "extractor": "naga.orchestrator.v1",
+            "input_claim_refs": []
+          },
+          "retention": {
+            "retention_class": "public_record",
+            "legal_hold": false
+          },
+          "extensions": {
+            "com.balizero.research-os.naga": {
+              "extension_version": "1.0.0",
+              "payload": {
+                "subject_key": "id/permen-bkpm-synth-9-2026/pasal-12-ayat-2",
+                "jurisdiction": "id",
+                "instrument": "permen-bkpm-synth-9-2026",
+                "provision": "pasal-12-ayat-2"
+              }
+            }
+          },
+          "object_hash": "496b4ab3acd51964b7591e295093bbd65260139cf30e64d39696f5ff70cd1232"
+        },
+        "evidence": {
+          "evidence_id": "9f01af10-da15-5b7d-855f-cea987a9015e",
+          "evidence_family_id": "naga.evidence.lkpm-filing-deadline-03",
+          "contract_version": "research-os/v1.0.0",
+          "tenant": "bali-zero",
+          "source_event_ref": {
+            "event_id": "6860fcc0-c2db-5b42-897d-e7e3383552c4",
+            "object_hash": "92fe629b29f945eac4f97887541958696c732fb2f35badf85228d3de4b8845c0"
+          },
+          "document_id": "https://example.go.id/permen-bkpm-synth-9-2026",
+          "document_version_id": "v1-2026-04-01",
+          "document_content_hash": "0fb619bf4b1ab49f083da462318d71f2ac2ea82202080c24ca2335d6b6894ac3",
+          "source_span": {
+            "locator": "https://example.go.id/permen-bkpm-synth-9-2026#pasal-12-ayat-2",
+            "quote_hash": "841cc2214dfbad08bbe9e4aa8c17bfe99d270116c57876376c3ffe67ddcf887e"
+          },
+          "source_tier": "naga.tier.medium",
+          "stance": "supports",
+          "times": {
+            "observed_at": "2026-04-02T05:30:00Z",
+            "recorded_at": "2026-09-11T00:00:00Z"
+          },
+          "provenance": {
+            "extractor": "naga.orchestrator.v1",
+            "extractor_version": "1.0.0",
+            "run_id": "cd991d76-0b01-5a7d-8b81-f44ec0094517",
+            "extraction_input_hash": "9ca4076e45092cff4872cd7f7dabd84364bdf04284ea8e9ec8918bc9732398e4"
+          },
+          "classification": {
+            "risk_class": "green",
+            "sensitivity": "public",
+            "rights": "public_domain_government_publication"
+          },
+          "review_state": "unreviewed",
+          "retention": {
+            "retention_class": "public_record",
+            "legal_hold": false
+          },
+          "extensions": {
+            "com.balizero.research-os.naga.legacy": {
+              "extension_version": "1.0.0",
+              "payload": {
+                "legacy_evidence_serial_id": 1003
+              }
+            }
+          },
+          "object_hash": "93f0378d9177b3f0aecf392691adceb18c92e43474517d480244bd013de19a18"
+        },
+        "intel_event": {
+          "event_id": "6860fcc0-c2db-5b42-897d-e7e3383552c4",
+          "contract_version": "research-os/v1.0.0",
+          "tenant": "bali-zero",
+          "event_type": "naga.regulatory_document.fetched",
+          "producer": {
+            "name": "naga.orchestrator.v1",
+            "version": "1.0.0",
+            "machine_class": "synthetic-fixture"
+          },
+          "source": {
+            "uri": "https://example.go.id/permen-bkpm-synth-9-2026",
+            "source_type": "government.gazette",
+            "jurisdiction": "id"
+          },
+          "times": {
+            "observed_at": "2026-04-02T05:30:00Z",
+            "ingested_at": "2026-04-02T05:35:00Z"
+          },
+          "identity": {
+            "content_hash": "0fb619bf4b1ab49f083da462318d71f2ac2ea82202080c24ca2335d6b6894ac3",
+            "idempotency_key": "naga.evidence.lkpm-filing-deadline-03"
+          },
+          "classification": {
+            "risk_class": "green",
+            "sensitivity": "public"
+          },
+          "lineage": {
+            "pipeline_run_id": "cd991d76-0b01-5a7d-8b81-f44ec0094517",
+            "input_event_refs": []
+          },
+          "payload_ref": {
+            "ref_type": "reference",
+            "uri": "https://example.go.id/permen-bkpm-synth-9-2026",
+            "content_hash": "0fb619bf4b1ab49f083da462318d71f2ac2ea82202080c24ca2335d6b6894ac3"
+          },
+          "retention": {
+            "retention_class": "public_record",
+            "legal_hold": false
+          },
+          "object_hash": "92fe629b29f945eac4f97887541958696c732fb2f35badf85228d3de4b8845c0"
+        }
+      }
+    },
+    {
+      "synthetic": true,
+      "label": "rptka-sponsor-fee-04",
+      "record": {
+        "id": "466b1e3f-34ce-5ed5-bcf5-100bd4cccd41",
+        "document_id": "https://example.go.id/permenaker-synth-15-2026",
+        "document_version_id": "v1-2026-03-01",
+        "document_content_hash": "673a09526561de954c43bcc555cc8747050676926e05a785aea3f58067e14336",
+        "statement": {
+          "subject_ref": {
+            "object_kind": "regulation",
+            "object_id": "permenaker-synth-15-2026"
+          },
+          "predicate": "naga.fee_schedule.rptka_sponsor",
+          "object_ref_or_value": 4321,
+          "value_span": {
+            "start": 116,
+            "end": 121
+          },
+          "derived_from_span": true
+        },
+        "source_span": {
+          "locator": "https://example.go.id/permenaker-synth-15-2026#pasal-6-ayat-1",
+          "quote_hash": "578641609f425fe96a71138f943cb34e36552bfbda66b8878ce7d86b80f02e97",
+          "quoted_text": "Pemberi kerja tenaga kerja asing wajib membayar Dana Kompensasi Penggunaan Tenaga Kerja Asing (DKP-TKA) sebesar USD 4,321 (empat ribu tiga ratus dua puluh satu dolar Amerika Serikat) per pekerja per bulan"
+        },
+        "source_event_ref": {
+          "event_id": "a13ea724-d88e-5c0c-a68d-62e6559d137f",
+          "object_hash": "1935fb2dba8d8c32c05c1c0455b418cf78eec45221df5a0c1405c2862293b6c0"
+        },
+        "classification": {
+          "rights": "public_domain_government_publication",
+          "risk_class": "green",
+          "sensitivity": "public"
+        },
+        "retention": {
+          "retention_class": "public_record",
+          "legal_hold": false
+        },
+        "review": {
+          "state": "unreviewed"
+        },
+        "manifest_family_id": "naga.evidence.rptka-sponsor-fee-04",
+        "credibility_score": 0.74,
+        "relation": "supports",
+        "fetched_at": "2026-03-05T11:00:00Z",
+        "legacy_evidence_serial_id": 1004,
+        "naga_session_id": "26c90e98-e68f-5089-98a8-b857c3de3f0b"
+      },
+      "source": {
+        "body": "SYNTHETIC GAZETTE TEXT. Peraturan Menteri Ketenagakerjaan Nomor 15 Tahun 2026 tentang Dana Kompensasi Penggunaan Tenaga Kerja Asing (fiktif, untuk pengujian). Pasal 6 ayat (1): Pemberi kerja tenaga kerja asing wajib membayar Dana Kompensasi Penggunaan Tenaga Kerja Asing (DKP-TKA) sebesar USD 4,321 (empat ribu tiga ratus dua puluh satu dolar Amerika Serikat) per pekerja per bulan.",
+        "intel_events": {
+          "a13ea724-d88e-5c0c-a68d-62e6559d137f": {
+            "event_id": "a13ea724-d88e-5c0c-a68d-62e6559d137f",
+            "contract_version": "research-os/v1.0.0",
+            "tenant": "bali-zero",
+            "event_type": "naga.regulatory_document.fetched",
+            "producer": {
+              "name": "naga.orchestrator.v1",
+              "version": "1.0.0",
+              "machine_class": "synthetic-fixture"
+            },
+            "source": {
+              "uri": "https://example.go.id/permenaker-synth-15-2026",
+              "source_type": "government.gazette",
+              "jurisdiction": "id"
+            },
+            "times": {
+              "observed_at": "2026-03-05T11:00:00Z",
+              "ingested_at": "2026-03-05T11:05:00Z"
+            },
+            "identity": {
+              "content_hash": "673a09526561de954c43bcc555cc8747050676926e05a785aea3f58067e14336",
+              "idempotency_key": "naga.evidence.rptka-sponsor-fee-04"
+            },
+            "classification": {
+              "risk_class": "green",
+              "sensitivity": "public"
+            },
+            "lineage": {
+              "pipeline_run_id": "26c90e98-e68f-5089-98a8-b857c3de3f0b",
+              "input_event_refs": []
+            },
+            "payload_ref": {
+              "ref_type": "reference",
+              "uri": "https://example.go.id/permenaker-synth-15-2026",
+              "content_hash": "673a09526561de954c43bcc555cc8747050676926e05a785aea3f58067e14336"
+            },
+            "retention": {
+              "retention_class": "public_record",
+              "legal_hold": false
+            },
+            "object_hash": "1935fb2dba8d8c32c05c1c0455b418cf78eec45221df5a0c1405c2862293b6c0"
+          }
+        },
+        "document_versions": {
+          "v1-2026-03-01": {
+            "document_id": "https://example.go.id/permenaker-synth-15-2026",
+            "content_hash": "673a09526561de954c43bcc555cc8747050676926e05a785aea3f58067e14336"
+          }
+        },
+        "locators": {
+          "https://example.go.id/permenaker-synth-15-2026#pasal-6-ayat-1": {
+            "start": 177,
+            "end": 381
+          }
+        }
+      },
+      "canonical": {
+        "claim": {
+          "claim_id": "029c55fa-bea1-527d-83bb-ddfe0ddb5564",
+          "claim_family_id": "1cf51c63-4666-5128-bb0a-1d7670a386e3",
+          "contract_version": "research-os/v1.0.0",
+          "tenant": "bali-zero",
+          "statement": {
+            "subject_ref": {
+              "object_kind": "regulation",
+              "object_id": "permenaker-synth-15-2026",
+              "object_hash": "e1128e245ac44b60a2ebb8d90871713f2283fec4f756fd32738e937ece2e564d"
+            },
+            "predicate": "naga.fee_schedule.rptka_sponsor",
+            "object_ref_or_value": 4321,
+            "unit": "per_worker_per_month",
+            "currency": "USD"
+          },
+          "scope": {
+            "domain": "labor.synthetic",
+            "jurisdiction": "national (synthetic)"
+          },
+          "time": {
+            "valid_from": "2026-03-01T00:00:00Z",
+            "valid_to": null,
+            "recorded_at": "2026-09-11T00:00:00Z"
+          },
+          "status": "supported",
+          "evidence_refs": [
+            {
+              "evidence_id": "6c7f3ec1-cb3a-51c7-a6f0-fcabd5684456",
+              "object_hash": "f52f65e7eec6a99740068f9da6d7e1d475c0e2f44e754195e447cf4c1ecdd3d3",
+              "stance": "supports"
+            }
+          ],
+          "confidence": {
+            "score": 0.74,
+            "method": "naga.claim_scorer.v1"
+          },
+          "classification": {
+            "risk_class": "green",
+            "sensitivity": "public"
+          },
+          "review": {
+            "state": "unreviewed"
+          },
+          "lineage": {
+            "run_id": "26c90e98-e68f-5089-98a8-b857c3de3f0b",
+            "extractor": "naga.orchestrator.v1",
+            "input_claim_refs": []
+          },
+          "retention": {
+            "retention_class": "public_record",
+            "legal_hold": false
+          },
+          "extensions": {
+            "com.balizero.research-os.naga": {
+              "extension_version": "1.0.0",
+              "payload": {
+                "subject_key": "id/permenaker-synth-15-2026/pasal-6-ayat-1",
+                "jurisdiction": "id",
+                "instrument": "permenaker-synth-15-2026",
+                "provision": "pasal-6-ayat-1"
+              }
+            }
+          },
+          "object_hash": "012baa813f45f8c5fc4d617db5e26e696caa52c09c74f98f4f09d394e44a4b3c"
+        },
+        "evidence": {
+          "evidence_id": "6c7f3ec1-cb3a-51c7-a6f0-fcabd5684456",
+          "evidence_family_id": "naga.evidence.rptka-sponsor-fee-04",
+          "contract_version": "research-os/v1.0.0",
+          "tenant": "bali-zero",
+          "source_event_ref": {
+            "event_id": "a13ea724-d88e-5c0c-a68d-62e6559d137f",
+            "object_hash": "1935fb2dba8d8c32c05c1c0455b418cf78eec45221df5a0c1405c2862293b6c0"
+          },
+          "document_id": "https://example.go.id/permenaker-synth-15-2026",
+          "document_version_id": "v1-2026-03-01",
+          "document_content_hash": "673a09526561de954c43bcc555cc8747050676926e05a785aea3f58067e14336",
+          "source_span": {
+            "locator": "https://example.go.id/permenaker-synth-15-2026#pasal-6-ayat-1",
+            "quote_hash": "578641609f425fe96a71138f943cb34e36552bfbda66b8878ce7d86b80f02e97"
+          },
+          "source_tier": "naga.tier.medium",
+          "stance": "supports",
+          "times": {
+            "observed_at": "2026-03-05T11:00:00Z",
+            "recorded_at": "2026-09-11T00:00:00Z"
+          },
+          "provenance": {
+            "extractor": "naga.orchestrator.v1",
+            "extractor_version": "1.0.0",
+            "run_id": "26c90e98-e68f-5089-98a8-b857c3de3f0b",
+            "extraction_input_hash": "415657c435031df10307c15a21e6603c6412c2affdeedd29a7fe9083e6b5282d"
+          },
+          "classification": {
+            "risk_class": "green",
+            "sensitivity": "public",
+            "rights": "public_domain_government_publication"
+          },
+          "review_state": "unreviewed",
+          "retention": {
+            "retention_class": "public_record",
+            "legal_hold": false
+          },
+          "extensions": {
+            "com.balizero.research-os.naga.legacy": {
+              "extension_version": "1.0.0",
+              "payload": {
+                "legacy_evidence_serial_id": 1004
+              }
+            }
+          },
+          "object_hash": "f52f65e7eec6a99740068f9da6d7e1d475c0e2f44e754195e447cf4c1ecdd3d3"
+        },
+        "intel_event": {
+          "event_id": "a13ea724-d88e-5c0c-a68d-62e6559d137f",
+          "contract_version": "research-os/v1.0.0",
+          "tenant": "bali-zero",
+          "event_type": "naga.regulatory_document.fetched",
+          "producer": {
+            "name": "naga.orchestrator.v1",
+            "version": "1.0.0",
+            "machine_class": "synthetic-fixture"
+          },
+          "source": {
+            "uri": "https://example.go.id/permenaker-synth-15-2026",
+            "source_type": "government.gazette",
+            "jurisdiction": "id"
+          },
+          "times": {
+            "observed_at": "2026-03-05T11:00:00Z",
+            "ingested_at": "2026-03-05T11:05:00Z"
+          },
+          "identity": {
+            "content_hash": "673a09526561de954c43bcc555cc8747050676926e05a785aea3f58067e14336",
+            "idempotency_key": "naga.evidence.rptka-sponsor-fee-04"
+          },
+          "classification": {
+            "risk_class": "green",
+            "sensitivity": "public"
+          },
+          "lineage": {
+            "pipeline_run_id": "26c90e98-e68f-5089-98a8-b857c3de3f0b",
+            "input_event_refs": []
+          },
+          "payload_ref": {
+            "ref_type": "reference",
+            "uri": "https://example.go.id/permenaker-synth-15-2026",
+            "content_hash": "673a09526561de954c43bcc555cc8747050676926e05a785aea3f58067e14336"
+          },
+          "retention": {
+            "retention_class": "public_record",
+            "legal_hold": false
+          },
+          "object_hash": "1935fb2dba8d8c32c05c1c0455b418cf78eec45221df5a0c1405c2862293b6c0"
+        }
+      }
+    },
+    {
+      "synthetic": true,
+      "label": "environmental-permit-validity-05",
+      "record": {
+        "id": "5f83a9ab-c129-5001-ba27-201787b5579e",
+        "document_id": "https://example.go.id/permenlhk-synth-21-2026",
+        "document_version_id": "v1-2026-05-01",
+        "document_content_hash": "35f6ff24a7504667312f99b821f08152494f171a4783b7496a2ecd752f562975",
+        "statement": {
+          "subject_ref": {
+            "object_kind": "regulation",
+            "object_id": "permenlhk-synth-21-2026"
+          },
+          "predicate": "naga.eligibility_rule.permit_validity",
+          "object_ref_or_value": "13 (tiga belas) tahun",
+          "value_span": {
+            "start": 31,
+            "end": 52
+          },
+          "derived_from_span": true
+        },
+        "source_span": {
+          "locator": "https://example.go.id/permenlhk-synth-21-2026#pasal-15-ayat-4",
+          "quote_hash": "0b9c099662caf9b5654a64442981707d4853eb47047c020d0a846f731ebdc984",
+          "quoted_text": "Izin Lingkungan berlaku selama 13 (tiga belas) tahun sejak tanggal diterbitkan dan wajib diperbarui sebelum masa berlaku berakhir"
+        },
+        "source_event_ref": {
+          "event_id": "17195c42-66f9-5196-a9fa-a9b8e4305cb1",
+          "object_hash": "b07b0f3af08c4211c2fef4c239faaf4cf8c502e949047bdd01c937ec88efb6ff"
+        },
+        "classification": {
+          "rights": "public_domain_government_publication",
+          "risk_class": "green",
+          "sensitivity": "public"
+        },
+        "retention": {
+          "retention_class": "public_record",
+          "legal_hold": false
+        },
+        "review": {
+          "state": "unreviewed"
+        },
+        "manifest_family_id": "naga.evidence.environmental-permit-validity-05",
+        "credibility_score": 0.55,
+        "relation": "supports",
+        "fetched_at": "2026-05-02T02:00:00Z",
+        "legacy_evidence_serial_id": 1005,
+        "naga_session_id": "0ebd83fd-067c-50aa-8e04-3da64b18fa94"
+      },
+      "source": {
+        "body": "SYNTHETIC GAZETTE TEXT. Peraturan Menteri Lingkungan Hidup dan Kehutanan Nomor 21 Tahun 2026 tentang Izin Lingkungan (fiktif, untuk pengujian). Pasal 15 ayat (4): Izin Lingkungan berlaku selama 13 (tiga belas) tahun sejak tanggal diterbitkan dan wajib diperbarui sebelum masa berlaku berakhir.",
+        "intel_events": {
+          "17195c42-66f9-5196-a9fa-a9b8e4305cb1": {
+            "event_id": "17195c42-66f9-5196-a9fa-a9b8e4305cb1",
+            "contract_version": "research-os/v1.0.0",
+            "tenant": "bali-zero",
+            "event_type": "naga.regulatory_document.fetched",
+            "producer": {
+              "name": "naga.orchestrator.v1",
+              "version": "1.0.0",
+              "machine_class": "synthetic-fixture"
+            },
+            "source": {
+              "uri": "https://example.go.id/permenlhk-synth-21-2026",
+              "source_type": "government.gazette",
+              "jurisdiction": "id"
+            },
+            "times": {
+              "observed_at": "2026-05-02T02:00:00Z",
+              "ingested_at": "2026-05-02T02:05:00Z"
+            },
+            "identity": {
+              "content_hash": "35f6ff24a7504667312f99b821f08152494f171a4783b7496a2ecd752f562975",
+              "idempotency_key": "naga.evidence.environmental-permit-validity-05"
+            },
+            "classification": {
+              "risk_class": "green",
+              "sensitivity": "public"
+            },
+            "lineage": {
+              "pipeline_run_id": "0ebd83fd-067c-50aa-8e04-3da64b18fa94",
+              "input_event_refs": []
+            },
+            "payload_ref": {
+              "ref_type": "reference",
+              "uri": "https://example.go.id/permenlhk-synth-21-2026",
+              "content_hash": "35f6ff24a7504667312f99b821f08152494f171a4783b7496a2ecd752f562975"
+            },
+            "retention": {
+              "retention_class": "public_record",
+              "legal_hold": false
+            },
+            "object_hash": "b07b0f3af08c4211c2fef4c239faaf4cf8c502e949047bdd01c937ec88efb6ff"
+          }
+        },
+        "document_versions": {
+          "v1-2026-05-01": {
+            "document_id": "https://example.go.id/permenlhk-synth-21-2026",
+            "content_hash": "35f6ff24a7504667312f99b821f08152494f171a4783b7496a2ecd752f562975"
+          }
+        },
+        "locators": {
+          "https://example.go.id/permenlhk-synth-21-2026#pasal-15-ayat-4": {
+            "start": 163,
+            "end": 292
+          }
+        }
+      },
+      "canonical": {
+        "claim": {
+          "claim_id": "8f63e7c1-c9ec-5f0f-a901-993a3aa3b396",
+          "claim_family_id": "40cfb25c-60a9-55df-952f-fe782af9dfd2",
+          "contract_version": "research-os/v1.0.0",
+          "tenant": "bali-zero",
+          "statement": {
+            "subject_ref": {
+              "object_kind": "regulation",
+              "object_id": "permenlhk-synth-21-2026",
+              "object_hash": "799b33abf8a9a2c4aeaff9a3fcdc3499cc5a641800422104f0b96fa6798eb4be"
+            },
+            "predicate": "naga.eligibility_rule.permit_validity",
+            "object_ref_or_value": "13 (tiga belas) tahun"
+          },
+          "scope": {
+            "domain": "environmental.synthetic",
+            "jurisdiction": "national (synthetic)"
+          },
+          "time": {
+            "valid_from": "2026-05-01T00:00:00Z",
+            "valid_to": null,
+            "recorded_at": "2026-09-11T00:00:00Z"
+          },
+          "status": "supported",
+          "evidence_refs": [
+            {
+              "evidence_id": "b054fb94-6a72-5024-9511-25b18ff270e7",
+              "object_hash": "d0e32c98f88bcad6819e96bcbe544760ca5e09d93d9c4fe9efcd177c5e2b8e4d",
+              "stance": "supports"
+            }
+          ],
+          "confidence": {
+            "score": 0.55,
+            "method": "naga.claim_scorer.v1"
+          },
+          "classification": {
+            "risk_class": "green",
+            "sensitivity": "public"
+          },
+          "review": {
+            "state": "unreviewed"
+          },
+          "lineage": {
+            "run_id": "0ebd83fd-067c-50aa-8e04-3da64b18fa94",
+            "extractor": "naga.orchestrator.v1",
+            "input_claim_refs": []
+          },
+          "retention": {
+            "retention_class": "public_record",
+            "legal_hold": false
+          },
+          "extensions": {
+            "com.balizero.research-os.naga": {
+              "extension_version": "1.0.0",
+              "payload": {
+                "subject_key": "id/permenlhk-synth-21-2026/pasal-15-ayat-4",
+                "jurisdiction": "id",
+                "instrument": "permenlhk-synth-21-2026",
+                "provision": "pasal-15-ayat-4"
+              }
+            }
+          },
+          "object_hash": "2043440f2430eb8a32538ded8694f7f7f4ef37d53bfd9e2686c1ace428cfe52e"
+        },
+        "evidence": {
+          "evidence_id": "b054fb94-6a72-5024-9511-25b18ff270e7",
+          "evidence_family_id": "naga.evidence.environmental-permit-validity-05",
+          "contract_version": "research-os/v1.0.0",
+          "tenant": "bali-zero",
+          "source_event_ref": {
+            "event_id": "17195c42-66f9-5196-a9fa-a9b8e4305cb1",
+            "object_hash": "b07b0f3af08c4211c2fef4c239faaf4cf8c502e949047bdd01c937ec88efb6ff"
+          },
+          "document_id": "https://example.go.id/permenlhk-synth-21-2026",
+          "document_version_id": "v1-2026-05-01",
+          "document_content_hash": "35f6ff24a7504667312f99b821f08152494f171a4783b7496a2ecd752f562975",
+          "source_span": {
+            "locator": "https://example.go.id/permenlhk-synth-21-2026#pasal-15-ayat-4",
+            "quote_hash": "0b9c099662caf9b5654a64442981707d4853eb47047c020d0a846f731ebdc984"
+          },
+          "source_tier": "naga.tier.medium",
+          "stance": "supports",
+          "times": {
+            "observed_at": "2026-05-02T02:00:00Z",
+            "recorded_at": "2026-09-11T00:00:00Z"
+          },
+          "provenance": {
+            "extractor": "naga.orchestrator.v1",
+            "extractor_version": "1.0.0",
+            "run_id": "0ebd83fd-067c-50aa-8e04-3da64b18fa94",
+            "extraction_input_hash": "eeff8382fcccadf8fc308df55cbf006e028f3671d1634826b455f3b3be69ccf9"
+          },
+          "classification": {
+            "risk_class": "green",
+            "sensitivity": "public",
+            "rights": "public_domain_government_publication"
+          },
+          "review_state": "unreviewed",
+          "retention": {
+            "retention_class": "public_record",
+            "legal_hold": false
+          },
+          "extensions": {
+            "com.balizero.research-os.naga.legacy": {
+              "extension_version": "1.0.0",
+              "payload": {
+                "legacy_evidence_serial_id": 1005
+              }
+            }
+          },
+          "object_hash": "d0e32c98f88bcad6819e96bcbe544760ca5e09d93d9c4fe9efcd177c5e2b8e4d"
+        },
+        "intel_event": {
+          "event_id": "17195c42-66f9-5196-a9fa-a9b8e4305cb1",
+          "contract_version": "research-os/v1.0.0",
+          "tenant": "bali-zero",
+          "event_type": "naga.regulatory_document.fetched",
+          "producer": {
+            "name": "naga.orchestrator.v1",
+            "version": "1.0.0",
+            "machine_class": "synthetic-fixture"
+          },
+          "source": {
+            "uri": "https://example.go.id/permenlhk-synth-21-2026",
+            "source_type": "government.gazette",
+            "jurisdiction": "id"
+          },
+          "times": {
+            "observed_at": "2026-05-02T02:00:00Z",
+            "ingested_at": "2026-05-02T02:05:00Z"
+          },
+          "identity": {
+            "content_hash": "35f6ff24a7504667312f99b821f08152494f171a4783b7496a2ecd752f562975",
+            "idempotency_key": "naga.evidence.environmental-permit-validity-05"
+          },
+          "classification": {
+            "risk_class": "green",
+            "sensitivity": "public"
+          },
+          "lineage": {
+            "pipeline_run_id": "0ebd83fd-067c-50aa-8e04-3da64b18fa94",
+            "input_event_refs": []
+          },
+          "payload_ref": {
+            "ref_type": "reference",
+            "uri": "https://example.go.id/permenlhk-synth-21-2026",
+            "content_hash": "35f6ff24a7504667312f99b821f08152494f171a4783b7496a2ecd752f562975"
+          },
+          "retention": {
+            "retention_class": "public_record",
+            "legal_hold": false
+          },
+          "object_hash": "b07b0f3af08c4211c2fef4c239faaf4cf8c502e949047bdd01c937ec88efb6ff"
+        }
+      }
+    }
+  ],
+  "correction_pair_ruling": "RULING Zero Z2b (2026-09-11 ~15:00 WITA, AFTER this cohort was first written): the authorised backfill kinds are Claim, Evidence, ObjectSuccessorEdge and IntelEvent. This correction pair exists solely so ObjectSuccessorEdge has a seed R2 can write -- the penalty figures, regulation numbers and dates are INVENTED like everything else in this file. The predecessor is never mutated (RULING B1, 'il vecchio resta intatto'): it keeps status='supported' and valid_to=null; the successor's recorded_at is strictly later than the predecessor's, and supersedes_claim_ref/predecessor_ref carry the SAME recomputed predecessor hash (mirrors supersession/01_amendment_supersedes_original.json's rewritten shape).",
+  "correction_pair": {
+    "claims": [
+      {
+        "claim_id": "1ee6eeea-2e7a-571d-944a-afb604cb1574",
+        "claim_family_id": "bdd34f13-cc40-50b7-b1d9-5ca07aaced4c",
+        "contract_version": "research-os/v1.0.0",
+        "tenant": "bali-zero",
+        "statement": {
+          "subject_ref": {
+            "object_kind": "regulation",
+            "object_id": "permenkumham-synth-40-2026",
+            "object_hash": "063ca77544f251b85b164b56c67fabe2c38c8130eba34c917fc4648bc18481d2"
+          },
+          "predicate": "naga.fee_schedule.kitas_late_renewal_penalty",
+          "object_ref_or_value": 500000,
+          "unit": "per_month",
+          "currency": "IDR"
+        },
+        "scope": {
+          "domain": "visa.synthetic",
+          "jurisdiction": "national (synthetic)"
+        },
+        "time": {
+          "valid_from": "2026-02-01T00:00:00Z",
+          "valid_to": null,
+          "recorded_at": "2026-02-01T00:00:00Z"
+        },
+        "status": "supported",
+        "evidence_refs": [],
+        "confidence": {
+          "score": 0.8,
+          "method": "naga.claim_scorer.v1"
+        },
+        "classification": {
+          "risk_class": "green",
+          "sensitivity": "public"
+        },
+        "review": {
+          "state": "unreviewed"
+        },
+        "lineage": {
+          "run_id": "1cc701a4-872a-5b30-b2ae-e6e20a21d746",
+          "extractor": "naga.orchestrator.v1",
+          "input_claim_refs": []
+        },
+        "retention": {
+          "retention_class": "public_record",
+          "legal_hold": false
+        },
+        "extensions": {
+          "com.balizero.research-os.naga": {
+            "extension_version": "1.0.0",
+            "payload": {
+              "subject_key": "id/permenkumham-synth-40-2026/pasal-5-ayat-2",
+              "jurisdiction": "id",
+              "instrument": "permenkumham-synth-40-2026",
+              "provision": "pasal-5-ayat-2"
+            }
+          }
+        },
+        "object_hash": "ca8257b8b81d67030f467b6236ec9c1f0ed78f3692580857f5c260511132efc1"
+      },
+      {
+        "claim_id": "184ca5a4-8fed-5683-a8f6-c21643c36e61",
+        "claim_family_id": "bdd34f13-cc40-50b7-b1d9-5ca07aaced4c",
+        "contract_version": "research-os/v1.0.0",
+        "tenant": "bali-zero",
+        "statement": {
+          "subject_ref": {
+            "object_kind": "regulation",
+            "object_id": "permenkumham-synth-52-2026",
+            "object_hash": "560142af5f8408aa278e4ffb16e2b1239dbacc1ac8f28352f5e9957e9a6c603f"
+          },
+          "predicate": "naga.fee_schedule.kitas_late_renewal_penalty",
+          "object_ref_or_value": 750000,
+          "unit": "per_month",
+          "currency": "IDR"
+        },
+        "scope": {
+          "domain": "visa.synthetic",
+          "jurisdiction": "national (synthetic)"
+        },
+        "time": {
+          "valid_from": "2026-07-01T00:00:00Z",
+          "valid_to": null,
+          "recorded_at": "2026-07-10T00:00:00Z"
+        },
+        "status": "supported",
+        "evidence_refs": [],
+        "supersedes_claim_ref": {
+          "claim_id": "1ee6eeea-2e7a-571d-944a-afb604cb1574",
+          "object_hash": "ca8257b8b81d67030f467b6236ec9c1f0ed78f3692580857f5c260511132efc1"
+        },
+        "confidence": {
+          "score": 0.85,
+          "method": "naga.claim_scorer.v1"
+        },
+        "classification": {
+          "risk_class": "green",
+          "sensitivity": "public"
+        },
+        "review": {
+          "state": "unreviewed"
+        },
+        "lineage": {
+          "run_id": "50a575d5-0f4b-5230-9a06-f615d4d27aa2",
+          "extractor": "naga.orchestrator.v1",
+          "input_claim_refs": []
+        },
+        "retention": {
+          "retention_class": "public_record",
+          "legal_hold": false
+        },
+        "extensions": {
+          "com.balizero.research-os.naga": {
+            "extension_version": "1.0.0",
+            "payload": {
+              "subject_key": "id/permenkumham-synth-40-2026/pasal-5-ayat-2",
+              "jurisdiction": "id",
+              "instrument": "permenkumham-synth-40-2026",
+              "provision": "pasal-5-ayat-2"
+            }
+          }
+        },
+        "object_hash": "f53ceb981281f125083666fa0e97a4c58962f4baccd547bbcd43957d3e11ca7d"
+      }
+    ],
+    "object_successor_edges": [
+      {
+        "object_successor_edge_id": "0952903a-c3ce-5d3a-8474-12ba427ed7fd",
+        "contract_version": "research-os/v1.0.0",
+        "tenant": "bali-zero",
+        "object_kind": "claim",
+        "family_id": "naga.claim_family.bdd34f13-cc40-50b7-b1d9-5ca07aaced4c",
+        "predecessor_ref": {
+          "object_kind": "claim",
+          "object_id": "1ee6eeea-2e7a-571d-944a-afb604cb1574",
+          "object_hash": "ca8257b8b81d67030f467b6236ec9c1f0ed78f3692580857f5c260511132efc1"
+        },
+        "successor_ref": {
+          "object_kind": "claim",
+          "object_id": "184ca5a4-8fed-5683-a8f6-c21643c36e61",
+          "object_hash": "f53ceb981281f125083666fa0e97a4c58962f4baccd547bbcd43957d3e11ca7d"
+        },
+        "reason_code": "naga.regulation_amended",
+        "recorded_at": "2026-07-10T00:00:00Z",
+        "producer": {
+          "name": "naga.fixture-generator",
+          "version": "1.0.0"
+        },
+        "lineage": {
+          "input_hashes": []
+        },
+        "retention": {
+          "retention_class": "public_record",
+          "legal_hold": false
+        },
+        "object_hash": "da04e7e0ab119c107a5c67c98d33879f623c973a87014e82cc1c99479bdac0df"
+      }
+    ]
+  },
+  "z2b_production_eligibility": "NOT PRODUCTION-ELIGIBLE. This cohort is SYNTHETIC — every instrument is spelled 'permenkumham-synth-*' and every figure is invented — so it is a TEST fixture set and NOT the cohort Z2b(a) authorises. Z2b(a) authorises at most 20 PUBLIC REGULATORY claims FULLY SOURCED from public documents (body hash of the real body, exact span, valid time, rights). Nothing here is sourced from a real instrument. THEREFORE the Z2b seed cohort is EMPTY until sourced: R2's --apply may write only whatever the legacy admission dry-run admits (expected 0), and not one row of this file. Sourcing a real cohort is DEFERRED work, named in brief.yml and in the PR body. R1 section 6's stop rule is why it was not invented instead: a figure that cannot be sourced from a public document stops the window, it does not get fabricated and labelled sourced. RULED by the imperator nuzantara-0d 2026-09-11T10:57Z (R1-ack on envelope 20260911T105202Z-2f23.md), disposition (b) of two offered.",
+  "correction_2026_09_11_codex_r1": "CORRECTED (R1 g3, adversarial round 1). (a) Every record's `source` now carries `document_versions` (version id -> the body hash that version was registered for) and `locators` (locator -> {start, end} character offsets of the quoted span in `body`), the two mappings D4 rules 3 and 4 resolve against instead of accepting a non-empty string (codex findings 3 and 4). (b) Both `correction_pair` claims now carry the `com.balizero.research-os.naga` extension with subject_key `id/permenkumham-synth-40-2026/pasal-5-ayat-2` (invented, like every identifier here) -- without it they were invisible to `read()` (Gemini N4). The edge keeps `naga.claim_family.<uuid>`: `ObjectSuccessorEdge.family_id` is a RegisteredName and `Claim.claim_family_id` a uuid, so the READER derives the registered name (codex finding 5). Every object_hash recomputed by `_recompute_hashes.py`. (c) FIGURES MADE UNMISTAKABLY INVENTED (codex MEDIUM + Gemini): Rp1.234.567, Rp9.876.543.210, the 23rd of the seventh following month, USD 4,321, 13 years -- none is, or resembles, a real Indonesian rate, threshold or deadline. This also cured a real inconsistency the round-1 rule 1 derivation caught on its first run: rptka-sponsor-fee-04 stated 1200000 while its own quoted span said USD 1,200. Body hashes, quote hashes, locator offsets and every object_hash were recomputed, never typed. (d) ROUND 2 (codex BLOCKER + B3 PARTIAL): every record statement carries `value_span`, the {start, end} offsets of its value's whole token inside the quoted span, and the two string values are now the literal Indonesian tokens they anchor to rather than English paraphrases -- rule 1 compares whole tokens, never shared digits. `document_versions` values are {document_id, content_hash}, binding the version to the document as well as the body."
+}

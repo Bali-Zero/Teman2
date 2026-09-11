@@ -22,6 +22,21 @@ especially the family-identity one — is a precondition for the P06 build, not 
 `operational_receipt.schema.json` (all read this session; `required` arrays and enum `$defs`
 verified, not paraphrased from the spec doc).
 
+**FURTHER CORRECTED 2026-09-11 (R1, `research/operations/2026-09-10-fable-max-sessions/R-research-os.md`
+D4/§5a).** The paragraph above undercounted its own finding. Re-measured against the schema's
+full recursive required set — `_required_paths()` walked over `evidence.schema.json`'s `$defs`,
+exactly as `apps/backend-rag/backend/tests/unit/research_os/test_naga_evidence_mapping_preconditions.py`
+does it — §2 as it stood on 2026-08-26 named none of **fifteen** required paths, not four: the
+four above (`evidence_family_id`, `review_state`, `classification.rights`, `times.recorded_at`)
+were a strict subset of that fifteen; the rest were `contract_version`, `tenant`, `object_hash`,
+`evidence_id`, `classification.risk_class`, `classification.sensitivity`, `retention`,
+`retention.retention_class`, `retention.legal_hold`, `source_event_ref.event_id`, and
+`source_event_ref.object_hash`. **R1 closed this gap on 2026-09-11**: §2 below now names all
+32/32 required paths, each with either its NAGA mapping or an explicit exclusion naming a D4
+reason, and a new §2b reports D4's three admission counts separately, never collapsed into one
+number. This does not delete the history above — the four-field undercount happened, and is left
+visible on purpose, per this repo's habit of superseding in place rather than erasing.
+
 Per `contract-pass-001.md §7`, Cohort B **may** treat these 25 models/schemas as build-ready, and
 **may not** rely on D6 (contract registry), D7 (deterministic hashing), D8-second-half
 (dual-write/read plan), D10 (atomic multi-object repository), D11 (atomic classification-change
@@ -55,7 +70,7 @@ This bundle's migration design notes (`03-migration-design-notes.md`) follow tha
 | NAGA field | Canonical `Claim` field | Mapping | Gap / note |
 |---|---|---|---|
 | `id` (UUID) | `claim_id` | direct copy, first revision | A NAGA claim's `id` never changes across its lifecycle (it's a row PK), so it can serve as `claim_id`, but see G1 below — NAGA has no revision concept, so "first revision" must be defined by the adapter, not discovered in NAGA. |
-| — (none) | `claim_family_id` | **new field, no NAGA source** | P04 requires a stable family id spanning all revisions/supersessions of "the same claim." NAGA's `claim_key` (sha256 of first 200 chars of claim_text, lowercased) is the closest analogue but is a **content hash of the text**, not an identity — two claims with materially different-but-similarly-worded text would collide; two revisions of one claim whose wording is corrected across a supersession would **not** share a `claim_key`. Recommend `claim_family_id` be a **new UUID minted at first canonical write**, persisted back into NAGA (e.g. a new nullable column) rather than derived from `claim_key`. This needs a decision, flagged in `07-open-questions-and-corrections.md`. |
+| — (none) | `claim_family_id` | **new field, no NAGA source** | P04 requires a stable family id spanning all revisions/supersessions of "the same claim." NAGA's `claim_key` (sha256 of first 200 chars of claim_text, lowercased) is the closest analogue but is a **content hash of the text**, not an identity — two claims with materially different-but-similarly-worded text would collide; two revisions of one claim whose wording is corrected across a supersession would **not** share a `claim_key`. Recommend `claim_family_id` be a **new UUID minted at first canonical write**, ~~persisted back into NAGA (e.g. a new nullable column)~~ rather than derived from `claim_key`. **SUPERSEDED 2026-09-11 (R1, D4, `research/operations/2026-09-10-fable-max-sessions/R-research-os.md` §0):** the struck-through clause is FALSE as a design choice — the stable family identity lives in the ADMISSION MANIFEST (`research_os_naga_admission`, D5) and is NEVER written back into legacy NAGA. This needs a decision, flagged in `07-open-questions-and-corrections.md`. |
 | `claim_text` | `statement.object_ref_or_value` (as a string) + `statement.predicate` | **not a direct copy** — P04's `statement` is a structured subject/predicate/object triple (`ExactObjectRef` subject, dotted-lowercase `predicate`, and object as ref-or-scalar), not a natural-language sentence. `claim_text` alone cannot populate `statement` without a real atomization step. | **G-STATEMENT (blocking).** The packet's own deliverable #3 calls automated atomization "an evaluated candidate, not a prerequisite," and the packet explicitly lists as an adversarial case "the same sentence contains two atomic claims." NAGA today extracts one `ClaimRecord` per sentence-ish unit with no subject/predicate/object decomposition at all. Until atomization exists (human/rule-assisted, per the packet's mandated safe incumbent), the adapter cannot honestly populate `statement.subject_ref`/`predicate` — proposal: store the raw `claim_text` in `extensions["naga.raw_text"]` (schema-legal: `extensions` accepts arbitrary payload under a versioned key) and populate `statement` only for the golden-set claims where a human/rule pass produced the triple by hand, leaving the rest **out of canonical storage** until atomization ships. This is the direct implementation of packet §"Automated extraction... Failure of the extractor must never defer the ledger's atomic or temporal semantics" — the atomic/temporal ledger exists now, for the subset that has a real statement; it does not fake statements for the rest. |
 | `category` (15-value enum, `core/claims/models.py`) | no direct field | `category` is a claim-*type* taxonomy; P04's closest analogue is the `predicate` namespace. Proposal (not binding): map each of the 15 `CLAIM_CATEGORIES` to a `predicate` prefix, e.g. `FEE_CHANGE` → `naga.fee_change.*`, `ELIGIBILITY_RULE` → `naga.eligibility_rule.*`. This still requires the statement triple to exist (see G-STATEMENT above) — `category` cannot populate `predicate` without a subject/object too. |
 | `domain` (`VARCHAR(20)`, e.g. `"visa"`) | `scope.domain` (pattern `^[a-z][a-z0-9_-]*(?:\.[a-z0-9_-]+)*$`) | direct copy after lowercasing (NAGA values observed in code are already lowercase: `"visa"`, `"immigration"`, `"general"`) | none — clean mapping. |
@@ -89,6 +104,62 @@ This bundle's migration design notes (`03-migration-design-notes.md`) follow tha
 | — | `times.published_at` | **new, no NAGA source** — NAGA does not capture the *document's own* publish date separately from when NAGA fetched it. This is exactly the packet's adversarial case "effective dates distinct from publication dates" — NAGA cannot express the distinction today at the source level. New extraction work needed (parse a publish date off the page/PDF), not an adapter mapping. |
 | — | `provenance.{extractor, extractor_version, run_id, extraction_input_hash}` | Same shape as `Claim.lineage` — `run_id` ← `naga_sessions.id`, rest are fixed pipeline-identity strings + a hash of the extraction input. |
 | — (none, no distinction in NAGA) | Evidence-independence classification (original vs. syndicated vs. translated vs. derived) | **G4 (deliverable #4, currently unimplemented anywhere in NAGA).** Not a P04 schema field by that name — this is a NAGA-side analytical layer the packet asks for on top of Evidence objects (likely via `extensions` + a dedicated dedup/independence service, not a base schema field). This is genuinely new design, not a mapping — see `04-golden-set-and-adversarial-plan.md` for the "five websites repeat one original story" adversarial case, which is the concrete test of whatever gets built here. |
+| `naga_claim_evidence.id` (`SERIAL` int) | `evidence_id` (required, `format: uuid`) | **New gap, not named until R1 (2026-09-11).** Unlike `naga_claims.id` (UUID, direct copy to `claim_id` in §1), `naga_claim_evidence.id` is a Postgres `SERIAL` — a type mismatch with the schema's `uuid` format makes a direct copy impossible. Recommend: the adapter mints a **new UUID** at first canonical write (deterministic, e.g. `uuid5` over a fixed namespace plus the legacy serial, so replay is idempotent — mirrors D5's admission-manifest idempotency requirement), and preserves the legacy serial under `extensions["naga.legacy_evidence_serial_id"]` for cross-reference and debugging. "First revision" is defined by the adapter, exactly as for `claim_id` in §1. |
+| — (none) | `evidence_family_id` (required, pattern `^[a-z][a-z0-9]*[._-][a-z0-9](?:[a-z0-9_-]\|\.[a-z0-9])*$` — a **dotted-lowercase namespaced string, NOT a UUID**, unlike Claim's `claim_family_id`) | **New gap, not named until R1.** The identity-minting problem is the same one §1's `claim_family_id` row describes — NAGA has no stable cross-revision identity for a piece of evidence — but the target shape differs: a value like `naga.evidence.<slug-or-hash-suffix>` satisfies the pattern; a raw UUID does not. **D4** (`research/operations/2026-09-10-fable-max-sessions/R-research-os.md` §0): minted at first canonical write, persisted in the ADMISSION MANIFEST (`research_os_naga_admission`, D5), never written back into legacy NAGA — same rule as `claim_family_id` above. |
+| — (fixed) | `contract_version` (required, `const: "research-os/v1.0.0"`) | Fixed constant — every canonical object carries the same value regardless of source. No NAGA field maps to it and none is needed; nothing to decide. |
+| — (fixed) | `tenant` (required, `const: "bali-zero"`) | Fixed constant, same treatment as `contract_version`. No gap. |
+| — (computed) | `object_hash` (required, `^[0-9a-f]{64}$`) | Computed by the write path over the canonical payload via `research_os.hashing.object_hash` (RFC 8785 canonicalization + sha256) — never sourced from NAGA, never hand-typed. Recomputed and verified on every read (`Evidence.validate_evidence`'s hash comparison, guarded by `test_a_corrupted_object_hash_is_refused`). Infrastructure, not an adapter-mapping choice. |
+| — (none, G6 continued) | `source_event_ref.event_id`, `source_event_ref.object_hash` (both required on the `EventRef` `source_event_ref` already discussed above under G6) | **New gap, not named until R1.** G6 above proposes a placeholder `IntelEvent`-shaped wrapper per NAGA source until P05's real adapter exists; these are that placeholder's own two required sub-fields — `event_id` a minted UUID, `object_hash` computed over the placeholder's payload the same way as any other canonical object. Until the placeholder is actually built (it is NOT built by this bundle — G6 remains unresolved), a legacy NAGA source has no real value for either sub-field, so admission of any legacy record EXCLUDES with reason `intel_event_identity_missing` (D4 order #5) rather than leaving `source_event_ref` half-populated with an invented identity. |
+| — (none) | `times.recorded_at` (required alongside `times.observed_at`) | One of the four fields the 2026-08-26 correction named. Mirrors `Claim.time.recorded_at` in §1 exactly: set to the wall-clock instant the *adapter* writes the canonical Evidence object — **never** copied from `naga_claim_evidence.created_at` (that is when the NAGA row was created, a legitimate `recorded_at` only for the evidence's first canonical revision; a later canonical revision, e.g. produced when a review pass supplies a real span, gets its own later `recorded_at`, per the immutable-`recorded_at` rule `CONTRACTS.md:88`/`:266`). |
+| — (none) | `classification.risk_class`, `classification.sensitivity` | **New gap, not named until R1.** Same shape as §1's Claim `classification.risk_class`/`classification.sensitivity` row: NAGA has no risk/sensitivity classification per source or per claim-evidence link today. Must be assigned by the adapter from `domain`/`source_type` (e.g. official `.go.id` regulatory text defaults `sensitivity: internal` unless proven `public`) — needs an explicit policy, not a default guess (open question §4 in `07-open-questions-and-corrections.md`, unchanged by this PR). A legacy record for which no policy value can be honestly assigned is EXCLUDED with reason `classification_missing` (D4 order #8) rather than defaulted. |
+| — (none) | `classification.rights` (required on `EvidenceClassification`, minLength 1 — **the asymmetry `test_evidence_classification_requires_rights_where_claim_does_not` pins**: `Claim.classification` has no `rights` field at all) | One of the four fields the 2026-08-26 correction named. NAGA captures no usage-rights/licensing metadata for a source at any point in its pipeline — this is not a vocabulary gap like `review_status`, it is a dimension NAGA never asked about. For the curated seed cohort (§5c) rights is set explicitly from the document's own public status (e.g. `"public_domain_government_publication"` for an Indonesian government regulation page); for a legacy record with no rights determination on file, admission EXCLUDES with reason `rights_missing` (D4 order #6) — never a silent default. |
+| — (none) | `review_state` (required, top-level — **not nested under a `review` object the way Claim's `review.state` is**; same five-value `ReviewState` enum) | One of the four fields the 2026-08-26 correction named. NAGA has no evidence-level review workflow at all (§1's `review_status` gap is a claim-level field, on a different table). For evidence produced by a human/rule-assisted canonical write (the golden-set/seed path, §5c) the adapter may honestly set `unreviewed` — it truly has not been reviewed, mirroring the conservative reading recommended for Claim's `review_status` in §1. For a legacy record admitted with no review signal at all, defaulting is not allowed (D4's ordering rule: "nothing is ever defaulted silently") — admission EXCLUDES with reason `review_state_missing` (D4 order #9). |
+| — (none) | `retention` (required top-level object), `retention.retention_class`, `retention.legal_hold` | **New gap, not named until R1.** Same shape as §1's Claim `retention.retention_class`/`legal_hold` row and the same open question (§5 in `07-open-questions-and-corrections.md`, still not inherited from the unrelated 5-year conversation-retention doctrine — claims and evidence are a different object class with different legal grounding). A legacy record with no retention policy assigned is EXCLUDED with reason `retention_missing` (D4 order #7). |
+
+## 2b. Three counts, reported separately (D4)
+
+Per D4 (`research/operations/2026-09-10-fable-max-sessions/R-research-os.md` §0, and R1-build-spec
+§3), admission over a legacy NAGA cohort reports **three different counts**, never collapsed into
+one, and a test asserts they are pairwise different so collapsing any two is a red:
+
+1. **`documented_mapping_coverage`** — how many of the 32 required canonical Evidence paths §2
+   above *documents* (with either a real mapping or a named exclusion reason). After this PR:
+   **32/32.** This is a property of this DOCUMENT, not of any legacy record.
+2. **`available_source_information`** — of those 32 documented paths, how many a given legacy
+   NAGA record actually carries *any* source information toward, even indirectly. §2's own rows
+   show this splits into three groups that behave very differently:
+   - **adapter-computed, always present, never "source information" at all** — `contract_version`,
+     `tenant`, `object_hash` (3 paths, fixed constants or computed hashes, no NAGA dependency);
+   - **genuinely NAGA-sourced today** — `document_id`, `times.observed_at`, `stance`,
+     `source_tier` (via `credibility_score`), `source_span` in part (a hint string exists, but see
+     G2 — it is not yet a real `locator`+`quote_hash`) (roughly 4-5 paths, and G2/G5 already flag
+     that even these are imperfect);
+   - **NAGA never asked the question** — `source_event_ref.*` (no `IntelEvent` concept, G6),
+     `classification.rights`, `classification.risk_class`/`sensitivity` (no policy exists),
+     `review_state` (no evidence-level review workflow), `retention.*` (no policy exists),
+     `evidence_family_id`/`evidence_id` (identity-minting gaps) — this group is why the D4
+     admission predicate (build-spec §3, rules 5-9) fires on effectively every legacy NAGA record
+     today, regardless of how well any individual field maps.
+   The exact count for a given cohort is a property of that cohort's rows, not of this document —
+   this section states the RULE, not a fixed number.
+3. **`admissible_records`** — of the legacy cohort, how many records pass every ordered D4
+   predicate (build-spec §3, rules 1-10) and are actually written as canonical objects.
+
+**These three numbers differ on the mixed set, and that is the point.** `documented_mapping_coverage`
+is a ceiling that does not move once this document is complete (32/32, permanently, until the
+schema itself changes). `available_source_information` is typically far smaller than 32 for any
+real legacy NAGA record, because the "NAGA never asked the question" group above has no answer at
+all, independent of data quality. `admissible_records` is smaller still, because a record can carry
+partial source information for a required path (e.g. a `source_span_hint` string) without that
+information being STRUCTURALLY sufficient to satisfy the predicate (e.g. rule 4,
+`exact_span_missing`, fires on a hint string precisely because it lacks `locator`/`quote_hash`).
+
+**A dry-run over legacy-shaped records that admits zero is a valid, honestly reported outcome, not
+a failure.** Given the "NAGA never asked the question" group above, a dry-run over `naga_sources`
++ `naga_claim_evidence` rows as they exist today — URL-hashed `content_hash`, hint-string spans, no
+`IntelEvent` identity, no rights/review/retention policy — is expected to admit **0** records, with
+every exclusion reason named per record. This is the honest baseline the seed cohort (§5c) is built
+to clear instead.
 
 ## 3. Transitions and invalidation — reusing `ObjectSuccessorEdge` and `OperationalReceipt`
 
@@ -101,19 +172,28 @@ the schema this session). Recommend the canonical NAGA supersession/contradictio
 follows the packet's own instruction to extend NAGA's foundations, not build a third system, and
 it is one of the 25 models Cohort B may build against per `contract-pass-001.md §7`.
 
-**Caveat, explicit per the contract-pass boundary:** `ObjectSuccessorEdge` being *available* is
+~~**Caveat, explicit per the contract-pass boundary:** `ObjectSuccessorEdge` being *available* is
 not the same as an *atomic write* of "claim revision + successor edge + downstream invalidation"
 being available — D10 (atomic multi-object repository) and D11 (atomic classification-change
 primitive) are both **absent**, and the packet is explicit that D11 in particular "matters to you
 specifically" because contradiction/supersession/invalidation are exactly the shapes that want
 one. The design must therefore assume these three writes happen as **separate, individually
-committed steps**, and be built so that a crash between steps is safe — i.e. idempotent replay
-(the packet's own required test: "invalidation idempotency and replay tests") is not a nice-to-
-have here, it is the *only* consistency mechanism available given D10/D11's absence. Concretely:
-the successor edge must be derivable/re-creatable from the new claim's own
-`supersedes_claim_ref` field (belt and suspenders — the edge is a redundant, queryable index over
-information the claim object already carries), so a missing or duplicate edge write is a
-performance/query problem, never a correctness problem.
+committed steps**, and be built so that a crash between steps is safe~~ — **SUPERSEDED 2026-09-11
+(R1, D3/D5, `research/operations/2026-09-10-fable-max-sessions/R-research-os.md` §0):** the
+struck-through "cannot be atomic" premise is FALSE. A successor claim and its `ObjectSuccessorEdge`
+commit **atomically, in one transaction** (`CONTRACTS.md:142`, `:267`: "a successor object and its
+edge commit atomically... the predecessor is never updated"). D10/D11 remain absent and are not
+needed for this: what they would have added is a *third*, coupled write — mutating the predecessor
+in place — and that write does not happen at all (RULING B1, §07 above); it never needed atomicity
+with the other two because it was never a write. The two writes that DO happen (successor + edge)
+are one transaction, not two "separate, individually committed steps" as this paragraph originally
+claimed — i.e. a crash between steps is safe not because idempotent replay papers over a partial
+write, but because there is no window in which one exists without the other. **The idempotent-replay
+reasoning below stays — it is still true and still required, independent of which premise motivated
+it:** replay must still resolve to the same bundle rather than create a second branch, and the edge
+must still be derivable/re-creatable from the claim's own `supersedes_claim_ref` field as a
+redundant, queryable index. Only the "cannot be atomic" premise is superseded; the belt-and-suspenders
+edge-reconstruction discipline is not.
 
 For **downstream invalidation events** (packet deliverable #7: "Invalidation events when evidence
 is withdrawn, a claim expires, is contradicted, or is superseded") and the dependency index

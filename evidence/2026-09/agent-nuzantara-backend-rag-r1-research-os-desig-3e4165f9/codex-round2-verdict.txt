@@ -1,0 +1,19 @@
+BLOCKER | apps/backend-rag/backend/tests/unit/research_os/research_os_admission_reference.py:161 | rule 1 accepts any shared digit group between the claimed value and quote; “1 year” passes merely because the quote says “Article 1,” and the test at test_research_os_admission_rows.py:368 covers only wholly disjoint figures | fabricated statement values can be admitted as source-derived
+
+| Item | Status | Evidence |
+|---|---|---|
+| B1 | CURED | research_os_admission_reference.py:291-310 |
+| B2 | PARTIALLY | research_os_admission_reference.py:145-164 |
+| B3 | PARTIALLY | research_os_admission_reference.py:328-336 resolves version plus hash, but the mapping does not bind `document_id` |
+| B4 | CURED | research_os_admission_reference.py:224-238 |
+| B5 | CURED | research_os_reader_reference.py:99-124,429-461 |
+| B6 | CURED | research_os_reader_reference.py:230-245,369-377 |
+| N1 | CURED | research_os_reader_reference.py:113-124 |
+| N2 | CURED | research_os_reader_reference.py:318-334 |
+| N3 | CURED | research_os_reader_reference.py:400-407; test_research_os_temporal_rows.py:487-491 |
+| N4 | CURED | 01_z2_seed_cohort.json:1357,1421 |
+| Malformed-event rehash | CURED | test_research_os_admission_rows.py:271-279 |
+| Two-defect ordering | CURED | test_research_os_admission_rows.py:379-401 |
+| Invented figures | CURED | 01_z2_seed_cohort.json:27,287,540,804,1058 |
+
+REWORK — rule 1 admits a false value whenever it shares any incidental number with the quoted span

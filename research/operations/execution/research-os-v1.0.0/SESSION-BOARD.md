@@ -189,9 +189,20 @@ re-measured in a second fresh worktree before writing:
 | P12 Action Inbox | `275` | `275_war_room_vision_circuit_breaker.sql` |
 | P13 outcome aggregates | `276` | `276_garuda_voa_archive_comments.sql` |
 
-The real head is **`287`** (`287_garuda_practices.sql`), and the sequence is **not
-dense** — `282` is absent — so a head derived by counting files is wrong where
-`max + 1` is right.
+**The rule:** the head is measured as `max + 1` from
+`apps/backend-rag/backend/db/migrations_v2/` at the time of measurement, never read from a
+document — every reservation in this file decays the moment an unrelated migration lands.
+Measured by this window (R1 DESIGN, 2026-09-11) via `ls apps/backend-rag/backend/db/migrations_v2/
+| sort | tail -5`: the head is **`309`** (`309_client_obligations.sql`), and the sequence is **not
+dense** — `282` is absent — so a head derived by counting files is wrong where `max + 1` is right.
+
+**Deviation, named.** The mandate this window builds against
+(`research/operations/2026-09-10-fable-max-sessions/R-research-os.md` §0 and R1's own build spec,
+`R1-build-spec.md` §4/§6) asks for "**308** on 2026-09-11". That was true: 308 was the head when
+the staff room measured at 01:55 WITA. Migration `309_client_obligations.sql` landed at
+2026-09-10T20:52:33Z (commit `b2b2ceac76`), after that measurement and before this window's own.
+This window writes the number it measured (`309`) and names the deviation rather than writing a
+number it did not measure.
 
 **This correction introduces no new judgement: it applies §0, which had already
 decided this and was not carried down here.** §0 refused a contiguous re-reservation
@@ -388,10 +399,66 @@ to a versioned ledger revision. Whoever integrates binds `max+1` re-measured fro
 `apps/backend-rag/backend/db/migrations_v2/` at integration time, never a number copied from any
 document, this board included. The sequence is not dense.
 
+## 13. Cohort B outcome, 2026-09-11 — measured by the staff room, not by this window
+
+> **Provenance of this section.** Every measurement below is the staff room's own
+> (`research/operations/2026-09-10-fable-max-sessions/R-research-os.md` §0 — Fable session
+> `nuzantara-04` and an independent Astra/Codex reading, both dated 2026-09-11), carried here as
+> the D9 control-room update R1 DESIGN owns. Nothing in this section is a live read taken by this
+> window; the one number this window did re-measure itself (the migration head) is recorded in §5
+> above, not here. Counts and paths only — no PII, no OSINT, no client identifiers, no
+> credentials.
+
+**What Cohort B actually did.** P05 and P06 preparation bundles merged 2026-08-26 (#4996, #4997);
+RULING B1 applied (#5029) — supersession derived at read from the successor edge, never written
+on the predecessor. A P06 build lane (slice 1) started the same day and stopped ON PURPOSE: the
+canonical valid-time text is not orderable (the fraction is optional and `.` (0x2E) sorts before
+`Z` (0x5A), so a microsecond-zero instant sorts last although it is chronologically first), and
+the correct `text::timestamptz` index is refused by PostgreSQL (STABLE, not IMMUTABLE). Ledger row
+`.claude/skills/modus/PENDING-ARMS.md:21` records the stop, owner "the lane that owns Work Packet
+04's surface — NOT the P06 build lane". In the searched scope — that ledger, `gh pr list --state
+all`, `git branch -r`, `git worktree list`, `shared/escalations_pro.jsonl`, 2026-08-27→09-10 — no
+lane, PR, branch or worktree ever took that row.
+
+**Production read, 2026-09-11 01:50 WITA, through `scripts/pg.sh` (read-only).**
+- `research_os_objects` exists, **0 rows**; triggers `research_os_objects_immutable` and
+  `research_os_objects_no_wipe` present.
+- `naga_claims` — **3,119 rows**.
+
+**Existing persistence consumer.** `apps/backend-rag/backend/services/autonomous_lab/
+consul_executor.py` already carries an executable `INSERT INTO research_os_objects` (replay
+verification, hashes payloads before validation) — it is **not active in production** (0 rows,
+above), and the Fly image does not ship `packages/research-os-core`
+(`apps/backend-rag/Dockerfile:36` copies `cell-core` instead). It binds the contract without
+exercising it in production.
+
+**Shape of this tranche.** One tranche: P04-surface design decisions → P06 NAGA claim ledger,
+slice 2 (D1); the 23 packets stay a roadmap. Ten technical decisions, D1–D10 (valid-time ordering
+repaired in storage, wire form and hashes byte-identical; two-axis D3 reader with abstention and
+quarantine; D4 admission as a decision, not a mapping; D5 storage topology on
+`research_os_objects` plus one projection table; D6 migration mechanics, integer bound at
+integration time; D7 two windows, one per organ, one release order; D8 team and gate; D9 control
+room — this section and §5's head-line rewrite are its delivery; D10 runtime placement of the
+backfill on Pro against production PostgreSQL, never inside the Fly image). Zero's rulings:
+**Z1 RULED YES** (one tranche, P06 slice 2; the 23 packets stay a roadmap); **Z2a RULED YES, with
+expiry until 2026-09-25T00:00Z** (R2's merge — deploy plus the additive DDL of
+`research_os_naga_claims` exactly as D5 describes it, nothing else); **Z2b open** (production
+writes / backfill DML — until ruled, R2 ends at the admission dry-run and writes nothing to
+production); **Z3 open → BLUE by default** for both windows.
+
+**Two windows, disjoint perimeters, one merge order.** R1 DESIGN (this window) owns the contract
+surface's tests, the P06 bundle and this control room; `packages/research-os-core/**` stays
+byte-identical in this tranche (a needed change is a freeze-change proposal, not an edit). R2
+ENGINE owns `services/research_os/naga_*` and its migration; it may build in parallel on disjoint
+paths but does not push, open or arm before R1 has merged and R2 has integrated `origin/main`
+containing it. Merge order: (1) R1's code PR; (2) R2's code PR; (3) the one final tranche ledger
+PR, opened by R2's Dux after both code PRs merge, appending R1's and R2's rows and row 21's
+closure to `.claude/skills/modus/PENDING-ARMS.md`.
+
 ## Adversarial review
 
-Scope note: this review covers §0-§11. §12 (Cohort B outcome, added 2026-08-26) carries its
-own provenance block and is a record of the two Kimi K3 bundle reviews, not new unreviewed
-material.
+Scope note: this review covers §0-§11. §12 (Cohort B outcome, added 2026-08-26) and §13 (Cohort
+B outcome 2026-09-11, added by the R1 DESIGN window) each carry their own provenance block and
+are records of reviews/measurements done elsewhere, not new unreviewed material.
 
 Seat: **Codex** (`codex exec --sandbox read-only`, high effort), 2026-08-23 — generator ≠ grader, a different model family from the Sonnet 5 drafter and the Opus 5 Conductor. Verdict: DEFECTIVE, 15 findings, all disposed of before landing. Findings against this file specifically were unsuperseded S00 sentences and a builder-count arithmetic error, all corrected here. The full review record, including the four findings re-verified against the source files, is in [`README.md`](README.md#adversarial-review).
