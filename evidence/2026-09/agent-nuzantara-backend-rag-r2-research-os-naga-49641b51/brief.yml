@@ -1,0 +1,229 @@
+task_id: r2-research-os-naga-engine
+gear: 3
+gear_note: >-
+  Declared Gear 3 by the mandate itself (R2 §1: "Gear: 3 (production migration and, under Z2,
+  production writes)"). Not a size artefact and not disputable downward: the diff carries a
+  production migration under apps/backend-rag/backend/db/migrations_v2/ and, under Z2b, a
+  production write path. CI's deterministic floor is measured on the real diff before release
+  (scripts/evidence_pack_lint.py --print-floor --changed-files-file …) and recorded in pack.yml;
+  if it computes HIGHER than 3 the floor wins, as it did for R1.
+l_level: L2
+gate_class: opus
+
+mission:
+  id: R2
+  colour: BLUE
+  colour_note: "Z3 RULED BLUE 2026-09-11 ~15:00 WITA — confirmed, not defaulted."
+  organ: >-
+    the NAGA claim ledger on the Research OS substrate (Work Packet 06, slice 2) — persistence
+    API, admission and backfill under apps/backend-rag/backend/services/research_os/, plus their
+    migration.
+  host: Pro
+  worktree: .worktrees/backend-rag-r2-research-os-naga-engine
+  branch: agent/nuzantara/backend-rag/r2-research-os-naga-engine
+  base: ea50eb262f9ed96ce070cb407b55202002b0dae8
+  base_equals_origin_main_at: "2026-09-11T11:02:00Z"
+  mandate_ref: research/operations/2026-09-10-fable-max-sessions/R-research-os.md
+  mandate_blob: 692b70de1e703d8b460f5157dd7969b4e5848717
+  mandate_blob_note: >-
+    Bound by BLOB, not by pointer: the file was read from origin/main and its blob verified
+    against the one the opening instruction named. 44336 bytes.
+  build_spec_ref: evidence/2026-09/agent-nuzantara-backend-rag-r2-research-os-naga-49641b51/R2-build-spec.md
+
+objective: |
+  Canonical Claim, Evidence, IntelEvent and ObjectSuccessorEdge objects are written to
+  research_os_objects atomically and read bitemporally per D3; legacy naga_claims rows pass the
+  D4 admission or are excluded with a named reason; the admitted cohort is backfilled
+  idempotently and read back.
+
+  What success changes: the first real Research OS rows exist in production with provenance that
+  survives the admission rules, and "what did we hold true on date T, as known at time S" has one
+  executable answer. Ledger row 21 — open since 2026-08-26 with an owner nobody ever took —
+  closes with the migration as proof-of-armed.
+
+authority:
+  z1: "RULED 2026-09-11 ~04:45 WITA: YES — one tranche, P04-surface decisions → P06 slice 2; the 23 packets stay a roadmap."
+  z2a: >-
+    RULED YES, expiry 2026-09-25T00:00Z. This window's merge = the backend deploy PLUS the
+    additive DDL of research_os_naga_claims exactly as D5 describes it — one IMMUTABLE function
+    research_os_instant_key, two expression indexes, one projection table
+    research_os_naga_admission — and NOTHING ELSE. No data movement.
+  z2b: >-
+    RULED YES 2026-09-11 ~15:00 WITA, expiry 2026-09-25T00:00Z. (a) Eligible cohort: at most 20
+    public regulatory seed claims prepared by R1 as fully sourced canonical fixtures, plus
+    whatever the legacy admission dry-run admits (expected 0 — a zero-admission dry-run is a
+    valid, honestly reported outcome, D4). (b) Maximum 20 seed rows plus the admitted legacy
+    rows, 40 in total. (c) Kinds and tables: Claim, Evidence, ObjectSuccessorEdge, IntelEvent in
+    research_os_objects and rows in research_os_naga_admission, nothing else. (d) Execution
+    identity: a write-capable PostgreSQL role whose credential Zero hands over at --apply time.
+    UNTIL THAT CREDENTIAL IS IN THIS WINDOW'S HANDS IT STOPS AT --dry-run AND WRITES 0 ROWS.
+    The credential is never asked of a peer session; it is asked of Zero, through the imperator.
+  z2b_cohort_state_inherited: >-
+    R1 declared its seed cohort EMPTY UNTIL SOURCED (g3 checkpoint 3, 2026-09-11T11:00Z, accepted
+    by the imperator at 11:10Z). Its fixtures/seed_public_regulatory set is synthetic to its
+    identifiers (permenkumham-synth-*), which makes it a valid TEST cohort and NOT the Z2b
+    production cohort. CONSEQUENCE CARRIED BY THIS WINDOW: --apply may write only what the legacy
+    admission dry-run admits — expected 0 — and not one row of that fixture file. Stated in the
+    PR body, not just here. Sourcing a real cohort is deferred work owned by neither R1 nor R2.
+  z3: "RULED 2026-09-11 ~15:00 WITA: BLUE for R1 and R2."
+  z4: "No veto received on D2–D10. The window closed when R1 opened."
+
+sibling_contract:
+  consumes: R1 (agent/nuzantara/backend-rag/r1-research-os-design)
+  r1_state_measured: >-
+    2026-09-11T10:00Z and re-measured 11:02Z: R1 is NOT merged and has NEVER been pushed —
+    `gh pr list --head <r1-branch> --state all` prints [] and `git ls-remote origin '*r1-research-os*'`
+    prints nothing. R1 IS ALIVE: generation 3 opened 09:55:42Z, deadline 13:55:42Z, candidate
+    HEAD 0bfe21728d after an adversarial REWORK (14 findings, 6 BLOCKER).
+  release_gate: >-
+    D7 holds. This window BUILDS in parallel on its own fixtures and does NOT push, open, arm or
+    release until R1 has merged AND been integrated here by a PER-FILE BLOB CHECK against
+    origin/main — never by ancestry. Then: switch to R1's canonical fixtures, re-run the FULL
+    acceptance and the adversarial round on the integrated tree, then release the frozen
+    candidate. No xfail bridge. No post-arm rebase.
+  ledger_pr_barrier: >-
+    Measured 2026-09-11T11:09Z: exactly ONE open PR touches .claude/skills/modus/PENDING-ARMS.md
+    — #6080 (S3's 2026-09-10 census said three: #6081, #6080, #5072). Mini's fleet-watch reports
+    #6080 as permanently DIRTY because the file carries merge=union, which git honours and
+    GitHub's merge machinery does not, so re-probing will never clear it. The ONE tranche
+    ledger PR therefore cannot be opened under its own contract until that is rebuilt on fresh
+    origin/main by its owner. Reported, not hand-resolved.
+
+appetite:
+  wall_clock_hours: 6
+  adversarial_rounds: 2
+  tokens: 2000000
+descendants:
+  max_attempts: 6
+  concurrency: 2
+  depth: 1
+  continuation_hops: 1
+  adapter_tool_ceiling: 150
+  ship_reserve_N: 0
+
+mandate_ledger:
+  root: ~/.claude/state/child-mandates
+  key: R2
+  key_sha256: d653b016db1da8f5b36f84a44465e5d6adffeb38ae46cc701e3462343727717b
+  bound_at: "2026-09-11T11:09:26Z"
+  opening: "2026-09-11T09:35:58Z"
+  opening_source: >-
+    birth time of this window's session artefacts (/private/tmp/claude-501/.../f8927127-…),
+    measured with stat, not estimated.
+  formula: "renew(opening + 21600 - now) = 15991.8s — never renew(21600), which would overshoot."
+  previous_deadline: null
+  previous_deadline_note: >-
+    NULL because the entry DID NOT EXIST. This is a creation-plus-bind, not the renewal of a
+    running clock, and it is recorded as such rather than reported as a renewal.
+  new_deadline: "2026-09-11T15:35:58Z"
+  renewals: 1
+  reservations: 0
+  key_determinism_note: >-
+    NUZANTARA_MANDATE_ID=R2 is exported for every dispatch. child_workflow.mandate_id() returns
+    that value VERBATIM (:320-321), so the ledger key is sha256("R2") and is findable by mandate
+    name. This deliberately cures the trap R1 hit twice in this tranche and B1 hit before it: by
+    default the key is derived from the SESSION ID, so a lookup by mandate name finds nothing and
+    silently creates a SECOND empty ledger with a fresh one-hour clock.
+  renewal_authority: "the staff room, once, by the same formula."
+
+deviations:
+  - id: D-R2-1
+    what: >-
+      Setting NUZANTARA_MANDATE_ID also sets child_workflow's strict mode
+      (budget_mode="enforced"), whose UNKNOWN-measurement warning names 3600 active seconds and
+      120 tools per child, while this mandate declares an adapter tool ceiling of 150.
+    disposition: >-
+      Accepted knowingly, not smuggled. The 3600s/120-tool figures govern CHILD ACTIVE TIME; the
+      MISSION wall clock is owned by mandate_budget and is bound above to 15:35:58Z — the code
+      says so at child_workflow.py:244 ("it is not the mission deadline"). Determinism of the
+      ledger key is worth more than 30 tool calls of child headroom, and ship_reserve_N=0 already
+      requires a capped child to checkpoint and return rather than ship.
+  - id: D-R2-2
+    what: "The worktree broker refused the mandated branch name: it already existed."
+    disposition: >-
+      Residue of the first agent_start.py run, which died mid-checkout on a full disk AFTER
+      creating the branch. Verified safe before removal: exactly at origin/main, 0 unique commits,
+      no worktree, never pushed, reflog showing only "Created from origin/main". Removed by the
+      sanctioned route — a temporary worktree, `git -C <that worktree> branch -D`, release — NOT
+      by AGENT_WORKTREE_ENFORCEMENT=false, which the guard's own header forbids and which does not
+      work as an inline prefix anyway.
+  - id: D-R2-3
+    what: "Pro's disk was 100% full (275Mi free) at open and blocked worktree creation for ~90 minutes."
+    disposition: >-
+      Cause measured: 61 abandoned com.google.Chrome.chrome_chrome_url_fetcher_.* directories in
+      the user TMPDIR holding 47G, one 1.2–2.4G partial .crx3 each, all the same extension id and
+      version. Escalated to Zero, who ruled FIX. THE RECLAIM WAS NOT PERFORMED BY THIS WINDOW:
+      the deletion loop reports DEL=0 because every target failed its `[ -d ]` test — the
+      directories were already gone when it ran. Most plausible cause, stated as such and not as a
+      measurement: Chrome's own startup cleanup of its abandoned url_fetcher temp dirs (Chrome
+      launched 18:45:10 WITA, inside that window). Recorded this way because claiming an effect
+      this window did not produce is the failure mode the fleet calls diabolical.
+
+team:
+  dux:
+    seat: this window
+    model: claude-opus-5
+    effort: xhigh
+    role: "Dux and release owner. Verification, pack and release are not delegable."
+  implementer:
+    model: sonnet
+    pinned: true
+    note: 'model: "sonnet" pinned in every Agent call; an unpinned child inherits the Dux''s model.'
+  support:
+    model: haiku
+  adversarial_reviewer:
+    seat: "independent Codex seat, codex exec -m gpt-5.6-sol --sandbox read-only, alarm >= 120s"
+    note: "never the builder. R1 measured that Codex O1 (~/.codex) answers 'workspace out of credits' on BOTH binaries on Pro — the failure is the ACCOUNT, not the mise/homebrew shadowing trap — and fell back inside the role to O2 (~/.codex-acct2). Try O2 first."
+  council:
+    declared_for: "the production effect (Gear 3)"
+    seats: ["codex-gpt-5.6-sol", "kimi-code/k3"]
+    both_review_only: true
+    note: >-
+      agy/Gemini 3.1 Pro is NOT quorum-eligible: evidence_pack_lint's COUNCIL_REVIEW_SEATS admits
+      only codex-gpt-5.6-sol, kimi-code/k3 and tp1-qwen3.8-max, and tp1 is metered. Gemini runs as
+      a NON-QUORUM long-form reader of the migration and the whole spec, recorded in pack.yml as
+      non-load-bearing.
+  admission_judge:
+    requirement: "a judge of the admission dry-run's three counts from a family other than the builder"
+    seats: ["codex-gpt-5.6-sol", "tp1-glm-5.2"]
+  probation:
+    seat: deepseek-v4-pro
+    note: "on PROBATION, never counts toward any quorum."
+  gate:
+    seat: "a FRESH Opus 5 xhigh session outside this chain"
+    publishes: "harness/fable-gate on the candidate HEAD, plus the receipt comment"
+    note: "REQUESTED FROM THE IMPERATOR, never launched by this window. It signs, it never arms."
+
+checkpoints:
+  staff_room: "imperator nuzantara-0d (Fable, M5)"
+  durable_leg: "scripts/fleet_mail.sh local broadcast --key R2-checkpoint --ttl 24"
+  ack_key: R2-ack
+  sendmessage_note: "SendMessage does not cross machines — not chased. The mailbox ack IS the delivery."
+  sent:
+    - n: 1
+      envelope: 20260911T100629Z-5234.md
+      at: "2026-09-11T10:06:29Z"
+      summary: "OPEN, BLOCKED at §1 on the full disk; R1 measured unmerged and unpushed; authority copied."
+  received:
+    - key: R2-ack
+      envelope_acked: 20260911T100629Z-5234.md
+      sha256: 4d689c20ac2fe4fd2f6918cb7844c616c32e3834183f1db3dd39e8d4f57b1525
+      at: "2026-09-11T10:27Z"
+    - key: R2-ack
+      at: "2026-09-11T11:00Z"
+      summary: "Zero RULED FIX on the reclaim; UNBLOCKED; proceed to worktree, base, ledger binding, BUILD."
+
+stop_conditions:
+  - "admission needs a canonical field the contract lacks → freeze-change proposal, stop"
+  - "legacy data needs a statement transformation that is not a pure mapping (the atomizer — deferred)"
+  - "the backfill would write anywhere other than research_os_objects and research_os_naga_admission"
+  - "D7 cross-implementation hashing turns out to be required"
+  - "a frozen path appears in a diff"
+  - "a check is red three times for the same cause"
+  - "the write credential is needed → finish at dry-run and say so"
+seat_failure_rule: >-
+  RULED Zero 2026-09-11 16:40 WITA: a seat that does not answer is NOT a suspend. Retry twice;
+  check the invocation (absolute binary path — mise shadows homebrew —, exact roster model id,
+  flags, active account, network); fall back INSIDE the same role (Claude: /login another of the 6
+  OAuth seats, _6 Team last; Codex: second account; TP1: next model). SUSPEND only when the whole
+  cascade is exhausted, written in the ledger with time and exact error. The colour never changes.
