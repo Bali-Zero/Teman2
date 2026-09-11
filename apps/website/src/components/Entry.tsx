@@ -128,9 +128,7 @@ export function Hero() {
           </ul>
         </div>
       </div>
-      <span className="hero-caption">
-        TRADITION, TOMORROW
-      </span>
+      <span className="hero-caption">TRADITION, TOMORROW</span>
     </section>
   );
 }

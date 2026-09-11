@@ -25,7 +25,9 @@ describe("client portal introduction", () => {
       expect(terms[index]).toHaveTextContent(title);
       expect(definitions[index]).toHaveTextContent(detail);
     }
-    expect(within(portal).getByText(/depend on your account and permissions/)).toBeVisible();
+    expect(
+      within(portal).getByText(/depend on your account and permissions/),
+    ).toBeVisible();
     expect(within(portal).queryByRole("tab")).not.toBeInTheDocument();
     expect(within(portal).queryByRole("tabpanel")).not.toBeInTheDocument();
   });
