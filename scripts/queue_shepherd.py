@@ -229,6 +229,10 @@ RED_SAME_CAUSE_LIMIT = 3
 # write failures (a `gh` timeout, a momentary API blip) must never alert on their own.
 REARM_WRITE_FAIL_LIMIT = 3
 
+# C2 (gate on #6175): the single spelling of the write-failure dedup prefix. It was written
+# as a literal at four sites, which is how report() came to count these keys as UNKNOWN ones.
+REARM_FAIL_ALERT_PREFIX = "rearm-write-fail:"
+
 _UNCANCELLABLE_ERROR_LABELS = {
     "uncancellable_409": "both cancel and force-cancel endpoints answered HTTP 409 (not queued yet)",
     "failed": "cancel_run failed (non-409) repeatedly — see queue-shepherd.log for the gh stderr",
@@ -625,7 +629,7 @@ def gc_alerted_state(alerted_state: dict[str, Any], open_pr_numbers: set[int]) -
     kept: dict[str, Any] = {}
     for key, value in alerted_state.items():
         prefix = key.split(":", 1)[0]
-        if prefix == "rearm-write-fail":
+        if prefix == REARM_FAIL_ALERT_PREFIX.rstrip(":"):
             prefix = key.split(":", 2)[1] if key.count(":") >= 2 else ""
         try:
             pr_number = int(prefix)
@@ -1640,7 +1644,7 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> dict[str, Any]:
             # K-3 innocence: a SUCCESSFUL write resets the consecutive-failure counter to zero,
             # and clears any stale write-failure alert dedup for this (pr, head sha).
             rearm_fail_state = record_rearm_write_success(rearm_fail_state, number, head_sha)
-            alerted_state.pop(f"rearm-write-fail:{alert_key}", None)
+            alerted_state.pop(f"{REARM_FAIL_ALERT_PREFIX}{alert_key}", None)
             rearmed += 1
         else:
             # K-3 (Kimi council finding, S1 2026-09-11): the WRITE itself failed non-zero. Before
@@ -1653,7 +1657,7 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> dict[str, Any]:
             consecutive = count_consecutive_rearm_write_failures(rearm_fail_state, number, head_sha)
             if consecutive >= REARM_WRITE_FAIL_LIMIT:
                 rearm_write_failed_keys.append(alert_key)  # counts toward "tick NOT ok" every tick
-                fail_alert_key = f"rearm-write-fail:{alert_key}"
+                fail_alert_key = f"{REARM_FAIL_ALERT_PREFIX}{alert_key}"
                 if not alerted_state.get(fail_alert_key):
                     new_rearm_fail_keys.append(fail_alert_key)  # batched below, deduped separately
 
@@ -1682,7 +1686,7 @@ def run_rearm_pass(dry_run: bool, now: _dt.datetime) -> dict[str, Any]:
         sent = send_telegram(
             f"re-arm WRITE (`gh pr merge --auto`) has failed {REARM_WRITE_FAIL_LIMIT}+ "
             "consecutive times, silently (tick would otherwise read exit 0), for:\n"
-            + "\n".join(f"  PR {k[len('rearm-write-fail:'):]}" for k in sorted_fail_keys),
+            + "\n".join(f"  PR {k[len(REARM_FAIL_ALERT_PREFIX):]}" for k in sorted_fail_keys),
             dedup_key="queue-shepherd-rearm-write-fail-" + "+".join(sorted_fail_keys),
         )
         if sent:
@@ -1976,9 +1980,19 @@ def report() -> int:
             budget_state, entry.get("pr_number", 0), entry.get("head_sha", ""), now
         )
         print(f"    {key}: {count}/{INFRA_BUDGET_MAX} infra rearms in last {BUDGET_WINDOW_HOURS}h")
-    print(f"alerted (UNKNOWN, undelivered-until-resolved) keys: {len(alerted_state)}")
-    for key, ts in sorted(alerted_state.items()):
+    # C2 (gate on #6175, 2026-09-11): alerted_state holds TWO key families since K-3 —
+    # "<pr>:<sha>" for the UNKNOWN-class dedup and "rearm-write-fail:<pr>:<sha>" for the
+    # write-failure dedup. Counting them together under the "UNKNOWN" label reported a
+    # write-failure alert as an UNKNOWN one: two different diseases in one number, in the
+    # one command an operator runs to find out what the organ is doing.
+    unknown_alerts = {k: v for k, v in alerted_state.items() if not k.startswith(REARM_FAIL_ALERT_PREFIX)}
+    write_fail_alerts = {k: v for k, v in alerted_state.items() if k.startswith(REARM_FAIL_ALERT_PREFIX)}
+    print(f"alerted (UNKNOWN, undelivered-until-resolved) keys: {len(unknown_alerts)}")
+    for key, ts in sorted(unknown_alerts.items()):
         print(f"    {key}: alerted at {ts}")
+    print(f"alerted (re-arm WRITE failure, undelivered-until-resolved) keys: {len(write_fail_alerts)}")
+    for key, ts in sorted(write_fail_alerts.items()):
+        print(f"    {key[len(REARM_FAIL_ALERT_PREFIX):]}: write-failure alerted at {ts}")
     try:
         red_state = _load_json(RED_FILE)
     except RuntimeError as exc:

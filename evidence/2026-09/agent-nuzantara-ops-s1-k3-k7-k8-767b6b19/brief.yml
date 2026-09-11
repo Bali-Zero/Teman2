@@ -40,9 +40,16 @@ acceptance:
       initial 0 that reads as a measurement.
     probe: pytest-red-state-gc-candidates-test
   - text: >-
-      rc=3 SHALL NOT read as a crashed daemon to launchd — the plist is KeepAlive=false
-      with StartInterval=600 and no wrapper, so the child's exit code is not consumed.
-    probe: read-the-plist
+      rc=3 SHALL NOT raise a false alarm. CORRECTED after the gate: the earlier wording of
+      this probe said "the child's exit code is not consumed", and that is FALSE —
+      scripts/launchd_liveness_detector.py:424 reads LastExitStatus, and
+      com.nuzantara.queue-shepherd IS inside its OURS_RE glob, measured live among its 210
+      findings. The conclusion survives its broken premise: launchd itself ignores the exit
+      code (KeepAlive=false, StartInterval=600, no wrapper), and the detector maps a
+      non-zero exit to FAILING-HONESTLY (:442-449), which is NOT in ALARM_VERDICTS (:604).
+      No page fires. A conclusion resting on a false premise is the harder defect to catch,
+      because the answer still comes out right.
+    probe: read-the-plist-and-the-detector
 assumptions:
   - assumption: >-
       The three findings were still unfixed on origin/main.
@@ -51,7 +58,7 @@ assumptions:
       Read on disk before implementing, not assumed. No "already fixed" case among the three.
   - assumption: >-
       Every guard is proven by its own mutation.
-    status: verified # CORRECTED — it was claimed verified on FOUR mutations and was FALSE
+    status: unverifiable-by-the-author # twice claimed verified, twice falsified by a gate
     evidence: >-
       This assumption was written after four mutations and the fresh Opus 5 gate then ran
       SEVENTEEN and found THREE guards the suite could not see, all green under deletion:
@@ -64,6 +71,14 @@ assumptions:
       mutations were re-run after it: 1 failed/186 each. The claim is true at THIS sha and
       the four-mutation version of it was not — recorded rather than quietly overwritten,
       because a brief that inherits an over-claim is worse than one that never claimed.
+      SECOND CORRECTION, after the second gate round: the corrected wording ALSO claimed
+      verified, and a second round found three MORE blind guards (report()'s per-key block,
+      its CORRUPT branch, and the C2 conflation itself). The status is now
+      unverifiable-by-the-author on principle rather than on a count: "no guard is blind" is
+      a claim about the ABSENCE of a blind spot, and an author cannot measure the absence of
+      something they failed to imagine. Only an adversary can, and only up to the mutations
+      it happened to run — 21 core mutations are red at this sha, and that is the true
+      statement, not "every".
   - assumption: >-
       K-3's alert path works end to end in production.
     status: unverified
@@ -82,6 +97,19 @@ assumptions:
       its call site still left the suite green. The wired step is now pinned end to end by
       test_run_rearm_pass_actually_prunes_the_rearm_fail_file_B1 (aged entry absent, fresh
       entry present, read back off disk after the pass).
+residuals:
+  - >-
+    com.nuzantara.queue-shepherd is deliberately NOT added to
+    launchd_liveness_detector.py's EXPECTED_NONZERO_LABELS (:527-532), even though rc=3 is
+    exactly the documented "non-zero as a reporting convention" this allowlist exists for.
+    The allowlist is keyed on the LABEL, not on the exit code, so adding it would also
+    re-label rc=1 (an uncaught crash) and rc=2 (CANNOT-VERIFY) as EXPECTED-NONZERO on the
+    same job — silencing two real failures to tidy one deliberate signal. The file's own
+    comment forbids exactly that ("a genuinely broken job must NOT be added here to silence
+    it"). Left as FAILING-HONESTLY, which raises no alarm and reads truthfully. Making the
+    allowlist exit-code-aware is a change to the detector, a different concern and a
+    different PR.
+
 consumer_map:
   - >-
     launchd on Pro runs scripts/queue_shepherd.py every 600s as

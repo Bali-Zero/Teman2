@@ -3303,3 +3303,68 @@ def test_gc_alerted_state_keeps_an_unparseable_key_B3():
     assert "hand-written-nonsense" in kept
     assert "rearm-write-fail:not-a-number:sha" in kept
     assert "970:shaOpen" in kept
+
+
+# ── C2 + M23/M27: report() had no test at all (gate on #6175, second round) ─────────────────
+# `report()` is the ONE command an operator runs to ask what the organ is doing, and nothing
+# exercised it — which is why the C2 conflation (write-failure alerts counted and labelled as
+# UNKNOWN ones) reached a reviewer instead of a test.
+
+
+def _run_report(capsys):
+    rc = qs.report()
+    return rc, capsys.readouterr().out
+
+
+def test_report_separates_the_two_alert_families_C2(monkeypatch, tmp_path, capsys):
+    """Guilt: a write-failure dedup key must NOT be counted or labelled as an UNKNOWN alert.
+    Innocence: a genuine UNKNOWN key must still be counted as one, on the same dict."""
+    monkeypatch.setattr(qs, "BUDGET_FILE", tmp_path / "budget.json")
+    monkeypatch.setattr(qs, "ALERTED_FILE", tmp_path / "alerted.json")
+    monkeypatch.setattr(qs, "RED_FILE", tmp_path / "red.json")
+    monkeypatch.setattr(qs, "REARM_FAIL_FILE", tmp_path / "rearm_fail.json")
+    monkeypatch.setattr(qs, "LOG_FILE", tmp_path / "absent.log")
+    qs._save_json(qs.ALERTED_FILE, {
+        "700:shaUnknown": "2026-09-11T00:00:00Z",
+        f"{qs.REARM_FAIL_ALERT_PREFIX}701:shaWrite": "2026-09-11T00:00:00Z",
+    })
+
+    _rc, out = _run_report(capsys)
+
+    assert "alerted (UNKNOWN, undelivered-until-resolved) keys: 1" in out
+    assert "alerted (re-arm WRITE failure, undelivered-until-resolved) keys: 1" in out
+
+
+def test_report_lists_the_rearm_fail_file_entries_M23(monkeypatch, tmp_path, capsys):
+    """M23: the whole per-key block report() gained for REARM_FAIL_FILE was blind — deleting it
+    left every test green, so the file K-3 added was invisible in the operator's own view."""
+    monkeypatch.setattr(qs, "BUDGET_FILE", tmp_path / "budget.json")
+    monkeypatch.setattr(qs, "ALERTED_FILE", tmp_path / "alerted.json")
+    monkeypatch.setattr(qs, "RED_FILE", tmp_path / "red.json")
+    monkeypatch.setattr(qs, "REARM_FAIL_FILE", tmp_path / "rearm_fail.json")
+    monkeypatch.setattr(qs, "LOG_FILE", tmp_path / "absent.log")
+    qs._save_json(qs.REARM_FAIL_FILE, {
+        "702:shaFail": {"consecutive_failures": 2, "last_attempt_at": "2026-09-11T00:00:00Z"},
+    })
+
+    _rc, out = _run_report(capsys)
+
+    assert "702:shaFail" in out
+    assert f"2/{qs.REARM_WRITE_FAIL_LIMIT} consecutive write failures" in out
+
+
+def test_report_says_CORRUPT_when_the_rearm_fail_file_is_unparseable_M27(monkeypatch, tmp_path, capsys):
+    """M27: the CORRUPT branch was blind too. A corrupt state file must be NAMED in the report,
+    never rendered as an empty-and-therefore-healthy one — the whole family of defect this PR
+    exists to close is an organ that looks fine while something is wrong underneath."""
+    monkeypatch.setattr(qs, "BUDGET_FILE", tmp_path / "budget.json")
+    monkeypatch.setattr(qs, "ALERTED_FILE", tmp_path / "alerted.json")
+    monkeypatch.setattr(qs, "RED_FILE", tmp_path / "red.json")
+    corrupt = tmp_path / "rearm_fail.json"
+    corrupt.write_text("{not json", encoding="utf-8")
+    monkeypatch.setattr(qs, "REARM_FAIL_FILE", corrupt)
+    monkeypatch.setattr(qs, "LOG_FILE", tmp_path / "absent.log")
+
+    _rc, out = _run_report(capsys)
+
+    assert "CORRUPT, cannot parse" in out
