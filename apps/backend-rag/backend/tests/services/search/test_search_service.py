@@ -125,5 +125,11 @@ async def test_search_collection_uses_existing_collection_and_formats_results() 
             "text": "Investor KITAS overview",
             "metadata": {"kind": "visa"},
             "score": 0.8,
+            # B1.1: search_collection formats through format_search_results at a
+            # site that DECLARES its kind, so this entry carries the declared
+            # DENSE_FORMATTED provenance and not the UNKNOWN default. `score_raw`
+            # is ABSENT, not None: FakeVectorDB's hit has no "scores" array, so
+            # the formatter consumed no raw value and emits no key for one.
+            "score_kind": "dense_formatted",
         }
     ]
