@@ -486,6 +486,16 @@ async def create_practice(
             )
 
             if not practice_type_row:
+                if practice_type_code == OPEN_INQUIRY_TYPE_CODE:
+                    # The placeholder is seeded by migration 311; its absence is a
+                    # deployment gap, not a caller error — say so instead of 404.
+                    raise HTTPException(
+                        status_code=503,
+                        detail=(
+                            f"Practice type '{OPEN_INQUIRY_TYPE_CODE}' is not seeded "
+                            "(migration 311 not applied) — cannot open an inquiry without a service"
+                        ),
+                    )
                 raise HTTPException(
                     status_code=404,
                     detail=f"Practice type '{practice_type_code}' not found",
@@ -1222,9 +1232,11 @@ async def update_practice(
                         """
                         SELECT p.status, p.client_id, p.created_by, p.assigned_to,
                                p.start_date, p.completion_date,
-                               c.assigned_to AS client_lead
+                               c.assigned_to AS client_lead,
+                               pt.code AS practice_type_code
                         FROM practices p
                         LEFT JOIN clients c ON p.client_id = c.id
+                        LEFT JOIN practice_types pt ON pt.id = p.practice_type_id
                         WHERE p.id = $1
                         """,
                         practice_id,
@@ -1238,6 +1250,7 @@ async def update_practice(
                         practice_client_lead = old_row.get("client_lead", "")
                         old_start_date = old_row.get("start_date")
                         old_completion_date = old_row.get("completion_date")
+                        old_practice_type_code = old_row.get("practice_type_code")
                 else:
                     raise
 
@@ -1292,8 +1305,24 @@ async def update_practice(
             if "practice_type_code" in updates.model_fields_set and not new_practice_type_code:
                 raise HTTPException(status_code=400, detail="practice_type_code cannot be null")
             if new_practice_type_code:
+                # A live practice may not be regressed to the placeholder: the
+                # status gate above only fires on a status CHANGE, so a PATCH
+                # carrying just practice_type_code needs its own check against
+                # the effective (new or current) status.
+                effective_status = normalize_state(updates.status or old_status or "")
+                if (
+                    new_practice_type_code == OPEN_INQUIRY_TYPE_CODE
+                    and effective_status not in STATES_WITHOUT_SERVICE
+                ):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"Cannot set '{OPEN_INQUIRY_TYPE_CODE}' on a practice in status "
+                            f"'{effective_status}' — only inquiry/cancelled may have no service"
+                        ),
+                    )
                 new_type_row = await conn.fetchrow(
-                    "SELECT id FROM practice_types WHERE code = $1 AND is_active = true",
+                    "SELECT id, base_price FROM practice_types WHERE code = $1 AND is_active = true",
                     new_practice_type_code,
                 )
                 if not new_type_row:
@@ -1304,6 +1333,16 @@ async def update_practice(
                 update_fields.append(f"practice_type_id = ${param_index}")
                 params.append(new_type_row["id"])
                 param_index += 1
+                # An open inquiry was created with quoted_price NULL (the
+                # placeholder has no base_price). Back-fill from the chosen
+                # service so the invoice step never sees a NULL price, unless
+                # the caller sets the price explicitly in this same PATCH.
+                if (
+                    "quoted_price" not in update_set
+                    and old_quoted_price is None
+                    and new_type_row["base_price"] is not None
+                ):
+                    update_set["quoted_price"] = new_type_row["base_price"]
 
             # Map of allowed fields to database columns
             field_mapping = {

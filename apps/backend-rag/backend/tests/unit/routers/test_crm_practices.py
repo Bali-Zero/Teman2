@@ -229,7 +229,6 @@ class TestPracticeCreate:
         with pytest.raises(ValueError, match="quoted_price must be non-negative"):
             PracticeCreate(client_id=1, practice_type_code="x", quoted_price=Decimal("-100"))
 
-
     def test_practice_type_code_is_optional_for_open_inquiry(self) -> None:
         from backend.app.routers.crm_practices import PracticeCreate
 
@@ -789,10 +788,10 @@ class TestOpenInquiry:
                 db_pool=mock_db_pool,
                 current_user=admin_user,
             )
-        assert exc_info.value.status_code == 404
+        assert exc_info.value.status_code == 503
         lookup_args = mock_db_conn.fetchrow.call_args_list[0].args
         assert lookup_args[1] == OPEN_INQUIRY_TYPE_CODE
-        assert OPEN_INQUIRY_TYPE_CODE in exc_info.value.detail
+        assert "migration 311" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_create_without_service_refused_past_inquiry(
@@ -843,7 +842,9 @@ class TestOpenInquiry:
             )
         assert exc_info.value.status_code == 400
         assert "select a service" in exc_info.value.detail
-        mock_db_conn.execute.assert_not_called()
+        # The UPDATE itself runs through conn.fetchrow(...RETURNING...), so the
+        # only fetchrow call allowed here is the old-row read.
+        assert mock_db_conn.fetchrow.call_count == 1
 
     @pytest.mark.asyncio
     async def test_update_sets_service_and_advances_in_one_patch(
@@ -861,7 +862,7 @@ class TestOpenInquiry:
             "assigned_to": "team@balizero.com",
             "practice_type_code": "open_inquiry",
         }
-        type_row = {"id": 24}
+        type_row = {"id": 24, "base_price": None}
         canonical_row = {
             "id": 1,
             "status": "waiting_documents",
@@ -927,6 +928,91 @@ class TestOpenInquiry:
                 current_user=admin_user,
             )
         assert exc_info.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_update_cannot_regress_live_practice_to_placeholder(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        """A PATCH with only practice_type_code='open_inquiry' (no status change)
+        must be refused on any practice past inquiry — the status gate alone
+        would not fire (spalla finding 1)."""
+        from backend.app.routers.crm_practices import PracticeUpdate, update_practice
+
+        old_row = {
+            "status": "on_process",
+            "client_id": 42,
+            "client_visible": True,
+            "created_by": "admin@balizero.com",
+            "assigned_to": "team@balizero.com",
+            "quoted_price": Decimal("15000000"),
+            "practice_type_code": "kitas_working_onshore",
+        }
+        mock_db_conn.fetchrow = AsyncMock(return_value=old_row)
+
+        with (
+            patch("backend.app.routers.crm_practices.is_crm_admin", return_value=True),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            await update_practice(
+                request=MagicMock(),
+                practice_id=1,
+                updates=PracticeUpdate(practice_type_code="open_inquiry"),
+                db_pool=mock_db_pool,
+                current_user=admin_user,
+            )
+        assert exc_info.value.status_code == 400
+        assert "only inquiry/cancelled" in exc_info.value.detail
+        assert mock_db_conn.fetchrow.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_update_service_backfills_quoted_price_from_base_price(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
+        """An open inquiry has quoted_price NULL; choosing a service with a
+        base_price must back-fill it so the invoice step never sees NULL
+        (spalla finding 2). An explicit quoted_price in the same PATCH wins."""
+        from backend.app.routers.crm_practices import PracticeUpdate, update_practice
+
+        old_row = {
+            "status": "inquiry",
+            "client_id": 42,
+            "client_visible": True,
+            "created_by": "admin@balizero.com",
+            "assigned_to": "team@balizero.com",
+            "quoted_price": None,
+            "practice_type_code": "open_inquiry",
+        }
+        type_row = {"id": 24, "base_price": Decimal("36000000")}
+        canonical_row = {
+            "id": 1,
+            "status": "inquiry",
+            "client_visible": True,
+            "practice_type_id": 24,
+            "client_id": 42,
+            "practice_type_code": "kitas_working_onshore",
+            "quoted_price": Decimal("36000000"),
+            "completion_date": None,
+        }
+        mock_db_conn.fetchrow = AsyncMock(side_effect=[old_row, type_row, canonical_row])
+
+        with (
+            patch("backend.app.routers.crm_practices.is_crm_admin", return_value=True),
+            patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()),
+            patch("backend.app.routers.crm_practices.to_jsonb", return_value="{}"),
+        ):
+            await update_practice(
+                request=MagicMock(),
+                practice_id=1,
+                updates=PracticeUpdate(practice_type_code="kitas_working_onshore"),
+                db_pool=mock_db_pool,
+                current_user=admin_user,
+            )
+
+        update_sql, *update_params = mock_db_conn.fetchrow.call_args_list[2].args
+        assert "practice_type_id = $1" in update_sql
+        assert "quoted_price = $2" in update_sql
+        assert update_params[0] == 24
+        assert update_params[1] == Decimal("36000000")
 
     @pytest.mark.asyncio
     async def test_catalog_hides_placeholder(
@@ -1812,7 +1898,10 @@ class TestUpdateRequiredDocument:
             update_required_document,
         )
 
-        practice_row = {"created_by": "owner@balizero.com", "assigned_to": "other-owner@balizero.com"}
+        practice_row = {
+            "created_by": "owner@balizero.com",
+            "assigned_to": "other-owner@balizero.com",
+        }
         mock_db_conn.fetchrow = AsyncMock(return_value=practice_row)
 
         with caplog.at_level(logging.WARNING, logger="backend.app.routers.crm_practices"):
@@ -2137,7 +2226,10 @@ class TestDeleteRequiredDocument:
 
         from backend.app.routers.crm_practices import delete_required_document
 
-        practice_row = {"created_by": "owner@balizero.com", "assigned_to": "other-owner@balizero.com"}
+        practice_row = {
+            "created_by": "owner@balizero.com",
+            "assigned_to": "other-owner@balizero.com",
+        }
         mock_db_conn.fetchrow = AsyncMock(return_value=practice_row)
         mock_db_conn.execute = AsyncMock(return_value="DELETE 1")
 
