@@ -19,8 +19,8 @@ afterEach(() => {
 
 describe("editorial service restoration", () => {
   it("preserves the independently pinned legacy identities and exact pricing keys", () => {
-    expect(inventory).toHaveLength(103);
-    expect(inventory.flatMap((item) => item.features)).toHaveLength(132);
+    expect(inventory).toHaveLength(108);
+    expect(inventory.flatMap((item) => item.features)).toHaveLength(142);
     expect(
       serviceDossiers.map(({ id, name, domain }) => ({ id, name, domain })),
     ).toEqual(
@@ -35,7 +35,7 @@ describe("editorial service restoration", () => {
         pricing.map(({ name, key, category }) => [name, { key, category }]),
       ),
     );
-    expect(pricing).toHaveLength(86);
+    expect(pricing).toHaveLength(91);
     const visaGroups = serviceSectionContent.immigration.catalog;
     expect(visaGroups.map(({ title }) => title)).toEqual([
       "Single-entry visits",
@@ -45,8 +45,11 @@ describe("editorial service restoration", () => {
       "Documents & permit administration",
       "Urgent processing enquiries",
     ]);
+    const visaPricing = pricing.filter(
+      ({ category }) => category !== "compliance_retainers",
+    );
     expect(visaGroups.flatMap(({ services }) => services)).toEqual(
-      pricing.map(({ name }) => name),
+      visaPricing.map(({ name }) => name),
     );
     expect(
       visaGroups.map(
@@ -99,7 +102,7 @@ describe("editorial service restoration", () => {
     }
     expect(
       new Set(serviceDossiers.map(({ explanation }) => explanation)).size,
-    ).toBe(103);
+    ).toBe(108);
   });
 
   it("keeps consequential neighboring choices and corrected legacy assumptions explicit", () => {
@@ -188,7 +191,7 @@ describe("editorial service restoration", () => {
         );
         expect(text).toContain(expected.id);
         expect(text).toContain(expected.currentName);
-        if (service.slug !== "immigration") {
+        if (!["immigration", "compliance"].includes(service.slug)) {
           expect(
             within(row as HTMLElement).queryByRole("button", {
               name: /price/i,
@@ -197,6 +200,12 @@ describe("editorial service restoration", () => {
           expect(
             within(row as HTMLElement).getByText("Scope-based quotation"),
           ).toBeVisible();
+        } else {
+          expect(
+            within(row as HTMLElement).getByRole("button", {
+              name: /Check current price/,
+            }),
+          ).toBeInTheDocument();
         }
       }
     },

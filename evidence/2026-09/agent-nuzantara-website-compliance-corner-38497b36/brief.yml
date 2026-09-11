@@ -1,0 +1,172 @@
+task_id: compliance-corner
+gear: 2
+l_level: L2
+gate_class: opus
+gear_note: >-
+  RECOMPUTED after the PR was rebased onto agent/nuzantara/website/prettier-content-files (PR
+  #6211, which prettier-normalizes the pre-existing content of every file this PR also touches,
+  merged in as this PR's new base) -- the earlier gear:1 declaration above was measured against
+  the OLD base (codex/website-r19-integrated) where those files were not yet prettier-clean, so
+  this PR's own diff against that old base was inflated by reformatting churn belonging to
+  #6211, not to this PR's content. Recipe: `git diff --name-only
+  agent/nuzantara/website/prettier-content-files...HEAD > /tmp/cfb.txt; git diff --numstat
+  agent/nuzantara/website/prettier-content-files...HEAD > /tmp/nsb.txt; python3
+  scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/cfb.txt --numstat-file
+  /tmp/nsb.txt` -> floor 2, source size (`--print-floor-source` confirms `size`). 20 files
+  changed against the new base (19 content/test files + this brief.yml), churn (added+deleted
+  per file, per _size_term_net_lines(), `awk -F'\t' '{s+=$1+$2} END{print s}' /tmp/nsb.txt`)
+  totals 811 (12+6 + 1+0 + 1+0 + 1+0 + 11+4 + 51+37 + 15+6 + 18+14 + 23+2 + 25+0 + 85+0 + 134+0
+  + 116+0 + 27+2 + 20+0 + 62+0 + 27+1 + 1+0 + 3+0 + 106+0), between SIZE_GEAR2_THRESHOLD (400)
+  and SIZE_GEAR3_THRESHOLD (1828), no hot-zone path hit ->
+  floor 2. Declared 2 to match the measurement, superseding the stale gear:1 above.
+
+  RE-RECOMPUTED after the gate r1 REWORK-BUILD cures (5 more commits: PMK 81/2024 citation,
+  drop the forbidden "landscape" metaphor, four-pillar parity in company.ts/site-smoke.mjs +
+  Company.test.tsx, Coretax bullet resourced to the repo's KEP-71/PENG-31 record). Same recipe,
+  same base: `git diff --name-only agent/nuzantara/website/prettier-content-files...HEAD >
+  /tmp/cfb3.txt; git diff --numstat agent/nuzantara/website/prettier-content-files...HEAD >
+  /tmp/nsb3.txt; python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file
+  /tmp/cfb3.txt --numstat-file /tmp/nsb3.txt` -> still floor 2, source size
+  (`--print-floor-source` confirms `size`). 23 files now (22 content/test files + this
+  brief.yml), churn `awk -F'\t' '{s+=$1+$2} END{print s}' /tmp/nsb3.txt` = 984, still between
+  SIZE_GEAR2_THRESHOLD (400) and SIZE_GEAR3_THRESHOLD (1828), no hot-zone path hit. Gear stays
+  2.
+
+  FINAL RECOMPUTE after #6211 merged (909e257d97) and this branch was rebased --onto
+  origin/codex/website-r19-integrated (the PR's own base as GitHub now reads it, once
+  agent/nuzantara/website/prettier-content-files merged into it), plus the #6211 pack brief_ref
+  fix and the Coretax re-cure landed inside this branch: `git diff --name-only
+  origin/codex/website-r19-integrated...HEAD > /tmp/cfb5.txt; git diff --numstat
+  origin/codex/website-r19-integrated...HEAD > /tmp/nsb5.txt; python3
+  scripts/evidence_pack_lint.py --print-floor --changed-files-file /tmp/cfb5.txt --numstat-file
+  /tmp/nsb5.txt` -> still floor 2, source size. 24 files, churn `awk -F'\t' '{s+=$1+$2}
+  END{print s}' /tmp/nsb5.txt` = 1021, still between 400 and 1828. Gear stays 2.
+
+  RE-RECOMPUTED a fourth time after the Detect Secrets cure (8cb6a5a6f4: one
+  CONTENT_KEYED_RULES entry in scripts/detect_secrets_auto_triage.py + its guilt/innocence
+  tests, because the legacy-service-inventory.json parity fixture's 250 sha256 content
+  digests arrived as 222 unaudited Hex High Entropy findings on db5e7cac60). Same recipe
+  against origin/codex/website-r19-integrated (909e257d97): 26 files, churn 1168
+  (+1059/-109), `--print-floor` -> 2, `--print-floor-source` -> size. Still gear 2; the
+  two scripts/ files do not trip a path floor (measured before committing, option B --
+  hand-marking the baseline -- would have read 3 and was not taken).
+
+objective: >-
+  Add "compliance" as the fifth first-class service pillar on the NEW apps/website R19 site
+  (branch codex/website-r19-integrated, not yet on main): a full ServicePage entry rendered by
+  the existing ServiceJourneys/ServiceSections/ServiceCatalog machinery exactly like immigration,
+  company-setup, tax and property -- hero, who-it-helps, catalog with live prices, documents/
+  review, a "why it matters now" section carrying three sourced facts, and FAQ. Wires the five
+  live compliance_retainers catalogue keys (compliance_takeover,
+  compliance_core_retainer_monthly, compliance_employer_retainer_monthly,
+  pse_registration_fixed, pmse_vat_assessment) through service-price-identities.ts /
+  service-dossier-data.ts so prices render from GET https://nuzantara-rag.fly.dev/api/pricing/
+  service, never as a literal. Public and indexable (owner-confirmed prices, 2026-09-10) -- no
+  noindex.
+constraints:
+  - No price literal anywhere in changed source; the five catalogue keys are exact strings, not
+    inferred or guessed near-matches.
+  - >-
+    Every surface enumerating the four existing pillars gets a fifth compliance entry: /services
+    overview + [slug] detail route (slug-driven, automatic once servicePages has 5 entries),
+    the homepage hero "Choose where to start" nav (Entry.tsx), the homepage "Services and tools"
+    block (content/services.ts + Services.tsx), and the contact-topic system (lead-handoff.ts,
+    contact-context.ts, ContactOptions.tsx). Footer.tsx was checked and deliberately left
+    untouched -- it links to /services generically and does not enumerate individual pillars.
+  - >-
+    Compliance has no independent public tool (no equivalent of Visa Oracle / KBLI Navigator /
+    Tax Compliance Calendar / Property Check exists or was invented for it). ServicePage.
+    toolDestinationId became optional; the "Optional independent starting point" aside is
+    omitted for compliance rather than pointed at a fabricated destination. The homepage tools
+    card for compliance likewise omits the tool-specific CTA link, keeping only "Explore ..." and
+    "Talk to our team".
+  - >-
+    Why-now facts are the three the task specified, sourced, and NOT the draft's unverified
+    "PP 28/2025 fines" line: (a) Komdigi blocked eBay and KLM on 28 June 2025 and sent
+    notification letters to 25 operators on 26 June 2026 (Komdigi press releases 9446 and
+    10354); (b) CURED at gate r1 (REWORK-BUILD, comment 5630621483), then RE-CURED with more
+    precise sourcing -- the original "extended to 31 May after around 4,000 complaints" had no
+    repo provenance for the causal "~4,000 complaints" claim. First resourced to
+    docs/superpowers/specs/2026-05-08-domain-mesh-research/r3-djp-coretax-tax-tech-2026-05-08.md
+    sec. 1.4 (LMI Consultancy paraphrase) as an "extended... filing window" framing; corrected
+    again on the team-lead's finding of more precise, DDTC-backed sourcing:
+    research/regulatory/2026-05-28-delta.json ("DJP decision (KEP) issued 30 April 2026 setting
+    tax policy for corporate taxpayers filing annual SPT... under the Coretax... system for tax
+    year 2025", citation KEP-71/PJ/2026) and
+    research/regulatory/2026-05-31-delta.json (verbatim_excerpt: "KEP-71/PJ/2026 grants
+    corporate taxpayers a relaxation window to file their 2025 annual income tax returns (SPT
+    Tahunan Badan) without administrative penalties, with the deadline expiring on May 31,
+    2026"). Both files verified directly (grep) before writing. This DDTC-sourced framing is a
+    penalty-free relaxation window layered on KEP-71's issuance, not a moved statutory deadline
+    -- "extended" dropped per instruction. Final bullet: "Coretax's first corporate filing
+    season needed a rescue: DJP's KEP-71/PJ/2026 (issued 30 April 2026) waived late-filing
+    penalties on 2025 corporate income tax returns (SPT Tahunan Badan) through 31 May 2026." The
+    same delta files' "~4,000" figure (HeyGoTrade, in the earlier doc) attaches to a different
+    claim ("formal petitions... for the deadline relief"), not "complaints" against Coretax --
+    dropped rather than restated imprecisely; (c) quarterly LKPM deadlines moved to the 15th
+    under BKPM Regulation 5/2025.
+  - >-
+    A parallel, unrelated lane (roster name dux-w1-pr2-compliance-page) is adding an UNLISTED,
+    noindex /services/compliance page to a DIFFERENT app (apps/mouth, reading a committed price
+    snapshot) per evidence/2026-09/agent-nuzantara-mouth-compliance-retainer-page-0bf73876/
+    brief.yml on origin/main. No file overlap with this PR (different app, different branch,
+    different pricing mechanism) -- flagged for the reviewer's awareness, not coordinated with.
+acceptance:
+  - text: >-
+      WHEN /services and /services/compliance render THEY SHALL list/show the fifth pillar with
+      the same section shape as the other four (hero, catalog with live prices, documents/
+      review, FAQ) plus the compliance-only "why it matters now" section.
+    probe: >-
+      npx vitest run src/app/services/services.test.tsx src/components/services/
+      ServiceDossiers.test.tsx src/content/service-pages.test.ts (all green); `npm run build`
+      route table prints "/services/[slug]" with 5 SSG paths ("● /services/immigration,
+      company-setup, tax, [+2 more paths]" = property, compliance).
+  - text: The five compliance_retainers catalogue keys SHALL be wired exactly, never a literal price.
+    probe: >-
+      grep -nE "[0-9]{3},[0-9]{3}|USD [0-9]|[0-9]{1,3}\.[0-9]{3}\.[0-9]{3}" against every changed
+      file (19 files) -> 0 hits (exit 1, no match); service-pages.test.ts asserts the five
+      catalog names map onto servicePriceIdentities with category compliance_retainers and the
+      exact five key literals.
+  - text: A mutation to the new price-identity wiring SHALL be caught by the new test.
+    probe: >-
+      Renamed the "Compliance Takeover" key in service-price-identities.ts -> service-pages.
+      test.ts "wires the compliance catalog..." went RED (AssertionError: Compliance Takeover:
+      expected undefined to be defined); reverted -> GREEN again (5 passed).
+  - text: Every surface listing the four pillars SHALL list five, or be shown not to enumerate them.
+    probe: >-
+      Entry.test.tsx / Home.test.tsx updated and green for the fifth nav category and homepage
+      card; Footer.tsx read in full -- contains no per-pillar links to update. CORRECTED at gate
+      r1 (REWORK-BUILD): this sweep missed two surfaces. src/content/company.ts's
+      companyExpertise array (rendered on /about) and tests/qa/site-smoke.mjs's REQUIRED_ROUTES
+      both still listed only four pillars; both cured (commit bb76bbecef), plus
+      Company.test.tsx's hardcoded expected-routes assertion, which the sweep also missed
+      (commit 96dd25fe33). grep -rn "companyExpertise\|REQUIRED_ROUTES" apps/website/src
+      apps/website/tests now shows both including /services/compliance. Live-server check:
+      `npm run build && npx next start --hostname 127.0.0.1 --port 3105` then `node
+      tests/qa/site-smoke.mjs` against it -> requiredRoutes 8/8 passing (incl.
+      /services/compliance), fragmentTargets 1/1, homeAssets 14/14, failures 0. Server killed
+      after.
+  - text: Typecheck, full test suite and production build SHALL be clean.
+    probe: >-
+      npx tsc --noEmit (exit 0); npm test -- --maxWorkers=1 --no-file-parallelism (100 files /
+      1345 tests passed, 1 pre-existing skip, unchanged before/after this PR); npm run build
+      (next build --webpack) completed, full route table printed, no errors.
+consumer_map:
+  - "Public visitors on the new R19 site (once codex/website-r19-integrated ships) looking for compliance/PSE/PMSE VAT support."
+  - "The other four ServicePage consumers (ServiceJourneys, ServiceSections, ServiceCatalog) -- unmodified in shape, just fed a fifth entry."
+risks:
+  - >-
+    The homepage "Compliance corner" card heading (content/services.ts) and the compliance
+    dossier's FAQ/why-now text are original copy written for this PR, adapted from the sourced
+    draft at ~/Desktop/ricerca-nicchie-online-indonesia-2026-09-11/build/page-content.draft.md;
+    they were not independently re-verified against primary regulatory sources beyond what the
+    task instructions already specified as checked.
+  - >-
+    No dedicated compliance illustration exists in public/assets; both the ServicePage hero image
+    and the homepage card reuse tool-tax-illustration.png as a placeholder (thematically adjacent
+    -- Coretax/LKPM filings) rather than fabricate a new asset. Flagged for a follow-up asset.
+grader: >-
+  The final on-disk gate is a fresh Opus 5 session commissioned by the imperator; this agent does
+  not arm auto-merge, does not merge, and posts no harness/fable-gate verdict.
+budget: Existing subscription only; no paid API calls; no subagents used (direct work throughout).
+pii: none

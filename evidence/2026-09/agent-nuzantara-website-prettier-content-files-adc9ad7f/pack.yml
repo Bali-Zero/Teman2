@@ -1,4 +1,13 @@
-brief_ref: evidence/2026-09/agent-nuzantara-website-prettier-content-files-adc9ad7f/brief.yml
+# brief_ref is deliberately the bare "evidence/brief.yml", not this pack's own nested path:
+# the CI "Harness floor recompute" workflow copies both discovered per-PR files
+# (brief.yml/pack.yml) into a flat evidence/{brief,pack}.yml under a temp repo-root before
+# validating (check_brief_ref_exists resolves brief_ref against THAT staged repo_root, not the
+# real tree) -- every other merged Gear-3 pack on origin/main uses this exact form (grep -rn
+# "^brief_ref" evidence/2026-09/*/pack.yml). Side effect for LOCAL runs of
+# `evidence_pack_lint.py --repo-root=<worktree>`: a stray root-level evidence/brief.yml
+# (belonging to an unrelated PR, task_id oracle-decisiveness-spec) shadows this reference and
+# gets validated instead -- known, not a defect in this pack; CI's staged copy is authoritative.
+brief_ref: evidence/brief.yml
 plan_ref: PR #6211 — agent/nuzantara/website/prettier-content-files
 diff:
   files: 14

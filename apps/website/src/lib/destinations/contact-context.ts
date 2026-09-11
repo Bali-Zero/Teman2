@@ -14,6 +14,7 @@ const sources: Record<string, string> = {
   company: "/services/company-setup",
   tax: "/services/tax",
   property: "/services/property",
+  compliance: "/services/compliance",
 };
 
 export function resolveContactSource(value: unknown): string {

@@ -322,8 +322,8 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # trail are derived from the live registry post-merge, not summed by
     # hand (team-lead's call: a rule appears once in the trail regardless of
     # how many PRs tried to add it).
-    assert len(CONTENT_KEYED_RULES) == 24, (
-        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 24. "
+    assert len(CONTENT_KEYED_RULES) == 25, (
+        f"CONTENT_KEYED_RULES now has {len(CONTENT_KEYED_RULES)} entries, not 25. "
         "If you just ADDED a rule: bump this number AND append a `# +1: <what> "
         "(<date>, PR #NNNN)` line below, matching the existing trail's format — "
         "that comment IS the audit record this assert exists to force. "
@@ -349,6 +349,7 @@ def test_kbli_gold_rule_registered_and_scoped_to_exactly_one_file() -> None:
     # +1: fold_pack_seq18.py seq-17 chain anchor exact-value pin (2026-08-31, #5333)
     # +1: fold_pack_seq19.py seq-18/seq-13/seq-15 chain-of-custody exact-value pins (2026-09-05, #5784)
     # +1: test_seq19_signed_bundle.py signed-bundle trust anchors (public key, seq-18 chain anchor, seq-19 payload_sha256) (2026-09-06)
+    # +1: apps/website legacy-service-inventory.json descriptionSha256/sha256 content digests (2026-09-11, #6210)
     #
     # Note (2026-08-23): "appended last" is no longer a constraint. It was
     # true only because this test and the two Google-OAuth tests below
@@ -1690,3 +1691,97 @@ def test_innocence_evidence_pack_other_key_not_approved() -> None:
         EVIDENCE_PACK_MEASURED_AT_REASON
     )
     assert content_pat.match("  api_key: 63bfa19ec") is None
+
+
+# ---------------------------------------------------------------------------
+# apps/website legacy-service-inventory fixture (2026-09-11, PR #6210)
+# ---------------------------------------------------------------------------
+
+LEGACY_SERVICE_INVENTORY = (
+    "apps/website/src/components/services/__fixtures__/legacy-service-inventory.json"
+)
+LEGACY_SERVICE_INVENTORY_REASON = "legacy-service-inventory fixture"
+LEGACY_SERVICE_INVENTORY_DIGEST = (
+    "a1919cffc3a9cba0a135fc01ebab975b3fa5c05cd6202f7d2ac9d22559cc58ab"
+)
+# Lines 7 and 11 of the fixture on PR #6210's head db5e7cac60, verbatim:
+# descriptionSha256 is never last in its object (trailing comma), a
+# feature's sha256 always is (no trailing comma).
+LEGACY_SERVICE_INVENTORY_REAL_LINES = [
+    '    "descriptionSha256": "a1919cffc3a9cba0a135fc01ebab975b3fa5c05cd6202f7d2ac9d22559cc58ab",',
+    '        "sha256": "ffd7280513ce285e6d9dc8d0b7078c4f39c8fe0e69b0d0a87d8af2965e445d7a"',
+]
+
+
+def test_legacy_service_inventory_rule_registered_and_scoped_to_one_file() -> None:
+    """Path-scoped to the one parity fixture — not its sibling fixture, not
+    the content files it pins, not another app's fixture of the same name."""
+    path_pat, _content_pat, reason = _find_content_keyed_rule(
+        LEGACY_SERVICE_INVENTORY_REASON
+    )
+    assert path_pat.search(LEGACY_SERVICE_INVENTORY)
+    assert not path_pat.search(
+        "apps/website/src/components/services/__fixtures__/legacy-pricing-identities.json"
+    )
+    assert not path_pat.search("apps/website/src/content/service-dossier-data.ts")
+    assert not path_pat.search(
+        "apps/website/src/components/services/legacy-service-inventory.json"
+    )
+    assert not path_pat.search(
+        "apps/mouth/src/components/services/__fixtures__/legacy-service-inventory.json"
+    )
+    assert "credential" in reason
+
+
+def test_guilt_legacy_service_inventory_real_lines_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        LEGACY_SERVICE_INVENTORY_REASON
+    )
+    for line in LEGACY_SERVICE_INVENTORY_REAL_LINES:
+        assert content_pat.match(line), f"should be approved: {line!r}"
+
+
+def test_guilt_legacy_service_inventory_both_comma_variants_approved() -> None:
+    """Either key, with or without the trailing comma — a future edit that
+    reorders fields must not silently stop matching."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        LEGACY_SERVICE_INVENTORY_REASON
+    )
+    d = LEGACY_SERVICE_INVENTORY_DIGEST
+    assert content_pat.match(f'  "sha256": "{d}",')
+    assert content_pat.match(f'  "descriptionSha256": "{d}"')
+
+
+def test_innocence_legacy_service_inventory_other_key_not_approved() -> None:
+    """A real secret under any OTHER key in the same file — even one with the
+    exact 64-hex shape — must stay unaudited. Keyed on the field NAME."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        LEGACY_SERVICE_INVENTORY_REASON
+    )
+    d = LEGACY_SERVICE_INVENTORY_DIGEST
+    assert content_pat.match(f'    "apiKey": "{d}",') is None
+    assert content_pat.match(f'    "id": "{d}",') is None
+    assert content_pat.match(f'    "legacyName": "{d}",') is None
+
+
+def test_innocence_legacy_service_inventory_wrong_value_shape_not_approved() -> None:
+    """The value must be exactly 64 lowercase hex — not a token prefix, not
+    63/65 chars, not uppercase."""
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        LEGACY_SERVICE_INVENTORY_REASON
+    )
+    assert content_pat.match('    "sha256": "ghp_realtoken1234567890abcdef"') is None
+    assert content_pat.match('    "sha256": "' + "a" * 63 + '"') is None
+    assert content_pat.match('    "sha256": "' + "a" * 65 + '"') is None
+    assert content_pat.match('    "sha256": "' + "A" * 64 + '"') is None
+
+
+def test_innocence_legacy_service_inventory_ride_along_not_approved() -> None:
+    _path_pat, content_pat, _reason = _find_content_keyed_rule(
+        LEGACY_SERVICE_INVENTORY_REASON
+    )
+    d = LEGACY_SERVICE_INVENTORY_DIGEST
+    assert (
+        content_pat.match(f'    "sha256": "{d}", "api_key": "realsecret123456"')
+        is None
+    )

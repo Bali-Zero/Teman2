@@ -112,6 +112,7 @@ describe("Hero", () => {
       ["Business & company", "/services/company-setup"],
       ["Tax", "/services/tax"],
       ["Property", "/services/property"],
+      ["Compliance", "/services/compliance"],
     ];
     expect(within(startingPoints).getAllByRole("link")).toHaveLength(
       destinations.length,

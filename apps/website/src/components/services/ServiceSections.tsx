@@ -4,12 +4,14 @@ import { getServiceDossier } from "../../content/service-dossiers";
 import { ServiceCatalog } from "./ServiceCatalog";
 import styles from "./service-sections.module.css";
 
-export function ServiceSectionNav() {
+export function ServiceSectionNav({ service }: { service: ServicePage }) {
+  const hasWhyNow = Boolean(serviceSectionContent[service.slug].whyNow);
   return (
     <nav aria-label="On this service page" className={styles.jumpLinks}>
       <a href="#available-services">Available services</a>
       <a href="#service-scope">What’s included</a>
       <a href="#preparation">Documents & eligibility</a>
+      {hasWhyNow && <a href="#why-now">Why it matters now</a>}
       <a href="#service-faqs">Common questions</a>
       <a href="#next-steps">Next steps</a>
     </nav>
@@ -98,13 +100,32 @@ export function ServiceSections({ service }: { service: ServicePage }) {
           </div>
         </div>
       </section>
+      {content.whyNow && (
+        <section
+          id="why-now"
+          aria-labelledby="why-now-heading"
+          className={styles.section}
+        >
+          <div className={styles.sectionHeading}>
+            <span className={styles.eyebrow}>04 / Why it matters now</span>
+            <h2 id="why-now-heading">The obligations keep moving.</h2>
+          </div>
+          <ul className={styles.scopeList}>
+            {content.whyNow.map((fact) => (
+              <li key={fact}>{fact}</li>
+            ))}
+          </ul>
+        </section>
+      )}
       <section
         id="service-faqs"
         aria-labelledby="faq-heading"
         className={`${styles.section} ${styles.faqs}`}
       >
         <div className={styles.sectionHeading}>
-          <span className={styles.eyebrow}>04 / Common questions</span>
+          <span className={styles.eyebrow}>
+            {content.whyNow ? "05" : "04"} / Common questions
+          </span>
           <h2 id="faq-heading">Before you take the next step.</h2>
         </div>
         <div>

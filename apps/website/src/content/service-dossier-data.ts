@@ -1225,6 +1225,100 @@ export const dossierFamilies = {
       "A PT PMA does not confer unrestricted land ownership. “Asset protection” and “tax efficiency” are objectives to assess, not guaranteed outcomes.",
     next: "Review the title and activity alongside the structure before incorporating or transferring assets.",
   },
+  "compliance-takeover": {
+    purpose:
+      "For a foreign-owned company that wants a full picture of its Indonesian filing obligations before choosing a retainer.",
+    distinction:
+      "A one-off review, not a subscription: it produces the register and gap list, not an ongoing filing service. The Core or Employer retainer is the follow-on for regular months.",
+    scope: [
+      "Review of current tax, LKPM, payroll and BPJS records",
+      "An obligations register naming each filing, its legal basis, deadline, owner and status",
+      "A written gap list and remediation quote",
+    ],
+    preparation: [
+      "Company deed, NIB and current tax registrations",
+      "Existing filing history, payroll and BPJS records available",
+    ],
+    limit:
+      "Historical clean-up of missed filings is quoted separately once the gap list is confirmed. This review does not submit any filing itself.",
+    next: "Share the entity's current records so the register and gap list can be prepared.",
+  },
+  "compliance-core-retainer": {
+    purpose:
+      "Recurring compliance support for a PT PMA that needs its monthly and quarterly filings owned end to end.",
+    distinction:
+      "Core retainer covers the entity's tax and LKPM cadence. Payroll and BPJS administration for staff sit in the Employer retainer, on top of this scope.",
+    scope: [
+      "Monthly tax filings prepared and submitted on Coretax",
+      "Quarterly LKPM prepared and submitted on OSS-RBA",
+      "An obligations calendar with deadlines and owners",
+      "A monthly compliance report with submission receipts",
+    ],
+    preparation: [
+      "Monthly cutoff records: invoices, payroll summary and bank movements",
+      "Current NIB, OSS project record and prior filings",
+    ],
+    limit:
+      "Bookkeeping, audit, disputes and transfer pricing are separate services. Your director reviews and signs; we prepare and submit under that authorisation.",
+    next: "Set the monthly document cutoff date so filings are prepared with time for your review before each deadline.",
+  },
+  "compliance-employer-retainer": {
+    purpose:
+      "For an employer that also needs payroll compliance and BPJS administration alongside its tax and LKPM filings.",
+    distinction:
+      "This extends the Core retainer to cover up to fifteen employees, including expat residency reviews and permit-expiry tracking; a larger headcount is scoped separately.",
+    scope: [
+      "Everything in the Core retainer",
+      "Payroll compliance checks for local and foreign staff",
+      "BPJS enrolment for expats employed six months or more",
+      "PPh 21 versus PPh 26 residency review",
+      "RPTKA and KITAS expiry tracking",
+    ],
+    preparation: [
+      "Payroll roster with local and foreign staff, start dates and contract terms",
+      "Existing BPJS registrations and current RPTKA/KITAS records",
+    ],
+    limit:
+      "Payroll processing itself is excluded if you use your own provider; this retainer checks compliance, it does not run payroll.",
+    next: "Share the current staff roster and permit expiry dates before the next filing cycle.",
+  },
+  "pse-registration": {
+    purpose:
+      "For an operator whose website, app or platform is used by people in Indonesia and needs PSE registration.",
+    distinction:
+      "This is a one-off registration to the TD-PSE certificate, not a retainer. Applicability reaches a foreign operator with no Indonesian office when Indonesian users can access its systems.",
+    scope: [
+      "Applicability assessment under PP 71/2019 and Permenkominfo 5/2020",
+      "Entity and system mapping across each domain and app",
+      "Document pack preparation and submission",
+      "Follow-up with Komdigi until the TD-PSE is issued",
+    ],
+    preparation: [
+      "List of systems, domains and apps reachable from Indonesia",
+      "Responsible officer, company registration and privacy policy documents",
+    ],
+    limit:
+      "Ongoing liaison after issuance, including keeping registered details current, is a separate monthly service.",
+    next: "List every system, domain and app your users in Indonesia can reach before the assessment.",
+  },
+  "pmse-vat-assessment": {
+    purpose:
+      "For an operator assessing whether it is likely to be appointed a PMSE VAT collector by DJP.",
+    distinction:
+      "No one applies to become a collector; DJP appoints under PMK 81/2024. This service assesses the threshold and prepares readiness, it does not request or confirm appointment.",
+    scope: [
+      "Threshold assessment under PMK 81/2024",
+      "A readiness pack for systems and invoicing",
+      "Support during a DJP appointment, if one follows",
+    ],
+    preparation: [
+      "Revenue and transaction volume reaching Indonesian consumers",
+      "Current invoicing and systems documentation",
+    ],
+    limit:
+      "Monthly VAT reporting after any appointment is quoted separately, like bookkeeping.",
+    next: "Share the transaction volumes reaching Indonesian consumers so the threshold can be assessed.",
+  },
 } satisfies Record<string, DossierFamily>;
 
 export const dossierRecords = [
@@ -2049,6 +2143,46 @@ export const dossierRecords = [
     name: "Ownership Structures (PT PMA)",
     domain: "property",
     family: "ownership",
+    route: "",
+    variant: "",
+  },
+  {
+    id: "svc-compliance-001",
+    name: "Compliance Takeover",
+    domain: "compliance",
+    family: "compliance-takeover",
+    route: "",
+    variant: "",
+  },
+  {
+    id: "svc-compliance-002",
+    name: "Core Compliance Retainer (Monthly)",
+    domain: "compliance",
+    family: "compliance-core-retainer",
+    route: "",
+    variant: "",
+  },
+  {
+    id: "svc-compliance-003",
+    name: "Employer Compliance Retainer (Monthly)",
+    domain: "compliance",
+    family: "compliance-employer-retainer",
+    route: "",
+    variant: "",
+  },
+  {
+    id: "svc-compliance-004",
+    name: "PSE Registration",
+    domain: "compliance",
+    family: "pse-registration",
+    route: "",
+    variant: "",
+  },
+  {
+    id: "svc-compliance-005",
+    name: "PMSE VAT Assessment",
+    domain: "compliance",
+    family: "pmse-vat-assessment",
     route: "",
     variant: "",
   },
