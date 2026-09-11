@@ -90,6 +90,31 @@ afterEach(() => {
 });
 
 describe("PortalAccess", () => {
+  // Portal audit F1 (2026-09-11): the login identity is
+  // `team_members.email`, which a CRM email edit does not move. The panel
+  // rendered the stale address as if it were current, so a consultant who
+  // had just changed the email had no way to know the client still signs in
+  // with the old one.
+  it("names the divergence when the login email is not the CRM email", async () => {
+    vi.mocked(api.crm.getPortalStatus).mockResolvedValue(ACTIVE);
+    renderPanel("moved@example.com");
+
+    expect(
+      await screen.findByText(/signs in as client@example\.com/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/the CRM now has moved@example\.com/i),
+    ).toBeInTheDocument();
+  });
+
+  it("stays quiet when the two emails agree", async () => {
+    vi.mocked(api.crm.getPortalStatus).mockResolvedValue(ACTIVE);
+    renderPanel("client@example.com");
+
+    await screen.findByText(/portal active/i);
+    expect(screen.queryByText(/signs in as/i)).not.toBeInTheDocument();
+  });
+
   it("offers the invite button when the client has no portal access", async () => {
     vi.mocked(api.crm.getPortalStatus).mockResolvedValue(NO_ACCESS);
     renderPanel();
