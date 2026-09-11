@@ -6,6 +6,7 @@ Centralized migration management system
 import asyncio
 import logging
 import ssl
+from functools import partial
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -98,17 +99,36 @@ class MigrationManager:
     - Connection pooling for performance
     """
 
-    def __init__(self, database_url: str | None = None) -> None:
+    def __init__(
+        self, database_url: str | None = None, *, dedicated: bool | None = None
+    ) -> None:
         """
         Initialize migration manager.
 
         Args:
             database_url: Database URL (defaults to `resolve_migration_dsn()`:
                 MIGRATION_DATABASE_URL, else DATABASE_URL)
+            dedicated: force the mode instead of classifying `database_url`.
+                An ALTERNATE dedicated DSN is not recognisable from the string
+                and must declare itself here; an explicit legacy URL needs
+                nothing, because it classifies as legacy on its own.
         """
         # Option D (RULED 2026-09-11): `MIGRATION_DATABASE_URL` wins over
         # `DATABASE_URL` for the RUNNER only; see `resolve_migration_dsn`.
+        #
+        # URL and MODE are FROZEN TOGETHER, here, once. Everything downstream
+        # -- the pool's `setup` hook, `apply_migration`, the connect-failure
+        # diagnostic -- reads these two attributes and never re-asks
+        # `settings`. A manager can therefore not be built against one DSN and
+        # then run under another's mode because something mutated the settings
+        # object in between; and the diagnostic cannot name a source that is
+        # not the one it dialled.
         self.database_url = database_url or resolve_migration_dsn()
+        self._dedicated = (
+            migration_dsn_is_dedicated(self.database_url)
+            if dedicated is None
+            else dedicated
+        )
         if not self.database_url:
             raise MigrationError("DATABASE_URL not configured")
         self.pool: asyncpg.Pool | None = None
@@ -170,12 +190,14 @@ class MigrationManager:
                     command_timeout=60,
                     # Every ACQUIRE assumes the runtime role (not just connection
                     # creation): the ledger tables (`_ensure_migration_log`) and the
-                    # advisory lock go through this pool, a `CREATE TABLE IF NOT
-                    # EXISTS` here must not mint a migrator-owned table, and
-                    # asyncpg's release-time `RESET ALL` undoes `SET ROLE` -- so an
-                    # `init`-only hook would hold for the first acquire and silently
-                    # lapse on the second (kimi, 2026-09-11). The hook is idempotent.
-                    setup=assume_runtime_role,
+                    # advisory lock go through this pool, and a `CREATE TABLE IF NOT
+                    # EXISTS` here must not mint a migrator-owned table. What the
+                    # hook heals is an explicit `RESET ROLE` by a borrower -- NOT
+                    # asyncpg's release-time `RESET ALL`, which PRESERVES the role
+                    # (PG 17.10, measured 2026-09-11; `DISCARD ALL` would reset it).
+                    # The hook is idempotent either way. Mode travels with the URL
+                    # frozen in `__init__`, never re-read from `settings` here.
+                    setup=partial(assume_runtime_role, dedicated=self._dedicated),
                 )
             except self.CONNECT_RETRY_EXCEPTIONS as exc:
                 last_error = exc
@@ -196,7 +218,10 @@ class MigrationManager:
                 break
 
         assert last_error is not None
-        source = "MIGRATION_DATABASE_URL" if migration_dsn_is_dedicated() else "DATABASE_URL"
+        # The frozen mode, not the ambient setting: the message must name the
+        # DSN this manager actually dialled (2026-09-10 incident: the bare
+        # ConnectionResetError never said which source was in play).
+        source = "MIGRATION_DATABASE_URL" if self._dedicated else "DATABASE_URL"
         safe_url = self._sanitize_db_url(self.database_url)
         message = (
             f"Migration runner cannot connect via {source} ({safe_url}): "
@@ -458,7 +483,9 @@ class MigrationManager:
         Raises:
             MigrationError: If migration fails
         """
-        return await migration.apply(database_url=self.database_url)
+        return await migration.apply(
+            database_url=self.database_url, dedicated=self._dedicated
+        )
 
     # Process-wide advisory lock id used to serialise concurrent migration
     # runs. `pg_advisory_lock` / `pg_advisory_unlock` are *session-scoped* —

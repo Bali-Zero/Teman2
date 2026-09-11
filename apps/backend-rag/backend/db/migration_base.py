@@ -67,9 +67,29 @@ def resolve_migration_dsn() -> str | None:
     return settings.migration_database_url or settings.database_url
 
 
-def migration_dsn_is_dedicated() -> bool:
-    """True when the runner is on its own DSN rather than the runtime's."""
-    return bool(settings.migration_database_url)
+def migration_dsn_is_dedicated(database_url: str | None = None) -> bool:
+    """Is the SELECTED url the dedicated migrator DSN?
+
+    Dedicated-vs-legacy is a property of the URL the runner actually connects
+    WITH, not of the process environment. Called with no argument it answers
+    for `resolve_migration_dsn()`'s own choice, which is the default path.
+
+    Called with an explicit URL -- a caller that handed its own DSN to
+    `MigrationManager` or to `apply()` -- it answers for THAT url, and an
+    explicit LEGACY override therefore stays legacy even while
+    `MIGRATION_DATABASE_URL` is set. Before this, a globally configured
+    migrator DSN imposed dedicated-role checks on a connection that was never
+    the migrator and could not satisfy them (Astra, 2026-09-11).
+
+    An ALTERNATE dedicated URL -- a second migrator DSN that is not the
+    configured one -- is not distinguishable from a legacy one by inspecting
+    the string, so it classifies as legacy here and its caller must say
+    `dedicated=True` explicitly.
+    """
+    configured = settings.migration_database_url
+    if not configured:
+        return False
+    return database_url is None or database_url == configured
 
 
 async def assume_runtime_role(
@@ -77,7 +97,7 @@ async def assume_runtime_role(
     *,
     runtime_role: str = RUNTIME_ROLE,
     ledger_role: str = LEDGER_ROLE,
-    dedicated: bool | None = None,
+    dedicated: bool,
 ) -> str | None:
     """Make the session's EFFECTIVE role the runtime role, right after connect.
 
@@ -109,11 +129,16 @@ async def assume_runtime_role(
     Then `SET ROLE <runtime_role>`, re-read `current_user`, and refuse if the
     server disagrees.
 
-    `dedicated=None` reads the setting; tests pass it explicitly so the guilt
-    and innocence cases do not depend on the process environment.
+    `dedicated` is REQUIRED and has no default, deliberately (Gemini 3.1 Pro,
+    2026-09-11). It used to fall back to `migration_dsn_is_dedicated()` with no
+    argument -- i.e. to the ambient setting -- and that default defeats the
+    whole invariant: this function receives a CONNECTION, which does not carry
+    the URL it was opened with, so a fallback here can only ever classify the
+    process, never this connection. A caller that had deliberately selected a
+    legacy URL would silently get the dedicated checks applied to a session
+    that authenticates as the runtime role, and be refused. Whoever CHOSE the
+    URL knows the mode; it is passed down from there, never re-derived here.
     """
-    if dedicated is None:
-        dedicated = migration_dsn_is_dedicated()
     if not dedicated:
         return None
 
@@ -165,11 +190,16 @@ async def assume_runtime_role(
     if row["ledger_exists"] and not row["ledger_member"]:
         raise _refuse(f"it is not a member of {ledger_role!r}")
     if row["cu"] == runtime_role:
-        # Already assumed on this physical connection (a pool re-acquire whose
-        # release did not reset the role). Idempotent by design: the pool's
-        # `setup` hook runs on EVERY acquire, because asyncpg's release-time
-        # `RESET ALL` undoes `SET ROLE` (kimi, 2026-09-11) -- so the hook must
-        # be safe both when the reset happened and when it did not.
+        # Already assumed on this physical connection -- and MEASUREMENT says
+        # that is the ordinary case, not the exception. `RESET ALL` PRESERVES
+        # `current_user` after a `SET ROLE`; `DISCARD ALL` is what resets it
+        # (PG 17.10, measured 2026-09-11), and asyncpg >= 0.30's release query
+        # is `pg_advisory_unlock_all; CLOSE ALL; UNLISTEN *; RESET ALL`. So the
+        # per-acquire `setup` hook is NOT load-bearing against the pool's own
+        # release, as this comment claimed until 2026-09-11: it is load-bearing
+        # against an explicit `RESET ROLE` by a borrower, which DOES drop the
+        # role. Either way the hook must be idempotent, and this branch is what
+        # makes it so.
         return runtime_role
     if row["cu"] != row["su"]:
         raise _refuse(
@@ -769,7 +799,9 @@ class BaseMigration:
         """
         return True
 
-    async def apply(self, database_url: str | None = None) -> bool:
+    async def apply(
+        self, database_url: str | None = None, *, dedicated: bool | None = None
+    ) -> bool:
         """
         Apply migration with transaction and automatic rollback.
 
@@ -779,6 +811,10 @@ class BaseMigration:
                 ONE database (codex finding 1, 2026-09-11 -- before this the
                 manager's pool and this connect could resolve differently).
                 Defaults to `resolve_migration_dsn()`.
+            dedicated: the mode BOUND to that DSN by `MigrationManager`. When
+                omitted (a standalone `apply()`), it is classified from the
+                DSN actually selected on this call, never from the ambient
+                setting alone -- so an explicit legacy URL stays legacy.
 
         Returns:
             True if migration applied successfully, False otherwise
@@ -787,6 +823,8 @@ class BaseMigration:
             MigrationError: If migration fails or validation fails
         """
         dsn = database_url or resolve_migration_dsn()
+        if dedicated is None:
+            dedicated = migration_dsn_is_dedicated(dsn)
         if not dsn:
             raise MigrationError("DATABASE_URL not configured")
 
@@ -824,7 +862,7 @@ class BaseMigration:
         # transaction opens, so the file's own `RESET ROLE`/`SET ROLE` pair
         # (if any) brackets exactly the block that needs the ledger owner.
         try:
-            await assume_runtime_role(conn)
+            await assume_runtime_role(conn, dedicated=dedicated)
         except MigrationError:
             await conn.close()
             raise
